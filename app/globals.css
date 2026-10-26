@@ -342,9 +342,14 @@ body {
 }
 
 /* Display math: long equations scroll instead of overflowing the column. */
+/* Display math: long equations scroll instead of overflowing the column.
+   Block padding leaves room for under/overbrace labels so the scrollbar
+   never sits on top of them (ui-v2); md-blocks shrinks wide ones to fit. */
 .katex-display {
 	overflow-x: auto;
 	overflow-y: hidden;
+	padding-block: 0.5em;
+	scrollbar-width: thin;
 }
 
 /* ============================================================
@@ -372,6 +377,14 @@ body {
 	border: 0;
 	background: transparent;
 	padding: 0.75rem 1rem;
+	/* ui-v2: code reads at 14px with a calmer line height (was the 13px
+	   chrome text-sm), and line numbers sit at 45% instead of 50%-of-muted. */
+	font-size: 14px;
+	line-height: 1.6;
+}
+[data-streamdown="code-block-body"] code > span::before {
+	color: color-mix(in oklab, var(--foreground) 35%, transparent);
+	font-size: 12px;
 }
 
 /* Tables: hairline row rules + header underline, and a full outer border

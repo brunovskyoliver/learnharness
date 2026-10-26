@@ -169,8 +169,24 @@ function teaserText(q: string): string {
 		.replace(/\\frac\{([^{}]*)\}\{([^{}]*)\}/g, "$1/$2")
 		.replace(/\\([a-zA-Z]+)/g, "$1")
 		.replace(/[{}]/g, "")
+		.replace(/(\*\*|__)(.+?)\1/g, "$2") // bold
+		.replace(/(^|\W)[*_](\S.*?)[*_](?=\W|$)/g, "$1$2") // italic
 		.replace(/\s+/g, " ")
 		.trim();
+}
+
+/** The teaser as inline nodes: `code` spans render as inline code instead
+ *  of raw backticks (ui-v2); everything else is plain text. */
+function Teaser({ text }: { text: string }) {
+	return text.split(/(`[^`]+`)/g).map((part, i) =>
+		part.length > 2 && part.startsWith("`") && part.endsWith("`") ? (
+			<code key={i} className="rounded bg-white/[0.07] px-[0.3em] font-mono text-[0.9em]">
+				{part.slice(1, -1)}
+			</code>
+		) : (
+			part
+		),
+	);
 }
 
 /** The collapsed strip. Two species (W5): "collapsed" is the scroll minimization
@@ -210,7 +226,7 @@ export function QuestionDockBar({
 				</span>
 				<span className="min-w-0 flex-1">
 					<span className="block text-sm font-medium">Check your understanding</span>
-					<span className="block truncate text-xs text-muted-foreground">{teaserText(question)}</span>
+					<span className="block truncate text-xs text-muted-foreground"><Teaser text={teaserText(question)} /></span>
 				</span>
 				<span className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
 					Open <ChevronRightIcon className="size-3.5" />
@@ -230,7 +246,7 @@ export function QuestionDockBar({
 							toolLabel ??
 							(toolName === "quiz" ? "Check" : toolName === "explain" ? "Explain" : "Question")}
 			</span>
-			<span className="min-w-0 flex-1 truncate text-muted-foreground">{teaserText(question)}</span>
+			<span className="min-w-0 flex-1 truncate text-muted-foreground"><Teaser text={teaserText(question)} /></span>
 			<span className="flex shrink-0 items-center gap-1 text-xs font-medium">
 				Answer <ArrowDownIcon className="size-3.5" />
 			</span>

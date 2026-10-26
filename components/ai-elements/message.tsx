@@ -26,6 +26,8 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useLayoutEffect,
+  useRef,
   useState,
 } from "react";
 import remarkBreaks from "remark-breaks";
@@ -365,7 +367,19 @@ export const MessageResponse = memo(
         ? transformMathDelimiters(children)
         : children;
 
+    // Wide display math shrinks to fit the column, down to 70% (ui-v2);
+    // past that it scrolls. ponytail: runs per render, not on resize.
+    const ref = useRef<HTMLDivElement>(null);
+    useLayoutEffect(() => {
+      for (const el of ref.current?.querySelectorAll<HTMLElement>(".katex-display > .katex") ?? []) {
+        el.style.fontSize = "";
+        const ratio = el.parentElement!.clientWidth / el.scrollWidth;
+        if (ratio < 1) el.style.fontSize = `${Math.max(0.7, ratio).toFixed(3)}em`;
+      }
+    });
+
     return (
+      <div ref={ref} className="contents">
       <Streamdown
         className={cn(
           // Source Sans 3 + emphasis-color tokens on every markdown surface
@@ -379,6 +393,7 @@ export const MessageResponse = memo(
       >
         {content}
       </Streamdown>
+      </div>
     );
   },
   (prevProps, nextProps) =>
