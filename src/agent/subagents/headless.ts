@@ -4,6 +4,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { standardFontsDir } from "./pdf-ops";
+import { hostedMode } from "../../../config.ts";
 
 /**
  * Verification engines for sub-agents: demos use the app's own Electron
@@ -92,6 +93,13 @@ const CHROME_CANDIDATES = [
 	"/usr/bin/chromium",
 	"/usr/bin/chromium-browser",
 ];
+
+/** Hosted (owner, 2026-10-26): demos are model-written JS on a shared
+ * server, so Chrome keeps its sandbox; the image runs it as a non-root
+ * user under deploy/chrome-seccomp.json. Exported for tests. */
+export function chromeArgs(): string[] {
+	return ["--disable-gpu", ...(hostedMode() ? [] : ["--no-sandbox"]), "--disable-dev-shm-usage"];
+}
 
 export function resolveChromeExecutablePath(): string | null {
 	const candidates = [process.env.CHROME_PATH, ...CHROME_CANDIDATES].filter(
@@ -263,7 +271,7 @@ async function withBrowserPage<T>(fn: (page: import("puppeteer-core").Page) => P
 		// Explicit path when we found one; otherwise let puppeteer resolve the
 		// system Chrome install itself via the "chrome" channel.
 		...(executablePath ? { executablePath } : { channel: "chrome" as const }),
-		args: ["--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage"],
+		args: chromeArgs(),
 	});
 	try {
 		const page = await browser.newPage();

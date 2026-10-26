@@ -16,3 +16,7 @@ export const CLERK_APPEARANCE = {
 		borderRadius: "8px",
 	},
 };
+
+/** Our own sign-in pages (app/(auth)). Without these Clerk sends every
+ *  redirect and sign-out to its hosted Account Portal instead. */
+export const CLERK_URLS = { signInUrl: "/sign-in", signUpUrl: "/sign-up" } as const;

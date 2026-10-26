@@ -1,0 +1,14 @@
+# Never in the image: dependencies/builds (rebuilt inside), user data, secrets.
+node_modules
+.next
+dist
+data
+.fresh-data
+.git
+.scratch
+.memory
+real-data-extraction
+auth.json
+*-credentials.json*
+.env*
+*.log

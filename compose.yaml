@@ -1,0 +1,28 @@
+# docker compose up -d --build   (fill .env.hosted first; see docs/hosting.md)
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env.hosted
+    volumes:
+      - lh-data:/data
+    security_opt:
+      # Docker's default profile plus the namespaces Chrome's sandbox needs.
+      - seccomp=./deploy/chrome-seccomp.json
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on: [app]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    env_file: .env.hosted
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+volumes:
+  lh-data:
+  caddy-data:
+  caddy-config:

@@ -1,0 +1,6 @@
+# Automatic HTTPS for LH_DOMAIN (from .env.hosted). reverse_proxy streams
+# text/event-stream unbuffered, which the app's live updates need.
+{$LH_DOMAIN} {
+	encode zstd gzip
+	reverse_proxy app:3000
+}

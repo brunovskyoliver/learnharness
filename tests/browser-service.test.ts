@@ -8,7 +8,7 @@
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { browserServiceSpawnEnv, parseBrowserServiceLine } from "../src/agent/subagents/headless.ts";
+import { browserServiceSpawnEnv, chromeArgs, parseBrowserServiceLine } from "../src/agent/subagents/headless.ts";
 
 describe("browser-service helper (pure halves)", () => {
 	it("parses the handshake line into a port", () => {
@@ -38,5 +38,14 @@ describe("browser-service helper (pure halves)", () => {
 		browserServiceSpawnEnv(original);
 		assert.equal(original.ELECTRON_RUN_AS_NODE, "1");
 		assert.equal(original.KEEP, "yes");
+	});
+});
+
+describe("chromeArgs", () => {
+	it("keeps Chrome's sandbox on in hosted mode, off on desktop", () => {
+		assert.ok(chromeArgs().includes("--no-sandbox"));
+		process.env.LH_HOSTED = "1";
+		try { assert.equal(chromeArgs().includes("--no-sandbox"), false); }
+		finally { delete process.env.LH_HOSTED; }
 	});
 });

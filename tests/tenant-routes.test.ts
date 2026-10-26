@@ -67,3 +67,13 @@ describe("hosted entry gate", () => {
 		}
 	});
 });
+
+describe("sign-in root layout", () => {
+	it("sign-in pages and the app shell sit under separate root layouts", () => {
+		// Clerk soft-navigates after sign-in/out; only a root-layout change
+		// forces the full load that swaps the shell's providers in or out.
+		assert.equal(fs.existsSync(path.join(APP, "layout.tsx")), false);
+		assert.deepEqual(files("layout.tsx").map((f) => path.relative(APP, f)).sort(), ["(app)/layout.tsx", "(auth)/layout.tsx"]);
+		assert.ok(fs.existsSync(path.join(APP, "(auth)/sign-in/[[...sign-in]]/page.tsx")));
+	});
+});
