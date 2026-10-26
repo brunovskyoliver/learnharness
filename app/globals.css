@@ -127,7 +127,7 @@
 	   fonts: `font-mono`/`font-sans` utilities would otherwise fall to the
 	   SYSTEM stacks — a fourth font the app never chose — and streamdown's
 	   code-block chrome + mermaid-error + demo-card all use them. */
-	--font-ui: var(--font-jetbrains), ui-monospace, SFMono-Regular, monospace;
+	--font-ui: var(--font-sans3), ui-sans-serif, system-ui, sans-serif;
 	--font-prose: var(--font-sans3), ui-sans-serif, system-ui, sans-serif;
 	--font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, monospace;
 	--font-sans: var(--font-sans3), ui-sans-serif, system-ui, sans-serif;
@@ -144,9 +144,9 @@
 	   toggle write a runtime --font-title no consumer ever read (owner, fix
 	   wave: toggle looked dead). Non-inline emits :root { --font-title: … }
 	   and the utility reads var(--font-title) — appearance overrides win. */
-	--text-xs: 11px;
+	--text-xs: 12px;
 	--text-xs--line-height: 1.4;
-	--text-sm: 12.5px;
+	--text-sm: 13px;
 	--text-sm--line-height: 1.4;
 	--text-base: 14px;
 	--text-base--line-height: 1.45;
@@ -202,8 +202,8 @@ body {
    demos and visuals widen to the dock's 46rem when the pane allows.
    The column's parent is an inline-size container, so 100cqw = pane. */
 :root {
-	--lh-measure: 36rem;
-	--lh-wide: 46rem;
+	--lh-measure: 52rem;
+	--lh-wide: 52rem;
 }
 .lh-breakout {
 	--lh-breakout-w: min(var(--lh-wide), 100cqw - 3rem);

@@ -49,7 +49,7 @@ export function SettingsGroup({
 }) {
 	return (
 		<div data-testid={testid} className="mt-5 border-t border-border/60 pt-4 first:mt-0 first:border-t-0 first:pt-0">
-			<p className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">{label}</p>
+			<p className="mb-2 text-xs text-muted-foreground">{label}</p>
 			<div className="flex flex-col gap-2">{children}</div>
 		</div>
 	);

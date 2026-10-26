@@ -54,7 +54,7 @@ export function AnsweredCard({ answer: savedAnswer, input }: { answer: QuestionA
 		    ThinkingBlock, instead of an inset inside the answer. Same muted
 		    rail as before; the label is now plain "Your thinking". */}
 		{answer.readingThinking && (
-			<ThinkingBlock testId="reading-thinking-block" label="YOUR THINKING" text={answer.readingThinking} defaultOpen />
+			<ThinkingBlock testId="reading-thinking-block" label="Your thinking" text={answer.readingThinking} defaultOpen />
 		)}
 		{/* [&>*:last-child]:mb-0 (owner round, 2026-10-07): on ask cards the
 		    thinking row is the last child — its my-3 stacked with the card's
@@ -64,7 +64,7 @@ export function AnsweredCard({ answer: savedAnswer, input }: { answer: QuestionA
 			className="rounded-xl border bg-card p-4 text-card-foreground [&>*:last-child]:mb-0"
 			data-testid="answered-card"
 		>
-			<div className="mb-1 flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+			<div className="mb-1 flex items-center gap-2 text-xs font-medium text-muted-foreground">
 				{/* The tool's OWN name first (owner 2026-10-09): probe-phase
 			    cards label Probe/Recall — the phase boundary visible in the
 			    transcript. No `tool` on old records: kind labels as before. */}
@@ -178,7 +178,7 @@ export function AnsweredCard({ answer: savedAnswer, input }: { answer: QuestionA
 				<div className="mt-3 flex items-center gap-3" data-testid="answered-confidence">
 					{/* Labeled like the dock (polish pass 2026-10-26): unlabeled, the
 					    rail + % read as a progress meter. */}
-					<span className="shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">Confidence</span>
+					<span className="shrink-0 text-xs font-medium text-muted-foreground">Confidence</span>
 					<ConfidenceRail value={answer.confidence} className="min-w-0 flex-1" />
 					<span className="w-9 shrink-0 text-right font-mono text-sm tabular-nums text-muted-foreground">
 						{answer.confidence}%
@@ -196,7 +196,7 @@ export function AnsweredCard({ answer: savedAnswer, input }: { answer: QuestionA
 				    the accent lift read too light); rail only, heights identical. */
 				<ThinkingBlock
 					testId="your-thinking"
-					label="YOUR THINKING"
+					label="Your thinking"
 					text={answer.thinking ?? answer.note ?? ""}
 					inCard
 				/>
@@ -220,7 +220,7 @@ export function AnsweredCard({ answer: savedAnswer, input }: { answer: QuestionA
 							setWhyOpen((v) => !v);
 							blurAfterPointerClick(e);
 						}}
-						className="flex items-center gap-2 py-1 font-ui text-xs font-medium uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
+						className="flex items-center gap-2 py-1 font-ui text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
 					>
 						Why
 						<ChevronDownIcon className={cn("size-4 shrink-0 transition-transform", whyOpen ? "rotate-180" : "rotate-0")} />

@@ -706,7 +706,7 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 						type="button"
 						data-testid="new-session"
 						onClick={() => void newSession()}
-						className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs uppercase tracking-wider text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+						className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 					>
 						<PlusIcon className="size-3" />
 						New lesson
@@ -715,7 +715,7 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 						type="button"
 						data-testid="new-session-practice"
 						onClick={() => router.push("/chat/new?mode=practice")}
-						className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs uppercase tracking-wider text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+						className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 					>
 						<DumbbellIcon className="size-3" />
 						New practice
@@ -816,7 +816,7 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 							const group = query.trim() ? null : dateGroup(c.updatedAt);
 							const header =
 								group !== null && (i === 0 || dateGroup(shown[i - 1]!.updatedAt) !== group) ? (
-									<div className="px-2 pb-1 pt-3 text-xs uppercase tracking-widest text-muted-foreground first:pt-1" data-testid="session-group">
+									<div className="px-2 pb-1 pt-3 text-xs text-muted-foreground first:pt-1" data-testid="session-group">
 										{group}
 									</div>
 								) : null;
@@ -860,7 +860,7 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 								type="button"
 								onClick={() => openSettings()}
 								data-testid="settings-entry"
-								className="-mx-2 flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs uppercase tracking-widest text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+								className="-mx-2 flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 							>
 								<SettingsIcon className="size-3" />
 								Settings
