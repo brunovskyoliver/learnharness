@@ -50,6 +50,7 @@ import { KeysSection } from "./keys-section.tsx";
 import { Hint } from "@/components/ui/hint";
 import { AppearanceSection, GraphSection } from "./appearance-section.tsx";
 import { KeyboardSection } from "./keyboard-section.tsx";
+import { FilesSection } from "./files-section.tsx";
 import { ChatGPTUIProvider } from "./chatgpt-connection.tsx";
 import { NativeSubscriptionUIProvider } from "./subscription-connections.tsx";
 
@@ -62,6 +63,8 @@ const SECTIONS = [
 	{ id: "appearance", label: "Appearance" },
 	{ id: "graph", label: "Graph" },
 	{ id: "keyboard", label: "Keyboard", hint: "Stored on this device" },
+	/** Hosted only: the upload folder the agent's file tools read. */
+	{ id: "files", label: "Files" },
 	{ id: "general", label: "General" },
 ] as const;
 type SectionId = (typeof SECTIONS)[number]["id"];
@@ -78,8 +81,10 @@ const DialogContext = createContext<{ open: (section?: string, row?: string) => 
  *  setup flow deep-links to Keys when no provider key exists yet). */
 export function SettingsDialogProvider({
 	children,
+	hosted = false,
 }: {
 	children: React.ReactNode;
+	hosted?: boolean;
 }) {
 	const [show, setShow] = useState(false);
 	const [landOn, setLandOn] = useState<SectionId>("keys");
@@ -94,7 +99,7 @@ export function SettingsDialogProvider({
 		<ChatGPTUIProvider><NativeSubscriptionUIProvider><DialogContext.Provider value={{ open }}>
 			{children}
 			{show && (
-				<SettingsDialog onClose={() => setShow(false)} initialSection={landOn} initialRow={landOnRow} />
+				<SettingsDialog onClose={() => setShow(false)} initialSection={landOn} initialRow={landOnRow} hosted={hosted} />
 			)}
 		</DialogContext.Provider></NativeSubscriptionUIProvider></ChatGPTUIProvider>
 	);
@@ -108,11 +113,13 @@ function SettingsDialog({
 	onClose,
 	initialSection,
 	initialRow,
+	hosted,
 }: {
 	onClose: () => void;
 	initialSection: SectionId;
 	/** The keys-section row to unfold (see DialogContext above). */
 	initialRow: string | null;
+	hosted: boolean;
 }) {
 	const backdropDismiss = useBackdropDismiss(onClose);
 	// Plain dim backdrop (no blur — nothing decorative); a genuine
@@ -123,7 +130,7 @@ function SettingsDialog({
 			data-testid="settings-backdrop"
 			{...backdropDismiss}
 		>
-			<SettingsDialogBody onClose={onClose} initialSection={initialSection} initialRow={initialRow} />
+			<SettingsDialogBody onClose={onClose} initialSection={initialSection} initialRow={initialRow} hosted={hosted} />
 		</div>,
 		document.body,
 	);
@@ -135,8 +142,11 @@ export function SettingsDialogBody({
 	onClose,
 	initialSection = "keys",
 	initialRow = null,
+	hosted = false,
 }: {
 	onClose: () => void;
+	/** Shows the hosted-only sections (Files). */
+	hosted?: boolean;
 	initialSection?: SectionId;
 	/** The keys row to unfold on arrival (null = none). While-open
 	 *  retargets follow it exactly like initialSection below. */
@@ -307,7 +317,7 @@ export function SettingsDialogBody({
 					data-testid="settings-nav"
 					className="flex w-44 shrink-0 flex-col gap-1 border-r border-border p-2"
 				>
-					{SECTIONS.map((s) => (
+					{SECTIONS.filter((s) => hosted || s.id !== "files").map((s) => (
 						<button
 							key={s.id}
 							type="button"
@@ -366,6 +376,11 @@ export function SettingsDialogBody({
 											void write("general", { ...record.general, autoUpdate: on })
 										}
 									/>
+								</SettingsSection>
+							)}
+							{active === "files" && hosted && (
+								<SettingsSection title="Files" testid="section-files">
+									<FilesSection />
 								</SettingsSection>
 							)}
 							{active === "keys" && (

@@ -74,6 +74,8 @@ test("Providers is the first/default page; General is last and other pages keep 
  assert.deepEqual(ids, ["keys", "agent", "appearance", "graph", "keyboard", "general"]);
  assert.match(html, /settings-nav-keys[^>]*aria-current="true"/); assert.match(html, />Providers<\/button>/);
  assert.doesNotMatch(html, />Model providers<\/button>/);
+ const hosted = renderToStaticMarkup(<SettingsDialogBody onClose={() => {}} hosted />);
+ assert.deepEqual([...hosted.matchAll(/data-testid="settings-nav-([^"]+)"/g)].map((m) => m[1]), ["keys", "agent", "appearance", "graph", "keyboard", "files", "general"], "hosted adds Files before General");
 });
 
 test("Providers has exactly four ordered sections; unknown variables stay masked/read-only at the end of Model API keys", async () => {

@@ -943,9 +943,9 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 /** The app frame: sidebar inline + content. Rendered once in the root layout. */
 /** account: the hosted-mode account row (layout passes it; Clerk stays out
  *  of this module). */
-export function AppShell({ children, account }: { children: React.ReactNode; account?: React.ReactNode }) {
+export function AppShell({ children, account, hosted = false }: { children: React.ReactNode; account?: React.ReactNode; hosted?: boolean }) {
 	return (
-		<SettingsDialogProvider>
+		<SettingsDialogProvider hosted={hosted}>
 			<SessionsSidebar account={account} />
 			<main className="min-w-0 flex-1">{children}</main>
 			{/* The single document-level keydown listener (keyboard wave A) —

@@ -34,7 +34,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 			<AppearanceProvider>
 				<SidebarProvider>
 					<ActivityProvider>
-						<AppShell account={hosted ? <AccountRow /> : undefined}>{children}</AppShell>
+						<AppShell hosted={hosted} account={hosted ? <AccountRow /> : undefined}>{children}</AppShell>
 					</ActivityProvider>
 				</SidebarProvider>
 			</AppearanceProvider>

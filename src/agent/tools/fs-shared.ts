@@ -1,6 +1,8 @@
+import { mkdirSync, realpathSync } from "node:fs";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
+import { hostedMode, PATHS } from "../../../config.ts";
 
 /**
  * Shared plumbing for the learner-filesystem tools (ls / find / grep) —
@@ -39,8 +41,25 @@ const EXCLUDED_DIR_NAMES = new Set(["node_modules", ".git", "Library", ".Trash"]
  *  (pi resolves against the project cwd; the harness's "project" is the
  *  learner's life, so the home directory is the anchor.) */
 export function resolveSourcePath(p?: string): string {
+	if (hostedMode()) return jailedPath(p);
 	if (!p) return os.homedir();
 	return path.isAbsolute(p) ? p : path.join(os.homedir(), p);
+}
+
+/** Hosted (2026-10-26): the anchor is the tenant's upload folder and nothing
+ * outside it resolves. An absolute path is read as relative to the folder
+ * unless it already points into it (tool output prints full paths). The
+ * check runs on realpath, so `..` and symlinks cannot leave the folder; a
+ * missing target is left to the tool's own ENOENT. */
+function jailedPath(p?: string): string {
+	mkdirSync(PATHS.files, { recursive: true });
+	const root = realpathSync(PATHS.files);
+	const inside = (target: string) => target === root || target.startsWith(root + path.sep);
+	const given = p && path.isAbsolute(p) && inside(path.resolve(p)) ? path.resolve(p) : path.join(root, p ?? "");
+	let real = given;
+	try { real = realpathSync(given); } catch { /* missing: lexical check below */ }
+	if (!inside(path.resolve(given)) || !inside(real)) throw new Error("Path is outside your files folder");
+	return real;
 }
 
 /** pi's formatSize idiom (50KB prints as "50.0KB"). */
