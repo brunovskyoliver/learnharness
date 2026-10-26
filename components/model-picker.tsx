@@ -92,6 +92,11 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 	const modelTriggerRef = useRef<HTMLButtonElement>(null);
 	const thinkingTriggerRef = useRef<HTMLButtonElement>(null);
 	const returnFocusRef = useRef<HTMLButtonElement | null>(null);
+	const restoreTriggerFocus = useCallback(() => {
+		const trigger = returnFocusRef.current;
+		returnFocusRef.current = null;
+		trigger?.focus();
+	}, []);
 
 	// The record read — BOTH mount and the cross-surface signal land
 	// here (fix wave: another surface's models write re-reads into the
@@ -168,6 +173,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 			const t = e.target as Element;
 			if (t instanceof Element && t.closest("[data-lh-menu]")) return;
 			if (containerRef.current && !containerRef.current.contains(t)) {
+				returnFocusRef.current = null;
 				setOpen(null);
 			}
 		};
@@ -177,7 +183,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 				// not ALSO stop dictation / abort the turn under this menu.
 				e.stopPropagation();
 				setOpen(null);
-				returnFocusRef.current?.focus();
+				restoreTriggerFocus();
 			}
 		};
 		document.addEventListener("pointerdown", onPointerDown);
@@ -186,7 +192,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 			document.removeEventListener("pointerdown", onPointerDown);
 			document.removeEventListener("keydown", onKeyDown);
 		};
-	}, [open]);
+	}, [open, restoreTriggerFocus]);
 
 	// One write seam: composeSlotModel preserves the cheap/vision siblings
 	// (replace-whole-section discipline) and the per-field independence of
@@ -213,13 +219,13 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 				)?.settings?.models;
 				setModels(stored ?? next);
 				setOpen(null);
-				returnFocusRef.current?.focus();
+				restoreTriggerFocus();
 				notifySettingsSaved("models");
 			} catch {
 				setError("Could not reach the server — try again.");
 			}
 		},
-		[],
+		[restoreTriggerFocus],
 	);
 
 	// The session write seam (chat mode): PUT the per-chat settings route
@@ -244,12 +250,12 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 				const stored = (await res.json().catch(() => null)) as { settings?: ChatSettings } | null;
 				setSession(stored?.settings ?? next);
 				setOpen(null);
-				returnFocusRef.current?.focus();
+				restoreTriggerFocus();
 			} catch {
 				setError("Could not reach the server — try again.");
 			}
 		},
-		[chatId],
+		[chatId, restoreTriggerFocus],
 	);
 
 	// One apply seam over both write paths: a pick names provider + id +
@@ -319,7 +325,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 	// claiming a ready model (the stored pin survives in settings).
 	const noKeys = catalog !== undefined && catalog.models.length === 0;
 	const openMenu = (kind: "model" | "thinking") => {
-		returnFocusRef.current = kind === "model" ? modelTriggerRef.current : thinkingTriggerRef.current;
+		returnFocusRef.current = open === kind ? null : kind === "model" ? modelTriggerRef.current : thinkingTriggerRef.current;
 		setOpen((o) => (o === kind ? null : kind));
 		setError(null);
 		if (kind === "model") refresh();
