@@ -238,7 +238,7 @@ export function SetupKeysBody({
 					</div>
 				)}
 				{error && (
-					<p role="alert" data-testid="setup-key-error" className="text-xs text-red-400">
+					<p role="alert" data-testid="setup-key-error" className="text-xs text-destructive">
 						{error}
 					</p>
 				)}
@@ -529,7 +529,7 @@ export function SetupDialog({
 										{!body?.slots?.[slot]?.model && !picked[slot] && (
 											<span
 												data-testid={`setup-needed-${slot}`}
-												className="rounded-sm border border-border px-1 py-0.5 text-[10px] font-normal tracking-wide text-muted-foreground"
+												className="rounded-sm border border-border px-1 py-0.5 text-xs font-normal tracking-wide text-muted-foreground"
 											>
 												needed
 											</span>
@@ -642,7 +642,7 @@ export function SetupDialog({
 							>
 								{saving ? "Saving…" : "Save models"}
 							</button>
-							{error && <p className="text-xs text-red-400">{error}</p>}
+							{error && <p className="text-xs text-destructive">{error}</p>}
 						</div>
 					</div>
 				)}

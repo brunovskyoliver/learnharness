@@ -644,7 +644,7 @@ export function PlanDiagram({
 								y={-GLOW_MARGIN}
 								width={w + 2 * GLOW_MARGIN}
 								height={h + 2 * GLOW_MARGIN}
-								className="fill-yellow-400/25"
+								className="fill-warning/25"
 								filter={`url(#${markerId}-glow)`}
 							/>
 						)}

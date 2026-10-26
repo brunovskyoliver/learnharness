@@ -47,6 +47,11 @@
 	--accent: #2a2a2a;
 	--accent-foreground: #e6e6e6;
 	--destructive: oklch(0.704 0.191 22.216);
+	/* Verdict/state hues (polish pass 2026-10-26): ONE green, ONE red, one
+	   amber app-wide. Danger IS --destructive. Each clears 4.5:1 as text on
+	   its own 15% tint over --card. */
+	--success: oklch(0.72 0.15 150);
+	--warning: oklch(0.8 0.13 85);
 	--border: #434343;
 	--input: #434343;
 	--ring: #8d8d8d;
@@ -85,6 +90,11 @@
 	--accent: #2a2a2a;
 	--accent-foreground: #e6e6e6;
 	--destructive: oklch(0.704 0.191 22.216);
+	/* Verdict/state hues (polish pass 2026-10-26): ONE green, ONE red, one
+	   amber app-wide. Danger IS --destructive. Each clears 4.5:1 as text on
+	   its own 15% tint over --card. */
+	--success: oklch(0.72 0.15 150);
+	--warning: oklch(0.8 0.13 85);
 	--border: #434343;
 	--input: #434343;
 	--ring: #8d8d8d;
@@ -170,6 +180,8 @@
 	--color-accent: var(--accent);
 	--color-accent-foreground: var(--accent-foreground);
 	--color-destructive: var(--destructive);
+	--color-success: var(--success);
+	--color-warning: var(--warning);
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);

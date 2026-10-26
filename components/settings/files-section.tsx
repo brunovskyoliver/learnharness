@@ -53,7 +53,7 @@ export function FilesSection() {
 				<input ref={input} type="file" multiple hidden data-testid="files-input" onChange={(event) => upload(event.target.files)} />
 				<Button variant="outline" size="sm" disabled={busy} onClick={() => input.current?.click()} data-testid="files-upload">Upload files…</Button>
 			</div>
-			{error && <p role="alert" className="text-xs text-red-400">{error}</p>}
+			{error && <p role="alert" className="text-xs text-destructive">{error}</p>}
 			{files === null ? (
 				<p className="text-xs text-muted-foreground/70">Loading files…</p>
 			) : files.length === 0 ? (
@@ -61,7 +61,7 @@ export function FilesSection() {
 			) : (
 				files.map((file) => (
 					<SettingsRow key={file.name} label={file.name} hint={size(file.size)} testid="files-row">
-						<Button variant="ghost" size="xs" className="text-red-400 hover:text-red-300" disabled={busy} onClick={() => void run(() => call({ method: "DELETE" }, `?name=${encodeURIComponent(file.name)}`))}>Delete</Button>
+						<Button variant="ghost" size="xs" className="text-destructive hover:text-destructive" disabled={busy} onClick={() => void run(() => call({ method: "DELETE" }, `?name=${encodeURIComponent(file.name)}`))}>Delete</Button>
 					</SettingsRow>
 				))
 			)}

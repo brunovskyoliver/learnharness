@@ -229,7 +229,7 @@ describe("plan popup (live derivation)", () => {
 		assert.match(html, /data-testid="plan-node-c" data-status="upcoming"/);
 		// The current node is the glow target: a faint yellow fill, blurred
 		// so it bleeds over the edges — static, no pulse (owner, round 6).
-		assert.match(html, /fill-yellow-400\/25/);
+		assert.match(html, /fill-warning\/25/);
 		assert.match(html, /feGaussianBlur/);
 		assert.doesNotMatch(html, /animate-pulse/);
 		// Arrows into not-yet-visited nodes are grayed out (owner, round 6).

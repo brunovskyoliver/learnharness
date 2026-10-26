@@ -65,7 +65,7 @@ export function ProblemCard({ part }: ArtifactPartProps) {
 	return (
 		<div data-testid="problem-card" className="lh-card-enter my-1 rounded-xl border bg-card p-4">
 			<div className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Problem</div>
-			<div className="lh-prose text-[15px]">
+			<div className="lh-prose">
 				<ToolContentResponse>{statement}</ToolContentResponse>
 			</div>
 		</div>
@@ -86,10 +86,10 @@ const OUTCOME_LABEL: Record<string, string> = {
  * cost), surrendered red (the problem beat the learner), moved on muted
  * (the agent's call, not a verdict against him). */
 const OUTCOME_CHIP: Record<string, string> = {
-	solved: "bg-green-500/15 text-green-500",
-	solvedWithHints: "bg-amber-500/15 text-amber-500",
+	solved: "bg-success/15 text-success",
+	solvedWithHints: "bg-warning/15 text-warning",
 	movedOn: "bg-muted text-muted-foreground",
-	surrendered: "bg-red-500/15 text-red-500",
+	surrendered: "bg-destructive/15 text-destructive",
 	dismissed: "bg-muted text-muted-foreground",
 };
 
@@ -143,7 +143,7 @@ export function ConcludeCard({ part }: ArtifactPartProps) {
 					<div className="my-3 border-t" />
 					<div>
 						<div className="mb-0.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">Model solution</div>
-						<div className="lh-prose text-[15px]">
+						<div className="lh-prose">
 							<ToolContentResponse>{reveal}</ToolContentResponse>
 						</div>
 					</div>
