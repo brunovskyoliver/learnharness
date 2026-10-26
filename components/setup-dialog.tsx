@@ -44,7 +44,8 @@ import { notifySettingsSaved, useSettingsSaved } from "@/components/settings-sig
 import { Hint } from "@/components/ui/hint";
 import { type ProviderKeyInfo } from "@/components/settings/keys-section";
 import { ProviderMenuList } from "@/components/settings/model-menu";
-import { ChatGPTBackgroundAccess } from "@/components/settings/chatgpt-connection";
+import { ChatGPTBackgroundAccess, ChatGPTConnection } from "@/components/settings/chatgpt-connection";
+import { useSettingsDialog } from "@/components/settings/settings-dialog";
 import { NativeSubscriptionBackgroundAccess, SubscriptionConnections } from "@/components/settings/subscription-connections";
 import { defaultOrderLevel, populateLevel, THINKING_LABEL } from "@/components/thinking-default";
 import { ThinkingMenuList } from "@/components/settings/model-menu";
@@ -58,6 +59,36 @@ const SLOT_META: Record<ModelSlotName, { label: string; roster: string }> = {
 	vision: { label: "Vision", roster: "Visual maker + PDF reader" },
 };
 const SLOT_ORDER: readonly ModelSlotName[] = ["strong", "cheap", "vision"];
+
+/** Hosted ChatGPT-first setup (owner, 2026-10-26: "match your desktop"):
+ *  each EMPTY slot prefills with the first id here that the user's live
+ *  ChatGPT catalog offers, at this level if the model supports it. A slot
+ *  with no match stays empty for a manual pick; Save is still explicit. */
+export const CHATGPT_SLOT_PINS: Record<ModelSlotName, { ids: readonly string[]; thinkingLevel: ThinkingLevel }> = {
+	strong: { ids: ["gpt-6.1-sol", "gpt-6-sol"], thinkingLevel: "medium" },
+	cheap: { ids: ["gpt-6-luna", "gpt-5.6-luna"], thinkingLevel: "xhigh" },
+	vision: { ids: ["gpt-6-luna", "gpt-5.6-luna"], thinkingLevel: "xhigh" },
+};
+
+/** Pure: the ChatGPT prefill for the slots `taken` leaves empty. Exported for tests. */
+export function chatGPTAutofill(
+	models: ModelCatalogEntry[],
+	taken: Partial<Record<ModelSlotName, ModelCatalogEntry>>,
+): { picked: Partial<Record<ModelSlotName, ModelCatalogEntry>>; levels: Partial<Record<ModelSlotName, ThinkingLevel>> } {
+	const picked: Partial<Record<ModelSlotName, ModelCatalogEntry>> = {};
+	const levels: Partial<Record<ModelSlotName, ThinkingLevel>> = {};
+	for (const slot of SLOT_ORDER) {
+		if (taken[slot]) continue;
+		const pin = CHATGPT_SLOT_PINS[slot];
+		const entry = pin.ids
+			.map((id) => models.find((m) => m.provider === "chatgpt" && m.id === id && (slot !== "vision" || m.input.includes("image"))))
+			.find(Boolean);
+		if (!entry) continue;
+		picked[slot] = entry;
+		levels[slot] = entry.supportedLevels.includes(pin.thinkingLevel) ? pin.thinkingLevel : defaultOrderLevel(entry.supportedLevels);
+	}
+	return { picked, levels };
+}
 
 /** The GET /api/models response fields the flow consumes. */
 interface ModelsBody {
@@ -129,7 +160,11 @@ export function SetupKeysBody({
 	onValue,
 	onSave,
 	menuAnchor,
+	hosted = false,
 }: {
+	/** Hosted: lead with ChatGPT; keys and other subscriptions go under
+	 *  "Other providers". */
+	hosted?: boolean;
 	/** The full provider roster (GET /api/keys providers) — undefined
 	 *  while it loads; the picker renders an honest empty state then. */
 	providers: ProviderKeyInfo[] | undefined;
@@ -147,11 +182,7 @@ export function SetupKeysBody({
 	/** The MenuShell anchor — wired by the wrapper (its triggerRef). */
 	menuAnchor: React.RefObject<HTMLDivElement | null>;
 }) {
-	return (
-		<div className="flex flex-col gap-3 px-6 py-5" data-testid="setup-stage-keys">
-			<p className="text-xs text-muted-foreground">
-				Choose your AI provider and paste its API key. You’ll pick your models next.
-			</p>
+	const keyPicker = (
 			<div className="flex flex-col gap-2">
 				<div ref={menuAnchor} className="relative max-w-96">
 					<button
@@ -212,6 +243,29 @@ export function SetupKeysBody({
 					</p>
 				)}
 			</div>
+	);
+	if (hosted) {
+		return (
+			<div className="flex flex-col gap-3 px-6 py-5" data-testid="setup-stage-keys">
+				<p className="text-xs text-muted-foreground">
+					Connect your ChatGPT subscription. Your plan covers the models, so no API key is needed. You’ll pick your models next.
+				</p>
+				<div data-testid="setup-chatgpt-lead"><ChatGPTConnection setup /></div>
+				<div className="mt-2 flex flex-col gap-3 border-t border-border/60 pt-4" data-testid="setup-other-providers">
+					<h3 className="font-ui text-xs text-muted-foreground">Other providers</h3>
+					<p className="text-xs text-muted-foreground">Or paste an API key, or connect another subscription.</p>
+					{keyPicker}
+					<SubscriptionConnections setup without="chatgpt" />
+				</div>
+			</div>
+		);
+	}
+	return (
+		<div className="flex flex-col gap-3 px-6 py-5" data-testid="setup-stage-keys">
+			<p className="text-xs text-muted-foreground">
+				Choose your AI provider and paste its API key. You’ll pick your models next.
+			</p>
+			{keyPicker}
 			<div className="mt-2 border-t border-border/60 pt-4"><h3 className="mb-3 font-ui text-xs text-muted-foreground">Subscriptions</h3><SubscriptionConnections setup /></div>
 		</div>
 	);
@@ -229,6 +283,7 @@ export function SetupDialog({
 	onDone: (models: ModelsSettings) => void;
 }) {
 	const backdropDismiss = useBackdropDismiss(onClose);
+	const { hosted } = useSettingsDialog();
 	const [body, setBody] = useState<ModelsBody | null>(null);
 	const [failed, setFailed] = useState(false);
 	const [picked, setPicked] = useState<Partial<Record<ModelSlotName, ModelCatalogEntry>>>({});
@@ -286,20 +341,22 @@ export function SetupDialog({
 				// pick (matched in the FEDERATED catalog — a lapsed key's pin
 				// does not prefill); unpinned tiers stay empty and carry the
 				// "needed" mark. First-run = nothing pinned → all three marked.
-				const pre = prefillFromSlots(b.models, b.slots);
+				const pinned = prefillFromSlots(b.models, b.slots);
+				const auto = hosted ? chatGPTAutofill(b.models, pinned) : { picked: {}, levels: {} };
+				const pre = { ...pinned, ...auto.picked };
 				setPicked(pre);
 				// Levels prefill with the pins (chunk 2): stored level if still
 				// supported, else the ordering's level for the pinned model.
 				const preLevels: Partial<Record<ModelSlotName, ThinkingLevel>> = {};
 				for (const slot of SLOT_ORDER) {
 					const entry = pre[slot];
-					if (entry) preLevels[slot] = prefillLevelFromPin(entry, b.slots?.[slot]);
+					if (entry) preLevels[slot] = auto.levels[slot] ?? prefillLevelFromPin(entry, b.slots?.[slot]);
 				}
 				setLevels(preLevels);
 			})
 			.catch(() => { if (!cancelled) setFailed(true); });
 		return () => { cancelled = true; };
-	}, [open, keysTick]);
+	}, [open, keysTick, hosted]);
 
 	// Esc + outside-click — layered dismissal, closable WITHOUT
 	// configuring (browsing stays possible; the gate is the send
@@ -450,6 +507,7 @@ export function SetupDialog({
 								}}
 								onValue={setKeyValue}
 								onSave={() => void saveKey()}
+								hosted={hosted}
 							/>
 						)}
 					</div>

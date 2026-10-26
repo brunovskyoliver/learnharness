@@ -74,7 +74,7 @@ type SectionId = (typeof SECTIONS)[number]["id"];
  *  click lands on the Deepgram row). `row` is the KEY ID (the env-var
  *  name, e.g. DEEPGRAM_API_KEY — KeysSection's openRow state), not the
  *  row's testid. */
-const DialogContext = createContext<{ open: (section?: string, row?: string) => void }>({ open: () => {} });
+const DialogContext = createContext<{ open: (section?: string, row?: string) => void; hosted: boolean }>({ open: () => {}, hosted: false });
 
 /** AppShell-level mount: the sidebar row and the mod+, chord call this.
  *  `open(section)` lands the dialog on a specific section (the first-run
@@ -96,7 +96,7 @@ export function SettingsDialogProvider({
 	}, []);
 	useEffect(() => window.lh?.onOpenSettings?.((section) => open(section)), [open]);
 	return (
-		<ChatGPTUIProvider><NativeSubscriptionUIProvider><DialogContext.Provider value={{ open }}>
+		<ChatGPTUIProvider><NativeSubscriptionUIProvider><DialogContext.Provider value={{ open, hosted }}>
 			{children}
 			{show && (
 				<SettingsDialog onClose={() => setShow(false)} initialSection={landOn} initialRow={landOnRow} hosted={hosted} />
