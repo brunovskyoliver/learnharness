@@ -3,6 +3,7 @@
 import { readSessionMetadata } from "@/components/session-metadata";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronDownIcon, GaugeIcon } from "lucide-react";
 import type { ChatSettings, ModelCatalogEntry, ModelCatalogResponse, ModelsSettings, UserSettings } from "@/src/core";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { prettyModel } from "@/components/usage-format";
@@ -90,6 +91,14 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 	const [open, setOpen] = useState<"model" | "thinking" | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
+	const modelTriggerRef = useRef<HTMLButtonElement>(null);
+	const thinkingTriggerRef = useRef<HTMLButtonElement>(null);
+	const returnFocusRef = useRef<HTMLButtonElement | null>(null);
+	const restoreTriggerFocus = useCallback(() => {
+		const trigger = returnFocusRef.current;
+		returnFocusRef.current = null;
+		trigger?.focus();
+	}, []);
 
 	// The record read — BOTH mount and the cross-surface signal land
 	// here (fix wave: another surface's models write re-reads into the
@@ -167,6 +176,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 			const t = e.target as Element;
 			if (t instanceof Element && t.closest("[data-lh-menu]")) return;
 			if (containerRef.current && !containerRef.current.contains(t)) {
+				returnFocusRef.current = null;
 				setOpen(null);
 			}
 		};
@@ -176,6 +186,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 				// not ALSO stop dictation / abort the turn under this menu.
 				e.stopPropagation();
 				setOpen(null);
+				restoreTriggerFocus();
 			}
 		};
 		document.addEventListener("pointerdown", onPointerDown);
@@ -184,7 +195,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 			document.removeEventListener("pointerdown", onPointerDown);
 			document.removeEventListener("keydown", onKeyDown);
 		};
-	}, [open]);
+	}, [open, restoreTriggerFocus]);
 
 	// One write seam: composeSlotModel preserves the cheap/vision siblings
 	// (replace-whole-section discipline) and the per-field independence of
@@ -211,12 +222,13 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 				)?.settings?.models;
 				setModels(stored ?? next);
 				setOpen(null);
+				restoreTriggerFocus();
 				notifySettingsSaved("models");
 			} catch {
 				setError("Could not reach the server — try again.");
 			}
 		},
-		[],
+		[restoreTriggerFocus],
 	);
 
 	// The session write seam (chat mode): PUT the per-chat settings route
@@ -241,11 +253,12 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 				const stored = (await res.json().catch(() => null)) as { settings?: ChatSettings } | null;
 				setSession(stored?.settings ?? next);
 				setOpen(null);
+				restoreTriggerFocus();
 			} catch {
 				setError("Could not reach the server — try again.");
 			}
 		},
-		[chatId],
+		[chatId, restoreTriggerFocus],
 	);
 
 	// One apply seam over both write paths: a pick names provider + id +
@@ -270,6 +283,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 	// tab-focus. Both work from any focus, including mid-typing.
 	useEffect(() => {
 		const onOpenPicker = () => {
+			returnFocusRef.current = modelTriggerRef.current;
 			setOpen("model");
 			setError(null);
 			refresh(); // mid-session key changes widen the menu (cache fix)
@@ -314,13 +328,14 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 	// claiming a ready model (the stored pin survives in settings).
 	const noKeys = catalog !== undefined && catalog.models.length === 0;
 	const openMenu = (kind: "model" | "thinking") => {
+		returnFocusRef.current = open === kind ? null : kind === "model" ? modelTriggerRef.current : thinkingTriggerRef.current;
 		setOpen((o) => (o === kind ? null : kind));
 		setError(null);
 		if (kind === "model") refresh();
 	};
 
 	return (
-		<div ref={containerRef} className="relative flex items-center gap-1.5" data-testid="model-control">
+		<div ref={containerRef} className="prompt-model-control relative" data-testid="model-control">
 			<Hint
 				// Trimmed (owner, subtlety round 2026-09-25): "Model selector"
 				// — the long sentence was way too much. ⌘K opens this same
@@ -330,19 +345,18 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 				side="bottom"
 			>
 				<button
+				ref={modelTriggerRef}
 				type="button"
 				data-testid="stats-model"
 				onClick={() => openMenu("model")}
 				aria-expanded={open === "model"}
-				// Chrome look (owner, fix wave round 3): matches the graph
-				// view's floating top-right buttons (import notes, gear,
-				// coverage) — blurred, fuller opacity, shadowed — so the
-				// graph no longer bleeds through these pills.
+				aria-label="Model selector"
+				aria-haspopup="listbox"
 				disabled={noKeys}
-				className="flex h-7 items-center gap-1.5 rounded-full border bg-card/85 px-2.5 shadow-lg backdrop-blur transition-colors hover:border-border hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+				className="prompt-model-trigger"
 			>
-				<span className="text-card-foreground">{effectiveId && !noKeys ? prettyModel(effectiveId) : "—"}</span>
-				<span aria-hidden className="text-xs text-muted-foreground">▾</span>
+				<span className="truncate">{effectiveId && !noKeys ? entry?.name ?? prettyModel(effectiveId) : "—"}</span>
+				<ChevronDownIcon aria-hidden="true" className="size-3.5 shrink-0" />
 			</button>
 			</Hint>
 			<Hint
@@ -354,6 +368,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 				side="bottom"
 			>
 				<button
+				ref={thinkingTriggerRef}
 				type="button"
 				data-testid="stats-thinking"
 				onClick={() => {
@@ -363,19 +378,18 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 					openMenu("thinking");
 				}}
 				aria-expanded={open === "thinking"}
-				// Chrome look (owner, fix wave round 3): matches the graph
-				// view's floating top-right buttons (import notes, gear,
-				// coverage) — blurred, fuller opacity, shadowed — so the
-				// graph no longer bleeds through these pills.
+				aria-label="Thinking level"
+				aria-haspopup="menu"
 				disabled={noKeys}
-				className="flex h-7 items-center gap-1.5 rounded-full border bg-card/85 px-2.5 shadow-lg backdrop-blur transition-colors hover:border-border hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+				className="prompt-model-trigger"
 			>
+				<GaugeIcon aria-hidden="true" className="size-4 shrink-0" />
 				{/* Just the level — the button reads like the model button reads
 				   the model name (owner, stats-control round 1). */}
-				<span className="text-card-foreground">
+				<span className="truncate">
 					{effectiveLevel === undefined || noKeys ? "—" : (THINKING_LABEL[effectiveLevel] ?? effectiveLevel)}
 				</span>
-				<span aria-hidden className="text-xs text-muted-foreground">▾</span>
+				<ChevronDownIcon aria-hidden="true" className="size-3.5 shrink-0" />
 			</button>
 			</Hint>
 
@@ -384,10 +398,11 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 			    one. */}
 			{open === "model" && (
 				<MenuShell
-					anchorRef={containerRef}
+					anchorRef={modelTriggerRef}
 					testid="model-menu"
 					preferredSide="up"
-					menuClass="flex w-[22rem] flex-col rounded-xl border bg-card p-2 text-xs shadow-xl"
+					align="left"
+					menuClass="model-picker-panel w-96"
 				>
 					{error && <div className="mb-1.5 text-destructive">{error}</div>}
 					<ModelMenuList
@@ -408,17 +423,17 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 
 			{open === "thinking" && (
 				<MenuShell
-					anchorRef={containerRef}
+					anchorRef={thinkingTriggerRef}
 					testid="thinking-menu"
 					preferredSide="up"
-					menuClass="flex w-44 flex-col gap-0.5 rounded-xl border bg-card p-2 text-xs shadow-xl"
+					align="left"
+					menuClass="reasoning-picker-panel w-52"
 				>
 					<ThinkingMenuList
 						levels={catalog ? levels : []}
 						effectiveLevel={effectiveLevel}
 						onPick={(level) => apply(effectiveProvider ?? "", effectiveId ?? "", level as ThinkingLevel)}
 						empty={catalog ? (effectiveId ? `${prettyModel(effectiveId)} has no thinking levels.` : "Pick a model first.") : "Loading…"}
-						footer="Levels this model actually supports"
 					/>
 					{error && <div className="mt-1 text-destructive">{error}</div>}
 				</MenuShell>

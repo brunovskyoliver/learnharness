@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { parseHTML } from "linkedom";
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { StatsBar, formatContextMeasurement } from "../components/stats-bar.tsx";
@@ -28,7 +29,7 @@ function turn(over: Partial<TurnUsage> = {}): TurnUsage {
 }
 
 describe("stats bar", () => {
-	it("renders NOTHING on the left when there are no turns yet (owner, wave 7 sweep)", () => {
+	it("drafts expose model controls without inventing session usage", () => {
 		const html = renderToStaticMarkup(
 			<StatsBar turns={[]} />,
 		);
@@ -42,11 +43,11 @@ describe("stats bar", () => {
 		// "—" (the thinking button shows just the level, like the model
 		// button shows just the model name — no prefix, no dot separator)
 		assert.match(html, /data-testid="stats-model"[^>]*>\s*<span[^>]*>—<\/span>/);
-		assert.match(html, /data-testid="stats-thinking"[^>]*>\s*<span[^>]*>—<\/span>/);
+		const { document } = parseHTML(html);
+		assert.equal(document.querySelector('[data-testid="stats-thinking"]')?.textContent, "—");
 		assert.ok(!html.includes("aria-hidden>·"), "no dot between the controls");
-		// the control reads as a button: pill border + dropdown chevron
-		assert.match(html, /data-testid="stats-model"[^>]*rounded-full[^>]*>/);
-		assert.match(html, /▾/);
+		assert.equal(document.querySelector('[data-testid="stats-model"]')?.getAttribute("aria-label"), "Model selector");
+		assert.equal(document.querySelector('[data-testid="stats-thinking"]')?.getAttribute("aria-label"), "Thinking level");
 	});
 
 	it("folds context + cost from the turns log (core/prices, no local math)", () => {

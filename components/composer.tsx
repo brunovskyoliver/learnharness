@@ -1,17 +1,13 @@
 "use client";
 
-import { ArrowRightIcon, CornerDownLeftIcon, SquareIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { Hint } from "@/components/ui/hint";
+import type { ReactNode } from "react";
+import { ArrowRightIcon } from "lucide-react";
+import { PromptSubmit, PromptToolbar } from "@/components/prompt-controls";
 import { focusSurfaceInput } from "@/components/input-surface";
 
 /**
- * The chat composer — content row ONLY (the persistent rounded shell lives in
- * the chat view's overlay, so the shell can later morph chat → question
- * without remounting).
- *
- * Corner-radius math (concentric with the shell): shell rounded-2xl (16px) −
- * row padding p-1.5 (6px) = button rounded-[10px] = 25% of the 40px button.
+ * Composer content and toolbar. The persistent shell belongs to the caller
+ * so chat can morph into a question without remounting it.
  */
 /** What one Enter press does, in precedence order: stop a busy stream,
  *  otherwise send the message, otherwise — practice sessions only — fire
@@ -50,6 +46,8 @@ export function Composer({
 	placeholder = "Ask, answer, or steer the lesson…",
 	nextProblem = false,
 	onNext,
+	controls,
+	sendLabel = "Send",
 }: {
 	busy: boolean;
 	value: string;
@@ -75,6 +73,8 @@ export function Composer({
 	/** The signal's dispatcher (send({type:"next"})) — the chip and the
 	 *  empty-Enter share it. */
 	onNext?: () => void;
+	controls?: ReactNode;
+	sendLabel?: string;
 }) {
 	const act = () => {
 		const action = enterAction({ busy, canSend, nextProblem });
@@ -85,7 +85,7 @@ export function Composer({
 	return (
 		<form
 			data-testid="composer"
-			className="input-surface flex items-end gap-1.5 p-1.5"
+			className="input-surface flex min-h-0 flex-col"
 			onClick={focusSurfaceInput}
 			onSubmit={(e) => {
 				e.preventDefault();
@@ -116,50 +116,30 @@ export function Composer({
 					}
 				}}
 				placeholder={placeholder}
+				aria-label={placeholder}
 				autoFocus={autoFocus}
 				rows={1}
-				className="field-sizing-content lh-input max-h-48 min-h-10 flex-1 resize-none bg-transparent px-2.5 py-2 outline-none placeholder:text-muted-foreground"
+				className="prompt-input field-sizing-content lh-input max-h-48 min-h-20 w-full resize-none bg-transparent px-5 pt-4 pb-3 outline-none"
 			/>
-			{/* The button follows the text (owner report 2026-10-03): while
-				 a turn runs WITH text typed it stays the SEND affordance
-				 (click = steer — steering must be clickable, not Enter-only);
-				 only an empty composer morphs it to Stop. ESC keeps its
-				 confirm-popup abort in every state, so stop is never
-				 unreachable. No tooltip — the ↵ glyph is the affordance
-				 (owner, subtlety round 2026-09-25).
-
-				 THE NEXT MORPH (owner round 16 refinement, 2026-10-06): an
-				 empty composer in the practice pause morphs the button into
-				 a wide green NEXT PROBLEM — the affordance IS the button
-				 (click and Enter share one lane), and typing anything
-				 returns the regular send. Neutral primary, the send button's
-				 own fill (polish pass 2026-10-26): green is reserved for
-				 verdicts. */}
+			<PromptToolbar controls={controls}>
 				{nextProblem && !busy && !canSend ? (
 					<button
 						type="submit"
 						data-testid="next-problem-button"
 						aria-label="Next problem"
-						className="flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-[10px] bg-primary px-4 font-ui text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
+						className="flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-full bg-primary px-4 font-ui text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
 					>
 						Next problem
 						<ArrowRightIcon className="size-4" />
 					</button>
 				) : (
-					<button
-						type="submit"
-						aria-label={busy && !canSend ? "Stop" : "Send"}
+					<PromptSubmit
+						label={busy && !canSend ? "Stop" : sendLabel}
+						stopping={busy && !canSend}
 						disabled={!busy && !canSend}
-						className={cn(
-							"flex size-10 shrink-0 items-center justify-center rounded-[10px] transition-colors",
-							busy && !canSend
-								? "bg-secondary text-foreground hover:bg-accent"
-								: "bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-40",
-						)}
-					>
-						{busy && !canSend ? <SquareIcon className="size-4" /> : <CornerDownLeftIcon className="size-5" />}
-					</button>
+					/>
 				)}
+			</PromptToolbar>
 		</form>
 	);
 }

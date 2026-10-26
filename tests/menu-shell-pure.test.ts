@@ -79,4 +79,22 @@ describe("computeMenuPlacement — cap + position", () => {
 		assert.equal(p.style.left, 100);
 		assert.ok(!("right" in p.style));
 	});
+
+	it("keeps a measured model menu inside a narrow viewport", () => {
+		const p = computeMenuPlacement(
+			{ top: 240, bottom: 276, left: 33, right: 245 },
+			{ width: 375, height: 800 }, 200, "up", "left", 352,
+		);
+		assert.equal(p.style.left, 15);
+		assert.equal(Number(p.style.left) + 352, 367);
+	});
+
+	it("keeps a right-aligned usage popover clear of the left screen edge", () => {
+		const p = computeMenuPlacement(
+			{ top: 240, bottom: 276, left: 41, right: 206 },
+			{ width: 375, height: 800 }, 160, "up", "right", 256,
+		);
+		assert.equal(p.style.right, 111);
+		assert.equal(375 - Number(p.style.right) - 256, 8);
+	});
 });

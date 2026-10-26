@@ -54,7 +54,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MenuShell } from "@/components/menu-shell";
 import { useSettingsSaved } from "@/components/settings-signal";
-import { defaultOrderLevel, populateLevel } from "@/components/thinking-default";
+import { defaultOrderLevel, populateLevel, THINKING_LABEL } from "@/components/thinking-default";
 import type React from "react";
 import {
 	COMPACTION_THRESHOLD_FLOOR,
@@ -671,20 +671,20 @@ export function AgentSection({
 									// Legacy display (chunk 2 item 4): no stored level + a known
 									// model → the RESOLVED level (the ordering's first supported —
 									// what the engine build runs). Display-only until a pick writes.
-									value={thinking || (chosen ? defaultOrderLevel(levels) : "")}
+									value={THINKING_LABEL[thinking || (chosen ? defaultOrderLevel(levels) : "")] ?? thinking}
 									emptyLabel="—"
 									ariaLabel={`${SLOT_META[slot].label} thinking`}
 									testid={`slot-thinking-${slot}`}
 									open={thisMenuOpen === "thinking"}
 									onClick={() => setOpenMenu(thisMenuOpen === "thinking" ? null : { target: slot, kind: "thinking" })}
-									widthClass="w-20"
+									widthClass="min-w-24"
 								/>
 								{thisMenuOpen === "model" && (
 									<MenuShell
 										preferredSide="down"
 											anchorTestid={`slot-model-${slot}`}
 										testid={`slot-model-menu-${slot}`}
-										menuClass="flex w-[22rem] flex-col rounded-xl border border-border bg-card p-2 text-xs shadow-xl"
+										menuClass="model-picker-panel w-96"
 									>
 										<ModelMenuList
 											models={slotCatalog ?? undefined}
@@ -711,7 +711,7 @@ export function AgentSection({
 										preferredSide="down"
 											anchorTestid={`slot-thinking-${slot}`}
 										testid={`slot-thinking-menu-${slot}`}
-										menuClass="flex w-44 flex-col gap-0.5 rounded-xl border border-border bg-card p-2 text-xs shadow-xl"
+										menuClass="reasoning-picker-panel w-52"
 									>
 										<ThinkingMenuList
 											levels={levels.map(String)}

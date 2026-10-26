@@ -157,7 +157,7 @@ export function DraftShell({
 									)}
 									setup={setupCta}
 								/>
-								<div className="pointer-events-auto overflow-hidden rounded-2xl border bg-card shadow-lg">
+								<div className="prompt-shell pointer-events-auto">
 									<Composer
 										busy={busy}
 										value={text}
@@ -165,6 +165,7 @@ export function DraftShell({
 										onSend={onSend}
 										onStop={() => {}}
 										canSend={canSend}
+										controls={<StatsBar turns={[]} />}
 										inputRef={composerInputRef}
 										autoFocus
 										// The opening question, same as the graph view's new-session
@@ -174,9 +175,6 @@ export function DraftShell({
 										placeholder={mode === "practice" ? "What do you want to practice?" : "What do you want to learn?"}
 									/>
 								</div>
-								<StatsBar
-									turns={[]}
-								/>
 							</div>
 						</div>
 					</div>

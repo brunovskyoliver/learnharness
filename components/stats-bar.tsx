@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { subscriptionLabels, type SessionPricing, type TurnUsage } from "@/src/core";
 import { formatTokens, planCostLabel } from "@/components/usage-format";
 import { ModelControl, catalogLimits, useModelCatalog } from "@/components/model-picker";
+import { MenuShell } from "@/components/menu-shell";
 
 export function formatContextMeasurement(tokens: number | null, limit: number | null): string {
 	const numerator = tokens === null ? "?" : formatTokens(tokens);
@@ -19,10 +20,8 @@ export function totalTokens(turns: TurnUsage[]): number {
 }
 
 /**
- * The below-composer stats bar (wave 4 observability): the session's
- * money/context footprint as one quiet row beneath the composer —
- * LEFT-aligned: context window + session cost; RIGHT-aligned: model +
- * thinking level. Clicking the left side opens the per-turn detail popover.
+ * Composer toolbar: model and thinking controls lead, with the session's
+ * usage alongside them. Clicking usage opens its detail popover.
  *
  *  Pre-chat views (home, /chat/new) render NO left side at all (owner,
  *  wave 7 sweep: the knowledge-context budget slider that used to live
@@ -63,6 +62,7 @@ export function StatsBar({
 	useEffect(() => {
 		if (!open) return;
 		const onPointerDown = (e: PointerEvent) => {
+			if ((e.target as Element).closest("[data-lh-menu]")) return;
 			if (barRef.current && !barRef.current.contains(e.target as Node)) setOpen(false);
 		};
 		const onKeyDown = (e: KeyboardEvent) => {
@@ -101,8 +101,9 @@ export function StatsBar({
 			// (so its transparent gradient area never blocks scrolling) — this row
 			// must re-enable events or every control on it is dead (the model-
 			// control wave caught this live: buttons rendered, clicks never landed).
-			className="pointer-events-auto relative flex items-center justify-between gap-3 px-3 pt-2 text-xs text-muted-foreground"
+			className="pointer-events-auto relative flex min-h-11 min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground"
 		>
+			<ModelControl chatId={chatId} onModelChange={setSelectedModel} />
 			{/* The summary button + its popover: the popover anchors to this
 			    wrapper, CENTERED over the button itself (owner, stats round 2)
 			    — not over the whole bar row, which made it line up oddly. The
@@ -115,7 +116,7 @@ export function StatsBar({
 			{/* The left side: the session-data summary — only once a session
 			    exists (turns). Pre-chat renders nothing (see the header). */}
 			{(chatId || turns.length > 0) && (
-			<div ref={barRef} className="relative">
+			<div ref={barRef} className="relative ml-2 sm:ml-auto">
 				{/* No tooltip — the numbers describe themselves and the popover
 			    speaks on click (owner, subtlety round 2026-09-25). */}
 			<button
@@ -123,7 +124,8 @@ export function StatsBar({
 				onClick={() => setOpen((o) => !o)}
 				aria-expanded={open}
 				data-testid="stats-summary"
-				className="flex items-center gap-1.5 tabular-nums transition-colors hover:text-foreground"
+				aria-label="Session usage"
+				className="flex min-h-9 flex-wrap items-center gap-1.5 text-xs tabular-nums transition-colors hover:text-foreground"
 			>
 				{contextTokens !== null && limit !== null && limit > 0 && (
 					<span aria-hidden className="h-0.5 w-6 overflow-hidden rounded-full bg-border" data-testid="stats-context-meter">
@@ -137,9 +139,11 @@ export function StatsBar({
 				<span data-testid="stats-cost">{costLabel}</span>
 			</button>
 				{open && (
-					<div
-						data-testid="stats-detail"
-						className="absolute bottom-full left-0 z-40 mb-2 w-64 rounded-lg border border-white/[0.08] bg-card p-3 text-sm shadow-xl"
+					<MenuShell
+						anchorRef={barRef}
+						testid="stats-detail"
+						preferredSide="up"
+						menuClass="w-64 rounded-lg border bg-card p-3 text-sm shadow-xl"
 					>
 						{/* Summary only (ui-v2): context, turns, tokens, usage. */}
 						<div className="mb-1.5 flex items-baseline justify-between gap-2">
@@ -169,15 +173,10 @@ export function StatsBar({
 								Manage usage ↗
 							</a>
 						)}
-					</div>
+					</MenuShell>
 				)}
 			</div>
 			)}
-			<div className="flex-1" />
-			{/* The model + thinking control — one controller for the conversation
-			    agents (prober/teacher); the record's `turns` above still folds
-			    the ACTUAL models billed, regardless of what the picker says. */}
-			<ModelControl chatId={chatId} onModelChange={setSelectedModel} />
 		</div>
 	);
 }

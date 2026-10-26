@@ -409,6 +409,7 @@ export const MessageResponse = memo(
         mode={streaming ? "static" : mode}
         parseIncompleteMarkdown={false}
         {...props}
+        linkSafety={{ enabled: false }}
       >
         {content}
       </Streamdown>

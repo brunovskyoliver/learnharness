@@ -28,7 +28,7 @@ export function ReadingThinkingField({
 		<div
 			data-testid="reading-thinking-field"
 			onClick={focusSurfaceInput}
-			className="input-surface pointer-events-auto mb-2 rounded-2xl border bg-card/60 px-3 py-2 transition-colors focus-within:border-primary/50"
+			className="prompt-shell input-surface pointer-events-auto mb-2 px-5 py-3"
 		>
 			<div className="pb-1 text-xs font-medium text-muted-foreground">
 				Thinking while reading
@@ -73,7 +73,7 @@ export function ReadingThinkingField({
 				}}
 				placeholder="Whatever comes to mind as you read."
 				rows={1}
-				className="field-sizing-content lh-input max-h-40 w-full resize-none bg-transparent py-0.5 outline-none placeholder:text-muted-foreground/70"
+				className="prompt-input field-sizing-content lh-input max-h-40 w-full resize-none bg-transparent py-0.5 outline-none"
 			/>
 		</div>
 	);

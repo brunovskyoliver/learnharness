@@ -27,6 +27,17 @@ import type { EmissionStats } from "./graph.ts";
  *  practice agent, its two tools, no extraction, no graph writes. */
 export type ChatKind = "teach" | "practice";
 
+export type FollowupStartup =
+	| { state: "starting" }
+	| { state: "started" }
+	| { state: "failed"; error: string };
+
+export interface FollowupOrigin {
+	sourceChatId: string;
+	toolCallId: string;
+	startup: FollowupStartup;
+}
+
 export interface ChatRecord {
 	id: string;
 	title: string;
@@ -35,6 +46,8 @@ export interface ChatRecord {
 	messages: LhMessage[];
 	/** The session's kind — absent = teach (pre-practice records). */
 	kind?: ChatKind;
+	/** Teacher-created continuation; the original tool call identifies retries. */
+	followup?: FollowupOrigin;
 	/** The session's plan tree (vision §2) — written by plan tools via saveTree. */
 	tree?: PlanTree;
 	/** Append-only usage log (observability, 2026-09): one entry per model
@@ -275,6 +288,7 @@ export interface ChatSummary {
 	 *  summary spread (the picker never needs it from here; the full record
 	 *  is its source). */
 	settings?: ChatSettings;
+	followup?: FollowupOrigin;
 }
 
 /** The sidebar's session row: a summary + live liveness. The chats list
