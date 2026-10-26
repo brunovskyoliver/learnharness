@@ -134,7 +134,7 @@ export function AnsweredCard({ answer: savedAnswer, input }: { answer: QuestionA
 									>
 										{/* Owner round 8: a touch smaller than the text (size-4→size-3.5,
 											   ≈14px vs the 16px row) while centered. */}
-										{(key || sel) && <GlyphMark kind={key ? "check" : "x"} className="size-3.5" />}
+										{(key || sel) && <GlyphMark kind={key ? "check" : "x"} className="lh-mark-in size-3.5" />}
 									</span>
 								)}
 								<span className={cn(!sel && !key && "text-muted-foreground")}>

@@ -623,3 +623,23 @@ body {
 	outline: 1px solid var(--border);
 	border-radius: 0.25rem;
 }
+
+/* Verdict mark draw-in (polish pass 2026-10-26): the check-card's ✓/✗
+   wipes in left to right once, 150ms, as if inked. Instant under reduced
+   motion. */
+@keyframes lh-mark-in {
+	from {
+		clip-path: inset(0 100% 0 0);
+	}
+	to {
+		clip-path: inset(0 0 0 0);
+	}
+}
+.lh-mark-in {
+	animation: lh-mark-in 150ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+	.lh-mark-in {
+		animation: none;
+	}
+}
