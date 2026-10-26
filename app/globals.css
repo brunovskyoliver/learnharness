@@ -15,16 +15,23 @@
  *     future settings UI reassigns them (configurable per the owner).
  */
 
-/* The no-ring law (owner, UI round 2026-10-01): the browser's default
-   focus/focus-visible outline appears NOWHERE in the app. Pointer focus
-   never showed it; any keypress while a clicked element still held focus
-   DID (:focus-visible re-evaluates on key input — a clicked sidebar
-   session lit up when the quiz's ←/→ were pressed). Surfaces carry their
-   own hover/active/selected affordances; the dock's keyboard walk uses
-   its own ring utilities, unaffected by an outline reset. */
-*:focus,
-*:focus-visible {
-	outline: none;
+/* Keyboard-only ring (polish pass 2026-10-26, superseding the 2026-10-01
+   no-ring law): controls reached by keyboard get a 1px --ring outline.
+   The old law's bug (a CLICKED sidebar session lit up when the quiz's
+   ←/→ were pressed, because :focus-visible re-evaluates on key input) is
+   fixed at its root instead: usePointerBlur (focus-hygiene.ts) drops
+   focus after every pointer click, so no clicked control holds focus for
+   a later key to light up. In @layer base so a component's own
+   outline-none / ring utilities still win. Text fields keep their own
+   focus treatment. */
+@layer base {
+	*:focus {
+		outline: none;
+	}
+	:where(button, a[href], summary, [role="button"], [role="tab"], [role="option"], [role="radio"], [role="checkbox"], [role="menuitem"], [role="switch"], [tabindex]:not([tabindex="-1"])):focus-visible {
+		outline: 1px solid var(--ring);
+		outline-offset: 2px;
+	}
 }
 
 /* Palette (owner's hexes): main #141414, raised #1C1C1C, edges #434343.

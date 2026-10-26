@@ -12,6 +12,7 @@ import { CoverageMenuBlock } from "@/components/extraction-coverage";
 import { LhMark } from "@/components/lh-mark";
 import { BrailleSpinner } from "@/components/braille-spinner";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
+import { usePointerBlur } from "@/components/focus-hygiene";
 import { SettingsDialogProvider, useSettingsDialog } from "@/components/settings/settings-dialog.tsx";
 import { Hint } from "@/components/ui/hint";
 import { Button } from "@/components/ui/button";
@@ -944,6 +945,7 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 /** account: the hosted-mode account row (layout passes it; Clerk stays out
  *  of this module). */
 export function AppShell({ children, account, hosted = false }: { children: React.ReactNode; account?: React.ReactNode; hosted?: boolean }) {
+	usePointerBlur();
 	return (
 		<SettingsDialogProvider hosted={hosted}>
 			<SessionsSidebar account={account} />
