@@ -180,6 +180,26 @@ function SystemLine({ children, testId }: { children: React.ReactNode; testId?: 
 	);
 }
 
+/** The live wait row (polish pass 2026-10-26): the one moment the
+ * learner waits, so it counts. Elapsed seconds appear after the first
+ * second; the clock restarts whenever the row remounts (a new turn). */
+function ThinkingPlaceholder() {
+	const [start] = useState(() => Date.now());
+	const [now, setNow] = useState(start);
+	useEffect(() => {
+		const id = setInterval(() => setNow(Date.now()), 1000);
+		return () => clearInterval(id);
+	}, []);
+	const seconds = Math.floor((now - start) / 1000);
+	return (
+		<span data-testid="thinking-placeholder" className="flex items-center gap-2 font-ui text-xs font-medium uppercase tracking-wide text-muted-foreground">
+			<BrailleSpinner label="Thinking" />
+			<Shimmer duration={1}>THINKING…</Shimmer>
+			{seconds > 0 && <span className="tabular-nums normal-case text-muted-foreground">{seconds}s</span>}
+		</span>
+	);
+}
+
 function isSubagentSteer(m: LhViewMessage): boolean {
 	return (m.metadata as { subagentResult?: unknown } | undefined)?.subagentResult != null;
 }
@@ -1240,7 +1260,7 @@ export function Chat({
 								spellCheck={false}
 								aria-label="Session title"
 								title="Rename this session"
-								className="lh-no-drag min-w-[8ch] max-w-[70%] shrink-0 bg-transparent font-title text-3xl tracking-tight caret-current outline-none [field-sizing:content]"
+								className="lh-no-drag min-w-[8ch] max-w-[70%] shrink-0 bg-transparent font-title text-2xl tracking-tight caret-current outline-none [field-sizing:content]"
 							/>
 							{/* flex-1 spacer during rename too, so the chips stay at
 							    the right edge; clicks here commit via the header
@@ -1261,7 +1281,7 @@ export function Chat({
 								setTitleDraft(titleText);
 								setRenaming(true);
 							}}
-							className="lh-no-drag -mx-1.5 min-w-4 shrink cursor-text truncate rounded-md px-1.5 text-left font-title text-3xl tracking-tight transition-colors hover:bg-accent"
+							className="lh-no-drag -mx-1.5 min-w-4 shrink cursor-text truncate rounded-md px-1.5 text-left font-title text-2xl tracking-tight transition-colors hover:bg-accent"
 						>
 							{titleText}
 							</button>
@@ -1491,7 +1511,9 @@ export function Chat({
 													case "step-start":
 														if (teachBoundary)
 															return <PhaseDivider key={`teach-step-${pi}`} phase="teach" />;
-														return pi > 0 ? <Separator key={pi} className="my-3" /> : null;
+														// A trailing step-start has nothing under it yet: no
+														// hairline over the live Thinking row (polish pass).
+														return pi > 0 && !isLastPart ? <Separator key={pi} className="my-3" /> : null;
 													case "data-plan-block":
 														// The plan in the chat (wave 4): a frozen snapshot
 														// block — rendered as carried, never re-derived.
@@ -1569,12 +1591,7 @@ export function Chat({
 								</span>
 							)}
 							{(status === "submitted" || turnInFlight) && (
-								<span className="flex items-center gap-2 font-ui text-xs font-medium uppercase tracking-wide text-muted-foreground">
-									<BrailleSpinner label="Thinking" />
-									<Shimmer duration={1}>
-										THINKING…
-									</Shimmer>
-								</span>
+								<ThinkingPlaceholder />
 							)}
 							{error && (
 								<div className="rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm">
