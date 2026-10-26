@@ -24,7 +24,7 @@ OPERATION_TOOLS = {
     "list_propositions", "get_session", "get_proposition", "search", "web_search", "web_fetch",
 }
 MARKERS = {
-    "graph-context", "probe-handoff", "subagent-steer", "subagent-abort", "plan-block",
+    "graph-context", "followup-context", "probe-handoff", "subagent-steer", "subagent-abort", "plan-block",
     "practice-thinking", "practice-next", "problem-dismissed", "compaction",
 }
 ACCOUNTING = {

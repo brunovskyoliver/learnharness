@@ -32,14 +32,16 @@ function chatFile(id: string): string {
  *  phase, busy, pendingQuestion) is already announced by turn-started /
  *  turn-settled, which the sidebar refetches on. Silence here is law,
  *  not oversight. */
-function createChat(title: string, kind?: "practice"): ChatRecord {
+function createChat(title: string, kind?: "practice", seed?: Pick<ChatRecord, "messages" | "settings" | "followup">): ChatRecord {
 	const now = new Date().toISOString();
 	const record: ChatRecord = {
 		id: `chat_${Date.now().toString(36)}_${crypto.randomUUID().slice(0, 8)}`,
 		title: title.trim() || "Untitled session",
 		createdAt: now,
 		updatedAt: now,
-		messages: [],
+		messages: seed?.messages ?? [],
+		...(seed?.settings ? { settings: structuredClone(seed.settings) } : {}),
+		...(seed?.followup ? { followup: structuredClone(seed.followup) } : {}),
 		// Practice sessions carry the marker; teach stays ABSENT (absence
 		// reads as teach — pre-practice records never migrate).
 		...(kind === "practice" ? { kind: "practice" as const } : {}),
@@ -48,6 +50,13 @@ function createChat(title: string, kind?: "practice"): ChatRecord {
 	writeChat(record);
 	emit("chats-changed", {});
 	return { ...record, version: CURRENT_CHAT_VERSION }; // the in-memory twin of what landed on disk
+}
+
+function saveFollowupStartup(id: string, startup: NonNullable<ChatRecord["followup"]>["startup"]): void {
+	const record = getChat(id);
+	if (!record?.followup) throw new Error(`Follow-up session not found: ${id}`);
+	record.followup.startup = startup;
+	writeChat(record);
 }
 
 /** THE WRITE CHOKE POINT (schema-versioning wave, owner 2026-10-10): every
@@ -207,6 +216,7 @@ function saveTree(id: string, tree: PlanTree): void {
 
 export const chatStore: ChatStore = {
 	createChat,
+	saveFollowupStartup,
 	getChat,
 	listChats,
 	saveMessages,

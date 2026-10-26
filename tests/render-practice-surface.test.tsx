@@ -1,8 +1,8 @@
 /**
  * THE PRACTICE SURFACE — SSR render pins (the render-suite discipline:
  * pure bodies, renderToStaticMarkup, testids). The dock (the active
- * problem replaces the composer: statement above, "Your thinking"
- * field below with ONE Send (Enter sends, Shift+Enter is a newline)),
+ * problem replaces the composer with the "Your thinking" field and ONE
+ * Send (Enter sends, Shift+Enter is a newline); the statement stays in the lesson),
  * the transcript cards (the
  * problem's compact-expandable statement — commitment NEVER renders;
  * the conclusion's outcome + verdict + reveal; the learner's thinking
@@ -39,22 +39,16 @@ const part = (over: Partial<ArtifactPartProps["part"]>): ArtifactPartProps["part
 // ── the dock ─────────────────────────────────────────────────────────────────
 
 describe("PracticeDock", () => {
-	it("expanded: statement renders, the two lanes sit in the thinking field", () => {
+	it("expanded: only the answer field renders; the statement stays in the lesson", () => {
 		const html = renderToStaticMarkup(
 			<PracticeDock
 				problemCallId="call_p1"
-				input={{ statement: "Show that the sum is even." }}
 				expanded={true}
 				onExpand={() => {}}
 				onSubmit={() => {}}
 			/>,
 		);
-		assert.match(html, /Show that the sum is even\./);
-		// The 'Problem' eyebrow (owner round, 2026-10-05): the quiz cards'
-		// label row, mirrored — dock and transcript card read identically.
-		assert.match(html, /Problem/);
-		// The measured column cap (the old fixed 40vh is only the fallback).
-		assert.match(html, /--dock-max-h/);
+		assert.doesNotMatch(html, /overflow-y-auto|--dock-max-h/, "no nested scrolling problem panel");
 		assert.match(html, /Your thinking/);
 		assert.match(html, /data-testid="practice-send"/);
 		assert.ok(!html.includes("practice-nudge") && !html.includes("practice-commit"), "the two-lane buttons are gone");
@@ -63,18 +57,17 @@ describe("PracticeDock", () => {
 		assert.match(html, /disabled/);
 	});
 
-	it("collapsed: the slim bar carries the statement excerpt", () => {
+	it("collapsed: the slim bar opens the answer field", () => {
 		const html = renderToStaticMarkup(
 			<PracticeDock
 				problemCallId="call_p1"
-				input={{ statement: "Show that the sum is even." }}
 				expanded={false}
 				onExpand={() => {}}
 				onSubmit={() => {}}
 			/>,
 		);
 		assert.match(html, /data-testid="practice-dock-bar"/);
-		assert.match(html, /Show that the sum is even\./);
+		assert.match(html, /Your thinking/);
 	});
 });
 

@@ -58,6 +58,7 @@ import {
 	type TurnInput,
 } from "../core/input-events.ts";
 import { steerDelivered } from "../core/contracts.ts";
+import { startFollowupSession } from "./followup-sessions.ts";
 import type {CallUsage} from "../core/contracts.ts";
 
 /**
@@ -213,6 +214,13 @@ export async function handleChatInput(
 	// (a chat.model override still resolves through it).
 	if (isSubscriptionProvider(conversation.provider)) {
 		await refreshConnectionCatalog(conversation.provider);
+		// A teacher-created opening has no new learner input in the child.
+		// Refuse before starting its run when automatic use is disabled.
+		const followupOpening = input.type === "continue" && record.followup && record.messages.some((m) => m.role === "custom" && m.customType === "followup-context") &&
+			record.messages.every((m) => m.role === "custom" && ["followup-context", "graph-context"].includes(m.customType));
+		if (followupOpening && !connectionBackgroundAllowed(conversation.provider)) {
+			return Response.json({ error: "Background use is off for this connection. Open the follow-up session and ask it to start." }, { status: 403 });
+		}
 		if (input.type === "steers" && !connectionBackgroundAllowed(conversation.provider)) {
 			return Response.json({ error: "Background use is off for this connection. Automatic follow-up remains deferred in its queue." }, { status: 403 });
 		}
@@ -440,6 +448,12 @@ export async function handleChatInput(
 					{
 						chatId,
 						chatStore: stores.chatStore,
+						...(graphToolsEnabled(effective) ? { graphStore: stores.graphStore } : {}),
+						startFollowup: (toolCallId, input) => startFollowupSession({
+							chatId,
+							chatStore: stores.chatStore,
+							startTurn: (id) => handleChatInput(id, { type: "continue" }),
+						}, toolCallId, input),
 						jobStore: stores.jobStore,
 						spawn: (job, input) => void jobRunner.runJob(job.id, input),
 						// The registry drop's signal (2026-09-20): no live engine

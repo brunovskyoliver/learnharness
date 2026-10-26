@@ -301,6 +301,8 @@ body {
    Source Sans 3 with the size/leading tokens; emphasis color bound to
    the settings-ready tokens. */
 .lh-prose {
+	min-width: 0;
+	overflow-wrap: anywhere;
 	font-family: var(--font-prose);
 	font-size: var(--lh-prose-size);
 	line-height: var(--lh-prose-leading);
@@ -353,6 +355,8 @@ body {
    wrapped lines in growing textareas still read fine. Rendered prose keeps
    1.5 — the two share family and size, they differ only in leading. */
 .lh-input {
+	min-width: 0;
+	overflow-wrap: anywhere;
 	font-family: var(--font-prose);
 	font-size: var(--lh-prose-size);
 	line-height: 1.25;

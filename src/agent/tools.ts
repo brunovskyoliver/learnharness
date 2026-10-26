@@ -24,6 +24,8 @@ import { lsTool } from "./tools/ls.ts";
 import { findTool } from "./tools/find.ts";
 import { grepTool } from "./tools/grep.ts";
 import { healToolRecord } from "./tools/heal.ts";
+import { followupTool, type StartFollowup } from "./tools/followup.ts";
+import { teacherGraphTools } from "./tools/teacher-graph.ts";
 import type { GraphStore } from "../core/ports.ts";
 
 export { jobTools };
@@ -391,6 +393,10 @@ export function teachQuizToolFor(ctx: Pick<PlanToolContext, "chatId" | "chatStor
 }
 
 export interface TeacherToolContext extends PlanToolContext {
+	/** Present only when the graph-tools settings gate is open. */
+	graphStore?: GraphStore;
+	/** Bound to the current lesson and tenant by the turn composition root. */
+	startFollowup?: StartFollowup;
 	/** Job-tool wiring (sub-agent dispatch): the job store + the runner's
 	 *  spawn seam. The composition root injects both. */
 	jobStore: JobStore;
@@ -458,6 +464,8 @@ export function createTeacherTools(
 			find: findTool,
 			grep: grepTool,
 			...planTools(ctx),
+			...(ctx.startFollowup ? { start_followup_session: followupTool(ctx.startFollowup) } : {}),
+			...(ctx.graphStore ? teacherGraphTools({ chatStore: ctx.chatStore, graphStore: ctx.graphStore, startFollowup: ctx.startFollowup }) : {}),
 			...jobTools({ chatId: ctx.chatId, jobStore: ctx.jobStore, spawn: ctx.spawn, searchAvailable: ctx.searchAvailable }),
 		},
 		withoutMechanics(enabled),
