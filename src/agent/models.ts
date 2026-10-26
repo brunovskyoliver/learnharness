@@ -66,6 +66,19 @@ export function piModels() {
 	return collection;
 }
 
+/** Hosted mode (2026-10-26): the server layer supplies the current
+ *  tenant's saved keys, which pi-ai overlays on its env lookup for each
+ *  request. Undefined (desktop, dev) keeps the process.env reflection.
+ *  Registered on globalThis: the agent layer never imports the server. */
+const PROVIDER_ENV = Symbol.for("lh.providerEnv");
+type ProviderEnvSource = () => Record<string, string> | undefined;
+export function configureProviderEnv(source: ProviderEnvSource): void {
+	(globalThis as Record<symbol, unknown>)[PROVIDER_ENV] = source;
+}
+export function providerEnv(): Record<string, string> | undefined {
+	return ((globalThis as Record<symbol, unknown>)[PROVIDER_ENV] as ProviderEnvSource | undefined)?.();
+}
+
 /** OpenRouter API key (BYOK); tests never read this — they inject engines. */
 export function openRouterApiKey(): string | undefined {
 	return process.env.OPENROUTER_API_KEY || undefined;
@@ -120,7 +133,8 @@ export function piEngineForSpec(spec: ResolvedModelSpec, background: boolean | (
 		streamFn: (requestModel, context, options) => {
 			const purpose = typeof background === "function" ? background : () => background;
 			const stream = spec.provider === "chatgpt" ? chatGPTStream(purpose, lifecycle) : nativeId ? nativeSubscriptionStream(models.getProvider(nativeId)!, purpose, lifecycle) : models.streamSimple.bind(models);
-			return stream(requestModel, context, { ...options, reasoning: level === "off" ? undefined : level });
+			const env = spec.provider === "chatgpt" || nativeId ? undefined : providerEnv();
+			return stream(requestModel, context, { ...options, reasoning: level === "off" ? undefined : level, ...(env ? { env } : {}) });
 		},
 	};
 }

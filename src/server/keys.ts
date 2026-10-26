@@ -52,6 +52,8 @@ import {
 	validateKeyShape,
 } from "../core/auth-keys.ts";
 import { authStore } from "../store/auth.ts";
+import { hostedMode } from "../../config.ts";
+import { configureProviderEnv } from "../agent/models.ts";
 import { isSubscriptionProvider, subscriptionConnected } from "../agent/subscription-connections.ts";
 
 // The once-per-process boot record — globalThis anchor (HMR re-imports the
@@ -89,8 +91,10 @@ export function providerKeyList() {
 /** The fresh-user switch (owner, interlude 2026-09-22): env keys are
  *  invisible app-wide — deleted from the process at boot, file keys only.
  *  Read live per call (the launcher exports it before boot). */
+/** Hosted mode implies it: the server's own env keys never serve users,
+ *  and each user's saved keys stay out of the shared process.env. */
 export function envKeysIgnored(): boolean {
-	return process.env.LH_IGNORE_ENV_KEYS === "1";
+	return process.env.LH_IGNORE_ENV_KEYS === "1" || hostedMode();
 }
 
 /**
@@ -124,6 +128,9 @@ export function initAuthEnv(): void {
 			if (process.env[name] !== undefined) record.realEnv.add(name);
 		}
 	}
+	// Hosted: no reflection. Engines get the tenant's keys per request
+	// (configureProviderEnv below); keyValue reads the tenant's file.
+	if (hostedMode()) return;
 	for (const [name, value] of Object.entries(fileVars)) {
 		if (!isManagedName(name)) continue;
 		if (process.env[name] === undefined) {
@@ -218,7 +225,7 @@ export function saveKey(id: string, value: string): { ok: true; status: AuthKeyS
 	const trimmed = value.trim();
 	authStore.setAuthVar(id, trimmed);
 	const record = boot();
-	if (!record.realEnv.has(id)) {
+	if (!hostedMode() && !record.realEnv.has(id)) {
 		process.env[id] = trimmed;
 		record.fillGap.add(id);
 	}
@@ -234,7 +241,7 @@ export function saveKey(id: string, value: string): { ok: true; status: AuthKeyS
 export function deleteKey(id: string): AuthKeyStatus {
 	authStore.deleteAuthVar(id);
 	const record = boot();
-	if (record.fillGap.has(id) && !record.realEnv.has(id)) {
+	if (!hostedMode() && record.fillGap.has(id) && !record.realEnv.has(id)) {
 		delete process.env[id];
 		record.fillGap.delete(id);
 	}
@@ -244,3 +251,4 @@ export function deleteKey(id: string): AuthKeyStatus {
 // Reflect the file into the env at first import (idempotent; the module is
 // imported by every route/handler path that touches keys).
 initAuthEnv();
+configureProviderEnv(() => (hostedMode() ? authStore.authVars() : undefined));
