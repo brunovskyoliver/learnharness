@@ -35,8 +35,13 @@ const CAP_BYTES = 20 * 1024 * 1024;
 /** Test seam (the toolTimeoutMs idiom): shrink the cap to exercise it. */
 export const providerEventsCap = { current: CAP_BYTES };
 
-/** Test seam (the toolTimeoutMs idiom): redirect the output directory. */
-export const providerEventsDir = { current: path.join(PATHS.debug, "provider-events") };
+/** Test seam (the toolTimeoutMs idiom): redirect the output directory.
+ *  Unset, it follows the current tenant's debug dir. */
+let eventsDirOverride: string | undefined;
+export const providerEventsDir = {
+	get current(): string { return eventsDirOverride ?? path.join(PATHS.debug, "provider-events"); },
+	set current(dir: string) { eventsDirOverride = dir; },
+};
 
 /** The model shape the observer receives (structural — pi passes Model). */
 export interface ProviderEventModel {

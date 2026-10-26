@@ -21,7 +21,7 @@ process.env.LH_AUTH_FILE = path.join(TMP, "auth.json");
 
 // Import AFTER the env redirect — module-load-bound seam.
 const { authStore } = await import("../src/store/auth.ts");
-const { AUTH_FILE } = await import("../config.ts");
+const { authFile } = await import("../config.ts");
 
 after(() => {
 	fs.rmSync(TMP, { recursive: true, force: true });
@@ -39,14 +39,14 @@ describe("AuthStore adapter", () => {
 
 	it("the file is mode 0600 (secrets), also after rewrites", () => {
 		authStore.setAuthVar("DEEPGRAM_API_KEY", "d".repeat(40));
-		const first = fs.statSync(AUTH_FILE).mode & 0o777;
+		const first = fs.statSync(authFile()).mode & 0o777;
 		assert.equal(first, 0o600);
 		authStore.setAuthVar("DEEPGRAM_API_KEY", "e".repeat(40));
-		assert.equal(fs.statSync(AUTH_FILE).mode & 0o777, 0o600, "rewrite keeps 0600");
+		assert.equal(fs.statSync(authFile()).mode & 0o777, 0o600, "rewrite keeps 0600");
 	});
 
 	it("set preserves unknown vars verbatim (forward-compat)", () => {
-		fs.writeFileSync(AUTH_FILE, JSON.stringify({ FUTURE_PLANS_TOKEN: "opaque-xyz", KEEP: "me" }));
+		fs.writeFileSync(authFile(), JSON.stringify({ FUTURE_PLANS_TOKEN: "opaque-xyz", KEEP: "me" }));
 		authStore.setAuthVar("OPENROUTER_API_KEY", "sk-or-v1-new");
 		const vars = authStore.authVars();
 		assert.equal(vars.FUTURE_PLANS_TOKEN, "opaque-xyz");
@@ -55,16 +55,16 @@ describe("AuthStore adapter", () => {
 	});
 
 	it("corrupt/non-object file = {} — never throws, looks like first boot", () => {
-		fs.writeFileSync(AUTH_FILE, "{not json");
+		fs.writeFileSync(authFile(), "{not json");
 		assert.deepEqual(authStore.authVars(), {});
-		fs.writeFileSync(AUTH_FILE, JSON.stringify(["an", "array"]));
+		fs.writeFileSync(authFile(), JSON.stringify(["an", "array"]));
 		assert.deepEqual(authStore.authVars(), {});
-		fs.writeFileSync(AUTH_FILE, JSON.stringify({ OK: "fine", bad: 42 }));
+		fs.writeFileSync(authFile(), JSON.stringify({ OK: "fine", bad: 42 }));
 		assert.deepEqual(authStore.authVars(), { OK: "fine" }, "non-string values drop");
 	});
 
 	it("delete removes just that var; absent delete = silent no-op", () => {
-		fs.writeFileSync(AUTH_FILE, JSON.stringify({ A: "1", B: "2" }));
+		fs.writeFileSync(authFile(), JSON.stringify({ A: "1", B: "2" }));
 		authStore.deleteAuthVar("A");
 		assert.deepEqual(authStore.authVars(), { B: "2" });
 		authStore.deleteAuthVar("NOT_THERE");
@@ -75,6 +75,6 @@ describe("AuthStore adapter", () => {
 		authStore.setAuthVar("OPENROUTER_API_KEY", "sk-or-v1-final");
 		const files = fs.readdirSync(TMP).filter((f) => f.startsWith(".auth.json.tmp"));
 		assert.deepEqual(files, [], "no tmp file survives the rename");
-		JSON.parse(fs.readFileSync(AUTH_FILE, "utf-8")); // must parse
+		JSON.parse(fs.readFileSync(authFile(), "utf-8")); // must parse
 	});
 });

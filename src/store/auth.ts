@@ -16,13 +16,13 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { AUTH_FILE } from "../../config.ts";
+import { authFile } from "../../config.ts";
 import type { AuthStore } from "../core/ports.ts";
 
 /** The flat string→string map, or {} for absent/corrupt/non-object. */
 function readMap(): Record<string, string> {
 	try {
-		const raw = JSON.parse(fs.readFileSync(AUTH_FILE, "utf-8"));
+		const raw = JSON.parse(fs.readFileSync(authFile(), "utf-8"));
 		if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
 		return Object.fromEntries(
 			Object.entries(raw).filter(([, v]) => typeof v === "string") as [string, string][],
@@ -37,12 +37,12 @@ function readMap(): Record<string, string> {
  *  tmp-in-same-dir + rename keeps the swap atomic; chmod BEFORE the
  *  rename so the mode never exists relaxed on the final path. */
 function writeMap(map: Record<string, string>): void {
-	const dir = path.dirname(AUTH_FILE);
+	const dir = path.dirname(authFile());
 	fs.mkdirSync(dir, { recursive: true });
 	const tmp = path.join(dir, `.auth.json.tmp-${process.pid}`);
 	fs.writeFileSync(tmp, `${JSON.stringify(map, null, "\t")}\n`, { mode: 0o600 });
 	fs.chmodSync(tmp, 0o600); // umask may have relaxed the create mode
-	fs.renameSync(tmp, AUTH_FILE);
+	fs.renameSync(tmp, authFile());
 }
 
 export const authStore: AuthStore = {
