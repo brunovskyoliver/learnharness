@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation";
 import { Conversation, ConversationContent, ConversationEmptyState } from "@/components/ai-elements/conversation";
 import { Composer } from "@/components/composer";
-import { DictationBar, joinDictation, useDictation } from "@/components/dictation";
 import { useFieldCycle } from "@/components/field-cycle";
 import { SidebarToggle } from "@/components/sidebar";
 import { SetupDialog } from "@/components/setup-dialog";
@@ -110,46 +109,14 @@ export function DraftShell({
 	 *  Passed as a node so the pick state stays in NewSession. */
 	overlay?: ReactNode;
 }) {
-	// Voice dictation (STT wave, 2026-09-17): finals append at the end of the
-	// draft text (via the parent's onChange — the truth lives there); the
-	// strip lives in the stats bar's middle slot.
 	// Tab navigates INTO the composer (owner, keyboard round 2026-10-06):
 	// the only text field on this surface — the cycle's whole chain.
 	const cycleComposer = useCallback((): readonly HTMLElement[] =>
 		Array.from(document.querySelectorAll<HTMLElement>('[data-testid="composer"] textarea')),
 		[]);
 	useFieldCycle(cycleComposer);
-	const dictation = useDictation({
-		append: (t) => onChange(joinDictation(text, t)),
-	});
-	// A LIVE dictation keeps the composer sendable ("nothing gets lost"
-	// round, owner 2026-10-01): the spoken text is deferred in the run's
-	// buffer — Enter must reach the finish-first send, not be gated out by
-	// an empty textarea. Nothing said → the send no-ops.
-	const canSend = text.trim().length > 0 || dictation.active;
-	/* FINISH DICTATION FIRST (owner, 2026-10-01): stop the run, let the
-	 * last finals land through onChange, THEN call the parent's send —
-	 * which reads its REF mirror, so the post-await timing of React's
-	 * re-render cannot eat the dictated tail. */
-	const handleSend = () => {
-		if (dictation.active) {
-			void dictation.finish().then(onSend);
-			return;
-		}
-		onSend();
-	};
-	/* Run end focuses the composer (owner, 2026-10-01): the hands are on
-	 * the keyboard from the stop — falling edge of `active` only. */
+	const canSend = text.trim().length > 0;
 	const composerInputRef = useRef<HTMLTextAreaElement>(null);
-	const dictationWasActiveRef = useRef(false);
-	useEffect(() => {
-		if (dictation.active) {
-			dictationWasActiveRef.current = true;
-		} else if (dictationWasActiveRef.current) {
-			dictationWasActiveRef.current = false;
-			composerInputRef.current?.focus();
-		}
-	}, [dictation.active]);
 	return (
 		/* CHROME-LESS CREATION SURFACE (owner round 11, 2026-10-05): the
 		 * drafts join home's register — no TopBar, no title (the serif title
@@ -195,12 +162,11 @@ export function DraftShell({
 										busy={busy}
 										value={text}
 										onChange={onChange}
-										onSend={handleSend}
+										onSend={onSend}
 										onStop={() => {}}
 										canSend={canSend}
 										inputRef={composerInputRef}
 										autoFocus
-										onEscape={dictation.active ? dictation.cancel : undefined}
 										// The opening question, same as the graph view's new-session
 										// input (owner refinement round, 2026-09-24) — no lesson has
 										// started yet, so the composer must not read like one is in
@@ -209,7 +175,6 @@ export function DraftShell({
 									/>
 								</div>
 								<StatsBar
-									dictationSlot={<DictationBar dictation={dictation} />}
 									turns={[]}
 								/>
 							</div>
