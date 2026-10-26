@@ -19,7 +19,7 @@ export function formatContextMeasurement(tokens: number | null, limit: number | 
  *  Pre-chat views (home, /chat/new) render NO left side at all (owner,
  *  wave 7 sweep: the knowledge-context budget slider that used to live
  *  there died with the injection; a "— · —" summary over an empty
- *  popover is pure noise) — the dictation strip's middle simply widens.
+ *  popover is pure noise). Dictate sits right, beside the model pills.
  *
  * Spending arrives already priced by the server through Pi's catalog and
  * calculator. Missing cost stays "—", never fake zero. Context is a separate
@@ -123,6 +123,11 @@ export function StatsBar({
 				data-testid="stats-summary"
 				className="flex items-center gap-1.5 tabular-nums transition-colors hover:text-foreground"
 			>
+				{contextTokens !== null && limit !== null && limit > 0 && (
+					<span aria-hidden className="h-0.5 w-6 overflow-hidden rounded-full bg-border" data-testid="stats-context-meter">
+						<span className="block h-full bg-muted-foreground" style={{ width: `${Math.min(100, (contextTokens / limit) * 100)}%` }} />
+					</span>
+				)}
 				<span data-testid="stats-context">
 					{contextLabel}
 				</span>
@@ -186,8 +191,10 @@ export function StatsBar({
 			{/* The middle slot: dictation (owner, 2026-09-17). flex-1 lets the
 			    meter expand into the row's free width; justify-center keeps the
 			    lone idle mic button visually centered. */}
+			{/* Pills right (polish pass 2026-10-26): the idle mic sits beside
+			    the model pills; the recording meter still fills the free width. */}
 			{dictationSlot && (
-				<div className="flex min-w-0 flex-1 items-center justify-center">{dictationSlot}</div>
+				<div className="flex min-w-0 flex-1 items-center justify-end">{dictationSlot}</div>
 			)}
 			{/* The model + thinking control — one controller for the conversation
 			    agents (prober/teacher); the record's `turns` above still folds

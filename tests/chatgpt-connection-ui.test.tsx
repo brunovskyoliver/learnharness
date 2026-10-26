@@ -522,7 +522,7 @@ test("browser-only sign-in is disabled; foreground toolbar has no plan badge or 
  await mount(); assert((byTest("chatgpt-login") as HTMLButtonElement).disabled); await click(byTest("chatgpt-login")); assert(!document.querySelector('[data-testid="chatgpt-account-dialog"]'));
  await act(async () => root!.unmount()); host?.remove(); root = undefined;
  globalThis.fetch = async (input) => {
-  if (input === "/api/models") return Response.json({ models: [], providers: [], slots: {}, defaults: {} });
+  if (input === "/api/models") return Response.json({ models: [{ id: "gpt-5", name: "GPT-5", provider: "chatgpt", reasoning: true, input: ["text"], supportedLevels: ["low"], cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 }, contextWindow: 272000, maxTokens: 128000 }], providers: [], slots: {}, defaults: {} });
   if (input === "/api/settings") return Response.json({ settings: { models: { strong: { model: { provider: "chatgpt", id: "gpt-5" } } } } });
   throw new Error(`unexpected fixture request ${input}`);
  };

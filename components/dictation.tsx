@@ -694,9 +694,9 @@ export function DictationBar({ dictation }: { dictation: Dictation }) {
 					}}
 					aria-label={error ? `Dictation failed: ${error}` : "Start dictation"}
 					data-testid="dictation-toggle"
-				// Same blurring as the floating chrome (owner, fix wave round 3),
-			// but lower opacity — the mic stays quieter than the model pills.
-			className="flex h-7 w-full items-center justify-center gap-1.5 rounded-md border border-border/50 bg-card/50 text-xs text-muted-foreground/70 shadow-lg backdrop-blur transition-colors hover:border-border hover:text-muted-foreground"
+				// One pill shape with the model/thinking pills (polish pass
+				// 2026-10-26): a compact ghost pill, not a full-width input.
+				className="flex h-7 min-w-0 max-w-full items-center gap-1.5 rounded-full border bg-card/85 px-2.5 text-xs text-muted-foreground shadow-lg backdrop-blur transition-colors hover:bg-muted hover:text-foreground"
 			>
 					<MicIcon className="size-3.5" />
 					<span className="max-w-full truncate">{error ?? "Dictate"}</span>
