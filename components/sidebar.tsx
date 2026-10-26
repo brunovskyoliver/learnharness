@@ -1,12 +1,12 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { MenuShell } from "@/components/menu-shell";
 import { DeleteSessionDialog } from "@/components/delete-session-dialog";
 import type { ChatDeleteMode } from "@/src/core";
-import { DumbbellIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, PlusIcon, SearchIcon, SettingsIcon } from "lucide-react";
+import { BookOpenIcon, DumbbellIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, PlusIcon, SearchIcon, SettingsIcon } from "lucide-react";
 import { ActivitySection } from "@/components/activity-dock";
 import { CoverageMenuBlock } from "@/components/extraction-coverage";
 import { LhMark } from "@/components/lh-mark";
@@ -248,6 +248,13 @@ function SessionStatus({ busy }: { busy: boolean }) {
  *  in any locale and it sorts (owner, typography round 5; the old
  *  M/D/YYYY was the US convention. A user-locale setting can come later
  *  — trivial, a format function swap). Pure — exported for tests. */
+/** The sidebar's date groups, by local calendar day. */
+export function dateGroup(iso: string, now = new Date()): "Today" | "Yesterday" | "Earlier" {
+	const day = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+	const diff = Math.round((day(now) - day(new Date(iso))) / 86_400_000);
+	return diff <= 0 ? "Today" : diff === 1 ? "Yesterday" : "Earlier";
+}
+
 export function timeAgo(iso: string, now = new Date()): string {
 	const ms = now.getTime() - new Date(iso).getTime();
 	if (ms < 60_000) return "just now";
@@ -702,8 +709,7 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 						className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs uppercase tracking-wider text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 					>
 						<PlusIcon className="size-3" />
-						Teaching
-						<span className="sr-only">create a new teaching session</span>
+						New lesson
 					</button>
 					<button
 						type="button"
@@ -712,13 +718,11 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 						className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs uppercase tracking-wider text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 					>
 						<DumbbellIcon className="size-3" />
-						Practice
-						<span className="sr-only">create a new practice session</span>
+						New practice
 					</button>
 				</div>
 
-				<div className="mx-3 mb-2 flex items-center gap-2">
-					<span className="text-xs uppercase tracking-widest text-muted-foreground/70">Sessions</span>
+				<div className="mx-3 mb-2 flex items-center gap-1">
 					<Hint label="Search sessions" action="sessions-search" side="bottom">
 					<span className="relative flex-1">
 						<Input
@@ -776,31 +780,25 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 						<SearchIcon className="pointer-events-none absolute left-1.5 top-1/2 size-3 -translate-y-1/2 text-muted-foreground/70" />
 					</span>
 					</Hint>
-				</div>
-
-				{/* The three-way filter, HEADING THE LIST (owner round 8b,
-				    2026-10-05 — moved below the search): it scopes what the
-				    list shows, so it sits directly above it as a caption row;
-				    search stays the top muscle-memory target. Order: Teaching /
-				    Practice / All — the real modes first, "All" as the escape
-				    hatch on the right, mirroring the create-buttons above.
-				    Persisted client-side. */}
-				<div className="mx-3 flex items-center gap-0.5 rounded-md border border-border/60 bg-background p-0.5" data-testid="session-kind-filter">
-					{(["teach", "practice", "all"] as const).map((f) => (
-						<button
-							key={f}
-							type="button"
-							data-testid={`kind-filter-${f}`}
-							onClick={() => setFilter(f)}
-							className={cn(
-								"flex-1 rounded-sm px-2 py-1 text-[11px] uppercase tracking-wider transition-colors",
-								kindFilter === f
-									? "bg-accent text-foreground"
-									: "text-muted-foreground hover:text-foreground",
-							)}
-						>
-							{f === "teach" ? "Teaching" : f === "all" ? "All" : "Practice"}
-						</button>
+					{/* Kind filter as two toggles in the search row (polish pass
+					    2026-10-26, was a three-way segmented row): neither pressed
+					    = all; pressing one narrows to that kind. Persisted. */}
+					{(["teach", "practice"] as const).map((f) => (
+						<Hint key={f} label={f === "teach" ? "Only lessons" : "Only practice"} side="bottom">
+							<button
+								type="button"
+								data-testid={`kind-filter-${f}`}
+								aria-pressed={kindFilter === f}
+								aria-label={f === "teach" ? "Show only lessons" : "Show only practice"}
+								onClick={() => setFilter(kindFilter === f ? "all" : f)}
+								className={cn(
+									"flex size-6 shrink-0 items-center justify-center rounded-sm transition-colors",
+									kindFilter === f ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
+								)}
+							>
+								{f === "teach" ? <BookOpenIcon className="size-3.5" /> : <DumbbellIcon className="size-3.5" />}
+							</button>
+						</Hint>
 					))}
 				</div>
 
@@ -812,8 +810,17 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 							{query.trim() ? "No sessions match." : "No sessions yet."}
 						</div>
 					) : (
-						shown.map((c, i) =>
-							renamingId === c.id ? (
+						shown.map((c, i) => {
+							// Date groups (polish pass 2026-10-26) over the natural
+							// most-recent-first order; a ranked search has no groups.
+							const group = query.trim() ? null : dateGroup(c.updatedAt);
+							const header =
+								group !== null && (i === 0 || dateGroup(shown[i - 1]!.updatedAt) !== group) ? (
+									<div className="px-2 pb-1 pt-3 text-xs uppercase tracking-widest text-muted-foreground first:pt-1" data-testid="session-group">
+										{group}
+									</div>
+								) : null;
+							return <Fragment key={c.id}>{header}{renamingId === c.id ? (
 								<RenameRow
 									key={c.id}
 									chat={c}
@@ -832,8 +839,8 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 									}}
 									onContextMenu={(e) => openContext(e, c)}
 								/>
-							),
-						)
+							)}</Fragment>;
+						})
 					)}
 				</div>
 
@@ -853,7 +860,7 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 								type="button"
 								onClick={() => openSettings()}
 								data-testid="settings-entry"
-								className="flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs uppercase tracking-wider text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+								className="-mx-2 flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs uppercase tracking-widest text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 							>
 								<SettingsIcon className="size-3" />
 								Settings

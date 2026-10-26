@@ -14,7 +14,7 @@ import React from "react";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { SessionRow, timeAgo } from "../components/sidebar.tsx";
+import { SessionRow, dateGroup, timeAgo } from "../components/sidebar.tsx";
 import type { ChatListItem } from "../src/core/index.ts";
 
 function item(overrides: Partial<ChatListItem>): ChatListItem {
@@ -159,5 +159,14 @@ describe("SessionRow practice badge (practice sessions, 2026-10-04)", () => {
 	it("a practice row with a posed problem says the problem is waiting", () => {
 		const html = render(item({ kind: "practice", pendingProblem: true }));
 		assert.match(html, /Problem waiting ·/);
+	});
+});
+
+describe("dateGroup", () => {
+	it("buckets by local calendar day", () => {
+		const now = new Date(2026, 0, 2, 0, 30);
+		assert.equal(dateGroup(new Date(2026, 0, 2, 0, 5).toISOString(), now), "Today");
+		assert.equal(dateGroup(new Date(2026, 0, 1, 23, 50).toISOString(), now), "Yesterday");
+		assert.equal(dateGroup(new Date(2025, 11, 31, 12).toISOString(), now), "Earlier");
 	});
 });
