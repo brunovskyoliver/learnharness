@@ -1619,6 +1619,7 @@ export function Chat({
 							onSend={onSend}
 							onStop={abortInFlightTurn}
 							canSend={canSend}
+							controls={<StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} />}
 							// The pause affordance (owner round 16): the placeholder
 							// IS the hint — empty state, exactly where Enter-on-empty
 							// applies.
@@ -2386,7 +2387,7 @@ function DockOverlay({
 							}
 						/>
 					)}
-					<div ref={shellRef} data-testid="dock-shell" onClick={(event) => { if (event.target === event.currentTarget) focusSurfaceInput(event); }} className="pointer-events-auto flex min-h-0 select-none flex-col overflow-hidden rounded-2xl border bg-card shadow-lg">
+					<div ref={shellRef} data-testid="dock-shell" onClick={(event) => { if (event.target === event.currentTarget) focusSurfaceInput(event); }} className="prompt-shell pointer-events-auto flex min-h-0 select-none flex-col overflow-hidden">
 						<div
 						ref={contentRef}
 						key={mode}
@@ -2405,6 +2406,7 @@ function DockOverlay({
 									onSubmit={onSubmitAnswer}
 									initialDraft={initialQuestionDraft}
 									onSaveDraft={onSaveQuestionDraft}
+									controls={expanded ? <StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} /> : undefined}
 									compactionRunning={compactionRunning}
 								/>
 							) : practice ? (
@@ -2417,22 +2419,19 @@ function DockOverlay({
 										void suppressFoldDuringReveal();
 									}}
 									onSubmit={onSubmitThinking}
+									controls={expanded ? <StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} /> : undefined}
 									compactionRunning={compactionRunning}
 								/>
 							) : (
 								composer
 							)}
 						</div>
+						{(pending || practice) && !expanded && (
+							<div className="px-3 pb-2">
+								<StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} />
+							</div>
+						)}
 					</div>
-					{/* The stats row: beneath the composer/question shell, not
-					    flush to the screen bottom — static height, outside the
-					    morphing shell so it never joins a height animation. */}
-					<StatsBar
-						turns={turns}
-						contextTokens={contextTokens}
-						pricing={pricing}
-						chatId={chatId}
-					/>
 					{/* The scroll-down disc (moved here from the Conversation,
 					    owner refinement round 2026-09-24): anchored to the BLOCK's
 					    top edge — above the composer shell AND the stats row, in

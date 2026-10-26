@@ -1,10 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { ChevronRightIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { PromptSubmit, PromptToolbar } from "@/components/prompt-controls";
 import { useEnterSubmits } from "@/components/enter-submits";
-import { cn } from "@/lib/utils";
 import { focusSurfaceInput } from "@/components/input-surface";
 
 /**
@@ -41,9 +40,10 @@ export interface PracticeDockProps {
 	 *  and say so in the hint row. The server registry is the real gate;
 	 *  this is the affordance. */
 	compactionRunning?: boolean;
+	controls?: ReactNode;
 }
 
-export function PracticeDock({ problemCallId, expanded, outgoingHeight, onExpand, onSubmit, compactionRunning = false }: PracticeDockProps) {
+export function PracticeDock({ problemCallId, expanded, outgoingHeight, onExpand, onSubmit, compactionRunning = false, controls }: PracticeDockProps) {
 	const [thinking, setThinking] = useState("");
 	// Ref MIRRORS the field ("nothing gets lost", the question-dock
 	// discipline): a submit resuming after `await finishDictation()` reads
@@ -92,9 +92,9 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, onExpand
 			<div
 				data-testid="practice-thinking-field"
 				onClick={focusSurfaceInput}
-				className="input-surface m-1.5 shrink-0 rounded-[10px] border border-border/70 bg-background/60 transition-colors focus-within:border-primary/50"
+				className="input-surface shrink-0"
 			>
-				<div className="px-2.5 pt-2 text-xs font-medium text-muted-foreground">
+				<div className="px-5 pt-4 text-xs font-medium text-muted-foreground">
 					Your thinking
 				</div>
 				<textarea
@@ -113,29 +113,19 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, onExpand
 						}
 					}}
 					placeholder="Work here, think out loud."
-					rows={4}
-					className={cn(
-						"field-sizing-content lh-input max-h-64 min-h-16 w-full resize-none bg-transparent px-2.5 pb-2 outline-none placeholder:text-muted-foreground",
-					)}
+					rows={2}
+					className="prompt-input field-sizing-content lh-input max-h-64 min-h-16 w-full resize-none bg-transparent px-5 pt-1 pb-3 outline-none"
 				/>
-				{/* The submit row (owner round 4, 2026-10-05): IDENTICAL to the
-				    question dock's — hint left, the SAME Button (h-9, px-3.5),
-				    one p-1 row. Corner radii concentric: shell 16 − m-1.5 (6) =
-				    field 10 − p-1 (4) = button 6. */}
-				<div className="flex items-center justify-between gap-2 p-1">
-					<span aria-hidden className="pl-1.5 text-xs text-muted-foreground">
-						{compactionRunning && "Compacting session…"}
-					</span>
-					<Button
+				{compactionRunning && <div role="status" className="px-5 pb-2 text-xs text-muted-foreground">Compacting session…</div>}
+				<PromptToolbar controls={controls}>
+					<PromptSubmit
 						type="button"
+						label="Submit thinking"
 						data-testid="practice-send"
 						disabled={thinking.trim().length === 0 || compactionRunning}
 						onClick={() => submit()}
-						className="ml-auto h-9 rounded-[6px] px-3.5 text-sm font-medium"
-					>
-						Submit thinking
-					</Button>
-				</div>
+					/>
+				</PromptToolbar>
 			</div>
 		</div>
 		</div>

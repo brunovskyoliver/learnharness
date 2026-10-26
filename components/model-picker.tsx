@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ChevronDownIcon, GaugeIcon } from "lucide-react";
 import type { ChatSettings, ModelCatalogEntry, ModelCatalogResponse, ModelsSettings, UserSettings } from "@/src/core";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { prettyModel } from "@/components/usage-format";
@@ -317,7 +318,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 	};
 
 	return (
-		<div ref={containerRef} className="relative flex items-center gap-1.5" data-testid="model-control">
+		<div ref={containerRef} className="prompt-model-control relative" data-testid="model-control">
 			<Hint
 				// Trimmed (owner, subtlety round 2026-09-25): "Model selector"
 				// — the long sentence was way too much. ⌘K opens this same
@@ -331,15 +332,12 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 				data-testid="stats-model"
 				onClick={() => openMenu("model")}
 				aria-expanded={open === "model"}
-				// Chrome look (owner, fix wave round 3): matches the graph
-				// view's floating top-right buttons (import notes, gear,
-				// coverage) — blurred, fuller opacity, shadowed — so the
-				// graph no longer bleeds through these pills.
+				aria-label="Model selector"
 				disabled={noKeys}
-				className="flex h-7 items-center gap-1.5 rounded-full border bg-card/85 px-2.5 shadow-lg backdrop-blur transition-colors hover:border-border hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+				className="prompt-model-trigger"
 			>
-				<span className="text-card-foreground">{effectiveId && !noKeys ? prettyModel(effectiveId) : "—"}</span>
-				<span aria-hidden className="text-xs text-muted-foreground">▾</span>
+				<span className="truncate">{effectiveId && !noKeys ? prettyModel(effectiveId) : "—"}</span>
+				<ChevronDownIcon aria-hidden="true" className="size-3.5 shrink-0" />
 			</button>
 			</Hint>
 			<Hint
@@ -360,19 +358,17 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 					openMenu("thinking");
 				}}
 				aria-expanded={open === "thinking"}
-				// Chrome look (owner, fix wave round 3): matches the graph
-				// view's floating top-right buttons (import notes, gear,
-				// coverage) — blurred, fuller opacity, shadowed — so the
-				// graph no longer bleeds through these pills.
+				aria-label="Thinking level"
 				disabled={noKeys}
-				className="flex h-7 items-center gap-1.5 rounded-full border bg-card/85 px-2.5 shadow-lg backdrop-blur transition-colors hover:border-border hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+				className="prompt-model-trigger"
 			>
+				<GaugeIcon aria-hidden="true" className="size-4 shrink-0" />
 				{/* Just the level — the button reads like the model button reads
 				   the model name (owner, stats-control round 1). */}
-				<span className="text-card-foreground">
+				<span className="truncate">
 					{effectiveLevel === undefined || noKeys ? "—" : (THINKING_LABEL[effectiveLevel] ?? effectiveLevel)}
 				</span>
-				<span aria-hidden className="text-xs text-muted-foreground">▾</span>
+				<ChevronDownIcon aria-hidden="true" className="size-3.5 shrink-0" />
 			</button>
 			</Hint>
 
@@ -384,6 +380,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 					anchorRef={containerRef}
 					testid="model-menu"
 					preferredSide="up"
+					align="left"
 					menuClass="flex w-[22rem] flex-col rounded-xl border bg-card p-2 text-xs shadow-xl"
 				>
 					{error && <div className="mb-1.5 text-destructive">{error}</div>}
@@ -408,6 +405,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 					anchorRef={containerRef}
 					testid="thinking-menu"
 					preferredSide="up"
+					align="left"
 					menuClass="flex w-44 flex-col gap-0.5 rounded-xl border bg-card p-2 text-xs shadow-xl"
 				>
 					<ThinkingMenuList

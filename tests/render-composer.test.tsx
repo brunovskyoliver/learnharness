@@ -14,7 +14,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { Composer, enterAction } from "../components/composer.tsx";
 
 function render(
-	opts: { busy?: boolean; canSend?: boolean; placeholder?: string; nextProblem?: boolean } = {},
+	opts: { busy?: boolean; canSend?: boolean; placeholder?: string; nextProblem?: boolean; sendLabel?: string } = {},
 ) {
 	return renderToStaticMarkup(
 		<Composer
@@ -24,6 +24,7 @@ function render(
 			onSend={() => {}}
 			onStop={() => {}}
 			canSend={opts.canSend ?? true}
+			sendLabel={opts.sendLabel}
 			{...(opts.placeholder ? { placeholder: opts.placeholder } : {})}
 			{...(opts.nextProblem ? { nextProblem: true, onNext: () => {} } : {})}
 		/>,
@@ -51,10 +52,9 @@ describe("Composer", () => {
 		assert.ok(idleStop.includes('aria-label="Stop"'), "empty composer: stop replaces send while streaming");
 	});
 
-	it("send button radius is 10px = 25% of the 40px button (concentric with the shell)", () => {
-		const html = render();
-		assert.ok(html.includes("rounded-[10px]"), "send radius = shell radius − row padding");
-		assert.ok(html.includes("size-10"), "40px send button (10px = 25%)");
+	it("the shared composer names the new-session action", () => {
+		const html = render({ sendLabel: "Start session" });
+		assert.ok(html.includes('aria-label="Start session"'));
 	});
 
 	it("disabled when nothing to send", () => {

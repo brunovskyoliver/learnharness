@@ -118,6 +118,116 @@
 	user-select: text;
 }
 
+/* The prompt uses the reference's near-black canvas and quiet violet action.
+   Scoped tokens keep lesson content and verdict colors independent. */
+.prompt-shell {
+	--prompt-surface: #101010;
+	--prompt-border: #2a2a2a;
+	--prompt-muted: #a1a1a1;
+	--prompt-action: #6c5bc4;
+	--prompt-action-hover: #7b69d4;
+	--prompt-action-foreground: #ffffff;
+	border: 1px solid var(--prompt-border);
+	border-radius: 16px;
+	background: var(--prompt-surface);
+	transition: border-color 160ms ease;
+}
+
+.prompt-shell:focus-within {
+	border-color: #525057;
+}
+
+.prompt-input {
+	color: var(--foreground);
+	caret-color: var(--foreground);
+}
+
+.prompt-input::placeholder {
+	color: var(--prompt-muted, var(--muted-foreground));
+	opacity: 1;
+}
+
+.prompt-toolbar {
+	display: flex;
+	align-items: flex-end;
+	gap: 12px;
+	padding: 0 12px 12px;
+}
+
+.prompt-submit {
+	display: inline-flex;
+	width: 44px;
+	height: 44px;
+	flex-shrink: 0;
+	align-items: center;
+	justify-content: center;
+	border-radius: 50%;
+	background: var(--prompt-action, #6c5bc4);
+	color: var(--prompt-action-foreground, #ffffff);
+	cursor: pointer;
+	transition: background-color 160ms ease, color 160ms ease;
+}
+
+.prompt-submit:hover:not(:disabled) {
+	background: var(--prompt-action-hover, #7b69d4);
+}
+
+.prompt-submit:disabled {
+	background: var(--accent);
+	color: var(--muted-foreground);
+	cursor: default;
+}
+
+.prompt-submit[data-stopping] {
+	background: var(--accent);
+	color: var(--foreground);
+}
+
+.prompt-submit[data-stopping]:hover {
+	background: var(--border);
+}
+
+.prompt-model-control {
+	display: flex;
+	min-width: 0;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 2px;
+}
+
+.prompt-model-trigger {
+	display: inline-flex;
+	min-width: 0;
+	min-height: 36px;
+	max-width: 100%;
+	align-items: center;
+	gap: 6px;
+	border-radius: 8px;
+	padding: 0 8px;
+	color: var(--prompt-muted, var(--muted-foreground));
+	cursor: pointer;
+	transition: background-color 160ms ease, color 160ms ease;
+}
+
+.prompt-model-trigger:hover,
+.prompt-model-trigger[aria-expanded="true"] {
+	background: var(--accent);
+	color: var(--foreground);
+}
+
+.prompt-model-trigger:disabled {
+	cursor: default;
+	opacity: 0.5;
+}
+
+@media (pointer: coarse) {
+	.prompt-model-trigger { min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.prompt-shell, .prompt-submit, .prompt-model-trigger { transition: none; }
+}
+
 /* Palette (owner's hexes): main #141414, raised #1C1C1C, edges #434343.
    Mono chrome = JetBrains Mono; prose = Source Sans 3; titles = CMU Serif. */
 :root {

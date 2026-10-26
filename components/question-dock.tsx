@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowDownIcon, ChevronRightIcon, PlayIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PromptSubmit, PromptToolbar } from "@/components/prompt-controls";
 import { useEnterSubmits } from "@/components/enter-submits";
 import { ToolContentResponse } from "@/components/ai-elements/message";
 import { cn } from "@/lib/utils";
@@ -89,6 +90,7 @@ export interface QuestionDockProps {
 	 *  and say so in the hint row. The server registry is the real gate;
 	 *  this is the affordance. */
 	compactionRunning?: boolean;
+	controls?: ReactNode;
 }
 
 export function QuestionDock({
@@ -104,6 +106,7 @@ export function QuestionDock({
 	onSaveDraft,
 	phase = "probe",
 	compactionRunning = false,
+	controls,
 }: QuestionDockProps) {
 	// The probe-phase names (owner, 2026-10-09) canonicalize onto their
 	// teach twins for every dock concern — parse dispatch, labels, kinds:
@@ -163,6 +166,7 @@ export function QuestionDock({
 					initialDraft={initialDraft}
 					onSaveDraft={onSaveDraft}
 					compactionRunning={compactionRunning}
+					controls={controls}
 				/>
 			</div>
 		</div>
@@ -274,6 +278,7 @@ function QuestionDockForm({
 	initialDraft,
 	onSaveDraft,
 	compactionRunning = false,
+	controls,
 }: Omit<QuestionDockProps, "expanded" | "onExpand" | "reveal">) {
 	const kind = toolQuestionKind(toolName);
 
@@ -754,7 +759,7 @@ function QuestionDockForm({
 			    is for dumping, soon dictated; the button submits); text mode
 			    keeps "Your answer" with Enter-to-submit. */}
 			<form
-				className="input-surface shrink-0 border-t border-white/[0.06] px-4 pt-2.5 pb-3"
+				className="input-surface shrink-0 border-t border-border/40 pt-3"
 				onClick={focusSurfaceInput}
 				onSubmit={(e) => {
 					e.preventDefault();
@@ -767,7 +772,7 @@ function QuestionDockForm({
 					// straight on the card — no box inside the box.
 					className="flex flex-col"
 				>
-					<div className="text-xs font-medium text-muted-foreground">
+					<div className="px-5 text-xs font-medium text-muted-foreground">
 						{qd.mode === "text" ? "Your answer" : "Your thinking"}
 					</div>
 					{qd.mode === "text" ? (
@@ -788,7 +793,7 @@ function QuestionDockForm({
 							}}
 							placeholder="Type your answer…"
 							rows={1}
-							className="field-sizing-content lh-input max-h-48 min-h-10 w-full resize-none bg-transparent py-1.5 outline-none placeholder:text-muted-foreground/70"
+							className="prompt-input field-sizing-content lh-input max-h-48 min-h-16 w-full resize-none bg-transparent px-5 pt-1 pb-3 outline-none"
 						/>
 					) : (
 						<textarea
@@ -811,26 +816,20 @@ function QuestionDockForm({
 							placeholder="Why this answer? Whatever comes to mind."
 							rows={1}
 							className={cn(
-								"field-sizing-content lh-input max-h-48 w-full resize-none bg-transparent py-1.5 outline-none placeholder:text-muted-foreground/70",
+								"prompt-input field-sizing-content lh-input max-h-48 w-full resize-none bg-transparent px-5 pt-1 pb-3 outline-none",
 								// Phase-scaled prominence: teaching invites depth,
 								// probing stays quick.
 								phase === "teach" ? "min-h-[4.5rem]" : "min-h-10",
 							)}
 						/>
 					)}
-					<div className="flex items-center justify-between gap-2 pt-1.5">
-						<span aria-hidden className="text-xs text-muted-foreground/70">
-							{compactionRunning && "Compacting session…"}
-						</span>
-						<Button
-							type="submit"
-							size="sm"
+					{compactionRunning && <div role="status" className="px-5 pb-2 text-xs text-muted-foreground">Compacting session…</div>}
+					<PromptToolbar controls={controls}>
+						<PromptSubmit
+							label="Submit answer"
 							disabled={!canSubmit || compactionRunning}
-							className="ml-auto h-8 rounded-md px-3 text-sm font-medium"
-						>
-							Submit answer
-						</Button>
-					</div>
+						/>
+					</PromptToolbar>
 				</div>
 			</form>
 		</div>

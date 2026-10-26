@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CornerDownLeftIcon, DumbbellIcon } from "lucide-react";
+import { DumbbellIcon } from "lucide-react";
 import { GraphView } from "@/components/graph-view";
 import { MinimalHome } from "@/components/minimal-home";
 import { SetupDialog } from "@/components/setup-dialog";
@@ -11,7 +11,7 @@ import { useStrongKeyless, useZeroKeys, ZeroKeysPill } from "@/components/setup-
 import { useFieldCycle } from "@/components/field-cycle";
 import { SidebarToggle } from "@/components/sidebar";
 import { StatsBar } from "@/components/stats-bar";
-import type { TurnUsage } from "@/src/core";
+import { Composer } from "@/components/composer";
 
 /**
  * Home — the knowledge graph is the main view, full-bleed edge to edge
@@ -52,11 +52,7 @@ export function Home({
 	const [setupOpen, setSetupOpen] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const topicInputRef = useRef<HTMLTextAreaElement>(null);
-	// Tab navigates INTO the topic composer (owner, keyboard round
-	// 2026-10-06): the only text field on this surface — and home's
-	// composer is its OWN textarea, not the shared Composer component,
-	// so the chain is the ref itself (the smoke caught a selector that
-	// matched nothing here).
+	// The topic field is the only textarea in the home keyboard cycle.
 	const cycleTopicField = useCallback(
 		(): readonly HTMLElement[] => (topicInputRef.current ? [topicInputRef.current] : []),
 		[],
@@ -206,70 +202,49 @@ export function Home({
 							)
 						)}
 					/>
-					<form
-						className="flex items-end gap-1.5 rounded-2xl border bg-card p-1.5 shadow-lg"
-					onSubmit={(e) => {
-						e.preventDefault();
-						void start();
-					}}
-				>
-					<textarea
-						ref={topicInputRef}
-						value={topic}
-						onChange={(e) => {
-							topicRef.current = e.target.value;
-							setTopic(e.target.value);
-						}}
-						onKeyDown={(e) => {
-							if (e.key === "Enter" && !e.shiftKey) {
-								e.preventDefault();
-								void start();
+					<div className="prompt-shell pointer-events-auto">
+						<Composer
+							busy={false}
+							value={topic}
+							onChange={(value) => {
+								topicRef.current = value;
+								setTopic(value);
+							}}
+							onSend={() => { void start(); }}
+							onStop={() => {}}
+							canSend={Boolean(topic.trim()) && !busy}
+							inputRef={topicInputRef}
+							autoFocus
+							sendLabel="Start session"
+							placeholder={mode === "practice" ? "What do you want to practice?" : "What do you want to learn?"}
+							controls={
+								<StatsBar
+									turns={[]}
+									leadingSlot={
+										<div className="flex items-center gap-0.5 rounded-md border border-border/60 bg-background p-0.5" data-testid="home-mode-switch">
+											{(["teach", "practice"] as const).map((m) => (
+												<button
+													key={m}
+													type="button"
+													data-testid={`home-mode-${m}`}
+													onClick={() => setMode(m)}
+													className={
+														"flex items-center gap-1 rounded-sm px-2 py-0.5 text-[11px] transition-colors " +
+														(mode === m
+															? "bg-accent text-foreground"
+															: "text-muted-foreground hover:text-foreground")
+													}
+												>
+													{m === "practice" ? <DumbbellIcon aria-hidden="true" className="size-3" /> : null}
+													{m === "teach" ? "Teach" : "Practice"}
+												</button>
+											))}
+										</div>
+									}
+								/>
 							}
-						}}
-						placeholder={mode === "practice" ? "What do you want to practice?" : "What do you want to learn?"}
-						autoFocus
-						rows={1}
-						className="field-sizing-content lh-input max-h-48 min-h-10 flex-1 resize-none bg-transparent px-2.5 py-2 outline-none placeholder:text-muted-foreground"
-					/>
-					{/* No tooltip on the start square — the ↵ glyph is the
-					    affordance (owner, subtlety round 2026-09-25). */}
-					<button
-						type="submit"
-						aria-label="Start session"
-						disabled={!topic.trim() || busy}
-						className="flex size-10 shrink-0 items-center justify-center rounded-[10px] bg-primary text-primary-foreground transition-colors hover:opacity-90 disabled:opacity-40"
-					>
-						<CornerDownLeftIcon className="size-5" />
-					</button>
-					</form>
-					{/* Same as the chat view's under-composer stats bar (owner) — no
-					    session yet, so the LEFT side renders nothing (wave 7 sweep)
-					    while the RIGHT keeps the strong-slot control (fix wave: the
-					    pills write /api/settings/models). */}
-					<StatsBar
-						turns={[] as TurnUsage[]}
-						leadingSlot={
-							<div className="flex items-center gap-0.5 rounded-md border border-border/60 bg-background p-0.5" data-testid="home-mode-switch">
-								{(["teach", "practice"] as const).map((m) => (
-									<button
-										key={m}
-										type="button"
-										data-testid={`home-mode-${m}`}
-										onClick={() => setMode(m)}
-										className={
-											"flex items-center gap-1 rounded-sm px-2 py-0.5 text-[11px] transition-colors " +
-											(mode === m
-												? "bg-accent text-foreground"
-												: "text-muted-foreground hover:text-foreground")
-										}
-									>
-										{m === "practice" ? <DumbbellIcon aria-hidden="true" className="size-3" /> : null}
-										{m === "teach" ? "Teach" : "Practice"}
-									</button>
-								))}
-							</div>
-						}
-					/>
+						/>
+					</div>
 				</div>
 			</div>
 
