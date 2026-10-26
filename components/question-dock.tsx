@@ -36,7 +36,7 @@ import {
 	type SelectMode,
 	type Phase3,
 } from "@/src/core";
-import { CONFIDENCE_COLORS, confidenceRailStyle } from "@/components/confidence-rail";
+import { confidenceRailStyle } from "@/components/confidence-rail";
 
 /**
  * The question dock — a pending quiz/ask REPLACES the chat composer: the
@@ -808,9 +808,8 @@ function QuestionDockForm({
 									}
 									setConfIdx(best);
 								}}
-								style={{ color: CONFIDENCE_COLORS[confIdx] }}
 								className={cn(
-									"absolute inset-0 h-4 w-full cursor-pointer appearance-none bg-transparent outline-none",
+									"absolute inset-0 h-4 w-full cursor-pointer appearance-none bg-transparent text-foreground outline-none",
 									"[&::-webkit-slider-runnable-track]:h-4 [&::-webkit-slider-runnable-track]:bg-transparent",
 									"[&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-current",
 									"[&::-moz-range-track]:h-4 [&::-moz-range-track]:bg-transparent",

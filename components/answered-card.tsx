@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { ChevronDownIcon } from "lucide-react";
+import { blurAfterPointerClick } from "@/components/focus-hygiene";
 import { ConfidenceRail } from "@/components/confidence-rail";
 import { GlyphMark } from "@/components/ui/glyph-mark";
 import { ThinkingBlock } from "@/components/thinking-block";
@@ -79,11 +81,11 @@ export function AnsweredCard({ answer: savedAnswer, input }: { answer: QuestionA
 											: "Question"}
 				{isQuiz &&
 					(answer.dontKnow ? (
-						<span className="rounded bg-muted px-1.5 py-0.5">didn't know</span>
+						<span className="rounded border border-border px-1.5 py-0.5">didn't know</span>
 					) : answer.correct ? (
-						<span className="rounded bg-success/15 px-1.5 py-0.5 text-success">correct</span>
+						<span className="rounded border border-success/50 px-1.5 py-0.5 text-success">correct</span>
 					) : (
-						<span className="rounded bg-destructive/15 px-1.5 py-0.5 text-destructive">incorrect</span>
+						<span className="rounded border border-destructive/50 px-1.5 py-0.5 text-destructive">incorrect</span>
 					))}
 			</div>
 			<div className="mb-3 font-medium">
@@ -108,9 +110,11 @@ export function AnsweredCard({ answer: savedAnswer, input }: { answer: QuestionA
 								className={cn(
 									"flex items-center gap-2 rounded-lg border px-3 py-1.5",
 									sel && key && "border-success/60 bg-success/10",
-									sel && !key && isQuiz && "border-destructive/60 bg-destructive/10",
+									// The wrong pick is marked, not shouted: the KEY below carries
+									// the weight (polish pass 2026-10-26).
+									sel && !key && isQuiz && "border-destructive/40",
 									sel && !isQuiz && "border-primary bg-accent",
-									!sel && key && "border-success/40",
+									!sel && key && "border-success/60",
 								)}
 							>
 								{isQuiz && (
@@ -120,7 +124,9 @@ export function AnsweredCard({ answer: savedAnswer, input }: { answer: QuestionA
 										aria-hidden
 										data-mark={sel && key ? "check" : sel && !key ? "x" : !sel && key ? "check" : undefined}
 										className={cn(
-											"flex shrink-0 items-center",
+											// Fixed gutter (polish pass 2026-10-26): every row reserves the
+											// mark's width, so option text aligns whether or not a mark shows.
+											"flex w-3.5 shrink-0 items-center",
 											sel && key && "text-success",
 											sel && !key && "text-destructive",
 											!sel && key && "text-success",
@@ -131,7 +137,7 @@ export function AnsweredCard({ answer: savedAnswer, input }: { answer: QuestionA
 										{(key || sel) && <GlyphMark kind={key ? "check" : "x"} className="size-3.5" />}
 									</span>
 								)}
-								<span className={cn(!sel && "text-muted-foreground")}>
+								<span className={cn(!sel && !key && "text-muted-foreground")}>
 									<ToolContentResponse>{opt.label}</ToolContentResponse>
 									{descByIndex.get(opt.index) && (
 										// Ask-option subtext (owner, 2026-10-12): same markdown path
@@ -170,6 +176,9 @@ export function AnsweredCard({ answer: savedAnswer, input }: { answer: QuestionA
 			    field — nothing to show, nothing rendered. */}
 			{isQuiz && answer.confidence != null && (
 				<div className="mt-3 flex items-center gap-3" data-testid="answered-confidence">
+					{/* Labeled like the dock (polish pass 2026-10-26): unlabeled, the
+					    rail + % read as a progress meter. */}
+					<span className="shrink-0 text-xs font-medium uppercase tracking-wide text-muted-foreground">Confidence</span>
 					<ConfidenceRail value={answer.confidence} className="min-w-0 flex-1" />
 					<span className="w-9 shrink-0 text-right font-mono text-sm tabular-nums text-muted-foreground">
 						{answer.confidence}%
@@ -202,16 +211,22 @@ export function AnsweredCard({ answer: savedAnswer, input }: { answer: QuestionA
 				   toggle — viewable, never center stage. Identical to the
 				   prediction pattern it generalizes (owner, 2026-10-03). */
 				<div className="mt-2" data-testid="tucked-explanation">
+					{/* A disclosure row in the THINKING register (polish pass
+					    2026-10-26): chevron + small caps, not a stray caption. */}
 					<button
 						type="button"
-						onClick={() => setWhyOpen((v) => !v)}
-						className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+						aria-expanded={whyOpen}
+						onClick={(e) => {
+							setWhyOpen((v) => !v);
+							blurAfterPointerClick(e);
+						}}
+						className="flex items-center gap-2 py-1 font-ui text-xs font-medium uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground"
 					>
-						{whyOpen ? "Hide why" : "Why"}
+						Why
+						<ChevronDownIcon className={cn("size-4 shrink-0 transition-transform", whyOpen ? "rotate-180" : "rotate-0")} />
 					</button>
 					{whyOpen && (
-						<div className="mt-1.5 rounded-lg bg-muted py-2 text-sm text-foreground/50">
-							<span className="font-medium text-muted-foreground">Why: </span>
+						<div className="mt-1 rounded-lg py-1 text-sm text-muted-foreground">
 							{/* Keep the first paragraph beside the label, not every paragraph:
 							   later paragraphs must retain their recovered document structure. */}
 							<ToolContentResponse className="inline [&>p:first-child]:inline [&>p:first-child]:m-0">{answer.explanation}</ToolContentResponse>

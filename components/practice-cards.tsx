@@ -84,13 +84,14 @@ const OUTCOME_LABEL: Record<string, string> = {
  * quiz cards' correct/incorrect bubbles. Colors per outcome — solved reads
  * green (the "correct" twin), solved-with-hints amber (succeeded with
  * cost), surrendered red (the problem beat the learner), moved on muted
- * (the agent's call, not a verdict against him). */
+ * (the agent's call, not a verdict against him). Outlined, like the quiz
+ * card's verdict chip (polish pass 2026-10-26). */
 const OUTCOME_CHIP: Record<string, string> = {
-	solved: "bg-success/15 text-success",
-	solvedWithHints: "bg-warning/15 text-warning",
-	movedOn: "bg-muted text-muted-foreground",
-	surrendered: "bg-destructive/15 text-destructive",
-	dismissed: "bg-muted text-muted-foreground",
+	solved: "border border-success/50 text-success",
+	solvedWithHints: "border border-warning/50 text-warning",
+	movedOn: "border border-border text-muted-foreground",
+	surrendered: "border border-destructive/50 text-destructive",
+	dismissed: "border border-border text-muted-foreground",
 };
 
 export function ConcludeCard({ part }: ArtifactPartProps) {

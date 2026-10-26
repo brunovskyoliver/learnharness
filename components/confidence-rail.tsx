@@ -1,6 +1,5 @@
 import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
-import { CONFIDENCE_STOPS } from "@/src/core";
 
 /**
  * The confidence RAIL — the slider's paint, shared by two surfaces so they
@@ -15,27 +14,23 @@ import { CONFIDENCE_STOPS } from "@/src/core";
  * disc per side) so the dock's 0/100 stops sit flush at the very ends.
  * The static card has no thumb, but keeps the identical shape.
  *
- * Stack law: #141414 base (the darker main background), SOLID stop ticks
+ * Stack law: --background base (the darker main background), SOLID stop ticks
  * as background layers UNDER the fill, and the fill itself TRANSPARENT
  * past the value — so ticks show only on the empty side, never over the
  * color. Ticks skip 0 and 100 (the rail's ends already say those).
  */
 
-/** The six-step ramp (owner ruling): 0 red → 100 emerald, indexed by stop. */
-export const CONFIDENCE_COLORS: readonly string[] = [
-	"#ef4444", // 0
-	"#f97316", // 30
-	"#eab308", // 50
-	"#84cc16", // 70
-	"#22c55e", // 90
-	"#10b981", // 100
-];
+/** The rail's ONE fill (polish pass 2026-10-26, owner): neutral, not a
+ *  red→green ramp. Confidence is not a verdict — a confident wrong answer
+ *  must not paint green under a red INCORRECT. Color stays reserved for the
+ *  verdict chip and marks. */
+export const CONFIDENCE_FILL = "var(--muted-foreground)";
 
 /** The rail's paint for a stop value (0–100). */
 export function confidenceRailStyle(value: number): CSSProperties {
-	const color = CONFIDENCE_COLORS[CONFIDENCE_STOPS.indexOf(value)] ?? CONFIDENCE_COLORS[2]!;
+	const color = CONFIDENCE_FILL;
 	return {
-		backgroundColor: "#141414",
+		backgroundColor: "var(--background)",
 		backgroundImage: [
 			`linear-gradient(90deg, ${color} 0%, ${color} ${value}%, transparent ${value}%, transparent 100%)`,
 			...[30, 50, 70, 90].map(
