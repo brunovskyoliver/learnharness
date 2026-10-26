@@ -1448,8 +1448,9 @@ export function Chat({
 										    padding, the left gap matches it, the rail fills the 3ch
 										    inset (the band is the authorship mark against the agent's
 										    transparent prose). The "You" label stays — one register
-										    with the thinking labels. */
-										className="my-2 w-full border-l-[calc(3ch-14px)] border-muted-foreground/30 bg-card py-1 pl-[14px] pr-4 font-ui text-xs"
+										    with the thinking labels. No rail (polish pass 2026-10-26):
+										    the band alone marks authorship; text keeps the 3ch inset. */
+										className="my-2 w-full bg-card py-1 pl-[3ch] pr-4 font-ui text-xs"
 									>
 												{/* The rail GROUPS (owner round 4, 2026-10-05): the YOU heading
 												    sits INSIDE the rail, same mono-xs register and same 1ch

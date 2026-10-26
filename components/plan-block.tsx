@@ -907,10 +907,13 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 				</button>
 </Hint>
 			</div>
+			{/* Opaque viewport (polish pass 2026-10-26): the margin still
+			    ghosts the transcript, but a bright demo iframe no longer
+			    bleeds through behind the diagram itself. */}
 			<div
 				ref={viewportRef}
 				className={cn(
-					"relative min-h-0 flex-1 touch-none overflow-hidden rounded-xl border select-none",
+					"relative min-h-0 flex-1 touch-none overflow-hidden rounded-xl border bg-background select-none",
 					atFloor ? "cursor-default" : "cursor-grab",
 				)}
 				onPointerDown={startDrag}
