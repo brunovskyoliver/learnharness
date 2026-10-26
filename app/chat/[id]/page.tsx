@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
 import { Chat } from "@/components/chat";
 import { slotsConfigured } from "@/src/core";
-import { compactionInFlight, getChat, isTurnRunning, readSettingsRecord, turnFailure } from "@/src/server";
+import { compactionInFlight, getChat, isTurnRunning, readSettingsRecord, turnFailure, withTenantPage } from "@/src/server";
 
 export const dynamic = "force-dynamic";
 
-export default async function ChatPage({
+async function ChatPage({
 	params,
 	searchParams,
 }: {
@@ -39,3 +39,5 @@ export default async function ChatPage({
 		/>
 	);
 }
+
+export default withTenantPage(ChatPage);

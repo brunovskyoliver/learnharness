@@ -1,5 +1,5 @@
 import { NewSession } from "@/components/new-session";
-import { readSettingsRecord } from "@/src/server";
+import { readSettingsRecord, withTenantPage } from "@/src/server";
 import { slotsConfigured } from "@/src/core";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
  * default); the session the first send creates is stamped from it
  * server-side (per-session models, owner 2026-09-28).
  */
-export default async function NewSessionPage({
+async function NewSessionPage({
 	searchParams,
 }: {
 	searchParams: Promise<{ mode?: string }>;
@@ -28,3 +28,5 @@ export default async function NewSessionPage({
 		/>
 	);
 }
+
+export default withTenantPage(NewSessionPage);

@@ -386,7 +386,7 @@ export function RenameRow({ chat, onCommit, onCancel }: { chat: ChatListItem; on
 export type SessionKindFilter = "teach" | "all" | "practice";
 const KIND_FILTER_KEY = "lh:session-kind-filter";
 
-function SessionsSidebar() {
+function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 	const { open, toggle } = useSidebar();
 	const [chats, setChats] = useState<ChatListItem[] | null>(null);
 	const [query, setQuery] = useState("");
@@ -859,6 +859,7 @@ function SessionsSidebar() {
 							</button>
 						</Hint>
 					</div>
+					{account}
 				</div>
 
 				{/* The context menu (wave 6 + the extraction-UX redesign): the
@@ -940,10 +941,12 @@ function SessionsSidebar() {
 }
 
 /** The app frame: sidebar inline + content. Rendered once in the root layout. */
-export function AppShell({ children }: { children: React.ReactNode }) {
+/** account: the hosted-mode account row (layout passes it; Clerk stays out
+ *  of this module). */
+export function AppShell({ children, account }: { children: React.ReactNode; account?: React.ReactNode }) {
 	return (
 		<SettingsDialogProvider>
-			<SessionsSidebar />
+			<SessionsSidebar account={account} />
 			<main className="min-w-0 flex-1">{children}</main>
 			{/* The single document-level keydown listener (keyboard wave A) —
 			    after the content in the tree, but it's window-level so order only
