@@ -32,13 +32,14 @@ function render(
 }
 
 describe("Composer", () => {
-	it("chat placeholder + send button", () => {
+	it("chat input keeps its accessible label without visible placeholder copy", () => {
 		const html = render();
 		assert.match(html, /Ask, answer, or steer the lesson/, "the default — active sessions");
 		assert.ok(html.includes('aria-label="Send"'), "send button present");
+		assert.doesNotMatch(html, /<textarea[^>]*placeholder=/);
 	});
 
-	it("placeholder is overridable — the new-session page asks the graph view's question", () => {
+	it("the input's accessible prompt is overridable for a new session", () => {
 		const html = render({ placeholder: "What do you want to learn?" });
 		assert.match(html, /What do you want to learn\?/);
 		assert.ok(!html.includes("Ask, answer"), "the session placeholder must not ride along");

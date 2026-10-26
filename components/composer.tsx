@@ -62,9 +62,8 @@ export function Composer({
 	/** Escape while a dictation runs stops it (STT wave, 2026-09-17). No-op
 	 *  when absent — Esc otherwise means nothing in the composer. */
 	onEscape?: () => void;
-	/** The textarea's placeholder (owner refinement round, 2026-09-24):
-	 *  active sessions read "Ask, answer, or steer the lesson…"; the fresh
-	 *  new-session page asks the graph view's opening question instead. */
+	/** Descriptive prompt for assistive technology. The compact textarea
+	 *  displays no placeholder copy. */
 	placeholder?: string;
 	/** The practice pause is live (owner round 16): Enter on the empty
 	 *  composer fires the next-problem signal instead of doing nothing —
@@ -115,11 +114,10 @@ export function Composer({
 						act();
 					}
 				}}
-				placeholder={placeholder}
 				aria-label={placeholder}
 				autoFocus={autoFocus}
 				rows={1}
-				className="prompt-input field-sizing-content lh-input max-h-48 min-h-20 w-full resize-none bg-transparent px-5 pt-4 pb-3 outline-none"
+				className="prompt-input field-sizing-content lh-input max-h-48 min-h-11 w-full resize-none bg-transparent px-5 pt-3 pb-2 outline-none"
 			/>
 			<PromptToolbar controls={controls}>
 				{nextProblem && !busy && !canSend ? (

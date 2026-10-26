@@ -80,7 +80,7 @@ import { ReadingThinkingField } from "@/components/reading-thinking";
 import { currentUserThinkingOpen, setAllUserThinkingOpen } from "@/components/thinking-block";
 import { slotsConfigured, type ModelsSettings } from "@/src/core";
 import { useSettingsSaved } from "@/components/settings-signal";
-import { focusSurfaceInput } from "@/components/input-surface";
+import { focusSurfaceInput, inputSurfaceIsEditing } from "@/components/input-surface";
 import { animateDockScroll, DOCK_EASING, DOCK_MOTION_MS, reducedDockMotion } from "@/components/dock-motion";
 import { createSmoothWheelScroller } from "@/components/smooth-wheel-scroll";
 import { TurnReadingPosition } from "@/components/turn-reading-position";
@@ -2088,7 +2088,7 @@ function DockOverlay({
 			scrollMotionRef.current?.cancel();
 			scrollMotionRef.current = null;
 			expandIntentRef.current = false;
-			if (pendingRef.current) setExpanded(false);
+			if (pendingRef.current && !inputSurfaceIsEditing(blockRef.current)) setExpanded(false);
 		};
 		el.addEventListener("lh:read-answer", readAnswer);
 		el.addEventListener("lh:manual-navigation", readAnswer);
@@ -2276,7 +2276,8 @@ function DockOverlay({
 				// needs distance plus a real gesture or stick-to-bottom agreeing
 				// the learner left. A single reduced-motion scroll can arrive
 				// before the library has updated its at-bottom state.
-				if (scrollingUp && d > COLLAPSE_DIST && !expandIntentRef.current && (userGesture || !atBottomRef.current)) setExpanded(false);
+				if (scrollingUp && d > COLLAPSE_DIST && !expandIntentRef.current && (userGesture || !atBottomRef.current)
+					&& !inputSurfaceIsEditing(blockRef.current)) setExpanded(false);
 			} else if (scrollingDown && d <= EXPAND_DIST) {
 				// Automatic expansion belongs only to the last 16px of the
 				// actual scroll range, including the reserved dock space.

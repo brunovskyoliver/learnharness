@@ -10,7 +10,7 @@ export async function checkStreamingUi(page, base, record) {
 		};
 	});
 	await page.setViewport({ width: 1440, height: 1000 });
-	const reset = await page.evaluateOnNewDocument((id) => localStorage.removeItem(`lh:session-ui:v1:local:${id}`), record.id);
+	const reset = await page.evaluateOnNewDocument((id) => { if (window === window.top) localStorage.removeItem(`lh:session-ui:v1:local:${id}`); }, record.id);
 	await page.goto(`${base}/chat/${record.id}`, { waitUntil: "networkidle2" });
 	await page.removeScriptToEvaluateOnNewDocument(reset.identifier);
 	await page.evaluate((initial) => {

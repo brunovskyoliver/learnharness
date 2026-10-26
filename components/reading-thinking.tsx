@@ -71,7 +71,6 @@ export function ReadingThinkingField({
 						e.currentTarget.blur();
 					}
 				}}
-				placeholder="Whatever comes to mind as you read."
 				rows={1}
 				className="prompt-input field-sizing-content lh-input max-h-40 w-full resize-none bg-transparent py-0.5 outline-none"
 			/>

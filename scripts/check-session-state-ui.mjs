@@ -25,7 +25,7 @@ export async function checkSessionStateUi(page, base, firstId, secondId, questio
 	};
 	await page.setViewport({ width: 1600, height: 1000 });
 	if (!page.url().startsWith(base)) await page.goto(`${base}/chat/${firstId}`, { waitUntil: "networkidle2" });
-	const reset = await page.evaluateOnNewDocument((ids) => { for (const id of ids) localStorage.removeItem(`lh:session-ui:v1:local:${encodeURIComponent(id)}`); }, [firstId, secondId, questionId]);
+	const reset = await page.evaluateOnNewDocument((ids) => { if (window !== window.top) return; for (const id of ids) localStorage.removeItem(`lh:session-ui:v1:local:${encodeURIComponent(id)}`); }, [firstId, secondId, questionId]);
 	await open(firstId);
 	await page.removeScriptToEvaluateOnNewDocument(reset.identifier);
 	await page.type('[data-testid="composer"] textarea', "Unsent composer draft");

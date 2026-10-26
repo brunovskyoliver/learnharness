@@ -49,8 +49,8 @@ import {
  *
  * The thinking field is the transfer channel of the whole product (wave-2):
  * never called "optional", Enter makes a NEWLINE (it is for dumping — soon
- * dictated, not typed), submission is the button only, and its size scales
- * with the phase (probing stays quick; teaching invites depth). The
+ * dictated, not typed), submission is the button only, and its size grows
+ * with the draft. The
  * "Other…" option is an editable option ROW — circle + inline input,
  * styled like its siblings — so picking Other never displaces thinking.
  *
@@ -83,8 +83,7 @@ export interface QuestionDockProps {
 	/** The keyboard machine (wave B) is armed only while the dock is
 	 *  expanded — the collapsed bar keeps its native Enter-to-expand. */
 	active?: boolean;
-	/** Session phase at the question — scales the thinking field: probing
-	 *  stays quick (one row), teaching invites dumping (three rows). */
+	/** Session phase at the question. Input height follows its content. */
 	phase?: Phase3;
 	/** Compaction is running for this chat (owner round 14): the answer
 	 *  POST would block on the server's compaction gate — disable submit
@@ -273,7 +272,6 @@ function QuestionDockForm({
 	toolName,
 	toolCallId,
 	input,
-	phase = "probe",
 	active,
 	onSubmit,
 	initialDraft,
@@ -768,7 +766,7 @@ function QuestionDockForm({
 			    is for dumping, soon dictated; the button submits); text mode
 			    keeps "Your answer" with Enter-to-submit. */}
 			<form
-				className="input-surface shrink-0 border-t border-border/40 pt-3"
+				className="input-surface shrink-0 border-t border-border/40"
 				onClick={focusSurfaceInput}
 				onSubmit={(e) => {
 					e.preventDefault();
@@ -777,13 +775,9 @@ function QuestionDockForm({
 			>
 				<div
 					data-testid={qd.mode === "text" ? "answer-field" : "thinking-field"}
-					// Flat field (ui-v2): the label, the text and the action row sit
-					// straight on the card — no box inside the box.
+					// Text and controls sit directly on the prompt shell.
 					className="flex flex-col"
 				>
-					<div className="px-5 text-xs font-medium text-muted-foreground">
-						{qd.mode === "text" ? "Your answer" : "Your thinking"}
-					</div>
 					{qd.mode === "text" ? (
 						<textarea
 							aria-label="Your answer"
@@ -800,9 +794,8 @@ function QuestionDockForm({
 									submit();
 								}
 							}}
-							placeholder="Type your answer…"
 							rows={1}
-							className="prompt-input field-sizing-content lh-input max-h-48 min-h-16 w-full resize-none bg-transparent px-5 pt-1 pb-3 outline-none"
+							className="prompt-input field-sizing-content lh-input max-h-48 min-h-11 w-full resize-none bg-transparent px-5 pt-3 pb-2 outline-none"
 						/>
 					) : (
 						<textarea
@@ -822,14 +815,8 @@ function QuestionDockForm({
 									submit();
 								}
 							}}
-							placeholder="Why this answer? Whatever comes to mind."
 							rows={1}
-							className={cn(
-								"prompt-input field-sizing-content lh-input max-h-48 w-full resize-none bg-transparent px-5 pt-1 pb-3 outline-none",
-								// Phase-scaled prominence: teaching invites depth,
-								// probing stays quick.
-								phase === "teach" ? "min-h-[4.5rem]" : "min-h-10",
-							)}
+							className="prompt-input field-sizing-content lh-input max-h-48 min-h-11 w-full resize-none bg-transparent px-5 pt-3 pb-2 outline-none"
 						/>
 					)}
 					{compactionRunning && <div role="status" className="px-5 pb-2 text-xs text-muted-foreground">Compacting session…</div>}
