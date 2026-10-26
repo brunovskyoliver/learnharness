@@ -36,4 +36,4 @@ Redeploy: `git push vm hosted-multiuser`, then on the VM `cd ~/learnharness && g
 
 - Confirm the title backfill in the server logs after deploy.
 - The answered quiz card still shows the old rail plus % for confidence; it does not show the segment label.
-- Earlier offers still waiting on the user: remove the old `learnharness_lh-data` volume, cap the journal, grow the VM disk.
+- Earlier offers still waiting on the user: remove the old `learnharness_lh-data` volume, cap the journal. (VM disk: done, see above.)
