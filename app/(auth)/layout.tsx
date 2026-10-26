@@ -5,7 +5,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { CLERK_APPEARANCE, CLERK_URLS } from "@/components/clerk-appearance";
 import { hostedMode } from "@/src/server";
 
-export const metadata: Metadata = { title: "Sign in · Learning Harness" };
+export const metadata: Metadata = { title: "Sign in · Brunovský's study" };
 
 // The sign-in pages get their own root layout: Clerk soft-navigates after
 // sign-in and sign-out, and Next turns a jump between root layouts into a

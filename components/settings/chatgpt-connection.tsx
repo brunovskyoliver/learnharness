@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Toggle } from "./controls";
 import { useChatGPTBridge } from "./subscription-client";
 
-export const CHATGPT_NOTICE = "LearnHarness stores your ChatGPT account details and credentials in an unencrypted local file on this device. When this connection is used, relevant conversation context, learning material, and tool results are sent directly to OpenAI. ChatGPT plan limits apply; any additional credits are authorized and managed in ChatGPT, not LearnHarness.";
+export const CHATGPT_NOTICE = "Brunovský's study stores your ChatGPT account details and credentials in an unencrypted local file on this device. When this connection is used, relevant conversation context, learning material, and tool results are sent directly to OpenAI. ChatGPT plan limits apply; any additional credits are authorized and managed in ChatGPT, not Brunovský's study.";
 export function chatGPTNotice(web = false, paste = false): string {
-	if (paste) return CHATGPT_NOTICE.replace("an unencrypted local file on this device", "an unencrypted file on the LearnHarness server");
-	return web ? `${CHATGPT_NOTICE.replace("on this device", "on the machine running LearnHarness")} Complete ChatGPT sign-in in a browser on that same machine.` : CHATGPT_NOTICE;
+	if (paste) return CHATGPT_NOTICE.replace("an unencrypted local file on this device", "an unencrypted file on the Brunovský's study server");
+	return web ? `${CHATGPT_NOTICE.replace("on this device", "on the machine running Brunovský's study")} Complete ChatGPT sign-in in a browser on that same machine.` : CHATGPT_NOTICE;
 }
 const PASTE_HINT = "After you approve in the sign-in tab, it ends on a page that cannot load (its address starts with http://127.0.0.1). Copy that whole address and paste it here.";
 export const CHATGPT_BACKGROUND_HINT = "Background work counts toward your ChatGPT plan usage.";
@@ -285,7 +285,7 @@ export function ChatGPTUIProvider({ children }: { children: React.ReactNode }) {
 			</> : dialog.kind === "manage" && dialog.confirm ? <div data-testid="chatgpt-disconnect-confirmation">
 				<p className="mt-3 text-sm font-semibold text-destructive">{CHATGPT_DISCONNECT_COPY.title}</p>
 				<p className="mt-3 text-xs text-foreground">{managed?.email || "ChatGPT account"}</p>
-				<p className="mt-3 text-xs text-muted-foreground">{web ? CHATGPT_DISCONNECT_COPY.body.replace("from this device", "from the machine running LearnHarness") : CHATGPT_DISCONNECT_COPY.body}</p>
+				<p className="mt-3 text-xs text-muted-foreground">{web ? CHATGPT_DISCONNECT_COPY.body.replace("from this device", "from the machine running Brunovský's study") : CHATGPT_DISCONNECT_COPY.body}</p>
 				{context.error && <p role="alert" className="mt-3 text-xs text-destructive">{context.error}</p>}
 				<div className="mt-4 flex items-center justify-end gap-2">
 					<Button variant="ghost" size="sm" disabled={busy} onClick={close}>Cancel</Button>

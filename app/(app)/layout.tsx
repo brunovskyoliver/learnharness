@@ -13,7 +13,7 @@ import { AccountRow } from "@/components/account-row";
 import { hostedMode } from "@/src/server";
 
 export const metadata: Metadata = {
-	title: "Learning Harness",
+	title: "Brunovský's study",
 	description: "A teacher agent with a memory — sessions, quizzes, and a knowledge graph of what you know.",
 };
 
