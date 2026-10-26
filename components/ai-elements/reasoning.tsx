@@ -1,6 +1,6 @@
 "use client";
 
-import { useControllableState } from "@radix-ui/react-use-controllable-state";
+import { useSessionState } from "@/components/session-state";
 import { blurAfterPointerClick } from "@/components/focus-hygiene";
 import {
   Collapsible,
@@ -71,11 +71,9 @@ export const Reasoning = memo(
     // row the learner had opened.
     const resolvedDefaultOpen = defaultOpen ?? false;
 
-    const [isOpen, setIsOpen] = useControllableState<boolean>({
-      defaultProp: resolvedDefaultOpen,
-      onChange: onOpenChange,
-      prop: open,
-    });
+    const [savedOpen, saveOpen] = useSessionState("reasoning", resolvedDefaultOpen);
+    const isOpen = open ?? savedOpen;
+    const setIsOpen = useCallback((value: boolean) => { saveOpen(value); onOpenChange?.(value); }, [saveOpen, onOpenChange]);
     const hasEverStreamedRef = useRef(isStreaming);
     const [hasAutoClosed, setHasAutoClosed] = useState(false);
 

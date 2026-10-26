@@ -39,7 +39,7 @@ import type { ExtraProps } from "streamdown";
 import { MERMAID_FONT_SIZE, renderMermaid } from "@/components/mermaid-render";
 import { MermaidError } from "@/components/mermaid-error";
 import { blurAfterPointerClick } from "@/components/focus-hygiene";
-import { chartSize, useSessionMermaid } from "@/components/session-overlay";
+import { chartSize, useSessionMermaid } from "@/components/session-overlay-context";
 import { Hint } from "@/components/ui/hint";
 import { Button } from "@/components/ui/button";
 

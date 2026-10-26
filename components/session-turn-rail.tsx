@@ -70,28 +70,43 @@ export function SessionTurnRail({ messages, nativeMessages, turns, onReserve }: 
 		const content = main?.firstElementChild;
 		if (!main || !content) return;
 		let frame = 0;
+		let dirty = true;
+		let positions: Array<{ id: string; top: number }> = [];
 		const update = () => {
 			frame = 0;
-			const anchors = new Map([...main.querySelectorAll<HTMLElement>("[data-answer-part-id]")].map((element) => [element.dataset.answerPartId, element]));
-			const edge = main.getBoundingClientRect().top + 32;
-			let selected = entries[0]?.id ?? "";
-			for (const entry of entries) {
-				const anchor = anchors.get(entry.partId);
-				if (anchor && anchor.getBoundingClientRect().top <= edge) selected = entry.id;
+			if (dirty) {
+				const anchors = new Map([...main.querySelectorAll<HTMLElement>("[data-answer-part-id]")].map((element) => [element.dataset.answerPartId, element]));
+				const edge = main.getBoundingClientRect().top;
+				positions = entries.flatMap((entry) => {
+					const anchor = anchors.get(entry.partId);
+					return anchor ? [{ id: entry.id, top: main.scrollTop + anchor.getBoundingClientRect().top - edge }] : [];
+				});
+				dirty = false;
 			}
-			setVisible(selected);
+			let low = 0, high = positions.length;
+			while (low < high) {
+				const mid = (low + high) >>> 1;
+				if (positions[mid]!.top <= main.scrollTop + 32) low = mid + 1; else high = mid;
+			}
+			setVisible(positions[Math.max(0, low - 1)]?.id ?? "");
 		};
 		const schedule = () => { if (!frame) frame = requestAnimationFrame(update); };
-		const observer = new ResizeObserver(schedule);
+		const invalidate = () => { dirty = true; schedule(); };
+		const observer = new ResizeObserver(invalidate);
 		observer.observe(content);
+		// Expanding one section may move later anchors without changing total
+		// content height (e.g. another section closes at the same time).
+		const mutations = new MutationObserver(invalidate);
+		mutations.observe(content, { childList: true, subtree: true, attributes: true, attributeFilter: ["open", "data-state"] });
 		main.addEventListener("scroll", schedule, { passive: true });
-		window.addEventListener("resize", schedule);
+		window.addEventListener("resize", invalidate);
 		schedule();
 		return () => {
 			cancelAnimationFrame(frame);
 			observer.disconnect();
+			mutations.disconnect();
 			main.removeEventListener("scroll", schedule);
-			window.removeEventListener("resize", schedule);
+			window.removeEventListener("resize", invalidate);
 		};
 	}, [entries]);
 

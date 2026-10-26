@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, Fragment, lazy, Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+
 import { usePathname, useRouter } from "next/navigation";
 import { MenuShell } from "@/components/menu-shell";
 import { DeleteSessionDialog } from "@/components/delete-session-dialog";
@@ -24,11 +25,13 @@ import { kbdEventForAction } from "@/src/core";
 import { notifySettingsSaved } from "@/components/settings-signal";
 
 /**
- * Toggleable sidebar — NOT a modal drawer: no backdrop, no focus theft. It
- * sits inline next to the content and can stay open while working in a
- * session. Open state persists across pages (provider lives in the root
+ * The desktop sidebar sits inline next to the session. Narrow browser
+ * screens use a modal overlay so opening navigation never squeezes the lesson.
+ * Open state persists across pages (provider lives in the root
  * layout) and across reloads (localStorage).
  */
+
+const MobileSidebar = lazy(() => import("./mobile-sidebar"));
 
 const STORAGE_KEY = "lh:sidebar-open";
 const WIDTH_KEY = "lh:sidebar-width";
@@ -50,7 +53,8 @@ export function clampSidebarWidth(w: number, viewport: number): number {
  * widen the window to the threshold (window.lh.expandWindow, IPC in
  * electron/main.cjs) — the resize listener flips `narrow` and the sidebar
  * appears. In the plain browser there is no window to widen and no
- * suppression — a narrow tab opens the sidebar if the user says so.
+ * suppression. In the browser, narrow tabs auto-collapse and reopen as a
+ * modal overlay without changing the desktop preference (approved 2026-10-26).
  *
  * Mirrors SIDEBAR_AUTOCLOSE in electron/main.cjs — keep in sync.
  */
@@ -87,8 +91,10 @@ declare global {
 	}
 }
 
-const SidebarContext = createContext<{ open: boolean; toggle: () => void }>({
+const SidebarContext = createContext<{ open: boolean; overlay: boolean; close: () => void; toggle: () => void }>({
 	open: false,
+	overlay: false,
+	close: () => {},
 	toggle: () => {},
 });
 
@@ -108,6 +114,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 	// mismatch); the stored value is applied after mount.
 	const [open, setOpen] = useState(false);
 	const [narrow, setNarrow] = useState(false);
+	const [overlayOpen, setOverlayOpen] = useState(false);
 	const [mounted, setMounted] = useState(false);
 
 	useEffect(() => {
@@ -143,14 +150,15 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 	// Both this and the mount effect land before the first paint, so a
 	// narrow window never flashes the open sidebar on load.
 	useEffect(() => {
-		if (!IS_ELECTRON) return; // plain-browser tabs open freely
 		const onResize = () => setNarrow(window.innerWidth < SIDEBAR_AUTOCLOSE);
 		onResize();
 		window.addEventListener("resize", onResize);
 		return () => window.removeEventListener("resize", onResize);
 	}, []);
 
+	const close = useCallback(() => setOverlayOpen(false), []);
 	const toggle = useCallback(() => {
+		if (narrow && !IS_ELECTRON) { setOverlayOpen((value) => !value); return; }
 		// Opening while narrow (auto-closed, or the user's own closed-at-
 		// narrow): ask the shell to widen to the threshold — the resize
 		// listener flips `narrow` and the sidebar appears. The preference
@@ -182,7 +190,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 	}, [toggle]);
 
 	return (
-		<SidebarContext.Provider value={{ open: open && !narrow, toggle }}>
+		<SidebarContext.Provider value={{ open: narrow ? !IS_ELECTRON && overlayOpen : open, overlay: narrow && !IS_ELECTRON, close, toggle }}>
 			{/* transitions gated on mount: no slide-in flash on page load */}
 			<div className={cn("flex h-dvh", mounted && "[&_.sidebar-motion]:transition-[width,margin,opacity]")}>{children}</div>
 		</SidebarContext.Provider>
@@ -329,6 +337,7 @@ export function SessionRow({
 			onContextMenu={onContextMenu}
 			title={`${chat.title}\n${sessionMeta(chat)}`}
 			data-testid={kbdSelected ? "session-row-kbd" : "session-row"}
+			data-session-id={chat.id}
 			className={cn(
 				"group flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-sm transition-colors hover:bg-white/[0.06]",
 				active ? "bg-white/[0.09] text-foreground" : "text-foreground/85",
@@ -400,7 +409,7 @@ export type SessionKindFilter = "teach" | "all" | "practice";
 const KIND_FILTER_KEY = "lh:session-kind-filter";
 
 function SessionsSidebar({ account }: { account?: React.ReactNode }) {
-	const { open, toggle } = useSidebar();
+	const { open, toggle, overlay, close } = useSidebar();
 	const [chats, setChats] = useState<ChatListItem[] | null>(null);
 	const [query, setQuery] = useState("");
 	const [kindFilter, setKindFilter] = useState<SessionKindFilter>("all");
@@ -413,6 +422,7 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 		window.localStorage.setItem(KIND_FILTER_KEY, f);
 	}, []);
 	const pathname = usePathname();
+	useEffect(() => { if (overlay) close(); }, [pathname, overlay, close]);
 	const router = useRouter();
 	const { open: openSettings } = useSettingsDialog();
 
@@ -707,13 +717,13 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 		};
 	}, [filterOpen]);
 
-	return (
+	const sidebar = (
 		<aside
-			className={cn("relative shrink-0 overflow-hidden duration-200", !dragging && "sidebar-motion")}
-			style={{ width: open ? width : 0 }}
+			className={cn("relative shrink-0 overflow-hidden duration-200", !dragging && "sidebar-motion", overlay && "h-full")}
+			style={{ width: open ? overlay ? "100%" : width : 0 }}
 			aria-hidden={!open}
 		>
-			<div className="flex h-full flex-col border-r border-white/[0.08] bg-(--lh-sidebar)" style={{ width }}>
+			<div className="flex h-full flex-col border-r border-white/[0.08] bg-(--lh-sidebar)" style={{ width: overlay ? "100%" : width }}>
 				{/* Brand band: in Electron it is the window's drag surface and
 				    starts after the traffic lights (.lh-lights-gutter). */}
 				<div className="lh-drag lh-lights-gutter flex h-13 shrink-0 items-center gap-2 px-3">
@@ -775,6 +785,7 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 										if (!target) return;
 										e.preventDefault();
 										router.push(`/chat/${target.id}`);
+										if (overlay) close();
 										setKbdIndex(null);
 										e.currentTarget.blur();
 									}
@@ -861,6 +872,7 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 									onOpen={() => {
 										setKbdIndex(null);
 										router.push(`/chat/${c.id}`);
+										if (overlay) close();
 									}}
 									onContextMenu={(e) => openContext(e, c)}
 								/>
@@ -877,7 +889,7 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 					<Hint label="Settings" action="open-settings" side="top">
 						<button
 							type="button"
-							onClick={() => openSettings()}
+							onClick={() => { if (overlay) close(); openSettings(); }}
 							data-testid="settings-entry"
 							aria-label="Settings"
 							className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
@@ -889,7 +901,7 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 				</div>
 			</div>
 			{/* The resize rail: 4px hit area on the right edge, a 2px line on hover. */}
-			{open && (
+			{open && !overlay && (
 				<div
 					role="separator"
 					aria-orientation="vertical"
@@ -1014,6 +1026,9 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 				/>
 			</aside>
 	);
+	return overlay ? open ? (
+		<Suspense fallback={null}><MobileSidebar width={width} onClose={close} hasMenu={Boolean(ctxChatId || filterOpen)}>{sidebar}</MobileSidebar></Suspense>
+	) : null : sidebar;
 }
 
 /** The app frame: sidebar inline + content. Rendered once in the root layout. */

@@ -1,5 +1,7 @@
 "use client";
 
+import { readSessionMetadata } from "@/components/session-metadata";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useActivity } from "@/components/activity-dock";
 import { usePopoverDismiss } from "@/components/popover-dismiss";
@@ -45,9 +47,7 @@ export interface SessionCoverage {
  *  nothing rather than a fake zero; the honest-render doctrine). */
 async function fetchCoverage(chatId: string): Promise<SessionCoverage | null> {
 	try {
-		const res = await fetch(`/api/chats/${encodeURIComponent(chatId)}`);
-		if (!res.ok) return null;
-		const body = (await res.json()) as { coverage?: SessionCoverage | null };
+		const body = await readSessionMetadata(chatId);
 		return body.coverage ?? null;
 	} catch {
 		return null;

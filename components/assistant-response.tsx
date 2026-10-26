@@ -1,6 +1,6 @@
 "use client";
 
-import type { HTMLAttributes } from "react";
+import { memo, type HTMLAttributes } from "react";
 import { MessageResponse } from "@/components/ai-elements/message";
 import { CopyCorner } from "@/components/md-blocks";
 import { cn } from "@/lib/utils";
@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 /** Keep response copying scoped to the prose source, outside rendered math,
  * code controls, reasoning, and tool cards. Reserve the action's space so
  * hovering never moves the lesson. */
-export function AssistantResponse({
+export const AssistantResponse = memo(function AssistantResponse({
 	source,
 	streaming = false,
 	className,
@@ -27,4 +27,4 @@ export function AssistantResponse({
 			)}
 		</div>
 	);
-}
+});

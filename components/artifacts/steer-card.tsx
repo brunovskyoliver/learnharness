@@ -1,5 +1,7 @@
 "use client";
 
+import { SessionDetails } from "@/components/session-state";
+
 import { CheckIcon, CircleX } from "lucide-react";
 import type { PdfResult, ResearchResult, SubagentArtifactData } from "@/src/core";
 import type { LhViewMessage } from "@/src/core";
@@ -17,7 +19,7 @@ import { VisualOutputCard } from "@/components/artifacts/visual-card";
  * NEVER a learner bubble, never wrapped in a message container:
  *
  *   research — a quiet "Research complete" one-liner that expands on demand
- *     (native <details>) to the full persisted brief + sources: the brief is
+ *     (native <SessionDetails>) to the full persisted brief + sources: the brief is
  *     too long to inline by default and the teacher's wake turn weaves it
  *     into the lesson anyway. Failures keep the failure card (the brief
  *     explains what went wrong).
@@ -84,7 +86,7 @@ function PdfCompleteBadge({ result }: { result: PdfResult }) {
 	// the ?? is runtime tolerance for pre-split persisted steers.
 	const readPages = result.pagesRead ?? result.pagesConsulted;
 	return (
-		<details data-testid="pdf-complete-badge" className="group w-full text-xs text-muted-foreground">
+		<SessionDetails data-testid="pdf-complete-badge" className="group w-full text-xs text-muted-foreground">
 			<summary className="flex cursor-pointer select-none list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
 				<CheckIcon className="size-3.5" />
 				<span className="font-medium">PDF</span>
@@ -100,18 +102,18 @@ function PdfCompleteBadge({ result }: { result: PdfResult }) {
 			<div className="mt-2">
 				<PdfBriefCard output={result} />
 			</div>
-		</details>
+		</SessionDetails>
 	);
 }
 
 /** Quiet one-liner, the dispatch-settled idiom — the lesson lives in the
  * teacher's wake turn; the badge just marks delivery. The persisted brief
- * rides along in a collapsed <details> (the wave-1 "view full research"
+ * rides along in a collapsed <SessionDetails> (the wave-1 "view full research"
  * affordance): full markdown + sources, one click away, no extra fetch —
  * the artifact part in the record is the single source of truth. */
 function ResearchCompleteBadge({ result }: { result: ResearchResult }) {
 	return (
-		<details data-testid="research-complete-badge" className="group w-full text-xs text-muted-foreground">
+		<SessionDetails data-testid="research-complete-badge" className="group w-full text-xs text-muted-foreground">
 			<summary className="flex cursor-pointer select-none list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
 				<CheckIcon className="size-3.5" />
 				<span className="font-medium">Research</span>
@@ -123,6 +125,6 @@ function ResearchCompleteBadge({ result }: { result: ResearchResult }) {
 			<div className="mt-2">
 				<ResearchBriefCard output={result} />
 			</div>
-		</details>
+		</SessionDetails>
 	);
 }

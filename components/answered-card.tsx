@@ -1,5 +1,7 @@
 "use client";
 
+import { useSessionState } from "@/components/session-state";
+
 import { useState } from "react";
 import { ChevronDownIcon } from "lucide-react";
 import { blurAfterPointerClick } from "@/components/focus-hygiene";
@@ -23,7 +25,7 @@ import { answerForPresentation, parseAskInput, parseQuizInput } from "@/src/core
  */
 export function AnsweredCard({ answer: savedAnswer, input }: { answer: QuestionAnswerData; input?: unknown }) {
 	const answer = answerForPresentation(savedAnswer, input);
-	const [whyOpen, setWhyOpen] = useState(false); // the tucked explanation (predictions, owner 2026-10-03)
+	const [whyOpen, setWhyOpen] = useSessionState("why", false); // the tucked explanation (predictions, owner 2026-10-03)
 	if (answer.dismissed) {
 		return (
 			<div className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">

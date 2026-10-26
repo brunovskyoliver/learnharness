@@ -10,7 +10,9 @@ export async function checkStreamingUi(page, base, record) {
 		};
 	});
 	await page.setViewport({ width: 1440, height: 1000 });
+	const reset = await page.evaluateOnNewDocument((id) => localStorage.removeItem(`lh:session-ui:v1:local:${id}`), record.id);
 	await page.goto(`${base}/chat/${record.id}`, { waitUntil: "networkidle2" });
+	await page.removeScriptToEvaluateOnNewDocument(reset.identifier);
 	await page.evaluate((initial) => {
 		const originalFetch = window.fetch.bind(window);
 		window.testRecord = initial;
@@ -98,11 +100,13 @@ export async function checkStreamingUi(page, base, record) {
 	await begin("stream_reading_2");
 	await write("Another completed paragraph.\n\nA final unfinished paragraph");
 	await wait(350);
-	const bounds = await page.evaluate(() => { const box = window.streamScroller.getBoundingClientRect(); return { x: box.left + 60, y: box.top + 80 }; });
+	const beforeWheel = await scrollerPosition();
+	const bounds = await page.evaluate(() => { const box = window.streamScroller.getBoundingClientRect(); return { x: box.left + box.width / 2, y: box.top + 80 }; });
 	await page.mouse.move(bounds.x, bounds.y);
 	await page.mouse.wheel({ deltaY: -300 });
 	await wait(250);
 	const before = await scrollerPosition();
+	assert.ok(before < beforeWheel - 1, `the wheel actually leaves the live tail: ${beforeWheel} -> ${before}`);
 	await finish();
 	await wait(500);
 	const after = await scrollerPosition();

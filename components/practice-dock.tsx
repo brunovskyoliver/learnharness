@@ -1,5 +1,7 @@
 "use client";
 
+import { useSessionState } from "@/components/session-state";
+
 import { useCallback, useRef, useState } from "react";
 import { ChevronRightIcon } from "lucide-react";
 import { ToolContentResponse } from "@/components/ai-elements/message";
@@ -48,11 +50,12 @@ export interface PracticeDockProps {
 }
 
 export function PracticeDock({ problemCallId, input, expanded, outgoingHeight, onExpand, onSubmit, compactionRunning = false }: PracticeDockProps) {
-	const [thinking, setThinking] = useState("");
+	const [thinking, setThinking] = useSessionState(`problem/${problemCallId}/thinking`, "");
 	// Ref MIRRORS the field ("nothing gets lost", the question-dock
 	// discipline): a submit resuming after `await finishDictation()` reads
 	// the tail, never a stale closure.
-	const thinkingRef = useRef("");
+	const thinkingRef = useRef(thinking);
+	thinkingRef.current = thinking;
 
 
 	const submit = () => {

@@ -10,22 +10,24 @@ import UpdateBanner from "@/components/update-banner";
 import { ClerkProvider } from "@clerk/nextjs";
 import { CLERK_APPEARANCE, CLERK_URLS } from "@/components/clerk-appearance";
 import { AccountRow } from "@/components/account-row";
-import { hostedMode } from "@/src/server";
+import { SessionAccountProvider } from "@/components/session-state";
+import { hostedMode, signedInUserId } from "@/src/server";
 
 export const metadata: Metadata = {
 	title: "Brunovský's study",
 	description: "A teacher agent with a memory — sessions, quizzes, and a knowledge graph of what you know.",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
 	// Hosted mode: signed-out visitors never get here (proxy.ts redirects
 	// them to the (auth) group, which has its own root layout so crossing
 	// between the two is a full page load, never a soft swap of shells).
 	const hosted = hostedMode();
+	const account = hosted ? await signedInUserId() : "local";
 	const app = (
 		/* The notification channel rides OUTSIDE everything: sidebar, dock,
 		   and pages all subscribe as the polls retire (push S3, 2026-10-02). */
-		<ServerEventsProvider>
+		<SessionAccountProvider account={account}><ServerEventsProvider>
 			<AppearanceProvider>
 				<SidebarProvider>
 					<ActivityProvider>
@@ -33,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 					</ActivityProvider>
 				</SidebarProvider>
 			</AppearanceProvider>
-		</ServerEventsProvider>
+		</ServerEventsProvider></SessionAccountProvider>
 	);
 	return (
 		<html lang="en" className={fontClasses}>

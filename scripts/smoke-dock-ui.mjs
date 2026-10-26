@@ -9,6 +9,7 @@ import os from "node:os";
 import path from "node:path";
 import puppeteer from "puppeteer-core";
 import { checkStreamingUi } from "./check-streaming-ui.mjs";
+import { checkSessionStateUi } from "./check-session-state-ui.mjs";
 import { checkTurnNavigationUi } from "./check-turn-navigation-ui.mjs";
 
 const data = await mkdtemp(path.join(os.tmpdir(), "learning-dock-ui-"));
@@ -18,6 +19,7 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const pythonSnippet = "predictions = X @ w\nerrors = predictions - y\nmse = np.mean(errors ** 2)";
 let server;
 let browser;
+let context;
 let page;
 try {
 	const chat = JSON.parse(await readFile(new URL("../tests/fixtures/golden-data/chats/chat_mv27rrra_feff23b6.json", import.meta.url), "utf8"));
@@ -66,7 +68,8 @@ try {
 	browser = process.env.LH_BROWSER_URL
 		? await puppeteer.connect({ browserURL: process.env.LH_BROWSER_URL, defaultViewport: null })
 		: await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true });
-	page = await browser.newPage();
+	context = await browser.createBrowserContext();
+	page = await context.newPage();
 	page.setDefaultTimeout(5000);
 	page.setDefaultNavigationTimeout(30000);
 	const errors = [];
@@ -307,8 +310,10 @@ try {
 	await page.setViewport({ width: 2048, height: 1229 });
 	const motionClient = await page.createCDPSession();
 	for (const rate of [1, 4]) {
+		const reset = await page.evaluateOnNewDocument((id) => localStorage.removeItem(`lh:session-ui:v1:local:${id}`), recordingChat.id);
 		await motionClient.send("Emulation.setCPUThrottlingRate", { rate });
 		await page.goto(`${base}/chat/${recordingChat.id}`, { waitUntil: "networkidle2" });
+		await page.removeScriptToEvaluateOnNewDocument(reset.identifier);
 		await page.click('[data-testid="teach-check-reveal"]');
 		await wait(450);
 		await page.mouse.move(1100, 180);
@@ -350,12 +355,16 @@ try {
 		console.log(`PASS recording regression at ${rate}x CPU slowdown: no repeated toggles or blank quiz shell`);
 	}
 	await motionClient.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+	const resetNavigation = await page.evaluateOnNewDocument((id) => localStorage.removeItem(`lh:session-ui:v1:local:${id}`), recordingChat.id);
 	await checkTurnNavigationUi(page, base, recordingChat.id, completed.id);
+	await page.removeScriptToEvaluateOnNewDocument(resetNavigation.identifier);
 	await checkStreamingUi(page, base, completed);
+	await checkSessionStateUi(page, base, completed.id, codeChat.id, recordingChat.id);
 	assert.deepEqual(errors, [], "no browser exceptions");
 	console.log("PASS reduced motion; no browser exceptions");
 } finally {
 	await page?.close();
+	await context?.close();
 	if (process.env.LH_BROWSER_URL) await browser?.disconnect();
 	else await browser?.close();
 	if (server && server.exitCode === null) {

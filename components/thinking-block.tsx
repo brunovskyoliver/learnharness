@@ -1,5 +1,7 @@
 "use client";
 
+import { useSessionState } from "@/components/session-state";
+
 import { useEffect, useRef, useState } from "react";
 import { ChevronDownIcon } from "lucide-react";
 import { blurAfterPointerClick } from "@/components/focus-hygiene";
@@ -61,7 +63,6 @@ export function setAllUserThinkingOpen(open: boolean) {
 
 function subscribeUserThinking(fn: (open: boolean) => void): () => void {
 	userThinkingListeners.add(fn);
-	if (allUserThinkingOpen !== null) fn(allUserThinkingOpen); // late mounts honor the last set
 	return () => userThinkingListeners.delete(fn);
 }
 
@@ -83,7 +84,7 @@ export function ThinkingBlock({
 	/** On the card's own background: no band (the accent read too light). */
 	inCard?: boolean;
 }) {
-	const [open, setOpen] = useState(() => resolveUserThinkingOpen(defaultOpen));
+	const [open, setOpen] = useSessionState(`thinking/${testId ?? label}`, resolveUserThinkingOpen(defaultOpen));
 	// ⌘T: an explicit global set overrides every row (once set, rows re-sync).
 	const syncedRef = useRef(false);
 	useEffect(

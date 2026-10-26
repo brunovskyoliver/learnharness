@@ -1,5 +1,7 @@
 "use client";
 
+import { SessionDetails } from "@/components/session-state";
+
 import { ChevronRight } from "lucide-react";
 import { BrailleSpinner } from "@/components/braille-spinner";
 import { Shimmer } from "@/components/ai-elements/shimmer";
@@ -41,7 +43,7 @@ export function LiveToolCard({ part }: ArtifactPartProps) {
 	const hasInput = p.input != null && Object.keys(inp).length > 0;
 
 	return (
-		<details
+		<SessionDetails stateKey={`tool/${p.toolCallId}`}
 			data-testid="live-tool-card"
 			data-tool={tool}
 			className="group my-1 w-full max-w-2xl select-none"
@@ -60,6 +62,6 @@ export function LiveToolCard({ part }: ArtifactPartProps) {
 					{hasInput ? JSON.stringify(p.input, null, 2) : "…"}
 				</pre>
 			</div>
-		</details>
+		</SessionDetails>
 	);
 }

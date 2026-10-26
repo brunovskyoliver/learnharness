@@ -1,5 +1,7 @@
 "use client";
 
+import { readSessionMetadata } from "@/components/session-metadata";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ChatSettings, ModelCatalogEntry, ModelCatalogResponse, ModelsSettings, UserSettings } from "@/src/core";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
@@ -96,18 +98,19 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 	// truth) and the models section (the display fallback for a legacy
 	// unstamped session — exactly what the engine resolves); draft mode
 	// reads the models section alone.
-	const readRecord = useCallback(() => {
+	const recordGeneration = useRef(0);
+	const readRecord = useCallback((revalidate = false) => {
+		const generation = ++recordGeneration.current;
 		if (chatId) {
-			fetch(`/api/chats/${chatId}`)
-				.then((r) => r.json() as Promise<{ settings?: ChatSettings }>)
-				.then((body) => setSession(body.settings))
+			readSessionMetadata(chatId, revalidate)
+				.then((body) => { if (generation === recordGeneration.current) setSession(body.settings); })
 				.catch(() => {
 					/* same read-only posture as a models-section failure */
 				});
 		}
 		fetch("/api/settings")
 			.then((r) => r.json() as Promise<{ settings: { models?: ModelsSettings } | null }>)
-			.then((body) => setModels(body.settings?.models ?? undefined))
+			.then((body) => { if (generation === recordGeneration.current) setModels(body.settings?.models ?? undefined); })
 			.catch(() => {
 				/* the record fetch failing leaves the control read-only
 				   ("—" triggers, closed menus) — same posture as a
@@ -120,7 +123,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 	}, [readRecord]);
 
 	useSettingsSaved((section) => {
-		if (section === "models") readRecord();
+		if (section === "models") readRecord(true);
 	});
 
 	// Dual-bound truth: chat mode displays the session's own record,

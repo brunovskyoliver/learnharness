@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { Chat } from "@/components/chat";
 import { slotsConfigured } from "@/src/core";
-import { compactionInFlight, getChat, isTurnRunning, readSettingsRecord, turnFailure, withTenantPage } from "@/src/server";
+import { compactionInFlight, getChat, isTurnRunning, sessionCost, readSettingsRecord, turnFailure, withTenantPage } from "@/src/server";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +29,8 @@ async function ChatPage({
 				// derived app-side (core/view.ts projectView; GET serves the same
 				// native messages).
 				initialMessages={chat.messages}
+			initialTurns={chat.turns ?? []}
+			initialPricing={sessionCost(chat)}
 			initialError={turnFailure(chat.id)}
 			initialConfigured={slotsConfigured(record?.models)}
 			initialPrompt={prompt}

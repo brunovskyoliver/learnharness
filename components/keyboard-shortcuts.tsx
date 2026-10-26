@@ -34,6 +34,7 @@ import {
 	kbdEventForAction,
 	KEYBOARD_ACTIONS,
 } from "@/src/core";
+import { useSidebar } from "@/components/sidebar";
 import { useSettingsDialog } from "@/components/settings/settings-dialog.tsx";
 
 // Re-exported for the contract pin (tests/keyboard-toggle-sidebar.test.ts):
@@ -45,6 +46,8 @@ export function KeyboardShortcuts() {
 	const router = useRouter();
 	const [cheatOpen, setCheatOpen] = useState(false);
 	const { open: openSettings } = useSettingsDialog();
+	const sidebar = useSidebar();
+	const openSettingsFromKeyboard = () => { if (sidebar.overlay) sidebar.close(); openSettings(); };
 
 	// Router + cheat + settings state inside a ref so the keydown listener
 	// (attached once) never goes stale.
@@ -52,11 +55,14 @@ export function KeyboardShortcuts() {
 		router: ReturnType<typeof useRouter>;
 		setCheatOpen: (v: boolean) => void;
 		openSettings: () => void;
-	}>({ router, setCheatOpen, openSettings });
-	handlersRef.current = { router, setCheatOpen, openSettings };
+	}>({ router, setCheatOpen, openSettings: openSettingsFromKeyboard });
+	handlersRef.current = { router, setCheatOpen, openSettings: openSettingsFromKeyboard };
 
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
+			if (e.defaultPrevented) return;
+			// The mobile drawer uses the dialog's native focus cycle.
+			if (e.key === "Tab" && (e.target as Element | null)?.closest?.("[data-mobile-navigation]")) return;
 			// ── Tab is dead (owner, 2026-09-17): preventDefault even when
 			// nothing is bound to it — browser tab-focus is abandoned, and
 			// the default action runs after dispatch, so suppressing it here

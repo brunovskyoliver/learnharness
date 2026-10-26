@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createContext, type ComponentProps, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useChatSession } from "@/components/session";
 import { visibleQueuedSteers } from "@/components/session-core";
 import { SetupDialog } from "@/components/setup-dialog";
@@ -44,7 +44,8 @@ import {
 	type ModelSlotName,
 } from "@/src/core";
 import { PlanBlock, PlanPopup, latestTree } from "@/components/plan-block";
-import { MermaidOverlay, SessionMermaidContext } from "@/components/session-overlay";
+import dynamic from "next/dynamic";
+import { SessionMermaidContext } from "@/components/session-overlay-context";
 import { AbortTurnDialog, type AbortMode } from "@/components/abort-turn-dialog";
 import { ArrowRightIcon, DumbbellIcon, PencilIcon, WaypointsIcon } from "lucide-react";
 import type { PlanBlockData } from "@/src/core";
@@ -82,7 +83,12 @@ import { focusSurfaceInput } from "@/components/input-surface";
 import { animateDockScroll, DOCK_EASING, DOCK_MOTION_MS, reducedDockMotion } from "@/components/dock-motion";
 import { createSmoothWheelScroller } from "@/components/smooth-wheel-scroll";
 import { TurnReadingPosition } from "@/components/turn-reading-position";
+import { readSessionMetadata } from "@/components/session-metadata";
+import { SessionStateProvider, SessionPartState, useSessionState } from "@/components/session-state";
+import { SessionReadingState } from "@/components/session-reading-state";
 import { SessionTurnRail } from "@/components/session-turn-rail";
+
+const MermaidOverlay = dynamic(() => import("@/components/session-overlay").then((module) => module.MermaidOverlay), { ssr: false });
 
 /** One width for everything: transcript, cards, and the bottom blob share this column. */
 /**
@@ -206,10 +212,16 @@ function isSubagentSteer(m: LhViewMessage): boolean {
  * never overlapping the transcript at rest, never covering the scrollbar —
  * and DockOverlay animates its height on variant changes.
  */
-export function Chat({
+export function Chat(props: ComponentProps<typeof ChatView>) {
+	return <SessionStateProvider key={props.chatId} chatId={props.chatId}><ChatView {...props} /></SessionStateProvider>;
+}
+
+function ChatView({
 	chatId,
 	title,
 	initialMessages,
+	initialTurns = [],
+	initialPricing,
 	initialError,
 	initialPrompt,
 	initiallyInFlight,
@@ -220,6 +232,8 @@ export function Chat({
 	chatId: string;
 	title: string;
 	initialMessages: LhMessage[];
+	initialTurns?: TurnUsage[];
+	initialPricing?: SessionPricing;
 	/** Memory-only settlement notice supplied on reopening. */
 	initialError?: string;
 	/** The session kind (practice sessions, owner 2026-10-04): practice
@@ -244,6 +258,7 @@ export function Chat({
 	// settled terminal's callback — a stable ref assigned below, once
 	// syncFromServer exists (refs, not closures: no stale capture).
 	const reattachSettledRef = useRef<() => void>(() => {});
+	const clearReadingThinkingRef = useRef<() => void>(() => {});
 
 	// THE SESSION HOOK (Wave D, owner-approved 2026-09-26): the app-owned
 	// replacement for useChat + the AI-SDK transport. The record is native
@@ -417,7 +432,7 @@ export function Chat({
 			if (p) {
 				const question = (p.input as { question?: string } | null)?.question ?? "";
 				const reading = readingThinkingRef.current.trim() || undefined;
-				clearReadingThinking();
+				clearReadingThinkingRef.current();
 				const answer = dismissedAnswer(toolQuestionKind(p.tool), question);
 				void dismissQuestion(
 					p.toolCallId,
@@ -524,8 +539,9 @@ export function Chat({
 	 * thinking while reading the teaching prose, mounted while a check waits
 	 * behind its reveal, riding the check answer (or its dismissal) as the
 	 * separate `readingThinking` field. Reset per pending question. */
-	const [readingThinking, setReadingThinking] = useState("");
-	const readingThinkingRef = useRef("");
+	const [readingThinking, setReadingThinking] = useSessionState(`question/${pending?.toolCallId ?? "none"}/reading`, "");
+	const readingThinkingRef = useRef(readingThinking);
+	readingThinkingRef.current = readingThinking;
 
 	// ⌘T (toggle-user-thinking, owner round 2026-10-07): set EVERY user
 	// thinking row to one state — transcript rows default open, so the
@@ -538,31 +554,24 @@ export function Chat({
 	const applyReadingThinking = useCallback((v: string) => {
 		readingThinkingRef.current = v;
 		setReadingThinking(v);
-	}, []);
-	const clearReadingThinking = useCallback(() => {
+	}, [setReadingThinking]);
+	clearReadingThinkingRef.current = () => {
 		readingThinkingRef.current = "";
 		setReadingThinking("");
-	}, []);
-	const pendingQuestionId = pending?.toolCallId ?? null;
-	useEffect(() => {
-		// Different calls never share a draft; a failed submission of THIS
-		// call restores the reading channel alongside the form's snapshot.
-		const reading = pendingQuestionId ? questionDraft(pendingQuestionId)?.readingThinking ?? "" : "";
-		readingThinkingRef.current = reading;
-		setReadingThinking(reading);
-	}, [pendingQuestionId, questionDraft]);
+	};
 
 	// The phase at every message (one linear fold): the transcript draws a
 	// color-coded dotted divider at each boundary; the header chip reads the
 	// session's current phase.
 	const phases = useMemo(() => phaseTimeline(messages), [messages]);
 
-	const [text, setText] = useState("");
+	const [text, setText] = useSessionState("composer", "");
 	/* The composer's value MIRROR ("nothing gets lost" round, owner
 	 * 2026-10-01): a dictation flush lands via setState, which a closure
 	 * waiting through `await finish()` cannot observe in time. Kept
 	 * current at every write site via applyText. */
-	const textRef = useRef("");
+	const textRef = useRef(text);
+	textRef.current = text;
 	const applyText = useCallback((v: string) => {
 		textRef.current = v;
 		setText(v);
@@ -834,8 +843,8 @@ export function Chat({
 	// refreshed when the local stream settles (each turn appends to the log
 	// server-side), and kept fresh by syncFromServer whenever it already
 	// fetches the record. No turns yet → the bar renders "—" everywhere.
-	const [turns, setTurns] = useState<TurnUsage[]>([]);
-	const [pricing, setPricing] = useState<SessionPricing | undefined>();
+	const [turns, setTurns] = useState<TurnUsage[]>(initialTurns);
+	const [pricing, setPricing] = useState<SessionPricing | undefined>(initialPricing);
 	// The per-chat model control state (model-picker writes via PUT; the
 	// record is the source of truth, lifted here so the stats bar re-renders).
 	// The dock's reserved tail height (DockOverlay reports it; the spacer at
@@ -848,18 +857,13 @@ export function Chat({
 	const [readingReserve, setReadingReserve] = useState(0);
 	const syncTurns = useCallback(async () => {
 		try {
-			const res = await fetch(`/api/chats/${chatId}`);
-			if (!res.ok) return;
-			const record = (await res.json()) as { turns?: TurnUsage[]; pricing?: SessionPricing };
+			const record = await readSessionMetadata(chatId, true);
 			if (Array.isArray(record.turns)) setTurns(record.turns);
 			setPricing(record.pricing);
 		} catch {
 			// transient blip: stats stay on the last known figures
 		}
 	}, [chatId]);
-	useEffect(() => {
-		void syncTurns();
-	}, [syncTurns]);
 	// After the learner's own turn ends the log has a fresh entry — and the
 	// Post-turn settle (the SLIMMED watch — push-architecture S3,
 	// 2026-10-02): our own stream just ended. Two instant LOCAL actions
@@ -1169,7 +1173,7 @@ export function Chat({
 		    chip) spans from the left sidebar's edge to the panel's edge. The
 		    dock overlays the column bottom (outside the scroller); a spacer in
 		    the transcript reserves its height. */}
-		<div className="flex h-dvh">
+		<div data-chat-id={chatId} className="flex h-dvh">
 			<div className="flex min-w-0 flex-1 flex-col">
 				{/* The top bar is its own block (owner, top-fade round 4): in flow
 				    above the scroller on the plain page background — no gradient. Its
@@ -1291,7 +1295,7 @@ export function Chat({
 
 				<SessionFind scopeRef={sessionFindScopeRef} scrollContextRef={scrollContextRef} />
 				<div ref={sessionFindScopeRef} className="relative flex min-h-0 flex-1">
-				<Conversation className="@container/session h-full min-w-0 flex-1" initial="instant" contextRef={scrollContextRef}>
+				<Conversation className="@container/session h-full min-w-0 flex-1" initial={false} contextRef={scrollContextRef}>
 					<SessionMessageNavigation />
 					<TurnReadingPosition busy={busy} messages={messages} onReserve={setReadingReserve} />
 					<SessionTurnRail messages={messages} nativeMessages={nativeMessages} turns={turns} onReserve={setReadingReserve} />
@@ -1311,7 +1315,7 @@ export function Chat({
 									// and centered like the teacher's artifacts (contracts.ts "THE ASYNC
 									// PROTOCOL" §4). Key fallback: legacy transcripts (pre id-hygiene)
 									// can still hold empty ids — the index keeps keys unique for them.
-									<SubagentSteerCard key={m.id || `m-${mi}`} message={m} />
+									<SessionPartState key={m.id || `m-${mi}`} id={m.id || `m-${mi}`}><SubagentSteerCard message={m} /></SessionPartState>
 								) : m.role === "user" && m.parts.some((p) => p.type === "data-probe-handoff") ? (
 								// The probe→teach handoff wake (custom-message scheme): the
 								// PLANNING DIVIDER IS the seam (owner ruling 2026-09-26 — it
@@ -1330,7 +1334,7 @@ export function Chat({
 								// precedent). The user branch below renders text only;
 								// without this hoist a data-only message read as an
 								// EMPTY bubble (owner report, 2026-10-04).
-								<Fragment key={m.id || `m-${mi}`}>
+								<SessionPartState key={m.id || `m-${mi}`} id={m.id || `m-${mi}`}>
 									{m.parts.map((part, pi) => {
 										switch (part.type) {
 											case "data-graph-context":
@@ -1358,9 +1362,9 @@ export function Chat({
 												return null;
 										}
 									})}
-								</Fragment>
+								</SessionPartState>
 							) : (
-									<Fragment key={m.id || `m-${mi}`}>
+									<SessionPartState key={m.id || `m-${mi}`} id={m.id || `m-${mi}`}>
 									{/* THE INFERRED TEACH SEAM (owner ruling 2026-09-26, the verdict
 									death): teaching begins where the FIRST nodeId-tagged quiz is
 									posed — the fold (phaseTimeline, the same derivation the phase chip
@@ -1448,7 +1452,8 @@ export function Chat({
 														</SystemLine>
 													);
 												}
-												switch (part.type) {
+												const renderPart = () => {
+													switch (part.type) {
 													case "text": {
 														const sourceId = textPartMessageId(part.id);
 														const anchor = sourceId && sourceTextParts.get(sourceId) === part.id ? messageAnchorId(sourceId) : undefined;
@@ -1511,12 +1516,15 @@ export function Chat({
 														}
 														return null;
 													}
-												}
+													}
+												};
+												const partKey = part.id ?? `${m.id}:${part.toolCallId ?? "part"}:${pi}`;
+												return <SessionPartState key={partKey} id={partKey}>{renderPart()}</SessionPartState>;
 											})}
 										</MessageContent>
 									</Message>
 									)}
-								</Fragment>
+								</SessionPartState>
 							))}
 
 							{/* THE placeholder, ACTION-gated (owner, optimistic round
@@ -1562,6 +1570,7 @@ export function Chat({
 						    effect reports before paint). */}
 						<div aria-hidden data-testid="dock-spacer" style={{ height: Math.max(dockReserve, readingReserve) }} />
 				</ConversationContent>
+				<SessionReadingState />
 				{/* The dock: an overlay sibling of the scroller (the
 				    use-stick-to-bottom pattern). The scroll-down button lives
 				    INSIDE the overlay now (owner refinement round, 2026-09-24):
@@ -1870,12 +1879,12 @@ function DockOverlay({
 	atBottomRef.current = isAtBottom;
 	// Teach-phase mount (session reload with a pending check): the dock starts
 	// as the collapsed invitation too — the check must not pop open on reload.
-	const [expanded, setExpanded] = useState(!requiresReveal);
+	const [expanded, setExpanded] = useSessionState(`dock/${pending?.toolCallId ?? practice?.toolCallId ?? "composer"}/expanded`, !requiresReveal);
 	// Reveal state (W5): false until the learner clicks the invitation. While
 	// false, the scroll machine must NOT auto-expand at the bottom — the
 	// learner reads the teaching first and opens the check when ready. Once
 	// revealed, the normal collapse machine rules apply untouched.
-	const [revealed, setRevealed] = useState(false);
+	const [revealed, setRevealed] = useSessionState(`dock/${pending?.toolCallId ?? practice?.toolCallId ?? "composer"}/revealed`, false);
 	const revealPending = requiresReveal && !revealed;
 
 	const pendingId = pending?.toolCallId ?? null;

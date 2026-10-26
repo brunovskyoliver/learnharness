@@ -1,5 +1,7 @@
 "use client";
 
+import { useSessionState } from "@/components/session-state";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowDownIcon, ChevronRightIcon, PlayIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -332,19 +334,27 @@ function QuestionDockForm({
 	// single-select displaces, multi-select coexists — picking the ask
 	// "Other…" row in a multi-select must never clear already-picked
 	// options, and picking an option must never clear a typed custom answer.
-	const [sel, setSel] = useState<DockSelection>(() => initialDraft?.selection ?? emptyDockSelection());
+	const initialSelection = initialDraft?.selection ?? emptyDockSelection();
+	const [selection, setSelection] = useSessionState(`question/${toolCallId}/selection`, { ...initialSelection, selected: [...initialSelection.selected] });
+	const sel: DockSelection = { ...selection, selected: new Set(Array.isArray(selection.selected) ? selection.selected : []) };
+	const setSel = (next: DockSelection | ((previous: DockSelection) => DockSelection)) => setSelection((previous) => {
+		const value = typeof next === "function" ? next({ ...previous, selected: new Set(previous.selected) }) : next;
+		return { ...value, selected: [...value.selected] };
+	});
 	// The learner's transfer channel — thinking, never "a note".
-	const [thinking, setThinking] = useState(initialDraft?.thinking ?? "");
-	const [other, setOther] = useState(initialDraft?.other ?? "");
-	const [text, setText] = useState(initialDraft?.text ?? "");
+	const [thinking, setThinking] = useSessionState(`question/${toolCallId}/thinking`, initialDraft?.thinking ?? "");
+	const [other, setOther] = useSessionState(`question/${toolCallId}/other`, initialDraft?.other ?? "");
+	const [text, setText] = useSessionState(`question/${toolCallId}/text`, initialDraft?.text ?? "");
 	// Refs mirror the two fields; submit reads these.
 	const thinkingTextRef = useRef(initialDraft?.thinking ?? "");
-	const answerTextRef = useRef(initialDraft?.text ?? "");
+	const answerTextRef = useRef(text);
+	thinkingTextRef.current = thinking;
+	answerTextRef.current = text;
 	// Confidence (owner, 2026-10-01): an index into CONFIDENCE_STOPS,
 	// resting at 50 — a real coin flip by definition, untouched or
 	// deliberate (the same number, the same meaning). The dock unmounts
 	// between questions, so each question starts fresh at 50.
-	const [confIdx, setConfIdx] = useState<number>(initialDraft?.confidenceIndex ?? DEFAULT_CONFIDENCE_INDEX);
+	const [confIdx, setConfIdx] = useSessionState(`question/${toolCallId}/confidence`, initialDraft?.confidenceIndex ?? DEFAULT_CONFIDENCE_INDEX);
 	const selectMode: SelectMode = qd.mode === "multi-select" ? "multi-select" : "single-select";
 
 	const toggle = (idx: number) => setSel(toggleOption(selectMode, sel, idx));

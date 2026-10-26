@@ -1,5 +1,7 @@
 "use client";
 
+import { SessionDetails } from "@/components/session-state";
+
 import { ChevronRight } from "lucide-react";
 import type { ArtifactPartProps } from "@/src/core";
 
@@ -68,7 +70,7 @@ export function ToolCallCard({ part }: ArtifactPartProps) {
 	const out = outputText(p.output);
 	const failed = p.state === "output-error" || typeof p.errorText === "string";
 	return (
-		<details
+		<SessionDetails stateKey={`tool/${p.toolCallId}`}
 			data-testid="tool-call-card"
 			data-tool={tool}
 			className="group my-1 w-full max-w-2xl select-none"
@@ -115,6 +117,6 @@ export function ToolCallCard({ part }: ArtifactPartProps) {
 					)
 				)}
 			</div>
-		</details>
+		</SessionDetails>
 	);
 }

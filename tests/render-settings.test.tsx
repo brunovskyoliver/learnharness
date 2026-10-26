@@ -17,7 +17,8 @@ import { AppearanceSection, GraphSection } from "../components/settings/appearan
 import { KeysSection } from "../components/settings/keys-section.tsx";
 import { KeyboardSection } from "../components/settings/keyboard-section.tsx";
 import type { GraphSettings } from "../src/core/index.ts";
-import { SettingsDialogBody, SettingsDialogProvider } from "../components/settings/settings-dialog.tsx";
+import { SettingsDialogBody } from "../components/settings/settings-dialog-content.tsx";
+import { SettingsDialogProvider } from "../components/settings/settings-dialog.tsx";
 import { KEYBOARD_ACTIONS } from "../src/core/index.ts";
 
 /** The full opening tag of the element carrying a testid — attribute
