@@ -89,6 +89,9 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 	const [open, setOpen] = useState<"model" | "thinking" | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
+	const modelTriggerRef = useRef<HTMLButtonElement>(null);
+	const thinkingTriggerRef = useRef<HTMLButtonElement>(null);
+	const returnFocusRef = useRef<HTMLButtonElement | null>(null);
 
 	// The record read — BOTH mount and the cross-surface signal land
 	// here (fix wave: another surface's models write re-reads into the
@@ -174,6 +177,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 				// not ALSO stop dictation / abort the turn under this menu.
 				e.stopPropagation();
 				setOpen(null);
+				returnFocusRef.current?.focus();
 			}
 		};
 		document.addEventListener("pointerdown", onPointerDown);
@@ -209,6 +213,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 				)?.settings?.models;
 				setModels(stored ?? next);
 				setOpen(null);
+				returnFocusRef.current?.focus();
 				notifySettingsSaved("models");
 			} catch {
 				setError("Could not reach the server — try again.");
@@ -239,6 +244,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 				const stored = (await res.json().catch(() => null)) as { settings?: ChatSettings } | null;
 				setSession(stored?.settings ?? next);
 				setOpen(null);
+				returnFocusRef.current?.focus();
 			} catch {
 				setError("Could not reach the server — try again.");
 			}
@@ -268,6 +274,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 	// tab-focus. Both work from any focus, including mid-typing.
 	useEffect(() => {
 		const onOpenPicker = () => {
+			returnFocusRef.current = modelTriggerRef.current;
 			setOpen("model");
 			setError(null);
 			refresh(); // mid-session key changes widen the menu (cache fix)
@@ -312,6 +319,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 	// claiming a ready model (the stored pin survives in settings).
 	const noKeys = catalog !== undefined && catalog.models.length === 0;
 	const openMenu = (kind: "model" | "thinking") => {
+		returnFocusRef.current = kind === "model" ? modelTriggerRef.current : thinkingTriggerRef.current;
 		setOpen((o) => (o === kind ? null : kind));
 		setError(null);
 		if (kind === "model") refresh();
@@ -328,15 +336,17 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 				side="bottom"
 			>
 				<button
+				ref={modelTriggerRef}
 				type="button"
 				data-testid="stats-model"
 				onClick={() => openMenu("model")}
 				aria-expanded={open === "model"}
 				aria-label="Model selector"
+				aria-haspopup="listbox"
 				disabled={noKeys}
 				className="prompt-model-trigger"
 			>
-				<span className="truncate">{effectiveId && !noKeys ? prettyModel(effectiveId) : "—"}</span>
+				<span className="truncate">{effectiveId && !noKeys ? entry?.name ?? prettyModel(effectiveId) : "—"}</span>
 				<ChevronDownIcon aria-hidden="true" className="size-3.5 shrink-0" />
 			</button>
 			</Hint>
@@ -349,6 +359,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 				side="bottom"
 			>
 				<button
+				ref={thinkingTriggerRef}
 				type="button"
 				data-testid="stats-thinking"
 				onClick={() => {
@@ -359,6 +370,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 				}}
 				aria-expanded={open === "thinking"}
 				aria-label="Thinking level"
+				aria-haspopup="menu"
 				disabled={noKeys}
 				className="prompt-model-trigger"
 			>
@@ -377,11 +389,11 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 			    one. */}
 			{open === "model" && (
 				<MenuShell
-					anchorRef={containerRef}
+					anchorRef={modelTriggerRef}
 					testid="model-menu"
 					preferredSide="up"
 					align="left"
-					menuClass="flex w-[22rem] flex-col rounded-xl border bg-card p-2 text-xs shadow-xl"
+					menuClass="model-picker-panel w-96"
 				>
 					{error && <div className="mb-1.5 text-destructive">{error}</div>}
 					<ModelMenuList
@@ -402,18 +414,17 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 
 			{open === "thinking" && (
 				<MenuShell
-					anchorRef={containerRef}
+					anchorRef={thinkingTriggerRef}
 					testid="thinking-menu"
 					preferredSide="up"
 					align="left"
-					menuClass="flex w-44 flex-col gap-0.5 rounded-xl border bg-card p-2 text-xs shadow-xl"
+					menuClass="reasoning-picker-panel w-52"
 				>
 					<ThinkingMenuList
 						levels={catalog ? levels : []}
 						effectiveLevel={effectiveLevel}
 						onPick={(level) => apply(effectiveProvider ?? "", effectiveId ?? "", level as ThinkingLevel)}
 						empty={catalog ? (effectiveId ? `${prettyModel(effectiveId)} has no thinking levels.` : "Pick a model first.") : "Loading…"}
-						footer="Levels this model actually supports"
 					/>
 					{error && <div className="mt-1 text-destructive">{error}</div>}
 				</MenuShell>
