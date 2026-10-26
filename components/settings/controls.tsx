@@ -27,9 +27,11 @@ export function SettingsSection({
 }) {
 	return (
 		<section data-testid={testid} className="px-6 py-5">
-			<h2 className="text-sm uppercase tracking-widest text-foreground">{title}</h2>
-			{hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
-			<div className="mt-4 flex flex-col gap-3">{children}</div>
+			{/* The nav already names the open section (polish pass
+			    2026-10-26): the heading stays for screen readers only. */}
+			<h2 className="sr-only">{title}</h2>
+			{hint && <p className="mb-4 text-xs text-muted-foreground">{hint}</p>}
+			<div className="flex flex-col gap-3">{children}</div>
 		</section>
 	);
 }

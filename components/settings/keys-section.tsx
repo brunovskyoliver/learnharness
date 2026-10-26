@@ -210,7 +210,10 @@ function KeyTableRow({
 	}
 
 	return (
-		<div data-testid={testid} className={envOwned ? "opacity-40" : undefined}>
+		<div data-testid={testid}>
+			{/* Env-owned rows are read-only but WORKING keys (polish pass
+			    2026-10-26): full opacity; the status line's "· env" says why
+			    the row doesn't open. */}
 			<button
 				type="button"
 				aria-expanded={expanded}
@@ -291,7 +294,7 @@ function AddProviderRow({
 				className="flex w-full items-center justify-between gap-3 rounded-sm px-1 py-1.5 text-left font-ui text-xs text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
 			>
 				<span>+ Add provider key</span>
-				{addable.length > 0 && <span className="font-mono text-[11px]">{addable.length}</span>}
+				{addable.length > 0 && <span className="font-mono text-[11px]">{addable.length} available</span>}
 			</button>
 			{open && (
 				<MenuShell

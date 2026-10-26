@@ -58,10 +58,11 @@ export const ConversationEmptyState = ({
     {children ?? (
       <>
         {icon && <div className="text-muted-foreground">{icon}</div>}
-        <div className="space-y-1">
-          <h3 className="font-medium text-sm">{title}</h3>
+        {/* House voice (polish pass 2026-10-26): CMU title + one prose line. */}
+        <div className="space-y-2">
+          <h3 className="font-title text-2xl tracking-tight">{title}</h3>
           {description && (
-            <p className="text-muted-foreground text-sm">{description}</p>
+            <p className="mx-auto max-w-[var(--lh-measure)] font-prose text-lg text-muted-foreground">{description}</p>
           )}
         </div>
       </>
