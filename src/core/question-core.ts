@@ -492,13 +492,13 @@ export interface AnswerRequest {
 	confidence?: number; // quiz only: 0-100 raw probability — 50 is a real coin flip, always sent (owner, 2026-10-01)
 }
 
-/** The confidence slider's snap stops (owner, 2026-10-01): raw probability
- *  that the selected answer is correct, uneven on purpose — resolution
- *  concentrates at the top where the calibration signal lives (90 vs 100
- *  separates knows from mastered). 50 is a genuine coin flip and the
- *  resting default — untouched and deliberate 50 are the same number. */
-export const CONFIDENCE_STOPS: readonly number[] = [0, 30, 50, 70, 90, 100];
-export const DEFAULT_CONFIDENCE_INDEX = 2;
+/** The confidence segments (ui-v2, 2026-10-26): four named steps, each
+ *  saving a raw probability that the selected answer is correct. 50 is a
+ *  genuine coin flip and the resting default. Answers saved under the older
+ *  six-stop slider keep their exact percentages. */
+export const CONFIDENCE_STOPS: readonly number[] = [25, 50, 75, 95];
+export const CONFIDENCE_LABELS: readonly string[] = ["Guessing", "Unsure", "Fairly sure", "Certain"];
+export const DEFAULT_CONFIDENCE_INDEX = 1;
 
 // ─── dock selection (the client state machine, pure for tests) ─────────────
 

@@ -438,7 +438,7 @@ function quizData(overrides?: Partial<QuestionData>): QuestionData {
 
 describe("confidence stops", () => {
 	it("the owner-decided grid (2026-10-01): resolution concentrates at the top", () => {
-		assert.deepEqual(CONFIDENCE_STOPS, [0, 30, 50, 70, 90, 100]);
+		assert.deepEqual(CONFIDENCE_STOPS, [25, 50, 75, 95]);
 		assert.equal(CONFIDENCE_STOPS[DEFAULT_CONFIDENCE_INDEX], 50, "rests at a real coin flip");
 	});
 });

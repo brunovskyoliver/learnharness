@@ -84,14 +84,14 @@ describe("question submission draft restoration", () => {
 		thinking: "preserved reasoning",
 		other: "preserved custom answer",
 		text: "preserved free-text answer",
-		confidenceIndex: 4,
+		confidenceIndex: 2,
 	};
 
 	it("restores a quiz selection, thinking, and confidence when its form remounts", () => {
 		const html = renderToStaticMarkup(<QuestionDock toolName="quiz" toolCallId="q1" input={quizInput} expanded onExpand={() => {}} onSubmit={() => {}} initialDraft={draft} />);
 		assert.match(html, /role="radio" aria-checked="true" data-kbdrow="0"/);
 		assert.ok(html.includes("preserved reasoning"));
-		assert.ok(html.includes("90%"));
+		assert.match(html, /aria-checked="true"[^>]*>Fairly sure</);
 	});
 
 	it("restores an ask's custom answer and a free-text answer", () => {
@@ -175,7 +175,7 @@ describe("render smoke tests", () => {
 		assert.match(html, /Why this answer\? Whatever comes to mind/, "placeholder invites, not apologizes (owner, placeholder round 2026-10-07)");
 		assert.ok(!html.includes("optional"), "the field is never called optional");
 		assert.match(html, /Submit answer/, "send becomes Submit answer");
-		assert.match(html, /↵ submits · ⇧↵ newline/, "the standard chord is discoverable (owner round 5)");
+		assert.match(html, /Enter to submit, Shift\+Enter for a new line/, "the standard chord is discoverable (owner round 5)");
 		// The v1 desync bug: options are buttons with ARIA roles, not native inputs.
 		assert.ok(!html.includes('type="radio"'), "no native radio inputs");
 		assert.ok(html.includes('role="radio"'), "button-based radio role present");

@@ -10,6 +10,7 @@ import {
 	buildAnswer,
 	repairMathForDisplay,
 	normalizeQuizType,
+	CONFIDENCE_LABELS,
 	CONFIDENCE_STOPS,
 	DEFAULT_CONFIDENCE_INDEX,
 	emptyDockSelection,
@@ -35,7 +36,6 @@ import {
 	type SelectMode,
 	type Phase3,
 } from "@/src/core";
-import { confidenceRailStyle } from "@/components/confidence-rail";
 
 /**
  * The question dock — a pending quiz/ask REPLACES the chat composer: the
@@ -543,7 +543,7 @@ function QuestionDockForm({
 				)}
 
 				{qd.mode !== "text" && (
-					<div className="flex flex-col gap-2 pb-2" role={qd.mode === "multi-select" ? "group" : "radiogroup"}>
+					<div className="flex flex-col gap-1.5 pb-2 [--lh-prose-size:16px]" role={qd.mode === "multi-select" ? "group" : "radiogroup"}>
 						{qd.options.map((opt, i) => {
 							const isSel = sel.selected.has(i);
 							return (
@@ -555,14 +555,14 @@ function QuestionDockForm({
 									data-kbdrow={i}
 									onClick={() => toggle(i)}
 									className={cn(
-										"flex items-start gap-3 rounded-lg border px-3 py-2 text-left text-sm outline-none transition-colors",
+										"flex items-start gap-3 rounded-lg border px-3 py-1.5 text-left text-[16px] leading-6 outline-none transition-colors",
 										isSel ? "border-primary bg-accent" : "hover:bg-accent/50",
 										i === kbdIdx && !isSel && "ring-1 ring-border bg-accent/40",
 									)}
 								>
 									<span
 										className={cn(
-											"mt-0.5 flex size-4 shrink-0 items-center justify-center border",
+											"mt-1 flex size-4 shrink-0 items-center justify-center border",
 											qd.mode === "multi-select" ? "rounded-sm" : "rounded-full",
 											isSel ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40",
 										)}
@@ -603,14 +603,14 @@ function QuestionDockForm({
 								className={cn(
 									// Option-row layout + radio circle (owner); the dashed
 									// outline stays — this is the deliberate non-answer.
-									"flex items-start gap-3 rounded-lg border border-dashed px-3 py-2 text-left text-sm outline-none transition-colors",
+									"flex items-start gap-3 rounded-lg border border-dashed px-3 py-1.5 text-left text-sm leading-6 outline-none transition-colors",
 									sel.dontKnow ? "border-primary text-foreground" : "text-muted-foreground",
 									kbdIdx === optionCount && !sel.dontKnow && "ring-1 ring-border bg-accent/40",
 								)}
 							>
 								<span
 									className={cn(
-										"mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border",
+										"mt-1 flex size-4 shrink-0 items-center justify-center rounded-full border",
 										sel.dontKnow
 											? "border-primary bg-primary text-primary-foreground"
 											: "border-muted-foreground/40",
@@ -630,14 +630,14 @@ function QuestionDockForm({
 								data-kbdrow={optionCount}
 								onClick={selectOther}
 								className={cn(
-									"flex items-start gap-3 rounded-lg border px-3 py-2 text-left text-sm outline-none transition-colors",
+									"flex items-start gap-3 rounded-lg border px-3 py-1.5 text-left text-[16px] leading-6 outline-none transition-colors",
 									sel.otherSelected ? "border-primary bg-accent" : "border-dashed hover:bg-accent/50",
 									kbdIdx === optionCount && !sel.otherSelected && "ring-1 ring-border bg-accent/40",
 								)}
 							>
 								<span
 									className={cn(
-										"mt-0.5 flex size-4 shrink-0 items-center justify-center border",
+										"mt-1 flex size-4 shrink-0 items-center justify-center border",
 										qd.mode === "multi-select" ? "rounded-sm" : "rounded-full",
 										sel.otherSelected
 											? "border-primary bg-primary text-primary-foreground"
@@ -693,92 +693,48 @@ function QuestionDockForm({
 				)}
 			</div>
 
-			{/* Confidence (owner, 2026-10-01; UI rounds same day): a snapped
-				slider below the options and above "Your thinking" — the
-				learner's stated probability that his selected answer is
-				correct. The thumb's POSITION is the raw fraction; the painted
-				RAIL overlays exactly the thumb-center range (inset half a disc
-				per side), so 0 and 100 rest flush against the rail's very
-				ends. Fill + handle wear the stop's ramp color; SOLID stop
-				ticks are background layers behind the fill (empty side only,
-				never over the color; 0/100 need no tick — the flush ends say
-				them). Keyboard: GLOBAL ←/→ (the ↑/↓ pattern; the ring is gone
-				app-wide). Clicking and dragging are native. "I don't know"
-				GRAYS it out — the layout holds, no value is sent, the IDK
-				signal stands alone. */}
+			{/* Confidence (ui-v2): four named segments, each saving a raw
+				probability (CONFIDENCE_STOPS). Global ←/→ steps through them
+				(the dock machine above). "I don't know" greys them out and no
+				value is sent. */}
 			{kind === "quiz" && (
-				<div className="border-t border-border/60 px-4 py-2.5">
-					<div className="flex items-center gap-3">
-						<span
-							className={cn(
-								"shrink-0 text-xs font-medium",
-								sel.dontKnow ? "text-muted-foreground/50" : "text-muted-foreground",
-							)}
-						>
-							Confidence
-						</span>
-						<div
-							className={cn("relative h-4 min-w-0 flex-1", sel.dontKnow && "opacity-40")}
-							data-testid="confidence-track"
-						>
-							{/* The RAIL is painted here, not on the input: this overlay spans
-								exactly the thumb-CENTER range (inset 8px = half the 16px disc,
-								left and right), so at 0 and 100 the disc sits flush against the
-								rail's very ends — no bare stub poking past it (owner round 4).
-								STACKING LAW (owner round 5): the input is absolute too — a
-								positioned overlay paints above an in-flow input no matter the
-								DOM order, which put the rail OVER the disc. Both positioned,
-								input later in DOM → the disc rides on top. The wrapper's height
-								is pinned (h-4) so the rail's top-1/2 and the disc's track share
-								one box — centered by construction, not by hope. */}
-							<div
-								aria-hidden
-								data-testid="confidence-rail"
-								className="pointer-events-none absolute top-1/2 left-2 right-2 h-1.5 -translate-y-1/2 rounded-full border border-border"
-								style={confidenceRailStyle(CONFIDENCE_STOPS[confIdx]!)}
-							/>
-							<input
-								type="range"
-								min={0}
-								max={100}
-								step={1}
-								value={CONFIDENCE_STOPS[confIdx]}
+				<div className="flex items-center gap-3 border-t border-white/[0.06] px-4 py-2.5">
+					<span
+						className={cn(
+							"shrink-0 text-xs font-medium",
+							sel.dontKnow ? "text-muted-foreground/50" : "text-muted-foreground",
+						)}
+					>
+						Confidence
+					</span>
+					<div
+						role="radiogroup"
+						aria-label="Confidence that your selected answer is correct"
+						data-testid="confidence-segments"
+						className={cn(
+							"grid min-w-0 flex-1 grid-cols-4 gap-0.5 rounded-md bg-white/[0.04] p-0.5",
+							sel.dontKnow && "pointer-events-none opacity-40",
+						)}
+					>
+						{CONFIDENCE_LABELS.map((label, i) => (
+							<button
+								key={label}
+								type="button"
+								role="radio"
+								aria-checked={!sel.dontKnow && confIdx === i}
 								disabled={sel.dontKnow}
-								aria-label="Confidence — the probability your selected answer is correct"
-								aria-valuetext={`${CONFIDENCE_STOPS[confIdx]} percent`}
-								title="The probability your selected answer is correct — 50% is a coin flip. Adjust with ←/→."
-								data-testid="confidence-slider"
-								onChange={(e) => {
-									// Snap to the nearest stop; the rendered VALUE is the stop's own
-									// percent, so the thumb always rests at its true fraction (50 =
-									// halfway). Keyboard needs no handler here: the dock machine treats
-									// a focused range as non-typing (see the guard above) and its ←/→
-									// branch preventDefaults, which also cancels the native 1% step.
-									const v = Number(e.target.value);
-									let best = 0;
-									for (let i = 1; i < CONFIDENCE_STOPS.length; i++) {
-										if (Math.abs(CONFIDENCE_STOPS[i]! - v) < Math.abs(CONFIDENCE_STOPS[best]! - v)) best = i;
-									}
-									setConfIdx(best);
-								}}
+								title={`${CONFIDENCE_STOPS[i]}% sure. Adjust with ←/→.`}
+								onClick={() => setConfIdx(i)}
 								className={cn(
-									"absolute inset-0 h-4 w-full cursor-pointer appearance-none bg-transparent text-foreground outline-none",
-									"[&::-webkit-slider-runnable-track]:h-4 [&::-webkit-slider-runnable-track]:bg-transparent",
-									"[&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-current",
-									"[&::-moz-range-track]:h-4 [&::-moz-range-track]:bg-transparent",
-									"[&::-moz-range-thumb]:size-4 [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-current",
+									"h-7 truncate rounded px-2 text-xs transition-colors outline-none",
+									!sel.dontKnow && confIdx === i
+										? "bg-white/[0.12] font-medium text-foreground"
+										: "text-muted-foreground hover:bg-white/[0.06] hover:text-foreground",
 								)}
-							/>
-						</div>
-						<span
-							data-testid="confidence-value"
-							className={cn(
-								"w-9 shrink-0 text-right font-mono text-sm tabular-nums",
-								sel.dontKnow && "text-muted-foreground/50",
-							)}
-						>
-							{sel.dontKnow ? "—" : `${CONFIDENCE_STOPS[confIdx]}%`}
-						</span>
+							>
+								{label}
+							</button>
+						))}
 					</div>
 				</div>
 			)}
@@ -789,7 +745,7 @@ function QuestionDockForm({
 			    is for dumping, soon dictated; the button submits); text mode
 			    keeps "Your answer" with Enter-to-submit. */}
 			<form
-				className="border-t border-border/60 p-1.5"
+				className="border-t border-white/[0.06] px-4 pt-2.5 pb-3"
 				onSubmit={(e) => {
 					e.preventDefault();
 					submit();
@@ -797,9 +753,11 @@ function QuestionDockForm({
 			>
 				<div
 					data-testid={qd.mode === "text" ? "answer-field" : "thinking-field"}
-					className="rounded-[10px] border border-border/70 bg-background/60 transition-colors focus-within:border-primary/50"
+					// Flat field (ui-v2): the label, the text and the action row sit
+					// straight on the card — no box inside the box.
+					className="flex flex-col"
 				>
-					<div className="px-2.5 pt-2 text-xs font-medium text-muted-foreground">
+					<div className="text-xs font-medium text-muted-foreground">
 						{qd.mode === "text" ? "Your answer" : "Your thinking"}
 					</div>
 					{qd.mode === "text" ? (
@@ -819,7 +777,7 @@ function QuestionDockForm({
 							}}
 							placeholder="Type your answer…"
 							rows={1}
-							className="field-sizing-content lh-input max-h-48 min-h-10 w-full resize-none bg-transparent px-2.5 py-2 outline-none placeholder:text-muted-foreground"
+							className="field-sizing-content lh-input max-h-48 min-h-10 w-full resize-none bg-transparent py-1.5 outline-none placeholder:text-muted-foreground/70"
 						/>
 					) : (
 						<textarea
@@ -841,21 +799,22 @@ function QuestionDockForm({
 							placeholder="Why this answer? Whatever comes to mind."
 							rows={1}
 							className={cn(
-								"field-sizing-content lh-input max-h-48 w-full resize-none bg-transparent px-2.5 py-2 outline-none placeholder:text-muted-foreground/70",
+								"field-sizing-content lh-input max-h-48 w-full resize-none bg-transparent py-1.5 outline-none placeholder:text-muted-foreground/70",
 								// Phase-scaled prominence: teaching invites depth,
 								// probing stays quick.
 								phase === "teach" ? "min-h-[4.5rem]" : "min-h-10",
 							)}
 						/>
 					)}
-					<div className="flex items-center justify-between gap-2 p-1">
-						<span aria-hidden className="pl-1.5 text-xs text-muted-foreground">
-								{compactionRunning ? "compacting session…" : "↵ submits · ⇧↵ newline"}
+					<div className="flex items-center justify-between gap-2 pt-1.5">
+						<span aria-hidden className="text-xs text-muted-foreground/70">
+							{compactionRunning ? "Compacting session…" : "Enter to submit, Shift+Enter for a new line"}
 						</span>
 						<Button
 							type="submit"
+							size="sm"
 							disabled={!canSubmit || compactionRunning}
-							className="ml-auto h-9 rounded-[6px] px-3.5 text-sm font-medium"
+							className="ml-auto h-8 rounded-md px-3 text-sm font-medium"
 						>
 							Submit answer
 						</Button>
