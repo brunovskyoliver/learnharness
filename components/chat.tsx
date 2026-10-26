@@ -46,7 +46,7 @@ import { PlanBlock, PlanPopup, latestTree } from "@/components/plan-block";
 import { PlanMarginalia, planExists } from "@/components/plan-window";
 import { MermaidOverlay, SessionMermaidContext } from "@/components/session-overlay";
 import { AbortTurnDialog, type AbortMode } from "@/components/abort-turn-dialog";
-import { ArrowRightIcon, DumbbellIcon, WaypointsIcon } from "lucide-react";
+import { ArrowRightIcon, DumbbellIcon, PencilIcon, WaypointsIcon } from "lucide-react";
 import type { PlanBlockData } from "@/src/core";
 import { QuestionDock } from "@/components/question-dock";
 import { SessionFind } from "@/components/session-find";
@@ -1206,6 +1206,21 @@ export function Chat({
 						if (renaming && e.target !== titleInputRef.current) titleInputRef.current?.blur();
 					}}
 				>
+					{/* Breadcrumb (ui-v2): "Teaching / <title>"; practice sessions
+					    say "Practice". */}
+					{kind === "practice" ? (
+						<span
+							data-testid="phase-chip"
+							data-phase="practice"
+							aria-hidden="true"
+							className="pointer-events-none flex shrink-0 select-none items-center gap-2 text-sm text-muted-foreground"
+						>
+							Practice
+							<span className="text-muted-foreground/50">/</span>
+						</span>
+					) : (
+						<PhaseChip phase={phases.at(-1) ?? "probe"} />
+					)}
 					{renaming ? (
 						<>
 							<input
@@ -1225,7 +1240,7 @@ export function Chat({
 								spellCheck={false}
 								aria-label="Session title"
 								title="Rename this session"
-								className="lh-no-drag min-w-[8ch] max-w-[70%] shrink-0 bg-transparent font-title text-2xl tracking-tight caret-current outline-none [field-sizing:content]"
+								className="lh-no-drag min-w-[8ch] max-w-[70%] shrink-0 bg-transparent text-sm font-medium caret-current outline-none [field-sizing:content]"
 							/>
 							{/* flex-1 spacer during rename too, so the chips stay at
 							    the right edge; clicks here commit via the header
@@ -1246,9 +1261,10 @@ export function Chat({
 								setTitleDraft(titleText);
 								setRenaming(true);
 							}}
-							className="lh-no-drag -mx-1.5 min-w-4 shrink cursor-text truncate rounded-md px-1.5 text-left font-title text-2xl tracking-tight transition-colors hover:bg-accent"
+							className="lh-no-drag group -mx-1.5 flex min-w-4 shrink cursor-text items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-sm font-medium transition-colors hover:bg-white/[0.06]"
 						>
-							{titleText}
+							<span className="truncate">{titleText}</span>
+							<PencilIcon className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
 							</button>
 						</Hint>
 							{/* flex-1 spacer: keeps the chips at the right edge AND stays a
@@ -1268,10 +1284,10 @@ export function Chat({
 								blurAfterPointerClick(e);
 								setPlanOpen(true);
 							}}
-							className="lh-no-drag flex shrink-0 cursor-pointer items-center gap-1.5 rounded-full border border-border/80 px-2 py-0.5 text-xs font-medium text-muted-foreground transition-colors hover:border-border hover:text-foreground"
+							aria-label="Open the full plan"
+							className="lh-no-drag flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
 						>
-							<WaypointsIcon className="size-3.5 text-primary" aria-hidden />
-							Plan
+							<WaypointsIcon className="size-4" aria-hidden />
 						</button>
 </Hint>
 					)}
@@ -1283,21 +1299,6 @@ export function Chat({
 				    practice never extracts, so an ever-filling ring with no
 				    run behind it would lie. */}
 					{kind !== "practice" && <CoverageRing chatId={chatId} refreshKey={coverageTick} />}
-					{/* Practice sessions: no phase arc — a quiet Practice tag
-					    instead of the phase chip. */}
-					{kind === "practice" ? (
-						<span
-							data-testid="phase-chip"
-							data-phase="practice"
-							aria-hidden="true"
-							className="pointer-events-none flex shrink-0 select-none items-center gap-1 text-xs font-medium text-muted-foreground"
-						>
-							<DumbbellIcon className="size-3" />
-							Practice
-						</span>
-					) : (
-						<PhaseChip phase={phases.at(-1) ?? "probe"} />
-					)}
 				</TopBar>
 
 				<SessionFind scopeRef={sessionFindScopeRef} scrollContextRef={scrollContextRef} />

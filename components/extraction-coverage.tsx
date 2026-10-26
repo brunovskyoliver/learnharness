@@ -309,7 +309,7 @@ export function CoverageRing({ chatId, refreshKey = 0 }: { chatId: string; refre
 					data-testid="coverage-ring"
 					onClick={() => setOpen((o) => !o)}
 					aria-expanded={open}
-					className="relative flex size-5 cursor-pointer items-center justify-center transition-opacity hover:opacity-80"
+					className="relative flex size-7 cursor-pointer items-center justify-center rounded-md p-1.5 transition-colors hover:bg-white/[0.06]"
 				>
 					{/* The donut: track + fill. The whole ring pulses while a run
 					    is in flight (motion = the working-state signal). */}

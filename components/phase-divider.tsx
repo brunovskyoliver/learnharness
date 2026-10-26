@@ -44,9 +44,10 @@ export function PhaseChip({ phase }: { phase: Phase3 }) {
 			data-testid="phase-chip"
 			data-phase={phase}
 			aria-hidden="true"
-			className="pointer-events-none flex shrink-0 select-none items-center text-xs font-medium text-muted-foreground"
+			className="pointer-events-none flex shrink-0 select-none items-center gap-2 text-sm text-muted-foreground"
 		>
 			{CHIP_LABEL[phase]}
+			<span className="text-muted-foreground/50">/</span>
 		</span>
 	);
 }

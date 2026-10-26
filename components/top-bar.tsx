@@ -10,7 +10,7 @@
  * never a bespoke header.
  *
  * Mechanics baked in (the chat-session bar's proven pattern):
- * - h-15 (60px) — matches the sidebar's wordmark band, one border line.
+ * - h-13 (52px) — matches the sidebar's brand band (ui-v2, after T3 Code).
  * - lh-drag — the window-drag band. NATIVE interactive children
  *   (button/input/a/…) carve out AUTOMATICALLY via the globals.css auto
  *   carve-out rule (owner standardization ruling, 2026-09-29 night) —
@@ -22,7 +22,7 @@
  *   Electron traffic-light gutter (lh-closed-toggle).
  * - border-b border-border px-3, gap-3 rhythm.
  *
- * The consumer brings the title (font-title text-2xl tracking-tight — the 25px rung, polish pass 2026-10-26) and
+ * The consumer brings the breadcrumb title (text-sm font-medium, ui-v2) and
  * any right-side controls. THE TITLE LAW (owner round 11, 2026-10-05):
  * the serif title ALWAYS names a session — chrome-less creation surfaces
  * (home, both /chat/new drafts) and the chain table render NO title.
@@ -53,7 +53,7 @@ export function TopBar({
 	return (
 		<header
 			onMouseDown={onMouseDown}
-			className={`${drag ? "lh-drag " : ""}lh-wco-gutter flex h-15 select-none items-center gap-3 border-b border-border px-3`}
+			className={`${drag ? "lh-drag " : ""}lh-wco-gutter flex h-13 shrink-0 select-none items-center gap-2 border-b border-white/[0.06] px-3`}
 		>
 			<SidebarToggle />
 			{children}
