@@ -128,7 +128,7 @@ export function NativeSubscriptionConnection({ providerId }: { providerId: Nativ
 	</div>;
 }
 export function SubscriptionConnections({ setup = false, without }: { setup?: boolean; without?: "chatgpt" }) {
-	return <div className="space-y-3" data-testid="subscription-connections">{without !== "chatgpt" && <ChatGPTConnection setup={setup} />}{NATIVE_SUBSCRIPTIONS.map((p) => <NativeSubscriptionConnection key={p.providerId} providerId={p.providerId} />)}</div>;
+	return <div data-testid="subscription-connections">{without !== "chatgpt" && <ChatGPTConnection setup={setup} />}{NATIVE_SUBSCRIPTIONS.map((p) => <NativeSubscriptionConnection key={p.providerId} providerId={p.providerId} />)}</div>;
 }
 export function NativeSubscriptionBackgroundAccess({ provider }: { provider: string | undefined }) {
 	const ui = useContext(Context), descriptor = NATIVE_SUBSCRIPTIONS.find((p) => p.logicalId === provider);

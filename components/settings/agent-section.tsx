@@ -90,6 +90,14 @@ const SEARCH_ENGINES = ["tavily", "brave"] as const;
  *  changing — the Teacher stream settled this 2026-09-19). */
 export const TOGGLE_TOOLS = ["research", "demo", "visual", "pdf"] as const;
 
+/** Row copy for the tool toggles (ui-v2: every tool row gets a description). */
+const TOOL_COPY: Record<(typeof TOGGLE_TOOLS)[number], { label: string; hint: string }> = {
+	research: { label: "Research", hint: "Checks facts and current data on the web in the background" },
+	demo: { label: "Demos", hint: "Builds interactive demos you can play with in the lesson" },
+	visual: { label: "Figures", hint: "Draws precise figures: plots, geometry, number lines" },
+	pdf: { label: "PDF reading", hint: "Reads PDFs you share and cites the pages it used" },
+};
+
 const THINKING_LEVELS: readonly ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
 
 /** SegmentInfo as GET /api/settings/prompts returns it. */
@@ -792,7 +800,8 @@ export function AgentSection({
 				{TOGGLE_TOOLS.map((id) => (
 					<SettingsRow
 						key={id}
-						label={`Tool · ${id}`}
+						label={TOOL_COPY[id].label}
+						hint={TOOL_COPY[id].hint}
 						testid={`tool-row-${id}`}
 					>
 						<Toggle

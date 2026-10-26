@@ -49,8 +49,8 @@ export function SettingsGroup({
 }) {
 	return (
 		<div data-testid={testid} className="mt-5 border-t border-border/60 pt-4 first:mt-0 first:border-t-0 first:pt-0">
-			<p className="mb-2 text-xs text-muted-foreground">{label}</p>
-			<div className="flex flex-col gap-2">{children}</div>
+			<p className="mb-1 text-xs font-medium text-muted-foreground">{label}</p>
+			<div className="flex flex-col">{children}</div>
 		</div>
 	);
 }
@@ -73,12 +73,14 @@ export function SettingsRow({
 	dimmed?: boolean;
 }) {
 	return (
-		<div data-testid={testid} className={cn("flex items-center justify-between gap-4 py-1", dimmed && "opacity-40")}>
+		// One row pattern (ui-v2): sans label, muted sans description, the
+		// control right-aligned in its own column.
+		<div data-testid={testid} className={cn("flex min-h-10 items-center justify-between gap-6 py-1.5", dimmed && "opacity-40")}>
 			<span className="min-w-0">
-				<span className="block font-prose text-(length:--lh-prose-size)">{label}</span>
-				{hint && <span className="block text-xs text-muted-foreground/70">{hint}</span>}
+				<span className="block text-sm text-foreground">{label}</span>
+				{hint && <span className="mt-0.5 block text-xs text-muted-foreground">{hint}</span>}
 			</span>
-			{children}
+			<div className="flex shrink-0 items-center justify-end gap-2">{children}</div>
 		</div>
 	);
 }
@@ -230,7 +232,7 @@ export function CommitInput({
 					e.currentTarget.blur();
 				}
 			}}
-			className="h-7 w-40 rounded-sm border border-border bg-background px-2 font-ui text-xs text-foreground outline-none placeholder:text-muted-foreground/60"
+			className="h-7 w-48 rounded-sm border border-border bg-background px-2 font-ui text-xs text-foreground outline-none placeholder:text-muted-foreground/60"
 		/>
 	);
 }

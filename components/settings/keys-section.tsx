@@ -219,11 +219,11 @@ function KeyTableRow({
 				aria-expanded={expanded}
 				data-testid={`${testid}-row`}
 				onClick={() => !envOwned && onToggle()}
-				className={`flex w-full items-center justify-between gap-3 rounded-sm px-1 py-1.5 text-left ${
+				className={`-mx-1 flex min-h-10 w-[calc(100%+0.5rem)] items-center justify-between gap-3 rounded-sm px-1 py-1.5 text-left ${
 					envOwned ? "cursor-default" : "cursor-pointer transition-colors hover:bg-accent/50"
 				}`}
 			>
-				<span className="font-ui text-xs text-foreground">{label}</span>
+				<span className="text-sm text-foreground">{label}</span>
 				<span className="flex items-center gap-2">
 					{docsUrl && (
 						<a
@@ -236,7 +236,7 @@ function KeyTableRow({
 							key ↗
 						</a>
 					)}
-					<span data-testid={`${testid}-status`} className="font-mono text-[11px] text-muted-foreground">
+					<span data-testid={`${testid}-status`} className="text-xs text-muted-foreground">
 						{keyStatusLine(status)}
 					</span>
 				</span>
@@ -291,10 +291,10 @@ function AddProviderRow({
 				aria-expanded={open}
 				data-testid="add-provider"
 				onClick={() => setOpen((v) => !v)}
-				className="flex w-full items-center justify-between gap-3 rounded-sm px-1 py-1.5 text-left font-ui text-xs text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+				className="-mx-1 flex w-[calc(100%+0.5rem)] items-center justify-between gap-3 rounded-sm px-1 py-1.5 text-left font-ui text-xs text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
 			>
 				<span>+ Add provider key</span>
-				{addable.length > 0 && <span className="font-mono text-[11px]">{addable.length} available</span>}
+				{addable.length > 0 && <span className="text-xs">{addable.length} available</span>}
 			</button>
 			{open && (
 				<MenuShell

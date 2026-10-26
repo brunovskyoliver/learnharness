@@ -281,8 +281,8 @@ export function SettingsDialogBody({
 			onClick={(e) => e.stopPropagation()}
 		>
 			{/* Header — the app's quiet CMU title language. */}
-			<header className="flex h-15 shrink-0 items-center gap-3 border-b border-border px-5">
-				<h2 className="font-title text-2xl tracking-tight">Settings</h2>
+			<header className="flex h-13 shrink-0 items-center gap-3 border-b border-white/[0.06] px-5">
+				<h2 className="text-sm font-medium">Settings</h2>
 				<Hint
 						// Esc closes the dialog (its own listener) — surface it.
 						label="Close"
