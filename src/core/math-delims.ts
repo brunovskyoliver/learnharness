@@ -34,12 +34,42 @@ function replaceEscapedDollars(content: string): string {
 	return out;
 }
 
+/** A line-start `$$` with TeX after it, closed by `$$` at the end of a
+ * formula line, is no fence at either end: Markdown opens a block that never
+ * closes and swallows the rest of the text. The reader leaves such a pair in
+ * prose, so frame both ends here. An opener with no closer yet (streaming)
+ * and indented openers (list content) stay as written. */
+function frameDisplayDollars(prose: string, lineStart: boolean): string {
+	const opener = /(^|\n)\$\$(?!\$)/g;
+	let out = "", from = 0, m: RegExpExecArray | null;
+	while ((m = opener.exec(prose))) {
+		const at = m.index + m[1]!.length;
+		if (at === 0 && !lineStart) continue;
+		let close = -1;
+		for (let j = at + 2; j < prose.length - 1; j++) {
+			if (prose[j] === "$" && !escaped(prose, j)) {
+				if (prose[j + 1] === "$" && prose[j + 2] !== "$") { close = j; break; }
+				break; // another dollar first: not this shape
+			}
+		}
+		const body = close < 0 ? "" : prose.slice(at + 2, close).replace(/^[ \t]*\n/, "").trimEnd();
+		if (!body) continue;
+		// Prose after the closer on the same line moves to its own line.
+		const rest = prose.slice(close + 2), pad = /^[ \t]*/.exec(rest)![0].length;
+		const ends = pad === rest.length || rest[pad] === "\n";
+		out += prose.slice(from, at) + "$$\n" + body + "\n$$" + (ends ? "" : "\n");
+		from = opener.lastIndex = close + 2 + (ends ? 0 : pad);
+	}
+	return out + prose.slice(from);
+}
+
 /** Read old \(...\)/\[...\] syntax without touching literal content or
  * reparsing native math as Markdown. Dollar authoring remains native. */
 export function transformMathDelimiters(markdown: string): string {
 	let offset = 0;
 	return readContentSpans(markdown).map(span => {
 		const start = offset; offset += span.raw.length;
+		if (span.kind === "prose") return span.raw.includes("$$") ? frameDisplayDollars(span.raw, start === 0 || markdown[start - 1] === "\n") : span.raw;
 		if (span.kind !== "math") return span.raw;
 		if (span.open === "$") return "$" + replaceEscapedDollars(span.body) + span.close;
 		if (span.open !== "\\(" && span.open !== "\\[") return span.raw;

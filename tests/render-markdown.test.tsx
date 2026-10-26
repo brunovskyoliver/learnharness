@@ -444,3 +444,33 @@ describe("over-escaped command heal — doubled backslashes in tool args (owner 
 	});
 });
 
+
+describe("display dollars written on the formula lines (2026-10-26)", () => {
+	// Live check card: the opener and the closer share lines with the TeX, so
+	// neither is a fence and Markdown swallowed the rest of the question.
+	const question = "Let\n$$\\mathbf w=\\begin{bmatrix}2\\\\-3\\\\1\\end{bmatrix},\\qquad\n\\mathbf x=\\begin{bmatrix}4\\\\2\\\\5\\end{bmatrix}.$$\nWhat is the prediction $\\hat y=\\mathbf w^\\top\\mathbf x$?";
+
+	it("frames both ends so the block closes", () => {
+		assert.equal(
+			transformMathDelimiters(question),
+			"Let\n$$\n\\mathbf w=\\begin{bmatrix}2\\\\-3\\\\1\\end{bmatrix},\\qquad\n\\mathbf x=\\begin{bmatrix}4\\\\2\\\\5\\end{bmatrix}.\n$$\nWhat is the prediction $\\hat y=\\mathbf w^\\top\\mathbf x$?",
+		);
+	});
+
+	it("renders the formula and keeps the question text after it", () => {
+		const html = render(question);
+		assert.doesNotMatch(html, /katex-error|ParseError/);
+		assert.match(html, /katex-display/);
+		assert.match(html, /What is the prediction/);
+	});
+
+	it("frames a closer that has prose after it on the same line", () => {
+		assert.equal(transformMathDelimiters("$$\nx^2$$ so done"), "$$\nx^2\n$$\nso done");
+	});
+
+	it("leaves fenced blocks, one-line pairs and still-streaming openers alone", () => {
+		for (const md of ["$$\nx^2\n$$", "$$x^2$$", "a $$x$$ b", "Let\n$$x^2 still streaming", "`$$x` and $$y"]) {
+			assert.equal(transformMathDelimiters(md), md, md);
+		}
+	});
+});
