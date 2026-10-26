@@ -25,3 +25,16 @@ Status: **done** (2026-10-26)
 - The Clerk app uses development keys. For real use, create a production instance in Clerk and set its DNS records (see docs/hosting.md).
 - Both test users were deleted. The sign-in ticket URLs for them appeared in the preview tool's output; they were single-use, expired after 5 minutes, and the users no longer exist.
 - Electron desktop build not re-run after moving routes into route groups. Next resolves the groups itself and nothing in `electron/` or `scripts/` references app paths, but run a desktop build before the next release.
+
+## Deployed (2026-10-26)
+- Live at https://learn.brunovsky.online.
+- App: AI VM (`brunovsky@172.29.5.181`, Tailscale `100.89.138.0`), `~/learnharness/` (`compose.yaml` app-only, `chrome-seccomp.json`, `.env` mode 600 with the Clerk keys). It listens on `100.89.138.0:3010`; overtree has :3000.
+- TLS: the home Caddy (`ssh caddy`, Alpine, `/etc/caddy/Caddyfile`) has a `learn.brunovsky.online` block next to overtree's, pointing at `100.89.138.0:3010`. Backup: `Caddyfile.bak-20261026-learn`. Reload: `sudo rc-service caddy reload`.
+- Clerk: still the dev instance (`pk_test`). Allowlist on with only obrunovsky7@gmail.com (your answer: "Allowlist"). Add people in Clerk → Configure → Restrictions.
+- Chromium keeps its sandbox on this Ubuntu 24.04 host despite `apparmor_restrict_unprivileged_userns=1`; checked with a headless run inside the container.
+- Redeploy (the VM has about 3 GB free, so build on the Mac):
+  ```sh
+  docker build --platform linux/amd64 -t learnharness:amd64 .
+  docker save learnharness:amd64 | gzip -1 | ssh brunovsky@172.29.5.181 'gunzip | docker load'
+  ssh brunovsky@172.29.5.181 'cd ~/learnharness && docker compose up -d && docker image prune -f'
+  ```
