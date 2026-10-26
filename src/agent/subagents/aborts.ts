@@ -17,14 +17,10 @@
  * model call is where a hung one dies). The route owns the bookkeeping
  * (status error "Aborted by learner" + the abort steer); the runner only unwinds.
  */
-
-interface LhAbortGlobal {
-	__lhJobAborts?: Map<string, AbortController>;
-}
+import { tenantScoped } from "../../../config.ts";
 
 function registry(): Map<string, AbortController> {
-	const g = globalThis as typeof globalThis & LhAbortGlobal;
-	return (g.__lhJobAborts ??= new Map());
+	return tenantScoped<Map<string, AbortController>>("__lhJobAborts", () => new Map());
 }
 
 /** The runner registers its controller at job start (idempotent overwrite). */

@@ -34,7 +34,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { LEDGER_FILES, positionsFile, sourcesFile } from "../../config.ts";
+import { hostedMode, LEDGER_FILES, positionsFile, sourcesFile } from "../../config.ts";
 import { assertGraphFormat, ensureGraphFormat } from "./graph-format.ts";
 import type {
 	GraphChain,
@@ -309,10 +309,12 @@ function writeSourceMap(map: Record<string, NotesSource>): void {
 	fs.writeFileSync(sourcesFile(), JSON.stringify(map, null, "\t"), "utf-8");
 }
 
-// ─── one-way purges at adapter load: dead ledgers are exactly the confusion
-// the cleanup removes (owner doctrine — nothing reads them, nothing writes
-// them, a stale file lying around is a lie). ────────────────────────────────
-{
+// ─── one-way purges: dead ledgers are exactly the confusion the cleanup
+// removes (owner doctrine — nothing reads them, nothing writes them, a
+// stale file lying around is a lie). Run at adapter load for the local
+// data dir; hosted mode has no tenant at load and new tenants never had
+// these files. ─────────────────────────────────────────────────────────────
+if (!hostedMode()) {
 	const graphDir = path.dirname(LEDGER_FILES.nodes);
 	for (const legacy of ["edges.jsonl", "events.jsonl"]) {
 		const file = path.join(graphDir, legacy);

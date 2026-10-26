@@ -23,6 +23,7 @@
  * lock, so by the time a job releases its permit the audit queue is the
  * only remaining throttle.
  */
+import { tenantScoped } from "../../../config.ts";
 
 /** Total background LLM concurrency, process-wide, across ALL subsystems
  *  (owner ruling 2026-09-29: one shared pool — extraction chunks +
@@ -34,16 +35,11 @@ export interface LlmSlots {
 	queue: { resolve: () => void; dead: boolean }[];
 }
 
-interface LhLlmSemaphoreGlobal {
-	__lhLlmSlots?: LlmSlots;
-}
-
 /** The process's single permit pool (globalThis — Next dev compiles each
  *  route entry as its own module instance; a module-level object would
  *  split the pool per route. One process, one truth). */
 export function bgLlmSlots(): LlmSlots {
-	const g = globalThis as typeof globalThis & LhLlmSemaphoreGlobal;
-	return (g.__lhLlmSlots ??= { active: 0, queue: [] });
+	return tenantScoped<LlmSlots>("__lhLlmSlots", () => ({ active: 0, queue: [] }));
 }
 
 /** Run `critical` under one permit of the shared pool. `signal` (the

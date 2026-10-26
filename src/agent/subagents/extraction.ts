@@ -3,7 +3,7 @@ import type { Usage } from "@earendil-works/pi-ai";
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { Type, type Static, type TSchema } from "typebox";
 import { toToolResult } from "../tool-execute.ts";
-import type { ModelRole } from "../../../config.ts";
+import { tenantScoped, type ModelRole } from "../../../config.ts";
 import {
 	FACTORY_SETTINGS,
 	ModelsNotConfiguredError,
@@ -679,8 +679,7 @@ interface LhExtractionGlobal {
  *  (moved 2026-09-19, the observability-accuracy wave; also makes the
  *  single-flight guard cross route instances). */
 function runs(): NonNullable<LhExtractionGlobal["__lhExtractionRuns"]> {
-	const g = globalThis as typeof globalThis & LhExtractionGlobal;
-	return (g.__lhExtractionRuns ??= { running: new Map(), inFlight: new Set(), lastStartedAt: 0 });
+	return tenantScoped<NonNullable<LhExtractionGlobal["__lhExtractionRuns"]>>("__lhExtractionRuns", () => ({ running: new Map(), inFlight: new Set(), lastStartedAt: 0 }));
 }
 
 /** In-flight pipeline runs (oldest first) — the /api/graph/status payload. */
@@ -826,8 +825,10 @@ export function createExtractionPipeline(deps: ExtractionPipelineDeps): Extracti
 	// THE SHARED REGISTRIES (runs() above — globalThis): every pipeline
 	// instance (route entries in dev, tests) sees the same runs, the same
 	// single-flight guard. No module-level state left in this factory.
-	const runningExtractions = runs().running;
-	const inFlight = runs().inFlight;
+	// Resolved per call: the pipeline is built at module load, before any
+	// tenant exists, and each tenant has its own registry.
+	const runningExtractions = { get: (k: string) => runs().running.get(k), set: (k: string, v: RunningExtraction) => runs().running.set(k, v), delete: (k: string) => runs().running.delete(k) };
+	const inFlight = { has: (k: string) => runs().inFlight.has(k), add: (k: string) => runs().inFlight.add(k), delete: (k: string) => runs().inFlight.delete(k) };
 
 	function setPhase(
 		jobKey: string,
@@ -883,8 +884,7 @@ export function createExtractionPipeline(deps: ExtractionPipelineDeps): Extracti
 	 *  successors never hang). */
 	async function withAuditLock<T>(jobKey: string, kind: "chat" | "notes", label: string | undefined, critical: () => Promise<T>): Promise<T> {
 		setPhase(jobKey, "waiting", kind, label);
-		const g = globalThis as typeof globalThis & LhExtractionGlobal;
-		const lock = (g.__lhAuditLock ??= { tail: Promise.resolve() });
+		const lock = tenantScoped<NonNullable<LhExtractionGlobal["__lhAuditLock"]>>("__lhAuditLock", () => ({ tail: Promise.resolve() }));
 		const prev = lock.tail;
 		let release!: () => void;
 		lock.tail = new Promise<void>((resolve) => (release = resolve));

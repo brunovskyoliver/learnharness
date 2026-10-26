@@ -22,17 +22,12 @@
 
 import { emit } from "../core/events.ts";
 import { clearTurnFailure } from "./turn-runs.ts";
-
-interface LhGlobal {
-	__lhTurnRegistry?: Map<string, number>;
-}
+import { tenantScoped } from "../../config.ts";
 
 function registry(): Map<string, number> {
-	const g = globalThis as typeof globalThis & LhGlobal;
-	return (g.__lhTurnRegistry ??= new Map<string, number>());
+	return tenantScoped("__lhTurnRegistry", () => new Map<string, number>());
 }
 
-const inFlight = registry();
 const MAX_TURN_MS = 30 * 60_000;
 
 /**
@@ -45,7 +40,7 @@ const MAX_TURN_MS = 30 * 60_000;
 export function beginTurn(chatId: string): boolean {
 	if (isTurnRunning(chatId)) return false;
 	clearTurnFailure(chatId);
-	inFlight.set(chatId, Date.now());
+	registry().set(chatId, Date.now());
 	emit("turn-started", { chatId });
 	return true;
 }
@@ -58,7 +53,7 @@ export function beginTurn(chatId: string): boolean {
  * defensive no-op endTurn must not fire a spurious settle.
  */
 export function endTurn(chatId: string): void {
-	if (inFlight.delete(chatId)) emit("turn-settled", { chatId });
+	if (registry().delete(chatId)) emit("turn-settled", { chatId });
 }
 
 /** True while the chat's turn is in flight; lazily evicts stale entries.
@@ -67,10 +62,10 @@ export function endTurn(chatId: string): void {
  * from a read, and emitting from a read is a side-effect smell. Silence
  * here is a choice, not an oversight. */
 export function isTurnRunning(chatId: string): boolean {
-	const since = inFlight.get(chatId);
+	const since = registry().get(chatId);
 	if (since === undefined) return false;
 	if (Date.now() - since > MAX_TURN_MS) {
-		inFlight.delete(chatId);
+		registry().delete(chatId);
 		return false;
 	}
 	return true;

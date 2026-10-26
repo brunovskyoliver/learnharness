@@ -53,6 +53,25 @@ export function currentTenant(): Tenant | undefined {
 	return tenants.getStore();
 }
 
+/** One in-memory registry instance per tenant (turn runs, wake queues,
+ * extraction runs, permit pools, ...). Outside a tenant it is the same
+ * globalThis slot the registries always used, so local behavior and the
+ * tests that inspect those slots are unchanged; tenant instances live in
+ * a sibling map. ponytail: tenant instances are never evicted, they are
+ * small; add idle eviction if tenant counts get large. */
+export function tenantScoped<T>(slot: string, init: () => T): T {
+	const g = globalThis as unknown as Record<string, unknown>;
+	const tenant = tenants.getStore();
+	if (!tenant) {
+		if (hostedMode()) throw new Error(`hosted mode: ${slot} used outside a tenant`);
+		return (g[slot] ??= init()) as T;
+	}
+	const byTenant = (g[`${slot}:tenants`] ??= new Map<string, T>()) as Map<string, T>;
+	let value = byTenant.get(tenant.userId);
+	if (value === undefined) byTenant.set(tenant.userId, (value = init()));
+	return value;
+}
+
 /** The current tenant's mutable-data root. */
 function dataRoot(): string {
 	const tenant = tenants.getStore();

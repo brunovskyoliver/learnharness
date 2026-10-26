@@ -27,19 +27,15 @@
 
 import { ChatInputError, dismissAppends, emit } from "../core";
 import type { ChatStore } from "../core/ports.ts";
+import { tenantScoped } from "../../config.ts";
 
 /** The parked dismissal body — exactly the parsed input the dismiss route
  *  accepted ({type:"dismiss", toolCallId, answer} or
  *  {type:"dismiss-problem", problemCallId}). */
 export type ParkedDismissal = unknown;
 
-interface LhGlobal {
-	__lhParkedDismissals?: Map<string, ParkedDismissal>;
-}
-
 function registry(): Map<string, ParkedDismissal> {
-	const g = globalThis as typeof globalThis & LhGlobal;
-	return (g.__lhParkedDismissals ??= new Map<string, ParkedDismissal>());
+	return tenantScoped("__lhParkedDismissals", () => new Map<string, ParkedDismissal>());
 }
 
 /** Park (or overwrite) the chat's dismissal intent. Called by the dismiss

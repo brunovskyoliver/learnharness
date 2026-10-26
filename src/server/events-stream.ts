@@ -25,6 +25,7 @@
  * ui-stream subscribe() pattern.
  */
 import { subscribe, type ServerEvent } from "../core/events.ts";
+import { currentTenant } from "../../config.ts";
 
 /** One window's subscription as an SSE Response. */
 export function eventsResponse(): Response {
@@ -54,10 +55,15 @@ export function eventsResponse(): Response {
 				}
 			};
 
+			// Hosted mode: emit() runs listeners synchronously in the
+			// emitter's async context, so the emitter's tenant is current
+			// there. Only this window's own tenant gets its events.
+			const owner = currentTenant()?.userId;
 			// Attach FIRST, synchronously: no event can fall between
 			// construction and subscription (single-threaded — the same
 			// attach-then-replay law as ui-stream's subscribe()).
 			unsubscribe = subscribe((event: ServerEvent) => {
+				if (currentTenant()?.userId !== owner) return;
 				const { type, ...payload } = event;
 				frame(`event: ${type}\ndata: ${JSON.stringify(payload)}\n\n`);
 			});

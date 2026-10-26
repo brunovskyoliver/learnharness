@@ -57,6 +57,7 @@
  * be a different object in each).
  */
 
+import { tenantScoped } from "../../config.ts";
 import {
 	buildAbortSteer,
 	buildSubagentSteer,
@@ -103,8 +104,6 @@ interface QueuedSteer {
 }
 
 interface WakeState {
-	turnRunner?: TurnRunner;
-	respawn?: JobRespawn;
 	/** chatId → steers awaiting delivery, in arrival order. The single
 	 *  delivery registry (Wave C: the agent's own follow-up queue is a
 	 *  per-run VEHICLE, not the registry — settlement reconciles here). */
@@ -123,27 +122,26 @@ interface WakeState {
 	pumping: Set<string>;
 	/** Throttle bookkeeping for the stale-job sweep. */
 	lastSweepAt: number;
-	stopConnectionWatch?: () => void;
 	automaticDeferred: WeakSet<Agent>;
 }
 
-interface LhWakeGlobal {
-	__lhWakePipeline?: WakeState;
+function state(): WakeState {
+	return tenantScoped<WakeState>("__lhWakePipeline", () => ({ queues: new Map(), liveAgents: new Map(), userSteers: new Map(), pumping: new Set(), lastSweepAt: 0, automaticDeferred: new WeakSet() }));
 }
 
-function state(): WakeState {
-	const g = globalThis as typeof globalThis & LhWakeGlobal;
-	return (g.__lhWakePipeline ??= { queues: new Map(), liveAgents: new Map(), userSteers: new Map(), pumping: new Set(), lastSweepAt: 0, automaticDeferred: new WeakSet() });
-}
+/** Process-wide wiring (set once at module init, shared by every tenant),
+ *  kept apart from the per-tenant wake state. */
+const wiring = globalThis as typeof globalThis & { __lhWakeWiring?: { turnRunner?: TurnRunner; respawn?: JobRespawn } };
+const wired = () => (wiring.__lhWakeWiring ??= {});
 
 /** chat-handler wires this at module init: its adapter around handleChatRequest. */
 export function setTurnRunner(run: TurnRunner): void {
-	state().turnRunner = run;
+	wired().turnRunner = run;
 }
 
 /** chat-handler wires this at module init: its job runner's runJob. */
 export function setJobRespawn(respawn: JobRespawn): void {
-	state().respawn = respawn;
+	wired().respawn = respawn;
 }
 
 const POLL_MS = 400;
@@ -544,7 +542,7 @@ async function pump(chatId: string): Promise<void> {
 
 			// The runner is required — chat-handler sets it at init. If some
 			// module instance missed the wiring, fail loudly rather than hang.
-			if (!s.turnRunner) {
+			if (!wired().turnRunner) {
 				const err = new Error("wake pipeline: no turn runner wired (setTurnRunner)");
 				for (const entry of stillPending) deferOrReject(chatId, entry, err);
 				parked = true;
@@ -577,7 +575,7 @@ async function pump(chatId: string): Promise<void> {
 			// Fire the wake with cargo still registered. A 409 releases its
 			// vehicle flag and retries after the existing backoff, without
 			// appending another registry entry.
-			const status = await s.turnRunner(chatId, { type: "steers", steers }).catch((err: unknown) => {
+			const status = await wired().turnRunner!(chatId, { type: "steers", steers }).catch((err: unknown) => {
 				console.error(`[steer ${steers.map((x) => x.id).join(",")}] wake turn crashed:`, err);
 				return -1;
 			});
@@ -615,8 +613,11 @@ async function pump(chatId: string): Promise<void> {
 
 // Connection changes are the only wake for consent-deferred automatic work.
 // No retry timer, inference, or API-key fallback is started while consent is off.
-state().stopConnectionWatch?.();
-state().stopConnectionWatch = onSubscriptionChange(() => {
+// One process-wide watch (HMR replaces it); the handler's state() resolves
+// the tenant whose connection changed.
+const connectionWatch = globalThis as typeof globalThis & { __lhWakeConnectionWatch?: () => void };
+connectionWatch.__lhWakeConnectionWatch?.();
+connectionWatch.__lhWakeConnectionWatch = onSubscriptionChange(() => {
 	const s = state();
 	for (const [chatId, agent] of s.liveAgents) {
 		if (!isSubscriptionProvider(agent.state?.model?.provider) || automaticFollowUpAllowed(chatId, agent)) continue;
@@ -748,9 +749,10 @@ export function recoverStaleJobs(): void {
 					void pump(job.chatId);
 				} else if (job.status === "running" && !job.result) {
 					// The sub-agent loop itself died with the process: re-spawn.
-					if (!s.respawn) continue;
+					const respawn = wired().respawn;
+					if (!respawn) continue;
 					stores.jobStore.updateJob(job.id, { activity: "recovering: re-running" });
-					s.respawn(job.id);
+					respawn(job.id);
 				}
 			}
 		}
