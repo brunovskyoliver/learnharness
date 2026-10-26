@@ -120,14 +120,6 @@
 }
 
 /* CMU Serif bold (titles) — bundled local file, no CDN dependency. */
-@font-face {
-	font-family: "lh-cmu";
-	src: url("/fonts/cmunbx.ttf") format("truetype");
-	font-weight: 700;
-	font-style: normal;
-	font-display: swap;
-}
-
 @theme inline {
 	/* Fonts: chrome = JetBrains Mono, prose = Source Sans 3, titles = CMU
 	   Serif bold. The JetBrains/SourceSans variables attach in app/layout.tsx.
@@ -593,7 +585,7 @@ body {
    session-name-serif toggle overrides this var at runtime, so the
    .font-title utility must read it through var(), not carry a baked copy. */
 @theme {
-	--font-title: "lh-cmu", serif;
+	--font-title: var(--font-cmu);
 }
 
 /* Card enter (owner round, 2026-10-05): the transcript cards' one-shot
