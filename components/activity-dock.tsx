@@ -343,16 +343,17 @@ export function ActivitySection({ feed: feedProp }: { feed?: ActivityFeed }) {
 	// sidebar's own edge line, the header matches the "Sessions" label, the
 	// rows match the session rows' hover. Empty means empty: the header sits
 	// alone (the cost span is population, not decoration).
+	// ui-v2: nothing renders while nothing runs; the header is a T3 shelf.
+	if (blobs.length === 0) return null;
 	return (
-		<section data-testid="activity-section" className="border-t border-border px-3 pb-3 pt-2">
-			<div className="mb-1 flex items-center gap-1.5 text-xs text-muted-foreground/70">
-				<ActivityIcon className="size-3" />
+		<section data-testid="activity-section" className="px-2 pb-2">
+			<div className="flex h-8 items-center gap-2 px-2.5 text-xs font-medium text-muted-foreground">
+				<ActivityIcon className="size-3.5" />
 				Background agents
-				{blobs.length > 0 && (
-					<span className="ml-auto tabular-nums" data-testid="activity-total-cost" title="Total running cost (inferred)">
-						{planCostLabel(totalCost, subscriptionLabels(blobs.map((blob) => blob.model)))}
+				<span className="h-px flex-1 bg-white/[0.06]" aria-hidden="true" />
+				<span className="tabular-nums" data-testid="activity-total-cost" title="Total running cost (inferred)">
+					{planCostLabel(totalCost, subscriptionLabels(blobs.map((blob) => blob.model)))}
 				</span>
-				)}
 			</div>
 			{blobs.length > 0 && (
 				<div className="flex max-h-[40dvh] flex-col gap-1 overflow-y-auto">

@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { MenuShell } from "@/components/menu-shell";
 import { DeleteSessionDialog } from "@/components/delete-session-dialog";
 import type { ChatDeleteMode } from "@/src/core";
-import { BookOpenIcon, DumbbellIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, PlusIcon, SearchIcon, SettingsIcon } from "lucide-react";
+import { BookOpenIcon, CheckIcon, DumbbellIcon, ListFilterIcon, MessageCircleQuestionIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, SearchIcon, SettingsIcon, SquarePenIcon } from "lucide-react";
 import { ActivitySection } from "@/components/activity-dock";
 import { CoverageMenuBlock } from "@/components/extraction-coverage";
 import { LhMark } from "@/components/lh-mark";
@@ -16,7 +16,6 @@ import { usePointerBlur } from "@/components/focus-hygiene";
 import { SettingsDialogProvider, useSettingsDialog } from "@/components/settings/settings-dialog.tsx";
 import { Hint } from "@/components/ui/hint";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { fuzzyScore } from "@/src/core";
 import { useServerEvent, useServerResync } from "@/components/server-events";
@@ -32,6 +31,12 @@ import { notifySettingsSaved } from "@/components/settings-signal";
  */
 
 const STORAGE_KEY = "lh:sidebar-open";
+const WIDTH_KEY = "lh:sidebar-width";
+const SIDEBAR_DEFAULT_W = 256;
+/** 208px floor; the main pane always keeps at least 640px. */
+export function clampSidebarWidth(w: number, viewport: number): number {
+	return Math.round(Math.max(208, Math.min(w, viewport - 640)));
+}
 
 /*
  * Narrow-window behavior (owner, 2026-09-17): below SIDEBAR_AUTOCLOSE the
@@ -270,6 +275,13 @@ export function timeAgo(iso: string, now = new Date()): string {
 	return `${date.getFullYear()}-${mm}-${dd}`;
 }
 
+/** The row's right-aligned time (T3-style slim rows, ui-v2): "now", "5m",
+ *  "3h", "2d", then the ISO date. Pure — exported for tests. */
+export function shortAgo(iso: string, now = new Date()): string {
+	const long = timeAgo(iso, now);
+	return long === "just now" ? "now" : long.replace(/ ago$/, "");
+}
+
 /** The row's second line: the state when a state exists (waiting/working),
  *  otherwise just how long ago. The message count is DROPPED (owner,
  *  typography round 5): it informed no decision — clutter. messageCount
@@ -300,40 +312,42 @@ export function SessionRow({
 	chat: ChatListItem;
 	active: boolean;
 	onOpen: () => void;
-	/** Keyboard-cycle highlight (shortcut wave A: Alt+↑/↓ + Alt+Enter) —
-	 *  visually distinct from the active session, which stays filled. */
+	/** Keyboard-walk highlight from the search field — distinct from the
+	 *  active session, which stays filled. */
 	kbdSelected?: boolean;
-	/** Right-click opens the context menu (wave 6: Rename / Delete). */
+	/** Right-click opens the context menu (Rename / Export / Delete). */
 	onContextMenu?: (e: React.MouseEvent<HTMLButtonElement>) => void;
 }) {
+	// Slim row (ui-v2, after T3 Code): a status glyph, the title, the time.
+	// The state text lives in the tooltip; the glyph carries it at a glance.
+	const practice = (chat.kind ?? "teach") === "practice";
+	const waiting = chat.pendingQuestion || (practice && chat.pendingProblem);
 	return (
 		<button
 			type="button"
 			onClick={onOpen}
 			onContextMenu={onContextMenu}
+			title={`${chat.title}\n${sessionMeta(chat)}`}
 			data-testid={kbdSelected ? "session-row-kbd" : "session-row"}
 			className={cn(
-				"relative mb-0.5 flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors hover:bg-accent",
-				active && "bg-accent",
-				kbdSelected && !active && "bg-accent/60 ring-1 ring-border",
+				"group flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-sm transition-colors hover:bg-white/[0.06]",
+				active ? "bg-white/[0.09] text-foreground" : "text-foreground/85",
+				kbdSelected && !active && "bg-white/[0.06] ring-1 ring-inset ring-white/10",
 			)}
 		>
-			<SessionStatus busy={chat.busy || chat.compacting} />
-			<span className="min-w-0 flex-1">
-				{/* Titles are the learner's/teacher's WORDS — Source Sans 3, the
-				    same voice the words were typed in (every input is lh-prose);
-				    the meta line below stays JetBrains Mono (machine data). One
-				    rule, finally applied to the picker too (owner, typography
-				    round): mono = chrome, Source Sans = human words. */}
-				<span className="block truncate font-prose text-(length:--lh-prose-size)">{chat.title}</span>
-				<span className="block text-xs text-muted-foreground">{sessionMeta(chat)}</span>
+			<span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground">
+				{chat.busy || chat.compacting ? (
+					<SessionStatus busy />
+				) : waiting ? (
+					<MessageCircleQuestionIcon className="size-4 text-foreground/70" aria-label="Waiting for you" />
+				) : practice ? (
+					<DumbbellIcon className="size-3.5 opacity-60" aria-label="Practice session" />
+				) : (
+					<BookOpenIcon className="size-3.5 opacity-40" aria-hidden="true" />
+				)}
 			</span>
-			{/* The dumbbell rides the FAR RIGHT (owner round 6, 2026-10-05) —
-			    was left of the name; right-aligned keeps the titles flush with
-			    the teaching rows and reads cleaner. */}
-			{(chat.kind ?? "teach") === "practice" && (
-				<DumbbellIcon className="size-3.5 shrink-0 text-muted-foreground/70" aria-label="Practice session" />
-			)}
+			<span className="min-w-0 flex-1 truncate">{chat.title}</span>
+			<span className="shrink-0 text-xs tabular-nums text-muted-foreground">{shortAgo(chat.updatedAt)}</span>
 		</button>
 	);
 }
@@ -355,35 +369,26 @@ export function RenameRow({ chat, onCommit, onCancel }: { chat: ChatListItem; on
 	return (
 		<div
 			data-testid="session-rename-row"
-			className="relative mb-0.5 flex w-full items-center rounded-lg bg-accent px-3 py-2"
+			className="flex h-9 w-full items-center gap-2.5 rounded-md bg-white/[0.09] px-2.5"
 		>
-			{/* NOTHING MOVES (owner, polish round): an idle row renders no
-			    status spacer (SessionStatus is null when not busy), so the
-			    title starts at the row's own px-3 — 12px in. The old rename
-			    row always carried a 14px spacer + gap + the input's border
-			    and padding, landing the text ~41px in (and the meta with
-			    it). The input here is borderless and padding-free at the
-			    exact title x; the underline is the only editing cue. */}
-			<span className="flex min-w-0 w-full flex-col">
-				<input
-					ref={inputRef}
-					value={draft}
-					spellCheck={false}
-					onChange={(e) => setDraft(e.target.value)}
-					onBlur={() => onCommit(draft)}
-					onKeyDown={(e) => {
-						if (e.key === "Enter") e.currentTarget.blur();
-						if (e.key === "Escape") {
-							e.stopPropagation(); // discard, not also the sidebar/chat chains
-							onCancel();
-						}
-					}}
-					aria-label="Rename session"
-					data-testid="session-rename-input"
-					className="lh-input w-full min-w-0 truncate border-0 border-b border-border bg-transparent px-0 text-foreground outline-none"
-				/>
-				<span className="block truncate text-xs text-muted-foreground">{sessionMeta(chat)}</span>
-			</span>
+			<span className="size-4 shrink-0" />
+			<input
+				ref={inputRef}
+				value={draft}
+				spellCheck={false}
+				onChange={(e) => setDraft(e.target.value)}
+				onBlur={() => onCommit(draft)}
+				onKeyDown={(e) => {
+					if (e.key === "Enter") e.currentTarget.blur();
+					if (e.key === "Escape") {
+						e.stopPropagation(); // discard, not also the sidebar/chat chains
+						onCancel();
+					}
+				}}
+				aria-label="Rename session"
+				data-testid="session-rename-input"
+				className="w-full min-w-0 truncate border-0 bg-transparent px-0 text-sm text-foreground outline-none"
+			/>
 		</div>
 	);
 }
@@ -650,174 +655,194 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 		// freshness (S6) — no interval, nothing standing.
 	}, [open, pathname, refresh]);
 
+	// Width (ui-v2, after T3 Code): 256px default, drag the right edge to
+	// resize between 208px and (viewport − 640px), double-click resets.
+	const [width, setWidth] = useState(SIDEBAR_DEFAULT_W);
+	const [dragging, setDragging] = useState(false);
+	useEffect(() => {
+		const stored = Number(window.localStorage.getItem(WIDTH_KEY));
+		if (stored) setWidth(clampSidebarWidth(stored, window.innerWidth));
+	}, []);
+	const startResize = (e: React.PointerEvent<HTMLDivElement>) => {
+		e.preventDefault();
+		const x0 = e.clientX;
+		const w0 = width;
+		setDragging(true);
+		const move = (ev: PointerEvent) => setWidth(clampSidebarWidth(w0 + ev.clientX - x0, window.innerWidth));
+		const up = () => {
+			setDragging(false);
+			window.removeEventListener("pointermove", move);
+			window.removeEventListener("pointerup", up);
+			setWidth((w) => {
+				window.localStorage.setItem(WIDTH_KEY, String(w));
+				return w;
+			});
+		};
+		window.addEventListener("pointermove", move);
+		window.addEventListener("pointerup", up);
+	};
+	const [filterOpen, setFilterOpen] = useState(false);
+	const filterRef = useRef<HTMLButtonElement | null>(null);
+	// The menu contract (same as the context menu): outside pointerdown or a
+	// claimed Esc closes it.
+	useEffect(() => {
+		if (!filterOpen) return;
+		const onPointerDown = (e: PointerEvent) => {
+			const target = e.target as Node;
+			if (target instanceof Element && target.closest("[data-lh-menu]")) return;
+			if (filterRef.current?.contains(target)) return;
+			setFilterOpen(false);
+		};
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (e.key === "Escape") {
+				e.stopPropagation();
+				setFilterOpen(false);
+			}
+		};
+		document.addEventListener("pointerdown", onPointerDown);
+		document.addEventListener("keydown", onKeyDown);
+		return () => {
+			document.removeEventListener("pointerdown", onPointerDown);
+			document.removeEventListener("keydown", onKeyDown);
+		};
+	}, [filterOpen]);
+
 	return (
 		<aside
-			className={cn("sidebar-motion shrink-0 overflow-hidden duration-200", open ? "w-72" : "w-0")}
+			className={cn("relative shrink-0 overflow-hidden duration-200", !dragging && "sidebar-motion")}
+			style={{ width: open ? width : 0 }}
 			aria-hidden={!open}
 		>
-			<div className="flex h-full w-72 flex-col border-r bg-background">
-				{/* LH wordmark — the owner's header; close toggle sits at the edge.
-				    Merged chrome (2026-09-17): in Electron this band is the
-				    window's drag surface and starts after the traffic lights
-				    (.lh-lights-gutter); in the browser those classes are inert. */}
-				<div className="lh-drag lh-lights-gutter flex items-center justify-between px-4 py-3">
-					{/* The owner's mark (2026-09-17) replaces the "LH" text — still the
-					    home link, still vertically centered by the band's items-center.
-					    The 92px .lh-lights-gutter keeps it clear of the traffic lights
-					    with the lights' own edge-inset as the gap. */}
-					{/* Hover mirrors the ghost toggle buttons (owner ask, 2026-09-17):
-					    same size-9 chip geometry, same hover:bg-accent treatment. */}
-					<Hint
-						// Kept (owner, subtlety round 2026-09-25) but to the RIGHT
-						// of the logo, carrying its real shortcut: ⌘G jumps to
-						// the graph view (keyboard-shortcuts routes it to "/",
-						// the same destination as this logo).
-						label="Home"
-						action="jump-graph"
-						side="right"
-					>
+			<div className="flex h-full flex-col border-r border-white/[0.08] bg-(--lh-sidebar)" style={{ width }}>
+				{/* Brand band: in Electron it is the window's drag surface and
+				    starts after the traffic lights (.lh-lights-gutter). */}
+				<div className="lh-drag lh-lights-gutter flex h-13 shrink-0 items-center gap-2 px-3">
+					<Hint label="Home" action="jump-graph" side="right">
 						<Link
 							href="/"
 							aria-label="Home"
-							className="lh-no-drag flex size-9 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50"
+							className="lh-no-drag flex min-w-0 items-center gap-2 rounded-md px-1 py-1 transition-colors hover:bg-white/[0.06]"
 						>
-							<LhMark className="size-6" />
+							<LhMark className="size-5 shrink-0" />
+							<span className="truncate text-sm font-medium tracking-tight">Brunovský&apos;s study</span>
 						</Link>
 					</Hint>
 					<Hint label="Close sidebar" action="toggle-sidebar">
-						<Button
-							variant="ghost"
-							size="icon"
-							aria-label="Close sidebar"
-							onClick={toggle}
-							className="lh-no-drag"
-						>
+						<Button variant="ghost" size="icon" aria-label="Close sidebar" onClick={toggle} className="lh-no-drag ml-auto size-7 text-muted-foreground">
 							<PanelLeftCloseIcon className="size-4" />
 						</Button>
 					</Hint>
 				</div>
 
-				{/* Two doors, STACKED (owner round 8, 2026-10-05 — was a
-				    half/half row): full-width rows read cleaner and give the
-				    labels room; teaching keeps the original draft route,
-				    practice carries its mode. */}
-				<div className="mx-3 mb-2 flex flex-col gap-1.5">
-					<button
-						type="button"
-						data-testid="new-session"
-						onClick={() => void newSession()}
-						className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-					>
-						<PlusIcon className="size-3" />
-						New lesson
-					</button>
-					<button
-						type="button"
-						data-testid="new-session-practice"
-						onClick={() => router.push("/chat/new?mode=practice")}
-						className="flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-					>
-						<DumbbellIcon className="size-3" />
-						New practice
-					</button>
-				</div>
-
-				<div className="mx-3 mb-2 flex items-center gap-1">
+				{/* Toolbar: ghost search, filter menu, the two "new" doors. */}
+				<div className="flex items-center gap-1 px-2 pb-2">
 					<Hint label="Search sessions" action="sessions-search" side="bottom">
-					<span className="relative flex-1">
-						<Input
-							ref={searchRef}
-							data-testid="session-search"
-							value={query}
-							onChange={(e) => {
-								setQuery(e.target.value);
-								// The list reorders under the query every keystroke —
-								// a stale walk index would point at the wrong row.
-								setKbdIndex(null);
-							}}
-							// THE SEARCH OWNS THE WALK (owner, 2026-10-10 — the
-							// retired Alt+↑/↓/↵ cycle's successor): ↑/↓ cycle the
-							// filtered rows (wrap), Enter opens the walked row —
-							// or the FIRST match when nothing is walked (the
-							// quick-open pattern) — then blurs (focus returns to
-							// the app per the Enter law; the query stays for
-							// re-searching). Esc leaves the search (owner,
-							// keyboard wave): blur back to normal, and claim the
-							// key so the window Esc chain (dictation / abort)
-							// doesn't also fire.
-							onKeyDown={(e) => {
-								if (e.key === "Escape") {
-									e.stopPropagation();
-									e.currentTarget.blur();
-									return;
-								}
-								// Modified keys belong to the surface (⇧↵ etc.).
-								if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
-								const n = shown?.length ?? 0;
-								if (n === 0) return;
-								if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-									// The rows move, not the caret.
-									e.preventDefault();
-									const dir = e.key === "ArrowDown" ? 1 : -1;
-									setKbdIndex((i) =>
-										i === null || i >= n ? (dir === 1 ? 0 : n - 1) : (i + dir + n) % n,
-										);
-									return;
-								}
-								if (e.key === "Enter") {
-									const target = shown![kbdIndex !== null && kbdIndex < n ? kbdIndex : 0];
-									if (!target) return;
-									e.preventDefault();
-									router.push(`/chat/${target.id}`);
+						<label className="flex h-8 min-w-0 flex-1 cursor-text items-center gap-2 rounded-md px-2 text-muted-foreground transition-colors hover:bg-white/[0.06] focus-within:bg-white/[0.06]">
+							<SearchIcon className="size-4 shrink-0" />
+							<input
+								ref={searchRef}
+								data-testid="session-search"
+								value={query}
+								onChange={(e) => {
+									setQuery(e.target.value);
+									// The list reorders under the query every keystroke —
+									// a stale walk index would point at the wrong row.
 									setKbdIndex(null);
-									e.currentTarget.blur();
-								}
-							}}
-							placeholder="Search…"
-							aria-label="Search sessions"
-							className="h-6 rounded-sm border-border bg-background pl-6 text-xs placeholder:text-muted-foreground/60"
-						/>
-						<SearchIcon className="pointer-events-none absolute left-1.5 top-1/2 size-3 -translate-y-1/2 text-muted-foreground/70" />
-					</span>
+								}}
+								// THE SEARCH OWNS THE WALK: ↑/↓ cycle the filtered rows
+								// (wrap), Enter opens the walked row — or the first match —
+								// then blurs. Esc leaves the search and is claimed so the
+								// window Esc chain doesn't also fire.
+								onKeyDown={(e) => {
+									if (e.key === "Escape") {
+										e.stopPropagation();
+										e.currentTarget.blur();
+										return;
+									}
+									if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+									const n = shown?.length ?? 0;
+									if (n === 0) return;
+									if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+										e.preventDefault();
+										const dir = e.key === "ArrowDown" ? 1 : -1;
+										setKbdIndex((i) =>
+											i === null || i >= n ? (dir === 1 ? 0 : n - 1) : (i + dir + n) % n,
+										);
+										return;
+									}
+									if (e.key === "Enter") {
+										const target = shown![kbdIndex !== null && kbdIndex < n ? kbdIndex : 0];
+										if (!target) return;
+										e.preventDefault();
+										router.push(`/chat/${target.id}`);
+										setKbdIndex(null);
+										e.currentTarget.blur();
+									}
+								}}
+								placeholder="Search"
+								aria-label="Search sessions"
+								className="min-w-0 flex-1 bg-transparent text-sm font-medium text-foreground outline-none placeholder:text-muted-foreground"
+							/>
+						</label>
 					</Hint>
-					{/* Kind filter as two toggles in the search row (polish pass
-					    2026-10-26, was a three-way segmented row): neither pressed
-					    = all; pressing one narrows to that kind. Persisted. */}
-					{(["teach", "practice"] as const).map((f) => (
-						<Hint key={f} label={f === "teach" ? "Only lessons" : "Only practice"} side="bottom">
-							<button
-								type="button"
-								data-testid={`kind-filter-${f}`}
-								aria-pressed={kindFilter === f}
-								aria-label={f === "teach" ? "Show only lessons" : "Show only practice"}
-								onClick={() => setFilter(kindFilter === f ? "all" : f)}
-								className={cn(
-									"flex size-6 shrink-0 items-center justify-center rounded-sm transition-colors",
-									kindFilter === f ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground",
-								)}
-							>
-								{f === "teach" ? <BookOpenIcon className="size-3.5" /> : <DumbbellIcon className="size-3.5" />}
-							</button>
-						</Hint>
-					))}
+					<Hint label="Filter" side="bottom">
+						<button
+							ref={filterRef}
+							type="button"
+							data-testid="kind-filter"
+							aria-label="Filter sessions"
+							aria-expanded={filterOpen}
+							onClick={() => setFilterOpen((v) => !v)}
+							className={cn(
+								"flex size-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-white/[0.06] hover:text-foreground",
+								kindFilter === "all" ? "text-muted-foreground" : "bg-white/[0.09] text-foreground",
+							)}
+						>
+							<ListFilterIcon className="size-4" />
+						</button>
+					</Hint>
+					<Hint label="New practice" side="bottom">
+						<button
+							type="button"
+							data-testid="new-session-practice"
+							aria-label="New practice"
+							onClick={() => router.push("/chat/new?mode=practice")}
+							className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+						>
+							<DumbbellIcon className="size-4" />
+						</button>
+					</Hint>
+					<Hint label="New lesson" side="bottom">
+						<button
+							type="button"
+							data-testid="new-session"
+							aria-label="New lesson"
+							onClick={() => void newSession()}
+							className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+						>
+							<SquarePenIcon className="size-4" />
+						</button>
+					</Hint>
 				</div>
 
-				<div ref={listRef} className="flex-1 overflow-y-auto p-2">
+				<div ref={listRef} className="flex flex-1 flex-col gap-px overflow-y-auto px-2 pb-2">
 					{shown === null ? (
-						<div className="px-2 py-4 text-xs text-muted-foreground">Loading…</div>
+						<div className="px-2.5 py-2 text-sm text-muted-foreground">Loading…</div>
 					) : shown.length === 0 ? (
-						<div className="px-2 py-4 text-xs text-muted-foreground">
+						<div className="px-2.5 py-2 text-sm text-muted-foreground">
 							{query.trim() ? "No sessions match." : "No sessions yet."}
 						</div>
 					) : (
 						shown.map((c, i) => {
-							// Date groups (polish pass 2026-10-26) over the natural
-							// most-recent-first order; a ranked search has no groups.
+							// Date shelves over the natural most-recent-first order; a
+							// ranked search has no groups.
 							const group = query.trim() ? null : dateGroup(c.updatedAt);
 							const header =
 								group !== null && (i === 0 || dateGroup(shown[i - 1]!.updatedAt) !== group) ? (
-									<div className="px-2 pb-1 pt-3 text-xs text-muted-foreground first:pt-1" data-testid="session-group">
+									<div className="flex h-8 shrink-0 items-center gap-2 px-2.5 pt-1 text-xs font-medium text-muted-foreground" data-testid="session-group">
 										{group}
+										<span className="h-px flex-1 bg-white/[0.06]" aria-hidden="true" />
+										<span className="tabular-nums">{shown.filter((x) => dateGroup(x.updatedAt) === group).length}</span>
 									</div>
 								) : null;
 							return <Fragment key={c.id}>{header}{renamingId === c.id ? (
@@ -844,31 +869,74 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 					)}
 				</div>
 
-					{/* Background agents (owner, sidebar round): the section is
-					    ALWAYS here — empty means empty (the header sits alone); it
-					    populates and grows when processes run. The session list is
-					    flex-1, so this pins to the bottom. Sidebar closed = the
-					    learner opted out (no ambient signal, user decision). */}
-					<ActivitySection />
+				{/* Background agents: renders only while something runs. */}
+				<ActivitySection />
 
-					{/* Settings entry (settings-app wave): same row language as
-					    New session — quiet, bottom-pinned, opens the centered
-					    dialog (also mod+, in the keyboard registry). */}
-					<div className="px-3 pb-3 pt-1">
-						<Hint label="Settings" action="open-settings" side="right">
-							<button
-								type="button"
-								onClick={() => openSettings()}
-								data-testid="settings-entry"
-								className="-mx-2 flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-							>
-								<SettingsIcon className="size-3" />
-								Settings
-							</button>
-						</Hint>
-					</div>
-					{account}
+				{/* Footer: icon buttons left, the account avatar right. */}
+				<div className="flex shrink-0 items-center gap-1 border-t border-white/[0.06] px-2 py-1.5">
+					<Hint label="Settings" action="open-settings" side="top">
+						<button
+							type="button"
+							onClick={() => openSettings()}
+							data-testid="settings-entry"
+							aria-label="Settings"
+							className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+						>
+							<SettingsIcon className="size-4" />
+						</button>
+					</Hint>
+					<div className="ml-auto">{account}</div>
 				</div>
+			</div>
+			{/* The resize rail: 4px hit area on the right edge, a 2px line on hover. */}
+			{open && (
+				<div
+					role="separator"
+					aria-orientation="vertical"
+					aria-label="Resize sidebar"
+					onPointerDown={startResize}
+					onDoubleClick={() => {
+						setWidth(SIDEBAR_DEFAULT_W);
+						window.localStorage.removeItem(WIDTH_KEY);
+					}}
+					className={cn(
+						"absolute inset-y-0 right-0 z-10 w-1 cursor-col-resize after:absolute after:inset-y-0 after:right-0 after:w-0.5 after:transition-colors hover:after:bg-white/15",
+						dragging && "after:bg-white/20",
+					)}
+				/>
+			)}
+
+			{filterOpen && (
+				<MenuShell
+					anchorRef={filterRef}
+					testid="kind-filter-menu"
+					preferredSide="down"
+					menuClass="flex w-44 flex-col gap-0.5 rounded-lg border border-white/[0.08] bg-card p-1 text-sm shadow-xl"
+				>
+					{(
+						[
+							["all", "All sessions"],
+							["teach", "Lessons"],
+							["practice", "Practice"],
+						] as const
+					).map(([f, label]) => (
+						<button
+							key={f}
+							type="button"
+							data-testid={`kind-filter-${f}`}
+							aria-pressed={kindFilter === f}
+							onClick={() => {
+								setFilter(f);
+								setFilterOpen(false);
+							}}
+							className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-white/[0.06]"
+						>
+							<span className="flex-1">{label}</span>
+							{kindFilter === f && <CheckIcon className="size-3.5 text-muted-foreground" />}
+						</button>
+					))}
+				</MenuShell>
+			)}
 
 				{/* The context menu (wave 6 + the extraction-UX redesign): the
 				    coverage block above, then exactly two management actions

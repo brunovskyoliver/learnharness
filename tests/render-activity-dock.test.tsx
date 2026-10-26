@@ -188,12 +188,9 @@ describe("activity dock pure layer", () => {
 });
 
 describe("activity section render", () => {
-	it("renders the ALWAYS-PRESENT header when idle — empty means empty, nothing hides", () => {
+	it("renders nothing while idle (ui-v2: the section appears only while agents run)", () => {
 		const html = renderToStaticMarkup(<ActivitySection feed={{ jobs: [], extractions: [] }} />);
-		assert.match(html, /data-testid="activity-section"/);
-		assert.match(html, /Background agents/);
-		assert.doesNotMatch(html, /activity-blob-(job|extraction)/, "no rows while idle");
-		assert.doesNotMatch(html, /activity-total-cost/, "the cost span is population, not decoration");
+		assert.equal(html, "");
 	});
 
 	it("renders one blob per running process with cost, elapsed, and the abort affordance", () => {

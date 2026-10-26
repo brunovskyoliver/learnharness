@@ -116,7 +116,7 @@ describe("SessionRow", () => {
 
 	it("active row is visually marked by the background alone (owner, round 5: no weight change)", () => {
 		const html = render(item({}), true);
-		assert.ok(html.includes("bg-accent"), "active background");
+		assert.ok(html.includes("bg-white/[0.09]"), "active background");
 		assert.ok(!html.includes("font-medium"), "weight is not a second channel doing the same job");
 	});
 });
@@ -142,7 +142,7 @@ describe("SessionRow practice badge (practice sessions, 2026-10-04)", () => {
 		const html = render(item({ kind: "practice", busy: true }));
 		assert.match(html, /Working…/);
 		assert.doesNotMatch(html, /Practicing…/);
-		assert.match(html, /aria-label="Practice session"/);
+		assert.match(html, /braille-spinner|data-testid="braille/, "busy shows the spinner in the glyph slot");
 	});
 
 	it("a teaching row carries neither", () => {
