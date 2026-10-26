@@ -115,7 +115,7 @@ describe("generated SVG image boundary", () => {
 			const image = assertImageBoundary(document.querySelector('[data-testid="visual-svg"]')!, source);
 			assert.equal(image.getAttribute("width"), null);
 			assert.equal(image.className, "block h-auto w-full");
-			assert.ok(document.querySelector('[data-testid="visual-card"]')!.classList.contains("w-full"));
+			assert.ok(document.querySelector('[data-testid="visual-card"]')!.classList.contains("lh-breakout"));
 		});
 	}
 

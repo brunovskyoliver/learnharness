@@ -98,7 +98,7 @@ export function VisualOutputCard({
 			className={
 				natural !== null
 					? "my-4 mx-auto w-fit max-w-full"
-					: "my-4 w-full"
+					: "lh-breakout my-4"
 			}
 			data-testid="visual-card"
 		>

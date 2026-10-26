@@ -197,6 +197,20 @@ body {
 	font-family: var(--font-ui);
 }
 
+/* THE MEASURE (polish pass 2026-10-26, owner: "~72ch, cards match"):
+   72ch of Source Sans 3 at 16px = 72 x 7.94px ~ 36rem. The transcript
+   column (prose, check cards, tool rows) caps here; .lh-breakout lets
+   demos and visuals widen to the dock's 46rem when the pane allows.
+   The column's parent is an inline-size container, so 100cqw = pane. */
+:root {
+	--lh-measure: 36rem;
+	--lh-wide: 46rem;
+}
+.lh-breakout {
+	--lh-breakout-w: min(var(--lh-wide), 100cqw - 3rem);
+	margin-inline: min(0px, calc((100% - var(--lh-breakout-w)) / 2));
+}
+
 /* Teaching prose (the markdown renderer's container gets .lh-prose):
    Source Sans 3 with the size/leading tokens; emphasis color bound to
    the settings-ready tokens. */
