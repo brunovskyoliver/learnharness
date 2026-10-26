@@ -808,7 +808,7 @@ function QuestionDockForm({
 					)}
 					<div className="flex items-center justify-between gap-2 pt-1.5">
 						<span aria-hidden className="text-xs text-muted-foreground/70">
-							{compactionRunning ? "Compacting session…" : "Enter to submit, Shift+Enter for a new line"}
+							{compactionRunning && "Compacting session…"}
 						</span>
 						<Button
 							type="submit"
