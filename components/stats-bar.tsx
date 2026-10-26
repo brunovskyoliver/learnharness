@@ -1,13 +1,21 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { subscriptionLabels, subscriptionLabel, type SessionPricing, type TurnUsage } from "@/src/core";
-import { formatTokens, formatUsd, planCostLabel, prettyModel } from "@/components/usage-format";
+import { subscriptionLabels, type SessionPricing, type TurnUsage } from "@/src/core";
+import { formatTokens, planCostLabel } from "@/components/usage-format";
 import { ModelControl, catalogLimits, useModelCatalog } from "@/components/model-picker";
 
 export function formatContextMeasurement(tokens: number | null, limit: number | null): string {
 	const numerator = tokens === null ? "?" : formatTokens(tokens);
 	return limit === null ? numerator : `${numerator} / ${formatTokens(limit)}`;
+}
+
+/** Every token the session's turns used: input, cache and output. */
+export function totalTokens(turns: TurnUsage[]): number {
+	let n = 0;
+	for (const t of turns)
+		for (const s of t.steps) n += (s.inputTokens ?? 0) + (s.outputTokens ?? 0) + (s.cacheReadTokens ?? 0) + (s.cacheWriteTokens ?? 0);
+	return n;
 }
 
 /**
@@ -131,52 +139,35 @@ export function StatsBar({
 				{open && (
 					<div
 						data-testid="stats-detail"
-						className="absolute bottom-full left-1/2 z-40 mb-1.5 w-72 -translate-x-1/2 rounded-xl border bg-card p-3 text-xs shadow-xl"
+						className="absolute bottom-full left-0 z-40 mb-2 w-64 rounded-lg border border-white/[0.08] bg-card p-3 text-sm shadow-xl"
 					>
-						<div className="mb-2 text-xs font-medium text-muted-foreground">
-							Session stats
+						{/* Summary only (ui-v2): context, turns, tokens, usage. */}
+						<div className="mb-1.5 flex items-baseline justify-between gap-2">
+							<span className="text-muted-foreground">Context</span>
+							<span className="tabular-nums text-card-foreground">{contextLabel}</span>
 						</div>
-						<div className="flex flex-col gap-1 text-muted-foreground">
-							<div className="flex justify-between gap-2">
-								<span>Context (last call)</span>
-								<span className="tabular-nums text-card-foreground">
-									{contextLabel}
-								</span>
+						{contextTokens !== null && limit !== null && limit > 0 && (
+							<div className="mb-3 h-1 overflow-hidden rounded-full bg-white/[0.08]" aria-hidden>
+								<div className="h-full rounded-full bg-foreground/60" style={{ width: `${Math.min(100, (contextTokens / limit) * 100)}%` }} />
 							</div>
-							<div className="flex justify-between gap-2">
-								<span>{subscription ? "Usage" : "Total cost"}</span>
-								<span className="tabular-nums text-card-foreground">{costLabel}</span>
-							</div>
-							{providers.includes("ChatGPT") && <a href="https://chatgpt.com/settings/usage" target="_blank" rel="noreferrer" className="underline underline-offset-2">Manage ChatGPT usage</a>}
-							{unpriced > 0 && (
-								<div className="flex justify-between gap-2">
-									<span>Unpriced turns</span>
-									<span className="tabular-nums text-card-foreground">{unpriced}</span>
-								</div>
-							)}
-						</div>
-						{turns.length > 0 && (
-							<>
-								<div className="mb-1 mt-2.5 border-t pt-2 text-xs font-medium text-muted-foreground">
-									Turns
-								</div>
-								<ul className="flex max-h-56 flex-col gap-1 overflow-y-auto">
-									{turns.map((turn, i) => {
-										const c = pricing?.turnCosts[turn.id] ?? null;
-										return (
-											<li key={`${turn.messageId}-${i}`} className="flex items-center justify-between gap-2">
-												<span className="truncate text-muted-foreground">
-													#{i + 1} · {prettyModel(turn.model, true)}
-												</span>
-												<span className="flex shrink-0 items-center gap-2 tabular-nums text-card-foreground">
-													<span className="text-muted-foreground">{turn.steps.length} steps</span>
-													<span>{subscriptionLabel(turn.model) ?? (c === null ? "—" : formatUsd(c))}</span>
-												</span>
-											</li>
-										);
-									})}
-								</ul>
-							</>
+						)}
+						<dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-muted-foreground">
+							<dt>Turns</dt>
+							<dd className="text-right tabular-nums text-card-foreground">{turns.length}</dd>
+							<dt>Tokens used</dt>
+							<dd className="text-right tabular-nums text-card-foreground">{formatTokens(totalTokens(turns))}</dd>
+							<dt>{subscription ? "Plan" : "Cost"}</dt>
+							<dd className="text-right tabular-nums text-card-foreground">{costLabel}</dd>
+						</dl>
+						{providers.includes("ChatGPT") && (
+							<a
+								href="https://chatgpt.com/settings/usage"
+								target="_blank"
+								rel="noreferrer"
+								className="mt-3 block border-t border-white/[0.06] pt-2 text-muted-foreground transition-colors hover:text-foreground"
+							>
+								Manage usage ↗
+							</a>
 						)}
 					</div>
 				)}
