@@ -138,7 +138,7 @@ const defaultGetThinkingMessage = (isStreaming: boolean) => {
   if (isStreaming) {
     return <Shimmer duration={1}>Thinking...</Shimmer>;
   }
-  return <p>AGENT’S THINKING</p>;
+  return <p>Agent’s thinking</p>;
 };
 
 export const ReasoningTrigger = memo(

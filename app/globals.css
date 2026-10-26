@@ -334,14 +334,27 @@ body {
 	--color-sidebar: var(--card);
 }
 
-/* Mermaid diagrams: keep wide charts inside the content column. Mermaid
- * inlines a px max-width on the svg, so !important is required to win. */
+/* Diagrams: keep wide charts inside the content column. The svg carries
+ * px width/height attributes, so !important is required to win. */
 [data-streamdown="mermaid"] svg {
 	max-width: 100% !important;
 	height: auto !important;
 }
 
-/* Display math: long equations scroll instead of overflowing the column. */
+/* Pele diagram theme (ui-v2): the app's own tokens, applied live. */
+.pele {
+	--pele-bg: transparent;
+	--pele-fg: var(--foreground);
+	--pele-muted: var(--muted-foreground);
+	--pele-line: color-mix(in oklab, var(--foreground) 55%, transparent);
+	--pele-surface: var(--card);
+	--pele-surface-alt: var(--accent);
+	--pele-border: var(--border);
+	--pele-accent: var(--foreground);
+	--pele-error: var(--destructive);
+	--pele-radius: 6px;
+}
+
 /* Display math: long equations scroll instead of overflowing the column.
    Block padding leaves room for under/overbrace labels so the scrollbar
    never sits on top of them (ui-v2); md-blocks shrinks wide ones to fit. */
