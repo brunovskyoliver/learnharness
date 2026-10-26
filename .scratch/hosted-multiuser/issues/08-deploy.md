@@ -29,6 +29,8 @@ Status: **done** (2026-10-26)
 ## Deployed (2026-10-26)
 - Live at https://learn.brunovsky.online.
 - App: AI VM (`brunovsky@172.29.5.181`, Tailscale `100.89.138.0`), `~/learnharness/` (`compose.yaml` app-only, `chrome-seccomp.json`, `.env` mode 600 with the Clerk keys). It listens on `100.89.138.0:3010`; overtree has :3000.
+- Data: on the Synology. The same NFS share as the media server (`172.29.6.30:/volume4/storage-e-net-internal`, same fstab options) is mounted at `/srv/storage`. The app bind-mounts `/srv/storage/learnharness` (uid 1000, mode 700) as `/data`. A drop-in (`docker.service.d/after-nfs.conf`) starts Docker after remote mounts. Backups: `/etc/fstab.bak-20261026-learn`, `compose.yaml.bak-20261026-nfs`. The old `learnharness_lh-data` volume is kept until you confirm.
+- Desktop data moved into your account (`user_3LEQiLIo3Z2vF3gcmECthUxyOpA`): graph, chats, jobs and settings. The ChatGPT login was not copied. The exact archive is in `~/agent-runs/2026-10-26-learnharness-migrate/`.
 - TLS: the home Caddy (`ssh caddy`, Alpine, `/etc/caddy/Caddyfile`) has a `learn.brunovsky.online` block next to overtree's, pointing at `100.89.138.0:3010`. Backup: `Caddyfile.bak-20261026-learn`. Reload: `sudo rc-service caddy reload`.
 - Clerk: still the dev instance (`pk_test`). Allowlist on with only obrunovsky7@gmail.com (your answer: "Allowlist"). Add people in Clerk → Configure → Restrictions.
 - Chromium keeps its sandbox on this Ubuntu 24.04 host despite `apparmor_restrict_unprivileged_userns=1`; checked with a headless run inside the container.
