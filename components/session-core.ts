@@ -283,7 +283,7 @@ export class SessionModel {
 	getState(): SessionState {
 		const live =
 			this.statusValue === "submitted" || this.statusValue === "streaming"
-				? { executions: this.executions, inFlight: true, streamingIds: this.streamingIds }
+				? { executions: this.executions, inFlight: true, streamingIds: this.streamingIds, streamingTextId: this.streamingMessageId }
 				: undefined;
 		const messages = [...this.base, ...this.tail];
 		const latest = messages.at(-1);
@@ -430,13 +430,11 @@ export class SessionModel {
 						this.tail = [...this.tail, withId];
 					});
 				} else {
+					if (agent.type === "message_end") this.streamingMessageId = null;
 					this.mutate(() => {
 						const idx = this.tail.findIndex((m) => m.id === id);
 						this.tail = idx === -1 ? [...this.tail, withId] : this.tail.with(idx, withId);
 					});
-				}
-				if (agent.type === "message_end") {
-					this.streamingMessageId = null; // slot done — next start mints fresh
 				}
 				return true; // a message event is view work, even empty content
 			}

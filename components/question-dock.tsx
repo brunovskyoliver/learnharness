@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useEnterSubmits } from "@/components/enter-submits";
 import { ToolContentResponse } from "@/components/ai-elements/message";
 import { cn } from "@/lib/utils";
+import { focusSurfaceInput } from "@/components/input-surface";
 import {
 	buildAnswer,
 	repairMathForDisplay,
@@ -63,6 +64,8 @@ export interface QuestionDockProps {
 	input: QuizToolInput | AskToolInput | ExplainToolInput;
 	/** Collapse state, owned by the DockOverlay (it drives the shell's height morph). */
 	expanded: boolean;
+	/** Paint the outgoing form behind the collapsed bar until the shell settles. */
+	outgoingHeight?: number;
 	/**
 	 * Teach-phase check awaiting its reveal (vision §2, W5): while collapsed,
 	 * the bar is the "Check your understanding" invitation instead of the
@@ -93,6 +96,7 @@ export function QuestionDock({
 	toolCallId,
 	input,
 	expanded,
+	outgoingHeight,
 	reveal = false,
 	onExpand,
 	onSubmit,
@@ -127,7 +131,7 @@ export function QuestionDock({
 		);
 	}
 	return (
-		<>
+		<div className="relative flex min-h-0 flex-col">
 			{!expanded && (
 				<QuestionDockBar
 					toolName={canonical}
@@ -143,7 +147,12 @@ export function QuestionDock({
 					}
 				/>
 			)}
-			<div className={expanded ? "dock-variant" : "invisible h-0 overflow-hidden"}>
+			<div
+				aria-hidden={!expanded}
+				inert={!expanded}
+				className={expanded ? "flex min-h-0 flex-col" : outgoingHeight ? "dock-outgoing pointer-events-none absolute inset-x-0 top-0 flex flex-col" : "invisible h-0 overflow-hidden"}
+				style={!expanded && outgoingHeight ? { height: outgoingHeight } : undefined}
+			>
 				<QuestionDockForm
 					toolName={toolName}
 					toolCallId={toolCallId}
@@ -156,7 +165,7 @@ export function QuestionDock({
 					compactionRunning={compactionRunning}
 				/>
 			</div>
-		</>
+		</div>
 	);
 }
 
@@ -239,7 +248,7 @@ export function QuestionDockBar({
 			type="button"
 			data-testid="question-dock-bar"
 			onClick={onExpand}
-			className="dock-variant flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm transition-colors hover:bg-accent/40"
+			className="dock-variant relative z-10 flex w-full items-center gap-2.5 bg-card px-4 py-2.5 text-left text-sm transition-colors hover:bg-accent/40"
 		>
 			<span className="shrink-0 text-xs font-medium text-muted-foreground">
 				{label ??
@@ -514,11 +523,11 @@ function QuestionDockForm({
 	}, [kbdIdx]);
 
 	return (
-		<div ref={rootRef} data-testid="question-dock">
+		<div ref={rootRef} data-testid="question-dock" className="flex min-h-0 flex-col">
 			{/* Question area — scrolls internally if very tall; the bottom row stays put.
 			    Capped by the measured column (--dock-max-h; the old fixed 55dvh cut
 			    long questions short — owner round, 2026-10-05). */}
-			<div data-session-find-root="" className="max-h-[var(--dock-max-h,55dvh)] overflow-y-auto px-4 pt-3">
+			<div data-session-find-root="" className="max-h-[var(--dock-max-h,55dvh)] min-h-0 select-text overflow-y-auto px-4 pt-3">
 				<div className="mb-1 text-xs font-medium text-muted-foreground">
 					{toolName === "probe"
 						? "Probe"
@@ -698,7 +707,7 @@ function QuestionDockForm({
 				(the dock machine above). "I don't know" greys them out and no
 				value is sent. */}
 			{kind === "quiz" && (
-				<div className="flex items-center gap-3 border-t border-white/[0.06] px-4 py-2.5">
+				<div className="flex shrink-0 items-center gap-3 border-t border-white/[0.06] px-4 py-2.5">
 					<span
 						className={cn(
 							"shrink-0 text-xs font-medium",
@@ -745,7 +754,8 @@ function QuestionDockForm({
 			    is for dumping, soon dictated; the button submits); text mode
 			    keeps "Your answer" with Enter-to-submit. */}
 			<form
-				className="border-t border-white/[0.06] px-4 pt-2.5 pb-3"
+				className="input-surface shrink-0 border-t border-white/[0.06] px-4 pt-2.5 pb-3"
+				onClick={focusSurfaceInput}
 				onSubmit={(e) => {
 					e.preventDefault();
 					submit();
@@ -762,6 +772,7 @@ function QuestionDockForm({
 					</div>
 					{qd.mode === "text" ? (
 						<textarea
+							aria-label="Your answer"
 							value={text}
 							onChange={(e) => {
 								answerTextRef.current = e.target.value;
@@ -782,6 +793,7 @@ function QuestionDockForm({
 					) : (
 						<textarea
 							ref={thinkingRef}
+							aria-label="Your thinking"
 							value={thinking}
 							onChange={(e) => {
 								thinkingTextRef.current = e.target.value;

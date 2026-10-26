@@ -1,5 +1,7 @@
 "use client";
 
+import { focusSurfaceInput } from "@/components/input-surface";
+
 /**
  * The reading-thinking field (owner design 2026-10-03, "two questions per
  * teaching unit"): a quiet textarea for thinking WHILE READING the
@@ -25,12 +27,14 @@ export function ReadingThinkingField({
 	return (
 		<div
 			data-testid="reading-thinking-field"
-			className="pointer-events-auto mb-2 rounded-2xl border bg-card/60 px-3 py-2 transition-colors focus-within:border-primary/50"
+			onClick={focusSurfaceInput}
+			className="input-surface pointer-events-auto mb-2 rounded-2xl border bg-card/60 px-3 py-2 transition-colors focus-within:border-primary/50"
 		>
 			<div className="pb-1 text-xs font-medium text-muted-foreground">
 				Thinking while reading
 			</div>
 			<textarea
+				aria-label="Thinking while reading"
 				value={value}
 				onChange={(e) => onChange(e.target.value)}
 				/* py-0.5 (owner round, 2026-10-07): the scrollbar fix. Source

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-	firstSourceTextParts, messageAnchorId, messageIdFromHash, propositionSessionHref, textPartMessageId,
+	firstSourceTextParts, messageAnchorId, messageIdFromHash, propositionSessionHref, textPartMessageId, sessionTurnEntries,
 } from "../src/core/session-navigation.ts";
 import { projectView } from "../src/core/view.ts";
 import type { LhMessage } from "../src/core/native-messages.ts";
@@ -40,6 +40,34 @@ describe("proposition source-session links (owner, 2026-10-13)", () => {
 		for (const hash of ["", "#", "#message-", "#other-msg_a", "#message-%ZZ"]) {
 			assert.equal(messageIdFromHash(hash), null, hash);
 		}
+	});
+});
+
+describe("session turn rail destinations", () => {
+	it("keeps tool steps together and separates recorded turns inside one assistant group", () => {
+		const native = [
+			{ id: "user", role: "user", content: "Explain **gradients**.", timestamp: 0 } as LhMessage,
+			teacher("first_step", [{ type: "thinking", thinking: "Private reasoning" }]),
+			teacher("answer_step", [{ type: "text", text: "## First answer\n\nA **gradient**." }]),
+			teacher("next_turn", [{ type: "text", text: "Second answer." }, { type: "toolCall", id: "check", name: "quiz", arguments: {} }]),
+			{ id: "answer", role: "toolResult", toolName: "quiz", toolCallId: "check", content: [{ type: "text", text: "Answer" }], isError: false, timestamp: 1 } as LhMessage,
+			teacher("continuation", [{ type: "text", text: "Feedback after the check." }]),
+		];
+		const view = projectView(native);
+		assert.equal(view.filter((message) => message.role === "assistant").length, 1, "projection merges these invocations");
+		assert.deepEqual(sessionTurnEntries(view, native, [{ id: "turn1", messageId: "first_step" }, { id: "turn2", messageId: "next_turn" }]), [
+			{ id: "first_step", partId: "answer_step-t0", prompt: "Explain gradients.", answer: "First answer A gradient." },
+			{ id: "next_turn", partId: "next_turn-t0", prompt: "Explain gradients.", answer: "Second answer." },
+			{ id: "continuation", partId: "continuation-t0", prompt: "Explain gradients.", answer: "Feedback after the check." },
+		]);
+	});
+	it("handles live turns without usage, leaving reasoning and tools out of previews", () => {
+		const native = [
+			teacher("silent", [{ type: "thinking", thinking: "Hidden" }]),
+			{ id: "user", role: "user", content: "Show code.", timestamp: 0 } as LhMessage,
+			teacher("live", [{ type: "thinking", thinking: "Hidden too" }, { type: "text", text: "Try this:\n\n```python\nx = 1\n```" }]),
+		];
+		assert.deepEqual(sessionTurnEntries(projectView(native), native, []), [{ id: "live", partId: "live-t0", prompt: "Show code.", answer: "Try this: x = 1" }]);
 	});
 });
 

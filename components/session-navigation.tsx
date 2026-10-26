@@ -12,7 +12,10 @@ export type SessionScrollContext = Pick<StickToBottomContext, "scrollRef" | "sto
 export function scrollSessionTarget(target: Range | HTMLElement, scope: HTMLElement, context: SessionScrollContext | null): void {
 	const node = "startContainer" in target ? target.startContainer : target;
 	const main = context?.scrollRef.current;
-	if (main?.contains(node)) context!.stopScroll();
+	if (main?.contains(node)) {
+		main.dispatchEvent(new (main.ownerDocument.defaultView?.Event ?? Event)("lh:manual-navigation"));
+		context!.stopScroll();
+	}
 	for (let element = node.parentElement; element && scope.contains(element); element = element.parentElement) {
 		const view = element.ownerDocument.defaultView;
 		const style = typeof view?.getComputedStyle === "function" ? view.getComputedStyle(element) : null;

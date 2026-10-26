@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { cjk } from "@streamdown/cjk";
-import { code } from "@streamdown/code";
+import { createCodePlugin } from "@streamdown/code";
 import { createMathPlugin } from "@streamdown/math";
 
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
@@ -36,7 +36,7 @@ import {
   type PluginConfig,
 } from "streamdown";
 import { mdComponents } from "@/components/md-blocks";
-import { repairMathForDisplay, transformMathDelimiters } from "@/src/core";
+import { completedMarkdownPrefix, repairMathForDisplay, transformMathDelimiters } from "@/src/core";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: LhViewMessage["role"];
@@ -327,7 +327,7 @@ export const MessageBranchPage = ({
   );
 };
 
-export type MessageResponseProps = ComponentProps<typeof Streamdown>;
+export type MessageResponseProps = ComponentProps<typeof Streamdown> & { streaming?: boolean };
 
 // Type-only version skew: @streamdown/code bundles shiki@3 types while
 // streamdown@2.5 expects shiki@4 types. Both work at runtime (each ships its
@@ -348,6 +348,22 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 // `code` override intercepts mermaid fences and renders via
 // components/mermaid-render.ts — streamdown's internal mermaid machinery
 // (the plugin entry + the `mermaid` prop) is retired with it.
+const code = createCodePlugin({
+  themes: ["github-light", {
+    name: "learnharness-dark",
+    type: "dark",
+    colors: { "editor.background": "#141414", "editor.foreground": "#dedede" },
+    tokenColors: [
+      { scope: ["comment"], settings: { foreground: "#929292" } },
+      { scope: ["string", "constant.other.symbol"], settings: { foreground: "#b9c7ad" } },
+      { scope: ["constant.numeric"], settings: { foreground: "#d0be96" } },
+      { scope: ["keyword", "storage"], settings: { foreground: "#b1b9c4" } },
+      { scope: ["entity.name.function", "support.function"], settings: { foreground: "#b6ccdf" } },
+      { scope: ["entity.name.type", "support.class"], settings: { foreground: "#bcafca" } },
+    ],
+  }],
+});
+
 export const streamdownPlugins = {
   cjk: {
     ...cjk,
@@ -358,14 +374,15 @@ export const streamdownPlugins = {
 } as unknown as PluginConfig;
 
 export const MessageResponse = memo(
-  ({ className, children, ...props }: MessageResponseProps) => {
+  ({ className, children, streaming = false, mode = "static", ...props }: MessageResponseProps) => {
     // Legacy backslash delimiters are converted in a single linear scan;
     // native dollar math passes through to Streamdown unchanged. Incomplete
     // legacy spans are left for a later render when their closer arrives.
-    const content =
+    const normalized =
       typeof children === "string"
         ? transformMathDelimiters(children)
         : children;
+    const content = streaming && typeof normalized === "string" ? completedMarkdownPrefix(normalized) : normalized;
 
     // Wide display math shrinks to fit the column, down to 70% (ui-v2);
     // past that it scrolls. ponytail: runs per render, not on resize.
@@ -376,7 +393,7 @@ export const MessageResponse = memo(
         const ratio = el.parentElement!.clientWidth / el.scrollWidth;
         if (ratio < 1) el.style.fontSize = `${Math.max(0.7, ratio).toFixed(3)}em`;
       }
-    });
+    }, [content]);
 
     return (
       <div ref={ref} className="contents">
@@ -389,16 +406,15 @@ export const MessageResponse = memo(
         )}
         components={mdComponents}
         plugins={streamdownPlugins}
+        mode={streaming ? "static" : mode}
+        parseIncompleteMarkdown={false}
         {...props}
       >
         {content}
       </Streamdown>
       </div>
     );
-  },
-  (prevProps, nextProps) =>
-    prevProps.children === nextProps.children &&
-    nextProps.isAnimating === prevProps.isAnimating
+  }
 );
 
 MessageResponse.displayName = "MessageResponse";

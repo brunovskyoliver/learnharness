@@ -30,20 +30,34 @@ describe("md-blocks — code", () => {
 		assert.match(html, /text-\[0\.88em\]/);
 	});
 
-	it("code fences delegate to streamdown's CodeBlock with a hover copy corner", () => {
+	it("code fences keep Shiki and a visible source-copy action", () => {
 		const html = render("```js\nconst x = 1;\n```");
 		assert.ok(html.includes('data-testid="md-code"'), "the md-blocks wrapper mounts");
 		assert.ok(html.includes('data-streamdown="code-block"'), "the delegated CodeBlock path is kept");
 		assert.ok(html.includes('data-streamdown="code-block-body"'), "shiki body renders");
 		assert.match(html, /aria-label="Copy code"/, "the corner copy affordance is present");
-		// NAMED group (group/md) — the message container is also a `group`,
-		// and an unnamed group-hover would light every corner in the message at
-		// once (owner report, 2026-09-19); only the hovered block reveals.
-		assert.ok(html.includes("group/md"), "the block uses the named md group");
-		assert.match(html, /group-hover\/md:opacity-100/, "the corner reveals via the named group only");
+		assert.match(html, /class="md-code-toolbar"/, "code has a compact language and actions header");
+		assert.match(html, /aria-label="Wrap lines"/, "code has an accessible wrapping control");
+		assert.match(html, /aria-pressed="false"/, "source lines remain unwrapped initially");
 		// No "Copied" pill — the icon flip alone conveys the copy (owner ask,
 		// 2026-09-19; the pill was tried and removed same day).
 		assert.ok(!html.includes('data-testid="md-copy-pill"'), "no Copied pill anywhere — icon flip is the feedback");
+	});
+
+	it("short code examples have no line-number gutter; longer blocks retain it", () => {
+		const short = render("```python\npredictions = X @ w\nerrors = predictions - y\nmse = np.mean(errors ** 2)\n```");
+		assert.ok(!short.includes("[counter-reset:line]"), "three-line example has no counters");
+		const ten = Array.from({ length: 10 }, (_, i) => `value_${i} = ${i}`).join("\n");
+		const fence = "```";
+		assert.ok(!render(`${fence}python\n${ten}\n${fence}`).includes("[counter-reset:line]"));
+		assert.ok(render(`${fence}python\n${ten}\nlast = 10\n${fence}`).includes("[counter-reset:line]"));
+	});
+
+	it("explicit numbering metadata still takes precedence", () => {
+		assert.match(render("```python startLine=20\nx = 1\n```"), /counter-reset:\s*line 19/);
+		const long = Array.from({ length: 11 }, (_, i) => `x = ${i}`).join("\n");
+		const fence = "```";
+		assert.ok(!render(`${fence}python noLineNumbers\n${long}\n${fence}`).includes("[counter-reset:line]"));
 	});
 });
 
@@ -62,17 +76,14 @@ describe("md-blocks — mermaid", () => {
 });
 
 describe("md-blocks — tables", () => {
-	it("renders as a plain prose table with the copy corner — no wrapper box, no button rows", () => {
+	it("renders a prose table with Copy above the cells", () => {
 		const html = render("| A | B |\n| --- | --- |\n| 1 | 2 |");
 		assert.ok(html.includes('data-testid="md-table"'), "the md-blocks table wrapper mounts");
 		assert.ok(html.includes('data-streamdown="table"'), "the table itself renders");
 		assert.ok(!html.includes('data-streamdown="table-wrapper"'), "streamdown's boxed wrapper is gone");
 		assert.match(html, /aria-label="Copy table"/, "the corner copy affordance is present");
 		assert.ok(!html.match(/Fullscreen|aria-label="Download"/), "no fullscreen/download chrome on tables");
-		// The corner is CONTAINED in the table (top-1 right-1, not the old
-		// -top-3 that straddled the top outline — the 24px button at a 12px
-		// offset sat half over the border; owner report, 2026-09-19).
-		assert.match(html, /absolute top-1 right-1 z-10/, "the corner sits inside the table's top-right");
+		assert.ok(html.indexOf('data-testid="md-table-actions"') < html.indexOf('<table'), "Copy has its own space above the cells");
 		// Table text runs at the session prose size — no text-sm pin (the
 		// cells' own text-sm is overridden to inherit via globals.css).
 		assert.ok(!/border-collapse text-sm/.test(html), "the table itself pins no smaller text size");

@@ -6,6 +6,7 @@ import { ToolContentResponse } from "@/components/ai-elements/message";
 import { Button } from "@/components/ui/button";
 import { useEnterSubmits } from "@/components/enter-submits";
 import { cn } from "@/lib/utils";
+import { focusSurfaceInput } from "@/components/input-surface";
 
 /**
  * The practice dock (practice sessions, owner design 2026-10-04): an
@@ -35,6 +36,7 @@ export interface PracticeDockProps {
 	input: { statement: string };
 	/** Collapse state, owned by the DockOverlay. */
 	expanded: boolean;
+	outgoingHeight?: number;
 	onExpand: () => void;
 	/** text — POST {type:"thinking"} (one lane; the register is read from the text). */
 	onSubmit: (text: string) => void;
@@ -45,7 +47,7 @@ export interface PracticeDockProps {
 	compactionRunning?: boolean;
 }
 
-export function PracticeDock({ problemCallId, input, expanded, onExpand, onSubmit, compactionRunning = false }: PracticeDockProps) {
+export function PracticeDock({ problemCallId, input, expanded, outgoingHeight, onExpand, onSubmit, compactionRunning = false }: PracticeDockProps) {
 	const [thinking, setThinking] = useState("");
 	// Ref MIRRORS the field ("nothing gets lost", the question-dock
 	// discipline): a submit resuming after `await finishDictation()` reads
@@ -69,29 +71,31 @@ export function PracticeDock({ problemCallId, input, expanded, onExpand, onSubmi
 	useEnterSubmits(submit);
 
 	/* ── the collapsed bar ── */
-	if (!expanded) {
-		return (
+	const bar = (
 			<button
 				type="button"
 				data-testid="practice-dock-bar"
 				onClick={onExpand}
-				className="flex w-full cursor-pointer items-center gap-2 px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
+				className="relative z-10 flex w-full cursor-pointer items-center gap-2 bg-card px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
 			>
 				<ChevronRightIcon className="size-4 shrink-0 rotate-90" />
 				<span className="font-medium">Problem</span>
 				<span className="min-w-0 flex-1 truncate">{input.statement}</span>
 			</button>
-		);
-	}
+	);
+	if (!expanded && !outgoingHeight) return bar;
 
 	/* ── the expanded form ── */
 	return (
-		<div data-testid="practice-dock" data-problem={problemCallId}>
+		<div className="relative flex min-h-0 flex-col">
+		{!expanded && bar}
+		<div aria-hidden={!expanded} inert={!expanded} className={expanded ? "flex min-h-0 flex-col" : "dock-outgoing pointer-events-none absolute inset-x-0 top-0 flex flex-col"} style={!expanded && outgoingHeight ? { height: outgoingHeight } : undefined}>
+		<div data-testid="practice-dock" data-problem={problemCallId} className="flex min-h-0 flex-col">
 			{/* The agent's half: the 'Problem' eyebrow (mirroring the quiz
 			    cards' label row — owner round, 2026-10-05) + the statement,
 			    markdown + LaTeX rendered, capped by the measured column
 			    (--dock-max-h; the old fixed 40vh cut long problems short). */}
-			<div className="max-h-[var(--dock-max-h,40vh)] overflow-y-auto px-4 pt-3 pb-2">
+			<div className="max-h-[var(--dock-max-h,40vh)] min-h-0 select-text overflow-y-auto px-4 pt-3 pb-2">
 				<div className="mb-1 text-xs font-medium text-muted-foreground">Problem</div>
 				<div className="lh-prose">
 					<ToolContentResponse>{input.statement}</ToolContentResponse>
@@ -102,12 +106,14 @@ export function PracticeDock({ problemCallId, input, expanded, onExpand, onSubmi
 			    Shift+Enter makes a newline — less to decide about. */}
 			<div
 				data-testid="practice-thinking-field"
-				className="m-1.5 rounded-[10px] border border-border/70 bg-background/60 transition-colors focus-within:border-primary/50"
+				onClick={focusSurfaceInput}
+				className="input-surface m-1.5 shrink-0 rounded-[10px] border border-border/70 bg-background/60 transition-colors focus-within:border-primary/50"
 			>
 				<div className="px-2.5 pt-2 text-xs font-medium text-muted-foreground">
 					Your thinking
 				</div>
 				<textarea
+					aria-label="Your thinking"
 					value={thinking}
 					onChange={(e) => {
 						thinkingRef.current = e.target.value;
@@ -146,6 +152,8 @@ export function PracticeDock({ problemCallId, input, expanded, onExpand, onSubmi
 					</Button>
 				</div>
 			</div>
+		</div>
+		</div>
 		</div>
 	);
 }

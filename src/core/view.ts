@@ -90,6 +90,9 @@ export interface LiveTurnState {
 	 *  empty reasoning part — the thinking row — so the placeholder's
 	 *  handoff is seamless; settled empty messages stay hidden. */
 	streamingIds: ReadonlySet<string>;
+	/** The one provider message whose text is still arriving. Tool execution
+	 * keeps streamingIds alive after its text has completed. */
+	streamingTextId?: string | null;
 }
 
 function textPart(text: string): LhViewPart {
@@ -221,7 +224,7 @@ export function projectView(messages: readonly LhMessage[], live?: LiveTurnState
 			const streamingMessage = live?.streamingIds.has(m.id) === true;
 			for (const block of assistant.content) {
 				if (block.type === "text") {
-					rest.push({ type: "text", id: `${m.id}-t${textN++}`, text: block.text, state: "done" });
+					rest.push({ type: "text", id: `${m.id}-t${textN++}`, text: block.text, state: live?.streamingTextId === m.id ? "streaming" : "done" });
 				} else if (block.type === "thinking") {
 					reasoning.push({ type: "reasoning", id: `${m.id}-r${reasoningN++}`, text: block.thinking, state: "done" });
 				} else if (block.type === "toolCall") {

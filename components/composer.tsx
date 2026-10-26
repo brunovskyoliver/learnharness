@@ -3,6 +3,7 @@
 import { ArrowRightIcon, CornerDownLeftIcon, SquareIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Hint } from "@/components/ui/hint";
+import { focusSurfaceInput } from "@/components/input-surface";
 
 /**
  * The chat composer — content row ONLY (the persistent rounded shell lives in
@@ -84,7 +85,8 @@ export function Composer({
 	return (
 		<form
 			data-testid="composer"
-			className="flex items-end gap-1.5 p-1.5"
+			className="input-surface flex items-end gap-1.5 p-1.5"
+			onClick={focusSurfaceInput}
 			onSubmit={(e) => {
 				e.preventDefault();
 				act();

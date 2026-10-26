@@ -101,6 +101,17 @@ function assistantMsg(id: string, text: string): LhMessage {
 	} as unknown as LhMessage;
 }
 
+describe("streaming text projection", () => {
+	it("only the active provider message buffers Markdown; completed steps stay visible", () => {
+		const messages = [assistantMsg("step_1", "Completed step."), assistantMsg("step_2", "Partial step")];
+		const live = { executions: new Map(), inFlight: true, streamingIds: new Set(["step_1", "step_2"]), streamingTextId: "step_2" as string | null };
+		const states = () => projectView(messages, live).flatMap((message) => message.parts.filter((part) => part.type === "text").map((part) => part.state));
+		assert.deepEqual(states(), ["done", "streaming"]);
+		live.streamingTextId = null;
+		assert.deepEqual(states(), ["done", "done"], "message_end flushes text while tool execution may continue");
+	});
+});
+
 /** A streaming assistant partial (pi events carry the FULL partial — and
  * NO message.id: the id exists only once the server's persistTurn stamps
  * the record; the client tracks the in-flight message by slot). */

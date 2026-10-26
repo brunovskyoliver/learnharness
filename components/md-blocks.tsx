@@ -13,12 +13,11 @@
  *   tables scroll inside the column.
  * - Mermaid: the bare chart, part of the message — no label, no container,
  *   no zoom pill (zoom/pan lives in the session-scoped focus overlay now).
- * - Code: streamdown's CodeBlock skeleton keeps the shiki plumbing, but the
- *   container melts (subtle bg tint, no border, no header — globals.css) and
- *   the buttons go.
+ * - Code: Streamdown keeps Shiki inside a compact panel with a language
+ *   label, Copy and wrap controls; short examples have no gutter.
  * - Display math: untouched visually, but gains the corner copy.
  *
- * THE ONE AFFORDANCE (user-decided): a small muted COPY icon at each block's
+ * Tables, math, and diagrams keep a small muted COPY icon at each block's
  * top-right corner, revealed on hover — copying the SOURCE (table →
  * Markdown, code → text, mermaid → chart source, math → the raw TeX). It
  * never fakes a table column or shifts layout, and hover-reveal keeps the
@@ -28,7 +27,7 @@
  */
 
 import { cloneElement, isValidElement, useEffect, useRef, useState, type ComponentProps, type ReactNode } from "react";
-import { CheckIcon, CopyIcon, MaximizeIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, MaximizeIcon, WrapTextIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
 	CodeBlock,
@@ -42,6 +41,7 @@ import { MermaidError } from "@/components/mermaid-error";
 import { blurAfterPointerClick } from "@/components/focus-hygiene";
 import { chartSize, useSessionMermaid } from "@/components/session-overlay";
 import { Hint } from "@/components/ui/hint";
+import { Button } from "@/components/ui/button";
 
 // ─── The one affordance: the hover-reveal corner copy ────────────────────────
 
@@ -87,10 +87,16 @@ export function CopyCorner({
 	getText,
 	label,
 	className,
+	text = false,
+	visible = false,
 }: {
 	getText: () => string;
 	label: string;
 	className?: string;
+	/** The quiet code inset uses a visible text action. Other blocks keep icons. */
+	text?: boolean;
+	/** Code toolbars keep the icon available without requiring hover. */
+	visible?: boolean;
 }) {
 	const [copied, setCopied] = useState(false);
 	const timerRef = useRef<number | undefined>(undefined);
@@ -101,7 +107,10 @@ export function CopyCorner({
 				type="button"
 				aria-label={label}
 				data-testid="md-copy"
-				className="flex size-6 items-center justify-center rounded-md text-muted-foreground/70 opacity-0 transition-opacity hover:bg-accent hover:text-foreground focus-visible:opacity-100 group-hover/md:opacity-100"
+				className={cn(
+					"flex h-6 items-center justify-center rounded-md text-muted-foreground/70 transition-opacity hover:text-foreground focus-visible:opacity-100",
+					text ? "px-1 text-xs" : cn("size-6 hover:bg-accent", !visible && "opacity-0 group-hover/md:opacity-100"),
+				)}
 				onClick={(e) => {
 					blurAfterPointerClick(e);
 					void copyText(getText()).then((ok) => {
@@ -112,7 +121,7 @@ export function CopyCorner({
 					});
 				}}
 			>
-				{copied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
+				{text ? (copied ? "Copied" : "Copy") : copied ? <CheckIcon className="size-3.5" /> : <CopyIcon className="size-3.5" />}
 			</button>
 		</span>
 	);
@@ -226,15 +235,13 @@ function MermaidInline({ chart }: { chart: string }) {
 	);
 }
 
-/** The Streamdown `code` override: inline code passes through with the
- *  house inline classes; block fences split — mermaid renders as the bare
- *  chart above, everything else delegates to streamdown's exported
- *  CodeBlock (shiki highlighting + line numbers preserved) inside a
- *  hover-copy wrapper, with NO children so its sticky button row never
- *  mounts. The container/look is CSS-melted in globals.css
- *  (data-streamdown="code-block"…). */
+/** Inline code keeps its house style. Mermaid uses the app-owned chart;
+ * other fences keep Streamdown's Shiki/streaming pipeline in a frameless
+ * inset with source copying. Only long or explicitly numbered blocks have
+ * gutters. The upstream sticky action row stays unmounted. */
 export function MarkdownCode(props: ComponentProps<"code"> & ExtraProps) {
 	const incomplete = useIsCodeFenceIncomplete();
+	const [wrapped, setWrapped] = useState(false);
 	const { children, className, node, ...rest } = props;
 
 	// Inline code: no data-block (the pre handler stamps block fences only).
@@ -254,10 +261,21 @@ export function MarkdownCode(props: ComponentProps<"code"> & ExtraProps) {
 
 	const startMatch = /startLine=(\d+)/.exec(meta);
 	const startLine = startMatch ? Number.parseInt(startMatch[1]!, 10) : undefined;
-	const lineNumbers = !/\bnoLineNumbers\b/.test(meta);
+	const lineCount = source.replace(/\n$/, "").split("\n").length;
+	const lineNumbers = !/\bnoLineNumbers\b/.test(meta) && (lineCount > 10 || (startLine !== undefined && startLine >= 1));
 	return (
-		<div className="group/md relative" data-testid="md-code">
-			<CopyCorner className="absolute top-1.5 right-2 z-10" getText={() => source} label="Copy code" />
+		<div className="md-code-panel group/md relative" data-testid="md-code" data-wrap={wrapped}>
+			<div className="md-code-toolbar">
+				<span className="truncate font-mono text-xs text-muted-foreground">{language || "text"}</span>
+				<div role="toolbar" aria-label="Code block actions" className="flex items-center gap-0.5">
+					<Hint label={wrapped ? "Disable line wrap" : "Wrap lines"}>
+						<Button variant="ghost" size="icon-xs" aria-label={wrapped ? "Disable line wrap" : "Wrap lines"} aria-pressed={wrapped} onClick={(event) => { blurAfterPointerClick(event); setWrapped((value) => !value); }}>
+							<WrapTextIcon />
+						</Button>
+					</Hint>
+					<CopyCorner getText={() => source} label="Copy code" visible />
+				</div>
+			</div>
 			<CodeBlock
 				code={source}
 				language={language}
@@ -368,7 +386,7 @@ export function MarkdownBlockquote(props: ComponentProps<"blockquote"> & ExtraPr
 
 // ─── Tables (the Streamdown `table` override) ────────────────────────────────
 
-/** A plain PROSE table: no wrapper box, no button rows — just the table
+/** A centered prose table with its Copy action just above the right edge.
  *  (streamdown's inner cells keep their padding/typography; the hairline
  *  rules live in globals.css on the data-streamdown attributes) inside a
  *  horizontal-scroller for wide ones, with the corner copy. The copy
@@ -377,18 +395,14 @@ export function MarkdownTable(props: ComponentProps<"table"> & ExtraProps) {
 	const { children, node, ...rest } = props;
 	const ref = useRef<HTMLTableElement>(null);
 	return (
-		<div className="group/md relative my-4" data-testid="md-table">
-			<CopyCorner
-				// Contained in the table's top-right corner (owner note, 2026-09-19:
-				// the old -top-3 lifted only half the 24px button above the 12px
-				// offset, so it straddled the top outline). 4px inset, z above the
-				// cells it hovers over; the scroll container stays under it (the
-				// corner is fixed to the wrapper, not the scrolling table).
-				className="absolute top-1 right-1 z-10"
-				label="Copy table"
-				getText={() => (ref.current ? tableDataToMarkdown(extractTableDataFromElement(ref.current)) : "")}
-			/>
-			<div className="overflow-x-auto">
+		<div className="group/md relative mx-auto my-4 w-fit max-w-full" data-testid="md-table">
+			<div className="mb-1 flex h-6 items-center justify-end" data-testid="md-table-actions">
+				<CopyCorner
+					label="Copy table"
+					getText={() => (ref.current ? tableDataToMarkdown(extractTableDataFromElement(ref.current)) : "")}
+				/>
+			</div>
+			<div className="max-w-full overflow-x-auto">
 				<table
 					ref={ref}
 					// No text-sm here — the table text runs at the session prose size

@@ -10,23 +10,9 @@ import {
 	type PopupMessage,
 } from "@/components/plan-block";
 
-/**
- * THE PLAN MARGINALIA: the plan's ambient presence in the session view —
- * the successor of the old fixed corner card (the plan window, retired
- * with the dock-band placement round). NO container: the bare diagram,
- * meet-fitted into the dock band's right flank — the wrapper (DockOverlay)
- * positions and fades it — so it reads as marginalia on the lesson's
- * page, not a floating widget. Live by construction: statuses derive from
- * the transcript on every render (derivePlanStatuses — calls, not
- * results), so the glow moves the moment a tagged check streams in.
- *
- * Visibile only while a question owns the dock band (the reserved tail's
- * height is the diagram's canvas — quiz open, tall band, full plan);
- * folding the dock fades + blurs the whole thing out of existence. The
- * top-bar plan chip carries access at every width; the popup is the study
- * view. The viewBox pad clears the current node's blurred yellow halo
- * (GLOW_REACH) at the extent edges.
- */
+/** Live plan diagram for the dedicated session sidebar. The top-bar chip
+ * opens its popup at every width. The sidebar owns its space independently
+ * of prompt expansion; the viewBox padding clears the current node's halo. */
 
 const MARGIN_PAD = GRAPH_PAD + 16;
 

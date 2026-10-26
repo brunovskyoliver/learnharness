@@ -22,6 +22,20 @@ function render(md: string): string {
 	return renderToStaticMarkup(<MessageResponse mode="static">{md}</MessageResponse>);
 }
 
+describe("completed-block streaming", () => {
+	it("renders the complete prefix while keeping partial syntax out of the DOM", () => {
+		const source = "A completed paragraph.\n\nAn unfinished **paragraph";
+		const html = renderToStaticMarkup(<MessageResponse streaming>{source}</MessageResponse>);
+		assert.match(html, /A completed paragraph/);
+		assert.ok(!html.includes("unfinished"));
+	});
+	it("holds incomplete code and math, then flushes the final source on completion", () => {
+		assert.ok(!renderToStaticMarkup(<MessageResponse streaming>{"```python\nx = 1"}</MessageResponse>).includes("x = 1"));
+		assert.ok(!renderToStaticMarkup(<MessageResponse streaming>{"$$\nx^2"}</MessageResponse>).includes("katex"));
+		assert.match(renderToStaticMarkup(<MessageResponse streaming={false}>{"Final paragraph without a blank line."}</MessageResponse>), /Final paragraph/);
+	});
+});
+
 describe("math delimiter transform (pure unit)", () => {
 	it("converts inline \\(...\\) to the two-dollar inline form", () => {
 		assert.equal(
