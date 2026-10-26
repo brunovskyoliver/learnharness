@@ -18,6 +18,9 @@ import { eventsResponse } from "../src/server/events-stream.ts";
 import { beginTurn, endTurn, isTurnRunning } from "../src/server/turn-liveness.ts";
 import { fireJobAbort, registerJobAbort, unregisterJobAbort } from "../src/agent/subagents/aborts.ts";
 import { bgLlmSlots } from "../src/agent/subagents/bg-llm-semaphore.ts";
+import { webSubscriptionOwner } from "../src/server/web-subscriptions.ts";
+import { publishWebSubscriptionPacket } from "../src/agent/subscription-runtime.ts";
+import { chatGPTStatus } from "../src/agent/chatgpt-bridge.ts";
 
 const REPO = path.resolve(import.meta.dirname, "..");
 
@@ -63,6 +66,23 @@ describe("tenant-scoped registries", () => {
 		runAsTenant("user_a", () => emit("chats-changed", {}));
 		assert.match((await firstFrame(a)) ?? "", /event: chats-changed/);
 		assert.equal(await firstFrame(b), null);
+	});
+
+	it("each tenant gets its own subscription owner", () => {
+		const a = runAsTenant("user_a", () => webSubscriptionOwner());
+		const b = runAsTenant("user_b", () => webSubscriptionOwner());
+		try {
+			assert.notEqual(a, b);
+			assert.equal(a, runAsTenant("user_a", () => webSubscriptionOwner()));
+		} finally { a.close(); b.close(); }
+	});
+
+	it("a subscription packet published in one tenant only reaches that tenant's bridge", () => {
+		for (const user of ["user_a", "user_b"]) runAsTenant(user, () => chatGPTStatus());
+		const status = { available: true, pending: false, allowBackgroundUse: true, activeId: null, accounts: [], error: null };
+		runAsTenant("user_a", () => publishWebSubscriptionPacket("lh:chatgpt", { channel: "lh:chatgpt", kind: "state", stamp: { epoch: 0, authorityRevision: 0, revision: 1 }, status }));
+		assert.equal(runAsTenant("user_a", () => chatGPTStatus()).available, true);
+		assert.equal(runAsTenant("user_b", () => chatGPTStatus()).available, false);
 	});
 
 	it("the server barrel imports in hosted mode without touching tenant state", () => {

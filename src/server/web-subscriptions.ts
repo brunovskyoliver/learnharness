@@ -4,7 +4,7 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { authFile } from "../../config.ts";
+import { authFile, currentTenant, hostedMode, runAsTenant, tenantScoped } from "../../config.ts";
 import { createChatGPT, fileStore } from "../../electron/chatgpt.cjs";
 import { createSubscriptions } from "../../electron/subscriptions.cjs";
 import { chatGPTControl } from "../../electron/chatgpt-ipc.cjs";
@@ -15,17 +15,29 @@ import type { NativeSubscriptionSnapshot } from "../core/contracts/subscriptions
 import { configureWebSubscriptionRuntime, publishWebSubscriptionPacket, webSubscriptionsEnabled, type SubscriptionRuntimeChannel as Channel, type SubscriptionRuntimePacket as Packet } from "../agent/subscription-runtime.ts";
 export { webSubscriptionsEnabled } from "../agent/subscription-runtime.ts";
 interface BrowserAction { target: string; origin: string; scope: string; expires: number; current(): Promise<boolean> }
-const KEY = Symbol.for("lh.webSubscriptions");
 interface Registry {
 	owner?: ReturnType<typeof createWebSubscriptionOwner>;
 }
-function registry(): Registry {
-	const global = globalThis as typeof globalThis & { [KEY]?: Registry };
-	return global[KEY] ??= {};
+/** One owner per tenant (hosted), each in its tenant's auth dir. */
+const registry = () => tenantScoped<Registry>("__lhWebSubscriptions", () => ({}));
+/** Every owner ever opened, closed by one exit hook (not one per tenant). */
+function openOwners(): Set<{ close(): void }> {
+	const g = globalThis as typeof globalThis & { __lhWebSubscriptionOwners?: Set<{ close(): void }> };
+	if (!g.__lhWebSubscriptionOwners) {
+		const owners = g.__lhWebSubscriptionOwners = new Set();
+		process.once("exit", () => { for (const owner of owners) owner.close(); });
+	}
+	return g.__lhWebSubscriptionOwners;
 }
-function publish(channel: Channel, packet: Packet) {
-	publishWebSubscriptionPacket(channel, packet);
-	emit("subscriptions-changed", {});
+/** Owner callbacks can fire from timers; publish inside the owner's tenant
+ * so the bridges and SSE windows deliver it only there. */
+function publisher(): (channel: Channel, packet: Packet) => void {
+	const userId = currentTenant()?.userId;
+	const publish = (channel: Channel, packet: Packet) => {
+		publishWebSubscriptionPacket(channel, packet);
+		emit("subscriptions-changed", {});
+	};
+	return userId ? (channel, packet) => runAsTenant(userId, () => publish(channel, packet)) : publish;
 }
 async function loadSDK() {
 	const [sdk, copilot, xai] = await Promise.all([
@@ -41,6 +53,8 @@ export function createWebSubscriptionOwner(options: {
 	directory: string;
 	chatgptStore?: Parameters<typeof createChatGPT>[0]["store"];
 	sdk?: unknown;
+	/** Hosted: no loopback listener; the user pastes the callback URL. */
+	chatgptPasteCallback?: boolean;
 	onPacket?: (channel: Channel, packet: Packet) => void;
 } ) {
 	const notify = options.onPacket ?? (() => {});
@@ -55,6 +69,7 @@ export function createWebSubscriptionOwner(options: {
 	const chatgpt = createChatGPT({
 		store: options.chatgptStore ?? fileStore(path.join(options.directory, "chatgpt-credentials.json")),
 		openExternal,
+		pasteCallback: options.chatgptPasteCallback === true,
 		onChange: (packet?: Packet) => { if (packet) notify("lh:chatgpt", packet); },
 	});
 	const native = createSubscriptions({
@@ -97,8 +112,8 @@ export function webSubscriptionOwner() {
 	if (!webSubscriptionsEnabled()) throw new Error("Web subscription controls are unavailable in desktop-owned mode.");
 	const state = registry();
 	if (!state.owner) {
-		state.owner = createWebSubscriptionOwner({ directory: path.dirname(authFile()), onPacket: publish });
-		process.once("exit", () => state.owner?.close());
+		state.owner = createWebSubscriptionOwner({ directory: path.dirname(authFile()), chatgptPasteCallback: hostedMode(), onPacket: publisher() });
+		openOwners().add(state.owner);
 	}
 	return state.owner;
 }

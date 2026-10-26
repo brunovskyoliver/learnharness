@@ -527,3 +527,33 @@ test("browser-only sign-in is disabled; foreground toolbar has no plan badge or 
  fixture(connected(false)); await mount(<ModelControl />); assert.match(byTest("stats-model").textContent!, /gpt/i);
  assert(!document.body.textContent?.includes("Using ChatGPT plan")); assert(!document.body.textContent?.includes("Enable background use"));
 });
+
+test("hosted paste-back: pending login shows the paste box; a bad paste keeps it open with the error, the real address completes", async () => {
+ const pastes: string[] = [];
+ const f = fixture(disconnected(), {
+  login: async (id) => { f.calls.login.push(id); f.push({ ...f.status, pending: true, callbackPaste: true, error: null }); return f.status; },
+  callback: async (url) => {
+   pastes.push(url);
+   if (!url.includes("state=")) return { error: "That address does not match this sign-in." } as unknown as ChatGPTStatus;
+   f.push({ ...connected(), pending: false, callbackPaste: true }); return f.status;
+  },
+ });
+ await mount();
+ await begin();
+ assert(byTest("chatgpt-callback-paste"), "paste box shown while pending");
+ assert.equal(document.body.textContent?.includes("Waiting for browser sign-in"), false);
+ const paste = async (value: string) => {
+  const input = document.querySelector<HTMLInputElement>("#chatgpt-callback-url")!;
+  // linkedom has no oninput, so React uses its legacy polyfill (focusin + keyup).
+  Object.assign(input, { attachEvent() {}, detachEvent() {} });
+  await act(async () => { Object.defineProperty(input, "value", { configurable: true, writable: true, value }); for (const type of ["focusin", "input", "keyup"]) input.dispatchEvent(new window.Event(type, { bubbles: true })); });
+  assert.equal(byTest("chatgpt-callback-submit").hasAttribute("disabled"), false);
+  await act(async () => { byTest("chatgpt-callback-paste").dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true })); });
+ };
+ await paste("http://127.0.0.1:50000/auth/callback");
+ assert.match(document.querySelector('[role="alert"]')?.textContent ?? "", /does not match/);
+ assert(byTest("chatgpt-callback-paste"), "a bad paste keeps the attempt");
+ await paste("http://127.0.0.1:50000/auth/callback?state=s&code=c");
+ assert.deepEqual(pastes, ["http://127.0.0.1:50000/auth/callback", "http://127.0.0.1:50000/auth/callback?state=s&code=c"]);
+ assert.equal(document.querySelector('[data-testid="chatgpt-account-dialog"]'), null, "completion closes the dialog");
+});

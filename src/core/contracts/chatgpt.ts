@@ -13,11 +13,16 @@ export interface ChatGPTStatus {
 	}[];
 	error: string | null;
 	catalogError?: string | null;
+	/** Hosted owner: login has no loopback listener; the user pastes the
+	 * callback URL back through callback(). */
+	callbackPaste?: boolean;
 }
 export interface ChatGPTControlBridge {
 	status(): Promise<ChatGPTStatus>;
 	login(id?: string): Promise<ChatGPTStatus>;
 	cancel(): Promise<ChatGPTStatus>;
+	/** Hosted only: finish the pending login with the pasted callback URL. */
+	callback?(url: string): Promise<ChatGPTStatus>;
 	select(id: string): Promise<ChatGPTStatus>;
 	/** Explicitly forget every local registration/credential for this verified identity. */
 	disconnect(id: string): Promise<ChatGPTStatus>;

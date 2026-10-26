@@ -1,4 +1,5 @@
 import type { Api, Model, ModelAuth } from "@earendil-works/pi-ai";
+import { currentTenant, hostedMode, tenantScoped } from "../../config.ts";
 import { onWebSubscriptionPacket, webSubscriptionRequest, webSubscriptionsEnabled } from "./subscription-runtime.ts";
 import { NATIVE_SUBSCRIPTIONS, type NativeSubscriptionProviderId, type NativeSubscriptionScope, type NativeSubscriptionSnapshot, type NativeSubscriptionStatus } from "../core/contracts/subscriptions.ts";
 import type { AdmissionScope, NoDispatchKind } from "./chatgpt-request-cycle.ts";
@@ -12,7 +13,6 @@ interface State {
 	listeners: Set<() => void>;
 	counter: number;
 }
-const KEY = Symbol.for("lh.subscriptions.bridge");
 export function nativeSubscriptionId(logicalId: string): NativeSubscriptionProviderId | undefined {
 	return NATIVE_SUBSCRIPTIONS.find((entry) => entry.logicalId === logicalId)?.providerId;
 }
@@ -46,11 +46,16 @@ function accept(state: State, snapshot: NativeSubscriptionSnapshot) {
 	}
 	if (changed) notify(state);
 }
+const changeListeners = () => ((globalThis as typeof globalThis & { __lhSubscriptionChangeListeners?: Set<() => void> }).__lhSubscriptionChangeListeners ??= new Set());
+/** Per tenant, like the ChatGPT bridge; change listeners are process-wide. */
 function bridge(): State {
-	const global = globalThis as typeof globalThis & { [KEY]?: State };
-	if (!global[KEY]) {
-		const state: State = { statuses: new Map(), models: new Map(), pending: new Map(), controllers: new Map(), listeners: new Set(), counter: 0 };
-		global[KEY] = state;
+	return tenantScoped("__lhSubscriptionsBridge", () => {
+		const owner = currentTenant()?.userId;
+		const state: State = { statuses: new Map(), models: new Map(), pending: new Map(), controllers: new Map(), listeners: changeListeners(), counter: 0 };
+		onWebSubscriptionPacket("lh:subscriptions", (packet) => {
+			if (webSubscriptionsEnabled() && currentTenant()?.userId === owner && packet.snapshot) accept(state, packet.snapshot as NativeSubscriptionSnapshot);
+		});
+		if (owner) return state;
 		process.on("message", (raw: unknown) => {
 			const message = raw as { channel?: string; op?: string; id?: string; ok?: boolean; value?: unknown; error?: string; snapshot?: NativeSubscriptionSnapshot };
 			if (!desktopConnected() || message?.channel !== "lh:subscriptions") return;
@@ -62,17 +67,14 @@ function bridge(): State {
 			if (message.ok) pending.resolve(message.value);
 			else pending.reject(new Error(message.error ?? "Subscription connection failed."));
 		});
-		onWebSubscriptionPacket("lh:subscriptions", (packet) => {
-			if (webSubscriptionsEnabled() && packet.snapshot) accept(state, packet.snapshot as NativeSubscriptionSnapshot);
-		});
 		process.on("disconnect", () => {
 			if (webSubscriptionsEnabled()) return;
 			invalidate(state);
 			for (const pending of state.pending.values()) { clearTimeout(pending.timer); pending.reject(new Error("The desktop connection closed.")); }
 			state.pending.clear(); notify(state);
 		});
-	}
-	return global[KEY];
+		return state;
+	});
 }
 export function subscriptionRequest<T>(op: "snapshot" | "lease", fields: Record<string, unknown> = {}): Promise<T> {
 	const state = bridge();
@@ -101,7 +103,9 @@ export function nativeSubscriptionConnected(providerId: NativeSubscriptionProvid
 export function nativeSubscriptionBackgroundAllowed(providerId: NativeSubscriptionProviderId): boolean { return nativeSubscriptionConnected(providerId) && nativeSubscriptionStatus(providerId)?.allowBackgroundUse === true; }
 export function nativeSubscriptionModels(): Model<Api>[] { return runtimeConnected() ? [...bridge().models.values()].flat() : []; }
 export function nativeSubscriptionModel(logicalId: string, modelId: string): Model<Api> | undefined { return nativeSubscriptionModels().find((m) => m.provider === logicalId && m.id === modelId); }
-export function onNativeSubscriptionChange(listener: () => void): () => void { const state = bridge(); state.listeners.add(listener); return () => { state.listeners.delete(listener); }; }
+export function onNativeSubscriptionChange(listener: () => void): () => void {
+	if (!hostedMode()) bridge(); // desktop: the IPC listener starts with the first watcher, as before
+	const listeners = changeListeners(); listeners.add(listener); return () => { listeners.delete(listener); }; }
 export function subscriptionScope(providerId: NativeSubscriptionProviderId, selectedModelId: string): NativeSubscriptionScope {
 	const state = nativeSubscriptionStatus(providerId);
 	const logicalId = NATIVE_SUBSCRIPTIONS.find((p) => p.providerId === providerId)!.logicalId;

@@ -8,7 +8,11 @@ import { Toggle } from "./controls";
 import { useChatGPTBridge } from "./subscription-client";
 
 export const CHATGPT_NOTICE = "LearnHarness stores your ChatGPT account details and credentials in an unencrypted local file on this device. When this connection is used, relevant conversation context, learning material, and tool results are sent directly to OpenAI. ChatGPT plan limits apply; any additional credits are authorized and managed in ChatGPT, not LearnHarness.";
-export function chatGPTNotice(web = false): string { return web ? `${CHATGPT_NOTICE.replace("on this device", "on the machine running LearnHarness")} Complete ChatGPT sign-in in a browser on that same machine.` : CHATGPT_NOTICE; }
+export function chatGPTNotice(web = false, paste = false): string {
+	if (paste) return CHATGPT_NOTICE.replace("an unencrypted local file on this device", "an unencrypted file on the LearnHarness server");
+	return web ? `${CHATGPT_NOTICE.replace("on this device", "on the machine running LearnHarness")} Complete ChatGPT sign-in in a browser on that same machine.` : CHATGPT_NOTICE;
+}
+const PASTE_HINT = "After you approve in the sign-in tab, it ends on a page that cannot load (its address starts with http://127.0.0.1). Copy that whole address and paste it here.";
 export const CHATGPT_BACKGROUND_HINT = "Background work counts toward your ChatGPT plan usage.";
 const BACKGROUND_LABEL = "Allow background use for all ChatGPT accounts";
 const REVOCATION_WARNING = "Account disconnected locally. Remote revocation could not be confirmed.";
@@ -53,6 +57,8 @@ export function ChatGPTUIProvider({ children }: { children: React.ReactNode }) {
 	const [background, setBackground] = useState(true);
 	const [backgroundDirty, setBackgroundDirty] = useState(false);
 	const [registration, setRegistration] = useState("");
+	const [pasted, setPasted] = useState("");
+	const [pasting, setPasting] = useState(false);
 	const operation = useRef<"login" | "cancel" | "change" | "disconnect" | null>(null);
 	const generation = useRef(0);
 	const statusSequence = useRef(0);
@@ -145,6 +151,7 @@ export function ChatGPTUIProvider({ children }: { children: React.ReactNode }) {
 		setBackground(statusRef.current.allowBackgroundUse);
 		setBackgroundDirty(false);
 		setRegistration(accountId);
+		setPasted("");
 		setError(null);
 		setDismissedError(status.error);
 		showDialog({ kind: "connect" });
@@ -216,6 +223,21 @@ export function ChatGPTUIProvider({ children }: { children: React.ReactNode }) {
 		} catch { if (mounted.current && intent === generation.current) setError(CONTROL_ERROR); }
 		finally { if (intent === generation.current) { operation.current = null; if (mounted.current) setBusy(false); } }
 	}
+	/** Hosted login: the pasted callback completes the pending attempt; the
+	 * status it returns goes through the same reconcile as a status push. */
+	async function finishPaste() {
+		const attempt = loginAttempt.current;
+		const url = pasted.trim();
+		if (!bridge?.callback || !attempt || !owns(attempt) || !url || pasting) return;
+		setPasting(true); setError(null);
+		try {
+			const value: unknown = await bridge.callback(url);
+			if (!owns(attempt)) return;
+			if (!isStatus(value)) { setError(replyError(value)); return; }
+			setPasted(""); receive.current(value);
+		} catch { if (owns(attempt)) setError(CONTROL_ERROR); }
+		finally { if (mounted.current) setPasting(false); }
+	}
 	async function login() {
 		const owner = dialogRef.current;
 		if (!bridge || operation.current || !status.available || status.pending || owner?.kind !== "connect") return;
@@ -278,7 +300,7 @@ export function ChatGPTUIProvider({ children }: { children: React.ReactNode }) {
 						</select>
 						{registration && <Button variant="ghost" size="xs" disabled={busy} onClick={() => context.manage(registration)}>Manage…</Button>}
 					</div>}
-					<p className="mt-3 text-xs leading-relaxed text-muted-foreground" data-testid="chatgpt-privacy-notice">{chatGPTNotice(web)}</p>
+					<p className="mt-3 text-xs leading-relaxed text-muted-foreground" data-testid="chatgpt-privacy-notice">{chatGPTNotice(web, status.callbackPaste === true)}</p>
 				</> : null}
 				<div className={`mt-4 flex items-center gap-3 text-xs text-foreground ${busy && operation.current === "change" && status.available && !status.pending ? "[&>button:disabled]:cursor-auto" : ""}`} data-testid="chatgpt-global-background">
 					<Toggle label={BACKGROUND_LABEL} checked={dialog.kind === "connect" ? background : status.allowBackgroundUse} disabled={busy || status.pending || !status.available} onChange={(enabled) => {
@@ -292,7 +314,14 @@ export function ChatGPTUIProvider({ children }: { children: React.ReactNode }) {
 					<a href="https://chatgpt.com/settings/usage" target="_blank" rel="noreferrer" className="underline underline-offset-2">Manage usage</a>
 				</div>
 				{!status.available && <p className="mt-3 text-xs text-muted-foreground">ChatGPT sign-in is available only in the desktop app. API-key connections remain available here.</p>}
-				{status.pending && <p role="status" className="mt-3 text-xs text-muted-foreground">Waiting for browser sign-in…</p>}
+				{status.pending && !status.callbackPaste && <p role="status" className="mt-3 text-xs text-muted-foreground">Waiting for browser sign-in…</p>}
+				{status.pending && status.callbackPaste && dialog.kind === "connect" && <form className="mt-3 flex flex-col gap-2" data-testid="chatgpt-callback-paste" onSubmit={(event) => { event.preventDefault(); void finishPaste(); }}>
+					<label htmlFor="chatgpt-callback-url" className="text-xs leading-relaxed text-muted-foreground">{PASTE_HINT}</label>
+					<div className="flex items-center gap-2">
+						<input id="chatgpt-callback-url" type="url" autoComplete="off" spellCheck={false} placeholder="http://127.0.0.1:…/auth/callback?…" value={pasted} onChange={(event) => setPasted(event.target.value)} disabled={pasting} className="min-w-0 flex-1 rounded-sm border border-border bg-background px-2 py-1.5 text-xs text-foreground" />
+						<Button type="submit" variant="outline" size="sm" data-testid="chatgpt-callback-submit" disabled={pasting || !pasted.trim()}>Finish sign-in</Button>
+					</div>
+				</form>}
 				{context.error && <p role="alert" className="mt-3 text-xs text-red-400">{context.error}</p>}
 				{dialog.kind === "manage" && managed && <div className="mt-4 flex flex-wrap items-center justify-between gap-3" data-testid="chatgpt-account-strip">
 					<div data-testid="chatgpt-managed-identity" className="flex min-w-0 items-center gap-2 text-xs text-foreground">

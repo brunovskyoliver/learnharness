@@ -1,4 +1,5 @@
 import type { Model } from "@earendil-works/pi-ai";
+import { currentTenant, hostedMode, tenantScoped } from "../../config.ts";
 import { onWebSubscriptionPacket, webSubscriptionRequest, webSubscriptionsEnabled } from "./subscription-runtime.ts";
 import type { ChatGPTStatus } from "../core/contracts/chatgpt.ts";
 import type { AdmissionScope, NoDispatchKind } from "./chatgpt-request-cycle.ts";
@@ -12,7 +13,6 @@ interface BridgeState {
  status: ChatGPTStatus; stamp: Stamp; models: Model<"openai-responses">[]; catalogAccount: string | null;
  pending: Map<string, Pending>; controllers: Map<AbortController, boolean>; listeners: Set<() => void>; counter: number; catalogRequest: number;
 }
-const key = Symbol.for("lh.chatgpt.bridge");
 const unavailable = (): ChatGPTStatus => ({ available: false, pending: false, allowBackgroundUse: true, activeId: null, accounts: [], error: null });
 const validStamp = (s: Stamp) => s && [s.epoch, s.authorityRevision, s.revision].every((v) => Number.isSafeInteger(v) && v >= 0);
 /** Next dev also uses parent/child IPC. IPC alone is not our desktop
@@ -22,11 +22,15 @@ function desktopIPCConnected(): boolean {
  return process.env.LH_DESKTOP_SERVER === "1" && (process.env.LH_DESKTOP_API_SECRET?.length ?? 0) >= 64 && typeof process.send === "function" && process.connected === true;
 }
 function runtimeConnected(): boolean { return desktopIPCConnected() || webSubscriptionsEnabled(); }
+/** Change listeners are process-wide (the wake pump's one watch) and run
+ * inside the tenant whose status changed. */
+const changeListeners = () => ((globalThis as typeof globalThis & { __lhChatGPTChangeListeners?: Set<() => void> }).__lhChatGPTChangeListeners ??= new Set());
+/** One bridge per tenant: a tenant only hears its own owner's packets
+ * (published inside that tenant), and desktop IPC is never a tenant's. */
 function bridge(): BridgeState {
- const global = globalThis as typeof globalThis & { [key]?: BridgeState };
- if (!global[key]) {
-  const state: BridgeState = { status: unavailable(), stamp: { epoch: 0, authorityRevision: 0, revision: 0 }, models: [], catalogAccount: null, pending: new Map(), controllers: new Map(), listeners: new Set(), counter: 0, catalogRequest: 0 };
-  global[key] = state;
+ return tenantScoped("__lhChatGPTBridge", () => {
+  const owner = currentTenant()?.userId;
+  const state: BridgeState = { status: unavailable(), stamp: { epoch: 0, authorityRevision: 0, revision: 0 }, models: [], catalogAccount: null, pending: new Map(), controllers: new Map(), listeners: changeListeners(), counter: 0, catalogRequest: 0 };
   const receive = (raw: unknown) => {
    const m = raw as { channel?: string; kind?: string; id?: string; op?: string; ok?: boolean; value?: unknown; stamp: Stamp; status: ChatGPTStatus; invalidate?: string; error?: string };
    if (m?.channel !== "lh:chatgpt") return;
@@ -46,8 +50,9 @@ function bridge(): BridgeState {
     else call.reject(new Error(m.error ?? "ChatGPT connection failed."));
    }
   };
+  onWebSubscriptionPacket("lh:chatgpt", (packet) => { if (webSubscriptionsEnabled() && currentTenant()?.userId === owner) receive(packet); });
+  if (owner) return state;
   process.on("message", (raw: unknown) => { if (desktopIPCConnected()) receive(raw); });
-  onWebSubscriptionPacket("lh:chatgpt", (packet) => { if (webSubscriptionsEnabled()) receive(packet); });
   process.on("disconnect", () => {
    if (webSubscriptionsEnabled()) return;
    state.status = unavailable(); clearCatalog(state); state.catalogRequest++;
@@ -56,8 +61,8 @@ function bridge(): BridgeState {
    state.pending.clear();
    for (const listener of state.listeners) listener();
   });
- }
- return global[key];
+  return state;
+ });
 }
 function clearCatalog(state: BridgeState) { state.models = []; state.catalogAccount = null; }
 function acceptStatus(state: BridgeState, value: StatusValue) {
@@ -82,7 +87,9 @@ export function chatGPTRequest<T>(op: "status" | "models" | "lease", fields: Rec
 export function chatGPTStatus(): ChatGPTStatus { return bridge().status; }
 export function chatGPTConnected(): boolean { const s = chatGPTStatus(); return runtimeConnected() && s.available && s.accounts.some((a) => a.id === s.activeId && a.connected && a.planEnabled === true); }
 export function chatGPTBackgroundAllowed(): boolean { const s = chatGPTStatus(); return chatGPTConnected() && s.allowBackgroundUse === true; }
-export function onChatGPTChange(listener: () => void): () => void { bridge().listeners.add(listener); return () => { bridge().listeners.delete(listener); }; }
+export function onChatGPTChange(listener: () => void): () => void {
+ if (!hostedMode()) bridge(); // desktop: the IPC listener starts with the first watcher, as before
+ changeListeners().add(listener); return () => { changeListeners().delete(listener); }; }
 export function chatGPTModels(): Model<"openai-responses">[] { return bridge().models; }
 export function chatGPTModel(id: string): Model<"openai-responses"> | undefined { return chatGPTModels().find((m) => m.id === id); }
 export function chatGPTScope(selectedModelId: string): AdmissionScope {

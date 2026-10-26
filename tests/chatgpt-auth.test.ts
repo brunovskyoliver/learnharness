@@ -16,7 +16,7 @@ async function signed(client: string, nonce: string, subject = "scratch-user", o
 	return new SignJWT({ nonce, email: "dummy@example.invalid", ...overrides }).setProtectedHeader({ alg: "RS256", kid: "scratch-key" }).setIssuer("https://auth.openai.com").setSubject(subject).setAudience(client).setIssuedAt().setExpirationTime("1h").sign(privateKey);
 }
 function deferred<T = void>() { let resolve!: (value: T) => void; const promise = new Promise<T>((done) => { resolve = done; }); return { resolve, promise }; }
-function fixture(options: { state?: any; expires?: number; timeoutMs?: number; token?: (form: URLSearchParams, url: URL) => Promise<Response>; write?: (next: any) => Promise<void>; read?: () => void; change?: (push: any) => void; provider?: (target: string, init: RequestInit) => Promise<Response | undefined> } = {}) {
+function fixture(options: { state?: any; expires?: number; timeoutMs?: number; token?: (form: URLSearchParams, url: URL) => Promise<Response>; write?: (next: any) => Promise<void>; read?: () => void; change?: (push: any) => void; provider?: (target: string, init: RequestInit) => Promise<Response | undefined>; pasteCallback?: boolean } = {}) {
 	let saved = structuredClone(options.state ?? initial());
 	let url!: URL;
 	let writeCount = 0;
@@ -26,6 +26,7 @@ function fixture(options: { state?: any; expires?: number; timeoutMs?: number; t
 		store: { async read() { options.read?.(); return structuredClone(saved); }, async write(next: any) { writeCount++; await options.write?.(next); saved = structuredClone(next); } },
 		openExternal: async (value: string) => { url = new URL(value); },
 		timeoutMs: options.timeoutMs ?? 5000,
+		pasteCallback: options.pasteCallback,
 		onChange: (push: any) => { options.change?.(push); if (!push.status.pending) changed.resolve(); },
 		fetch: async (target: string, init: RequestInit = {}) => {
 			const form = init.body instanceof URLSearchParams ? init.body : undefined;
@@ -53,6 +54,10 @@ function fixture(options: { state?: any; expires?: number; timeoutMs?: number; t
 		const callback = new URL(url.searchParams.get("redirect_uri")!);
 		callback.search = new URLSearchParams({ state: url.searchParams.get("state")!, code: "scratch-code", client_id: "oaiapp_scratch", ...params }).toString();
 		return fetch(callback);
+	}, pasted(params: Record<string, string> = {}) {
+		const callback = new URL(url.searchParams.get("redirect_uri")!);
+		callback.search = new URLSearchParams({ state: url.searchParams.get("state")!, code: "scratch-code", client_id: "oaiapp_scratch", ...params }).toString();
+		return callback.href;
 	} };
 }
 async function loggedIn(options: Parameters<typeof fixture>[0] = {}) {
@@ -649,5 +654,24 @@ test("private leases bind active account, authority revision and raw visible mod
 		await assert.rejects(f.rawLease(false));
 		for (const mutation of [{ expectedAccountId: "another" }, { expectedAuthorityRevision: catalog.authorityRevision - 1 }, { selectedModelId: "hidden" }]) await assert.rejects(f.rawLease(false, { ...expected, ...mutation }));
 		assert.equal((await f.rawLease(false, expected)).accountId, catalog.accountId);
+	} finally { f.service.close(); }
+});
+
+test("hosted paste-back: a bad paste keeps the attempt, the real callback URL completes it", async () => {
+	const f = fixture({ pasteCallback: true });
+	try {
+		const started = await f.service.login();
+		assert.equal(started.pending, true);
+		assert.equal(started.callbackPaste, true);
+		const redirect = new URL(f.url.searchParams.get("redirect_uri")!);
+		assert.equal(redirect.hostname, "127.0.0.1");
+		await assert.rejects(f.service.completeLogin("not a url"), { code: "callback" });
+		await assert.rejects(f.service.completeLogin(f.pasted({ state: "wrong" })), { code: "callback" });
+		assert.equal(f.requests.length, 0, "an unverified paste never exchanges a code");
+		assert.equal((await f.service.status()).pending, true, "a bad paste does not consume the attempt");
+		const done = await f.service.completeLogin(`  ${f.pasted()}\n`);
+		assert.equal(done.pending, false);
+		assert.ok(done.accounts.some((a: { connected: boolean }) => a.connected));
+		await assert.rejects(f.service.completeLogin(f.pasted()), { code: "cancelled" }, "one use");
 	} finally { f.service.close(); }
 });
