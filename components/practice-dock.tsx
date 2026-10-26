@@ -94,9 +94,6 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, onExpand
 				onClick={focusSurfaceInput}
 				className="input-surface shrink-0"
 			>
-				<div className="px-5 pt-4 text-xs font-medium text-muted-foreground">
-					Your thinking
-				</div>
 				<textarea
 					aria-label="Your thinking"
 					value={thinking}
@@ -112,9 +109,8 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, onExpand
 							submit();
 						}
 					}}
-					placeholder="Work here, think out loud."
-					rows={2}
-					className="prompt-input field-sizing-content lh-input max-h-64 min-h-16 w-full resize-none bg-transparent px-5 pt-1 pb-3 outline-none"
+					rows={1}
+					className="prompt-input field-sizing-content lh-input max-h-64 min-h-11 w-full resize-none bg-transparent px-5 pt-3 pb-2 outline-none"
 				/>
 				{compactionRunning && <div role="status" className="px-5 pb-2 text-xs text-muted-foreground">Compacting session…</div>}
 				<PromptToolbar controls={controls}>

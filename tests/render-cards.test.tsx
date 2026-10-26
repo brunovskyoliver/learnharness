@@ -172,7 +172,7 @@ describe("render smoke tests", () => {
 		// INSIDE the dock — never called optional, inviting the dump.
 		assert.ok(html.includes('data-testid="thinking-field"'), "thinking field present");
 		assert.match(html, /Your thinking/, "labeled as the learner's voice (sentence case, ui-v2)");
-		assert.match(html, /Why this answer\? Whatever comes to mind/, "placeholder invites, not apologizes (owner, placeholder round 2026-10-07)");
+		assert.doesNotMatch(html, /<textarea[^>]*placeholder=/, "the compact input has no placeholder copy");
 		assert.ok(!html.includes("optional"), "the field is never called optional");
 		assert.match(html, /Submit answer/, "send becomes Submit answer");
 		assert.ok(!html.includes("Enter to submit"), "no keyboard hint under the field (ui-v2)");
@@ -236,7 +236,7 @@ describe("render smoke tests", () => {
 		assert.match(html, /malformed/);
 	});
 
-	it("phase scales the thinking field: teaching invites depth, probing stays quick", () => {
+	it("both lesson phases keep the empty thinking input free of placeholder copy", () => {
 		const teach = renderToStaticMarkup(
 			<QuestionDock
 				toolName="quiz"
@@ -248,10 +248,11 @@ describe("render smoke tests", () => {
 				onSubmit={() => {}}
 			/>,
 		);
-		assert.ok(teach.includes("min-h-[4.5rem]"), "teach: a generous dump area");
 		const probe = renderDock({ toolName: "quiz", toolCallId: "q1", input: quizInput as never });
-		assert.ok(!probe.includes("min-h-[4.5rem]"), "probe (default): stays compact");
-		assert.ok(probe.includes("min-h-10"), "probe: one quiet row");
+		for (const html of [teach, probe]) {
+			assert.match(html, /aria-label="Your thinking"/);
+			assert.doesNotMatch(html, /<textarea[^>]*placeholder=/);
+		}
 	});
 
 	it("text-mode asks keep Enter-to-submit and the answer label", () => {
