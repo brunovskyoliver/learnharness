@@ -1,6 +1,6 @@
 import { chainsForSelection, formatChainLine } from "@/src/core";
 import { newGraphContextMessage, type GraphContextPick } from "@/src/core";
-import { compactionInFlight, createChat, isTurnRunning, listChats, readSettingsRecord, stores, titleFromPrompt, withTenant } from "@/src/server";
+import { backfillTitles, compactionInFlight, createChat, isTurnRunning, listChats, readSettingsRecord, retitleSession, stores, titleFromPrompt, withTenant } from "@/src/server";
 import type { ChatListItem } from "@/src/core";
 
 /** The session picker's list: record-derived summaries (phase, pending
@@ -11,6 +11,8 @@ import type { ChatListItem } from "@/src/core";
  *  (a running spinner per row would double-signal them), so busy means
  *  exactly "a teach turn is in flight". */
 async function handleGET() {
+	// AI titles (ui-v2): the first list read starts the one-off backfill.
+	if (process.env.NODE_ENV !== "test") backfillTitles();
 	const chats: ChatListItem[] = listChats().map((c) => ({
 		...c,
 		busy: isTurnRunning(c.id),
@@ -26,6 +28,8 @@ async function handlePOST(req: Request) {
 	// record — the practice agent + its tools from turn 1, no extraction.
 	const kind = body.kind === "practice" ? ("practice" as const) : undefined;
 	const chat = createChat(titleFromPrompt(title || "Untitled session"), kind);
+	// AI titles (ui-v2): the cheap model renames it in the background.
+	if (title.trim() && process.env.NODE_ENV !== "test") void retitleSession(chat.id, title);
 	// PER-SESSION MODELS (owner, 2026-09-28): a session owns its model +
 	// thinking level from birth — stamped verbatim from the STRONG slot,
 	// the new-session default. From here the strong slot never reaches
