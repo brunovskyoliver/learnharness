@@ -86,14 +86,17 @@ export function ResearchBriefCard({ output }: { output: unknown }) {
 		);
 	}
 	const failed = result.brief.startsWith("Research failed");
+	// The badge already says it failed; the body keeps only the reason.
+	const reason = failed ? result.brief.replace(/^Research failed:?\s*/, "") : result.brief;
+	const body = failed && reason ? reason[0]!.toUpperCase() + reason.slice(1) : result.brief;
 	return (
 		<div className="rounded-xl border bg-card p-4 text-card-foreground" data-testid="research-brief-card">
 			<div className="mb-1 flex items-center gap-2 text-xs font-medium text-muted-foreground">
-				Research brief
+				{failed ? "Research" : "Research brief"}
 				{failed && <span className="rounded bg-destructive/15 px-1.5 py-0.5 text-destructive">failed</span>}
 			</div>
 			<div className="text-sm [&_p:first-child]:mt-0 [&_p:last-child]:mb-0">
-				<MessageResponse>{result.brief}</MessageResponse>
+				<MessageResponse>{body}</MessageResponse>
 			</div>
 			{result.sources.length > 0 && (
 				<div className="mt-3 border-t pt-2">

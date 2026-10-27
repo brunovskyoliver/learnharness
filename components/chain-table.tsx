@@ -247,7 +247,7 @@ export function ChainTableBody({
 			    law: later in the DOM). */}
 			<TopBar>
 				<span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-					{chains.length} {chains.length === 1 ? "chain" : "chains"} · {nodes.length} {nodes.length === 1 ? "node" : "nodes"}
+					{chains.length} {chains.length === 1 ? "chain" : "chains"} · {nodes.length} {nodes.length === 1 ? "idea" : "ideas"}
 				</span>
 				<div className="relative shrink-0">
 					<SearchIcon className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -255,8 +255,8 @@ export function ChainTableBody({
 						value={query}
 						data-testid="chain-table-search"
 						onChange={(e) => onQuery(e.target.value)}
-						placeholder="Search nodes…"
-						aria-label="Search nodes"
+						placeholder="Search ideas…"
+						aria-label="Search ideas"
 						spellCheck={false}
 						className="lh-no-drag h-8 w-56 rounded-lg border bg-background pl-8 pr-3 text-xs outline-none placeholder:text-muted-foreground focus:border-ring"
 					/>
@@ -298,7 +298,7 @@ export function ChainTableBody({
 						aria-sort={sort.col === "props" ? (sort.dir === 1 ? "ascending" : "descending") : "none"}
 						className="flex w-14 shrink-0 items-center justify-end gap-1 text-right transition-colors hover:text-foreground"
 					>
-						Props {dirIcon("props")}
+						Ideas {dirIcon("props")}
 					</button>
 					<button
 						type="button"
@@ -494,7 +494,7 @@ export function ChainTableBody({
 						className="pointer-events-auto flex items-center gap-3 rounded-full border bg-card px-4 py-2 shadow-lg"
 					>
 						<span data-testid="chain-selected-summary" className="text-xs font-medium">
-							{selection.size} {selection.size === 1 ? "node" : "nodes"} →{" "}
+							{selection.size} {selection.size === 1 ? "idea" : "ideas"} →{" "}
 							{derived.length} {derived.length === 1 ? "chain" : "chains"}
 						</span>
 						<button
@@ -510,7 +510,7 @@ export function ChainTableBody({
 								type="button"
 								data-testid="chain-practice-done"
 								onClick={onSelect}
-								aria-label={`Done picking — ${selection.size} ${selection.size === 1 ? "proposition" : "propositions"} selected`}
+								aria-label={`Done picking — ${selection.size} ${selection.size === 1 ? "idea" : "ideas"} selected`}
 								className="flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/80"
 							>
 								<DumbbellIcon aria-hidden="true" className="size-3.5" />
@@ -527,7 +527,7 @@ export function ChainTableBody({
 								type="button"
 								data-testid="chain-delete"
 								onClick={onDelete}
-								aria-label={`Delete ${selection.size} selected ${selection.size === 1 ? "node" : "nodes"}`}
+								aria-label={`Delete ${selection.size} selected ${selection.size === 1 ? "idea" : "ideas"}`}
 								className="flex items-center gap-1.5 rounded-full border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/20"
 							>
 								<Trash2Icon aria-hidden="true" className="size-3.5" />

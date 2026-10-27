@@ -266,11 +266,11 @@ describe("ChainTableBody — the floating selection bar (never shifts layout)", 
 		assert.ok(!html.includes('data-testid="chain-selection-bar"'));
 	});
 
-	it("appears with the derived N nodes → M chains + Clear + the FENCED Delete", () => {
+	it("appears with the derived N ideas → M chains + Clear + the FENCED Delete", () => {
 		const html = render({ selection: new Set(["a", "b", "c1"]) });
 		assert.ok(html.includes('data-testid="chain-selection-bar"'));
 		assert.ok(html.includes('data-testid="chain-selected-summary"'));
-		assert.ok(html.includes("3 nodes → 1 chain"));
+		assert.ok(html.includes("3 ideas → 1 chain"));
 		assert.ok(html.includes('data-testid="chain-clear"'));
 		// The danger fence (owner, 2026-09-29 night): a divider quarantines
 		// the destructive action at the bar's right end, red + trash icon,
@@ -278,7 +278,7 @@ describe("ChainTableBody — the floating selection bar (never shifts layout)", 
 		assert.ok(html.includes('data-testid="chain-danger-divider"'));
 		const del = html.match(/<button[^>]*data-testid="chain-delete"[^>]*>/)?.[0] ?? "";
 		assert.match(del, /border-destructive\/50/); // the destructive pair
-		assert.match(del, /aria-label="Delete 3 selected nodes"/);
+		assert.match(del, /aria-label="Delete 3 selected ideas"/);
 		assert.ok(html.includes("lucide-trash-2"), "the trash icon");
 		// the fence is before Delete in the DOM (right end of the bar)
 		assert.ok(html.indexOf('chain-danger-divider"') < html.indexOf('chain-delete"'));
@@ -292,7 +292,7 @@ describe("ChainTableBody — the floating selection bar (never shifts layout)", 
 
 	it("a premise WITHOUT its conclusion derives as the singleton it becomes", () => {
 		const html = render({ selection: new Set(["a", "d"]) });
-		assert.ok(html.includes("2 nodes → 2 chains"), "no follows-edge survives inside the selection");
+		assert.ok(html.includes("2 ideas → 2 chains"), "no follows-edge survives inside the selection");
 	});
 });
 
@@ -311,7 +311,7 @@ describe("ChainTableBody — the fuzzy search (grouped + auto-expand)", () => {
 		assert.ok(!html.includes("cluster-group-notes1") === false, "notes1 still renders (it has a match)");
 		assert.ok(!html.includes("Ethics lesson") === false, "chat1 still renders (it has a match)");
 		// the floating bar is never search-filtered
-		assert.ok(html.includes("3 nodes → 1 chain"));
+		assert.ok(html.includes("3 ideas → 1 chain"));
 	});
 
 	it("no matches: the honest empty line", () => {
@@ -338,7 +338,7 @@ describe("ChainTableOverlay — the lifted practice pick (owner vision, 2026-10-
 
 	it("CONTROLLED selection renders the caller's set — the bar counts it live", () => {
 		const html = overlay({ controlledSelection: new Set(["a", "b", "c1"]) });
-		assert.ok(html.includes("3 nodes → 1 chain"), "the bar reflects the lifted set, not internal state");
+		assert.ok(html.includes("3 ideas → 1 chain"), "the bar reflects the lifted set, not internal state");
 	});
 
 	it("select mode: Done replaces the delete fence — no way to delete while picking", () => {

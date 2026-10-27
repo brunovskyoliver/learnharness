@@ -893,8 +893,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 			}}
 		>
 			<div className="mb-2 flex items-center gap-2">
-				<span className="text-sm font-medium">The plan</span>
-				<span className="text-xs text-muted-foreground">live — statuses derive from your check outcomes</span>
+				<span className="text-sm font-medium">Plan</span>
 				<Hint label="Close" binding="escape" side="left">
 <button
 					type="button"
@@ -950,7 +949,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 							/>
 						</div>
 						<div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between p-2">
-							<span className="text-xs text-muted-foreground/60">Drag to pan · scroll to zoom</span>
+							<span aria-hidden />
 							<div className="flex gap-1">
 								<Hint label="Zoom out" side="bottom">
 <button

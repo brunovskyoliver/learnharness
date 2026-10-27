@@ -105,7 +105,7 @@ describe("messageMarkdown", () => {
 			result("r1", "p1", "probe", { questionText: "What is a derivative?", correct: true, dontKnow: false }),
 			"r1",
 		)!;
-		assert.match(probe, /^### Probe · r1$/m);
+		assert.match(probe, /^### Question · r1$/m);
 		const recall = messageMarkdown(
 			result("r2", "rr1", "recall", { questionText: "Why does Mercury stay near the Sun?", text: "it never strays far" }),
 			"r2",

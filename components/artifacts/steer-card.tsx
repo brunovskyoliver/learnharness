@@ -5,7 +5,7 @@ import { SessionDetails } from "@/components/session-state";
 import { CheckIcon, CircleX } from "lucide-react";
 import type { PdfResult, ResearchResult, SubagentArtifactData } from "@/src/core";
 import type { LhViewMessage } from "@/src/core";
-import { isSubagentFailure } from "@/src/core";
+import { demoPrefersInvert, isSubagentFailure, type DemoResult } from "@/src/core";
 import { DemoOutputCard } from "@/components/artifacts/demo-card";
 import { PdfBriefCard, ResearchBriefCard } from "@/components/artifacts/job-card";
 import { VisualOutputCard } from "@/components/artifacts/visual-card";
@@ -58,7 +58,13 @@ export function SubagentSteerCard({ message }: { message: LhViewMessage }) {
 				<PdfCompleteBadge result={data.result as PdfResult} />
 			);
 		case "demo":
-			return <DemoOutputCard output={data.result} messageId={message.id} initialInverted={data.ui?.inverted ?? false} />;
+			return (
+				<DemoOutputCard
+					output={data.result}
+					messageId={message.id}
+					initialInverted={data.ui?.inverted ?? demoPrefersInvert((data.result as DemoResult).html ?? "")}
+				/>
+			);
 		case "visual":
 			return <VisualOutputCard output={data.result} messageId={message.id} initialInverted={data.ui?.inverted ?? false} />;
 	}

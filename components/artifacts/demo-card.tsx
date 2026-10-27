@@ -1,13 +1,14 @@
 "use client";
 
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { DownloadIcon } from "lucide-react";
+import { DownloadIcon, PanelRightOpenIcon } from "lucide-react";
 import { Toggle } from "@/components/settings/controls";
 import { InvertDiscIcon } from "@/components/artifacts/invert-disc";
 import { ChatActionsContext } from "@/components/chat";
 import { downloadFile, slugFilename } from "@/components/artifacts/download";
 import { DispatchCard } from "@/components/artifacts/dispatch-card";
-import type { ArtifactPartProps, DemoResult } from "@/src/core";
+import { injectDemoTheme, type ArtifactPartProps, type DemoResult } from "@/src/core";
+import { useDemoPanel } from "@/components/artifacts/demo-panel-context";
 
 /**
  * Demo artifact card (W6): while the part is input-available, a job activity
@@ -46,10 +47,18 @@ setTimeout(post,50);
 setTimeout(post,400);
 })();</script>`;
 
-/** Inject the bridge before </body> (or at the end of a body-less document). */
+/** The app theme first in <head> (src/core/demo-theme.ts), then the bridge
+ *  before </body> (or at the end of a body-less document). */
 export function buildDemoSrcDoc(html: string): string {
-	if (/<\/body>/i.test(html)) return html.replace(/<\/body>/i, `${DEMO_BRIDGE_SCRIPT}</body>`);
-	return `${html}${DEMO_BRIDGE_SCRIPT}`;
+	const themed = injectDemoTheme(html, true);
+	if (/<\/body>/i.test(themed)) return themed.replace(/<\/body>/i, `${DEMO_BRIDGE_SCRIPT}</body>`);
+	return `${themed}${DEMO_BRIDGE_SCRIPT}`;
+}
+
+/** The demo as a file that opens on its own: theme included, and kit
+ *  scripts and the font loaded from this app's address. */
+export function downloadableDemo(html: string, origin = typeof window === "undefined" ? "" : window.location.origin): string {
+	return injectDemoTheme(html, true).replace(/(src="|href="|url\(")\/(demo-kit|fonts)\//g, (_m, lead: string, dir: string) => `${lead}${origin}/${dir}/`);
 }
 
 export interface DemoBridgeState {
@@ -113,7 +122,7 @@ export function DemoOutputCard({
 		return (
 			<div className="rounded-xl border bg-card p-4 text-card-foreground" data-testid="demo-card-failed">
 				<div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-					Interactive demo
+					Demo
 					<span className="rounded bg-destructive/15 px-1.5 py-0.5 text-destructive">failed</span>
 				</div>
 				<p className="mt-2 text-sm text-muted-foreground">{result.notes ?? "The demo could not be built."}</p>
@@ -125,27 +134,31 @@ export function DemoOutputCard({
 	);
 }
 
-function DemoFrame({
+export function DemoFrame({
 	title,
 	html,
 	messageId,
 	initialInverted = false,
+	variant = "card",
 }: {
 	title: string;
 	html: string;
 	messageId?: string;
 	initialInverted?: boolean;
+	/** "panel": the side panel supplies its own header; no card frame. */
+	variant?: "card" | "panel";
 }) {
 	const actions = useContext(ChatActionsContext);
+	const panel = useDemoPanel();
 	const iframeRef = useRef<HTMLIFrameElement | null>(null);
 	const [state, setState] = useState<DemoBridgeState>(INITIAL_DEMO_BRIDGE_STATE);
 	// Brightness inversion (owner, 2026-10-07): the switch state PERSISTS on
 	// the steer record (details.ui.inverted) — seeded here, written through
 	// the silent artifact-ui route on toggle. Without a chat page (tests,
-	// previews) the toggle stays local-only. The filter rides the iframe
-	// element, which carries the card's white backing, so one filter flips
-	// page + content together while hue-rotate(180deg) undoes invert's hue
-	// flip.
+	// previews) the toggle stays local-only. Light demos built before the
+	// dark default seed inverted (demoPrefersInvert). The filter rides the
+	// iframe element, so one filter flips page + content together while
+	// hue-rotate(180deg) undoes invert's hue flip.
 	const [inverted, setInverted] = useState(initialInverted);
 	const toggleInverted = (next: boolean) => {
 		setInverted(next);
@@ -169,38 +182,42 @@ function DemoFrame({
 		return () => window.removeEventListener("message", onMessage);
 	}, []);
 
-	return (
-		<div className="lh-breakout rounded-xl border bg-card p-4 text-card-foreground" data-testid="demo-card">
-			{/* Caption header (owner, 2026-10-07): kind label + title in the
-			   label's size/tracking (title normal-case, foreground) — the
-			   figure card's grammar plus a name. Switch + download far right. */}
-			<div className="flex items-center justify-between gap-2">
-				<div className="flex min-w-0 items-baseline gap-2">
-					<span className="shrink-0 text-xs font-medium text-muted-foreground">
-						interactive demo
-					</span>
-					<span className="truncate text-xs font-medium text-foreground">{title}</span>
-				</div>
-				<div className="flex shrink-0 items-center gap-1.5">
-					<Toggle
-						checked={inverted}
-						onChange={toggleInverted}
-						label="Invert demo brightness"
-						title="Invert colors"
-						discIcon={<InvertDiscIcon className="size-3" />}
-					/>
-					<button
-						type="button"
-						aria-label="Download demo as HTML"
-						title="Download as HTML"
-						onClick={() => downloadFile(`${slugFilename(title)}.html`, html, "text/html")}
-						data-testid="demo-download"
-						className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-					>
-						<DownloadIcon className="size-3.5" />
-					</button>
-				</div>
-			</div>
+	const controls = (
+		<div className="flex shrink-0 items-center gap-1.5">
+			<Toggle
+				checked={inverted}
+				onChange={toggleInverted}
+				label="Invert demo brightness"
+				title="Invert colors"
+				discIcon={<InvertDiscIcon className="size-3" />}
+			/>
+			<button
+				type="button"
+				aria-label="Download demo as HTML"
+				title="Download as HTML"
+				onClick={() => downloadFile(`${slugFilename(title)}.html`, downloadableDemo(html), "text/html")}
+				data-testid="demo-download"
+				className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+			>
+				<DownloadIcon className="size-3.5" />
+			</button>
+			{variant === "card" && panel && messageId && (
+				<button
+					type="button"
+					aria-label="Open in side panel"
+					title="Open in side panel"
+					onClick={() => panel.open(messageId)}
+					data-testid="demo-open-panel"
+					className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+				>
+					<PanelRightOpenIcon className="size-3.5" />
+				</button>
+			)}
+		</div>
+	);
+
+	const frame = (
+		<>
 			{state.error && (
 				<DemoErrorChip
 					title={title}
@@ -221,7 +238,9 @@ function DemoFrame({
 				// the wheel (session scrolling stalls over the demo). With
 				// scrolling disabled the wheel chains straight to the session.
 				scrolling="no"
-				className="mt-2 w-full rounded-lg border bg-white"
+				// White backing only under inversion (it flips to black); dark
+				// demos sit on the card color.
+				className={`mt-2 w-full rounded-lg border ${inverted ? "bg-white" : "bg-card"}`}
 				// content-box: the bridge reports the CONTENT height — with the
 				// preflight's border-box the 2px border would eat into it and clip
 				// the bottom of the demo (smoke finding, 2026-10-07).
@@ -232,6 +251,24 @@ function DemoFrame({
 				}}
 				data-testid="demo-iframe"
 			/>
+		</>
+	);
+
+	if (variant === "panel") {
+		return (
+			<div data-testid="demo-panel-frame">
+				<div className="flex justify-end">{controls}</div>
+				{frame}
+			</div>
+		);
+	}
+	return (
+		<div className="lh-breakout rounded-xl border bg-card p-4 text-card-foreground" data-testid="demo-card">
+			<div className="flex items-center justify-between gap-2">
+				<span className="min-w-0 truncate text-xs font-medium text-foreground">{title}</span>
+				{controls}
+			</div>
+			{frame}
 		</div>
 	);
 }

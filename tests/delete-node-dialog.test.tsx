@@ -60,7 +60,7 @@ describe("DeleteNodeBody — the minimal screen (owner, 2026-09-30)", () => {
 		// kept, NO font-title serif; the NAME rides below in JetBrains
 		// Mono at normal text-sm size, NO code-block chrome — same shape
 		// as the session dialog.
-		assert.match(html, /Delete node\?/);
+		assert.match(html, /Delete idea\?/);
 		const title = html.match(/<h2[^>]*>/)?.[0] ?? "";
 		assert.match(title, /text-sm font-semibold text-destructive/);
 		assert.ok(!title.includes("font-title"), "no serif display title (owner, 2026-10-13)");
@@ -68,7 +68,7 @@ describe("DeleteNodeBody — the minimal screen (owner, 2026-09-30)", () => {
 		assert.match(name, /font-mono text-sm/);
 		assert.ok(!name.includes("bg-muted"), "no code-block chrome — the font already says code");
 		assert.match(html, /data-testid="node-name-code"[^>]*>Kepler&#x27;s three laws</);
-		assert.match(html, /data-testid="node-permanence-line"[^>]*>This permanently deletes the node — this cannot be undone\./);
+		assert.match(html, /data-testid="node-permanence-line"[^>]*>This permanently deletes the idea\. This cannot be undone\./);
 		assert.match(html, /data-testid="node-delete-cancel"/);
 		assert.match(html, /data-testid="node-delete-confirm"/);
 		// the Delete button carries the destructive red (owner, polish round)
@@ -90,16 +90,16 @@ describe("DeleteNodeBody — the minimal screen (owner, 2026-09-30)", () => {
 			{ id: "newton", name: "Newton's second law" },
 			{ id: "hook", name: "Hooke's law" },
 		]);
-		assert.match(three, /Delete 3 nodes\?/); // plural title, NODES
+		assert.match(three, /Delete 3 ideas\?/); // plural title, NODES
 		assert.match(three, /data-testid="node-names-code"/);
 		assert.match(three, /Kepler&#x27;s three laws, Newton&#x27;s second law, Hooke&#x27;s law/);
 		assert.ok(!three.includes('data-testid="node-name-code"'), "the single-name testid is gone in multi");
-		assert.match(three, /This permanently deletes all 3 nodes — this cannot be undone\./);
+		assert.match(three, /This permanently deletes all 3 ideas\. This cannot be undone\./);
 		assert.ok(!three.includes("proposition"), "the old word is gone from the dialog");
 
 		// the cap: 10 names render 8 + ", and 2 more"
 		const ten = bodyAt(Array.from({ length: 10 }, (_, i) => ({ id: `n${i}`, name: `Prop ${i}` })));
-		assert.match(ten, /Delete 10 nodes\?/);
+		assert.match(ten, /Delete 10 ideas\?/);
 		assert.match(ten, /Prop 7/); // the 8th name still listed
 		assert.doesNotMatch(ten, /Prop 8</); // the 9th is not
 		assert.match(ten, /, and 2 more/);

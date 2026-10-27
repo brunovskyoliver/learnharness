@@ -156,6 +156,14 @@
 	padding: 0 8px 8px;
 }
 
+/* The home composer's row also carries the Teach/Practice switch; on the
+   narrowest phones the thinking level keeps only its gauge icon. */
+@media (max-width: 389px) {
+	[data-testid="stats-bar"]:has([data-testid="home-mode-switch"]) [data-testid="stats-thinking"] .truncate {
+		display: none;
+	}
+}
+
 .prompt-submit {
 	display: inline-flex;
 	width: 32px;
@@ -465,10 +473,8 @@
 	   toggle write a runtime --font-title no consumer ever read (owner, fix
 	   wave: toggle looked dead). Non-inline emits :root { --font-title: … }
 	   and the utility reads var(--font-title) — appearance overrides win. */
-	--text-xs: 12px;
-	--text-xs--line-height: 1.4;
-	--text-sm: 13px;
-	--text-sm--line-height: 1.4;
+	/* --text-xs and --text-sm live in the NON-inline @theme below so the
+	   session area can scale them with the reading size (.lh-session-scale). */
 	--text-base: 14px;
 	--text-base--line-height: 1.45;
 	--text-lg: 16px;
@@ -575,6 +581,13 @@ body {
 .lh-prose :where(h1, h2, h3, h4, h5, h6) {
 	font-weight: var(--lh-heading-weight, 700);
 }
+/* Heading sizes are relative to the reading size, matching the old fixed
+   32/25/20px at the 17px default, so headings stay above body text when
+   the reading size grows. */
+.lh-prose :where(h1) { font-size: 1.875em; }
+.lh-prose :where(h2) { font-size: 1.47em; }
+.lh-prose :where(h3) { font-size: 1.18em; }
+.lh-prose :where(h4, h5, h6) { font-size: 1em; }
 
 /* Keep the measure in the body font so larger headings share its edge. */
 .lh-reading {
@@ -620,6 +633,17 @@ body {
 ::-webkit-scrollbar-thumb {
 	background: var(--color-border);
 	border-radius: 8px;
+}
+
+/* Wide tables: fade the edge that hides more columns (md-blocks sets data-clip). */
+.lh-table-scroll[data-clip="end"] {
+	mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
+}
+.lh-table-scroll[data-clip="start"] {
+	mask-image: linear-gradient(to left, #000 calc(100% - 48px), transparent);
+}
+.lh-table-scroll[data-clip="both"] {
+	mask-image: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent);
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -745,7 +769,8 @@ body {
 	border: 0;
 	background: transparent;
 	padding: 0.5rem 0.875rem 0.875rem;
-	font-size: 14px;
+	/* 14px at the 17px default; follows the reading size like inline code. */
+	font-size: 0.82em;
 	line-height: 1.65;
 }
 .md-code-panel[data-wrap="true"] [data-streamdown="code-block-body"] code {
@@ -757,7 +782,7 @@ body {
 }
 [data-streamdown="code-block-body"] code > span::before {
 	color: color-mix(in oklab, var(--foreground) 35%, transparent);
-	font-size: 12px;
+	font-size: 0.86em;
 }
 
 /* Tables: hairline row rules + header underline, and a full outer border
@@ -986,6 +1011,18 @@ body {
    .font-title utility must read it through var(), not carry a baked copy. */
 @theme {
 	--font-title: var(--font-cmu);
+	--text-xs: 12px;
+	--text-xs--line-height: 1.4;
+	--text-sm: 13px;
+	--text-sm--line-height: 1.4;
+}
+
+/* Labels inside a session follow the reading size: unchanged at the 17px
+   default, capped at 15/16px so chrome never competes with the lesson.
+   Sidebar, settings and the graph keep the fixed ladder. */
+.lh-session-scale {
+	--text-xs: clamp(12px, calc(var(--lh-prose-size) * 0.7), 15px);
+	--text-sm: clamp(13px, calc(var(--lh-prose-size) * 0.765), 16px);
 }
 
 /* Card enter (owner round, 2026-10-05): the transcript cards' one-shot

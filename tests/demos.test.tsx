@@ -358,7 +358,8 @@ describe("steer card rendering (the delivered artifact)", () => {
 		assert.match(html, /demo-resize/);
 		assert.match(html, /demo-error/);
 		assert.match(html, /Damped oscillator/);
-		assert.match(html, /interactive demo/i);
+		assert.ok(!/interactive demo/i.test(html), "the title alone heads the card");
+		assert.match(html, /data-lh-theme/, "the app theme rides in the srcdoc");
 		// the model-facing protocol text never renders for the learner
 		assert.ok(!html.includes("do NOT wait"), "no protocol glue in the bubble");
 	});
@@ -492,9 +493,8 @@ describe("artifact chrome — scrollbar, invert toggles, downloads (release poli
 		assert.match(html, /scrolling="no"/, "no internal scrollbar — the wheel chains to the session");
 		assert.match(html, /toggle-invert-demo-brightness/, "the invert switch (house Toggle)");
 		assert.match(html, /data-testid="demo-download"/);
-		assert.ok(!html.includes("hue-rotate"), "inversion is OFF by default — a manual toggle only");
-		assert.match(html, /interactive demo/, "the kind label lives in the caption header");
-		assert.match(html, /Wave interference/, "the title rides beside the kind label");
+		assert.ok(!html.includes("hue-rotate"), "a demo without a light page starts uninverted");
+		assert.match(html, /Wave interference/, "the title heads the card");
 	});
 
 	it("figure card: invert + download buttons; NO fullscreen button without a chat page (the context is null there)", () => {

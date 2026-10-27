@@ -44,6 +44,17 @@ function headlineArg(tool: string, input: unknown): string {
 	return "";
 }
 
+/** What the collapsed line calls each tool: plain words, never the
+ *  internal tool name (data-tool keeps that). */
+const TOOL_LABELS: Record<string, string> = {
+	read: "Read file",
+	ls: "Listed files",
+	find: "Found files",
+	grep: "Searched files",
+	list_sessions: "Checked past sessions",
+	list_propositions: "Read session ideas",
+};
+
 /** Render a tool result body: plain strings verbatim, image-bearing read
  *  results show their text + an attachment note (the image itself is the
  *  model's — the learner sees only that it happened). */
@@ -77,7 +88,7 @@ export function ToolCallCard({ part }: ArtifactPartProps) {
 		>
 			<summary className="flex cursor-pointer list-none items-center gap-2 text-xs text-muted-foreground [&::-webkit-details-marker]:hidden">
 				<span className={`font-medium ${failed ? "text-destructive" : ""}`}>
-					{tool}
+					{TOOL_LABELS[tool] ?? tool}
 				</span>
 				{arg && <span className="truncate">{arg}</span>}
 				<ChevronRight className="size-3 shrink-0 opacity-50 transition-transform group-open:rotate-90" />

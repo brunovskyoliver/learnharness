@@ -570,10 +570,11 @@ describe("AnsweredCard: the explain variant", () => {
 // ─── probe-phase naming (owner, 2026-10-09): the probe/recall rename —
 //     both surfaces carry the tool's OWN name ────────────────────────────
 
-describe("probe-phase naming: Probe/Recall labels", () => {
-	it("the dock labels a probe quiz as Probe (composer surface)", () => {
+describe("probe-phase naming: Question/Recall labels", () => {
+	it("the dock labels a probe quiz as Question (composer surface)", () => {
 		const html = renderDock({ toolName: "probe", toolCallId: "p1", input: quizInput as never });
-		assert.match(html, /Probe/, "the chip carries the tool's own name");
+		assert.match(html, />Question</, "probe questions read as plain questions");
+		assert.ok(!html.includes("Probe"));
 		assert.ok(!html.includes(">Quiz<"), "not the teach label");
 		assert.match(html, /Which planet is closest to the sun\?/, "still a quiz-shaped card");
 	});
@@ -584,7 +585,7 @@ describe("probe-phase naming: Probe/Recall labels", () => {
 		assert.ok(!html.includes(">Explain<"), "not the teach label");
 	});
 
-	it("an answered probe labels Probe — the phase boundary visible in the transcript", () => {
+	it("an answered probe labels Question", () => {
 		const qd: QuestionData = {
 			id: "p2",
 			kind: "quiz",
@@ -597,7 +598,8 @@ describe("probe-phase naming: Probe/Recall labels", () => {
 			createdAt: new Date().toISOString(),
 		};
 		const html = renderToStaticMarkup(<AnsweredCard answer={buildAnswer(qd, { values: ["mercury"] }, "probe")} />);
-		assert.match(html, /Probe/);
+		assert.match(html, />Question</);
+		assert.ok(!html.includes("Probe"));
 		assert.ok(!html.includes(">Quiz<"), "not the teach label");
 	});
 

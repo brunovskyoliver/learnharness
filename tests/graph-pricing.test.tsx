@@ -20,22 +20,22 @@ test("wholly unpriced historical graph costs render unknown, not known-zero doll
 	assert.equal(costs.unpricedRuns, 1);
 	assert.equal(costs.stages.extraction.unpricedRuns, 1);
 	const html = headline([historical]);
-	assert.match(html, />—<\/button>/);
+	assert.match(html, />Graph · —<\/button>/);
 	assert.doesNotMatch(html, /\$0\.00/);
 });
 
 test("known zero, mixed priced/unknown, and subscription headline semantics stay distinct", () => {
 	const zero = run([usage({ inputTokens: 0, outputTokens: 0, cacheWriteTokens: 0 })]);
-	assert.match(headline([zero]), />\$0\.00<\/button>/, "known zero is not unknown");
+	assert.match(headline([zero]), />Graph · \$0\.00<\/button>/, "known zero is not unknown");
 	const priced = run([usage({ cacheWrite1hTokens: 0 })]);
 	const historical = run([usage()], undefined, 2);
 	const mixed = summary([priced, historical]);
 	assert.equal(mixed.unpricedRuns, 1);
 	assert.ok(mixed.totalDollars > 0);
-	assert.match(headline([priced, historical]), new RegExp(`>\\$${mixed.totalDollars.toFixed(2).replace(".", "\\.")}<\\/button>`));
+	assert.match(headline([priced, historical]), new RegExp(`>Graph · \\$${mixed.totalDollars.toFixed(2).replace(".", "\\.")}<\\/button>`));
 	const plan = run([usage()], "chatgpt:fixture");
-	assert.match(headline([plan]), />ChatGPT<\/button>/);
-	assert.match(headline([plan, zero]), />\$0\.00 \+ ChatGPT<\/button>/);
+	assert.match(headline([plan]), />Graph · ChatGPT<\/button>/);
+	assert.match(headline([plan, zero]), />Graph · \$0\.00 \+ ChatGPT<\/button>/);
 });
 
 test("graph stage and recent-run aggregates preserve known one-hour cache writes", () => {

@@ -130,15 +130,16 @@ describe("resolveSettings", () => {
 describe("the slot tier (BYOK, owner 2026-09-22)", () => {
 	it("slot alone re-tiers every role of its tier (no role overrides present)", () => {
 		const eff = resolveSettings({ version: 1, models: { cheap: { model: { provider: "zai", id: "glm-5.3-flash" } } } });
-		for (const role of ["researcher", "demoBuilder", "extractor", "auditor"] as const) {
+		for (const role of ["researcher", "extractor", "auditor"] as const) {
 			assert.deepEqual(
 				eff.agent.models[role],
 				{ provider: "zai", id: "glm-5.3-flash", thinkingLevel: undefined }, // level unset → default order
 				role,
 			);
 		}
-		// other tiers untouched (empty)
+		// other tiers untouched (empty); the demo builder reads screenshots, so it is a vision role
 		assert.equal(eff.agent.models.visualMaker, undefined);
+		assert.equal(eff.agent.models.demoBuilder, undefined);
 	});
 
 	it("role override still beats the slot; each field independent", () => {

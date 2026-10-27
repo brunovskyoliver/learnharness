@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { DumbbellIcon } from "lucide-react";
+import { BookOpenIcon, DumbbellIcon } from "lucide-react";
 import { GraphView } from "@/components/graph-view";
 import { MinimalHome } from "@/components/minimal-home";
 import { SetupDialog } from "@/components/setup-dialog";
@@ -228,15 +228,20 @@ export function Home({
 													type="button"
 													data-testid={`home-mode-${m}`}
 													onClick={() => setMode(m)}
+													aria-pressed={mode === m}
 													className={
-														"flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs transition-colors " +
+														"flex h-7 items-center gap-1.5 rounded-md px-2 text-xs transition-colors sm:px-2.5 " +
 														(mode === m
 															? "bg-accent text-foreground"
 															: "text-muted-foreground hover:text-foreground")
 													}
 												>
-													{m === "practice" ? <DumbbellIcon aria-hidden="true" className="size-3.5" /> : null}
-													{m === "teach" ? "Teach" : "Practice"}
+													{/* Narrow screens: icons only (the sidebar's session
+													    icons), so the switch fits the composer's one row. */}
+													{m === "practice"
+														? <DumbbellIcon aria-hidden="true" className="size-3.5" />
+														: <BookOpenIcon aria-hidden="true" className="size-3.5" />}
+													<span className="max-sm:sr-only">{m === "teach" ? "Teach" : "Practice"}</span>
 												</button>
 											))}
 										</div>

@@ -22,3 +22,6 @@ xai-credentials.json*
 
 # hosted deploy secrets (docs/hosting.md)
 .env.hosted
+
+# Demo kit runtime, built by scripts/build-demo-kit.mjs
+/public/demo-kit/

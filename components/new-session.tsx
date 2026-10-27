@@ -142,8 +142,8 @@ export function DraftShell({
 									title={mode === "practice" ? "New practice session" : "New session"}
 									description={
 										mode === "practice"
-											? "Pick nodes from your knowledge graph, describe what you want to practice, or bring your own problem."
-											: "The teacher will open by probing what you already know."
+											? "Pick ideas from your knowledge graph, describe what you want to practice, or bring your own problem."
+											: ""
 									}
 								/>
 							</ConversationContent>

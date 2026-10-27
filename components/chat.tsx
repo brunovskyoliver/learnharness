@@ -48,7 +48,9 @@ import { PlanBlock, PlanPopup, latestTree } from "@/components/plan-block";
 import dynamic from "next/dynamic";
 import { SessionMermaidContext } from "@/components/session-overlay-context";
 import { AbortTurnDialog, type AbortMode } from "@/components/abort-turn-dialog";
-import { ArrowRightIcon, DumbbellIcon, PencilIcon, WaypointsIcon } from "lucide-react";
+import { ArrowRightIcon, DumbbellIcon, PanelRightIcon, PencilIcon, WaypointsIcon } from "lucide-react";
+import { DemoPanel } from "@/components/artifacts/demo-panel";
+import { DemoPanelContext, sessionDemos, type DemoPanelApi } from "@/components/artifacts/demo-panel-context";
 import type { PlanBlockData } from "@/src/core";
 import { QuestionDock } from "@/components/question-dock";
 import { SessionFind } from "@/components/session-find";
@@ -858,6 +860,14 @@ function ChatView({
 	// The session's live plan (drives the top-bar chip; the marginalia
 	// derives its own from the same transcript).
 	const planTree = useMemo(() => latestTree(messages), [messages]);
+	// Demos beside the lesson: the side panel shows one, opened from a demo
+	// card, a bold-title mention in the teacher's text, or the top-bar button.
+	const [demoOpenId, setDemoOpenId] = useState<string | null>(null);
+	const demos = useMemo(() => sessionDemos(messages), [messages]);
+	const demoPanel = useMemo<DemoPanelApi>(
+		() => ({ demos, openId: demoOpenId, open: setDemoOpenId, close: () => setDemoOpenId(null) }),
+		[demos, demoOpenId],
+	);
 
 	// ── Session usage (wave-4 stats bar) ──
 	// The money channel: the record's turns log and read-time server Pi
@@ -1189,6 +1199,7 @@ function ChatView({
 			}}
 		>
 		<JobsContext.Provider value={jobs}>
+		<DemoPanelContext.Provider value={demoPanel}>
 		{/* The session surface: the transcript column (header + scroller) and
 		    the plan-tree panel as full-height SIBLINGS — the panel spans top to
 		    bottom exactly like the left sidebar, and the header (name + phase
@@ -1287,6 +1298,23 @@ function ChatView({
 							<div className="min-w-4 flex-1" aria-hidden="true" />
 					</>
 					)}
+					{demos.length > 0 && (
+						<Hint label={demoOpenId ? "Close demo panel" : "Open demos"} side="bottom">
+							<button
+								type="button"
+								data-testid="demos-chip"
+								onClick={(e) => {
+									blurAfterPointerClick(e);
+									setDemoOpenId((open) => (open ? null : demos[demos.length - 1]!.id));
+								}}
+								aria-label={demoOpenId ? "Close demo panel" : "Open demos"}
+								aria-expanded={demoOpenId !== null}
+								className="lh-no-drag flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+							>
+								<PanelRightIcon className="size-4" aria-hidden />
+							</button>
+						</Hint>
+					)}
 					{/* The plan stays behind this toggle at every width. */}
 					{planTree && (
 						<Hint label="Open the full plan" side="bottom">
@@ -1316,7 +1344,7 @@ function ChatView({
 				</TopBar>
 
 				<SessionFind scopeRef={sessionFindScopeRef} scrollContextRef={scrollContextRef} />
-				<div ref={sessionFindScopeRef} className="relative flex min-h-0 flex-1">
+				<div ref={sessionFindScopeRef} className="lh-session-scale relative flex min-h-0 flex-1">
 				<Conversation className="@container/session h-full min-w-0 flex-1" initial={false} resize={transcriptSettled ? "smooth" : "instant"} contextRef={scrollContextRef}>
 					<SessionMessageNavigation />
 					<TurnReadingPosition busy={busy} messages={messages} onReserve={setReadingReserve} />
@@ -1326,7 +1354,7 @@ function ChatView({
 							{messages.length === 0 && !busy && (
 								<ConversationEmptyState
 									title="New session"
-									description="The teacher will open by probing what you already know."
+									description=""
 								/>
 							)}
 
@@ -1685,6 +1713,7 @@ function ChatView({
 				/>
 				</Conversation>
 				<TranscriptArrivalScript storageKey={sessionStateStore?.storageKey} gradientHeight={GRADIENT_H} />
+				<DemoPanel />
 
 				{/* The session-scoped focuses (chrome-melt wave, 2026-09-19): mounted
 				    INSIDE the session area — absolute inset-0 siblings of the scroller,
@@ -1705,6 +1734,7 @@ function ChatView({
 				</div>
 			</div>
 		</div>
+		</DemoPanelContext.Provider>
 		</JobsContext.Provider>
 		</SessionMermaidContext.Provider>
 		{/* The BYOK setup flow (owner, 2026-09-22): one mount serves the

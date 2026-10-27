@@ -108,6 +108,11 @@ const nextConfig: NextConfig = {
 		"@napi-rs/canvas", // native binding — bundling breaks the .node require
 		"@resvg/resvg-js", // native binding — same
 	],
+	// Demos run in sandboxed iframes with an opaque origin, so loading the
+	// app's reading font from them is a cross-origin font request.
+	async headers() {
+		return [{ source: "/fonts/:file*", headers: [{ key: "Access-Control-Allow-Origin", value: "*" }] }];
+	},
 };
 
 export default nextConfig;

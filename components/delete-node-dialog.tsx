@@ -49,13 +49,13 @@ export function DeleteNodeBody({
 		<div
 			role="dialog"
 			aria-modal="true"
-			aria-label="Delete node"
+			aria-label="Delete idea"
 			data-testid="delete-node-dialog"
 			onClick={(e) => e.stopPropagation()}
 			className="w-[32rem] max-w-[calc(100vw-2rem)] rounded-xl border bg-card p-5 shadow-xl"
 		>
 			<h2 className="text-sm font-semibold text-destructive">
-				{nodes.length === 1 ? "Delete node?" : `Delete ${nodes.length} nodes?`}
+				{nodes.length === 1 ? "Delete idea?" : `Delete ${nodes.length} ideas?`}
 			</h2>
 			{/* The node name(s) below the title in JetBrains Mono (owner,
 			    2026-09-24): the name is the payload — mono suits it, and
@@ -80,8 +80,8 @@ export function DeleteNodeBody({
 			</div>
 			<p className="mt-2 text-sm text-muted-foreground" data-testid="node-permanence-line">
 				{nodes.length === 1
-					? "This permanently deletes the node — this cannot be undone."
-					: `This permanently deletes all ${nodes.length} nodes — this cannot be undone.`}
+					? "This permanently deletes the idea. This cannot be undone."
+					: `This permanently deletes all ${nodes.length} ideas. This cannot be undone.`}
 			</p>
 			{failure && (
 				<div

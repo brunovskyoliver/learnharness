@@ -117,7 +117,7 @@ export function QuestionDock({
 	// The chip's display name carries the tool's OWN name (owner
 	// 2026-10-09): probe-phase questions label Probe/Recall in the
 	// composer; teach tools keep the standing labels.
-	const toolLabel = toolName === "probe" ? "Probe" : toolName === "recall" ? "Recall" : undefined;
+	const toolLabel = toolName === "probe" ? "Question" : toolName === "recall" ? "Recall" : undefined;
 	// Parse, don't cast (src/core/tool-parts.ts): the model authored this
 	// input, and only the schema the tool declared vouches for its shape.
 	// The dock mounts on input-available parts (already validated at the
@@ -542,7 +542,7 @@ function QuestionDockForm({
 			<div data-session-find-root="" className="max-h-[var(--dock-max-h,55dvh)] min-h-0 select-text overflow-y-auto px-4 pt-3">
 				<div className="mb-1 text-xs font-medium text-muted-foreground">
 					{toolName === "probe"
-						? "Probe"
+						? "Question"
 						: toolName === "recall"
 							? "Recall"
 							: kind === "quiz"

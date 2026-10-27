@@ -233,7 +233,7 @@ describe("GraphContextCard", () => {
 			], chains: ["Modus ponens → Soundness"] }} />,
 		);
 		assert.ok(html.includes('data-testid="graph-context-card"'));
-		assert.ok(html.includes("2 propositions"));
+		assert.ok(html.includes("2 ideas"));
 		assert.ok(html.includes("1 chain"));
 		// minimal: the collapsed bar carries NO statement text
 		assert.ok(!html.includes("If P implies Q"));
@@ -244,7 +244,7 @@ describe("GraphContextCard", () => {
 		const html = renderToStaticMarkup(
 			<GraphContextCard data={{ propositions: [{ id: "n1", name: "A", statement: "S." }], chains: [] }} />,
 		);
-		assert.ok(html.includes("1 proposition</span>"));
+		assert.ok(html.includes("1 idea</span>"));
 		assert.ok(!html.includes("chain"));
 	});
 

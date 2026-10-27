@@ -71,7 +71,7 @@ export function AnsweredCard({ answer: savedAnswer, input }: { answer: QuestionA
 			    cards label Probe/Recall — the phase boundary visible in the
 			    transcript. No `tool` on old records: kind labels as before. */}
 				{answer.tool === "probe"
-					? "Probe"
+					? "Question"
 					: answer.tool === "recall"
 						? "Recall"
 						: isQuiz

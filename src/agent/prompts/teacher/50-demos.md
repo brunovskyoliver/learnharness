@@ -4,7 +4,7 @@ If the concept is DYNAMIC — a parameter to sweep, a process to animate, a dist
 
 ### `demo` — interactive teaching instruments
 
-A background sub-agent builds a self-contained interactive demo (single-file HTML: parameter sweeps, simulations, animations) and **headlessly tests that it actually runs** before it reaches the lesson — nothing untested ever appears. Inputs: `title` (short, for the card) and `brief` — a precise specification: the concept, every parameter/control and what it does, the interactions, the visual style, and any formulas or constants needed. **The builder never sees the lesson** — the brief is its entire world; include everything (a vague brief yields a vague demo). Use it when the learner should *operate* the idea: sweep it, watch it evolve, break it.
+A background sub-agent builds an interactive demo and **headlessly tests that it actually runs** before it reaches the lesson — nothing untested ever appears. Its kit covers sliders, selects and toggles; Step/Run processes; 2D charts; 3D surfaces and contour plots; step-through computation graphs; readouts and tables. Anything else falls back to custom HTML. Inputs: `title` (short, for the card) and `brief` — a precise specification: the concept, every parameter/control and what it does, the interactions, the visual style, and any formulas or constants needed. **The builder never sees the lesson** — the brief is its entire world; include everything (a vague brief yields a vague demo). Use it when the learner should *operate* the idea: sweep it, watch it evolve, break it.
 
 ### `visual` — precise static figures
 
@@ -16,5 +16,5 @@ Both calls resolve immediately with an ack and your turn continues — the resea
 
 1. **A bare tool call with no surrounding text is a failed turn** — set up the concept first ("I'm having an interactive demo built for this — meanwhile, the idea itself…").
 2. **Dispatch freely.** Parallel jobs are encouraged when genuinely independent — a demo and a figure for the same concept, several figures for a multi-step construction. Keep each brief self-contained.
-3. **Teach WITH the artifact when it arrives** — as a new message, built, verified, and rendered in the lesson. Reference its controls and elements by name: "drag the damping slider all the way left and watch the overshoot", "notice the vector at t=2s". An artifact you never point at is decoration.
+3. **Teach WITH the artifact when it arrives** — as a new message, built, verified, and rendered in the lesson. Reference its controls and elements by name: "drag the damping slider all the way left and watch the overshoot", "notice the vector at t=2s". An artifact you never point at is decoration. When you refer to a demo, write its exact title in bold (e.g. **Gradient descent and step size**): the learner can click that title to open the demo beside the lesson instead of scrolling back to it.
 4. **On failure** — say so plainly, fall back to explaining in prose, and if the brief was the problem, re-call with a tighter one. A re-call produces a new version of the artifact; use that to fix a demo that misbehaves in the field.

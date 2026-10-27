@@ -40,6 +40,7 @@ import { MERMAID_FONT_SIZE, renderMermaid } from "@/components/mermaid-render";
 import { MermaidError } from "@/components/mermaid-error";
 import { blurAfterPointerClick } from "@/components/focus-hygiene";
 import { chartSize, useSessionMermaid } from "@/components/session-overlay-context";
+import { findDemoByTitle, useDemoPanel } from "@/components/artifacts/demo-panel-context";
 import { Hint } from "@/components/ui/hint";
 import { Button } from "@/components/ui/button";
 
@@ -394,6 +395,28 @@ export function MarkdownBlockquote(props: ComponentProps<"blockquote"> & ExtraPr
 export function MarkdownTable(props: ComponentProps<"table"> & ExtraProps) {
 	const { children, node, ...rest } = props;
 	const ref = useRef<HTMLTableElement>(null);
+	const scrollRef = useRef<HTMLDivElement>(null);
+	// Overlay scrollbars (macOS) hide that a wide table scrolls: fade the
+	// clipped edge(s) instead.
+	const [clip, setClip] = useState<"" | "start" | "end" | "both">("");
+	useEffect(() => {
+		const el = scrollRef.current;
+		if (!el) return;
+		const update = () => {
+			const start = el.scrollLeft > 1;
+			const end = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+			setClip(start && end ? "both" : start ? "start" : end ? "end" : "");
+		};
+		update();
+		el.addEventListener("scroll", update, { passive: true });
+		const ro = new ResizeObserver(update);
+		ro.observe(el);
+		if (ref.current) ro.observe(ref.current);
+		return () => {
+			el.removeEventListener("scroll", update);
+			ro.disconnect();
+		};
+	}, []);
 	return (
 		<div className="lh-table-bleed my-4">
 			<div className="group/md relative mx-auto w-fit max-w-full" data-testid="md-table">
@@ -403,7 +426,7 @@ export function MarkdownTable(props: ComponentProps<"table"> & ExtraProps) {
 						getText={() => (ref.current ? tableDataToMarkdown(extractTableDataFromElement(ref.current)) : "")}
 					/>
 				</div>
-				<div className="max-w-full overflow-x-auto">
+				<div ref={scrollRef} data-clip={clip || undefined} className="lh-table-scroll max-w-full overflow-x-auto">
 					<table
 						ref={ref}
 						// No text-sm here — the table text runs at the session prose size
@@ -472,11 +495,33 @@ export function MathDisplay(props: ComponentProps<"span"> & ExtraProps) {
  *  --lh-ink-strong, weight 700 (beating the old 600 utility). */
 export function MarkdownStrong(props: ComponentProps<"strong"> & ExtraProps) {
 	const { children, className, node, ...rest } = props;
-	return (
+	const panel = useDemoPanel();
+	const strong = (
 		<strong data-streamdown="strong" className={className} {...rest}>
 			{children}
 		</strong>
 	);
+	// A bold demo title opens that demo in the side panel (the teacher
+	// prompt asks for exact bold titles when referring back to a demo).
+	const demo = panel && panel.demos.length > 0 ? findDemoByTitle(panel.demos, plainText(children)) : undefined;
+	if (!panel || !demo) return strong;
+	return (
+		<button
+			type="button"
+			onClick={() => panel.open(demo.id)}
+			title="Open demo"
+			data-testid="demo-link"
+			className="cursor-pointer underline decoration-muted-foreground decoration-dotted underline-offset-4 transition-colors hover:decoration-foreground"
+		>
+			{strong}
+		</button>
+	);
+}
+
+function plainText(node: ReactNode): string {
+	if (typeof node === "string" || typeof node === "number") return String(node);
+	if (Array.isArray(node)) return node.map(plainText).join("");
+	return "";
 }
 
 export const mdComponents = {

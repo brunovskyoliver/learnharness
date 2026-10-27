@@ -8,7 +8,7 @@ ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1 NEXT_TELEMETRY_DISABLED=1
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
-RUN npx next build && node scripts/build-server.mjs
+RUN node scripts/build-demo-kit.mjs && npx next build && node scripts/build-server.mjs
 
 FROM node:26-bookworm-slim
 # Chromium verifies agent-built demos; it runs with its own sandbox in hosted

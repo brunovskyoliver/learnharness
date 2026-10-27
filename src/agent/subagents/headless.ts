@@ -4,7 +4,8 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { standardFontsDir } from "./pdf-ops";
-import { hostedMode } from "../../../config.ts";
+import { hostedMode, ROOT } from "../../../config.ts";
+import { injectDemoTheme, LIGHT_BACKGROUND_PROBE } from "../../core/demo-theme.ts";
 
 /**
  * Verification engines for sub-agents: demos use the app's own Electron
@@ -29,6 +30,12 @@ export interface DemoRunResult {
 	failedRequests: string[];
 	/** Value of the optional probe expression, when requested and successful. */
 	probeResult?: unknown;
+	/** The page background when it is light (demos must sit in the dark UI). */
+	lightBackground?: string;
+	/** Demo-kit demos: what the kit's self-test exercised (steps run, panels). */
+	kitTest?: { panels: number; steps: number };
+	/** PNG of the settled page at a 900px-wide viewport, when requested. */
+	screenshot?: Buffer;
 	/** True when nothing above recorded anything. */
 	ok: boolean;
 }
@@ -39,6 +46,8 @@ export interface RunDemoOptions {
 	/** Optional JS expression evaluated in the page after settling; its value
 	 * is returned to the builder so it can assert on internal state. */
 	probe?: string;
+	/** Capture a PNG of the page after the checks (for the builder to look at). */
+	screenshot?: boolean;
 }
 
 export interface RenderSvgOptions {
@@ -292,13 +301,22 @@ async function runDemo(html: string, opts: RunDemoOptions = {}): Promise<DemoRun
 	const settleMs = opts.settleMs ?? 2000;
 	const dir = tempDir("lh-demo-");
 	const file = path.join(dir, "demo.html");
-	fs.writeFileSync(file, html, "utf-8");
+	// The lesson iframe injects the same theme, so test what will be shown.
+	// Kit demos load /demo-kit/* from the app; here that is the built folder.
+	const kitDir = demoKitDir();
+	const page = injectDemoTheme(html).replace(/(src|href)="\/demo-kit\//g, (_m, attr: string) =>
+		kitDir ? `${attr}="${pathToFileURL(kitDir).href}/` : `${attr}="/demo-kit/`,
+	);
+	fs.writeFileSync(file, page, "utf-8");
 
 	const consoleErrors: string[] = [];
 	const pageErrors: string[] = [];
 	const failedRequests: string[] = [];
 	let probeResult: unknown;
 	let probed = false;
+	let lightBackground: string | null = null;
+	let kitTest: { panels: number; steps: number } | undefined;
+	let screenshot: Buffer | undefined;
 
 	try {
 		await withBrowserPage(async (page) => {
@@ -309,8 +327,23 @@ async function runDemo(html: string, opts: RunDemoOptions = {}): Promise<DemoRun
 		page.on("requestfailed", (req) => failedRequests.push(`${req.url()} (${req.failure()?.errorText ?? "failed"})`));
 
 		try {
+			await page.setViewport({ width: 900, height: 700 });
 			await page.goto(pathToFileURL(file).href, { waitUntil: "load", timeout: 30_000 });
 			await new Promise((resolve) => setTimeout(resolve, settleMs));
+			// Kit demos: step the process and sweep every control, so errors in
+			// paths the first render never takes still surface.
+			const kit = (await page.evaluate(`(async () => {
+				const k = window.__lhKit;
+				if (!k) return null;
+				await k.ready;
+				return k.selfTest();
+			})()`)) as { errors: string[]; panels: number; steps: number } | null;
+			if (kit) {
+				kitTest = { panels: kit.panels, steps: kit.steps };
+				for (const e of kit.errors) if (!pageErrors.includes(e)) pageErrors.push(`kit: ${e}`);
+				await new Promise((resolve) => setTimeout(resolve, 300));
+			}
+			lightBackground = (await page.evaluate(LIGHT_BACKGROUND_PROBE)) as string | null;
 			if (opts.probe) {
 				try {
 					probeResult = await page.evaluate(opts.probe);
@@ -319,6 +352,7 @@ async function runDemo(html: string, opts: RunDemoOptions = {}): Promise<DemoRun
 				}
 				probed = true;
 			}
+			if (opts.screenshot) screenshot = Buffer.from(await page.screenshot({ type: "png", fullPage: true }));
 		} catch (err) {
 			pageErrors.push(err instanceof Error ? err.message : String(err));
 		}
@@ -336,8 +370,21 @@ async function runDemo(html: string, opts: RunDemoOptions = {}): Promise<DemoRun
 		pageErrors,
 		failedRequests,
 		...(probed ? { probeResult } : {}),
-		ok: consoleErrors.length === 0 && pageErrors.length === 0 && failedRequests.length === 0,
+		...(lightBackground ? { lightBackground } : {}),
+		...(kitTest ? { kitTest } : {}),
+		...(screenshot ? { screenshot } : {}),
+		ok: consoleErrors.length === 0 && pageErrors.length === 0 && failedRequests.length === 0 && !lightBackground,
 	};
+}
+
+/** The built demo-kit folder (scripts/build-demo-kit.mjs → public/demo-kit),
+ *  in the repo or next to the standalone server. Null when not built. */
+export function demoKitDir(): string | null {
+	for (const base of [ROOT, process.cwd()]) {
+		const dir = path.join(base, "public", "demo-kit");
+		if (fs.existsSync(path.join(dir, "runtime.js"))) return dir;
+	}
+	return null;
 }
 
 // ─── SVG rasterization ───────────────────────────────────────────────────────

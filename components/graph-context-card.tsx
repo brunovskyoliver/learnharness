@@ -35,7 +35,7 @@ export function GraphContextCard({ data }: { data: GraphContextData }) {
 				<ChevronRightIcon aria-hidden="true" className={cn("size-3.5 shrink-0 transition-transform", open && "rotate-90")} />
 				<span className="font-medium">Graph context</span>
 				<span className="min-w-0 flex-1 truncate">
-					{noun(propositions.length, "proposition", "propositions")}
+					{noun(propositions.length, "idea", "ideas")}
 					{chains.length > 0 ? ` · ${noun(chains.length, "chain", "chains")}` : ""}
 				</span>
 			</button>

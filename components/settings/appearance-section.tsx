@@ -33,6 +33,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
 	EXTRACTION_CHUNK_TOKENS_FLOOR,
+	FACTORY_SETTINGS,
 	resolveSettings,
 	type AppearanceSettings,
 	type GraphSettings,
@@ -186,16 +187,7 @@ export function AppearanceSection({
 
 	return (
 		<>
-			<SettingsRow label="Mode" hint="Coming soon" testid="row-mode" dimmed>
-				<ThinSelect value="dark" ariaLabel="mode" onChange={() => {}} testid="select-mode" disabled>
-					<option value="dark">Dark</option>
-				</ThinSelect>
-			</SettingsRow>
-			<SettingsRow
-				label="Background"
-				hint={`Empty = ${resolved.background ?? "#141414"}`}
-				testid="row-background"
-			>
+			<SettingsRow label="Background" testid="row-background">
 				<CommitInput
 					value={appearance?.background ?? ""}
 					placeholder="#141414"
@@ -204,11 +196,7 @@ export function AppearanceSection({
 					onCommit={(v) => onSectionChange({ ...appearance, background: v === "" ? null : v })}
 				/>
 			</SettingsRow>
-			<SettingsRow
-				label="Reading font"
-				hint={`Empty = ${DEFAULT_READING_FONT}`}
-				testid="row-font"
-			>
+			<SettingsRow label="Reading font" testid="row-font">
 				<span ref={fontMenuOpen ? menuAnchorRef : undefined} className="relative flex items-center gap-2">
 					{/* The MenuTrigger look (agent-section's collapsed
 					    select — it lives unexported there, so the
@@ -267,11 +255,11 @@ export function AppearanceSection({
 					)}
 				</span>
 			</SettingsRow>
-			<SettingsRow label="Reading font size" hint={`${resolved.proseFontSize}px`} testid="row-prose-size">
+			<SettingsRow label="Reading font size" testid="row-prose-size">
 				<CommitInput
 					type="number"
 					value={String(appearance?.proseFontSize ?? "")}
-					placeholder="16"
+					placeholder={String(FACTORY_SETTINGS.appearance.proseFontSize)}
 					ariaLabel="prose font size"
 					testid="input-prose-size"
 					onCommit={(v) => {
@@ -295,11 +283,11 @@ export function AppearanceSection({
 					onChange={(on) => onSectionChange({ ...appearance, sessionNameSerif: on })}
 				/>
 			</SettingsRow>
-			<SettingsRow label="Heading weight" hint={`${resolved.mdRendering.headingWeight}`} testid="row-heading-weight">
+			<SettingsRow label="Heading weight" testid="row-heading-weight">
 				<CommitInput
 					type="number"
 					value={String(md?.headingWeight ?? "")}
-					placeholder="900"
+					placeholder={String(FACTORY_SETTINGS.appearance.mdRendering.headingWeight)}
 					ariaLabel="heading weight"
 					testid="input-heading-weight"
 					onCommit={(v) => {
@@ -321,7 +309,7 @@ export function AppearanceSection({
 			{/* The emphasis inks default to the REGULAR TEXT COLOR now
 			    (appearance wave, 2026-09-26) — the empty-state labels say
 			    so; explicit hex overrides ride unchanged. */}
-			<SettingsRow label="Bold color" hint="Empty = same as text" testid="row-bold-color">
+			<SettingsRow label="Bold color" testid="row-bold-color">
 				<CommitInput
 					value={md?.boldColor ?? ""}
 					placeholder="same as text"
@@ -330,7 +318,7 @@ export function AppearanceSection({
 					onCommit={(v) => onSectionChange({ ...appearance, mdRendering: { ...md, boldColor: v === "" ? null : v } })}
 				/>
 			</SettingsRow>
-			<SettingsRow label="Italic color" hint="Empty = same as text" testid="row-italic-color">
+			<SettingsRow label="Italic color" testid="row-italic-color">
 				<CommitInput
 					value={md?.italicColor ?? ""}
 					placeholder="same as text"
