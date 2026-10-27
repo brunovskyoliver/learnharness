@@ -124,9 +124,9 @@ export class TranscriptScrollKeeper extends Component<{
  * only for server HTML and its hydration (the server snapshot); a client
  * navigation never creates it, since React would not run it anyway. */
 const noSubscribe = () => () => {};
-export function TranscriptArrivalScript({ storageKey, gradientHeight }: { storageKey: string | undefined; gradientHeight: number }) {
+export function TranscriptArrivalScript({ storageKey, gradientHeight, flowDock = false }: { storageKey: string | undefined; gradientHeight: number; flowDock?: boolean }) {
 	const fromServer = useSyncExternalStore(noSubscribe, () => false, () => true);
 	if (!fromServer) return null;
-	const script = `(function(){try{var c=document.querySelector('[data-testid="lesson-content"]');if(!c)return;var d=document.querySelector('[data-dock-block]'),p=document.querySelector('[data-testid="dock-spacer"]');if(d&&p){var h=d.getBoundingClientRect().height+${gradientHeight};if(h>parseFloat(p.style.height||"0"))p.style.height=h+"px"}if(location.hash)return;var k=${JSON.stringify(storageKey ?? "")};var r=k&&localStorage.getItem(k);var v=r&&JSON.parse(r);var s=v&&v.values&&v.values.reading;if(s&&s.bottom===false)return;for(var e=c.parentElement;e;e=e.parentElement){var o=getComputedStyle(e).overflowY;if(o==="auto"||o==="scroll"){e.scrollTop=e.scrollHeight;return}}}catch(_){}})()`;
+	const script = `(function(){try{var c=document.querySelector('[data-testid="lesson-content"]');if(!c)return;var d=document.querySelector('[data-dock-block]'),p=document.querySelector('[data-testid="dock-spacer"]');if(d&&p&&${!flowDock}){var h=d.getBoundingClientRect().height+${gradientHeight};if(h>parseFloat(p.style.height||"0"))p.style.height=h+"px"}if(location.hash)return;var k=${JSON.stringify(storageKey ?? "")};var r=k&&localStorage.getItem(k);var v=r&&JSON.parse(r);var s=v&&v.values&&v.values.reading;if(s&&s.bottom===false)return;for(var e=c.parentElement;e;e=e.parentElement){var o=getComputedStyle(e).overflowY;if(o==="auto"||o==="scroll"){e.scrollTop=e.scrollHeight;return}}}catch(_){}})()`;
 	return <script dangerouslySetInnerHTML={{ __html: script }} />;
 }

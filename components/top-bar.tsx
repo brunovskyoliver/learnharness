@@ -53,7 +53,7 @@ export function TopBar({
 	return (
 		<header
 			onMouseDown={onMouseDown}
-			className={`${drag ? "lh-drag " : ""}lh-wco-gutter flex h-13 shrink-0 select-none items-center gap-2 border-b border-white/[0.06] px-3`}
+			className={`${drag ? "lh-drag " : ""}lh-wco-gutter flex h-13 shrink-0 select-none items-center gap-2 px-3`}
 		>
 			<SidebarToggle />
 			{children}

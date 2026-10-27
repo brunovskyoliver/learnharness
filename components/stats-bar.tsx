@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { subscriptionLabels, type SessionPricing, type TurnUsage } from "@/src/core";
 import { formatTokens, planCostLabel } from "@/components/usage-format";
 import { ModelControl, catalogLimits, useModelCatalog } from "@/components/model-picker";
+import { SlidersHorizontalIcon } from "lucide-react";
 import { MenuShell } from "@/components/menu-shell";
 
 export function formatContextMeasurement(tokens: number | null, limit: number | null): string {
@@ -34,7 +35,7 @@ export function totalTokens(turns: TurnUsage[]): number {
  * transcript estimate. Its catalog denominator follows the selected model;
  * model changes preserve the numerator. Successful compaction clears it to ?.
  */
-export function StatsBar({
+export function StatsBarDetails({
 	turns,
 	contextTokens = null,
 	pricing,
@@ -190,6 +191,34 @@ export function StatsBar({
 			)}
 		</div>
 	);
+}
+
+/** Secondary session controls share one menu, leaving the answer unobstructed. */
+export function StatsBar(props: Parameters<typeof StatsBarDetails>[0]) {
+	const [open, setOpen] = useState(false);
+	const anchor = useRef<HTMLDivElement>(null);
+	useEffect(() => {
+		if (!open) return;
+		const pointer = (e: PointerEvent) => {
+			if (!(e.target instanceof Element) || e.target.closest("[data-lh-menu]") || anchor.current?.contains(e.target)) return;
+			setOpen(false);
+		};
+		const key = (e: KeyboardEvent) => {
+			if (e.key !== "Escape" || e.defaultPrevented || document.querySelectorAll("[data-lh-menu]").length > 1) return;
+			e.preventDefault(); e.stopPropagation(); setOpen(false);
+			anchor.current?.querySelector("button")?.focus({ preventScroll: true });
+		};
+		document.addEventListener("pointerdown", pointer);
+		document.addEventListener("keydown", key);
+		return () => { document.removeEventListener("pointerdown", pointer); document.removeEventListener("keydown", key); };
+	}, [open]);
+	return <div className="flex min-h-10 items-center gap-3">
+		{props.leadingSlot}
+		<div ref={anchor}>
+			<button type="button" aria-expanded={open} aria-haspopup="dialog" aria-label="Model and usage" title="Model and usage" onClick={() => setOpen(!open)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent"><SlidersHorizontalIcon className="size-4" /></button>
+			{open && <MenuShell anchorRef={anchor} testid="session-options" preferredSide="up" menuClass="w-80 rounded-lg border bg-card p-3 shadow-lg"><StatsBarDetails {...props} leadingSlot={undefined} /></MenuShell>}
+		</div>
+	</div>;
 }
 
 /** The bar's context gauge: a ring filling clockwise with context used. */

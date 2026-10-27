@@ -8,7 +8,7 @@ import { demoPrefersInvert, injectDemoTheme } from "../src/core/demo-theme.ts";
 import { buildSubagentSteer } from "../src/core/contracts.ts";
 import { projectView } from "../src/core/view.ts";
 import { SubagentSteerCard } from "../components/artifacts/steer-card.tsx";
-import { DemoPanelContext, findDemoByTitle, sessionDemos, type DemoPanelApi } from "../components/artifacts/demo-panel-context.ts";
+import { DemoPanelContext, findDemoByTitle, resolveQuestionDemo, sessionDemos, type DemoPanelApi } from "../components/artifacts/demo-panel-context.ts";
 import { MarkdownStrong } from "../components/md-blocks.tsx";
 
 const LIGHT = "<!doctype html><html><head><style>:root{color-scheme:light}body{background:#fff}</style></head><body>x</body></html>";
@@ -96,5 +96,29 @@ describe("bold demo titles", () => {
 		assert.ok(!other.includes("demo-link"));
 		const bare = renderToStaticMarkup(<MarkdownStrong>Gradient descent and step size</MarkdownStrong>);
 		assert.ok(!bare.includes("demo-link"));
+	});
+});
+
+
+describe("question demo references", () => {
+	const demos = sessionDemos(projectView([steer("old", "Shared title", DARK), steer("new", "Shared title", DARK)]) as never);
+	it("pins the exact revision even when titles repeat", () => {
+		const result = resolveQuestionDemo(demos, { demoRef: { messageId: demos[0]!.id, panel: 2 } });
+		assert.equal(result.demo?.id, demos[0]!.id);
+		assert.equal(result.panel, 2);
+	});
+	it("does not guess between ambiguous legacy titles", () => {
+		const result = resolveQuestionDemo(demos, { question: "In Shared title, what changes?" });
+		assert.equal(result.demo, undefined);
+		assert.equal(result.candidates.length, 2);
+	});
+	it("does not silently replace a missing revision with a matching title", () => {
+		const result = resolveQuestionDemo(demos, { demoRef: { messageId: "missing" }, question: "Shared title" });
+		assert.equal(result.demo, undefined);
+		assert.equal(result.missing, true);
+	});
+	it("opens an unambiguous legacy reference and ignores unrelated questions", () => {
+		assert.equal(resolveQuestionDemo(demos.slice(0, 1), { question: "In **Shared title**, what changes?" }).demo?.id, demos[0]!.id);
+		assert.equal(resolveQuestionDemo(demos, { question: "Something else" }).candidates.length, 0);
 	});
 });

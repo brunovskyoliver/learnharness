@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { useSessionState } from "@/components/session-state";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowDownIcon, ChevronRightIcon, PlayIcon } from "lucide-react";
@@ -91,6 +92,8 @@ export interface QuestionDockProps {
 	 *  this is the affordance. */
 	compactionRunning?: boolean;
 	controls?: ReactNode;
+	/** When supplied, question and choices render in the lesson; input stays in the composer. */
+	questionTarget?: HTMLElement | null;
 }
 
 export function QuestionDock({
@@ -107,6 +110,7 @@ export function QuestionDock({
 	phase = "probe",
 	compactionRunning = false,
 	controls,
+	questionTarget,
 }: QuestionDockProps) {
 	// The probe-phase names (owner, 2026-10-09) canonicalize onto their
 	// teach twins for every dock concern — parse dispatch, labels, kinds:
@@ -167,6 +171,7 @@ export function QuestionDock({
 					onSaveDraft={onSaveDraft}
 					compactionRunning={compactionRunning}
 					controls={controls}
+					questionTarget={questionTarget}
 				/>
 			</div>
 		</div>
@@ -278,6 +283,7 @@ function QuestionDockForm({
 	onSaveDraft,
 	compactionRunning = false,
 	controls,
+	questionTarget,
 }: Omit<QuestionDockProps, "expanded" | "onExpand" | "reveal">) {
 	const kind = toolQuestionKind(toolName);
 
@@ -534,12 +540,8 @@ function QuestionDockForm({
 			?.scrollIntoView({ block: "nearest" });
 	}, [kbdIdx]);
 
-	return (
-		<div ref={rootRef} data-testid="question-dock" className="flex min-h-0 flex-col">
-			{/* Question area — scrolls internally if very tall; the bottom row stays put.
-			    Capped by the measured column (--dock-max-h; the old fixed 55dvh cut
-			    long questions short — owner round, 2026-10-05). */}
-			<div data-session-find-root="" className="max-h-[var(--dock-max-h,55dvh)] min-h-0 select-text overflow-y-auto px-4 pt-3">
+	const questionContent = <div ref={rootRef} data-testid="lesson-question">
+			<div data-session-find-root="" className={questionTarget === undefined ? "max-h-[var(--dock-max-h,55dvh)] min-h-0 select-text overflow-y-auto px-4 pt-3" : "select-text pt-4"}>
 				<div className="mb-1 text-xs font-medium text-muted-foreground">
 					{toolName === "probe"
 						? "Question"
@@ -719,7 +721,7 @@ function QuestionDockForm({
 				(the dock machine above). "I don't know" greys them out and no
 				value is sent. */}
 			{kind === "quiz" && (
-				<div className="flex shrink-0 items-center gap-3 border-t border-white/[0.06] px-4 py-2.5">
+				<div className="flex shrink-0 items-center gap-3 px-4 py-2.5">
 					<span
 						className={cn(
 							"shrink-0 text-xs font-medium",
@@ -760,13 +762,18 @@ function QuestionDockForm({
 				</div>
 			)}
 
+	</div>;
+	return (
+		<div data-testid="question-dock" className="flex min-h-0 flex-col">
+			{questionTarget === undefined ? questionContent : questionTarget ? createPortal(questionContent, questionTarget) : null}
+
 			{/* The learner's half of the dock — a composer TWIN: a labeled, bordered
 			    field with Submit docked inside, exactly like the chat composer's
 			    send. Select modes get "Your thinking" (Enter makes a newline — it
 			    is for dumping, soon dictated; the button submits); text mode
 			    keeps "Your answer" with Enter-to-submit. */}
 			<form
-				className="input-surface shrink-0 border-t border-border/40"
+				className="input-surface shrink-0"
 				onClick={focusSurfaceInput}
 				onSubmit={(e) => {
 					e.preventDefault();
@@ -781,6 +788,7 @@ function QuestionDockForm({
 					{qd.mode === "text" ? (
 						<textarea
 							aria-label="Your answer"
+							placeholder="Your answer"
 							value={text}
 							onChange={(e) => {
 								answerTextRef.current = e.target.value;
@@ -801,6 +809,7 @@ function QuestionDockForm({
 						<textarea
 							ref={thinkingRef}
 							aria-label="Your thinking"
+							placeholder="Your thinking"
 							value={thinking}
 							onChange={(e) => {
 								thinkingTextRef.current = e.target.value;

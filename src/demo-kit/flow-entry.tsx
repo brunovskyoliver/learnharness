@@ -36,7 +36,7 @@ function KitNode({ data }: NodeProps<Node<KitNodeData>>) {
 				border: `1px solid ${highlight ? accent : theme.border}`,
 				background: highlight ? theme.surface2 : theme.surface,
 				color: theme.text,
-				font: `13px ${theme.font}`,
+				font: `max(13px, calc(var(--lh-demo-size, 17px) * .85)) ${theme.font}`,
 				textAlign: "center",
 				boxShadow: highlight ? `0 0 0 2px ${accent}33` : undefined,
 			}}

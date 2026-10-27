@@ -276,13 +276,6 @@ export function AppearanceSection({
 					}}
 				/>
 			</SettingsRow>
-			<SettingsRow label="Session names in serif" testid="row-session-serif">
-				<Toggle
-					checked={appearance?.sessionNameSerif ?? true}
-					label="session names serif"
-					onChange={(on) => onSectionChange({ ...appearance, sessionNameSerif: on })}
-				/>
-			</SettingsRow>
 			<SettingsRow label="Heading weight" testid="row-heading-weight">
 				<CommitInput
 					type="number"

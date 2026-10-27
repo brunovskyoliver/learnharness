@@ -1,5 +1,7 @@
 "use client";
 
+import { createPortal } from "react-dom";
+
 import { createContext, type ComponentProps, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useChatSession } from "@/components/session";
 import { visibleQueuedSteers } from "@/components/session-core";
@@ -19,7 +21,6 @@ import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-e
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { BrailleSpinner } from "@/components/braille-spinner";
 import { LiveToolCard } from "@/components/artifacts/live-tool-card";
-import { Separator } from "@/components/ui/separator";
 import { AnsweredCard } from "@/components/answered-card";
 import { artifactRenderers } from "@/components/artifacts";
 import { SubagentSteerCard } from "@/components/artifacts/steer-card";
@@ -79,7 +80,8 @@ import {
 	toolQuestionKind,
 	questionNeedsReveal,
 } from "@/src/core";
-import { ReadingThinkingField } from "@/components/reading-thinking";
+import { resolveQuestionDemo } from "@/components/artifacts/demo-panel-context";
+import { requestFullTranscript } from "@/components/transcript-window";
 import { currentUserThinkingOpen, setAllUserThinkingOpen } from "@/components/thinking-block";
 import { slotsConfigured, type ModelsSettings } from "@/src/core";
 import { useSettingsSaved } from "@/components/settings-signal";
@@ -105,7 +107,7 @@ const MermaidOverlay = dynamic(() => import("@/components/session-overlay").then
 const COLUMN = "mx-auto w-full max-w-[calc(var(--lh-measure)+3rem)] px-6";
 const DOCK = "mx-auto w-full max-w-[52rem] px-4";
 // The dock overlay's gradient band (h-24) — part of the reserved tail.
-const GRADIENT_H = 96;
+const GRADIENT_H = 0;
 // Fold thresholds (owner, scroll round 1, tuned round 3): pixel distance
 // from the bottom — position, not velocity. Leave the bottom → the box
 // folds (visual only); reach it again → it re-opens. 96 (was 64, owner
@@ -215,7 +217,7 @@ function isSubagentSteer(m: LhViewMessage): boolean {
  * The bottom blob is ONE persistent shell whose contents swap (chat composer ↔
  * question dock ↔ collapsed bar). The shell is sticky INSIDE the scroller —
  * never overlapping the transcript at rest, never covering the scrollbar —
- * and DockOverlay animates its height on variant changes.
+ * and DockFooter animates its height on variant changes.
  */
 export function Chat({ initialSettings, initialModels, ...props }: ComponentProps<typeof ChatView> & {
 	/** The session's model/thinking settings and the record's models
@@ -273,7 +275,6 @@ function ChatView({
 	// settled terminal's callback — a stable ref assigned below, once
 	// syncFromServer exists (refs, not closures: no stale capture).
 	const reattachSettledRef = useRef<() => void>(() => {});
-	const clearReadingThinkingRef = useRef<() => void>(() => {});
 
 	// THE SESSION HOOK (Wave D, owner-approved 2026-09-26): the app-owned
 	// replacement for useChat + the AI-SDK transport. The record is native
@@ -456,12 +457,10 @@ function ChatView({
 			const p = pendingRef.current;
 			if (p) {
 				const question = (p.input as { question?: string } | null)?.question ?? "";
-				const reading = readingThinkingRef.current.trim() || undefined;
-				clearReadingThinkingRef.current();
 				const answer = dismissedAnswer(toolQuestionKind(p.tool), question);
 				void dismissQuestion(
 					p.toolCallId,
-					reading ? { ...answer, readingThinking: reading } : answer,
+					answer,
 				);
 				if (busyRef.current) abortInFlightTurn();
 				return;
@@ -560,14 +559,6 @@ function ChatView({
 	// question's phase.
 	const requiresReveal = pending !== null && questionNeedsReveal(pending.tool, pending.input, phaseAt3(messages));
 
-	/* The READING-THINKING channel (owner 2026-10-03): a draft field for
-	 * thinking while reading the teaching prose, mounted while a check waits
-	 * behind its reveal, riding the check answer (or its dismissal) as the
-	 * separate `readingThinking` field. Reset per pending question. */
-	const [readingThinking, setReadingThinking] = useSessionState(`question/${pending?.toolCallId ?? "none"}/reading`, "");
-	const readingThinkingRef = useRef(readingThinking);
-	readingThinkingRef.current = readingThinking;
-
 	// ⌘T (toggle-user-thinking, owner round 2026-10-07): set EVERY user
 	// thinking row to one state — transcript rows default open, so the
 	// first press collapses everything, the second re-expands.
@@ -576,14 +567,6 @@ function ChatView({
 		window.addEventListener(kbdEventForChat("toggle-user-thinking"), onToggle);
 		return () => window.removeEventListener(kbdEventForChat("toggle-user-thinking"), onToggle);
 	}, []);
-	const applyReadingThinking = useCallback((v: string) => {
-		readingThinkingRef.current = v;
-		setReadingThinking(v);
-	}, [setReadingThinking]);
-	clearReadingThinkingRef.current = () => {
-		readingThinkingRef.current = "";
-		setReadingThinking("");
-	};
 
 	// The phase at every message (one linear fold): the transcript draws a
 	// color-coded dotted divider at each boundary; the header chip reads the
@@ -863,11 +846,21 @@ function ChatView({
 	// Demos beside the lesson: the side panel shows one, opened from a demo
 	// card, a bold-title mention in the teacher's text, or the top-bar button.
 	const [demoOpenId, setDemoOpenId] = useState<string | null>(null);
+	const [demoPanelIndex, setDemoPanelIndex] = useState<number | undefined>();
 	const demos = useMemo(() => sessionDemos(messages), [messages]);
 	const demoPanel = useMemo<DemoPanelApi>(
-		() => ({ demos, openId: demoOpenId, open: setDemoOpenId, close: () => setDemoOpenId(null) }),
-		[demos, demoOpenId],
+		() => ({ demos, openId: demoOpenId, panelIndex: demoPanelIndex, open: (id: string, index?: number) => { requestFullTranscript(); setDemoOpenId(id); setDemoPanelIndex(index); }, close: () => setDemoOpenId(null) }),
+		[demos, demoOpenId, demoPanelIndex],
 	);
+
+	const questionDemo = useMemo(() => resolveQuestionDemo(demos, pending?.input), [demos, pending?.input]);
+	const autoOpenedQuestion = useRef<string | null>(null);
+	useEffect(() => {
+		if (!pending || autoOpenedQuestion.current === pending.toolCallId || !questionDemo.demo) return;
+		// Backfill runs outside React's effect to avoid flushSync during commit.
+		const timer = window.setTimeout(() => { autoOpenedQuestion.current = pending.toolCallId; demoPanel.open(questionDemo.demo!.id, questionDemo.panel); }, 0);
+		return () => window.clearTimeout(timer);
+	}, [pending?.toolCallId, questionDemo.demo?.id]);
 
 	// ── Session usage (wave-4 stats bar) ──
 	// The money channel: the record's turns log and read-time server Pi
@@ -879,14 +872,16 @@ function ChatView({
 	const [pricing, setPricing] = useState<SessionPricing | undefined>(initialPricing);
 	// The per-chat model control state (model-picker writes via PUT; the
 	// record is the source of truth, lifted here so the stats bar re-renders).
-	// The dock's reserved tail height (DockOverlay reports it; the spacer at
+	// The dock's reserved tail height (DockFooter reports it; the spacer at
 	// the end of the transcript renders it). Lives here because the spacer is
 	// inside the scroller while the dock overlays OUTSIDE it — two parents.
 	// 208 ≈ gradient(96) + composer block(~112): the SSR/pre-hydration
 	// guess so the static paint has a sane tail. The first layout effect
 	// replaces it with the measured truth before paint.
-	const [dockReserve, setDockReserve] = useState(208);
+
 	const [readingReserve, setReadingReserve] = useState(0);
+	const [dockReserve, setDockReserve] = useState(160);
+	const [questionTarget, setQuestionTarget] = useState<HTMLDivElement | null>(null);
 	const syncTurns = useCallback(async () => {
 		try {
 			const record = await readSessionMetadata(chatId, true);
@@ -1204,8 +1199,7 @@ function ChatView({
 		    the plan-tree panel as full-height SIBLINGS — the panel spans top to
 		    bottom exactly like the left sidebar, and the header (name + phase
 		    chip) spans from the left sidebar's edge to the panel's edge. The
-		    dock overlays the column bottom (outside the scroller); a spacer in
-		    the transcript reserves its height. */}
+		    footer occupies a separate row below the scroller. */}
 		<div data-chat-id={chatId} className="flex h-dvh">
 			<div className="flex min-w-0 flex-1 flex-col">
 				{/* The top bar is its own block (owner, top-fade round 4): in flow
@@ -1305,7 +1299,7 @@ function ChatView({
 								data-testid="demos-chip"
 								onClick={(e) => {
 									blurAfterPointerClick(e);
-									setDemoOpenId((open) => (open ? null : demos[demos.length - 1]!.id));
+									if (demoOpenId) demoPanel.close(); else demoPanel.open(demos[demos.length - 1]!.id);
 								}}
 								aria-label={demoOpenId ? "Close demo panel" : "Open demos"}
 								aria-expanded={demoOpenId !== null}
@@ -1344,12 +1338,12 @@ function ChatView({
 				</TopBar>
 
 				<SessionFind scopeRef={sessionFindScopeRef} scrollContextRef={scrollContextRef} />
-				<div ref={sessionFindScopeRef} className="lh-session-scale relative flex min-h-0 flex-1">
-				<Conversation className="@container/session h-full min-w-0 flex-1" initial={false} resize={transcriptSettled ? "smooth" : "instant"} contextRef={scrollContextRef}>
+				<div ref={sessionFindScopeRef} className="lh-session-scale session-workspace-layout relative flex min-h-0 flex-1 flex-col md:flex-row">
+				<Conversation className="@container/session flex h-full min-h-0 min-w-0 flex-1 flex-col" style={{ "--lh-composer-height": `${dockReserve}px` } as React.CSSProperties} initial={false} resize={transcriptSettled ? "smooth" : "instant"} contextRef={scrollContextRef}>
 					<SessionMessageNavigation />
 					<TurnReadingPosition busy={busy} messages={messages} onReserve={setReadingReserve} />
 					<SessionTurnRail messages={messages} nativeMessages={nativeMessages} turns={turns} onReserve={setReadingReserve} />
-					<ConversationContent className="@container min-h-full gap-0 p-0">
+					<ConversationContent scrollClassName="min-h-0 flex-1 [scroll-padding-bottom:var(--lh-composer-height)]" className="@container min-h-full gap-0 p-0">
 						<div data-testid="lesson-content" data-session-find-root="" className={`${COLUMN} flex flex-1 flex-col gap-6 pt-4`}>
 							{messages.length === 0 && !busy && (
 								<ConversationEmptyState
@@ -1531,7 +1525,7 @@ function ChatView({
 															return <PhaseDivider key={`teach-step-${pi}`} phase="teach" />;
 														// A trailing step-start has nothing under it yet: no
 														// hairline over the live Thinking row (polish pass).
-														return pi > 0 && !isLastPart ? <Separator key={pi} className="my-3" /> : null;
+														return pi > 0 && !isLastPart ? <div key={pi} className="h-6" aria-hidden /> : null;
 													case "data-plan-block":
 														// The plan in the chat (wave 4): a frozen snapshot
 														// block — rendered as carried, never re-derived.
@@ -1620,24 +1614,22 @@ function ChatView({
 									Something went wrong: {error.message}
 								</div>
 							)}
+				{pending && (questionDemo.demo || questionDemo.candidates.length > 1 || questionDemo.missing) && <div className="question-demo-reference px-5 py-2 text-sm">
+					{questionDemo.demo ? <button type="button" className="underline underline-offset-4" onClick={() => demoPanel.open(questionDemo.demo!.id, questionDemo.panel)}>Using {questionDemo.demo.title}</button> : questionDemo.missing ? <span role="status">The referenced demo is unavailable. You can still answer.</span> : <label>Choose the referenced demo <select aria-label="Referenced demo" defaultValue="" onChange={(e) => demoPanel.open(e.target.value)}><option value="" disabled>Select a demo</option>{questionDemo.candidates.map((d, i) => <option key={d.id} value={d.id}>{d.title} ({i + 1})</option>)}</select></label>}
+				</div>}
+							<div ref={setQuestionTarget} data-question-target="" />
 						</div>
 
-						{/* The dock's reserved tail (DockOverlay reports its height):
-						    keeps at-rest transcript content scrolling fully clear of
-						    the overlay — the flow-space replacement for the old
-						    sticky dock. Zero only pre-measurement (the first layout
-						    effect reports before paint). */}
+						{/* Reading navigation may reserve space independently of the footer. */}
 						{/* The arrival script sizes this from the real dock before first paint. */}
 						<div aria-hidden data-testid="dock-spacer" suppressHydrationWarning style={{ height: Math.max(dockReserve, readingReserve) }} />
 				</ConversationContent>
 				<SessionReadingState />
-				{/* The dock: an overlay sibling of the scroller (the
-				    use-stick-to-bottom pattern). The scroll-down button lives
-				    INSIDE the overlay now (owner refinement round, 2026-09-24):
-				    anchored to the dock block's top edge, so it rides every
-				    height morph (typing, a question growing the band, the
-				    fold) and NEVER overlaps the composer. */}
-				<DockOverlay
+				{/* Only the answer composer floats over the scrollable lesson. */}
+
+				<DockFooter
+					questionTarget={questionTarget}
+					onReserve={setDockReserve}
 					pending={pending}
 					initialQuestionDraft={pending ? questionDraft(pending.toolCallId)?.form : undefined}
 					onSaveQuestionDraft={(form) => { if (pending) saveQuestionDraft(pending.toolCallId, { form }); }}
@@ -1646,13 +1638,10 @@ function ChatView({
 					onSubmitThinking={submitThinking}
 					chatId={chatId}
 					requiresReveal={requiresReveal}
-					readingThinking={readingThinking}
-					onReadingThinking={applyReadingThinking}
 					phase={phases.at(-1) ?? "probe"}
 					turns={turns}
 					contextTokens={contextTokens}
 					pricing={pricing}
-					onReserve={setDockReserve}
 					queuedSteers={visibleQueuedSteers(steerQueue, nativeMessages)}
 					setupCta={
 						zeroKeys ? (
@@ -1702,13 +1691,8 @@ function ChatView({
 						// once) and the server's write-ahead persists it before the
 						// turn; the teacher's reaction streams below it. Dismissals
 						// ride the same callback (QuestionAnswerData.dismissed). The
-						// reading-thinking draft rides along (owner 2026-10-03) — the
-						// check answer is its only carrier.
-						saveQuestionDraft(pending.toolCallId, { readingThinking: readingThinkingRef.current });
-						const reading = readingThinkingRef.current.trim() || undefined;
-						// The pending-id effect clears this only when the question
-						// actually leaves. An offline preflight keeps the draft visible.
-						submitAnswer(pending.tool, pending.toolCallId, reading ? { ...output, readingThinking: reading } : output);
+						// answer draft is retained until the submission succeeds.
+						submitAnswer(pending.tool, pending.toolCallId, output);
 					}}
 				/>
 				</Conversation>
@@ -1757,29 +1741,9 @@ function ChatView({
 	);
 }
 
-/**
- * The floating blob: ONE persistent shell, OVERLAID at the bottom of the
- * column (absolute — a sibling of the scroller, the use-stick-to-bottom
- * pattern; it replaced the old in-flow sticky dock, which died of the
- * fold-latency problem below). Contents swap between the chat composer and
- * the question dock; shell height morphs between variants (WAAPI, quick). A
- * spacer at the end of the transcript (rendered by ChatView from onReserve
- * reports) holds the dock's flow-space, so at-rest content scrolls fully
- * clear of the overlay.
- *
- * Why an overlay (owner, scroll round 1): an in-flow dock IS scroll geometry
- * — folding it shrinks the scroll content, so the fold had to wait until the
- * learner was a full dock-height past the bottom (any closer and the browser
- * clamp pinned them back, re-expanding the box: the oscillation). Decoupled
- * from the flow, the fold is VISUAL ONLY: it fires as soon as the learner
- * leaves the bottom, and the reserved tail only ever GROWS while a question
- * is open (a shrinking tail would reintroduce the clamp).
- *
- * Collapse: scroll up past COLLAPSE_DIST and the dock folds into a slim bar;
- * click it (or scroll back to the bottom) to re-expand. The question form
- * stays MOUNTED while collapsed (hidden, not unmounted) so a half-made
- * selection survives.
- */
+/** The footer owns a layout row below the lesson scroller. Forms remain
+ * mounted while folded so drafts survive. Height changes suppress the
+ * scroll-driven fold machine until the new geometry settles. */
 /**
  * How a teach-phase question arrives (owner ruling, 2026-09-25): collapsed
  * behind the reveal button when it follows the composer — the learner
@@ -1865,7 +1829,9 @@ export function shouldStampGeometryMute(nextH: number, prevH: number, pending: b
 	return pending && nextH > prevH + 1;
 }
 
-function DockOverlay({
+function DockFooter({
+	questionTarget,
+	onReserve,
 	pending,
 	initialQuestionDraft,
 	onSaveQuestionDraft,
@@ -1873,8 +1839,6 @@ function DockOverlay({
 	compactionRunning,
 	onSubmitThinking,
 	requiresReveal,
-	readingThinking,
-	onReadingThinking,
 	phase,
 	turns,
 	contextTokens,
@@ -1882,10 +1846,11 @@ function DockOverlay({
 	composer,
 	onSubmitAnswer,
 	chatId,
-	onReserve,
 	setupCta,
 	queuedSteers,
 }: {
+	questionTarget: HTMLElement | null;
+	onReserve: (height: number) => void;
 	pending: ReturnType<typeof findPendingToolCall>;
 	initialQuestionDraft?: QuestionFormDraft;
 	onSaveQuestionDraft: (draft: QuestionFormDraft) => void;
@@ -1900,10 +1865,6 @@ function DockOverlay({
 	onSubmitThinking: (text: string) => void;
 	/** Teach-phase pending question: arrives collapsed behind the reveal button (W5). */
 	requiresReveal: boolean;
-	/** The reading-thinking draft (owner 2026-10-03) — owned by ChatView so
-	 *  the submit + dismissal seams (outside this overlay) can merge it. */
-	readingThinking: string;
-	onReadingThinking: (v: string) => void;
 	/** Session phase at the pending question — scales the thinking field. */
 	phase: Phase3;
 	/** The session's usage log — the stats bar beneath the composer folds it. */
@@ -1914,9 +1875,6 @@ function DockOverlay({
 	onSubmitAnswer: (output: QuestionAnswerData) => void;
 	/** The model control's pass-through (the stats bar hosts it). */
 	chatId: string;
-	/** Reports the dock's settled height (block + gradient) — ChatView's
-	 *  dockReserve state feeds the transcript's spacer from it. */
-	onReserve: (h: number) => void;
 	/** The queued-steer indicator's lines (composer steering, 2026-10-03):
 	 *  already filtered by visibleQueuedSteers — only undrained steers. */
 	queuedSteers: QueuedSteerLine[];
@@ -1925,6 +1883,12 @@ function DockOverlay({
 	setupCta?: React.ReactNode;
 }) {
 	const { isAtBottom, scrollToBottom, scrollRef, stopScroll, state: scrollState } = useStickToBottomContext();
+	useEffect(() => {
+		const el = scrollRef.current;
+		const stop = () => stopScroll();
+		el?.addEventListener("lh:demo-focus", stop);
+		return () => el?.removeEventListener("lh:demo-focus", stop);
+	}, [scrollRef, stopScroll]);
 	const scrollMotionRef = useRef<ReturnType<typeof animateDockScroll> | null>(null);
 	const jumpPendingRef = useRef(false);
 	const ownerRef = useRef(pending?.toolCallId ?? practice?.toolCallId);
@@ -1948,7 +1912,7 @@ function DockOverlay({
 	// learner reads the teaching first and opens the check when ready. Once
 	// revealed, the normal collapse machine rules apply untouched.
 	const [revealed, setRevealed] = useSessionState(`dock/${pending?.toolCallId ?? practice?.toolCallId ?? "composer"}/revealed`, false);
-	const revealPending = requiresReveal && !revealed;
+
 
 	const pendingId = pending?.toolCallId ?? null;
 	const initialPendingRef = useRef(pendingId);
@@ -1993,8 +1957,7 @@ function DockOverlay({
 	}, [pendingId]);
 
 	// ── Fold machine (position, not velocity — owner, scroll round 1) ──
-	// The dock is an overlay: folding is visual-only and scroll geometry never
-	// moves, so the thresholds can hug the bottom. Leave it → fold; reach it
+	// Footer reflow is covered by geometry mute while the fold settles. Leave it → fold; reach it
 	// again → re-open. The dead band keeps trackpad drift from chattering.
 	const expandedRef = useRef(expanded);
 	expandedRef.current = expanded;
@@ -2051,7 +2014,7 @@ function DockOverlay({
 		if (!el) return;
 		const measure = () => {
 			setSbInset(Math.round((el.offsetWidth - el.clientWidth) / 2));
-			setDockMaxH(Math.max(el.clientHeight - 52, 160));
+			setDockMaxH(Math.max((el.parentElement?.clientHeight ?? el.clientHeight) - 80, 120));
 		};
 		measure();
 		window.addEventListener("resize", measure);
@@ -2194,7 +2157,7 @@ function DockOverlay({
 	const blockRef = useRef<HTMLDivElement>(null);
 	const offer = (blockH: number) => {
 		const next = blockH + GRADIENT_H;
-		if (next <= reserveRef.current + 0.5 && pendingRef.current) return; // fold immunity
+		if (Math.abs(next - reserveRef.current) < 0.5) return;
 		// Reserve GROWTH is the phantom-scroll SOURCE (flicker round,
 		// 2026-09-26): the spacer's height lands in this commit, the smooth
 		// catch-up lags it by the growth amount, and the position machine
@@ -2203,7 +2166,7 @@ function DockOverlay({
 		// mute right where the spacer grows: it covers the scroll events of
 		// THIS growth no matter how long after the field stretched (the
 		// field grows on its own render; the offer lands on the NEXT
-		// DockOverlay render — ~1s apart live). Shrinks never stamp (the
+		// DockFooter render — ~1s apart live). Shrinks never stamp (the
 		// fold's own give-back must not self-mute the re-expand).
 		if (shouldStampGeometryMute(next, reserveRef.current, pendingRef.current)) geometryAtRef.current = Date.now();
 		reserveRef.current = next;
@@ -2297,8 +2260,7 @@ function DockOverlay({
 	// while a question waits with the dock CLOSED — behind its reveal
 	// invitation or collapsed by scroll — Enter is never dead. The check
 	// opens. A typing surface or a focused button owns its own Enter (the
-	// reading-thinking field opens from INSIDE when the check is closed;
-	// a focused button activates natively) — this listener claims only
+	// focused button activates natively) — this listener claims only
 	// the dead case: plain focus with Enter doing nothing.
 	useEffect(() => {
 		if (!pending || expanded) return;
@@ -2366,7 +2328,7 @@ function DockOverlay({
 		return () => el.removeEventListener("scroll", onScroll);
 	}, [scrollRef, scrollToBottom]);
 
-	// The settled block height (gradient excluded), offered to the spacer.
+	// Track settled footer height to suppress layout-driven fold feedback.
 	// Only ever called with NATURAL heights — never the animated mid-morph
 	// value (the iso effect's getAnimations guard wraps every call).
 	const measureBlock = () => {
@@ -2449,29 +2411,17 @@ function DockOverlay({
 	});
 
 	return (
-		<div className="pointer-events-none absolute inset-x-0 bottom-0" style={{ right: sbInset }}>
-			<div className="h-24 bg-gradient-to-t from-background via-background/85 to-transparent" />
-			<div ref={blockRef} data-dock-block="" className="relative bg-background pb-5" style={{ "--dock-max-h": dockMaxH ? `${dockMaxH}px` : undefined } as React.CSSProperties}>
+		<div className="lesson-footer pointer-events-none absolute inset-x-0 bottom-0" style={{ right: sbInset }}>
+			<div ref={blockRef} data-dock-block="" className="relative py-3" style={{ "--dock-max-h": dockMaxH ? `${dockMaxH}px` : undefined } as React.CSSProperties}>
 				<div className={`${DOCK} flex max-h-[var(--dock-max-h)] flex-col [&>div:not([data-testid=dock-shell])]:shrink-0`}>
-					{setupCta}
+					{questionTarget && setupCta ? createPortal(setupCta, questionTarget) : null}
 					{/* The queued-steer indicator (owner spec 2026-10-03): quiet
 					    one-liners above the shell - right-aligned to where its corner
 					    rounding starts, truncated, no background, no container. A
 					    line dies when its card lands (visibleQueuedSteers). */}
 					<QueuedSteersBody steers={queuedSteers} />
-					{/* The reading-thinking field (owner 2026-10-03): mounted while a
-					    teach-phase check waits — the same cue that collapses it. Rides the check answer on submit. */}
-					{pending && requiresReveal && (
-						<ReadingThinkingField
-							value={readingThinking}
-							onChange={onReadingThinking}
-							onOpen={
-								!expanded
-									? () => expandAndRevealRef.current()
-									: undefined
-							}
-						/>
-					)}
+
+
 					<div ref={shellRef} data-testid="dock-shell" onClick={(event) => { if (event.target === event.currentTarget) focusSurfaceInput(event); }} className="prompt-shell pointer-events-auto flex min-h-0 select-none flex-col overflow-hidden">
 						<div
 						ref={contentRef}
@@ -2483,15 +2433,15 @@ function DockOverlay({
 									toolName={pending.tool as "quiz" | "probe" | "ask_user_question" | "explain" | "recall"}
 									toolCallId={pending.toolCallId}
 									input={pending.input as never}
-									expanded={expanded}
-									outgoingHeight={outgoing?.mode === mode ? outgoing.height : undefined}
-									reveal={revealPending}
+									expanded={true}
+									questionTarget={questionTarget}
+									reveal={false}
 									phase={phase}
 									onExpand={expandAndReveal}
 									onSubmit={onSubmitAnswer}
 									initialDraft={initialQuestionDraft}
 									onSaveDraft={onSaveQuestionDraft}
-									controls={expanded ? <StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} /> : undefined}
+									controls={<StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} />}
 									compactionRunning={compactionRunning}
 								/>
 							) : practice ? (
@@ -2504,30 +2454,20 @@ function DockOverlay({
 										void suppressFoldDuringReveal();
 									}}
 									onSubmit={onSubmitThinking}
-									controls={expanded ? <StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} /> : undefined}
+									controls={<StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} />}
 									compactionRunning={compactionRunning}
 								/>
 							) : (
 								composer
 							)}
 						</div>
-						{(pending || practice) && !expanded && (
+						{!pending && practice && !expanded && (
 							<div className="px-3 pb-2">
 								<StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} />
 							</div>
 						)}
 					</div>
-					{/* The scroll-down disc (moved here from the Conversation,
-					    owner refinement round 2026-09-24): anchored to the BLOCK's
-					    top edge — above the composer shell AND the stats row, in
-					    the gradient's transparent band — so it never overlaps
-					    any dock element. Because the anchor is the block itself
-					    (not the scroller's bottom), it rides every height change
-					    LIVE: typing growth, a pending question expanding the
-					    band, the 240ms fold morph. pointer-events-auto: the
-					    overlay is none by default. The isAtBottom/scrollToBottom
-					    context still reaches it — DockOverlay is a Conversation
-					    child. */}
+					{/* The latest-message action sits just above the footer. */}
 					<ConversationScrollButton aria-label="Scroll to latest" onClick={jumpToBottomThenExpand} className="pointer-events-auto bottom-full mb-2" />
 				</div>
 			</div>

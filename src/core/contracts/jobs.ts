@@ -373,7 +373,7 @@ export function buildSubagentSteer(
 		id: `steer_${job.id}`,
 		role: "custom",
 		customType: "subagent-steer",
-		content: steerText(job.kind, result),
+		content: steerText(job.kind, result) + (job.kind === "demo" ? `\nDemo reference: messageId=steer_${job.id}. Use demoRef.messageId on questions that refer to this demo.` : ""),
 		display: true,
 		details: {
 			jobId: job.id,

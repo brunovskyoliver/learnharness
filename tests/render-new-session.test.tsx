@@ -63,7 +63,8 @@ describe("DraftShell — the sessionless surface", () => {
 		assert.ok(html.includes('data-testid="composer"'));
 		// The draft's model control binds the strong slot — the
 		// new-session default (per-session models, owner 2026-09-28).
-		assert.ok(html.includes('data-testid="stats-model"'));
+		assert.ok(html.includes('aria-label="Model and usage"'));
+		assert.ok(!html.includes('data-testid="stats-model"'), "model controls stay behind Options");
 		// No CTA by default: a configured surface stays quiet.
 		assert.ok(!html.includes('data-testid="setup-cta"'));
 		// The same empty state a fresh chat shows: the title alone.

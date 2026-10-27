@@ -50,7 +50,8 @@ export function findDemoByTitle(demos: readonly SessionDemo[], text: string): Se
 export interface DemoPanelApi {
 	demos: readonly SessionDemo[];
 	openId: string | null;
-	open: (id: string) => void;
+	panelIndex?: number;
+	open: (id: string, panelIndex?: number) => void;
 	close: () => void;
 }
 
@@ -60,4 +61,17 @@ export const DemoPanelContext = createContext<DemoPanelApi | null>(null);
 
 export function useDemoPanel() {
 	return useContext(DemoPanelContext);
+}
+
+/** Exact revision references take priority. Legacy titles only auto-open when unique. */
+export function resolveQuestionDemo(demos: readonly SessionDemo[], input: unknown): { demo?: SessionDemo; candidates: SessionDemo[]; missing: boolean; panel?: number } {
+	if (!input || typeof input !== "object") return { candidates: [], missing: false };
+	const q = input as { demoRef?: { messageId?: unknown; panel?: unknown }; question?: unknown; details?: unknown };
+	if (typeof q.demoRef?.messageId === "string") {
+		const demo = demos.find((d) => d.id === q.demoRef!.messageId);
+		return { demo, candidates: demo ? [demo] : [], missing: !demo, panel: typeof q.demoRef.panel === "number" && Number.isInteger(q.demoRef.panel) && q.demoRef.panel >= 0 ? q.demoRef.panel : undefined };
+	}
+	const text = normalizeDemoTitle([q.question, q.details].filter((x) => typeof x === "string").join(" "));
+	const candidates = demos.filter((d) => text.includes(normalizeDemoTitle(d.title)));
+	return { demo: candidates.length === 1 ? candidates[0] : undefined, candidates, missing: false };
 }

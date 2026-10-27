@@ -9,6 +9,7 @@ import type { DemoKitPanel, DemoKitSpec } from "../core/demo-kit.ts";
 
 type Values = Record<string, any>;
 interface PanelView {
+	resize?(): Promise<void> | void;
 	update(): Promise<void> | void;
 }
 interface FlowApi {
@@ -70,35 +71,53 @@ const theme = {
 };
 
 const STYLE = `
-#lh-kit{display:flex;flex-direction:column;gap:12px;padding:2px;font-size:14px;line-height:1.45}
-.k-controls{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;padding:12px 14px;border:1px solid var(--lh-border);border-radius:8px;background:var(--lh-surface)}
+#lh-kit{display:flex;flex-direction:column;gap:12px;padding:2px;font-size:var(--lh-demo-size,17px);line-height:1.5}
+.k-controls{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;padding:12px 0;border:0;border-radius:0;background:transparent;order:2}
 .k-field{display:flex;flex-direction:column;gap:4px;min-width:180px;flex:1 1 200px}
-.k-label{display:flex;justify-content:space-between;gap:8px;color:var(--lh-muted);font-size:12px}
+.k-label{display:flex;justify-content:space-between;gap:8px;color:var(--lh-muted);font-size:.8em}
 .k-label b{color:var(--lh-text);font-weight:600;font-variant-numeric:tabular-nums}
 .k-field input[type=range]{width:100%;accent-color:var(--lh-blue)}
 .k-seg{display:flex;gap:2px;padding:2px;border-radius:6px;background:var(--lh-surface-2)}
-.k-seg button,.k-btn{border:0;border-radius:5px;padding:4px 10px;background:transparent;color:var(--lh-muted);cursor:pointer;font-size:13px}
+.k-seg button,.k-btn{border:0;border-radius:5px;padding:4px 10px;background:transparent;color:var(--lh-muted);cursor:pointer;font-size:.9em}
 .k-seg button[aria-pressed=true]{background:var(--lh-bg);color:var(--lh-text)}
 .k-buttons{display:flex;gap:6px;flex:0 0 auto}
 .k-btn{border:1px solid var(--lh-border);color:var(--lh-text);padding:5px 14px}
 .k-btn:hover{background:var(--lh-surface-2)}
 .k-btn.k-primary{background:var(--lh-blue);border-color:var(--lh-blue);color:#10141c}
-.k-toggle{display:flex;align-items:center;gap:8px;color:var(--lh-text);font-size:13px;cursor:pointer}
+.k-toggle{display:flex;align-items:center;gap:8px;color:var(--lh-text);font-size:.9em;cursor:pointer}
 .k-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
-.k-panel{grid-column:span 2;min-width:0;border:1px solid var(--lh-border);border-radius:8px;background:var(--lh-surface);padding:10px 12px}
+.k-panel{grid-column:span 2;min-width:0;border:0;border-radius:0;background:transparent;padding:10px 0}
 .k-panel.k-half{grid-column:span 1}
 @media (max-width:560px){.k-panel.k-half{grid-column:span 2}}
-.k-title{font-size:12px;color:var(--lh-muted);margin:0 0 6px}
+.k-title{font-size:.8em;color:var(--lh-muted);margin:0 0 6px}
 .k-readouts{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
 .k-readout{padding:6px 10px;border-radius:6px;background:var(--lh-surface-2)}
-.k-readout span{display:block;font-size:12px;color:var(--lh-muted)}
+.k-readout span{display:block;font-size:.8em;color:var(--lh-muted)}
 .k-readout b{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
 .k-note{border:0;background:transparent;padding:0 2px;color:var(--lh-text)}
 .k-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
 .k-table th,.k-table td{padding:4px 8px;border-bottom:1px solid var(--lh-border);text-align:right}
-.k-table th{color:var(--lh-muted);font-weight:500;font-size:12px}
+.k-table th{color:var(--lh-muted);font-weight:500;font-size:.8em}
 .k-table th:first-child,.k-table td:first-child{text-align:left}
-.k-chart{width:100%}
+.k-chart{width:100%;min-width:0}
+.k-chart text{font-size:max(12px,calc(var(--lh-demo-size,17px)*.75))!important}
+.k-flow .react-flow__node{font-size:max(13px,calc(var(--lh-demo-size,17px)*.85))}
+.k-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
+.k-focus .k-panel-head .k-btn{display:none}
+.k-panel-head h3{margin:0;font-size:1em;color:var(--lh-text);font-weight:600}
+.k-focus .k-grid{display:block;min-width:0;min-height:0}
+#lh-kit.k-focus{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,280px);gap:24px;height:100dvh;box-sizing:border-box;padding:16px}
+.k-focus .k-controls{grid-column:2;grid-row:1;display:block;overflow:auto;border-left:1px solid var(--lh-border);padding:0 0 0 20px}
+.k-focus .k-field{margin-bottom:24px;min-width:0}
+.k-focus .k-grid{grid-column:1;grid-row:1}
+.k-focus:not(:has(.k-controls)) .k-grid{grid-column:1/-1}
+.k-focus .k-panel{height:100%;display:flex;flex-direction:column}
+.k-focus .k-panel[hidden]{display:none}
+.k-focus .k-chart,.k-focus .k-flow{flex:1;min-height:160px;height:100%!important}
+.k-parameters-toggle{display:none}
+button:focus-visible,input:focus-visible{outline:2px solid var(--lh-blue);outline-offset:3px}
+@media(max-width:640px){#lh-kit.k-focus{grid-template-columns:1fr;grid-template-rows:minmax(180px,1fr) auto;gap:12px}.k-focus .k-controls{grid-column:1;grid-row:2;border-left:0;border-top:1px solid var(--lh-border);padding:12px 0 0;max-height:45dvh}.k-focus .k-parameters-toggle{display:block;width:100%;text-align:left;margin-bottom:12px}.k-controls.k-collapsed>:not(.k-parameters-toggle){display:none}}
+@media(prefers-reduced-motion:reduce){.react-flow__edge-path{animation:none!important}}
 .k-error{padding:8px 10px;border-radius:6px;background:rgba(242,139,130,.12);color:var(--lh-red);font:12px var(--lh-mono)}
 `;
 
@@ -142,6 +161,9 @@ class Kit {
 	errors: string[] = [];
 	private compiled = new Map<string, (...args: unknown[]) => unknown>();
 	private views: PanelView[] = [];
+	private panelBoxes: HTMLElement[] = [];
+	private focusIndex: number | null = null;
+	private focusTrigger: HTMLElement | null = null;
 	private timer: number | null = null;
 	private runButton: HTMLButtonElement | null = null;
 	private errorBox: HTMLElement;
@@ -266,6 +288,11 @@ class Kit {
 		const params = Object.entries(this.spec.params ?? {});
 		if (params.length === 0 && !this.spec.step) return null;
 		const box = el("div", "k-controls");
+		const toggle = el("button", "k-btn k-parameters-toggle", "Parameters");
+		toggle.type = "button";
+		toggle.setAttribute("aria-expanded", "true");
+		toggle.onclick = () => { const collapsed = box.classList.toggle("k-collapsed"); toggle.setAttribute("aria-expanded", String(!collapsed)); };
+		box.append(toggle);
 		for (const [key, param] of params) {
 			this.p[key] = param.value;
 			const field = el("div", "k-field");
@@ -302,6 +329,9 @@ class Kit {
 				input.addEventListener("change", () => this.setParam(key, input.checked));
 				label.append(input, document.createTextNode(param.label));
 				field.append(label);
+			}
+			if (Object.values(this.spec.state ?? {}).some((e) => new RegExp(`\\bp\\.${key}\\b|\\bp\\[["']${key}["']\\]`).test(e))) {
+				field.append(el("small", undefined, "Changing this restarts the simulation."));
 			}
 			box.append(field);
 		}
@@ -348,7 +378,18 @@ class Kit {
 		this.views = await Promise.all(
 			this.spec.panels.map(async (panel, i) => {
 				const box = el("section", `k-panel${panel.width === "half" ? " k-half" : ""}${panel.type === "note" ? " k-note" : ""}`);
-				if ("title" in panel && panel.title) box.append(el("h3", "k-title", escapeHtml(panel.title)));
+				this.panelBoxes[i] = box;
+				const heading = el("div", "k-panel-head");
+				if ("title" in panel && panel.title) heading.append(el("h3", "k-title", escapeHtml(panel.title)));
+				if (["chart", "plot3d", "flow"].includes(panel.type)) {
+					const expand = el("button", "k-btn", '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg>');
+					expand.type = "button";
+					expand.title = "Expand graph";
+					expand.setAttribute("aria-label", `Expand ${"title" in panel && panel.title || "graph"}`);
+					expand.onclick = () => { const bounds = box.getBoundingClientRect().toJSON(); this.focus(i); parent.postMessage({ type: "demo-focus", panel: i, bounds }, "*"); };
+					heading.append(expand);
+				}
+				if (heading.childNodes.length) box.append(heading);
 				grid.append(box);
 				try {
 					return await this.panel(panel, box);
@@ -359,6 +400,23 @@ class Kit {
 			}),
 		);
 		await this.refresh();
+		window.addEventListener("message", (e) => {
+			if (e.source !== parent || !e.data) return;
+			if (e.data.type === "lh-demo-select" && Number.isInteger(e.data.panel)) { this.panelBoxes[e.data.panel]?.scrollIntoView({ block: "start" }); return; }
+			if (e.data.type !== "lh-demo-focus") return;
+			if (e.data.panel === null || (Number.isInteger(e.data.panel) && e.data.panel >= 0 && e.data.panel < this.panelBoxes.length)) this.focus(e.data.panel);
+		});
+		const observer = new ResizeObserver(() => { void Promise.all(this.views.map((v, i) => !this.panelBoxes[i]?.hidden && v.resize?.())); });
+		observer.observe(this.root);
+		parent.postMessage({ type: "demo-ready" }, "*");
+	}
+
+	private focus(index: number | null) {
+		if (index !== null) this.focusTrigger = document.activeElement as HTMLElement | null;
+		this.focusIndex = index;
+		this.root.classList.toggle("k-focus", index !== null);
+		this.panelBoxes.forEach((box, i) => { box.hidden = index !== null && i !== index; });
+		requestAnimationFrame(() => { if (index === null && document.hasFocus()) this.focusTrigger?.focus({ preventScroll: true }); void Promise.all(this.views.map((v, i) => (index === null || index === i) && v.resize?.())); });
 	}
 
 	private async panel(panel: DemoKitPanel, box: HTMLElement): Promise<PanelView> {
@@ -437,6 +495,7 @@ class Kit {
 		const view = new vega.View(vega.parse(compiled), { renderer: "svg", container: target, hover: true });
 		const names = Object.keys(panel.data);
 		return {
+			resize: async () => { view.width(target.clientWidth).height(this.focusIndex === null ? (panel.width === "half" ? 220 : 260) : Math.max(160, box.clientHeight - 50)); await view.resize().runAsync(); },
 			update: async () => {
 				for (const name of names) view.data(name, this.eval(panel.data[name]!) ?? []);
 				await view.runAsync();
@@ -468,15 +527,17 @@ class Kit {
 				zaxis: { ...axis, backgroundcolor: "rgba(0,0,0,0)", ...(extra.scene?.zaxis ?? {}) },
 			},
 			showlegend: extra.showlegend ?? false,
+			uirevision: "learner-view",
 		};
 		const SCENE = new Set(["surface", "scatter3d", "mesh3d", "cone", "streamtube", "isosurface", "volume"]);
 		return {
+			resize: async () => { await Plotly.relayout(target, { width: target.clientWidth, height: this.focusIndex === null ? layout.height : Math.max(160, box.clientHeight - 50) }); },
 			update: async () => {
 				const traces = (this.eval(panel.traces) ?? []) as { type?: string }[];
 				// 3D scenes fill the panel; 2D plots keep room for axis labels.
 				const scene = traces.some((tr) => SCENE.has(tr.type ?? ""));
 				const margin = scene ? { l: 0, r: 0, t: 0, b: 0, ...(extra.margin ?? {}) } : layout.margin;
-				await Plotly.react(target, traces, { ...layout, margin }, { displayModeBar: false, responsive: true, scrollZoom: false });
+				await Plotly.react(target, traces, { ...layout, margin, height: this.focusIndex === null ? layout.height : Math.max(160, box.clientHeight - 50) }, { displayModeBar: false, responsive: true, scrollZoom: false });
 			},
 		};
 	}

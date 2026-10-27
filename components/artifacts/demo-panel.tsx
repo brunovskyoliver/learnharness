@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import { XIcon } from "lucide-react";
-import { DemoFrame } from "@/components/artifacts/demo-card";
 import { useDemoPanel } from "@/components/artifacts/demo-panel-context";
 
 const WIDTH_KEY = "lh-demo-panel-width";
@@ -19,8 +18,7 @@ function clampWidth(width: number, area: number): number {
 
 /** The session's demo beside the lesson: a resizable column right of the
  *  transcript on wide screens, a sheet over the top half on narrow ones (the
- *  composer stays reachable below it). Its iframe is a separate instance from
- *  the transcript card's. */
+ *  composer stays reachable below it). The transcript iframe is positioned over the slot without remounting. */
 export function DemoPanel() {
 	const panel = useDemoPanel();
 	const rootRef = useRef<HTMLElement>(null);
@@ -82,7 +80,7 @@ export function DemoPanel() {
 			aria-label="Demo"
 			data-testid="demo-panel"
 			style={{ "--lh-demo-w": `${clampWidth(width, typeof window === "undefined" ? 1440 : area())}px` } as React.CSSProperties}
-			className="absolute inset-x-0 top-0 z-30 flex h-[55%] flex-col border-b bg-background shadow-xl md:relative md:inset-auto md:z-auto md:h-full md:w-[var(--lh-demo-w)] md:shrink-0 md:border-b-0 md:border-l md:shadow-none"
+			className="demo-workspace relative flex min-h-0 shrink-0 flex-col bg-background md:h-full md:w-[var(--lh-demo-w)] md:border-b-0 md:border-l"
 		>
 			<div
 				role="separator"
@@ -95,7 +93,7 @@ export function DemoPanel() {
 				onDoubleClick={() => commit(DEFAULT_WIDTH)}
 				className={`absolute -left-1.5 top-0 z-10 hidden h-full w-3 cursor-col-resize outline-none md:block ${dragging ? "bg-white/[0.06]" : "hover:bg-white/[0.04] focus-visible:bg-white/[0.06]"}`}
 			/>
-			<div className="flex h-11 shrink-0 items-center gap-2 border-b px-3">
+			<div className="flex h-11 shrink-0 items-center gap-2 px-3">
 				{panel.demos.length > 1 ? (
 					<select
 						aria-label="Demo"
@@ -113,6 +111,7 @@ export function DemoPanel() {
 				) : (
 					<span className="min-w-0 flex-1 truncate text-sm font-medium">{demo.title}</span>
 				)}
+				<div data-demo-actions="" className="flex shrink-0 items-center" />
 				<button
 					type="button"
 					aria-label="Close demo panel"
@@ -123,8 +122,8 @@ export function DemoPanel() {
 					<XIcon className="size-4" />
 				</button>
 			</div>
-			<div className={`min-h-0 flex-1 overflow-y-auto p-3 ${dragging ? "pointer-events-none" : ""}`}>
-				<DemoFrame key={demo.id} title={demo.title} html={demo.html} messageId={demo.id} initialInverted={demo.inverted} variant="panel" />
+			<div className={`min-h-0 flex-1 overflow-hidden p-3 ${dragging ? "pointer-events-none" : ""}`}>
+				<div data-demo-slot="" className="h-full min-h-0" />
 			</div>
 		</aside>
 	);

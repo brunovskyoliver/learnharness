@@ -40,7 +40,7 @@ import { MERMAID_FONT_SIZE, renderMermaid } from "@/components/mermaid-render";
 import { MermaidError } from "@/components/mermaid-error";
 import { blurAfterPointerClick } from "@/components/focus-hygiene";
 import { chartSize, useSessionMermaid } from "@/components/session-overlay-context";
-import { findDemoByTitle, useDemoPanel } from "@/components/artifacts/demo-panel-context";
+import { findDemoByTitle, normalizeDemoTitle, useDemoPanel } from "@/components/artifacts/demo-panel-context";
 import { Hint } from "@/components/ui/hint";
 import { Button } from "@/components/ui/button";
 
@@ -503,6 +503,11 @@ export function MarkdownStrong(props: ComponentProps<"strong"> & ExtraProps) {
 	);
 	// A bold demo title opens that demo in the side panel (the teacher
 	// prompt asks for exact bold titles when referring back to a demo).
+	const matches = panel?.demos.filter((d) => normalizeDemoTitle(d.title) === normalizeDemoTitle(plainText(children))) ?? [];
+	if (panel && matches.length > 1) return <select aria-label={`Choose revision of ${plainText(children)}`} defaultValue="" className="max-w-full bg-transparent font-semibold underline" onChange={(e) => panel.open(e.target.value)}>
+		<option value="" disabled>{plainText(children)}</option>
+		{matches.map((d, i) => <option key={d.id} value={d.id}>{d.title} ({i + 1})</option>)}
+	</select>;
 	const demo = panel && panel.demos.length > 0 ? findDemoByTitle(panel.demos, plainText(children)) : undefined;
 	if (!panel || !demo) return strong;
 	return (

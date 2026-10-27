@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { parseHTML } from "linkedom";
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { StatsBar, formatContextMeasurement } from "../components/stats-bar.tsx";
+import { StatsBarDetails as StatsBar, formatContextMeasurement } from "../components/stats-bar.tsx";
 import { sessionCost } from "../src/server/pricing.ts";
 import { catalogLimits } from "../components/model-picker.tsx";
 import type { ModelCatalogEntry, ModelCatalogResponse } from "../src/core/contracts.ts";

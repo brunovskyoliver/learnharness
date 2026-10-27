@@ -30,7 +30,7 @@ describe("resolveAppearance — delta over factory", () => {
 		assert.equal(a.background, null);
 		assert.equal(a.fontFamily, null);
 		assert.equal(a.proseFontSize, 17);
-		assert.equal(a.sessionNameSerif, true);
+		assert.equal(a.sessionNameSerif, false);
 		assert.deepEqual(a.mdRendering, { headingWeight: 700, boldColor: null, italicColor: null });
 	});
 
@@ -75,7 +75,7 @@ describe("appearanceVars — the mapping the provider applies", () => {
 		assert.equal(vars["--lh-prose-size"], "17px");
 		assert.equal(vars["--lh-heading-weight"], "700");
 		assert.equal(vars["--font-prose"], undefined, "no font override at factory");
-		assert.equal(vars["--font-title"], undefined, "CMU stays");
+		assert.equal(vars["--font-title"], "var(--font-prose)", "titles use the reading family");
 		assert.equal(vars["--background"], undefined, "factory palette untouched");
 		assert.equal(vars["--lh-ink-strong"], undefined, "default ink");
 	});
@@ -103,7 +103,7 @@ describe("appearanceVars — the mapping the provider applies", () => {
 	it("sessionNameSerif false alone: titles move, nothing else does", () => {
 		const vars = appearanceVars(resolveAppearance({ sessionNameSerif: false }));
 		assert.equal(vars["--font-title"], "var(--font-prose)");
-		assert.equal(Object.keys(vars).length, 3, "prose-size, heading-weight, font-title only");
+		assert.equal(Object.keys(vars).length, 4, "prose-size, heading-weight, font-title, font-ui");
 	});
 });
 
@@ -122,7 +122,7 @@ describe("staleVarNames — the removal half of application (owner repro: resets
 		const stale = staleVarNames(applied, factory);
 		assert.ok(stale.includes("--background"));
 		assert.ok(stale.includes("--font-prose"));
-		assert.ok(stale.includes("--font-title"), "serif toggle back ON must clear the title override");
+		assert.ok(!stale.includes("--font-title"), "titles always follow the reading family");
 		assert.ok(stale.includes("--lh-ink-strong"));
 		assert.ok(stale.includes("--lh-ink-italic"));
 		assert.ok(!stale.includes("--lh-prose-size"), "always-applied tokens never go stale");

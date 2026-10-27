@@ -1,13 +1,14 @@
 "use client";
 
-import { useContext, useEffect, useMemo, useRef, useState } from "react";
-import { DownloadIcon, PanelRightOpenIcon } from "lucide-react";
-import { Toggle } from "@/components/settings/controls";
+import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { DownloadIcon, PanelRightOpenIcon, MaximizeIcon, XIcon } from "lucide-react";
+import { createPortal } from "react-dom";
 import { InvertDiscIcon } from "@/components/artifacts/invert-disc";
 import { ChatActionsContext } from "@/components/chat";
 import { downloadFile, slugFilename } from "@/components/artifacts/download";
 import { DispatchCard } from "@/components/artifacts/dispatch-card";
 import { injectDemoTheme, type ArtifactPartProps, type DemoResult } from "@/src/core";
+import { useDemoPresentation } from "@/components/artifacts/demo-presentation";
 import { useDemoPanel } from "@/components/artifacts/demo-panel-context";
 
 /**
@@ -42,6 +43,11 @@ send({type:"demo-resize",height:Math.ceil(h)})
 if(typeof ResizeObserver!=="undefined"){new ResizeObserver(post).observe(document.documentElement)}
 window.addEventListener("resize",post);
 window.addEventListener("load",post);
+window.addEventListener("keydown",function(e){if(e.key==="Escape"){e.preventDefault();e.stopPropagation();send({type:"demo-close-focus"})}});
+window.addEventListener("message",function(e){if(e.source!==parent||!e.data)return;
+if(e.data.type==="lh-demo-size"&&typeof e.data.size==="number"&&e.data.size>=12&&e.data.size<=48)document.documentElement.style.setProperty("--lh-demo-size",e.data.size+"px");
+if(e.data.type==="lh-demo-preview"){try{var s=Array.from(document.querySelectorAll("svg")).find(function(x){var r=x.getBoundingClientRect();return r.width>80&&r.height>80}),c=document.querySelector("canvas");var url=s?"data:image/svg+xml;charset=utf-8,"+encodeURIComponent(new XMLSerializer().serializeToString(s)):c?c.toDataURL():null;if(url&&url.length<2000000)send({type:"demo-preview",url:url})}catch(_){}}
+});
 window.addEventListener("error",function(e){send({type:"demo-error",message:e.message||String(e)})});
 setTimeout(post,50);
 setTimeout(post,400);
@@ -151,7 +157,41 @@ export function DemoFrame({
 	const actions = useContext(ChatActionsContext);
 	const panel = useDemoPanel();
 	const iframeRef = useRef<HTMLIFrameElement | null>(null);
+	const dialogRef = useRef<HTMLDialogElement | null>(null);
+	const focusOrigin = useRef<{ left: number; top: number; width: number; height: number } | null>(null);
+	const focusInvoker = useRef<HTMLElement | null>(null);
+	const [focused, setFocused] = useState(false);
+	const [preview, setPreview] = useState<string | null>(null);
 	const [state, setState] = useState<DemoBridgeState>(INITIAL_DEMO_BRIDGE_STATE);
+	const inWorkspace = !!messageId && panel?.openId === messageId;
+	const [actionsTarget, setActionsTarget] = useState<HTMLElement | null>(null);
+	useLayoutEffect(() => { setActionsTarget(inWorkspace ? document.querySelector<HTMLElement>("[data-demo-actions]") : null); }, [inWorkspace]);
+	const previewHeight = useRef(360);
+	useLayoutEffect(() => { if (!inWorkspace && !focused && dialogRef.current) previewHeight.current = dialogRef.current.getBoundingClientRect().height; });
+	useEffect(() => {
+		if (!inWorkspace || panel?.panelIndex === undefined) return;
+		const select = () => iframeRef.current?.contentWindow?.postMessage({ type: "lh-demo-select", panel: panel.panelIndex }, "*");
+		select();
+		const frame = iframeRef.current;
+		frame?.addEventListener("load", select);
+		frame?.addEventListener("lh-demo-ready", select);
+		return () => { frame?.removeEventListener("load", select); frame?.removeEventListener("lh-demo-ready", select); };
+	}, [inWorkspace, panel?.panelIndex]);
+	const bounds = useDemoPresentation(dialogRef, iframeRef, inWorkspace, focused, focusOrigin, focusInvoker);
+	useEffect(() => {
+		if (inWorkspace) iframeRef.current?.contentWindow?.postMessage({ type: "lh-demo-preview" }, "*");
+	}, [inWorkspace, state.height]);
+	useEffect(() => {
+		const sendSize = () => {
+			const size = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--lh-prose-size")) || 17;
+			iframeRef.current?.contentWindow?.postMessage({ type: "lh-demo-size", size }, "*");
+		};
+		const observer = new MutationObserver(sendSize);
+		observer.observe(document.documentElement, { attributes: true, attributeFilter: ["style", "class"] });
+		iframeRef.current?.addEventListener("load", sendSize);
+		sendSize();
+		return () => { observer.disconnect(); iframeRef.current?.removeEventListener("load", sendSize); };
+	}, []);
 	// Brightness inversion (owner, 2026-10-07): the switch state PERSISTS on
 	// the steer record (details.ui.inverted) — seeded here, written through
 	// the silent artifact-ui route on toggle. Without a chat page (tests,
@@ -176,6 +216,18 @@ export function DemoFrame({
 			// Only messages from THIS demo's iframe (the sandbox gives it an
 			// opaque origin; the window reference still matches).
 			if (!iframeRef.current || event.source !== iframeRef.current.contentWindow) return;
+			if (event.data?.type === "demo-focus" && Number.isInteger(event.data.panel) && event.data.panel >= 0) {
+				const box = event.data.bounds;
+				const frameBox = iframeRef.current.getBoundingClientRect();
+				if (box && [box.left, box.top, box.width, box.height].every((x) => typeof x === "number" && Number.isFinite(x)) && box.width > 0 && box.height > 0) {
+					focusOrigin.current = { left: frameBox.left + box.left, top: frameBox.top + box.top, width: box.width, height: box.height };
+				}
+				focusInvoker.current = iframeRef.current;
+				setFocused(true);
+			}
+			if (event.data?.type === "demo-ready") { iframeRef.current.dispatchEvent(new Event("lh-demo-ready")); iframeRef.current.contentWindow?.postMessage({ type: "lh-demo-preview" }, "*"); }
+			if (event.data?.type === "demo-close-focus") setFocused(false);
+			if (event.data?.type === "demo-preview" && typeof event.data.url === "string" && event.data.url.length < 2_000_000 && /^data:image\/(png|svg\+xml)/.test(event.data.url)) setPreview(event.data.url);
 			setState((prev) => reduceDemoBridgeState(prev, event.data));
 		};
 		window.addEventListener("message", onMessage);
@@ -184,13 +236,8 @@ export function DemoFrame({
 
 	const controls = (
 		<div className="flex shrink-0 items-center gap-1.5">
-			<Toggle
-				checked={inverted}
-				onChange={toggleInverted}
-				label="Invert demo brightness"
-				title="Invert colors"
-				discIcon={<InvertDiscIcon className="size-3" />}
-			/>
+			<button type="button" aria-label={focused ? "Close expanded demo" : "Expand demo"} onClick={(event) => { if (!focused) focusInvoker.current = event.currentTarget; focusOrigin.current = dialogRef.current?.getBoundingClientRect() ?? null; setFocused(!focused); }} className="rounded-md p-2 text-muted-foreground hover:bg-accent">{focused ? <XIcon className="size-4" /> : <MaximizeIcon className="size-4" />}</button>
+			<button type="button" aria-label="Invert demo brightness" title="Invert colors" aria-pressed={inverted} onClick={() => toggleInverted(!inverted)} className="rounded-md p-2 text-muted-foreground hover:bg-accent"><InvertDiscIcon className="size-4" /></button>
 			<button
 				type="button"
 				aria-label="Download demo as HTML"
@@ -201,7 +248,7 @@ export function DemoFrame({
 			>
 				<DownloadIcon className="size-3.5" />
 			</button>
-			{variant === "card" && panel && messageId && (
+			{variant === "card" && !inWorkspace && panel && messageId && (
 				<button
 					type="button"
 					aria-label="Open in side panel"
@@ -237,15 +284,17 @@ export function DemoFrame({
 				// before the first resize lands — and a scrollable iframe TRAPS
 				// the wheel (session scrolling stalls over the demo). With
 				// scrolling disabled the wheel chains straight to the session.
-				scrolling="no"
+				scrolling={inWorkspace || focused ? "auto" : "no"}
 				// White backing only under inversion (it flips to black); dark
 				// demos sit on the card color.
-				className={`mt-2 w-full rounded-lg border ${inverted ? "bg-white" : "bg-card"}`}
+				className={`w-full ${inverted ? "bg-white" : "bg-background"}`}
 				// content-box: the bridge reports the CONTENT height — with the
 				// preflight's border-box the 2px border would eat into it and clip
 				// the bottom of the demo (smoke finding, 2026-10-07).
 				style={{
-					height: state.height ?? 360,
+					height: inWorkspace || focused ? "100%" : state.height ?? 360,
+					minHeight: 0,
+					flex: inWorkspace || focused ? 1 : undefined,
 					boxSizing: "content-box",
 					filter: inverted ? "invert(1) hue-rotate(180deg)" : undefined,
 				}}
@@ -254,23 +303,28 @@ export function DemoFrame({
 		</>
 	);
 
-	if (variant === "panel") {
-		return (
-			<div data-testid="demo-panel-frame">
-				<div className="flex justify-end">{controls}</div>
-				{frame}
-			</div>
-		);
-	}
 	return (
-		<div className="lh-breakout rounded-xl border bg-card p-4 text-card-foreground" data-testid="demo-card">
-			<div className="flex items-center justify-between gap-2">
-				<span className="min-w-0 truncate text-xs font-medium text-foreground">{title}</span>
-				{controls}
-			</div>
-			{frame}
+		<div className="lh-breakout demo-artifact py-4 text-foreground" data-testid="demo-card">
+			{(inWorkspace || focused) && <div className="demo-inline-preview" style={{ minHeight: focused && !inWorkspace ? previewHeight.current : undefined }}>
+				{/* The image is an in-memory sandbox snapshot, not an optimizable URL. */}
+				{/* eslint-disable-next-line @next/next/no-img-element */}
+				{preview && <img src={preview} alt={`Preview of ${title}`} className="max-h-48 w-full object-contain" />}
+				<p className="text-sm font-medium">{title}</p>
+				<button type="button" className="mt-2 text-sm underline underline-offset-4" onClick={() => { setFocused(false); if (messageId) panel?.open(messageId); }}>Open in workspace</button>
+			</div>}
+			<dialog ref={dialogRef} open aria-label={title} data-demo-live={messageId} data-focused={focused || undefined}
+				onCancel={(e) => { e.preventDefault(); setFocused(false); }}
+				onKeyDown={(e) => { if (focused) e.stopPropagation(); if (e.key === "Escape" && focused) { e.preventDefault(); e.stopPropagation(); const menu = (e.target as HTMLElement).closest("details[open]"); if (menu) menu.removeAttribute("open"); else setFocused(false); } }}
+				className={`demo-live ${focused ? "demo-live-focus" : inWorkspace ? "demo-live-workspace" : "demo-live-inline"}`}
+				style={bounds ? { left: bounds.left, top: bounds.top, width: bounds.width, height: bounds.height } : undefined}>
+				{inWorkspace && !focused && actionsTarget ? createPortal(controls, actionsTarget) : <div className="flex shrink-0 items-center justify-between gap-2 pb-2">
+					<span className="min-w-0 truncate text-sm font-medium">{title}</span>{controls}
+				</div>}
+				{frame}
+			</dialog>
 		</div>
 	);
+
 }
 
 export function DemoErrorChip({

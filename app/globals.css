@@ -138,6 +138,9 @@
 }
 
 .prompt-input {
+	overflow-x: hidden;
+	overflow-y: auto;
+	white-space: pre-wrap;
 	color: var(--foreground);
 	caret-color: var(--foreground);
 }
@@ -1010,7 +1013,7 @@ body {
    session-name-serif toggle overrides this var at runtime, so the
    .font-title utility must read it through var(), not carry a baked copy. */
 @theme {
-	--font-title: var(--font-cmu);
+	--font-title: var(--font-prose);
 	--text-xs: 12px;
 	--text-xs--line-height: 1.4;
 	--text-sm: 13px;
@@ -1080,3 +1083,21 @@ body {
 		animation: none;
 	}
 }
+
+/* One live demo document, presented without moving or recreating its iframe. */
+.demo-live { margin: 0; padding: 0; border: 0; max-width: none; max-height: none; color: var(--foreground); background: var(--background); }
+.demo-live[open] { display: flex; flex-direction: column; }
+.demo-live-inline { position: static; width: 100%; overflow: visible; }
+.demo-live-workspace { position: fixed; z-index: 35; overflow: hidden; }
+.demo-live-focus { position: fixed; inset: 0; width: 100dvw; height: 100dvh; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); overflow: hidden; }
+.demo-live-focus::backdrop { background: var(--background); }
+.demo-inline-preview { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 16px; background: var(--card); border-radius: 8px; }
+.demo-workspace { height: min(340px, 35dvh); }
+@media (min-width: 768px) { .demo-workspace { height: 100%; } }
+
+/* Shared reading and navigation rhythm across all application surfaces. */
+.lesson-footer { background: transparent; padding-bottom: env(safe-area-inset-bottom); }
+.session-workspace-layout > .demo-workspace { order: -1; }
+@media (min-width:768px) { .session-workspace-layout > .demo-workspace { order: 0; } }
+.question-demo-reference { flex-shrink: 0; }
+.demo-live button:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }

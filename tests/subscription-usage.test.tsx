@@ -7,7 +7,7 @@ import { subscriptionLabel, subscriptionLabels, isSubscriptionModel, type TurnUs
 import { sessionCost, callCost } from "../src/server/pricing.ts";
 import { graphCostSummary } from "../src/core/cost-summary.ts";
 import { planCostLabel } from "../components/usage-format.ts";
-import { StatsBar } from "../components/stats-bar.tsx";
+import { StatsBarDetails as StatsBar } from "../components/stats-bar.tsx";
 import { ModelMenuList } from "../components/settings/model-menu.tsx";
 import { toModelDto } from "../src/server/model-catalog.ts";
 import { piModels } from "../src/agent/models.ts";

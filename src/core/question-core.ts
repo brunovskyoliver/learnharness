@@ -155,7 +155,13 @@ export function quizInputProblems(input: {
 // and reasoning happens BEFORE the answer is chosen — models emit tool
 // args in schema order, so explanation sits immediately BEFORE correctAnswer.
 // (All consumers read by key; the order is authoring guidance, nothing else.)
+const demoReference = Type.Optional(Type.Object({
+	messageId: Type.String({ minLength: 1, description: "Exact demo messageId supplied with the delivered demo. References this revision, not another demo with the same title." }),
+	panel: Type.Optional(Type.Integer({ minimum: 0, description: "Optional zero-based graph panel index within the referenced kit demo." })),
+}));
+
 export const quizInputBase = Type.Object({
+	demoRef: demoReference,
 	question: Type.String({
 		description:
 			"The single quiz question to ask. ONE question per turn: ask, then end your turn — the answer determines the next question.",
@@ -301,6 +307,7 @@ export const quizDisplayInputSchema = Type.Object({
 // not in the system prompt.
 
 export const explainInputBase = Type.Object({
+	demoRef: demoReference,
 	question: Type.String({
 		description:
 			"The single question to ask. ONE question per turn: ask, then end your turn — the answer determines the next.",
@@ -365,6 +372,7 @@ export const QUIZ_TOOL_NAMES = ["quiz", "explain"] as const;
 export const quizInputSchema = quizInputObject;
 
 export const askInputSchema = Type.Object({
+	demoRef: demoReference,
 	// No `mode` param — the pi original has none: the mode is inferred from
 	// whether options are present (the dock does exactly this). One less
 	// knob for the model to misuse.
