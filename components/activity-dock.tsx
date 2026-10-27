@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import type { CallUsage, JobKind, JobRecord } from "@/src/core";
 import { isModelsRefusal, isProviderKeyRefusal, subscriptionLabel, subscriptionLabels } from "@/src/core";
 import { formatTokens, planCostLabel } from "@/components/usage-format";
+import { activityText, formatElapsed } from "@/components/activity-text";
 import { useServerEvent, useServerResync } from "@/components/server-events";
 
 /**
@@ -256,14 +257,7 @@ export function toBlobs(feed: ActivityFeed): ActivityBlob[] {
 	return blobs;
 }
 
-/** Elapsed as a compact ticking string: 45s / 3m 04s / 1h 12m. */
-export function formatElapsed(ms: number): string {
-	const s = Math.max(0, Math.floor(ms / 1000));
-	if (s < 60) return `${s}s`;
-	const m = Math.floor(s / 60);
-	if (m < 60) return `${m}m ${String(s % 60).padStart(2, "0")}s`;
-	return `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, "0")}m`;
-}
+export { formatElapsed } from "@/components/activity-text";
 
 // ─── The section (the sidebar's bottom strip) ─────────────────────────────────
 
@@ -348,12 +342,15 @@ export function ActivitySection({ feed: feedProp }: { feed?: ActivityFeed }) {
 	return (
 		<section data-testid="activity-section" className="px-2 pb-2">
 			<div className="flex h-8 items-center gap-2 px-2.5 text-xs font-medium text-muted-foreground">
-				<ActivityIcon className="size-3.5" />
-				Background agents
-				<span className="h-px flex-1 bg-white/[0.06]" aria-hidden="true" />
-				<span className="tabular-nums" data-testid="activity-total-cost" title="Total running cost (inferred)">
-					{planCostLabel(totalCost, subscriptionLabels(blobs.map((blob) => blob.model)))}
-				</span>
+				<ActivityIcon className="size-3.5 shrink-0" />
+				<span className="truncate whitespace-nowrap">Background agents</span>
+				<span className="h-px min-w-2 flex-1 bg-white/[0.06]" aria-hidden="true" />
+				{/* Dollars only: plan-covered runs have no cost worth a label here. */}
+				{totalCost !== null && (
+					<span className="shrink-0 tabular-nums" data-testid="activity-total-cost" title="Total running cost (inferred)">
+						{planCostLabel(totalCost, [])}
+					</span>
+				)}
 			</div>
 			{blobs.length > 0 && (
 				<div className="flex max-h-[40dvh] flex-col gap-1 overflow-y-auto">
@@ -403,100 +400,92 @@ function ActivityBlobRow({
 						: blob.jobKind === "pdf"
 							? "PDF reader"
 							: "Sub-agent";
+	const activity = activityText(blob.activity);
+	const elapsed = formatElapsed(now - blob.startedAt);
+	const model = blob.model ? blob.model.replace(/^[^:]+:/, "") : null;
 	return (
 		<div
 			data-testid={`activity-blob-${blob.process}`}
-			className="relative rounded-lg px-2 py-1.5 text-xs transition-colors hover:bg-accent"
+			className="rounded-lg text-xs transition-colors hover:bg-accent"
 		>
-			<button
-				type="button"
-				onClick={onToggleDetail}
-				aria-expanded={detailOpen}
-				className="flex w-full items-center gap-2 pr-7 text-left"
-			>
-				<Icon className="size-3.5 shrink-0 text-muted-foreground" />
-				<span className="min-w-0 flex-1">
-					<span className="block truncate font-medium text-card-foreground">{blob.title}</span>
-					{blob.activity ? (
-						<span className="block truncate text-muted-foreground" title={blob.activity}>
-							{blob.activity}
+			<div className="flex items-start gap-1">
+				<button
+					type="button"
+					onClick={onToggleDetail}
+					aria-expanded={detailOpen}
+					title={blob.title}
+					className="flex min-w-0 flex-1 items-start gap-2 py-1.5 pl-2 text-left"
+				>
+					<Icon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
+					<span className="min-w-0 flex-1">
+						<span className="flex items-baseline gap-2">
+							<span className="min-w-0 flex-1 truncate font-medium text-card-foreground">{label}</span>
+							<span className="shrink-0 tabular-nums text-muted-foreground" data-testid="activity-blob-elapsed">
+								{elapsed}
+							</span>
 						</span>
-					) : (
-						<span className="block truncate text-muted-foreground/80">{label}</span>
-					)}
-				</span>
-				<span className="flex shrink-0 items-center gap-2 tabular-nums text-muted-foreground">
-					<span data-testid="activity-blob-cost">{planCostLabel(blob.cost, subscriptionLabel(blob.model))}</span>
-					<span data-testid="activity-blob-elapsed">{formatElapsed(now - blob.startedAt)}</span>
-				</span>
-			</button>
-			{/* The explicit END always on the blob's face (SCOPE) — the popover
-			    is for DETAIL, not the control. A failed abort locks the button and
-			    says why; a succeeded one just makes the blob vanish on refresh. */}
-			<button
-				type="button"
-				data-testid="activity-abort"
-				onClick={onAbort}
-				disabled={abortState !== undefined}
-				title={abortState === "failed" ? "Abort failed — try again" : "End this background process"}
-				aria-label={`End ${label} in ${blob.title}`}
-				className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground/70 transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-			>
-				<SquareIcon className="size-3" />
-			</button>
+						<span className="block truncate text-muted-foreground" data-testid="activity-blob-activity">
+							{activity || blob.title}
+						</span>
+					</span>
+				</button>
+				{/* The explicit END on the blob's face, aligned with the first line
+				    (it stays put when the detail opens). A failed abort locks the
+				    button and says why; a successful one makes the blob vanish. */}
+				<button
+					type="button"
+					data-testid="activity-abort"
+					onClick={onAbort}
+					disabled={abortState !== undefined}
+					title={abortState === "failed" ? "Stopping failed, try again" : "Stop"}
+					aria-label={`Stop ${label} in ${blob.title}`}
+					className="mr-1 mt-1 shrink-0 rounded-md p-1 text-muted-foreground/70 transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
+				>
+					<SquareIcon className="size-3" />
+				</button>
+			</div>
 
 			{detailOpen && (
-				<div
+				<dl
 					data-testid="activity-blob-detail"
-					className="mt-1 flex flex-col gap-1 rounded-lg bg-accent/40 p-2 text-muted-foreground"
+					className="mx-2 mb-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 rounded-md bg-accent/40 p-2 text-muted-foreground"
 				>
-					<div className="mb-1.5 flex items-center gap-2">
-						<Icon className="size-3.5 text-muted-foreground" />
-						<span className="font-medium">{label}</span>
-						<span className="ml-auto tabular-nums text-muted-foreground">
-							{formatElapsed(now - blob.startedAt)}
-						</span>
-					</div>
-					<div className="flex flex-col gap-1 text-muted-foreground">
-						<div className="truncate text-card-foreground" title={blob.title}>
+					<dt>Session</dt>
+					<dd className="min-w-0 text-right">
+						<a href={`/chat/${blob.chatId}`} className="block truncate text-card-foreground hover:underline" title={blob.title}>
 							{blob.title}
-						</div>
-						{blob.activity && <div className="break-words">{blob.activity}</div>}
-						<div className="flex justify-between gap-2">
-							<span>Cost</span>
-							<span className="tabular-nums text-card-foreground">
-								{planCostLabel(blob.cost, subscriptionLabel(blob.model))}
-							</span>
-						</div>
-						<div className="flex justify-between gap-2">
-							<span>Context</span>
-							<span className="tabular-nums text-card-foreground" data-testid="activity-blob-context">
-								{blob.context === null
-									? "—"
-									: `${formatTokens(blob.context.used)} / ${formatTokens(blob.context.limit)}`}
-							</span>
-						</div>
-						{blob.model && (
-							<div className="flex justify-between gap-2">
-								<span>Model</span>
-								<span className="truncate text-card-foreground">{blob.model}</span>
-							</div>
-						)}
-						{blob.steps !== undefined && (
-							<div className="flex justify-between gap-2">
-								<span>Steps</span>
-								<span className="tabular-nums text-card-foreground">{blob.steps}</span>
-							</div>
-						)}
-						<a href={`/chat/${blob.chatId}`} className="text-primary hover:underline">
-							Open session →
 						</a>
-					</div>
-					<div className="mt-2 text-muted-foreground/80">
-					{abortState === "failed" && "Abort failed — try again"}
-					{abortState === "pending" && "Stopping…"}
-				</div>
-				</div>
+					</dd>
+					{model && (
+						<>
+							<dt>Model</dt>
+							<dd className="truncate text-right text-card-foreground">{model}</dd>
+						</>
+					)}
+					<dt>Context</dt>
+					<dd className="text-right tabular-nums text-card-foreground" data-testid="activity-blob-context">
+						{blob.context === null ? "—" : `${formatTokens(blob.context.used)} / ${formatTokens(blob.context.limit)}`}
+					</dd>
+					{blob.steps !== undefined && (
+						<>
+							<dt>Model calls</dt>
+							<dd className="text-right tabular-nums text-card-foreground">{blob.steps}</dd>
+						</>
+					)}
+					{blob.cost !== null && (
+						<>
+							<dt>Cost</dt>
+							<dd className="text-right tabular-nums text-card-foreground" data-testid="activity-blob-cost">
+								{planCostLabel(blob.cost, [])}
+							</dd>
+						</>
+					)}
+					{abortState && (
+						<dd className="col-span-2 text-muted-foreground/80">
+							{abortState === "failed" ? "Stopping failed, try again" : "Stopping…"}
+						</dd>
+					)}
+				</dl>
 			)}
 		</div>
 	);

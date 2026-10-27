@@ -193,7 +193,7 @@ describe("activity section render", () => {
 		assert.equal(html, "");
 	});
 
-	it("renders one blob per running process with cost, elapsed, and the abort affordance", () => {
+	it("renders one blob per running process with its kind, activity, elapsed, and a stop button", () => {
 		const html = renderToStaticMarkup(
 			<ActivitySection
 				feed={{
@@ -208,17 +208,15 @@ describe("activity section render", () => {
 		assert.match(html, /Chain-rule demo/);
 		assert.match(html, /building sandbox…/);
 		assert.match(html, /Extraction — merging/);
-		// Unpriced job → "—", never $0.0000 (doctrine); both blobs show it.
-		assert.match(html, /activity-blob-cost[^>]*>—</);
-		assert.match(html, /data-testid="activity-abort"/, "END on the blob face, popover-independent");
-		assert.match(html, /\bEnd\b/, "the explicit END button");
+		// The face reads the agent kind; the session title is the hover reveal.
+		assert.match(html, />Demo builder</);
+		assert.match(html, /title="Chain-rule demo"/);
+		// Unpriced runs show no cost at all (no "—", no plan name), face or header.
+		assert.doesNotMatch(html, /activity-blob-cost/);
+		assert.doesNotMatch(html, /activity-total-cost/);
+		assert.match(html, /data-testid="activity-abort"/, "stop on the blob face, detail-independent");
+		assert.match(html, /aria-label="Stop Demo builder in Chain-rule demo"/);
 		assert.match(html, /Background agents/);
-		// Total cost: nothing priced → "—" in the header.
-		assert.match(html, /activity-total-cost[^>]*>—</);
-		// Truncation-reveals KEEP native title (tooltip wave mechanism rule):
-		// the truncated activity + title spans carry title= — a styled
-		// tooltip adds nothing over an ellipsis reveal.
-		assert.match(html, /title="building sandbox…"/);
 	});
 
 

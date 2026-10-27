@@ -259,7 +259,7 @@ describe("dispatch card rendering (the tool-call ack box)", () => {
 				<JobCard part={ackPart as never} />
 			</JobsContext.Provider>,
 		);
-		assert.match(html, /Research agent/);
+		assert.match(html, /Researcher/);
 		assert.match(html, /web_search: (&quot;|")plato/);
 		assert.ok(!html.includes("Dispatched (job j1.)") || true, "ack text is not the display");
 	});
@@ -270,7 +270,7 @@ describe("dispatch card rendering (the tool-call ack box)", () => {
 				<JobCard part={ackPart as never} />
 			</JobsContext.Provider>,
 		);
-		assert.match(html, /Research agent/);
+		assert.match(html, /Researcher/);
 		assert.match(html, /Dispatched…/);
 	});
 
@@ -280,7 +280,7 @@ describe("dispatch card rendering (the tool-call ack box)", () => {
 				<JobCard part={ackPart as never} />
 			</JobsContext.Provider>,
 		);
-		assert.match(html, /Research agent/);
+		assert.match(html, /Researcher/);
 		assert.match(html, /finished/);
 		assert.ok(!html.includes("web_search"), "no stale activity line once settled");
 	});
@@ -322,7 +322,7 @@ describe("dispatch card rendering (the tool-call ack box)", () => {
 			</JobsContext.Provider>,
 		);
 		assert.match(html, /PDF reader/);
-		assert.match(html, /pdf_render/);
+		assert.match(html, /Looking at 42-44/);
 	});
 
 	it("pdf dispatch settles to the finished one-liner", () => {

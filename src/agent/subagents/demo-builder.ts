@@ -53,7 +53,11 @@ the brief is everything you know.
 
 PREFER THE DEMO KIT: write_kit_demo({ spec }). You describe the demo as JSON; the app draws it with its own
 controls, colors and fonts, using Vega-Lite (2D charts), Plotly (3D surfaces, contours) and React Flow
-(computation graphs, pipelines). Fall back to write_demo (full HTML) only when the kit cannot express the brief.
+(computation graphs, pipelines). Fall back to write_demo (full HTML) only when the kit cannot show the core
+idea. Briefs sometimes prescribe an implementation ("single-file HTML", "zero dependencies", "canvas", "custom 3D
+projection"): those are not requirements — ignore them. If the kit covers the concept and its main controls, use
+it and leave out interaction details it lacks (drag-to-pick, custom orbit controls) instead of falling back.
+Build only what the brief needs; a small spec ships in a minute, a hand-written page takes many.
 
 Kit spec:
 - params: controls keyed by name, read as p.name.

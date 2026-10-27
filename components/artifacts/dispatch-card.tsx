@@ -1,6 +1,7 @@
 "use client";
 
-import { useContext } from "react";
+import { useContext, useEffect, useState } from "react";
+import { activityText, formatElapsed } from "@/components/activity-text";
 import { CheckIcon, SettingsIcon, XIcon } from "lucide-react";
 import { JobsContext } from "@/components/jobs-context";
 import { ChatActionsContext } from "@/components/chat";
@@ -20,9 +21,9 @@ import { BrailleSpinner } from "@/components/braille-spinner";
  *                 box must not duplicate it.
  */
 const KIND_LABEL: Record<JobKind, string> = {
-	research: "Research agent",
-	demo: "Demo agent",
-	visual: "Figure agent",
+	research: "Researcher",
+	demo: "Demo builder",
+	visual: "Figure maker",
 	pdf: "PDF reader",
 };
 
@@ -85,10 +86,16 @@ function DispatchRefusedCard({ label, line, button }: { label: string; line: str
 }
 
 function DispatchActivityCard({ job, label }: { job: JobRecord | null; label: string }) {
-	// Elapsed from createdAt — jobs appear here only via the jobs feed (post-mount),
+	// Elapsed from createdAt, ticking each second (it used to freeze at the
+	// last job update). Jobs appear here only via the jobs feed (post-mount),
 	// so no SSR/hydration mismatch.
-	const elapsed =
-		job && job.createdAt ? Math.max(0, Math.round((Date.now() - Date.parse(job.createdAt)) / 1000)) : null;
+	const [now, setNow] = useState(() => Date.now());
+	useEffect(() => {
+		const t = setInterval(() => setNow(Date.now()), 1000);
+		return () => clearInterval(t);
+	}, []);
+	const elapsed = job && job.createdAt ? formatElapsed(now - Date.parse(job.createdAt)) : null;
+	const activity = activityText(job?.activity);
 	return (
 		<div
 			className="rounded-xl border bg-card p-4 text-card-foreground"
@@ -101,11 +108,11 @@ function DispatchActivityCard({ job, label }: { job: JobRecord | null; label: st
 				    shape is untouched. */}
 				<BrailleSpinner label={`${label} running`} />
 				{label}
-				{elapsed !== null && <span className="font-normal">· {elapsed}s</span>}
+				{elapsed !== null && <span className="font-normal tabular-nums">· {elapsed}</span>}
 			</div>
-			{job?.activity && (
+			{activity && (
 				<div className="mt-1 truncate text-sm text-muted-foreground" data-testid="dispatch-activity-line">
-					{job.activity}
+					{activity}
 				</div>
 			)}
 			{!job && (
