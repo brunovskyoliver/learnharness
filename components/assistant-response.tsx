@@ -15,7 +15,7 @@ export const AssistantResponse = memo(function AssistantResponse({
 	...props
 }: HTMLAttributes<HTMLDivElement> & { source: string; streaming?: boolean }) {
 	return (
-		<div className={cn("group/response", className)} {...props}>
+		<div className={cn("group/response lh-bleed", className)} {...props}>
 			<MessageResponse streaming={streaming}>{source}</MessageResponse>
 			{source.trim() && (
 				<div

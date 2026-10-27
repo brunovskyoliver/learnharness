@@ -2,7 +2,7 @@
 
 import { useSessionState } from "@/components/session-state";
 import { useRef, type ReactNode } from "react";
-import { ChevronRightIcon } from "lucide-react";
+import { ArrowUpIcon, ChevronRightIcon } from "lucide-react";
 import { PromptSubmit, PromptToolbar } from "@/components/prompt-controls";
 import { useEnterSubmits } from "@/components/enter-submits";
 import { focusSurfaceInput } from "@/components/input-surface";
@@ -42,6 +42,12 @@ export interface PracticeDockProps {
 	 *  this is the affordance. */
 	compactionRunning?: boolean;
 	controls?: ReactNode;
+}
+
+function scrollToProblem(problemCallId: string) {
+	const card = document.querySelector(`[data-testid="problem-card"][data-problem-call-id="${CSS.escape(problemCallId)}"]`);
+	const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+	card?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
 }
 
 export function PracticeDock({ problemCallId, expanded, outgoingHeight, onExpand, onSubmit, compactionRunning = false, controls }: PracticeDockProps) {
@@ -96,8 +102,20 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, onExpand
 				onClick={focusSurfaceInput}
 				className="input-surface shrink-0"
 			>
+				{/* Ties the field to the problem it answers, wherever the
+				    statement has scrolled to. */}
+				<button
+					type="button"
+					data-testid="practice-problem-link"
+					onClick={() => scrollToProblem(problemCallId)}
+					className="mx-2 mt-2 inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+				>
+					<ArrowUpIcon aria-hidden="true" className="size-3.5" />
+					Answering the problem
+				</button>
 				<textarea
 					aria-label="Your thinking"
+					placeholder="Your thinking"
 					value={thinking}
 					onChange={(e) => {
 						thinkingRef.current = e.target.value;
@@ -112,9 +130,9 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, onExpand
 						}
 					}}
 					rows={1}
-					className="prompt-input field-sizing-content lh-input max-h-64 min-h-11 w-full resize-none bg-transparent px-5 pt-3 pb-2 outline-none"
+					className="prompt-input field-sizing-content lh-input max-h-64 min-h-9 w-full resize-none bg-transparent px-4 pt-1.5 pb-1 outline-none"
 				/>
-				{compactionRunning && <div role="status" className="px-5 pb-2 text-xs text-muted-foreground">Compacting session…</div>}
+				{compactionRunning && <div role="status" className="px-4 pb-2 text-xs text-muted-foreground">Compacting session…</div>}
 				<PromptToolbar controls={controls}>
 					<PromptSubmit
 						type="button"

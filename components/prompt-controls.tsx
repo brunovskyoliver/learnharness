@@ -29,7 +29,7 @@ export function PromptSubmit({
 			className={cn("prompt-submit", className)}
 			{...props}
 		>
-			{stopping ? <SquareIcon aria-hidden="true" className="size-4" /> : <ArrowUpIcon aria-hidden="true" className="size-5" />}
+			{stopping ? <SquareIcon aria-hidden="true" className="size-3" /> : <ArrowUpIcon aria-hidden="true" className="size-4" />}
 			<span className="sr-only">{label}</span>
 		</button>
 	);

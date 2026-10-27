@@ -114,6 +114,9 @@ export function MenuShell({
 	preferredSide,
 	align = "right",
 	menuClass,
+	focusOnOpen = true,
+	onPointerEnter,
+	onPointerLeave,
 	children,
 }: {
 	anchorRef?: RefObject<HTMLElement | null>;
@@ -127,6 +130,10 @@ export function MenuShell({
 	/** The menu body classes: width, border, bg, padding, text — the
 	 *  shell adds position, z-index, the height cap, and scrolling. */
 	menuClass: string;
+	/** Hover-opened previews leave focus where the reader is working. */
+	focusOnOpen?: boolean;
+	onPointerEnter?: () => void;
+	onPointerLeave?: () => void;
 	children: ReactNode;
 }) {
 	const menuRef = useRef<HTMLDivElement>(null);
@@ -151,11 +158,12 @@ export function MenuShell({
 	useEffect(() => {
 		if (placed === null || focusedOnceRef.current) return;
 		focusedOnceRef.current = true;
+		if (!focusOnOpen) return;
 		const el = menuRef.current;
 		if (!el) return;
 		const input = el.querySelector<HTMLElement>("input");
 		(input ?? el).focus();
-	}, [placed]);
+	}, [placed, focusOnOpen]);
 
 	// The standard arrow machine for menus WITHOUT a search (owner: when a
 	// dropdown is expanded, the arrow keys cycle the options and never
@@ -252,6 +260,8 @@ export function MenuShell({
 			data-lh-menu=""
 			tabIndex={-1}
 			onKeyDown={onBodyKeyDown}
+			onPointerEnter={onPointerEnter}
+			onPointerLeave={onPointerLeave}
 			style={{ position: "fixed", zIndex: 60, ...placed.style, maxWidth: `calc(100vw - ${EDGE * 2}px)`, maxHeight: placed.maxHeight, overflowY: "auto" }}
 			// The body is the arrow machine's focus home (input-less menus
 			// land focus here on open) — the focus STAYS, but the browser's

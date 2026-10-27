@@ -87,6 +87,18 @@ export function StatsBar({
 	const limits = useMemo(() => (catalog ? catalogLimits(catalog) : undefined), [catalog]);
 	const limit = selectedModel ? limits?.get(selectedModel) ?? null : null;
 	const contextLabel = formatContextMeasurement(contextTokens, limit);
+	const fraction = contextTokens !== null && limit !== null && limit > 0 ? Math.min(1, contextTokens / limit) : 0;
+	// Hover previews the detail; a short grace lets the pointer cross into it.
+	const leaveTimer = useRef<number | undefined>(undefined);
+	const peek = () => {
+		window.clearTimeout(leaveTimer.current);
+		setOpen(true);
+	};
+	const unpeek = () => {
+		window.clearTimeout(leaveTimer.current);
+		leaveTimer.current = window.setTimeout(() => setOpen(false), 150);
+	};
+	useEffect(() => () => window.clearTimeout(leaveTimer.current), []);
 	const { cost = 0, unpriced = turns.length, subscription = 0 } = pricing ?? {};
 	// Honest cost: show dollars only when at least one turn priced;
 	// otherwise "—" (never a fake $0.0000).
@@ -122,27 +134,26 @@ export function StatsBar({
 			<button
 				type="button"
 				onClick={() => setOpen((o) => !o)}
+				onPointerEnter={(e) => { if (e.pointerType === "mouse") peek(); }}
+				onPointerLeave={(e) => { if (e.pointerType === "mouse") unpeek(); }}
 				aria-expanded={open}
 				data-testid="stats-summary"
-				aria-label="Session usage"
-				className="flex min-h-9 flex-wrap items-center gap-1.5 text-xs tabular-nums transition-colors hover:text-foreground"
+				className="flex size-8 items-center justify-center rounded-full transition-colors hover:bg-accent hover:text-foreground"
 			>
-				{contextTokens !== null && limit !== null && limit > 0 && (
-					<span aria-hidden className="h-0.5 w-6 overflow-hidden rounded-full bg-border" data-testid="stats-context-meter">
-						<span className="block h-full bg-muted-foreground" style={{ width: `${Math.min(100, (contextTokens / limit) * 100)}%` }} />
-					</span>
-				)}
-				<span data-testid="stats-context">
-					{contextLabel}
+				<ContextRing fraction={fraction} />
+				{/* The ring's figures, spoken: the bar shows only the gauge. */}
+				<span className="sr-only">
+					Session usage: context <span data-testid="stats-context">{contextLabel}</span>, <span data-testid="stats-cost">{costLabel}</span>
 				</span>
-				<span aria-hidden>·</span>
-				<span data-testid="stats-cost">{costLabel}</span>
 			</button>
 				{open && (
 					<MenuShell
 						anchorRef={barRef}
 						testid="stats-detail"
 						preferredSide="up"
+						focusOnOpen={false}
+						onPointerEnter={peek}
+						onPointerLeave={unpeek}
 						menuClass="w-64 rounded-lg border bg-card p-3 text-sm shadow-xl"
 					>
 						{/* Summary only (ui-v2): context, turns, tokens, usage. */}
@@ -152,7 +163,7 @@ export function StatsBar({
 						</div>
 						{contextTokens !== null && limit !== null && limit > 0 && (
 							<div className="mb-3 h-1 overflow-hidden rounded-full bg-white/[0.08]" aria-hidden>
-								<div className="h-full rounded-full bg-foreground/60" style={{ width: `${Math.min(100, (contextTokens / limit) * 100)}%` }} />
+								<div className="h-full rounded-full bg-foreground/60" style={{ width: `${fraction * 100}%` }} />
 							</div>
 						)}
 						<dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-muted-foreground">
@@ -178,5 +189,28 @@ export function StatsBar({
 			</div>
 			)}
 		</div>
+	);
+}
+
+/** The bar's context gauge: a ring filling clockwise with context used. */
+function ContextRing({ fraction }: { fraction: number }) {
+	const r = 6;
+	const c = 2 * Math.PI * r;
+	return (
+		<svg aria-hidden="true" data-testid="stats-context-meter" viewBox="0 0 16 16" className="size-4 -rotate-90">
+			<circle cx="8" cy="8" r={r} fill="none" stroke="var(--border)" strokeWidth="2" />
+			<circle
+				cx="8"
+				cy="8"
+				r={r}
+				fill="none"
+				stroke="currentColor"
+				strokeWidth="2"
+				strokeLinecap="round"
+				strokeDasharray={c}
+				strokeDashoffset={c * (1 - fraction)}
+				className={fraction > 0 ? "transition-[stroke-dashoffset] duration-300" : "opacity-0"}
+			/>
+		</svg>
 	);
 }

@@ -43,7 +43,7 @@ export function Composer({
 	autoFocus,
 	inputRef,
 	onEscape,
-	placeholder = "Ask, answer, or steer the lesson…",
+	placeholder = "Message",
 	nextProblem = false,
 	onNext,
 	controls,
@@ -62,8 +62,7 @@ export function Composer({
 	/** Escape while a dictation runs stops it (STT wave, 2026-09-17). No-op
 	 *  when absent — Esc otherwise means nothing in the composer. */
 	onEscape?: () => void;
-	/** Descriptive prompt for assistive technology. The compact textarea
-	 *  displays no placeholder copy. */
+	/** One-line placeholder, also the field's accessible name. */
 	placeholder?: string;
 	/** The practice pause is live (owner round 16): Enter on the empty
 	 *  composer fires the next-problem signal instead of doing nothing —
@@ -115,9 +114,10 @@ export function Composer({
 					}
 				}}
 				aria-label={placeholder}
+				placeholder={placeholder}
 				autoFocus={autoFocus}
 				rows={1}
-				className="prompt-input field-sizing-content lh-input max-h-48 min-h-11 w-full resize-none bg-transparent px-5 pt-3 pb-2 outline-none"
+				className="prompt-input field-sizing-content lh-input max-h-48 min-h-11 w-full resize-none bg-transparent px-4 pt-3 pb-1 outline-none"
 			/>
 			<PromptToolbar controls={controls}>
 				{nextProblem && !busy && !canSend ? (
@@ -125,7 +125,7 @@ export function Composer({
 						type="submit"
 						data-testid="next-problem-button"
 						aria-label="Next problem"
-						className="flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-full bg-primary px-4 font-ui text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
+						className="flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-full bg-primary px-3 font-ui text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
 					>
 						Next problem
 						<ArrowRightIcon className="size-4" />

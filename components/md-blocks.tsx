@@ -395,26 +395,28 @@ export function MarkdownTable(props: ComponentProps<"table"> & ExtraProps) {
 	const { children, node, ...rest } = props;
 	const ref = useRef<HTMLTableElement>(null);
 	return (
-		<div className="group/md relative mx-auto my-4 w-fit max-w-full" data-testid="md-table">
-			<div className="mb-1 flex h-6 items-center justify-end" data-testid="md-table-actions">
-				<CopyCorner
-					label="Copy table"
-					getText={() => (ref.current ? tableDataToMarkdown(extractTableDataFromElement(ref.current)) : "")}
-				/>
-			</div>
-			<div className="max-w-full overflow-x-auto">
-				<table
-					ref={ref}
-					// No text-sm here — the table text runs at the session prose size
-				// (owner note, 2026-09-19: streamdown's cells pin their own text-sm
-				// 12.5px; globals.css overrides cells to inherit, so tables match the
-				// 16px chat text for a consistent look).
-					className="w-full border-collapse"
-					data-streamdown="table"
-					{...rest}
-				>
-					{children}
-				</table>
+		<div className="lh-table-bleed my-4">
+			<div className="group/md relative mx-auto w-fit max-w-full" data-testid="md-table">
+				<div className="mb-1 flex h-6 items-center justify-end" data-testid="md-table-actions">
+					<CopyCorner
+						label="Copy table"
+						getText={() => (ref.current ? tableDataToMarkdown(extractTableDataFromElement(ref.current)) : "")}
+					/>
+				</div>
+				<div className="max-w-full overflow-x-auto">
+					<table
+						ref={ref}
+						// No text-sm here — the table text runs at the session prose size
+					// (owner note, 2026-09-19: streamdown's cells pin their own text-sm
+					// 12.5px; globals.css overrides cells to inherit, so tables match the
+					// 16px chat text for a consistent look).
+						className="w-full border-collapse"
+						data-streamdown="table"
+						{...rest}
+					>
+						{children}
+					</table>
+				</div>
 			</div>
 		</div>
 	);

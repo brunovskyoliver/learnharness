@@ -147,17 +147,19 @@
 	opacity: 1;
 }
 
+/* Controls and send share one centered 32px row; the 8px inset puts the
+   trigger text on the textarea's 16px text edge. */
 .prompt-toolbar {
 	display: flex;
-	align-items: flex-end;
-	gap: 12px;
-	padding: 0 12px 12px;
+	align-items: center;
+	gap: 8px;
+	padding: 0 8px 8px;
 }
 
 .prompt-submit {
 	display: inline-flex;
-	width: 44px;
-	height: 44px;
+	width: 32px;
+	height: 32px;
 	flex-shrink: 0;
 	align-items: center;
 	justify-content: center;
@@ -198,7 +200,7 @@
 .prompt-model-trigger {
 	display: inline-flex;
 	min-width: 0;
-	min-height: 36px;
+	min-height: 32px;
 	max-width: 100%;
 	align-items: center;
 	gap: 6px;
@@ -787,6 +789,17 @@ body {
 }
 [data-streamdown="table"] :where(th, td) {
 	font-size: inherit;
+}
+
+/* Assistant tables may outgrow the reading column: the wrapper spans the
+   session width (less a gutter clear of the turn rail) and the table stays
+   centered inside it, scrolling only past that. Cards keep their frame. */
+.lh-bleed .lh-prose > .lh-table-bleed {
+	--lh-bleed-gutter: 1.5rem;
+	margin-inline: calc(50% - 50cqw + var(--lh-bleed-gutter));
+}
+@container session (min-width: 64rem) {
+	.lh-bleed .lh-prose > .lh-table-bleed { --lh-bleed-gutter: 4.5rem; }
 }
 /* Column separators: a hairline left rule on every cell but the first in
    its row (owner ask, 2026-09-19) — border-collapse merges it with the row

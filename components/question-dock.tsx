@@ -795,7 +795,7 @@ function QuestionDockForm({
 								}
 							}}
 							rows={1}
-							className="prompt-input field-sizing-content lh-input max-h-48 min-h-11 w-full resize-none bg-transparent px-5 pt-3 pb-2 outline-none"
+							className="prompt-input field-sizing-content lh-input max-h-48 min-h-11 w-full resize-none bg-transparent px-4 pt-3 pb-1 outline-none"
 						/>
 					) : (
 						<textarea
@@ -816,10 +816,10 @@ function QuestionDockForm({
 								}
 							}}
 							rows={1}
-							className="prompt-input field-sizing-content lh-input max-h-48 min-h-11 w-full resize-none bg-transparent px-5 pt-3 pb-2 outline-none"
+							className="prompt-input field-sizing-content lh-input max-h-48 min-h-11 w-full resize-none bg-transparent px-4 pt-3 pb-1 outline-none"
 						/>
 					)}
-					{compactionRunning && <div role="status" className="px-5 pb-2 text-xs text-muted-foreground">Compacting session…</div>}
+					{compactionRunning && <div role="status" className="px-4 pb-2 text-xs text-muted-foreground">Compacting session…</div>}
 					<PromptToolbar controls={controls}>
 						<PromptSubmit
 							label="Submit answer"

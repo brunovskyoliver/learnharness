@@ -221,7 +221,7 @@ export function Home({
 								<StatsBar
 									turns={[]}
 									leadingSlot={
-										<div className="flex items-center gap-0.5 rounded-md border border-border/60 bg-background p-0.5" data-testid="home-mode-switch">
+										<div className="flex h-8 items-center gap-0.5 rounded-lg bg-white/[0.04] p-0.5" data-testid="home-mode-switch">
 											{(["teach", "practice"] as const).map((m) => (
 												<button
 													key={m}
@@ -229,13 +229,13 @@ export function Home({
 													data-testid={`home-mode-${m}`}
 													onClick={() => setMode(m)}
 													className={
-														"flex items-center gap-1 rounded-sm px-2 py-0.5 text-[11px] transition-colors " +
+														"flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs transition-colors " +
 														(mode === m
 															? "bg-accent text-foreground"
 															: "text-muted-foreground hover:text-foreground")
 													}
 												>
-													{m === "practice" ? <DumbbellIcon aria-hidden="true" className="size-3" /> : null}
+													{m === "practice" ? <DumbbellIcon aria-hidden="true" className="size-3.5" /> : null}
 													{m === "teach" ? "Teach" : "Practice"}
 												</button>
 											))}
