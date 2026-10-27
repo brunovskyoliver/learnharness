@@ -2,7 +2,7 @@
 
 ## Stage
 
-Specify complete. Next: `speckit-plan` (optionally `speckit-clarify` first).
+Implementing (plan and tasks done). Owner asked for an unattended full cycle on 2026-10-27; technical choices are logged in research.md (marked "agent").
 
 ## Decisions
 
@@ -11,6 +11,9 @@ Owner decisions (2026-10-27): warm near-black ground; amber accent; Newsreader t
 ## Log
 
 - 2026-10-27: UI audit and design canvas published (https://claude.ai/artifact/5oZhYiW8seh7WbxCDn9nFh). Spec written; quality checklist passed.
+
+- 2026-10-27: Baseline: `npm test` 2507 tests, 3 pre-existing failures (tests 96 and 97 in chatgpt-connection-ui, 773 provider runtime loader). Typecheck passes. `npm run lint` runs out of memory at the default heap; passes with `NODE_OPTIONS=--max-old-space-size=6144`.
+- 2026-10-27: plan.md, research.md, data-model.md, contracts/prompt-bar.md, quickstart.md, tasks.md written.
 
 ## Report
 
