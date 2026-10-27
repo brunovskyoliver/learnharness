@@ -246,7 +246,7 @@ export function ChainTableBody({
 			    close only. Search + close carve out with lh-no-drag (the mask
 			    law: later in the DOM). */}
 			<TopBar>
-				<span className="hidden min-w-0 flex-1 truncate text-xs text-muted-foreground sm:block">
+				<span className="hidden min-w-0 flex-1 truncate text-sm text-muted-foreground sm:block">
 					{chains.length} {chains.length === 1 ? "chain" : "chains"} · {nodes.length} {nodes.length === 1 ? "idea" : "ideas"}
 				</span>
 				<div className="relative min-w-0 flex-1 sm:max-w-56">
@@ -258,7 +258,7 @@ export function ChainTableBody({
 						placeholder="Search ideas…"
 						aria-label="Search ideas"
 						spellCheck={false}
-						className="lh-no-drag h-8 w-full rounded-lg border bg-background pl-8 pr-3 text-xs outline-none placeholder:text-muted-foreground focus:border-ring"
+						className="lh-no-drag h-8 w-full rounded-lg border bg-background pl-8 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
 					/>
 				</div>
 			<button
@@ -274,7 +274,7 @@ export function ChainTableBody({
 
 			{/* Spacing, indentation and tree guides carry the hierarchy. */}
 			<div className="min-h-0 flex-1 overflow-y-auto">
-				<div className="sticky top-0 z-10 flex items-center gap-1 bg-background/80 px-3 py-1.5 text-[11px] text-muted-foreground/70 backdrop-blur">
+				<div className="sticky top-0 z-10 flex items-center gap-1 bg-background px-3 py-1.5 text-sm text-muted-foreground ">
 					<button
 						type="button"
 						data-testid="sort-name"
@@ -305,7 +305,7 @@ export function ChainTableBody({
 				</div>
 
 				{groups.length === 0 && (
-					<div data-testid="chain-table-nomatch" className="px-4 pt-3 text-xs text-muted-foreground">
+					<div data-testid="chain-table-nomatch" className="px-4 pt-3 text-sm text-muted-foreground">
 						No matching chains.
 					</div>
 				)}
@@ -346,14 +346,14 @@ export function ChainTableBody({
 									{open ? <FolderOpenIcon className="size-3.5" /> : <FolderIcon className="size-3.5" />}
 								</span>
 								<span className="min-w-0 flex-1 truncate text-sm font-medium">
-									{group.label ?? <span className="text-muted-foreground/60">unlabeled</span>}
-									{group.kind === "notes" && <span className="ml-2 text-[11px] text-muted-foreground/60">notes</span>}
-									<span className="block text-xs font-normal text-muted-foreground sm:hidden">{group.newestCreatedAt.slice(0, 10)}</span>
+									{group.label ?? <span className="text-muted-foreground">unlabeled</span>}
+									{group.kind === "notes" && <span className="ml-2 text-sm text-muted-foreground">notes</span>}
+									<span className="block text-sm font-normal text-muted-foreground sm:hidden">{group.newestCreatedAt.slice(0, 10)}</span>
 								</span>
-								<span className="w-14 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+								<span className="w-14 shrink-0 text-right text-sm tabular-nums text-muted-foreground">
 									{group.nodeIds.length}
 								</span>
-								<span className="hidden w-20 shrink-0 sm:block text-right text-xs tabular-nums text-muted-foreground">
+								<span className="hidden w-20 shrink-0 sm:block text-right text-sm tabular-nums text-muted-foreground">
 									{group.newestCreatedAt.slice(0, 10)}
 								</span>
 							</div>
@@ -429,12 +429,12 @@ export function ChainTableBody({
 															</span>
 														);
 													})}
-													<span className="w-full text-xs text-muted-foreground sm:hidden">{dateOf(chain.conclusion)}</span>
+													<span className="w-full text-sm text-muted-foreground sm:hidden">{dateOf(chain.conclusion)}</span>
 												</span>
-												<span className="w-14 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+												<span className="w-14 shrink-0 text-right text-sm tabular-nums text-muted-foreground">
 													{memberIds.length}
 												</span>
-												<span className="hidden w-20 shrink-0 sm:block text-right text-xs tabular-nums text-muted-foreground">
+												<span className="hidden w-20 shrink-0 sm:block text-right text-sm tabular-nums text-muted-foreground">
 													{dateOf(chain.conclusion)}
 												</span>
 											</div>
@@ -460,7 +460,7 @@ export function ChainTableBody({
 																testid={`prop-checkbox-${id}`}
 																label={`Select node ${node.name}`}
 															/>
-															<span className="min-w-0 flex-1 text-xs leading-relaxed text-muted-foreground">
+															<span className="min-w-0 flex-1 text-sm leading-relaxed text-muted-foreground">
 																{node.statement}
 															</span>
 															<span className="w-14 shrink-0" />
@@ -483,9 +483,9 @@ export function ChainTableBody({
 				<div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center pb-4">
 					<div
 						data-testid="chain-selection-bar"
-						className="pointer-events-auto mx-2 flex max-w-full flex-wrap items-center justify-center gap-2 rounded-xl border bg-card px-4 py-2 shadow-sm"
+						className="pointer-events-auto mx-2 flex max-w-full flex-wrap items-center justify-center gap-2 rounded-xl border bg-card px-4 py-2 "
 					>
-						<span data-testid="chain-selected-summary" className="text-xs font-medium">
+						<span data-testid="chain-selected-summary" className="text-sm font-medium">
 							{selection.size} {selection.size === 1 ? "idea" : "ideas"} →{" "}
 							{derived.length} {derived.length === 1 ? "chain" : "chains"}
 						</span>
@@ -493,7 +493,7 @@ export function ChainTableBody({
 							type="button"
 							data-testid="chain-clear"
 							onClick={onClear}
-							className="rounded-full px-2.5 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+							className="rounded-full px-2.5 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 						>
 							Clear
 						</button>
@@ -503,7 +503,7 @@ export function ChainTableBody({
 								data-testid="chain-practice-done"
 								onClick={onSelect}
 								aria-label={`Done picking — ${selection.size} ${selection.size === 1 ? "idea" : "ideas"} selected`}
-								className="flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/80"
+								className="flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80"
 							>
 								<DumbbellIcon aria-hidden="true" className="size-3.5" />
 								Done
@@ -517,7 +517,7 @@ export function ChainTableBody({
 								data-testid="chain-delete"
 								onClick={onDelete}
 								aria-label={`Delete ${selection.size} selected ${selection.size === 1 ? "idea" : "ideas"}`}
-								className="flex items-center gap-1.5 rounded-full border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive transition-colors hover:bg-destructive/20"
+								className="flex items-center gap-1.5 rounded-full border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"
 							>
 								<Trash2Icon aria-hidden="true" className="size-3.5" />
 								Delete
@@ -541,7 +541,7 @@ function Expander({ open, onClick, testid, label }: { open: boolean; onClick: ()
 			onClick={onClick}
 			aria-label={label}
 			aria-expanded={open}
-			className="flex h-5 w-3.5 shrink-0 items-center justify-center rounded text-muted-foreground/70 transition-colors hover:bg-accent hover:text-foreground"
+			className="flex h-5 w-3.5 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 		>
 			<ChevronRightIcon className={`size-3.5 transition-transform ${open ? "rotate-90" : ""}`} />
 		</button>
@@ -669,7 +669,7 @@ export function ChainTableOverlay({
 		<>
 			<div
 				data-testid="chain-table-overlay"
-				className="absolute inset-0 z-40 flex flex-col bg-background/80 backdrop-blur-sm"
+				className="absolute inset-0 z-40 flex flex-col bg-background "
 			>
 				<ChainTableBody
 					nodes={nodes}

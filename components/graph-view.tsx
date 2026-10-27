@@ -261,7 +261,7 @@ function SettingSlider({
 }) {
 	return (
 		<label className={`flex flex-col gap-1${disabled ? " opacity-40" : ""}`}>
-			<span className="flex items-center justify-between text-[11px] text-muted-foreground">
+			<span className="flex items-center justify-between text-sm text-muted-foreground">
 				{label}
 				<span className="tabular-nums">{display ?? value}</span>
 			</span>
@@ -360,7 +360,7 @@ export function GraphCostControl({ costs }: { costs: GraphCostSummary }) {
 				type="button"
 				aria-expanded={open}
 				onClick={() => setOpen((o) => !o)}
-				className={`rounded-lg px-2 py-1 text-xs tabular-nums transition-colors hover:bg-accent ${
+				className={`rounded-lg px-2 py-1 text-sm tabular-nums transition-colors hover:bg-accent ${
 					open ? "text-foreground" : "text-muted-foreground hover:text-foreground"
 				}`}
 			>
@@ -395,9 +395,9 @@ function GraphCostPanel({ costs }: { costs: GraphCostSummary }) {
 	// the pill and this panel must agree).
 	const { unpricedRuns } = displayCostTotals(costs);
 	return (
-		<div className="w-80 max-w-[calc(100vw-1.5rem)] rounded-xl border bg-card p-3 text-xs shadow-sm">
+		<div className="w-80 max-w-[calc(100vw-1.5rem)] rounded-xl border bg-card p-3 text-sm ">
 			<div className="mb-2 flex items-baseline justify-between">
-				<span className="text-xs font-medium text-muted-foreground">
+				<span className="text-sm font-medium text-muted-foreground">
 					Graph pipeline costs
 				</span>
 				<span className="text-foreground tabular-nums">
@@ -409,7 +409,7 @@ function GraphCostPanel({ costs }: { costs: GraphCostSummary }) {
 			</div>
 			<div className="flex flex-col gap-1">
 				{stageRows.map(([label, stage]) => (
-					<div key={label} className="flex items-baseline justify-between gap-2 text-[11px]">
+					<div key={label} className="flex items-baseline justify-between gap-2 text-sm">
 						<span className="shrink-0 text-muted-foreground">{label}</span>
 						<span className="min-w-0 text-right tabular-nums">
 							{fmtRunCost(stage.runs - stage.unpricedRuns - (stage.subscriptionRuns ?? 0) <= 0 ? null : stage.dollars, graphProviders(stage))}
@@ -426,9 +426,9 @@ function GraphCostPanel({ costs }: { costs: GraphCostSummary }) {
 			</div>
 			<div className="mt-2 flex flex-col gap-0.5 pt-2">
 				{costs.runs.map((run) => (
-						<div key={run.startedAt} className="flex items-baseline justify-between gap-2 text-[11px]">
+						<div key={run.startedAt} className="flex items-baseline justify-between gap-2 text-sm">
 							<span className="min-w-0 flex-1 truncate text-muted-foreground">
-								<span className="text-foreground/70">{timeAgo(run.startedAt)}</span>{" "}
+								<span className="text-ink-2">{timeAgo(run.startedAt)}</span>{" "}
 								{run.title}
 								{run.merged && (
 									<span className="text-muted-foreground">
@@ -476,7 +476,7 @@ function GraphSettingsControl({
 				type="button"
 				aria-expanded={open}
 				onClick={() => setOpen((o) => !o)}
-				className={`flex size-9 items-center justify-center rounded-xl border bg-card shadow-sm transition-colors hover:bg-accent ${
+				className={`flex size-9 items-center justify-center rounded-xl border bg-card transition-colors hover:bg-accent ${
 					open ? "text-foreground" : "text-muted-foreground hover:text-foreground"
 				}`}
 			>
@@ -495,7 +495,7 @@ function GraphSettingsControl({
 				// (pr-2.5) -> scrollbar -> 10px (p-2.5) -> panel edge. The
 				// scrollbar itself does NOT move: it stays pinned at the same
 				// distance from the panel's right border.
-				<div className="absolute right-0 top-full mt-2 flex max-h-[60vh] w-72 flex-col rounded-xl border bg-card p-2.5 shadow-sm">
+				<div className="absolute right-0 top-full mt-2 flex max-h-[60vh] w-72 flex-col rounded-xl border bg-card p-2.5 ">
 					<div className="flex flex-col gap-2 overflow-y-auto pr-2.5">
 							{/* Size/zoom/region sliders: LADDER-mapped 0-100, step 10 (11
 							    stops, every DEFAULT dead-center at 50, every value a nice
@@ -560,10 +560,10 @@ function GraphSettingsControl({
 						    the whole build (splat/blur/readback/blit), not just
 						    the paint. */}
 						<div className="mt-1.5 flex flex-col gap-1.5 pt-1.5">
-							<span className="text-xs font-medium text-muted-foreground">
+							<span className="text-sm font-medium text-muted-foreground">
 								Regions
 							</span>
-							<label className="flex cursor-pointer items-center justify-between text-[11px] text-muted-foreground">
+							<label className="flex cursor-pointer items-center justify-between text-sm text-muted-foreground">
 								<span>Background colors</span>
 								<input
 									type="checkbox"
@@ -620,12 +620,12 @@ function GraphSettingsControl({
 									}))}
 							/>
 							<label
-								className={`flex items-center justify-between gap-2 text-[11px] text-muted-foreground${!regionTuning.enabled ? " opacity-40" : ""}`}
+								className={`flex items-center justify-between gap-2 text-sm text-muted-foreground${!regionTuning.enabled ? " opacity-40" : ""}`}
 							>
 								<span>Bitmap resolution</span>
 								<select
 									disabled={!regionTuning.enabled}
-									className="rounded-md border bg-background px-1.5 py-0.5 text-xs tabular-nums text-foreground"
+									className="rounded-md border bg-background px-1.5 py-0.5 text-sm tabular-nums text-foreground"
 									value={regionTuning.bitmap}
 									onChange={(e) =>
 										changeSettings((cur) => ({
@@ -646,7 +646,7 @@ function GraphSettingsControl({
 							    the Background colors switch above — labels follow
 							    their own clusterLabels toggle. Size is screen px
 							    (constant at any zoom, unlike node labels). */}
-							<label className="flex cursor-pointer items-center justify-between text-[11px] text-muted-foreground">
+							<label className="flex cursor-pointer items-center justify-between text-sm text-muted-foreground">
 								<span>Cluster labels</span>
 								<input
 									type="checkbox"
@@ -681,7 +681,7 @@ function GraphSettingsControl({
 						    Order (user 2026-09-17): general forces first; depth
 						    anchor + its gray-out-able controls last. */}
 						<div className="mt-1.5 flex flex-col gap-1.5 pt-1.5">
-							<span className="text-xs font-medium text-muted-foreground">
+							<span className="text-sm font-medium text-muted-foreground">
 								Physics
 							</span>
 							<SettingSlider
@@ -766,10 +766,10 @@ function GraphSettingsControl({
 							    forces first, then the mode + its conditional
 							    controls at the very bottom — the grayed group reads
 							    as a self-contained sub-section. */}
-							<label className="flex items-center justify-between gap-2 text-xs">
+							<label className="flex items-center justify-between gap-2 text-sm">
 								Depth anchor
 								<select
-									className="rounded border bg-background px-1 py-0.5 text-xs"
+									className="rounded border bg-background px-1 py-0.5 text-sm"
 									value={physicsTuning.depthMode}
 									onChange={(e) =>
 										changeSettings((cur) => ({
@@ -898,7 +898,7 @@ export function GraphChromeRow({
 			{!isEmpty && (
 				<div
 					data-mobile-graph-search={mobileSearchOpen ? "true" : undefined}
-					className={cn("min-w-0 shrink rounded-xl border bg-card px-1 py-[3px] shadow-sm sm:static sm:w-56", mobileSearchOpen ? "fixed inset-x-2 top-2 z-30 w-auto" : "graph-chrome-fade-in w-auto sm:w-56")}
+					className={cn("min-w-0 shrink rounded-xl border bg-card px-1 py-[3px] sm:static sm:w-56", mobileSearchOpen ? "fixed inset-x-2 top-2 z-30 w-auto" : "graph-chrome-fade-in w-auto sm:w-56")}
 					onKeyDown={(event) => {
 						if (event.key === "Escape" && mobileSearchOpen && window.matchMedia("(max-width: 639px)").matches) {
 							event.preventDefault();
@@ -931,7 +931,7 @@ export function GraphChromeRow({
 							placeholder="Search ideas…"
 							aria-label="Search ideas"
 							spellCheck={false}
-							className="h-7 min-w-0 w-full rounded-lg border bg-background pl-8 text-xs outline-none placeholder:text-muted-foreground focus:border-ring"
+							className="h-7 min-w-0 w-full rounded-lg border bg-background pl-8 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
 						/>
 						<button
 							type="button"
@@ -942,20 +942,20 @@ export function GraphChromeRow({
 					</div>
 					</Hint>
 					{noMatch && (
-						<div className={cn("px-1.5 pt-1 text-[11px] text-muted-foreground", !mobileSearchOpen && "max-sm:hidden")}>No matching ideas.</div>
+						<div className={cn("px-1.5 pt-1 text-sm text-muted-foreground", !mobileSearchOpen && "max-sm:hidden")}>No matching ideas.</div>
 					)}
 				</div>
 			)}
 			{/* The chain table (chains overlay, owner plan 2026-09-29). Own
 			    container (36px band), between the search and Import. */}
 			{!isEmpty && (
-				<div className={cn("graph-chrome-fade-in shrink-0 rounded-xl border bg-card px-1 py-[3px] shadow-sm", mobileSearchOpen && "max-sm:hidden")}>
+				<div className={cn("graph-chrome-fade-in shrink-0 rounded-xl border bg-card px-1 py-[3px] ", mobileSearchOpen && "max-sm:hidden")}>
 					<Hint label="Every reasoning chain" side="bottom">
 						<button
 							type="button"
 							onClick={onOpenChains}
 							data-testid="open-chain-table"
-							className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground transition-colors hover:bg-accent"
+							className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent"
 						>
 							<ListTreeIcon className="size-4" />
 							<span className="max-sm:sr-only">Chains</span>
@@ -965,7 +965,7 @@ export function GraphChromeRow({
 			)}
 			{/* Import notes — its own container (36px, header band); ALWAYS
 			    rendered (the empty-graph ruling above — the entry point). */}
-			<div className={cn("shrink-0 rounded-xl border bg-card px-1 py-[3px] shadow-sm", mobileSearchOpen && "max-sm:hidden")}>
+			<div className={cn("shrink-0 rounded-xl border bg-card px-1 py-[3px] ", mobileSearchOpen && "max-sm:hidden")}>
 				<input
 					ref={fileInputRef}
 					type="file"
@@ -989,7 +989,7 @@ export function GraphChromeRow({
 						disabled={importing}
 						onClick={() => fileInputRef.current?.click()}
 						data-testid="import-notes"
-					className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground transition-colors hover:bg-accent disabled:opacity-50"
+					className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent disabled:opacity-50"
 				>
 						<UploadIcon className="size-4" />
 						<span className="max-sm:sr-only">{importing ? "Importing…" : "Import notes…"}</span>
@@ -1631,7 +1631,7 @@ export function GraphView({
 					anchorRef={ctxAnchorRef}
 					testid="node-context-menu"
 					preferredSide="down"
-					menuClass="flex w-fit flex-col gap-0.5 rounded-xl border bg-card p-2 text-xs shadow-xl"
+					menuClass="flex w-fit flex-col gap-0.5 rounded-xl border bg-card p-2 text-sm "
 				>
 					<button
 						type="button"
@@ -1640,7 +1640,7 @@ export function GraphView({
 							setDeletingNode({ id: ctxNode.id, name: ctxNode.name });
 							setCtxNode(null);
 						}}
-						className="flex items-center rounded-lg px-2.5 py-1.5 text-left text-muted-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+						className="flex items-center rounded-lg px-2.5 py-1.5 text-left text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 					>
 						Delete
 					</button>
@@ -1727,7 +1727,7 @@ export function GraphView({
 			{pipelineRuns.map((run) => (
 				<div
 					key={run.id}
-					className="flex items-center gap-2 rounded-full border bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-sm"
+					className="flex items-center gap-2 rounded-full border bg-card px-3 py-1.5 text-sm text-muted-foreground "
 				>
 					<Loader2Icon className="size-3.5 shrink-0 animate-spin" />
 					<span className="capitalize">{run.phase}</span>
@@ -1746,13 +1746,13 @@ export function GraphView({
 					// lh-no-drag: the card is placed anywhere on the canvas —
 					// when it lands in the top strip it must stay interactive
 					// over home.tsx's drag surface (2026-09-17).
-					className="lh-no-drag absolute z-10 w-80 max-w-[calc(100%-1rem)] rounded-xl border bg-card p-4 text-left shadow-lg"
+					className="lh-no-drag absolute z-10 w-80 max-w-[calc(100%-1rem)] rounded-xl border bg-card p-4 text-left "
 				>
 					<div className="text-sm font-medium leading-snug">{selected.node.name}</div>
-					<div className="mt-1 text-xs leading-relaxed text-muted-foreground">{selected.node.statement}</div>
+					<div className="mt-1 text-sm leading-relaxed text-muted-foreground">{selected.node.statement}</div>
 					{selected.sourceIds.length > 0 ? (
 						<div className="mt-3 flex flex-col gap-1">
-							<div className="text-xs text-muted-foreground">Sessions</div>
+							<div className="text-sm text-muted-foreground">Sessions</div>
 							{selected.sourceIds.map((sourceId) => {
 								// An imported-notes file: a STATIC entry — the path,
 								// plain text, never a link (no session to open).
@@ -1781,7 +1781,7 @@ export function GraphView({
 							})}
 						</div>
 					) : (
-						<div className="mt-3 text-xs text-muted-foreground">No sessions recorded.</div>
+						<div className="mt-3 text-sm text-muted-foreground">No sessions recorded.</div>
 					)}
 				</div>
 			)}

@@ -69,12 +69,12 @@ export default function SettingsDialog({
 	return (
 		<Dialog.Root open onOpenChange={(open) => { if (!open) onClose(); }}>
 			<Dialog.Portal>
-				<Dialog.Overlay className="fixed inset-0 z-50 bg-background/80" data-testid="settings-backdrop" {...backdropDismiss} />
+				<Dialog.Overlay className="fixed inset-0 z-50 bg-background" data-testid="settings-backdrop" {...backdropDismiss} />
 				<Dialog.Content
 					ref={setPortalContainer}
 					data-lh-modal-content
 					aria-describedby={undefined}
-					className="fixed inset-3 z-50 overflow-hidden rounded-xl border border-border bg-background shadow-2xl outline-none sm:inset-6 lg:inset-x-[6vw] lg:inset-y-[5vh]"
+					className="fixed inset-3 z-50 overflow-hidden rounded-xl border border-border bg-background outline-none sm:inset-6 lg:inset-x-[6vw] lg:inset-y-[5vh]"
 					onPointerDownOutside={(event) => event.preventDefault()}
 					onEscapeKeyDown={(event) => event.preventDefault()}
 						onCloseAutoFocus={(event) => {
@@ -316,18 +316,18 @@ export function SettingsDialogBody({
 					{error && (
 						<p
 							role="alert"
-							className="m-4 rounded-sm border border-destructive/40 px-3 py-2 text-xs text-destructive"
+							className="m-4 rounded-sm border border-destructive/40 px-3 py-2 text-sm text-destructive"
 							data-testid="settings-error"
 						>
 							{error}
 						</p>
 					)}
 					{record === undefined ? (
-						<p className="px-6 py-5 text-xs text-muted-foreground/70">
+						<p className="px-6 py-5 text-sm text-muted-foreground">
 							Loading settings…
 						</p>
 					) : record === null ? (
-						<p className="px-6 py-5 text-xs text-muted-foreground/70">
+						<p className="px-6 py-5 text-sm text-muted-foreground">
 							Settings could not be loaded — refresh to retry.
 						</p>
 					) : (

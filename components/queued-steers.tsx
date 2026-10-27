@@ -1,9 +1,7 @@
 /**
- * THE QUEUED-STEER INDICATOR (owner spec 2026-10-03): steers sent but not
- * yet drained render as quiet one-liners ABOVE the composer shell —
- * right-aligned to where the shell's corner rounding starts, truncated
- * with an ellipsis, no background, no container, roughly half opacity.
- * Visible but very quiet; layout tunable later.
+ * THE QUEUED-STEER INDICATOR (owner spec 2026-10-03, restyled in feature
+ * 001): steers sent but not yet drained render as quiet rows ABOVE the
+ * composer shell, right-aligned and truncated.
  *
  * A line dies the moment its card lands in the transcript: the drain's
  * verbatim message events upsert the real user card by the client-minted
@@ -16,19 +14,21 @@ export interface QueuedSteerLine {
 	text: string;
 }
 
-/** The pure body (SSR-pinnable): one right-aligned truncated line per
- *  queued steer, stacked. */
+/** The pure body (SSR-pinnable): one right-aligned row per queued steer
+ *  (feature 001). Rows carry no remove control: a steer is handed to the
+ *  live agent the moment it posts, and no cancel route exists. */
 export function QueuedSteersBody({ steers }: { steers: QueuedSteerLine[] }) {
 	if (steers.length === 0) return null;
 	return (
-		<div className="flex flex-col items-end gap-0.5 pb-1 pr-4" data-testid="queued-steers">
+		<div className="flex flex-col items-end gap-1 pb-1.5" data-testid="queued-steers">
 			{steers.map((s) => (
 				<span
 					key={s.id}
 					title={s.text}
-					className="block max-w-[240px] truncate font-ui text-[11px] text-muted-foreground/60"
+					className="flex max-w-[80%] items-center gap-2 rounded-sm bg-card px-2.5 py-1.5 text-sm text-ink-2"
 				>
-					{s.text}
+					<span className="shrink-0 text-muted-foreground">Queued</span>
+					<span className="min-w-0 truncate">{s.text}</span>
 				</span>
 			))}
 		</div>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { DownloadIcon, PanelRightOpenIcon, MaximizeIcon, XIcon } from "lucide-react";
+import { ArrowRightIcon, DownloadIcon, PanelRightOpenIcon, MaximizeIcon, XIcon } from "lucide-react";
 import { createPortal } from "react-dom";
 import { InvertDiscIcon } from "@/components/artifacts/invert-disc";
 import { ChatActionsContext } from "@/components/chat";
@@ -316,8 +316,17 @@ export function DemoFrame({
 
 	return (
 		<div className="lh-breakout demo-artifact py-4 text-foreground" data-testid="demo-card">
-			{(inWorkspace || focused) && <div className="demo-inline-preview" style={{ minHeight: focused && !inWorkspace ? previewHeight.current : undefined }}>
+			{/* While the workspace shows this demo, its place in the lesson is one
+			    row (feature 001); focus without the workspace keeps the preview
+			    box so the reading position holds. */}
+			{inWorkspace && <button type="button" data-testid="demo-inline-row" className="demo-inline-row" onClick={() => { if (messageId) panel?.open(messageId); }}>
 				{/* The image is an in-memory sandbox snapshot, not an optimizable URL. */}
+				{/* eslint-disable-next-line @next/next/no-img-element */}
+				{preview && <img src={preview} alt="" className="h-8 w-12 shrink-0 rounded-sm object-cover" />}
+				<span className="flex min-w-0 flex-1 flex-col text-left"><span className="truncate text-base font-medium">{title}</span><span className="text-sm text-muted-foreground">Open in workspace</span></span>
+				<ArrowRightIcon aria-hidden="true" className="ui-icon text-muted-foreground" />
+			</button>}
+			{focused && !inWorkspace && <div className="demo-inline-preview" style={{ minHeight: previewHeight.current }}>
 				{/* eslint-disable-next-line @next/next/no-img-element */}
 				{preview && <img src={preview} alt={`Preview of ${title}`} className="max-h-48 w-full object-contain" />}
 				<p className="text-sm font-medium">{title}</p>

@@ -85,6 +85,6 @@ export function useNotesImport(callbacks: { onStart?: () => void; onFinish?: () 
 
 export function NotesImportErrors({ errors }: { errors: readonly string[] }) {
 	return <>{errors.map((error, i) => (
-		<p key={i} role="alert" className="max-w-full whitespace-pre-wrap break-words text-xs text-destructive">{error}</p>
+		<p key={i} role="alert" className="max-w-full whitespace-pre-wrap break-words text-sm text-destructive">{error}</p>
 	))}</>;
 }

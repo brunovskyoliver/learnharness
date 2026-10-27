@@ -129,7 +129,7 @@ The bug-level findings from the audit are fixed in the same pass.
 **Visual system**
 
 - **FR-001**: The app MUST use a warm near-black ground (#0B0B0A) for canvas, sidebar, lesson and demo chrome, a raised surface (#151513) for composer, cards and demo frame, and a second raised surface (#1D1D1A) for menus, hover and selection.
-- **FR-002**: App-owned text MUST use exactly three ink levels: primary (#EDECE8), secondary (#B4B2AB) and tertiary (#85837C). Each MUST meet 4.5:1 contrast on the ground and both raised surfaces. Opacity-derived text greys MUST be removed.
+- **FR-002**: App-owned text MUST use exactly three ink levels: primary (#EDECE8), secondary (#B4B2AB) and tertiary (#8A8881, nudged from the canvas's #85837C to pass 4.5:1 on raised-2). Each MUST meet 4.5:1 contrast on the ground and both raised surfaces. Opacity-derived text greys MUST be removed.
 - **FR-003**: A single accent (#E3A957) MUST be used only for the active-turn label and status dots, the primary action, selected-choice emphasis and keyboard focus. Text on an accent fill MUST use the ground color.
 - **FR-004**: Lesson and session titles MUST use the Newsreader display serif at weight 500–600. The legacy bold-only serif and the weight-900 title workaround MUST be removed. The reading-font preference continues to apply.
 - **FR-005**: The type scale MUST be 12, 13, 15, 17, 22, 30 and 40 px, each with a defined line height. The reading baseline stays 17/27 and existing reading-size settings keep working. Hard-coded sizes outside the scale MUST be removed from app-owned UI.
@@ -142,7 +142,7 @@ The bug-level findings from the audit are fixed in the same pass.
 **Prompt bar**
 
 - **FR-011**: The composer, the lesson question dock and the practice dock MUST share one four-zone layout inside the single mounted shell: turn strip, prompt body, answer field, toolbar.
-- **FR-012**: The turn strip MUST show "Your turn" in the accent plus the turn kind ("Lesson check", "Problem", "Question") and a collapse control whenever a question or problem is active. In compact presentation it MUST be the whole bar: label, one-line teaser with inline markdown rendered or stripped, and an "Answer"/"Solve" button.
+- **FR-012**: The turn strip MUST show "Your turn" in the accent plus the turn kind ("Lesson check", "Problem", "Question") and a collapse control whenever a question or problem is active. In compact presentation it MUST replace the prompt body: label, one-line teaser with inline markdown rendered or stripped, and an "Answer"/"Solve" button. The answer well stays visible (existing DESIGN.md rule: folding hides only the question details and choices).
 - **FR-013**: The prompt body MUST show the question at reading size, any note in secondary ink, choices as full-width rows with a radio or checkbox mark, and a confidence row holding the four existing stops and "I don't know" as a text button. It is the only zone that scrolls, capped at half the visual viewport on phones, with a visible "more below" cue when overflowing.
 - **FR-014**: The answer field MUST sit inset on the ground color with a visible label ("Your thinking", "Your answer" or a purpose-specific placeholder for chat). The keyboard focus ring MUST surround this field only.
 - **FR-015**: The toolbar MUST show labelled model and thinking-level triggers, and a usage control with the context ring plus a percentage when the limit is known (or "?" when it is not).

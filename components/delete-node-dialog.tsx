@@ -52,7 +52,7 @@ export function DeleteNodeBody({
 			aria-label="Delete idea"
 			data-testid="delete-node-dialog"
 			onClick={(e) => e.stopPropagation()}
-			className="w-[32rem] max-w-[calc(100vw-2rem)] rounded-xl border bg-card p-5 shadow-xl"
+			className="w-[32rem] max-w-[calc(100vw-2rem)] rounded-xl border bg-card p-5 "
 		>
 			<h2 className="text-sm font-semibold text-destructive">
 				{nodes.length === 1 ? "Delete idea?" : `Delete ${nodes.length} ideas?`}
@@ -87,7 +87,7 @@ export function DeleteNodeBody({
 				<div
 					role="alert"
 					data-testid="node-delete-failure"
-					className="mt-3 rounded-sm border border-border/60 px-3 py-2 text-xs"
+					className="mt-3 rounded-sm border border-border/60 px-3 py-2 text-sm"
 				>
 					<span className="text-foreground">
 						{failure.code === "extraction_running" ? EXTRACTION_RETRY_LINE : failure.error}
@@ -97,7 +97,7 @@ export function DeleteNodeBody({
 						data-testid="node-delete-retry"
 						onClick={onRun}
 						disabled={busy}
-						className="ml-3 text-xs text-foreground underline-offset-2 hover:underline disabled:opacity-40"
+						className="ml-3 text-sm text-foreground underline-offset-2 hover:underline disabled:opacity-40"
 					>
 						Try again
 					</button>
@@ -109,7 +109,7 @@ export function DeleteNodeBody({
 					data-testid="node-delete-cancel"
 					onClick={onClose}
 					disabled={busy}
-					className="rounded-sm px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+					className="rounded-sm px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
 				>
 					Cancel
 				</button>
@@ -121,7 +121,7 @@ export function DeleteNodeBody({
 					// Destructive red (owner, polish round) — the
 					// app's established destructive pair (chat's
 					// refusal banner): border + text, fill on hover.
-					className="rounded-sm border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-xs text-destructive transition-colors hover:bg-destructive/20 disabled:opacity-40"
+					className="rounded-sm border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-sm text-destructive transition-colors hover:bg-destructive/20 disabled:opacity-40"
 				>
 					{busy ? "Deleting…" : "Delete"}
 				</button>
@@ -217,7 +217,7 @@ export function DeleteNodeDialog({
 
 	return createPortal(
 		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-background/80"
+			className="fixed inset-0 z-50 flex items-center justify-center bg-background"
 			{...backdropDismiss}
 		>
 			<DeleteNodeBody

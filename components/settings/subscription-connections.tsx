@@ -85,17 +85,17 @@ export function NativeSubscriptionUIProvider({ children }: { children: React.Rea
 			<h2 className="text-sm font-semibold text-foreground">{descriptor.label}</h2>
 			{confirm ? <>
 				<p className="mt-3 text-sm font-semibold text-destructive">Disconnect {descriptor.label}?</p>
-				<p className="mt-3 text-xs leading-relaxed text-muted-foreground">{subscriptionDisconnectCopy(descriptor.label, web)}</p>
+				<p className="mt-3 text-sm leading-relaxed text-muted-foreground">{subscriptionDisconnectCopy(descriptor.label, web)}</p>
 			</> : view === "notice" ? <>
-				<p className="mt-3 text-xs leading-relaxed text-muted-foreground" data-testid="subscription-privacy-notice">{subscriptionNotice(descriptor.label, web)}</p>
-				{dialog === "github-copilot" && <p className="mt-3 text-xs leading-relaxed text-muted-foreground" data-testid="copilot-policy-notice">{COPILOT_POLICY_NOTICE}</p>}
+				<p className="mt-3 text-sm leading-relaxed text-muted-foreground" data-testid="subscription-privacy-notice">{subscriptionNotice(descriptor.label, web)}</p>
+				{dialog === "github-copilot" && <p className="mt-3 text-sm leading-relaxed text-muted-foreground" data-testid="copilot-policy-notice">{COPILOT_POLICY_NOTICE}</p>}
 			</> : <>
-				<div className="mt-4 flex items-center gap-3 text-xs text-foreground">
+				<div className="mt-4 flex items-center gap-3 text-sm text-foreground">
 					<Toggle label="Allow background use" checked={management ? status.allowBackgroundUse : background} disabled={busy || !!operation || status.pending || !status.available} onChange={(enabled) => { setBackground(enabled); if (management && bridge) void control(() => bridge.consent(dialog, enabled)); else setBackgroundDirty(true); }} />
 					<span>Allow background use<span className="mt-1 block leading-relaxed text-muted-foreground">{SUBSCRIPTION_BACKGROUND_HINT}</span></span>
 				</div>
-				{!status.available && <p className="mt-3 text-xs text-muted-foreground">Subscription sign-in requires the desktop app's private server connection. API-key connections remain available here.</p>}
-				{view === "connection" && interaction && <div className="mt-3 space-y-3 text-xs" data-testid="subscription-login-interaction">
+				{!status.available && <p className="mt-3 text-sm text-muted-foreground">Subscription sign-in requires the desktop app's private server connection. API-key connections remain available here.</p>}
+				{view === "connection" && interaction && <div className="mt-3 space-y-3 text-sm" data-testid="subscription-login-interaction">
 					{interaction.progress && <p role="status" className="text-muted-foreground">{interaction.progress}</p>}
 					{interaction.userCode && <p>Device code: <code className="select-text font-mono">{interaction.userCode}</code></p>}
 					{interaction.browser && <Button variant="outline" size="sm" disabled={busy} onClick={() => bridge && void bridge.open(dialog, interaction.attemptId, interaction.browser!.id).catch(() => setError("The browser could not be opened. Try again."))}>Open browser</Button>}
@@ -106,7 +106,7 @@ export function NativeSubscriptionUIProvider({ children }: { children: React.Rea
 					</form>}
 				</div>}
 			</>}
-			{(error || status.error) && <p role="alert" className="mt-3 text-xs text-destructive">{error || status.error}</p>}
+			{(error || status.error) && <p role="alert" className="mt-3 text-sm text-destructive">{error || status.error}</p>}
 			<ConnectionFooter testid="subscription-connection-footer" leading={!confirm && management && status.connectionId && !status.pending && <Button variant="ghost" size="sm" className="cursor-pointer text-destructive hover:bg-destructive/10 hover:text-destructive" disabled={busy || !!operation} onClick={() => setConfirm(true)}>Disconnect</Button>}>
 				{!confirm && management && status.connectionId && status.available && !status.connected && !!status.error && !status.pending && <>
 					{status.error && <Button variant="outline" size="sm" disabled={busy || !!operation} onClick={() => bridge && void control(() => bridge.retry(dialog))}>Retry</Button>}
@@ -124,7 +124,7 @@ export function NativeSubscriptionConnection({ providerId }: { providerId: Nativ
 	const status = ui.statuses.find((s) => s.providerId === providerId) ?? emptySubscriptionStatus(providerId);
 	return <div className="flex flex-col gap-2" data-testid={`${providerId}-connection`}>
 		<ConnectionRow label={descriptor.label} action={status.connectionId ? "Manage…" : "Connect"} disabled={ui.busy || !status.available || ui.statuses.some((s) => s.pending)} onAction={() => ui.open(providerId)} />
-		{status.error && <p role="alert" className="text-xs text-destructive">{status.error}</p>}
+		{status.error && <p role="alert" className="text-sm text-destructive">{status.error}</p>}
 	</div>;
 }
 export function SubscriptionConnections({ setup = false, without }: { setup?: boolean; without?: "chatgpt" }) {

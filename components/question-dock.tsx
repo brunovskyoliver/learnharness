@@ -2,9 +2,8 @@
 
 import { useSessionState } from "@/components/session-state";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowDownIcon, ChevronRightIcon, PlayIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { PromptSubmit, PromptToolbar } from "@/components/prompt-controls";
+import { ChevronDownIcon } from "lucide-react";
+import { AnswerWell, PrimaryAction, PromptToolbar, TurnStrip } from "@/components/prompt-controls";
 import { useEnterSubmits } from "@/components/enter-submits";
 import { ToolContentResponse } from "@/components/ai-elements/message";
 import { cn } from "@/lib/utils";
@@ -58,6 +57,8 @@ export interface QuestionDockProps {
 	 */
 	reveal?: boolean;
 	onExpand: () => void;
+	/** The turn strip's collapse control (owned by the DockOverlay). */
+	onCollapse?: () => void;
 	onSubmit: (output: QuestionAnswerData) => void;
 	/** Restore only this call's unconfirmed submission after recovery. */
 	initialDraft?: QuestionFormDraft;
@@ -83,6 +84,7 @@ export function QuestionDock({
 	outgoingHeight,
 	reveal = false,
 	onExpand,
+	onCollapse,
 	onSubmit,
 	initialDraft,
 	onSaveDraft,
@@ -110,7 +112,7 @@ export function QuestionDock({
 		canonical === "quiz" ? parseQuizInput(input) : canonical === "explain" ? parseExplainInput(input) : parseAskInput(input);
 	if (!parsed) {
 		return (
-			<div data-testid="malformed-question" className="rounded-xl border border-dashed bg-card/60 p-3 text-sm text-muted-foreground">
+			<div data-testid="malformed-question" className="rounded-xl border bg-card p-3 text-sm text-muted-foreground">
 				This question arrived malformed — the transcript keeps the retry.
 			</div>
 		);
@@ -140,6 +142,7 @@ export function QuestionDock({
 				active={expanded}
 				outgoingHeight={outgoingHeight}
 				onReveal={onExpand}
+				onCollapse={onCollapse}
 				onSubmit={onSubmit}
 				initialDraft={initialDraft}
 				onSaveDraft={onSaveDraft}
@@ -151,7 +154,7 @@ export function QuestionDock({
 }
 
 /** A plain-text teaser of a question for the collapsed bar: unwrap math, flatten common LaTeX. */
-function teaserText(q: string): string {
+export function teaserText(q: string): string {
 	return repairMathForDisplay(q)
 		.replace(/\\\(([\s\S]*?)\\\)/g, "$1") // \(...\) inline math
 		.replace(/\\\[([\s\S]*?)\\\]/g, "$1") // \[...\] display math
@@ -167,7 +170,7 @@ function teaserText(q: string): string {
 
 /** The teaser as inline nodes: `code` spans render as inline code instead
  *  of raw backticks (ui-v2); everything else is plain text. */
-function Teaser({ text }: { text: string }) {
+export function Teaser({ text }: { text: string }) {
 	return text.split(/(`[^`]+`)/g).map((part, i) =>
 		part.length > 2 && part.startsWith("`") && part.endsWith("`") ? (
 			<code key={i} className="rounded bg-muted px-[0.3em] font-mono text-[0.9em]">
@@ -203,47 +206,36 @@ export function QuestionDockBar({
 	 *  label Probe/Recall — the phase boundary visible in the composer. */
 	toolLabel?: string;
 }) {
-	if (variant === "reveal") {
-		return (
-			<button
-				type="button"
-				data-testid="teach-check-reveal"
-				aria-expanded={false}
-				onClick={onExpand}
-				className="dock-variant flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent/40"
-			>
-				<span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
-					<PlayIcon className="size-3.5" />
-				</span>
-				<span className="min-w-0 flex-1">
-					<span className="block text-sm font-medium">Check your understanding</span>
-					<span className="block truncate text-xs text-muted-foreground"><Teaser text={teaserText(question)} /></span>
-				</span>
-				<span className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
-					Open <ChevronRightIcon className="size-3.5" />
-				</span>
-			</button>
-		);
-	}
+	const kind = label ?? toolLabel ?? (toolName === "quiz" ? "Lesson check" : toolName === "explain" ? "Explain" : "Question");
+	// Both species share the turn strip (feature 001): the reveal invites
+	// ("Check your understanding"), the scroll fold resumes. The whole row
+	// is the button; the trailing "Answer" is its visible label.
 	return (
 		<button
 			type="button"
-			data-testid="question-dock-bar"
+			data-testid={variant === "reveal" ? "teach-check-reveal" : "question-dock-bar"}
 			aria-expanded={false}
 			onClick={onExpand}
-			className="dock-variant relative z-10 flex min-h-11 w-full items-center gap-2.5 bg-card px-4 py-2.5 text-left text-sm transition-colors hover:bg-accent/40"
+			className="dock-variant relative z-10 turn-strip min-h-[52px] w-full bg-card text-left transition-colors hover:bg-accent"
 		>
-			<span className="shrink-0 text-xs font-medium text-muted-foreground">
-				{label ??
-							toolLabel ??
-							(toolName === "quiz" ? "Check" : toolName === "explain" ? "Explain" : "Question")}
+			<span className="turn-label">Your turn</span>
+			<span className="min-w-0 flex-1 truncate text-base text-ink-2">
+				{variant === "reveal" ? <span className="font-medium text-foreground">Check your understanding · </span> : <span className="font-medium text-foreground">{kind} · </span>}
+				<Teaser text={teaserText(question)} />
 			</span>
-			<span className="min-w-0 flex-1 truncate text-muted-foreground"><Teaser text={teaserText(question)} /></span>
-			<span className="flex shrink-0 items-center gap-1 text-xs font-medium">
-				Answer <ArrowDownIcon className="size-3.5" />
-			</span>
+			<span className="prompt-primary shrink-0" data-quiet="">Answer</span>
 		</button>
 	);
+}
+
+/** The turn kind shown in the strip. Probe-phase tools keep their own
+ *  names (owner 2026-10-09). */
+function turnKind(toolName: QuestionDockProps["toolName"], kind: string, questionType: string | undefined): string {
+	if (toolName === "probe") return "Question";
+	if (toolName === "recall") return "Recall";
+	if (kind === "quiz") return questionType === "predict" ? "Prediction" : "Lesson check";
+	if (kind === "explain") return "Explain";
+	return "Question";
 }
 
 /** The expanded question: label, question, options, and the unified bottom row. */
@@ -259,6 +251,7 @@ function QuestionDockForm({
 	onSaveDraft,
 	compactionRunning = false,
 	controls,
+	onCollapse,
 }: Omit<QuestionDockProps, "expanded" | "onExpand" | "reveal"> & { onReveal?: () => void }) {
 	const kind = toolQuestionKind(toolName);
 
@@ -508,6 +501,22 @@ function QuestionDockForm({
 		return () => document.removeEventListener("keydown", onKeyDown);
 	});
 
+	// "More below" cue: only while the scrolling body hides content.
+	const [overflowBelow, setOverflowBelow] = useState(false);
+	useEffect(() => {
+		const el = rootRef.current;
+		if (!el || !active) return;
+		const measure = () => setOverflowBelow(el.scrollHeight - el.clientHeight - el.scrollTop > 8);
+		measure();
+		el.addEventListener("scroll", measure, { passive: true });
+		const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+		observer?.observe(el);
+		return () => {
+			el.removeEventListener("scroll", measure);
+			observer?.disconnect();
+		};
+	}, [active]);
+
 	// Keep the walked row visible (the question area scrolls internally).
 	useEffect(() => {
 		if (kbdIdx === null) return;
@@ -517,32 +526,19 @@ function QuestionDockForm({
 	}, [kbdIdx]);
 
 	const questionContent = <div ref={rootRef} data-testid="lesson-question" hidden={!active && !outgoingHeight} inert={!active} style={!active && outgoingHeight ? { height: outgoingHeight, maxHeight: outgoingHeight } : undefined} className={`${!active && outgoingHeight ? "dock-outgoing pointer-events-none absolute inset-x-0 top-0" : ""} select-text max-h-[var(--dock-question-max-h,50dvh)] min-h-0 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
-			<div data-session-find-root="" className="min-h-0 select-text px-4 pt-3">
-				<div className="mb-1 text-xs font-medium text-muted-foreground">
-					{toolName === "probe"
-						? "Question"
-						: toolName === "recall"
-							? "Recall"
-							: kind === "quiz"
-								? qd.questionType === "predict"
-									? "Prediction"
-									: "Check"
-									: kind === "explain"
-										? "Explain"
-											: "Question"}
-					{qd.mode === "multi-select" && " · select all that apply"}
-				</div>
-				<div className="mb-3 font-medium">
+			<div data-session-find-root="" className="min-h-0 select-text px-4 pt-0.5">
+				{qd.mode === "multi-select" && <div className="mb-1 text-sm font-medium text-ink-2">Select all that apply</div>}
+				<div className="mb-3">
 					<ToolContentResponse>{qd.question}</ToolContentResponse>
 				</div>
 				{qd.context && (
-					<div className="mb-3 text-sm text-muted-foreground">
+					<div className="mb-3 text-base text-muted-foreground [--lh-prose-size:15px]">
 						<ToolContentResponse>{qd.context}</ToolContentResponse>
 					</div>
 				)}
 
 				{qd.mode !== "text" && (
-					<div className="flex flex-col gap-1.5 pb-2 [--lh-prose-size:16px]" role={qd.mode === "multi-select" ? "group" : "radiogroup"}>
+					<div className="flex flex-col gap-1.5 pb-3 [--lh-prose-size:15px]" role={qd.mode === "multi-select" ? "group" : "radiogroup"}>
 						{qd.options.map((opt, i) => {
 							const isSel = sel.selected.has(i);
 							return (
@@ -554,16 +550,16 @@ function QuestionDockForm({
 									data-kbdrow={i}
 									onClick={() => toggle(i)}
 									className={cn(
-										"flex items-start gap-3 rounded-lg border px-3 py-1.5 text-left text-[16px] leading-6 outline-none transition-colors",
-										isSel ? "border-primary bg-accent" : "hover:bg-accent/50",
-										i === kbdIdx && !isSel && "ring-1 ring-border bg-accent/40",
+										"flex min-h-11 items-start gap-3 rounded-sm border px-3.5 py-2.5 text-left text-base leading-[22px] outline-none transition-colors",
+										isSel ? "border-primary bg-primary/10 text-foreground" : "border-input text-ink-2 hover:bg-accent hover:text-foreground",
+										i === kbdIdx && !isSel && "bg-accent text-foreground",
 									)}
 								>
 									<span
 										className={cn(
-											"mt-1 flex size-4 shrink-0 items-center justify-center border",
-											qd.mode === "multi-select" ? "rounded-sm" : "rounded-full",
-											isSel ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground/40",
+											"mt-[3px] flex size-4 shrink-0 items-center justify-center border-[1.5px]",
+											qd.mode === "multi-select" ? "rounded-[4px]" : "rounded-full",
+											isSel ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground",
 										)}
 									>
 										{isSel && (
@@ -582,7 +578,7 @@ function QuestionDockForm({
 											// records must not leak either. Same MessageResponse path as the
 											// label (owner, 2026-10-12): descriptions are full markdown —
 											// LaTeX included — not plain text.
-											<ToolContentResponse className="lh-prose block text-xs text-muted-foreground">
+											<ToolContentResponse className="lh-prose block text-sm text-muted-foreground">
 												{opt.description}
 											</ToolContentResponse>
 										)}
@@ -590,36 +586,6 @@ function QuestionDockForm({
 								</button>
 							);
 						})}
-
-						{kind === "quiz" && (
-							<button
-								type="button"
-								onClick={() =>
-									setSel((prev) => ({ ...prev, selected: new Set(), otherSelected: false, dontKnow: !prev.dontKnow }))
-								}
-								data-kbdrow={optionCount}
-								aria-pressed={sel.dontKnow}
-								className={cn(
-									// Option-row layout + radio circle (owner); the dashed
-									// outline stays — this is the deliberate non-answer.
-									"flex items-start gap-3 rounded-lg border border-dashed px-3 py-1.5 text-left text-sm leading-6 outline-none transition-colors",
-									sel.dontKnow ? "border-primary text-foreground" : "text-muted-foreground",
-									kbdIdx === optionCount && !sel.dontKnow && "ring-1 ring-border bg-accent/40",
-								)}
-							>
-								<span
-									className={cn(
-										"mt-1 flex size-4 shrink-0 items-center justify-center rounded-full border",
-										sel.dontKnow
-											? "border-primary bg-primary text-primary-foreground"
-											: "border-muted-foreground/40",
-									)}
-								>
-									{sel.dontKnow && <span className="size-1.5 rounded-full bg-current" />}
-								</span>
-								<span>I don't know</span>
-							</button>
-						)}
 
 						{kind === "ask" && (
 							<div
@@ -629,18 +595,18 @@ function QuestionDockForm({
 								data-kbdrow={optionCount}
 								onClick={selectOther}
 								className={cn(
-									"flex items-start gap-3 rounded-lg border px-3 py-1.5 text-left text-[16px] leading-6 outline-none transition-colors",
-									sel.otherSelected ? "border-primary bg-accent" : "border-dashed hover:bg-accent/50",
-									kbdIdx === optionCount && !sel.otherSelected && "ring-1 ring-border bg-accent/40",
+									"flex min-h-11 items-start gap-3 rounded-sm border px-3.5 py-2.5 text-left text-base leading-[22px] outline-none transition-colors",
+									sel.otherSelected ? "border-primary bg-primary/10" : "border-input hover:bg-accent",
+									kbdIdx === optionCount && !sel.otherSelected && "bg-accent",
 								)}
 							>
 								<span
 									className={cn(
-										"mt-1 flex size-4 shrink-0 items-center justify-center border",
-										qd.mode === "multi-select" ? "rounded-sm" : "rounded-full",
+										"mt-[3px] flex size-4 shrink-0 items-center justify-center border-[1.5px]",
+										qd.mode === "multi-select" ? "rounded-[4px]" : "rounded-full",
 										sel.otherSelected
 											? "border-primary bg-primary text-primary-foreground"
-											: "border-muted-foreground/40",
+											: "border-muted-foreground",
 									)}
 								>
 									{sel.otherSelected && (
@@ -697,21 +663,20 @@ function QuestionDockForm({
 				(the dock machine above). "I don't know" greys them out and no
 				value is sent. */}
 			{kind === "quiz" && (
-				<div className="flex shrink-0 flex-col items-stretch gap-2 px-4 py-2.5">
+				<div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 px-4 pb-4">
 					<span
-						className={cn(
-							"shrink-0 text-xs font-medium",
-							sel.dontKnow ? "text-muted-foreground/50" : "text-muted-foreground",
-						)}
+						id={`${toolCallId}-confidence`}
+						className={cn("shrink-0 text-sm font-medium", sel.dontKnow ? "text-muted-foreground" : "text-ink-2")}
 					>
 						Confidence
 					</span>
 					<div
 						role="radiogroup"
+						aria-labelledby={`${toolCallId}-confidence`}
 						aria-label="Confidence that your selected answer is correct"
 						data-testid="confidence-segments"
 						className={cn(
-							"grid min-w-0 flex-1 grid-cols-2 gap-1 sm:grid-cols-4 rounded-md bg-muted p-0.5",
+							"grid min-w-0 flex-[1_1_320px] grid-cols-2 gap-0.5 rounded-[8px] bg-background p-[3px] sm:grid-cols-4",
 							sel.dontKnow && "pointer-events-none opacity-40",
 						)}
 					>
@@ -725,23 +690,55 @@ function QuestionDockForm({
 								title={`${CONFIDENCE_STOPS[i]}% sure. Adjust with ←/→.`}
 								onClick={() => setConfIdx(i)}
 								className={cn(
-									"min-h-11 whitespace-normal rounded px-2 py-2 text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
+									"min-h-9 whitespace-normal rounded-sm px-2 py-1.5 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:min-h-11",
 									!sel.dontKnow && confIdx === i
-										? "bg-accent font-medium text-foreground"
-										: "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+										? "bg-accent font-semibold text-foreground"
+										: "font-medium text-ink-2 hover:bg-accent hover:text-foreground",
 								)}
 							>
 								{label}
 							</button>
 						))}
 					</div>
+					{/* The deliberate non-answer: a text button, still the last
+					    keyboard row after the options (↑/↓ walk unchanged). */}
+					<button
+						type="button"
+						onClick={() =>
+							setSel((prev) => ({ ...prev, selected: new Set(), otherSelected: false, dontKnow: !prev.dontKnow }))
+						}
+						data-kbdrow={optionCount}
+						aria-pressed={sel.dontKnow}
+						className={cn(
+							"min-h-9 shrink-0 rounded-sm px-2 text-sm font-medium underline decoration-[rgb(255_252_240/25%)] underline-offset-[3px] outline-none transition-colors pointer-coarse:min-h-11",
+							sel.dontKnow ? "bg-primary/10 text-primary decoration-current" : "text-ink-2 hover:text-foreground",
+							kbdIdx === optionCount && !sel.dontKnow && "bg-accent text-foreground",
+						)}
+					>
+						I don't know
+					</button>
 				</div>
 			)}
 
 	</div>;
 	return (
 		<div data-testid="question-dock" className="flex min-h-0 flex-col">
+			{active && (
+				<TurnStrip kind={turnKind(toolName, kind, qd.questionType)}>
+					<span className="flex-1" />
+					{onCollapse && (
+						<button type="button" aria-label="Collapse question" onClick={onCollapse} className="ui-icon-button size-9">
+							<ChevronDownIcon aria-hidden="true" className="ui-icon" />
+						</button>
+					)}
+				</TurnStrip>
+			)}
 			{questionContent}
+			{active && overflowBelow && (
+				<div aria-hidden="true" className="pointer-events-none relative -mt-10 h-10 bg-linear-to-b from-transparent to-card">
+					<span className="absolute right-4 bottom-1.5 rounded-sm bg-accent px-2 py-0.5 text-sm font-medium text-ink-2">More below</span>
+				</div>
+			)}
 
 			{/* The learner's half of the dock — a composer TWIN: a labeled, bordered
 			    field with Submit docked inside, exactly like the chat composer's
@@ -761,8 +758,10 @@ function QuestionDockForm({
 					// Text and controls sit directly on the prompt shell.
 					className="flex flex-col"
 				>
+					<AnswerWell label={qd.mode === "text" ? "Your answer" : "Your thinking"} htmlFor={`${toolCallId}-answer`}>
 					{qd.mode === "text" ? (
 						<textarea
+							id={`${toolCallId}-answer`}
 							aria-label="Your answer"
 							placeholder="Your answer"
 							value={text}
@@ -779,11 +778,12 @@ function QuestionDockForm({
 								}
 							}}
 							rows={1}
-							className="prompt-input field-sizing-content lh-input max-h-48 min-h-11 w-full resize-none bg-transparent px-4 pt-3 pb-1 outline-none"
+							className="prompt-input field-sizing-content lh-input max-h-48 min-h-10 w-full resize-none bg-transparent px-3 pt-1 pb-2.5 outline-none"
 						/>
 					) : (
 						<textarea
 							ref={thinkingRef}
+							id={`${toolCallId}-answer`}
 							aria-label="Your thinking"
 							placeholder="Your thinking"
 							value={thinking}
@@ -801,15 +801,16 @@ function QuestionDockForm({
 								}
 							}}
 							rows={1}
-							className="prompt-input field-sizing-content lh-input max-h-48 min-h-11 w-full resize-none bg-transparent px-4 pt-3 pb-1 outline-none"
+							className="prompt-input field-sizing-content lh-input max-h-48 min-h-10 w-full resize-none bg-transparent px-3 pt-1 pb-2.5 outline-none"
 						/>
 					)}
-					{compactionRunning && <div role="status" className="px-4 pb-2 text-xs text-muted-foreground">Compacting session…</div>}
+					</AnswerWell>
+					{compactionRunning && <div role="status" className="px-4 pt-2 text-sm text-muted-foreground">Compacting session…</div>}
 					<PromptToolbar controls={controls}>
-						<PromptSubmit
-							label="Submit answer"
-							disabled={!canSubmit || compactionRunning}
-						/>
+						<span aria-hidden="true" className="prompt-hint max-sm:hidden">↵</span>
+						<PrimaryAction aria-label="Submit answer" disabled={!canSubmit || compactionRunning}>
+							Submit answer
+						</PrimaryAction>
 					</PromptToolbar>
 				</div>
 			</form>

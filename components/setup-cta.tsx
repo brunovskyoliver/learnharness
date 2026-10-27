@@ -42,22 +42,27 @@ export function useZeroKeys(): boolean {
 	return catalog ? !catalog.providers.some((provider) => provider.keyPresent) : false;
 }
 
-/** The pill itself — the models CTA's chrome and placement, the keys
- *  chain's copy. testid "setup-cta-keys" (the models CTA keeps
+/** The keys setup action. It sits in the prompt toolbar in place of the
+ *  model controls (feature 001); `inline` is kept for callers that place it
+ *  themselves. testid "setup-cta-keys" (the models action keeps
  *  "setup-cta"; probes can tell them apart). */
-export function ZeroKeysPill({ onOpen, inline = false }: { onOpen: () => void; inline?: boolean }) {
-	const button = (
-		<button
-			type="button"
-			data-testid="setup-cta-keys"
-			onClick={onOpen}
-			className="rounded-sm border border-border bg-card px-3 py-1.5 font-ui text-xs text-foreground transition-colors hover:border-muted-foreground/50 hover:bg-accent cursor-pointer"
-		>
+export function ZeroKeysPill({ onOpen }: { onOpen: () => void; inline?: boolean }) {
+	return (
+		<button type="button" data-testid="setup-cta-keys" onClick={onOpen} className="prompt-setup">
 			Add a provider key
 		</button>
 	);
-	return inline ? button : <div className="pointer-events-auto mb-2 flex justify-center">{button}</div>;
 }
+
+/** The models setup action: keys exist, but no model slots are set. */
+export function SetupModelsButton({ onOpen }: { onOpen: () => void }) {
+	return (
+		<button type="button" data-testid="setup-cta" onClick={onOpen} className="prompt-setup">
+			Set up your models
+		</button>
+	);
+}
+
 /** Pure: the strong slot is pinned to a provider whose key is GONE (owner
  *  interlude, 2026-09-25 — the original deleted-key scenario). The catalog
  *  already knows both halves: slots.strong is the resolved pin, providers[]

@@ -343,7 +343,7 @@ export function SessionRow({
 			aria-current={active ? "page" : undefined}
 			className={cn(
 				"group flex h-9 w-full shrink-0 items-center gap-2.5 rounded-md px-2.5 text-left text-sm transition-colors hover:bg-accent",
-				active ? "bg-accent text-foreground" : "text-foreground/85",
+				active ? "bg-accent text-foreground" : "text-ink-2",
 				kbdSelected && !active && "bg-accent ring-1 ring-inset ring-ring/30",
 			)}
 		>
@@ -354,7 +354,7 @@ export function SessionRow({
 			{(chat.busy || chat.compacting || waiting) && <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground">
 				{chat.busy || chat.compacting ? <SessionStatus busy /> : <MessageCircleQuestionIcon className="ui-icon" aria-label="Waiting for you" />}
 			</span>}
-			<span suppressHydrationWarning className="shrink-0 text-xs tabular-nums text-muted-foreground">{shortAgo(chat.updatedAt)}</span>
+			<span suppressHydrationWarning className="shrink-0 text-sm tabular-nums text-muted-foreground">{shortAgo(chat.updatedAt)}</span>
 		</a>
 	);
 }
@@ -856,7 +856,7 @@ function SessionsSidebar({ account, initialChats }: { account?: React.ReactNode;
 							const group = query.trim() || !hydrated ? null : dateGroup(c.updatedAt);
 							const header =
 								group !== null && (i === 0 || dateGroup(shown[i - 1]!.updatedAt) !== group) ? (
-									<div className="flex h-8 shrink-0 items-center gap-2 px-2.5 pt-1 text-xs font-medium text-muted-foreground" data-testid="session-group">
+									<div className="flex h-8 shrink-0 items-center gap-2 px-2.5 pt-1 text-sm font-medium text-muted-foreground" data-testid="session-group">
 										{group}
 										<span className="flex-1" aria-hidden="true" />
 										<span className="tabular-nums">{shown.filter((x) => dateGroup(x.updatedAt) === group).length}</span>
@@ -908,7 +908,7 @@ function SessionsSidebar({ account, initialChats }: { account?: React.ReactNode;
 					anchorRef={filterRef}
 					testid="kind-filter-menu"
 					preferredSide="down"
-					menuClass="flex w-44 flex-col gap-0.5 rounded-lg border border-border bg-card p-1 text-sm shadow-xl"
+					menuClass="flex w-44 flex-col gap-0.5 rounded-lg border border-border bg-card p-1 text-sm "
 				>
 					{(
 						[
@@ -944,7 +944,7 @@ function SessionsSidebar({ account, initialChats }: { account?: React.ReactNode;
 						anchorRef={ctxAnchorRef}
 						testid="session-context-menu"
 						preferredSide="down"
-						menuClass="flex w-52 flex-col gap-0.5 rounded-xl border bg-card p-2 text-xs shadow-xl"
+						menuClass="flex w-52 flex-col gap-0.5 rounded-xl border bg-card p-2 text-sm "
 					>
 						{/* The two management actions first, then the extraction block
 						    (owner refinement round, 2026-09-24): Rename/Delete stay at the
@@ -993,7 +993,7 @@ function SessionsSidebar({ account, initialChats }: { account?: React.ReactNode;
 								if (target) setDeleting(target);
 								setCtxChatId(null);
 							}}
-							className="flex items-center rounded-lg px-2.5 py-1.5 text-left text-muted-foreground/80 transition-colors hover:bg-accent hover:text-foreground"
+							className="flex items-center rounded-lg px-2.5 py-1.5 text-left text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 						>
 							Delete…
 						</button>

@@ -77,7 +77,7 @@ describe("DraftShell — the sessionless surface", () => {
 		assert.ok(/prompt-shell[^>]*pointer-events-auto/.test(html));
 	});
 
-	it("renders the setup CTA above the composer blob when passed (fix wave chunk B: /chat/new mirrors home)", () => {
+	it("renders the setup CTA inside the composer toolbar when passed (feature 001: /chat/new mirrors home)", () => {
 		const html = renderToStaticMarkup(
 			<DraftShell
 				busy={false}
@@ -91,14 +91,14 @@ describe("DraftShell — the sessionless surface", () => {
 				}
 			/>,
 		);
-		// The same affordance home carries, above the draft shell's blob.
+		// The same affordance home carries, in the prompt toolbar.
 		assert.ok(html.includes('data-testid="setup-cta"'));
 		assert.match(html, />Set up your models<\/button>/);
 		assert.doesNotMatch(html, /chats start after/);
-		// Above the composer: the CTA's markup precedes the blob's.
+		// Inside the composer: the CTA's markup follows the blob's opening.
 		const cta = html.indexOf('data-testid="setup-cta"');
 		const blob = html.search(/prompt-shell[^>]*pointer-events-auto/);
-		assert.ok(cta !== -1 && blob !== -1 && cta < blob, "CTA above the blob");
+		assert.ok(cta !== -1 && blob !== -1 && cta > blob, "CTA inside the blob's toolbar");
 	});
 
 	it("no chat id anywhere — nothing in the markup references a session", () => {

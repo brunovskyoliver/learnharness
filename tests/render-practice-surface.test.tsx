@@ -180,8 +180,8 @@ describe("the practice transcript cards", () => {
 		// all-in — owner round two, 2026-10-07).
 		assert.match(trace, /aria-expanded="true"/);
 		assert.ok(trace.includes("stuck at step two"), "the text is visible on arrival");
-		assert.ok(trace.includes("bg-card"), "the card-color band");
-		assert.ok(trace.includes("border-l-[calc(3ch-14px)]"), "narrow rail inside the 3ch inset");
+		assert.ok(trace.includes("lh-reading"), "on the reading edge (feature 001)");
+		assert.ok(!trace.includes("border-l"), "no side rail");
 		const legacy = renderToStaticMarkup(<ThinkingCard data={{ problemCallId: "c", commit: true, text: "It is 42." }} />);
 		assert.match(legacy, /Your thinking/);
 		assert.doesNotMatch(legacy, /Your solution/);

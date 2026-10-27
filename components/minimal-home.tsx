@@ -75,7 +75,7 @@ export function KnowledgeSummary({
 				{importedNotes} {importedNotes === 1 ? "imported note" : "imported notes"}
 			</p>
 			{empty && (
-				<p className="pt-2 font-ui text-xs text-muted-foreground/70">
+				<p className="pt-2 font-ui text-sm text-muted-foreground">
 					Nothing here yet — import notes to begin building the graph.
 				</p>
 			)}
@@ -224,27 +224,27 @@ export function MinimalHome({
 			    entry law). */}
 			<div className="lh-no-drag lh-wco-floating absolute right-2 top-2 z-10 flex max-w-[calc(100%-5.5rem)] flex-col items-end gap-2">
 				<div className="flex min-w-0 items-start gap-2">
-					<div className="graph-chrome-fade-in shrink-0 rounded-xl border bg-card px-1 py-[3px] shadow-sm">
+					<div className="graph-chrome-fade-in shrink-0 rounded-xl border bg-card px-1 py-[3px] ">
 						<Hint label="Every reasoning chain" side="bottom">
 							<button
 								type="button"
 								onClick={() => setChainsOpen(true)}
 								data-testid="open-chain-table"
-								className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground transition-colors hover:bg-accent"
+								className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent"
 							>
 								<ListTreeIcon className="size-4" />
 								Chains
 							</button>
 						</Hint>
 					</div>
-					<div className="shrink-0 rounded-xl border bg-card px-1 py-[3px] shadow-sm">
+					<div className="shrink-0 rounded-xl border bg-card px-1 py-[3px] ">
 						<Hint label="Import notes into the graph" side="bottom">
 							<button
 								type="button"
 								disabled={importing}
 								onClick={() => fileInputRef.current?.click()}
 								data-testid="import-notes"
-								className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground transition-colors hover:bg-accent disabled:opacity-50"
+								className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent disabled:opacity-50"
 							>
 								<UploadIcon className="size-4" />
 								{importing ? "Importing…" : "Import notes…"}

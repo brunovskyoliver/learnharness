@@ -75,7 +75,7 @@ export function SubagentSteerCard({ message }: { message: LhViewMessage }) {
  * this just marks what happened. */
 function AbortedBadge({ kind }: { kind: string }) {
 	return (
-		<div data-testid="job-aborted-badge" className="flex items-center gap-2 text-xs text-muted-foreground">
+		<div data-testid="job-aborted-badge" className="flex items-center gap-2 text-sm text-muted-foreground">
 			<CircleX className="size-3.5" />
 			<span className="font-medium">{kind}</span>
 			<span>aborted by the learner</span>
@@ -92,7 +92,7 @@ function PdfCompleteBadge({ result }: { result: PdfResult }) {
 	// the ?? is runtime tolerance for pre-split persisted steers.
 	const readPages = result.pagesRead ?? result.pagesConsulted;
 	return (
-		<SessionDetails data-testid="pdf-complete-badge" className="group w-full text-xs text-muted-foreground">
+		<SessionDetails data-testid="pdf-complete-badge" className="group w-full text-sm text-muted-foreground">
 			<summary className="flex cursor-pointer select-none list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
 				<CheckIcon className="size-3.5" />
 				<span className="font-medium">PDF</span>
@@ -102,8 +102,8 @@ function PdfCompleteBadge({ result }: { result: PdfResult }) {
 						· read {readPages.length} page{readPages.length === 1 ? "" : "s"}
 					</span>
 				)}
-				<span className="ml-1 text-xs text-muted-foreground/70 group-open:hidden">view brief</span>
-				<span className="ml-1 hidden text-xs text-muted-foreground/70 group-open:inline">hide brief</span>
+				<span className="ml-1 text-sm text-muted-foreground group-open:hidden">view brief</span>
+				<span className="ml-1 hidden text-sm text-muted-foreground group-open:inline">hide brief</span>
 			</summary>
 			<div className="mt-2">
 				<PdfBriefCard output={result} />
@@ -119,14 +119,14 @@ function PdfCompleteBadge({ result }: { result: PdfResult }) {
  * the artifact part in the record is the single source of truth. */
 function ResearchCompleteBadge({ result }: { result: ResearchResult }) {
 	return (
-		<SessionDetails data-testid="research-complete-badge" className="group w-full text-xs text-muted-foreground">
+		<SessionDetails data-testid="research-complete-badge" className="group w-full text-sm text-muted-foreground">
 			<summary className="flex cursor-pointer select-none list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
 				<CheckIcon className="size-3.5" />
 				<span className="font-medium">Research</span>
 				<span>complete</span>
 				{result.sources.length > 0 && <span>· {result.sources.length} sources</span>}
-				<span className="ml-1 text-xs text-muted-foreground/70 group-open:hidden">view brief</span>
-				<span className="ml-1 hidden text-xs text-muted-foreground/70 group-open:inline">hide brief</span>
+				<span className="ml-1 text-sm text-muted-foreground group-open:hidden">view brief</span>
+				<span className="ml-1 hidden text-sm text-muted-foreground group-open:inline">hide brief</span>
 			</summary>
 			<div className="mt-2">
 				<ResearchBriefCard output={result} />

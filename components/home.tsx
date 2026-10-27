@@ -10,7 +10,7 @@ import { GraphView } from "@/components/graph-view";
 const MinimalHome = dynamic(() => import("@/components/minimal-home").then((module) => module.MinimalHome));
 import { LazySetupDialog as SetupDialog } from "@/components/lazy-setup-dialog";
 import { ComposerActions, NodePickerControl } from "@/components/composer-actions";
-import { useStrongKeyless, useZeroKeys, ZeroKeysPill } from "@/components/setup-cta";
+import { SetupModelsButton, useStrongKeyless, useZeroKeys, ZeroKeysPill } from "@/components/setup-cta";
 import { useFieldCycle } from "@/components/field-cycle";
 import { SidebarToggle } from "@/components/sidebar";
 import { StatsBar } from "@/components/stats-bar";
@@ -203,20 +203,6 @@ export function Home({
 								onClear={() => setPracticeProps([])}
 							/>
 						)}
-						setup={zeroKeys ? (
-							<ZeroKeysPill inline onOpen={() => setSetupOpen(true)} />
-						) : (
-							!configured && (
-								<button
-									type="button"
-									data-testid="setup-cta"
-									onClick={() => setSetupOpen(true)}
-									className="rounded-sm border border-border bg-card px-3 py-1.5 font-ui text-xs text-foreground transition-colors hover:border-muted-foreground/50 hover:bg-accent cursor-pointer"
-								>
-									Set up your models
-								</button>
-							)
-						)}
 					/>
 					<div className="prompt-shell pointer-events-auto">
 						<Composer
@@ -236,8 +222,13 @@ export function Home({
 							controls={
 								<StatsBar
 									turns={[]}
+									setup={zeroKeys ? (
+										<ZeroKeysPill onOpen={() => setSetupOpen(true)} />
+									) : !configured ? (
+										<SetupModelsButton onOpen={() => setSetupOpen(true)} />
+									) : undefined}
 									leadingSlot={
-										<div className="flex h-8 items-center gap-0.5 rounded-lg bg-white/[0.04] p-0.5" data-testid="home-mode-switch">
+										<div className="flex h-9 items-center gap-0.5 rounded-[8px] bg-background p-[3px]" data-testid="home-mode-switch">
 											{(["teach", "practice"] as const).map((m) => (
 												<button
 													key={m}
@@ -246,10 +237,10 @@ export function Home({
 													onClick={() => setMode(m)}
 													aria-pressed={mode === m}
 													className={
-														"flex h-7 items-center gap-1.5 rounded-md px-2 text-xs transition-colors sm:px-2.5 " +
+														"flex h-[30px] items-center gap-1.5 rounded-sm px-2 text-sm font-medium transition-colors sm:px-3 " +
 														(mode === m
 															? "bg-accent text-foreground"
-															: "text-muted-foreground hover:text-foreground")
+															: "text-ink-2 hover:text-foreground")
 													}
 												>
 													{/* Narrow screens: icons only (the sidebar's session

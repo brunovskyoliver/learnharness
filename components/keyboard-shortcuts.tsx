@@ -162,19 +162,19 @@ function CheatSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
 			{...backdropDismiss}
 		>
 			<div
-				className="max-h-[80vh] w-full max-w-[36rem] overflow-y-auto rounded-xl border bg-card p-5 shadow-2xl"
+				className="max-h-[80vh] w-full max-w-[36rem] overflow-y-auto rounded-xl border bg-card p-5 "
 				onClick={(e) => e.stopPropagation()}
 			>
 				<div className="mb-4 flex items-baseline justify-between">
 					<span className="text-sm font-medium text-card-foreground">Keyboard shortcuts</span>
-					<span className="text-xs text-muted-foreground">Esc to close</span>
+					<span className="text-sm text-muted-foreground">Esc to close</span>
 				</div>
 				{scopes.map((scope) => {
 					const actions = KEYBOARD_ACTIONS.filter((a) => a.scope === scope);
 					if (actions.length === 0) return null;
 					return (
 						<div key={scope} className="mb-4">
-							<div className="mb-1.5 text-xs text-muted-foreground/70">
+							<div className="mb-1.5 text-sm text-muted-foreground">
 								{scopeLabels[scope]}
 							</div>
 							<div className="flex flex-col gap-1">

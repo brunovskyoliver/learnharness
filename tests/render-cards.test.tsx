@@ -213,7 +213,7 @@ describe("render smoke tests", () => {
 				options: [{ label: "Physics" }, { label: "Philosophy" }],
 			} as never,
 		});
-		assert.match(html, /select all that apply/);
+		assert.match(html, /select all that apply/i);
 		assert.ok(html.includes('role="group"'), "checkbox group");
 		assert.ok((html.match(/role="checkbox"/g) ?? []).length >= 3, "options AND the Other row are checkboxes");
 		assert.ok(html.includes('data-testid="other-option"'), "Other is still an option row in multi-select");
@@ -330,11 +330,8 @@ describe("render smoke tests", () => {
 		// accent lift read too light — rail only, heights match everywhere.
 		const yourRow = html.slice(html.indexOf('data-testid="your-thinking"'));
 		assert.ok(!yourRow.slice(0, 400).includes("bg-card") && !yourRow.slice(0, 400).includes("bg-accent"), "no band inside the card");
-		// THE RAIL GROUPS (owner correction): the label sits INSIDE the rail —
-		// ownership readable from the rail alone, collapsed or expanded.
-		const railAt = html.indexOf("border-l-[calc(3ch-14px)]");
-		const trigAt = html.indexOf("your-thinking-trigger");
-		assert.ok(railAt !== -1 && railAt < trigAt, "the rail opens before the label (same quote)");
+		// No side rail (feature 001): the label and ink carry ownership.
+		assert.ok(!yourRow.slice(0, 400).includes("border-l"), "no side border on the thinking row");
 		assert.ok(!html.includes("brightness isn&#x27;t distance"), "the text is hidden until expanded");
 		assert.ok(!html.includes("Note:"), "no longer a muted 'Note:' footnote");
 		// The thinking sits ABOVE the verdict's explanation — the dialogue of
@@ -444,7 +441,8 @@ describe("teach-check reveal (W5 phase separation)", () => {
 		assert.ok(html.includes('data-testid="teach-check-reveal"'), "invitation affordance present");
 		assert.match(html, /Check your understanding/);
 		assert.match(html, /Which planet is closest/, "question teaser invites, not minimizes");
-		assert.match(html, /Open/, "a clear reveal action");
+		assert.match(html, /Your turn/, "the turn strip says whose turn it is");
+		assert.match(html, />Answer</, "a clear reveal action");
 	});
 
 	it("probe questions keep the plain collapsed bar (no invitation copy)", () => {
@@ -669,7 +667,7 @@ describe("predict vs check rendering", () => {
 				onSubmit={() => {}}
 			/>,
 		);
-		assert.ok(html.includes("Check"), "the chip carries the question's type");
+		assert.ok(html.includes("Lesson check"), "the turn strip carries the question's type");
 		assert.ok(!html.includes(">Quiz<"), "the generic label is retired");
 	});
 

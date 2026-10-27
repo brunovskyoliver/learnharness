@@ -1,5 +1,12 @@
 <!--
 Sync Impact Report
+- Version change: 1.0.0 → 1.1.0 (MINOR, 2026-10-27, feature 001)
+- Modified: Technology and interface constraints, theme line. "T3 Code's default web dark theme"
+  becomes "Study ink, as defined in DESIGN.md" (owner approval: numbered question, 2026-10-27).
+- Templates: none changed. DESIGN.md, PRODUCT.md and docs/ui-review.md updated in feature 001.
+- Resolved TODO: "I don't know" no longer renders in monospace (now a sans text button).
+
+Previous report (1.0.0):
 - Version change: template → 1.0.0 (initial ratification)
 - Principles added: I Owner decides; II Teaching theory first; III Learner data is never lost;
   IV Honest states; V Consent before cost; VI Interface follows DESIGN.md;
@@ -14,7 +21,7 @@ Sync Impact Report
 - Follow-up TODOs:
   - TODO(PERF_BASELINE): record final numbers from .scratch/performance-ui/plan.md once that work lands.
   - Resolve code vs. DESIGN.md conflicts: sidebar group hairline (components/sidebar.tsx:585);
-    monospace on names in delete dialogs and "I don't know" text.
+    monospace on names in delete dialogs.
 -->
 
 # Brunovský's study Constitution
@@ -141,8 +148,8 @@ bypass the theory erode that.
   and a measured startup cost.
 - Persistence is file-backed JSON/JSONL through store adapters. No database is introduced without
   owner approval.
-- Theme: T3 Code's default web dark theme at the revision pinned in DESIGN.md. Saved custom
-  backgrounds and reading preferences are preserved.
+- Theme: Study ink, as defined in DESIGN.md. Saved custom backgrounds and reading preferences are
+  preserved.
 - Recommended skills when relevant: `accessibility` (WCAG 2.2, live regions),
   `vercel-react-best-practices` (rendering and bundle work), `tdd`, `diagnosing-bugs`,
   `writing-for-agents` (AGENTS.md and skills), `unslop` (user-facing prose).
@@ -176,4 +183,4 @@ bypass the theory erode that.
   owner approved. `speckit-analyze` treats a constitution conflict as CRITICAL.
 - When a rule here turns out wrong in practice, stop and ask; do not work around it.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-27 | **Last Amended**: 2026-10-27
+**Version**: 1.1.0 | **Ratified**: 2026-10-27 | **Last Amended**: 2026-10-27

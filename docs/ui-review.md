@@ -17,7 +17,7 @@ Open [localhost:3000](http://localhost:3000). The sidebar lists four threads pre
 
 The gradient demo runs locally without a model. Try 0.08 and 0.3, reset between runs, focus a graph, rotate its camera and close with Escape. The path, history and parameters should survive presentation changes. Sending an answer or requesting another problem uses the app's configured provider normally. Seeding and viewing the examples do not invoke a model.
 
-Open Settings from the sidebar to inspect searchable categories, grouped fields, narrow layouts and the live reading preview. Changes in Settings persist immediately. Model/reasoning controls are behind the composer's Options trigger. Escape closes a child menu before its parent; Tab traverses settings controls within the dialog.
+Open Settings from the sidebar to inspect searchable categories, grouped fields, narrow layouts and the live reading preview. Changes in Settings persist immediately. Model, reasoning and usage controls sit directly in the prompt toolbar; without a provider key the toolbar shows "Add a provider key" instead. Escape closes a child menu before its parent; Tab traverses settings controls within the dialog.
 
 ## Keeping examples for later
 
@@ -35,7 +35,7 @@ The knowledge-check and practice examples derive from checked-in golden records.
 
 ## Current UI and checks
 
-[DESIGN.md](../DESIGN.md) describes the current interface: the T3 Code black theme, consistent session icons and 52px headers, a composer with direct model, reasoning and usage controls, and responsive settings. [PRODUCT.md](../PRODUCT.md) describes the product scope.
+[DESIGN.md](../DESIGN.md) describes the current interface: the Study ink theme, consistent session icons and 52px headers, the four-zone prompt bar with direct model, reasoning and usage controls, and responsive settings. [PRODUCT.md](../PRODUCT.md) describes the product scope.
 
 ```sh
 npx tsx --test tests/review-seed.test.ts

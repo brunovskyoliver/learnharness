@@ -140,7 +140,7 @@ export function DeleteSessionDialog({
 					event.stopPropagation();
 				}
 			}}
-			className="fixed inset-0 z-50 flex items-center justify-center bg-background/80"
+			className="fixed inset-0 z-50 flex items-center justify-center bg-background"
 			{...backdropDismiss}
 		>
 			<DeleteSessionBody
@@ -184,7 +184,7 @@ export function DeleteSessionBody({
 			aria-label="Delete session"
 			data-testid="delete-session-dialog"
 			onClick={(e) => e.stopPropagation()}
-			className="w-[32rem] max-w-[calc(100vw-2rem)] rounded-xl border bg-card p-5 shadow-xl"
+			className="w-[32rem] max-w-[calc(100vw-2rem)] rounded-xl border bg-card p-5 "
 		>
 			<h2 className="text-sm font-semibold text-destructive">Delete session?</h2>
 			{/* The session name below the title in JetBrains Mono (owner,
@@ -215,14 +215,14 @@ export function DeleteSessionBody({
 				/>
 				<span className="min-w-0">
 					<span className="block text-sm text-foreground">{TRACES_COPY.title}</span>
-					<span className="mt-1 block text-xs text-muted-foreground">{TRACES_COPY.body}</span>
+					<span className="mt-1 block text-sm text-muted-foreground">{TRACES_COPY.body}</span>
 				</span>
 			</label>
 			{failure && (
 				<div
 					role="alert"
 					data-testid="delete-failure"
-					className="mt-3 rounded-sm border border-border/60 px-3 py-2 text-xs"
+					className="mt-3 rounded-sm border border-border/60 px-3 py-2 text-sm"
 				>
 					<span className="text-foreground">{failure.error}</span>
 					<button
@@ -230,7 +230,7 @@ export function DeleteSessionBody({
 						data-testid="delete-retry"
 						onClick={onRun}
 						disabled={busy}
-						className="ml-3 text-xs text-foreground underline-offset-2 hover:underline disabled:opacity-40"
+						className="ml-3 text-sm text-foreground underline-offset-2 hover:underline disabled:opacity-40"
 					>
 						Try again
 					</button>
@@ -245,7 +245,7 @@ export function DeleteSessionBody({
 					data-testid="delete-cancel"
 					onClick={onClose}
 					disabled={busy}
-					className="rounded-sm px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+					className="rounded-sm px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
 				>
 					Cancel
 				</button>
@@ -254,7 +254,7 @@ export function DeleteSessionBody({
 					data-testid="delete-confirm"
 					onClick={onRun}
 					disabled={busy}
-					className="rounded-sm border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-xs text-destructive transition-colors hover:bg-destructive/20 disabled:opacity-40"
+					className="rounded-sm border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-sm text-destructive transition-colors hover:bg-destructive/20 disabled:opacity-40"
 				>
 					{busy ? "Deleting…" : "Delete"}
 				</button>

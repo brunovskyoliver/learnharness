@@ -318,7 +318,7 @@ export function CoverageRing({ chatId, refreshKey = 0 }: { chatId: string; refre
 			{open && (
 				<div
 					data-testid="coverage-ring-popover"
-					className="absolute top-full right-0 z-40 mt-1.5 w-64 rounded-xl border bg-card p-3 text-xs shadow-xl"
+					className="absolute top-full right-0 z-40 mt-1.5 w-64 rounded-xl border bg-card p-3 text-sm "
 				>
 					<CoverageRingDetail coverage={coverage} chunkTokens={graph.chunkTokens} />
 				</div>
@@ -360,7 +360,7 @@ export function CoverageRingGlyph({ fill, running }: { fill: number; running: bo
 export function CoverageRingDetail({ coverage, chunkTokens }: { coverage: SessionCoverage; chunkTokens: number }) {
 	return (
 		<>
-			<div className="mb-2 text-xs font-medium text-muted-foreground">
+			<div className="mb-2 text-sm font-medium text-muted-foreground">
 				Extraction coverage
 			</div>
 			<div className="flex flex-col gap-1 text-muted-foreground">

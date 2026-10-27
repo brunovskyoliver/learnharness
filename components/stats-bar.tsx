@@ -40,6 +40,7 @@ export function StatsBarDetails({
 	pricing,
 	chatId,
 	leadingSlot,
+	setup,
 }: {
 	turns: TurnUsage[];
 	contextTokens?: number | null;
@@ -53,6 +54,9 @@ export function StatsBarDetails({
 	 *  composer's teach | practice switch rides here — before the session
 	 *  data (which renders nothing pre-chat on that surface). */
 	leadingSlot?: ReactNode;
+	/** No key or no models: the setup action takes the model controls'
+	 *  place (feature 001). Usage stays. */
+	setup?: ReactNode;
 }) {
 	const [open, setOpen] = useState(false);
 	const [selectedModel, setSelectedModel] = useState<string | undefined>();
@@ -113,9 +117,9 @@ export function StatsBarDetails({
 			// (so its transparent gradient area never blocks scrolling) — this row
 			// must re-enable events or every control on it is dead (the model-
 			// control wave caught this live: buttons rendered, clicks never landed).
-			className="pointer-events-auto relative flex min-h-11 min-w-0 flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground"
+			className="pointer-events-auto relative flex min-h-10 min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1 text-sm text-ink-2"
 		>
-			<ModelControl chatId={chatId} onModelChange={setSelectedModel} />
+			{setup ?? <ModelControl chatId={chatId} onModelChange={setSelectedModel} />}
 			{/* The summary button + its popover: the popover anchors to this
 			    wrapper, CENTERED over the button itself (owner, stats round 2)
 			    — not over the whole bar row, which made it line up oddly. The
@@ -128,7 +132,7 @@ export function StatsBarDetails({
 			{/* The left side: the session-data summary — only once a session
 			    exists (turns). Pre-chat renders nothing (see the header). */}
 			{(chatId || turns.length > 0) && (
-			<div ref={barRef} className="relative ml-2 sm:ml-auto">
+			<div ref={barRef} className="relative">
 				{/* No tooltip — the numbers describe themselves and the popover
 			    speaks on click (owner, subtlety round 2026-09-25). */}
 			<button
@@ -138,9 +142,14 @@ export function StatsBarDetails({
 				onPointerLeave={(e) => { if (e.pointerType === "mouse") unpeek(); }}
 				aria-expanded={open}
 				data-testid="stats-summary"
-				className="flex size-11 items-center justify-center rounded-full transition-colors hover:bg-accent hover:text-foreground"
+				className="flex min-h-10 items-center gap-1.5 rounded-sm px-2.5 font-mono text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground pointer-coarse:min-h-11"
 			>
 				<ContextRing fraction={fraction} />
+				{/* The percentage, visible (owner 2026-10-27); "?" when the
+				    limit is unknown, never 0%. */}
+				<span aria-hidden="true" data-testid="stats-usage-percent" className="tabular-nums">
+					{contextTokens !== null && limit !== null && limit > 0 ? `${Math.round(fraction * 100)}%` : "?"}
+				</span>
 				{/* The ring's figures, spoken: the bar shows only the gauge. */}
 				<span className="sr-only">
 					Session usage: context <span data-testid="stats-context">{contextLabel}</span>, <span data-testid="stats-cost">{costLabel}</span>
@@ -154,7 +163,7 @@ export function StatsBarDetails({
 						focusOnOpen={false}
 						onPointerEnter={peek}
 						onPointerLeave={unpeek}
-						menuClass="w-64 rounded-lg border bg-card p-3 text-sm shadow-xl"
+						menuClass="w-64 rounded-lg border bg-popover p-3 text-sm"
 					>
 						{/* Summary only (ui-v2): context, turns, tokens, usage. */}
 						<div className="mb-1.5 flex items-baseline justify-between gap-2">
@@ -163,7 +172,7 @@ export function StatsBarDetails({
 						</div>
 						{contextTokens !== null && limit !== null && limit > 0 && (
 							<div className="mb-3 h-1 overflow-hidden rounded-full bg-accent" aria-hidden>
-								<div className="h-full rounded-full bg-foreground/60" style={{ width: `${fraction * 100}%` }} />
+								<div className="h-full rounded-full bg-ink-2" style={{ width: `${fraction * 100}%` }} />
 							</div>
 						)}
 						<dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-muted-foreground">
@@ -203,7 +212,7 @@ function ContextRing({ fraction }: { fraction: number }) {
 	const c = 2 * Math.PI * r;
 	return (
 		<svg aria-hidden="true" data-testid="stats-context-meter" viewBox="0 0 16 16" className="size-4 -rotate-90">
-			<circle cx="8" cy="8" r={r} fill="none" stroke="var(--border)" strokeWidth="2" />
+			<circle cx="8" cy="8" r={r} fill="none" stroke="var(--input)" strokeWidth="2" />
 			<circle
 				cx="8"
 				cy="8"

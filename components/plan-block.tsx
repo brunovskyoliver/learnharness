@@ -456,16 +456,16 @@ const BOX: Record<PlanNodeStatus, string> = {
 	upcoming: "fill-card stroke-border",
 };
 const TEXT: Record<PlanNodeStatus, string> = {
-	visited: "fill-white text-xs",
-	current: "fill-white text-xs font-medium",
-	upcoming: "fill-muted-foreground/80 text-xs",
+	visited: "fill-white text-sm",
+	current: "fill-white text-sm font-medium",
+	upcoming: "fill-muted-foreground/80 text-sm",
 };
 // The in-chat block speaks the dock language now (owner, plan-hug
 // round 2026-10-07): boxes in the lighter background variant like
 // the composer/dock shells — but the outlines STAY white (owner
 // follow-up: the gray fill is good, white box edges).
 const MONO_BOX = "fill-card stroke-white";
-const MONO_TEXT = "fill-foreground text-xs";
+const MONO_TEXT = "fill-foreground text-sm";
 
 /** The diagram itself: positioned nodes + bezier edges. Pure-ish render —
  *  every input is data, so SSR render tests pin the whole thing. The root
@@ -867,7 +867,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 			// SESSION-SCOPED (absolute, not fixed): the chat page mounts this
 			// INSIDE the session-area div — below the drag bar, right of the
 			// sidebar. 80% + blur: the transcript ghosts through.
-			className="absolute inset-0 z-40 flex flex-col bg-background/80 p-4 backdrop-blur-sm"
+			className="absolute inset-0 z-40 flex flex-col bg-background p-4 "
 			role="dialog"
 			aria-modal="true"
 			aria-label="The full plan"
@@ -939,7 +939,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 									type="button"
 									aria-label="Zoom out"
 									onClick={() => stepZoom(1 / 1.25)}
-									className="pointer-events-auto flex size-7 items-center justify-center rounded-md border border-border/70 bg-card/80 text-muted-foreground backdrop-blur transition-colors hover:bg-accent hover:text-foreground"
+									className="pointer-events-auto flex size-7 items-center justify-center rounded-md border border-border/70 bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 								>
 									<MinusIcon className="size-3.5" />
 								</button>
@@ -950,7 +950,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 									aria-label="Fit plan to screen"
 									onClick={fitView}
 									data-testid="plan-popup-fit"
-									className="pointer-events-auto flex size-7 items-center justify-center rounded-md border border-border/70 bg-card/80 text-muted-foreground backdrop-blur transition-colors hover:bg-accent hover:text-foreground"
+									className="pointer-events-auto flex size-7 items-center justify-center rounded-md border border-border/70 bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 								>
 									<MaximizeIcon className="size-3.5" />
 								</button>
@@ -960,7 +960,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 									type="button"
 									aria-label="Zoom in"
 									onClick={() => stepZoom(1.25)}
-									className="pointer-events-auto flex size-7 items-center justify-center rounded-md border border-border/70 bg-card/80 text-muted-foreground backdrop-blur transition-colors hover:bg-accent hover:text-foreground"
+									className="pointer-events-auto flex size-7 items-center justify-center rounded-md border border-border/70 bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 								>
 									<PlusIcon className="size-3.5" />
 								</button>

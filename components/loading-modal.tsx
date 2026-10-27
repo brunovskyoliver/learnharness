@@ -41,8 +41,8 @@ export function LoadingModal({ label, children, onClose, busy = false, testid, c
  if (typeof document === "undefined") return null;
  return createPortal(
   <dialog ref={ref} role="dialog" aria-labelledby={title} aria-busy={busy} onCancel={(event) => { event.preventDefault(); if (!busy) onClose(); }} className="pointer-events-auto fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none border-0 bg-transparent p-0 text-foreground outline-none backdrop:bg-transparent">
-   <div className="fixed inset-0 bg-background/80" {...backdrop} />
-   <div data-lh-modal-content data-testid={testid} className={className ?? "fixed inset-4 m-auto h-fit max-h-[calc(100dvh-2rem)] w-full max-w-[min(32rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-border bg-background p-5 shadow-2xl outline-none"}>
+   <div className="fixed inset-0 bg-background" {...backdrop} />
+   <div data-lh-modal-content data-testid={testid} className={className ?? "fixed inset-4 m-auto h-fit max-h-[calc(100dvh-2rem)] w-full max-w-[min(32rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-border bg-background p-5 outline-none"}>
     <h2 id={title} className={hideTitle ? "sr-only" : "text-base font-semibold"}>{label}</h2>
     {children}
    </div>

@@ -61,18 +61,20 @@ export function appearanceVars(a: ReturnType<typeof resolveAppearance>): Record<
 	if (a.background !== null) {
 		Object.assign(vars, derivedPalette(a.background));
 		// Preserve custom palettes' neutral action contrast, including their
-		// existing inverted foreground. Factory actions use the upstream blue.
+		// existing inverted foreground. Factory actions use the Study ink accent.
 		vars["--primary"] = "var(--foreground)";
 	}
 	if (a.fontFamily !== null) {
 		vars["--font-prose"] = `"${a.fontFamily}", var(--font-sans3), ui-sans-serif, system-ui, sans-serif`;
+		// An explicit reading family applies to titles too; the factory
+		// title face (Newsreader) stays in the stylesheet otherwise.
+		vars["--font-title"] = "var(--font-prose)";
 	}
 	// The ONE documented reading-size variable (typography round 4): prose,
 	// inputs, and session titles all read it, so one setProperty moves them.
 	vars["--lh-prose-size"] = `${a.proseFontSize}px`;
-	// Titles and interface text follow the selected reading family.
-	// The stored legacy serif flag stays compatible with existing settings.
-	vars["--font-title"] = "var(--font-prose)";
+	// Interface text follows the selected reading family. The stored legacy
+	// serif flag stays compatible with existing settings and is not read.
 	vars["--font-ui"] = "var(--font-prose)";
 	// Markdown rendering: heading weight + the emphasis inks (the vars
 	// were built "ready for the settings UI").

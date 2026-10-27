@@ -145,7 +145,9 @@ export function SessionTurnRail({ messages, nativeMessages, turns, onReserve }: 
 		}));
 	};
 
-	if (!entries.length) return null;
+	// Fewer than three turns: nothing to navigate, and a lone tick reads as a
+	// stray mark (feature 001).
+	if (entries.length < 3) return null;
 	return (
 		<nav ref={nav} data-testid="session-turn-rail" aria-label="Turn navigation" className="session-turn-rail" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(null); }} onKeyDown={(event) => {
 			const buttons = [...event.currentTarget.querySelectorAll<HTMLButtonElement>("button")];

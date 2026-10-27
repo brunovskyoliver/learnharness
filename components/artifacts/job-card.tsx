@@ -51,7 +51,7 @@ export function PdfBriefCard({ output }: { output: unknown }) {
 	const consultedList = result.pagesConsulted ?? [];
 	return (
 		<div className="rounded-xl border bg-card p-4 text-card-foreground" data-testid="pdf-brief-card">
-			<div className="mb-1 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+			<div className="mb-1 flex items-center gap-2 text-sm font-medium text-muted-foreground">
 				PDF brief
 				{failed && <span className="rounded bg-destructive/15 px-1.5 py-0.5 text-destructive">failed</span>}
 			</div>
@@ -59,12 +59,12 @@ export function PdfBriefCard({ output }: { output: unknown }) {
 				<MessageResponse>{result.brief}</MessageResponse>
 			</div>
 			{!failed && readList.length > 0 && (
-				<div className="mt-3 border-t pt-2 text-xs text-muted-foreground">
+				<div className="mt-3 border-t pt-2 text-sm text-muted-foreground">
 					Pages read: {readList.join(", ")}
 				</div>
 			)}
 			{!failed && consultedList.length > readList.length && (
-				<div className="mt-3 border-t pt-2 text-xs text-muted-foreground">
+				<div className="mt-3 border-t pt-2 text-sm text-muted-foreground">
 					Pages consulted: {consultedList.join(", ")}
 				</div>
 			)}
@@ -91,7 +91,7 @@ export function ResearchBriefCard({ output }: { output: unknown }) {
 	const body = failed && reason ? reason[0]!.toUpperCase() + reason.slice(1) : result.brief;
 	return (
 		<div className="rounded-xl border bg-card p-4 text-card-foreground" data-testid="research-brief-card">
-			<div className="mb-1 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+			<div className="mb-1 flex items-center gap-2 text-sm font-medium text-muted-foreground">
 				{failed ? "Research" : "Research brief"}
 				{failed && <span className="rounded bg-destructive/15 px-1.5 py-0.5 text-destructive">failed</span>}
 			</div>
@@ -100,8 +100,8 @@ export function ResearchBriefCard({ output }: { output: unknown }) {
 			</div>
 			{result.sources.length > 0 && (
 				<div className="mt-3 border-t pt-2">
-					<div className="mb-1 text-xs font-medium text-muted-foreground">Sources</div>
-					<ul className="flex flex-col gap-0.5 text-xs">
+					<div className="mb-1 text-sm font-medium text-muted-foreground">Sources</div>
+					<ul className="flex flex-col gap-0.5 text-sm">
 						{result.sources.map((s) => (
 							<li key={s.url} className="truncate">
 								<a

@@ -147,10 +147,10 @@ export function ModelMenuList({
 									<span className="block truncate text-lg font-medium text-foreground">{m.name}</span>
 									<span className="model-menu-meta" aria-label={subscription ? `${subscription} (subscription)` : undefined}>
 										<span className="truncate">{subscription ?? m.provider}</span>
-										{subscription ? <span className="shrink-0 text-xs">Subscription</span> : (
-											<span className="shrink-0 text-xs tabular-nums" title="USD per 1M tokens in/out">{priceLabel(m.cost)} / 1M</span>
+										{subscription ? <span className="shrink-0 text-sm">Subscription</span> : (
+											<span className="shrink-0 text-sm tabular-nums" title="USD per 1M tokens in/out">{priceLabel(m.cost)} / 1M</span>
 										)}
-										<span className="ml-auto shrink-0 text-xs tabular-nums" title="Context window in tokens">{formatTokens(m.contextWindow)}</span>
+										<span className="ml-auto shrink-0 text-sm tabular-nums" title="Context window in tokens">{formatTokens(m.contextWindow)}</span>
 									</span>
 								</span>
 								<span className="flex size-5 shrink-0 items-center justify-center">
@@ -292,7 +292,7 @@ export function ProviderMenuList({
 							}`}
 						>
 							<span className="truncate text-card-foreground">{p.label}</span>
-							<span className="shrink-0 font-mono text-[11px] text-muted-foreground">{p.envVar}</span>
+							<span className="shrink-0 font-mono text-xs text-muted-foreground">{p.envVar}</span>
 						</button>
 					</li>
 				))}
@@ -446,7 +446,7 @@ export function FontMenuList({
 					</li>
 				)}
 			</ul>
-			{footer && <div className="px-2 pt-1.5 text-xs text-muted-foreground">{footer}</div>}
+			{footer && <div className="px-2 pt-1.5 text-sm text-muted-foreground">{footer}</div>}
 		</>
 	);
 }

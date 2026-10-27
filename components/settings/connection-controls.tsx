@@ -47,7 +47,7 @@ export function ConnectionDialog(props: ComponentProps<DialogComponent>) {
  if (Dialog) return <Dialog {...props} />;
  return <LoadingModal label={props.label} onClose={props.onClose} busy={props.busy} onOpen={(trigger) => { opener.current = trigger; }} testid={`${props.testid}-loading`} hideTitle={failed}>
   {failed ? <>
-   <p role="status" className="mb-3 text-xs text-muted-foreground">The standard dialog could not load. Account controls remain available below.</p>
+   <p role="status" className="mb-3 text-sm text-muted-foreground">The standard dialog could not load. Account controls remain available below.</p>
    {props.children}
   </> : <>
    <p role="status" className="text-sm text-muted-foreground">Loading connection…</p>

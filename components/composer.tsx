@@ -1,9 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { ArrowRightIcon } from "lucide-react";
+import { ArrowRightIcon, SquareIcon } from "lucide-react";
 import { InputGroup, InputGroupTextarea } from "@/components/ui/input-group";
-import { PromptSubmit, PromptToolbar } from "@/components/prompt-controls";
+import { AnswerWell, PrimaryAction, PromptSubmit, PromptToolbar } from "@/components/prompt-controls";
 import { focusSurfaceInput } from "@/components/input-surface";
 
 /**
@@ -48,6 +48,7 @@ export function Composer({
 	nextProblem = false,
 	onNext,
 	controls,
+	setup,
 	sendLabel = "Send",
 }: {
 	busy: boolean;
@@ -73,6 +74,9 @@ export function Composer({
 	 *  empty-Enter share it. */
 	onNext?: () => void;
 	controls?: ReactNode;
+	/** A setup action (no key, no models) shown in the toolbar in place of
+	 *  the controls. */
+	setup?: ReactNode;
 	sendLabel?: string;
 }) {
 	const act = () => {
@@ -92,6 +96,7 @@ export function Composer({
 			}}
 		>
 			<InputGroup className="h-auto flex-col border-0 bg-transparent shadow-none ring-0 has-[[data-slot=input-group-control]:focus-visible]:ring-0">
+			<AnswerWell>
 			<InputGroupTextarea
 				ref={inputRef}
 				value={value}
@@ -119,25 +124,25 @@ export function Composer({
 				placeholder={placeholder}
 				autoFocus={autoFocus}
 				rows={1}
-				className="prompt-input field-sizing-content lh-input max-h-48 min-h-11 w-full resize-none bg-transparent px-4 pt-3 pb-1 outline-none"
+				className="prompt-input field-sizing-content lh-input max-h-48 min-h-11 w-full resize-none bg-transparent px-3 py-2.5 outline-none"
 			/>
-			<PromptToolbar controls={controls}>
+			</AnswerWell>
+			<PromptToolbar controls={controls} setup={setup}>
 				{nextProblem && !busy && !canSend ? (
-					<button
-						type="submit"
-						data-testid="next-problem-button"
-						aria-label="Next problem"
-						className="flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-full bg-primary px-3 font-ui text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
-					>
-						Next problem
-						<ArrowRightIcon className="size-4" />
-					</button>
+					<>
+						<span aria-hidden="true" className="prompt-hint max-sm:hidden">↵ on empty</span>
+						<PrimaryAction data-testid="next-problem-button" aria-label="Next problem">
+							Next problem
+							<ArrowRightIcon aria-hidden="true" className="size-4" />
+						</PrimaryAction>
+					</>
+				) : busy && !canSend ? (
+					<PrimaryAction quiet aria-label="Stop" title="Stop">
+						<SquareIcon aria-hidden="true" className="size-3 fill-current" />
+						Stop
+					</PrimaryAction>
 				) : (
-					<PromptSubmit
-						label={busy && !canSend ? "Stop" : sendLabel}
-						stopping={busy && !canSend}
-						disabled={!busy && !canSend}
-					/>
+					<PromptSubmit label={sendLabel} disabled={!busy && !canSend} />
 				)}
 			</PromptToolbar>
 			</InputGroup>

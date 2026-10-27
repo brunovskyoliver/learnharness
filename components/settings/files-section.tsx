@@ -48,16 +48,16 @@ export function FilesSection() {
 
 	return (
 		<div className="flex flex-col gap-3" data-testid="files-section">
-			<p className="text-xs text-muted-foreground">The agent can read only the files here. Up to 10 MB per upload.</p>
+			<p className="text-sm text-muted-foreground">The agent can read only the files here. Up to 10 MB per upload.</p>
 			<div>
 				<input ref={input} type="file" multiple hidden data-testid="files-input" onChange={(event) => upload(event.target.files)} />
 				<Button variant="outline" size="sm" disabled={busy} onClick={() => input.current?.click()} data-testid="files-upload">Upload files…</Button>
 			</div>
-			{error && <p role="alert" className="text-xs text-destructive">{error}</p>}
+			{error && <p role="alert" className="text-sm text-destructive">{error}</p>}
 			{files === null ? (
-				<p className="text-xs text-muted-foreground/70">Loading files…</p>
+				<p className="text-sm text-muted-foreground">Loading files…</p>
 			) : files.length === 0 ? (
-				<p className="text-xs text-muted-foreground/70" data-testid="files-empty">No files yet.</p>
+				<p className="text-sm text-muted-foreground" data-testid="files-empty">No files yet.</p>
 			) : (
 				files.map((file) => (
 					<SettingsRow key={file.name} label={file.name} hint={size(file.size)} testid="files-row">

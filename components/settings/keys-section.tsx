@@ -98,7 +98,7 @@ function KeyTableRow({
 		return (
 			<div data-testid={testid}>
 				<div className="flex items-center gap-2 rounded-sm px-1 py-1.5" data-testid={`${testid}-editor`}>
-					<span className="shrink-0 font-ui text-xs text-foreground">{label}</span>
+					<span className="shrink-0 font-ui text-sm text-foreground">{label}</span>
 					<input
 						type="text"
 						value={value}
@@ -111,14 +111,14 @@ function KeyTableRow({
 						data-testid={`${testid}-input`}
 						disabled={busy}
 						autoFocus
-						className="h-7 min-w-0 flex-1 rounded-sm border border-border bg-background px-1.5 font-mono text-xs text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-muted-foreground/50"
+						className="h-7 min-w-0 flex-1 rounded-sm border border-border bg-background px-1.5 font-mono text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-muted-foreground/50"
 					/>
 					<button
 						type="button"
 						onClick={() => void save()}
 						disabled={busy || !value.trim()}
 						data-testid={`${testid}-save`}
-						className="shrink-0 text-xs text-foreground underline-offset-2 hover:underline disabled:text-muted-foreground/40 disabled:no-underline"
+						className="shrink-0 text-sm text-foreground underline-offset-2 hover:underline disabled:text-muted-foreground disabled:no-underline"
 					>
 						Save
 					</button>
@@ -127,7 +127,7 @@ function KeyTableRow({
 						onClick={onCancel}
 						disabled={busy}
 						data-testid={`${testid}-cancel`}
-						className="shrink-0 text-xs text-muted-foreground/70 underline-offset-2 hover:text-foreground hover:underline"
+						className="shrink-0 text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
 					>
 						Cancel
 					</button>
@@ -137,14 +137,14 @@ function KeyTableRow({
 							onClick={() => void onDelete()}
 							disabled={busy}
 							data-testid={`${testid}-delete`}
-							className="shrink-0 text-xs text-muted-foreground/70 underline-offset-2 hover:text-destructive hover:underline"
+							className="shrink-0 text-sm text-muted-foreground underline-offset-2 hover:text-destructive hover:underline"
 						>
 							Delete
 						</button>
 					)}
 				</div>
 				{error && (
-					<p role="alert" data-testid={`${testid}-error`} className="px-1 text-xs text-destructive">
+					<p role="alert" data-testid={`${testid}-error`} className="px-1 text-sm text-destructive">
 						{error}
 					</p>
 				)}
@@ -174,18 +174,18 @@ function KeyTableRow({
 							target="_blank"
 							rel="noreferrer"
 							onClick={(e) => e.stopPropagation()}
-							className="text-xs text-muted-foreground/60 underline-offset-2 hover:text-foreground hover:underline"
+							className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
 						>
 							key ↗
 						</a>
 					)}
-					<span data-testid={`${testid}-status`} className="text-xs text-muted-foreground">
+					<span data-testid={`${testid}-status`} className="text-sm text-muted-foreground">
 						{keyStatusLine(status)}
 					</span>
 				</span>
 			</button>
 			{error && (
-				<p role="alert" data-testid={`${testid}-error`} className="pl-6 text-xs text-destructive">
+				<p role="alert" data-testid={`${testid}-error`} className="pl-6 text-sm text-destructive">
 					{error}
 				</p>
 			)}
@@ -234,17 +234,17 @@ function AddProviderRow({
 				aria-expanded={open}
 				data-testid="add-provider"
 				onClick={() => setOpen((v) => !v)}
-				className="-mx-1 flex w-[calc(100%+0.5rem)] items-center justify-between gap-3 rounded-sm px-1 py-1.5 text-left font-ui text-xs text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+				className="-mx-1 flex w-[calc(100%+0.5rem)] items-center justify-between gap-3 rounded-sm px-1 py-1.5 text-left font-ui text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
 			>
 				<span>+ Add provider key</span>
-				{addable.length > 0 && <span className="text-xs">{addable.length} available</span>}
+				{addable.length > 0 && <span className="text-sm">{addable.length} available</span>}
 			</button>
 			{open && (
 				<MenuShell
 					anchorRef={anchorRef}
 					testid="add-provider-menu"
 					preferredSide="down"
-					menuClass="flex w-72 flex-col rounded-xl border border-border bg-card p-2 text-xs shadow-xl"
+					menuClass="flex w-72 flex-col rounded-xl border border-border bg-card p-2 text-sm "
 				>
 					{/* Close on pick (owner, fix wave): a chosen provider ends
 					    the dropdown — the paste row is the next step. */}
@@ -343,7 +343,7 @@ export function KeysSection({
 	}
 
 	if (loading || statuses === null) {
-		return <p className="px-6 py-5 text-xs text-muted-foreground/70">Loading keys…</p>;
+		return <p className="px-6 py-5 text-sm text-muted-foreground">Loading keys…</p>;
 	}
 
 	const { providerRows, toolRows, unknownRows, addable } = classifyKeys(statuses, providers);
@@ -389,14 +389,14 @@ export function KeysSection({
 				)}
 				{adding && (
 					<div className="flex items-center gap-2 rounded-sm px-1 py-1.5" data-testid={`key-${adding.id}-editor`}>
-						<span className="shrink-0 font-ui text-xs text-foreground">{adding.label}</span>
+						<span className="shrink-0 font-ui text-sm text-foreground">{adding.label}</span>
 						<AddProviderEditor provider={adding} onSave={(v) => void saveNewProvider(adding, v)} onCancel={() => setAdding(null)} error={addError} />
 					</div>
 				)}
 				{unknownRows.length > 0 && <div data-testid="group-unknown-keys">
 					{unknownRows.map((status) => <div key={status.id} data-testid={`unknown-${status.id}`} className="flex items-center justify-between gap-3 px-1 py-1.5 opacity-40">
 						<span className="font-mono text-xs text-foreground">{status.id}</span>
-						<span className="font-mono text-[11px] text-muted-foreground">{status.masked}</span>
+						<span className="font-mono text-xs text-muted-foreground">{status.masked}</span>
 					</div>)}
 				</div>}
 			</SettingsGroup>
@@ -457,14 +457,14 @@ function AddProviderEditor({
 				aria-label={`${provider.label} key`}
 				data-testid={`key-${provider.id}-input`}
 				autoFocus
-				className="h-7 min-w-0 flex-1 rounded-sm border border-border bg-background px-1.5 font-mono text-xs text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-muted-foreground/50"
+				className="h-7 min-w-0 flex-1 rounded-sm border border-border bg-background px-1.5 font-mono text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-muted-foreground/50"
 			/>
 			<button
 				type="button"
 				onClick={() => value.trim() && onSave(value)}
 				disabled={!value.trim()}
 				data-testid={`key-${provider.id}-save`}
-				className="shrink-0 text-xs text-foreground underline-offset-2 hover:underline disabled:text-muted-foreground/40 disabled:no-underline"
+				className="shrink-0 text-sm text-foreground underline-offset-2 hover:underline disabled:text-muted-foreground disabled:no-underline"
 			>
 				Save
 			</button>
@@ -472,12 +472,12 @@ function AddProviderEditor({
 				type="button"
 				onClick={onCancel}
 				data-testid={`key-${provider.id}-cancel`}
-				className="shrink-0 text-xs text-muted-foreground/70 underline-offset-2 hover:text-foreground hover:underline"
+				className="shrink-0 text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
 			>
 				Cancel
 			</button>
 			{error && (
-				<p role="alert" className="w-full pl-0 text-xs text-destructive" data-testid={`key-${provider.id}-error`}>
+				<p role="alert" className="w-full pl-0 text-sm text-destructive" data-testid={`key-${provider.id}-error`}>
 					{error}
 				</p>
 			)}

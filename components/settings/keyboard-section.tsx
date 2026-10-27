@@ -111,14 +111,14 @@ export function KeyboardSection() {
 										testid={`kbd-row-${def.id}`}
 									>
 										<span className="flex items-center gap-2">
-											<kbd className="rounded-sm border border-border bg-muted px-1.5 py-0.5 font-ui text-xs">
+											<kbd className="rounded-sm border border-border bg-muted px-1.5 py-0.5 font-ui text-sm">
 												{rebinding === def.id ? "Press keys…" : formatBinding(effective)}
 											</kbd>
 											{def.displayOnly ? null : rebinding === def.id ? (
 												<button
 													type="button"
 													onClick={() => setRebinding(null)}
-													className="text-xs text-muted-foreground/70 underline-offset-2 hover:text-foreground hover:underline"
+													className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
 												>
 													Cancel
 												</button>
@@ -128,7 +128,7 @@ export function KeyboardSection() {
 														type="button"
 														onClick={() => setRebinding(def.id)}
 														data-testid={`kbd-rebind-${def.id}`}
-														className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+														className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
 													>
 														Rebind
 													</button>
@@ -137,7 +137,7 @@ export function KeyboardSection() {
 															type="button"
 															onClick={() => resetOne(def.id)}
 															data-testid={`kbd-reset-${def.id}`}
-															className="text-xs text-muted-foreground/70 underline-offset-2 hover:text-foreground hover:underline"
+															className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
 														>
 															Reset
 														</button>
@@ -152,12 +152,12 @@ export function KeyboardSection() {
 				);
 			})}
 			<div className="mt-1 flex flex-wrap items-center justify-between gap-3">
-				<span className="text-xs text-muted-foreground/70">Stored on this device (lh:keymap) — overrides only.</span>
+				<span className="text-sm text-muted-foreground">Stored on this device (lh:keymap) — overrides only.</span>
 				<button
 					type="button"
 					onClick={resetAll}
 					data-testid="kbd-reset-all"
-					className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+					className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
 				>
 					Reset all to defaults
 				</button>
