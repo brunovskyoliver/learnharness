@@ -7,7 +7,8 @@ import { InvertDiscIcon } from "@/components/artifacts/invert-disc";
 import { ChatActionsContext } from "@/components/chat";
 import { downloadFile, slugFilename } from "@/components/artifacts/download";
 import { DispatchCard } from "@/components/artifacts/dispatch-card";
-import { injectDemoTheme, type ArtifactPartProps, type DemoResult } from "@/src/core";
+import { injectDemoTheme, DEMO_APPEARANCE_PROPERTIES, demoAppearanceVars, type ArtifactPartProps, type DemoResult } from "@/src/core";
+import { useAppearance } from "@/components/settings/appearance";
 import { useDemoPresentation } from "@/components/artifacts/demo-presentation";
 import { useDemoPanel } from "@/components/artifacts/demo-panel-context";
 
@@ -30,6 +31,8 @@ import { useDemoPanel } from "@/components/artifacts/demo-panel-context";
 
 // ─── bridge injection + message handling (pure, testable) ───────────────────
 
+const THEME_PROPERTIES = JSON.stringify([...Object.keys(DEMO_APPEARANCE_PROPERTIES), "--lh-font"]);
+
 export const DEMO_BRIDGE_SCRIPT = `<script>(function(){
 var send=function(m){try{parent.postMessage(m,"*")}catch(e){}};
 var post=function(){
@@ -45,6 +48,10 @@ window.addEventListener("resize",post);
 window.addEventListener("load",post);
 window.addEventListener("keydown",function(e){if(e.key==="Escape"){e.preventDefault();e.stopPropagation();send({type:"demo-close-focus"})}});
 window.addEventListener("message",function(e){if(e.source!==parent||!e.data)return;
+if(e.data.type==="lh-demo-theme"&&e.data.vars&&typeof e.data.vars==="object"&&!Array.isArray(e.data.vars)){
+var rules=document.querySelector("style[data-lh-theme]");var root=rules&&rules.sheet&&Array.from(rules.sheet.cssRules).find(function(r){return r.selectorText===":root"});
+if(root){var allowed=${THEME_PROPERTIES};allowed.forEach(function(k){var v=e.data.vars[k];if(typeof v!=="string"||v.length>512)return;var prop=k==="--lh-font"?"font-family":k==="--lh-heading-weight"?"font-weight":"color";if(CSS.supports(prop,v))root.style.setProperty(k,v)});window.dispatchEvent(new Event("lh-demo-theme"))}
+}
 if(e.data.type==="lh-demo-size"&&typeof e.data.size==="number"&&e.data.size>=12&&e.data.size<=48)document.documentElement.style.setProperty("--lh-demo-size",e.data.size+"px");
 if(e.data.type==="lh-demo-preview"){try{var s=Array.from(document.querySelectorAll("svg")).find(function(x){var r=x.getBoundingClientRect();return r.width>80&&r.height>80}),c=document.querySelector("canvas");var url=s?"data:image/svg+xml;charset=utf-8,"+encodeURIComponent(new XMLSerializer().serializeToString(s)):c?c.toDataURL():null;if(url&&url.length<2000000)send({type:"demo-preview",url:url})}catch(_){}}
 });
@@ -155,6 +162,7 @@ export function DemoFrame({
 	variant?: "card" | "panel";
 }) {
 	const actions = useContext(ChatActionsContext);
+	const { appearance } = useAppearance();
 	const panel = useDemoPanel();
 	const iframeRef = useRef<HTMLIFrameElement | null>(null);
 	const dialogRef = useRef<HTMLDialogElement | null>(null);
@@ -182,16 +190,19 @@ export function DemoFrame({
 		if (inWorkspace) iframeRef.current?.contentWindow?.postMessage({ type: "lh-demo-preview" }, "*");
 	}, [inWorkspace, state.height]);
 	useEffect(() => {
-		const sendSize = () => {
+		const sendAppearance = () => {
 			const size = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--lh-prose-size")) || 17;
 			iframeRef.current?.contentWindow?.postMessage({ type: "lh-demo-size", size }, "*");
+			const styles = getComputedStyle(document.documentElement);
+			const vars = demoAppearanceVars((name) => styles.getPropertyValue(name), appearance.fontFamily);
+			iframeRef.current?.contentWindow?.postMessage({ type: "lh-demo-theme", vars }, "*");
 		};
-		const observer = new MutationObserver(sendSize);
+		const observer = new MutationObserver(sendAppearance);
 		observer.observe(document.documentElement, { attributes: true, attributeFilter: ["style", "class"] });
-		iframeRef.current?.addEventListener("load", sendSize);
-		sendSize();
-		return () => { observer.disconnect(); iframeRef.current?.removeEventListener("load", sendSize); };
-	}, []);
+		iframeRef.current?.addEventListener("load", sendAppearance);
+		sendAppearance();
+		return () => { observer.disconnect(); iframeRef.current?.removeEventListener("load", sendAppearance); };
+	}, [appearance.fontFamily]);
 	// Brightness inversion (owner, 2026-10-07): the switch state PERSISTS on
 	// the steer record (details.ui.inverted) — seeded here, written through
 	// the silent artifact-ui route on toggle. Without a chat page (tests,
@@ -236,17 +247,17 @@ export function DemoFrame({
 
 	const controls = (
 		<div className="flex shrink-0 items-center gap-1.5">
-			<button type="button" aria-label={focused ? "Close expanded demo" : "Expand demo"} onClick={(event) => { if (!focused) focusInvoker.current = event.currentTarget; focusOrigin.current = dialogRef.current?.getBoundingClientRect() ?? null; setFocused(!focused); }} className="rounded-md p-2 text-muted-foreground hover:bg-accent">{focused ? <XIcon className="size-4" /> : <MaximizeIcon className="size-4" />}</button>
-			<button type="button" aria-label="Invert demo brightness" title="Invert colors" aria-pressed={inverted} onClick={() => toggleInverted(!inverted)} className="rounded-md p-2 text-muted-foreground hover:bg-accent"><InvertDiscIcon className="size-4" /></button>
+			<button type="button" aria-label={focused ? "Close expanded demo" : "Expand demo"} onClick={(event) => { if (!focused) focusInvoker.current = event.currentTarget; focusOrigin.current = dialogRef.current?.getBoundingClientRect() ?? null; setFocused(!focused); }} className="ui-icon-button">{focused ? <XIcon className="ui-icon" /> : <MaximizeIcon className="ui-icon" />}</button>
+			<button type="button" aria-label="Invert demo brightness" title="Invert colors" aria-pressed={inverted} onClick={() => toggleInverted(!inverted)} className="ui-icon-button"><InvertDiscIcon className="ui-icon" /></button>
 			<button
 				type="button"
 				aria-label="Download demo as HTML"
 				title="Download as HTML"
 				onClick={() => downloadFile(`${slugFilename(title)}.html`, downloadableDemo(html), "text/html")}
 				data-testid="demo-download"
-				className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+				className="ui-icon-button"
 			>
-				<DownloadIcon className="size-3.5" />
+				<DownloadIcon className="ui-icon" />
 			</button>
 			{variant === "card" && !inWorkspace && panel && messageId && (
 				<button
@@ -255,9 +266,9 @@ export function DemoFrame({
 					title="Open in side panel"
 					onClick={() => panel.open(messageId)}
 					data-testid="demo-open-panel"
-					className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+					className="ui-icon-button"
 				>
-					<PanelRightOpenIcon className="size-3.5" />
+					<PanelRightOpenIcon className="ui-icon" />
 				</button>
 			)}
 		</div>

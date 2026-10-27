@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { afterEach, describe, it } from "node:test";
 import { createRoot, type Root } from "react-dom/client";
 import { parseHTML } from "linkedom";
-import { SetupDialog } from "../components/setup-dialog.tsx";
+
 import type { ModelCatalogEntry } from "../src/core/contracts/models.ts";
 
 // As in render-update-banner: mount real React handlers against an isolated
@@ -14,6 +14,10 @@ const dom = parseHTML("<html><body></body></html>");
 Object.assign(globalThis, {
 	window: dom.window,
 	document: dom.document,
+	Node: dom.window.Node,
+	NodeFilter: { SHOW_ELEMENT: 1, FILTER_ACCEPT: 1, FILTER_SKIP: 3 },
+	MutationObserver: dom.window.MutationObserver,
+	getComputedStyle: () => ({ display: "block", visibility: "visible" }),
 	Element: dom.window.Element,
 	HTMLElement: dom.window.HTMLElement,
 	HTMLInputElement: dom.window.HTMLInputElement,
@@ -25,6 +29,8 @@ Object.assign(globalThis, {
 });
 Object.assign(dom.window, { innerWidth: 1280, innerHeight: 800 });
 dom.window.HTMLElement.prototype.scrollIntoView = () => {};
+
+const { SetupDialog } = await import("../components/setup-dialog.tsx");
 
 const originalFetch = globalThis.fetch;
 const provider = { id: "openrouter", envVar: "OPENROUTER_API_KEY", label: "OpenRouter" };
@@ -78,6 +84,8 @@ function element(selector: string): HTMLElement {
 async function event(target: HTMLElement, type: string) {
 	await act(async () => {
 		const dispatched = new dom.window.Event(type, { bubbles: true, cancelable: true });
+		// Linkedom deletes target after dispatch; browsers retain it for deferred outside-click handling.
+		Object.setPrototypeOf(dispatched, Object.create(Object.getPrototypeOf(dispatched), { target: { value: target, writable: true } }));
 		Object.assign(dispatched, { pointerId: 1, pointerType: "mouse", isPrimary: true, button: 0, detail: 1 });
 		target.dispatchEvent(dispatched);
 	});

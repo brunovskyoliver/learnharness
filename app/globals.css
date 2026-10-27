@@ -103,7 +103,7 @@
 	*:focus {
 		outline: none;
 	}
-	:where(button, a[href], summary, [role="button"], [role="tab"], [role="option"], [role="radio"], [role="checkbox"], [role="menuitem"], [role="switch"], [tabindex]:not([tabindex="-1"])):focus-visible {
+	:where(button, a[href], input, textarea, select, [contenteditable="true"], summary, [role="button"], [role="tab"], [role="option"], [role="radio"], [role="checkbox"], [role="menuitem"], [role="switch"], [tabindex]:not([tabindex="-1"])):focus-visible {
 		outline: 1px solid var(--ring);
 		outline-offset: 2px;
 	}
@@ -118,15 +118,14 @@
 	user-select: text;
 }
 
-/* The prompt uses the reference's near-black canvas and quiet violet action.
-   Scoped tokens keep lesson content and verdict colors independent. */
+/* Composer and menus use the same neutral roles as settings and navigation. */
 .prompt-shell {
-	--prompt-surface: #101010;
-	--prompt-border: #2a2a2a;
-	--prompt-muted: #a1a1a1;
-	--prompt-action: #6c5bc4;
-	--prompt-action-hover: #7b69d4;
-	--prompt-action-foreground: #ffffff;
+	--prompt-surface: var(--card);
+	--prompt-border: var(--border);
+	--prompt-muted: var(--muted-foreground);
+	--prompt-action: var(--primary);
+	--prompt-action-hover: color-mix(in srgb, var(--primary) 85%, var(--background));
+	--prompt-action-foreground: var(--primary-foreground);
 	border: 1px solid var(--prompt-border);
 	border-radius: 16px;
 	background: var(--prompt-surface);
@@ -134,7 +133,7 @@
 }
 
 .prompt-shell:focus-within {
-	border-color: #525057;
+	border-color: var(--ring);
 }
 
 .prompt-input {
@@ -175,14 +174,14 @@
 	align-items: center;
 	justify-content: center;
 	border-radius: 50%;
-	background: var(--prompt-action, #6c5bc4);
-	color: var(--prompt-action-foreground, #ffffff);
+	background: var(--prompt-action, var(--primary));
+	color: var(--prompt-action-foreground, var(--primary-foreground));
 	cursor: pointer;
 	transition: background-color 160ms ease, color 160ms ease;
 }
 
 .prompt-submit:hover:not(:disabled) {
-	background: var(--prompt-action-hover, #7b69d4);
+	background: var(--prompt-action-hover, var(--primary));
 }
 
 .prompt-submit:disabled {
@@ -235,11 +234,11 @@
 
 .model-picker-panel,
 .reasoning-picker-panel {
-	--picker-surface: #111111;
-	--picker-border: #303030;
-	--picker-muted: #a1a1a1;
-	--picker-selection: #252525;
-	--picker-focus: #a89ae8;
+	--picker-surface: var(--popover);
+	--picker-border: var(--border);
+	--picker-muted: var(--muted-foreground);
+	--picker-selection: var(--accent);
+	--picker-focus: var(--ring);
 	display: flex;
 	flex-direction: column;
 	border: 1px solid var(--picker-border);
@@ -393,7 +392,7 @@
 	--secondary: #1c1c1c;
 	--secondary-foreground: #e6e6e6;
 	--muted: #1c1c1c;
-	--muted-foreground: #8d8d8d;
+	--muted-foreground: #a1a1a1;
 	--accent: #2a2a2a;
 	--accent-foreground: #e6e6e6;
 	--destructive: oklch(0.704 0.191 22.216);
@@ -404,7 +403,7 @@
 	--warning: oklch(0.8 0.13 85);
 	--border: #434343;
 	--input: #434343;
-	--ring: #8d8d8d;
+	--ring: #a1a1a1;
 	/* Emphasis inks default to the REGULAR TEXT COLOR (owner ruling,
 	   appearance wave 2026-09-26 — the old #ee928c/#6fa9d6 factory
 	   emphasis colors are gone). Explicit overrides land via the
@@ -431,7 +430,7 @@
 	--secondary: #1c1c1c;
 	--secondary-foreground: #e6e6e6;
 	--muted: #1c1c1c;
-	--muted-foreground: #8d8d8d;
+	--muted-foreground: #a1a1a1;
 	--accent: #2a2a2a;
 	--accent-foreground: #e6e6e6;
 	--destructive: oklch(0.704 0.191 22.216);
@@ -442,7 +441,7 @@
 	--warning: oklch(0.8 0.13 85);
 	--border: #434343;
 	--input: #434343;
-	--ring: #8d8d8d;
+	--ring: #a1a1a1;
 	/* Same emphasis ruling as the block above: unset = text color. */
 	--lh-ink-strong: var(--foreground);
 	--lh-ink-italic: var(--foreground);
@@ -529,9 +528,8 @@ body {
 /* Cards and composer share a 52rem shell. Assistant prose uses a 76ch
    reading column inside it; demos and visuals can use the full shell. */
 :root {
-	/* The sidebar sits one step darker than the main pane (ui-v2, after
-	   T3 Code's black sidebar against a near-black pane). */
-	--lh-sidebar: #0d0d0d;
+	/* Adjacent panes share the canvas; raised and hover roles stay distinct. */
+	--lh-sidebar: var(--background);
 	--lh-measure: 52rem;
 	--lh-wide: 52rem;
 }
@@ -1101,3 +1099,14 @@ body {
 @media (min-width:768px) { .session-workspace-layout > .demo-workspace { order: 0; } }
 .question-demo-reference { flex-shrink: 0; }
 .demo-live button:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+
+/* Small chrome actions share geometry; data/chart icons keep their own sizes. */
+.ui-icon { width: 1rem; height: 1rem; flex-shrink: 0; stroke-width: 1.75; }
+.ui-icon-button { display: inline-flex; width: 2rem; height: 2rem; flex-shrink: 0; align-items: center; justify-content: center; border-radius: var(--radius); color: var(--muted-foreground); }
+.ui-icon-button:hover:not(:disabled), .ui-icon-button[aria-expanded="true"] { color: var(--foreground); background: var(--accent); }
+.ui-icon-button:disabled { opacity: .5; cursor: default; }
+::selection { background: color-mix(in srgb, var(--foreground) 24%, var(--background)); color: var(--foreground); }
+:where(input, textarea, [contenteditable="true"]) { caret-color: var(--foreground); }
+@media (pointer: coarse) {
+	.ui-icon-button, .prompt-submit { min-width: 44px; min-height: 44px; }
+}

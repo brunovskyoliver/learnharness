@@ -9,10 +9,13 @@
  * control together) and the control itself locks — the row owns the dim.
  */
 
-import { useState, type ReactNode } from "react";
+import { createContext, useContext, useId, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { Field, FieldContent, FieldDescription, FieldGroup, FieldTitle } from "@/components/ui/field";
 
-/** A section block: pronounced mono heading + content. */
+const RowControlContext = createContext<string | undefined>(undefined);
+
+/** A section heading and grouped controls. */
 export function SettingsSection({
 	title,
 	hint,
@@ -26,12 +29,11 @@ export function SettingsSection({
 	testid?: string;
 }) {
 	return (
-		<section data-testid={testid} className="px-6 py-5">
-			{/* The nav already names the open section (polish pass
-			    2026-10-26): the heading stays for screen readers only. */}
-			<h2 className="sr-only">{title}</h2>
+		<section data-testid={testid} className="mx-auto w-full max-w-5xl px-5 py-6 sm:px-8 sm:py-8">
+
+			<h2 className="mb-5 text-xl font-semibold">{title}</h2>
 			{hint && <p className="mb-4 text-xs text-muted-foreground">{hint}</p>}
-			<div className="flex flex-col gap-3">{children}</div>
+			<FieldGroup className="gap-5">{children}</FieldGroup>
 		</section>
 	);
 }
@@ -48,9 +50,9 @@ export function SettingsGroup({
 	testid?: string;
 }) {
 	return (
-		<div data-testid={testid} className="mt-5 border-t border-border/60 pt-4 first:mt-0 first:border-t-0 first:pt-0">
-			<p className="mb-1 text-xs font-medium text-muted-foreground">{label}</p>
-			<div className="flex flex-col">{children}</div>
+		<div data-testid={testid} className="mt-3 first:mt-0">
+			<h3 className="mb-3 text-base font-semibold">{label}</h3>
+			<FieldGroup className="gap-0 overflow-hidden rounded-lg border border-border bg-card px-4 [&>[data-slot=field]+[data-slot=field]]:border-t [&>[data-slot=field]+[data-slot=field]]:border-border">{children}</FieldGroup>
 		</div>
 	);
 }
@@ -72,16 +74,17 @@ export function SettingsRow({
 	 *  control is inert (parent off, no file yet, …). */
 	dimmed?: boolean;
 }) {
+	const id = useId();
 	return (
-		// One row pattern (ui-v2): sans label, muted sans description, the
-		// control right-aligned in its own column.
-		<div data-testid={testid} className={cn("flex min-h-10 items-center justify-between gap-6 py-1.5", dimmed && "opacity-40")}>
-			<span className="min-w-0">
-				<span className="block text-sm text-foreground">{label}</span>
-				{hint && <span className="mt-0.5 block text-xs text-muted-foreground">{hint}</span>}
-			</span>
-			<div className="flex shrink-0 items-center justify-end gap-2">{children}</div>
-		</div>
+		<Field orientation="horizontal" data-testid={testid} aria-labelledby={`${id}-label`} data-disabled={dimmed || undefined} className={cn("flex flex-col items-stretch gap-3 py-4 @lg/field-group:flex-row @lg/field-group:items-center @lg/field-group:justify-between @lg/field-group:gap-6", dimmed && "opacity-40")}>
+			<FieldContent className="min-w-0 flex-1">
+				<FieldTitle id={`${id}-label`} className="text-sm font-normal">{label}</FieldTitle>
+				{hint && <FieldDescription className="text-sm">{hint}</FieldDescription>}
+			</FieldContent>
+			<RowControlContext.Provider value={id}>
+				<div className="flex min-w-0 flex-wrap items-center gap-2 @lg/field-group:w-64 @lg/field-group:shrink-0 @lg/field-group:justify-end [&>input]:max-w-full [&>select]:max-w-full">{children}</div>
+			</RowControlContext.Provider>
+		</Field>
 	);
 }
 
@@ -117,7 +120,7 @@ export function Toggle({
 			data-testid={`toggle-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
 			onClick={() => onChange(!checked)}
 			className={cn(
-				"relative h-4.5 w-8 shrink-0 rounded-full border border-border transition-colors",
+				"relative h-4.5 w-8 shrink-0 rounded-full border border-border transition-colors before:absolute before:-inset-3 before:content-[''] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring",
 				// Owner (2026-09-20): on is a gray track with a WHITE disc (a full-white
 				// track was too loud); off stays the muted track.
 				checked ? "bg-muted-foreground" : "bg-muted",
@@ -165,15 +168,17 @@ export function ThinSelect({
 	testid?: string;
 	disabled?: boolean;
 }) {
+	const id = useContext(RowControlContext);
 	return (
 		<select
+			id={id}
 			value={value}
 			aria-label={ariaLabel}
 			data-testid={testid}
 			disabled={disabled}
 			onChange={(e) => onChange(e.target.value)}
 			className={cn(
-				"h-7 rounded-sm border border-border bg-background px-1.5 font-ui text-xs text-foreground outline-none",
+				"h-9 rounded-md border border-border bg-background px-2.5 font-ui text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring",
 				disabled && "cursor-not-allowed",
 			)}
 		>
@@ -206,10 +211,12 @@ export function CommitInput({
 	// The draft exists only while editing; a blur shows the record's value
 	// again — commit-on-blur/Enter (owner ruling), the field honest about
 	// what landed.
+	const id = useContext(RowControlContext);
 	const [draft, setDraft] = useState(value);
 	const [editing, setEditing] = useState(false);
 	return (
 		<input
+			id={id}
 			type={type}
 			value={editing ? draft : value}
 			placeholder={placeholder}
@@ -232,7 +239,7 @@ export function CommitInput({
 					e.currentTarget.blur();
 				}
 			}}
-			className="h-7 w-48 rounded-sm border border-border bg-background px-2 font-ui text-xs text-foreground outline-none placeholder:text-muted-foreground/60"
+			className="h-9 w-full rounded-md border border-border bg-background px-3 font-ui text-sm text-foreground outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
 		/>
 	);
 }

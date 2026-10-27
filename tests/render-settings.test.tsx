@@ -120,7 +120,7 @@ describe("AgentSection (thin SSR)", () => {
 			<AgentSection agent={undefined} models={undefined} graph={{ enabled: false }} onSectionChange={() => {}} onModelsChange={() => {}} />,
 		);
 		const row = html.split('data-testid="graph-tools-row"')[1]?.split('data-testid="tool-row-')[0] ?? "";
-		assert.ok(row.includes("opacity-40"), "row dims when the graph is off");
+		assert.ok(tagOf(html, "graph-tools-row").includes("opacity-40"), "row dims when the graph is off");
 		assert.ok(row.includes("Graph is disabled"), "the reason hint replaces the description");
 		assert.ok(row.includes("disabled"), "toggle untouchable while the graph is off");
 	});

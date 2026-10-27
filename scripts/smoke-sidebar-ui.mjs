@@ -172,7 +172,7 @@ try {
 		} else void request.continue();
 	});
 	await page.goto(`${base}/chat/${question.id}`, { waitUntil: "networkidle2" });
-	await page.click('[data-testid="teach-check-reveal"]');
+	await page.waitForSelector('[data-kbdrow="0"]');
 	await page.click('[data-kbdrow="0"]');
 	await focusRail();
 	const confidence = () => page.$eval('[data-testid="confidence-segments"] [aria-checked="true"]', (element) => element.textContent);

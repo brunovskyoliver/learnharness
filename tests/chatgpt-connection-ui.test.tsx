@@ -7,14 +7,19 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { parseHTML } from "linkedom";
 import { createRequire } from "node:module";
 import { generateKeyPair, exportJWK, SignJWT } from "jose";
-import { ChatGPTBackgroundAccess, ChatGPTConnection, ChatGPTUIProvider, CHATGPT_NOTICE, CHATGPT_DISCONNECT_COPY } from "../components/settings/chatgpt-connection.tsx";
-import { SettingsDialogBody } from "../components/settings/settings-dialog-content.tsx";
-import { KeysSection } from "../components/settings/keys-section.tsx";
-import { ModelControl } from "../components/model-picker.tsx";
 import type { ChatGPTStatus, ChatGPTControlBridge } from "../src/core/index.ts";
 
 const dom = parseHTML("<html><body></body></html>");
 Object.assign(globalThis, { window: dom.window, document: dom.document, Element: dom.window.Element, HTMLElement: dom.window.HTMLElement, CustomEvent: dom.window.CustomEvent, IS_REACT_ACT_ENVIRONMENT: true, localStorage: { getItem: () => null, setItem() {} } });
+Object.assign(globalThis, {
+ Node: dom.window.Node, NodeFilter: { SHOW_ELEMENT: 1, FILTER_ACCEPT: 1, FILTER_SKIP: 3 },
+ HTMLInputElement: dom.window.HTMLInputElement, MutationObserver: dom.window.MutationObserver,
+ getComputedStyle: () => ({ display: "block", visibility: "visible" }),
+});
+const { ChatGPTBackgroundAccess, ChatGPTConnection, ChatGPTUIProvider, CHATGPT_NOTICE, CHATGPT_DISCONNECT_COPY } = await import("../components/settings/chatgpt-connection.tsx");
+const { SettingsDialogBody } = await import("../components/settings/settings-dialog-content.tsx");
+const { KeysSection } = await import("../components/settings/keys-section.tsx");
+const { ModelControl } = await import("../components/model-picker.tsx");
 const originalFetch = globalThis.fetch;
 let root: Root | undefined, host: HTMLDivElement | undefined;
 const account = (id = "private-registration-id", email = "learner@example.invalid", connected = true) => ({ id, email, registration: "private-issued-client", connected, planEnabled: connected, canSignInAgain: !connected });
@@ -84,7 +89,7 @@ test("Providers has exactly four ordered sections; unknown variables stay masked
   return Response.json({ providers: [{ id: "openai", envVar: "OPENAI_API_KEY", label: "OpenAI" }], keys: [{ id: "FUTURE_VAR", info: null, present: true, masked: "…abcd", source: "file", shadowedByEnv: false }] });
  };
  fixture(); await mount(<KeysSection />);
- const headings = [...document.querySelectorAll('[data-testid^="group-"] > p')].map((el) => el.textContent);
+ const headings = [...document.querySelectorAll('[data-testid^="group-"] > h3')].map((el) => el.textContent);
  assert.deepEqual(headings, ["Model API keys", "Subscriptions", "Search"]);
  assert(byTest("key-tavily_api_key").closest('[data-testid="group-search"]'));
  assert(byTest("key-brave_api_key").closest('[data-testid="group-search"]'));

@@ -22,7 +22,7 @@ export function resolveAppearance(delta: AppearanceSettings | undefined) {
 }
 
 /** One channel clamped on the dark curve: additive offsets matching today's
- *  hand-picked palette (#141414 → card #1c1c1c (+8) → accent #2a2a2a (+22)
+ *  shared palette (#141414 → card #1c1c1c (+8) → accent #2a2a2a (+22)
  *  → border #434343 (+47)) — the "per-mode derivation in code" the schema
  *  promises, as the thinnest curve that keeps the palette's relationships. */
 function raise(hex: string, add: number): string {
@@ -65,9 +65,8 @@ export function appearanceVars(a: ReturnType<typeof resolveAppearance>): Record<
 	// The ONE documented reading-size variable (typography round 4): prose,
 	// inputs, and session titles all read it, so one setProperty moves them.
 	vars["--lh-prose-size"] = `${a.proseFontSize}px`;
-	// Session names: CMU Serif by default; the toggle swaps the title font
-	// to the prose family — covers chat.tsx + new-session.tsx titles with
-	// zero component edits (they use the .font-title utility).
+	// Titles and interface text follow the selected reading family.
+	// The stored legacy serif flag stays compatible with existing settings.
 	vars["--font-title"] = "var(--font-prose)";
 	vars["--font-ui"] = "var(--font-prose)";
 	// Markdown rendering: heading weight + the emphasis inks (the vars

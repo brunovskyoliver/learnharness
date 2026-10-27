@@ -24,6 +24,9 @@ import { ChainTableOverlay } from "@/components/chain-table.tsx";
 import { GraphCostControl } from "@/components/graph-view.tsx";
 import { NotesImportErrors, useNotesImport } from "@/components/notes-import.tsx";
 import { Hint } from "@/components/ui/hint";
+import { Button } from "@/components/ui/button";
+import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { ChatSummary, GraphCostSummary, GraphSnapshot } from "@/src/core";
 
 /** The quiet centered summary — a pure body (props in, markup out) so
@@ -80,6 +83,39 @@ export function KnowledgeSummary({
 	);
 }
 
+/** Initial loading never invents zero counts; failed refreshes retain the last summary. */
+export function KnowledgeSummaryStatus({ loading, error, hasData, onRetry }: {
+	loading: boolean;
+	error: boolean;
+	hasData: boolean;
+	onRetry: () => void;
+}) {
+	if (loading) return (
+		<div role="status" aria-label="Loading knowledge summary" className="flex flex-col items-center gap-3">
+			<Skeleton className="h-4 w-32" />
+			<Skeleton className="h-4 w-24" />
+			<Skeleton className="mt-4 h-4 w-36" />
+			<span className="sr-only">Loading knowledge summary…</span>
+		</div>
+	);
+	if (!error) return null;
+	if (hasData) return (
+		<div role="status" className="flex flex-wrap items-center justify-center gap-2 text-sm text-muted-foreground">
+			<span>Could not refresh. Showing the last summary.</span>
+			<Button variant="ghost" size="sm" onClick={onRetry}>Retry</Button>
+		</div>
+	);
+	return (
+		<Empty>
+			<EmptyHeader>
+				<EmptyTitle>Knowledge summary unavailable</EmptyTitle>
+				<EmptyDescription>Could not load your knowledge and sessions. Try again.</EmptyDescription>
+			</EmptyHeader>
+			<Button variant="outline" size="sm" onClick={onRetry}>Retry</Button>
+		</Empty>
+	);
+}
+
 export function MinimalHome({
 	chainSelectOpen = false,
 	practiceSelection,
@@ -96,22 +132,41 @@ export function MinimalHome({
 	const [snapshot, setSnapshot] = useState<GraphSnapshot | null>(null);
 	const [costs, setCosts] = useState<GraphCostSummary | null>(null);
 	const [chats, setChats] = useState<ChatSummary[]>([]);
+	const [loading, setLoading] = useState(true);
+	const [loadError, setLoadError] = useState(false);
+	const requestRef = useRef(0);
 	const [chainsOpen, setChainsOpen] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const readState = useCallback(() => {
-		fetch("/api/graph")
-			.then((res) => res.json() as Promise<GraphSnapshot>)
-			.then(setSnapshot)
-			.catch(() => {});
-		fetch("/api/graph/costs")
-			.then((res) => res.json() as Promise<GraphCostSummary>)
-			.then(setCosts)
-			.catch(() => {});
-		fetch("/api/chats")
-			.then((res) => res.json() as Promise<{ chats: ChatSummary[] }>)
-			.then((body) => setChats(body.chats))
-			.catch(() => {});
+		const request = ++requestRef.current;
+		setLoading(true);
+		setLoadError(false);
+		// Update the summary atomically: missing session data must not look like zero sessions.
+		void Promise.all([
+			fetch("/api/graph").then((res) => {
+				if (!res.ok) throw new Error("Graph unavailable");
+				return res.json() as Promise<GraphSnapshot>;
+			}),
+			fetch("/api/chats").then((res) => {
+				if (!res.ok) throw new Error("Sessions unavailable");
+				return res.json() as Promise<{ chats: ChatSummary[] }>;
+			}),
+		]).then(([nextSnapshot, body]) => {
+			if (request !== requestRef.current) return;
+			setSnapshot(nextSnapshot);
+			setChats(body.chats);
+		}).catch(() => {
+			if (request === requestRef.current) setLoadError(true);
+		}).finally(() => {
+			if (request === requestRef.current) setLoading(false);
+		});
+		void fetch("/api/graph/costs").then((res) => {
+			if (!res.ok) throw new Error("Costs unavailable");
+			return res.json() as Promise<GraphCostSummary>;
+		}).then((nextCosts) => {
+			if (request === requestRef.current) setCosts(nextCosts);
+		}).catch(() => {});
 	}, []);
 	useEffect(() => {
 		readState();
@@ -145,14 +200,17 @@ export function MinimalHome({
 			/>
 
 			{/* The quiet summary — centered, biased up off the composer. */}
-			<div className="pointer-events-none flex h-full items-center justify-center pb-40">
-				<KnowledgeSummary
-					propositions={snapshot?.propositions.length ?? 0}
-					chains={snapshot?.chains.length ?? 0}
-					teachSessions={teachSessions}
-					practiceSessions={practiceSessions}
-					importedNotes={Object.keys(snapshot?.fileSources ?? {}).length}
-				/>
+			<div className="flex h-full items-center justify-center px-6 pb-40">
+				<div className="flex flex-col items-center gap-4">
+					<KnowledgeSummaryStatus loading={loading && !snapshot} error={loadError} hasData={snapshot !== null} onRetry={readState} />
+					{snapshot && <KnowledgeSummary
+						propositions={snapshot.propositions.length}
+						chains={snapshot.chains.length}
+						teachSessions={teachSessions}
+						practiceSessions={practiceSessions}
+						importedNotes={Object.keys(snapshot.fileSources ?? {}).length}
+					/>}
+				</div>
 			</div>
 
 			{/* The chrome survivors in the graph view's own places (owner,
@@ -166,7 +224,7 @@ export function MinimalHome({
 			    entry law). */}
 			<div className="lh-no-drag lh-wco-floating absolute right-2 top-2 z-10 flex max-w-[calc(100%-5.5rem)] flex-col items-end gap-2">
 				<div className="flex min-w-0 items-start gap-2">
-					<div className="graph-chrome-fade-in shrink-0 rounded-xl border bg-card/85 px-1 py-[3px] shadow-lg backdrop-blur">
+					<div className="graph-chrome-fade-in shrink-0 rounded-xl border bg-card px-1 py-[3px] shadow-sm">
 						<Hint label="Every reasoning chain" side="bottom">
 							<button
 								type="button"
@@ -174,12 +232,12 @@ export function MinimalHome({
 								data-testid="open-chain-table"
 								className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground transition-colors hover:bg-accent"
 							>
-								<ListTreeIcon className="size-3" />
+								<ListTreeIcon className="size-4" />
 								Chains
 							</button>
 						</Hint>
 					</div>
-					<div className="shrink-0 rounded-xl border bg-card/85 px-1 py-[3px] shadow-lg backdrop-blur">
+					<div className="shrink-0 rounded-xl border bg-card px-1 py-[3px] shadow-sm">
 						<Hint label="Import notes into the graph" side="bottom">
 							<button
 								type="button"
@@ -188,7 +246,7 @@ export function MinimalHome({
 								data-testid="import-notes"
 								className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground transition-colors hover:bg-accent disabled:opacity-50"
 							>
-								<UploadIcon className="size-3" />
+								<UploadIcon className="size-4" />
 								{importing ? "Importing…" : "Import notes…"}
 							</button>
 						</Hint>

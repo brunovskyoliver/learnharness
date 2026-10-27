@@ -46,6 +46,13 @@ describe("SessionRow", () => {
 		assert.ok(!html.includes("border-phase-"), "phase rings are retired app-wide");
 	});
 
+	it("retains the session kind while status changes", () => {
+		for (const status of [{}, { busy: true }, { pendingQuestion: true }]) {
+			assert.match(render(item(status)), /lucide-book-open/);
+			assert.match(render(item({ kind: "practice", ...status })), /lucide-dumbbell/);
+		}
+	});
+
 	it("idle session: NO indicator — absence is the state", () => {
 		for (const phase of ["probe", "plan", "teach"] as const) {
 			const html = render(item({ phase }));
@@ -116,7 +123,7 @@ describe("SessionRow", () => {
 
 	it("active row is visually marked by the background alone (owner, round 5: no weight change)", () => {
 		const html = render(item({}), true);
-		assert.ok(html.includes("bg-white/[0.09]"), "active background");
+		assert.ok(html.includes("bg-accent"), "active background");
 		assert.ok(!html.includes("font-medium"), "weight is not a second channel doing the same job");
 	});
 });

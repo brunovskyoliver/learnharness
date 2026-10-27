@@ -17,6 +17,7 @@ import { usePointerBlur } from "@/components/focus-hygiene";
 import { SettingsDialogProvider, useSettingsDialog } from "@/components/settings/settings-dialog.tsx";
 import { Hint } from "@/components/ui/hint";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { fuzzyScore } from "@/src/core";
 import { useServerEvent, useServerResync } from "@/components/server-events";
@@ -224,7 +225,7 @@ export function SidebarToggle() {
 				{/* Owner, round 6: size-4, SAME as the close glyph — the toggle
 				    must not grow when the sidebar is closed (it did: size-5 here).
 				    The small look is the standard, both directions. */}
-				<PanelLeftOpenIcon className="size-4" />
+				<PanelLeftOpenIcon className="ui-icon" />
 			</Button>
 			</Hint>
 		</span>
@@ -331,24 +332,20 @@ export function SessionRow({
 			title={`${chat.title}\n${sessionMeta(chat)}`}
 			data-testid={kbdSelected ? "session-row-kbd" : "session-row"}
 			data-session-id={chat.id}
+			aria-current={active ? "page" : undefined}
 			className={cn(
-				"group flex h-9 w-full shrink-0 items-center gap-2.5 rounded-md px-2.5 text-left text-sm transition-colors hover:bg-white/[0.06]",
-				active ? "bg-white/[0.09] text-foreground" : "text-foreground/85",
-				kbdSelected && !active && "bg-white/[0.06] ring-1 ring-inset ring-white/10",
+				"group flex h-9 w-full shrink-0 items-center gap-2.5 rounded-md px-2.5 text-left text-sm transition-colors hover:bg-accent",
+				active ? "bg-accent text-foreground" : "text-foreground/85",
+				kbdSelected && !active && "bg-accent ring-1 ring-inset ring-ring/30",
 			)}
 		>
 			<span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground">
-				{chat.busy || chat.compacting ? (
-					<SessionStatus busy />
-				) : waiting ? (
-					<MessageCircleQuestionIcon className="size-4 text-foreground/70" aria-label="Waiting for you" />
-				) : practice ? (
-					<DumbbellIcon className="size-3.5 opacity-60" aria-label="Practice session" />
-				) : (
-					<BookOpenIcon className="size-3.5 opacity-40" aria-hidden="true" />
-				)}
+				{practice ? <DumbbellIcon className="ui-icon" aria-label="Practice session" /> : <BookOpenIcon className="ui-icon" aria-label="Lesson session" />}
 			</span>
 			<span className="min-w-0 flex-1 truncate">{chat.title}</span>
+			{(chat.busy || chat.compacting || waiting) && <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground">
+				{chat.busy || chat.compacting ? <SessionStatus busy /> : <MessageCircleQuestionIcon className="ui-icon" aria-label="Waiting for you" />}
+			</span>}
 			<span className="shrink-0 text-xs tabular-nums text-muted-foreground">{shortAgo(chat.updatedAt)}</span>
 		</button>
 	);
@@ -371,7 +368,7 @@ export function RenameRow({ chat, onCommit, onCancel }: { chat: ChatListItem; on
 	return (
 		<div
 			data-testid="session-rename-row"
-			className="flex h-9 w-full shrink-0 items-center gap-2.5 rounded-md bg-white/[0.09] px-2.5"
+			className="flex h-9 w-full shrink-0 items-center gap-2.5 rounded-md bg-accent px-2.5"
 		>
 			<span className="size-4 shrink-0" />
 			<input
@@ -404,6 +401,7 @@ const KIND_FILTER_KEY = "lh:session-kind-filter";
 function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 	const { open, toggle, overlay, close } = useSidebar();
 	const [chats, setChats] = useState<ChatListItem[] | null>(null);
+	const [loadError, setLoadError] = useState(false);
 	const [query, setQuery] = useState("");
 	const [kindFilter, setKindFilter] = useState<SessionKindFilter>("all");
 	useEffect(() => {
@@ -454,11 +452,14 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 		refreshInFlightRef.current = true;
 		try {
 			const res = await fetch("/api/chats", { cache: "no-store" });
+			if (!res.ok) throw new Error("Could not load sessions");
 			const d = (await res.json()) as { chats: ChatListItem[] };
+			if (!Array.isArray(d.chats)) throw new Error("Invalid sessions response");
 			setChats(d.chats);
+			setLoadError(false);
 		} catch {
-			// a transient failure keeps the last snapshot
-			setChats((prev) => prev ?? []);
+			// Keep the last good snapshot; an initial failure is not an empty list.
+			setLoadError(true);
 		} finally {
 			refreshInFlightRef.current = false;
 		}
@@ -686,32 +687,32 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 
 	const sidebar = (
 		<SidebarFrame open={open} overlay={overlay} onClose={close} hasMenu={Boolean(ctxChatId || filterOpen)}>
-			<div className="flex h-full flex-col border-r border-white/[0.08] bg-(--lh-sidebar)" style={{ width: overlay ? "100%" : "var(--lh-sidebar-width)" }}>
+			<div className="flex h-full flex-col border-r border-border bg-(--lh-sidebar)" style={{ width: overlay ? "100%" : "var(--lh-sidebar-width)" }}>
 				{/* Brand band: in Electron it is the window's drag surface and
 				    starts after the traffic lights (.lh-lights-gutter). */}
-				<div className="lh-drag lh-lights-gutter flex h-13 shrink-0 items-center gap-2 px-3">
+				<div className="lh-drag lh-lights-gutter flex h-13 shrink-0 items-center gap-2 border-b border-border px-3">
 					<Hint label="Home" action="jump-graph" side="right">
 						<Link
 							href="/"
 							aria-label="Home"
-							className="lh-no-drag flex min-w-0 items-center gap-2 rounded-md px-1 py-1 transition-colors hover:bg-white/[0.06]"
+							className="lh-no-drag flex min-w-0 items-center gap-2 rounded-md px-1 py-1 transition-colors hover:bg-accent"
 						>
 							<LhMark className="size-5 shrink-0" />
 							<span className="truncate text-sm font-medium tracking-tight">Brunovský&apos;s study</span>
 						</Link>
 					</Hint>
 					<Hint label="Close sidebar" action="toggle-sidebar">
-						<Button variant="ghost" size="icon" aria-label="Close sidebar" onClick={toggle} className="lh-no-drag ml-auto size-7 text-muted-foreground">
-							<PanelLeftCloseIcon className="size-4" />
+						<Button variant="ghost" size="icon" aria-label="Close sidebar" onClick={toggle} className="lh-no-drag ml-auto size-8 text-muted-foreground">
+							<PanelLeftCloseIcon className="ui-icon" />
 						</Button>
 					</Hint>
 				</div>
 
 				{/* Toolbar: ghost search, filter menu, the two "new" doors. */}
-				<div className="flex items-center gap-1 px-2 pb-2">
+				<div className="flex items-center gap-1 px-2 py-3">
 					<Hint label="Search sessions" action="sessions-search" side="bottom">
-						<label className="flex h-8 min-w-0 flex-1 cursor-text items-center gap-2 rounded-md px-2 text-muted-foreground transition-colors hover:bg-white/[0.06] focus-within:bg-white/[0.06]">
-							<SearchIcon className="size-4 shrink-0" />
+						<label className="flex h-8 min-w-0 flex-1 cursor-text items-center gap-2 rounded-md px-2 text-muted-foreground transition-colors hover:bg-accent focus-within:bg-accent">
+							<SearchIcon className="ui-icon shrink-0" />
 							<input
 								ref={searchRef}
 								data-testid="session-search"
@@ -775,11 +776,11 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 							aria-expanded={filterOpen}
 							onClick={() => setFilterOpen((v) => !v)}
 							className={cn(
-								"flex size-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-white/[0.06] hover:text-foreground",
-								kindFilter === "all" ? "text-muted-foreground" : "bg-white/[0.09] text-foreground",
+								"flex size-8 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-foreground",
+								kindFilter === "all" ? "text-muted-foreground" : "bg-accent text-foreground",
 							)}
 						>
-							<ListFilterIcon className="size-4" />
+							<ListFilterIcon className="ui-icon" />
 						</button>
 					</Hint>
 					<Hint label="New practice" side="bottom">
@@ -788,9 +789,9 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 							data-testid="new-session-practice"
 							aria-label="New practice"
 							onClick={() => router.push("/chat/new?mode=practice")}
-							className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+							className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 						>
-							<DumbbellIcon className="size-4" />
+							<DumbbellIcon className="ui-icon" />
 						</button>
 					</Hint>
 					<Hint label="New lesson" side="bottom">
@@ -799,16 +800,16 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 							data-testid="new-session"
 							aria-label="New lesson"
 							onClick={() => void newSession()}
-							className="flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+							className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 						>
-							<SquarePenIcon className="size-4" />
+							<SquarePenIcon className="ui-icon" />
 						</button>
 					</Hint>
 				</div>
 
 				<div ref={listRef} className="flex flex-1 flex-col gap-px overflow-y-auto px-2 pb-2">
 					{shown === null ? (
-						<div className="px-2.5 py-2 text-sm text-muted-foreground">Loading…</div>
+						loadError ? <div role="status" className="px-2 py-3 text-sm text-muted-foreground"><p>Could not load sessions.</p><Button type="button" variant="ghost" size="sm" onClick={() => void refresh()}>Try again</Button></div> : <div role="status" aria-label="Loading sessions" className="flex flex-col gap-3 px-2 py-3"><Skeleton className="h-6 w-full" /><Skeleton className="h-6 w-4/5" /><Skeleton className="h-6 w-3/4" /></div>
 					) : shown.length === 0 ? (
 						<div className="px-2.5 py-2 text-sm text-muted-foreground">
 							{query.trim() ? "No sessions match." : "No sessions yet."}
@@ -822,7 +823,7 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 								group !== null && (i === 0 || dateGroup(shown[i - 1]!.updatedAt) !== group) ? (
 									<div className="flex h-8 shrink-0 items-center gap-2 px-2.5 pt-1 text-xs font-medium text-muted-foreground" data-testid="session-group">
 										{group}
-										<span className="h-px flex-1 bg-white/[0.06]" aria-hidden="true" />
+										<span className="h-px flex-1 bg-accent" aria-hidden="true" />
 										<span className="tabular-nums">{shown.filter((x) => dateGroup(x.updatedAt) === group).length}</span>
 									</div>
 								) : null;
@@ -859,12 +860,12 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 					<Hint label="Settings" action="open-settings" side="top">
 						<button
 							type="button"
-							onClick={() => { if (overlay) close(); openSettings(); }}
+							onClick={(event) => { if (overlay) close(); openSettings(undefined, undefined, event.currentTarget); }}
 							data-testid="settings-entry"
 							aria-label="Settings"
-							className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+							className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 						>
-							<SettingsIcon className="size-4" />
+							<SettingsIcon className="ui-icon" />
 						</button>
 					</Hint>
 					<div className="ml-auto">{account}</div>
@@ -876,7 +877,7 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 					anchorRef={filterRef}
 					testid="kind-filter-menu"
 					preferredSide="down"
-					menuClass="flex w-44 flex-col gap-0.5 rounded-lg border border-white/[0.08] bg-card p-1 text-sm shadow-xl"
+					menuClass="flex w-44 flex-col gap-0.5 rounded-lg border border-border bg-card p-1 text-sm shadow-xl"
 				>
 					{(
 						[
@@ -894,7 +895,7 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 								setFilter(f);
 								setFilterOpen(false);
 							}}
-							className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-white/[0.06]"
+							className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent"
 						>
 							<span className="flex-1">{label}</span>
 							{kindFilter === f && <CheckIcon className="size-3.5 text-muted-foreground" />}

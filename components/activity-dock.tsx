@@ -2,6 +2,9 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIcon, BotIcon, FileTextIcon, PenToolIcon, PlayIcon, SearchIcon, SquareIcon, WaypointsIcon } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Item, ItemGroup } from "@/components/ui/item";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { CallUsage, JobKind, JobRecord } from "@/src/core";
 import { isModelsRefusal, isProviderKeyRefusal, subscriptionLabel, subscriptionLabels } from "@/src/core";
@@ -337,14 +340,12 @@ export function ActivitySection({ feed: feedProp }: { feed?: ActivityFeed }) {
 	// sidebar's own edge line, the header matches the "Sessions" label, the
 	// rows match the session rows' hover. Empty means empty: the header sits
 	// alone (the cost span is population, not decoration).
-	// ui-v2: nothing renders while nothing runs; the header is a T3 shelf.
-	if (blobs.length === 0) return null;
 	return (
 		<section data-testid="activity-section" className="px-2 pb-2">
 			<div className="flex h-8 items-center gap-2 px-2.5 text-xs font-medium text-muted-foreground">
 				<ActivityIcon className="size-3.5 shrink-0" />
 				<span className="truncate whitespace-nowrap">Background agents</span>
-				<span className="h-px min-w-2 flex-1 bg-white/[0.06]" aria-hidden="true" />
+				<span className="h-px min-w-2 flex-1 bg-border" aria-hidden="true" />
 				{/* Dollars only: plan-covered runs have no cost worth a label here. */}
 				{totalCost !== null && (
 					<span className="shrink-0 tabular-nums" data-testid="activity-total-cost" title="Total running cost (inferred)">
@@ -353,7 +354,7 @@ export function ActivitySection({ feed: feedProp }: { feed?: ActivityFeed }) {
 				)}
 			</div>
 			{blobs.length > 0 && (
-				<div className="flex max-h-[40dvh] flex-col gap-1 overflow-y-auto">
+				<ItemGroup className="max-h-[40dvh] gap-1 overflow-y-auto">
 					{blobs.map((blob) => (
 						<ActivityBlobRow
 							key={blob.id}
@@ -365,13 +366,13 @@ export function ActivitySection({ feed: feedProp }: { feed?: ActivityFeed }) {
 							onAbort={() => void abort(blob)}
 						/>
 					))}
-			</div>
+				</ItemGroup>
 			)}
 		</section>
 	);
 }
 
-/** One blob: icon + elapsed + cost on the face; click → detail popover. */
+/** Compact activity row with inline details and a separate stop action. */
 function ActivityBlobRow({
 	blob,
 	now,
@@ -404,89 +405,96 @@ function ActivityBlobRow({
 	const elapsed = formatElapsed(now - blob.startedAt);
 	const model = blob.model ? blob.model.replace(/^[^:]+:/, "") : null;
 	return (
-		<div
-			data-testid={`activity-blob-${blob.process}`}
-			className="rounded-lg text-xs transition-colors hover:bg-accent"
-		>
-			<div className="flex items-start gap-1">
-				<button
-					type="button"
-					onClick={onToggleDetail}
-					aria-expanded={detailOpen}
-					title={blob.title}
-					className="flex min-w-0 flex-1 items-start gap-2 py-1.5 pl-2 text-left"
-				>
-					<Icon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground" />
-					<span className="min-w-0 flex-1">
-						<span className="flex items-baseline gap-2">
-							<span className="min-w-0 flex-1 truncate font-medium text-card-foreground">{label}</span>
-							<span className="shrink-0 tabular-nums text-muted-foreground" data-testid="activity-blob-elapsed">
-								{elapsed}
+		<Collapsible open={detailOpen} onOpenChange={onToggleDetail} asChild>
+			<Item
+				role="listitem"
+				data-testid={`activity-blob-${blob.process}`}
+				size="sm"
+				className="flex-col items-stretch gap-0 p-0 text-xs transition-colors hover:bg-accent"
+			>
+				<div className="flex items-start gap-1">
+					<CollapsibleTrigger asChild>
+					<button
+						type="button"
+						aria-expanded={detailOpen}
+						title={blob.title}
+						className="flex min-w-0 flex-1 items-start gap-2 py-1.5 pl-2 text-left"
+					>
+						<Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+						<span className="min-w-0 flex-1">
+							<span className="flex items-baseline gap-2">
+								<span className="min-w-0 flex-1 truncate font-medium text-card-foreground">{label}</span>
+								<span className="shrink-0 tabular-nums text-muted-foreground" data-testid="activity-blob-elapsed">
+									{elapsed}
+								</span>
+							</span>
+							<span className="block truncate text-muted-foreground" data-testid="activity-blob-activity">
+								{activity || blob.title}
 							</span>
 						</span>
-						<span className="block truncate text-muted-foreground" data-testid="activity-blob-activity">
-							{activity || blob.title}
-						</span>
-					</span>
-				</button>
-				{/* The explicit END on the blob's face, aligned with the first line
-				    (it stays put when the detail opens). A failed abort locks the
-				    button and says why; a successful one makes the blob vanish. */}
-				<button
-					type="button"
-					data-testid="activity-abort"
-					onClick={onAbort}
-					disabled={abortState !== undefined}
-					title={abortState === "failed" ? "Stopping failed, try again" : "Stop"}
-					aria-label={`Stop ${label} in ${blob.title}`}
-					className="mr-1 mt-1 shrink-0 rounded-md p-1 text-muted-foreground/70 transition-colors hover:bg-destructive/10 hover:text-destructive disabled:opacity-50"
-				>
-					<SquareIcon className="size-3" />
-				</button>
-			</div>
+					</button>
+					</CollapsibleTrigger>
+					{/* The explicit END on the blob's face, aligned with the first line
+					    (it stays put when the detail opens). A failed abort locks the
+					    button and says why; a successful one makes the blob vanish. */}
+					<Button
+						type="button"
+						variant="ghost"
+						size="icon-sm"
+						data-testid="activity-abort"
+						onClick={onAbort}
+						disabled={abortState !== undefined}
+						title={abortState === "failed" ? "Stopping failed, try again" : "Stop"}
+						aria-label={`Stop ${label} in ${blob.title}`}
+						className="mr-1 mt-1 shrink-0"
+					>
+						<SquareIcon />
+					</Button>
+				</div>
 
-			{detailOpen && (
-				<dl
-					data-testid="activity-blob-detail"
-					className="mx-2 mb-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 rounded-md bg-accent/40 p-2 text-muted-foreground"
-				>
-					<dt>Session</dt>
-					<dd className="min-w-0 text-right">
-						<a href={`/chat/${blob.chatId}`} className="block truncate text-card-foreground hover:underline" title={blob.title}>
-							{blob.title}
-						</a>
-					</dd>
-					{model && (
-						<>
-							<dt>Model</dt>
-							<dd className="truncate text-right text-card-foreground">{model}</dd>
-						</>
-					)}
-					<dt>Context</dt>
-					<dd className="text-right tabular-nums text-card-foreground" data-testid="activity-blob-context">
-						{blob.context === null ? "—" : `${formatTokens(blob.context.used)} / ${formatTokens(blob.context.limit)}`}
-					</dd>
-					{blob.steps !== undefined && (
-						<>
-							<dt>Model calls</dt>
-							<dd className="text-right tabular-nums text-card-foreground">{blob.steps}</dd>
-						</>
-					)}
-					{blob.cost !== null && (
-						<>
-							<dt>Cost</dt>
-							<dd className="text-right tabular-nums text-card-foreground" data-testid="activity-blob-cost">
-								{planCostLabel(blob.cost, [])}
-							</dd>
-						</>
-					)}
-					{abortState && (
-						<dd className="col-span-2 text-muted-foreground/80">
-							{abortState === "failed" ? "Stopping failed, try again" : "Stopping…"}
+				<CollapsibleContent>
+					<dl
+						data-testid="activity-blob-detail"
+						className="mx-2 mb-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 rounded-md bg-accent/40 p-2 text-muted-foreground"
+					>
+						<dt>Session</dt>
+						<dd className="min-w-0 text-right">
+							<a href={`/chat/${blob.chatId}`} className="block truncate text-card-foreground hover:underline" title={blob.title}>
+								{blob.title}
+							</a>
 						</dd>
-					)}
-				</dl>
-			)}
-		</div>
+						{model && (
+							<>
+								<dt>Model</dt>
+								<dd className="truncate text-right text-card-foreground">{model}</dd>
+							</>
+						)}
+						<dt>Context</dt>
+						<dd className="text-right tabular-nums text-card-foreground" data-testid="activity-blob-context">
+							{blob.context === null ? "—" : `${formatTokens(blob.context.used)} / ${formatTokens(blob.context.limit)}`}
+						</dd>
+						{blob.steps !== undefined && (
+							<>
+								<dt>Model calls</dt>
+								<dd className="text-right tabular-nums text-card-foreground">{blob.steps}</dd>
+							</>
+						)}
+						{blob.cost !== null && (
+							<>
+								<dt>Cost</dt>
+								<dd className="text-right tabular-nums text-card-foreground" data-testid="activity-blob-cost">
+									{planCostLabel(blob.cost, [])}
+								</dd>
+							</>
+						)}
+						{abortState && (
+							<dd className="col-span-2 text-muted-foreground/80">
+								{abortState === "failed" ? "Stopping failed, try again" : "Stopping…"}
+							</dd>
+						)}
+					</dl>
+				</CollapsibleContent>
+			</Item>
+		</Collapsible>
 	);
 }

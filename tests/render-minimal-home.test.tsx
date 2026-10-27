@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { renderToStaticMarkup } from "react-dom/server";
 import React from "react";
 import { describe, it } from "node:test";
-import { KnowledgeSummary } from "../components/minimal-home.tsx";
+import { KnowledgeSummary, KnowledgeSummaryStatus } from "../components/minimal-home.tsx";
 
 function render(props: Partial<Parameters<typeof KnowledgeSummary>[0]> = {}) {
 	return renderToStaticMarkup(
@@ -71,5 +71,32 @@ describe("KnowledgeSummary — the quiet home summary (2026-10-06)", () => {
 	it("non-empty shows no empty-state hint", () => {
 		const html = render();
 		assert.ok(!html.includes("Nothing here yet"));
+	});
+});
+
+
+describe("KnowledgeSummaryStatus", () => {
+	const status = (loading: boolean, error: boolean, hasData: boolean) => renderToStaticMarkup(
+		React.createElement(KnowledgeSummaryStatus, { loading, error, hasData, onRetry: () => {} }),
+	);
+	it("shows loading without zero counts or an empty-state claim", () => {
+		const html = status(true, false, false);
+		assert.match(html, /Loading knowledge summary/);
+		assert.doesNotMatch(html, /0 propositions|Nothing here yet|unavailable/);
+	});
+	it("failed initial load offers retry without claiming an empty graph", () => {
+		const html = status(false, true, false);
+		assert.match(html, /Knowledge summary unavailable/);
+		assert.match(html, /Retry/);
+		assert.doesNotMatch(html, /Nothing here yet|0 propositions/);
+	});
+	it("failed refresh explains that the last good summary remains", () => {
+		const html = status(false, true, true);
+		assert.match(html, /Showing the last summary/);
+		assert.match(html, /Retry/);
+		assert.doesNotMatch(html, /Knowledge summary unavailable/);
+	});
+	it("adds no status after a successful load", () => {
+		assert.equal(status(false, false, true), "");
 	});
 });

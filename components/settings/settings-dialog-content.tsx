@@ -6,7 +6,9 @@ import {
 	useRef,
 	useState,
 } from "react";
-import { createPortal } from "react-dom";
+import { Dialog } from "radix-ui";
+import { BotIcon, FolderIcon, KeyboardIcon, NetworkIcon, PaletteIcon, SearchIcon, Settings2Icon, KeyRoundIcon, XIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useBackdropDismiss } from "@/components/backdrop-dismiss";
 import {
 	CURRENT_SETTINGS_VERSION,
@@ -21,7 +23,7 @@ import { SettingsSection } from "./controls.tsx";
 import { UpdateSettings } from "./update-settings.tsx";
 import { AgentSection } from "./agent-section.tsx";
 import type { ModelsSettings } from "@/src/core";
-import { MENU_CLOSE_EVENT, MENU_OPEN_EVENT } from "@/components/menu-shell";
+import { MENU_CLOSE_EVENT, MENU_OPEN_EVENT, MenuPortalContext } from "@/components/menu-shell";
 import { notifySettingsSaved } from "@/components/settings-signal";
 import { KeysSection } from "./keys-section.tsx";
 import { Hint } from "@/components/ui/hint";
@@ -33,14 +35,14 @@ import { FilesSection } from "./files-section.tsx";
  *  prose is out; only the keyboard note stays (storage location is a
  *  real question users ask). */
 const SECTIONS = [
-	{ id: "keys", label: "Providers" },
-	{ id: "agent", label: "Agent" },
-	{ id: "appearance", label: "Appearance" },
-	{ id: "graph", label: "Graph" },
-	{ id: "keyboard", label: "Keyboard", hint: "Stored on this device" },
+	{ id: "keys", icon: KeyRoundIcon, label: "Providers" },
+	{ id: "agent", icon: BotIcon, label: "Agent" },
+	{ id: "appearance", icon: PaletteIcon, label: "Appearance" },
+	{ id: "graph", icon: NetworkIcon, label: "Graph" },
+	{ id: "keyboard", icon: KeyboardIcon, label: "Keyboard", hint: "Stored on this device" },
 	/** Hosted only: the upload folder the agent's file tools read. */
-	{ id: "files", label: "Files" },
-	{ id: "general", label: "General" },
+	{ id: "files", icon: FolderIcon, label: "Files" },
+	{ id: "general", icon: Settings2Icon, label: "General" },
 ] as const;
 export type SectionId = (typeof SECTIONS)[number]["id"];
 
@@ -49,25 +51,54 @@ export default function SettingsDialog({
 	initialSection,
 	initialRow,
 	hosted,
+	returnFocusElement,
 }: {
 	onClose: () => void;
 	initialSection: SectionId;
 	/** The keys-section row to unfold (see DialogContext above). */
 	initialRow: string | null;
 	hosted: boolean;
+	returnFocusElement?: HTMLElement | null;
 }) {
 	const backdropDismiss = useBackdropDismiss(onClose);
-	// Plain dim backdrop (no blur — nothing decorative); a genuine
-	// backdrop click closes, the dialog body stops propagation.
-	return createPortal(
-		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-background/80"
-			data-testid="settings-backdrop"
-			{...backdropDismiss}
-		>
-			<SettingsDialogBody onClose={onClose} initialSection={initialSection} initialRow={initialRow} hosted={hosted} />
-		</div>,
-		document.body,
+	const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
+	const returnFocus = useRef<HTMLElement | null>(
+		returnFocusElement ?? (typeof document === "undefined" ? null : document.activeElement as HTMLElement | null),
+	);
+
+	return (
+		<Dialog.Root open onOpenChange={(open) => { if (!open) onClose(); }}>
+			<Dialog.Portal>
+				<Dialog.Overlay className="fixed inset-0 z-50 bg-background/80" data-testid="settings-backdrop" {...backdropDismiss} />
+				<Dialog.Content
+					ref={setPortalContainer}
+					data-lh-modal-content
+					aria-describedby={undefined}
+					className="fixed inset-3 z-50 overflow-hidden rounded-xl border border-border bg-background shadow-2xl outline-none sm:inset-6 lg:inset-x-[6vw] lg:inset-y-[5vh]"
+					onPointerDownOutside={(event) => event.preventDefault()}
+					onEscapeKeyDown={(event) => event.preventDefault()}
+						onCloseAutoFocus={(event) => {
+							event.preventDefault();
+							const target = returnFocus.current;
+							requestAnimationFrame(() => {
+								if (document.querySelector("[data-lh-modal-content]")) return;
+								// Hint can replace its trigger subtree when its open state changes.
+								const liveTarget = target?.dataset.testid === "settings-entry"
+									? document.querySelector<HTMLElement>('[data-testid="settings-entry"]')
+									: target;
+								const rect = liveTarget?.getBoundingClientRect();
+								if (liveTarget?.isConnected && rect && rect.width > 0 && rect.left >= 0 && rect.right <= innerWidth) liveTarget.focus();
+								else document.querySelector<HTMLElement>('[aria-label="Open sidebar"]')?.focus();
+							});
+						}}
+				>
+					<Dialog.Title className="sr-only">Settings</Dialog.Title>
+					<MenuPortalContext.Provider value={portalContainer}>
+						<SettingsDialogBody onClose={onClose} initialSection={initialSection} initialRow={initialRow} hosted={hosted} inModal />
+					</MenuPortalContext.Provider>
+				</Dialog.Content>
+			</Dialog.Portal>
+		</Dialog.Root>
 	);
 }
 
@@ -78,10 +109,12 @@ export function SettingsDialogBody({
 	initialSection = "keys",
 	initialRow = null,
 	hosted = false,
+	inModal = false,
 }: {
 	onClose: () => void;
 	/** Shows the hosted-only sections (Files). */
 	hosted?: boolean;
+	inModal?: boolean;
 	initialSection?: SectionId;
 	/** The keys row to unfold on arrival (null = none). While-open
 	 *  retargets follow it exactly like initialSection below. */
@@ -125,6 +158,8 @@ export function SettingsDialogBody({
 		};
 	}, []);
 	const [active, setActive] = useState<SectionId>(initialSection);
+	const [search, setSearch] = useState("");
+	const activeSection = SECTIONS.find((section) => section.id === active) ?? SECTIONS[0];
 	// A deep-link fired while the dialog is ALREADY open (first exercised by
 	// the wave-6 embedding picker's "Add a provider key first…" link — the
 	// picker itself died with wave 7, the mechanism is general) changes
@@ -153,7 +188,7 @@ export function SettingsDialogBody({
 	// dialog's outer layer).
 	useEffect(() => {
 		const onKey = (e: KeyboardEvent) => {
-			if (e.key === "Escape") {
+			if (e.key === "Escape" && openMenus === 0) {
 				// THE ONE-ESC LAW (owner, keyboard round 2026-10-06): claim
 				// at the document level — the window chain (dictation →
 				// abort) must not also act. One Esc, one action.
@@ -164,7 +199,7 @@ export function SettingsDialogBody({
 		};
 		document.addEventListener("keydown", onKey);
 		return () => document.removeEventListener("keydown", onKey);
-	}, [onClose]);
+	}, [onClose, openMenus]);
 
 	/** ONE writer for the whole dialog: PUT the whole section, keep the
 	 *  record mirror in sync, surface route errors inline (a 400 is a
@@ -208,16 +243,18 @@ export function SettingsDialogBody({
 
 	return (
 		<div
-			role="dialog"
-			aria-modal="true"
-			aria-label="Settings"
+			role={inModal ? undefined : "dialog"}
+			aria-modal={inModal ? undefined : true}
+			aria-label={inModal ? undefined : "Settings"}
 			data-testid="settings-dialog"
-			className="settings-dialog-pop flex h-[620px] max-h-[85vh] w-[920px] max-w-[90vw] flex-col overflow-hidden rounded-md border border-border bg-card shadow-xl"
+			className="settings-dialog-pop flex h-full min-h-0 w-full flex-col overflow-hidden bg-background"
 			onClick={(e) => e.stopPropagation()}
 		>
-			{/* Header — the app's quiet CMU title language. */}
-			<header className="flex h-13 shrink-0 items-center gap-3 border-b border-white/[0.06] px-5">
-				<h2 className="text-sm font-medium">Settings</h2>
+			{/* Shared header height and section breadcrumb. */}
+			<header className="flex h-13 shrink-0 items-center gap-3 border-b border-border px-5 sm:px-6">
+				<span className="text-sm text-muted-foreground">Settings</span>
+				<span aria-hidden="true" className="text-muted-foreground">/</span>
+				<span className="truncate text-sm font-medium">{activeSection.label}</span>
 				<Hint
 						// Esc closes the dialog (its own listener) — surface it.
 						label="Close"
@@ -231,43 +268,38 @@ export function SettingsDialogBody({
 					className="ml-auto size-7 rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 					onClick={onClose}
 				>
-					<svg
-						viewBox="0 0 16 16"
-						className="mx-auto size-3.5"
-						fill="none"
-						stroke="currentColor"
-						strokeWidth="1.5"
-					>
-						<path d="M4 4l8 8M12 4l-8 8" />
-					</svg>
+					<XIcon aria-hidden="true" className="mx-auto size-4" />
 				</button>
 					</Hint>
 			</header>
 
-			<div className="flex min-h-0 flex-1">
-				{/* Left nav — text-only, the session-list mono language,
-					    active = bg-accent. */}
+			<div className="flex min-h-0 flex-1 flex-col sm:flex-row">
+				{/* Searchable categories; horizontal navigation on narrow screens. */}
 				<nav
 					aria-label="Settings sections"
 					data-testid="settings-nav"
-					className="flex w-44 shrink-0 flex-col gap-1 border-r border-border p-2"
+					className="flex shrink-0 flex-col gap-3 border-b border-border bg-card p-3 sm:w-56 sm:border-r sm:border-b-0 sm:p-4"
 				>
-					{SECTIONS.filter((s) => hosted || s.id !== "files").map((s) => (
+					<label className="flex h-9 items-center gap-2 rounded-md border border-border bg-background px-2.5 text-muted-foreground">
+						<SearchIcon aria-hidden="true" className="size-4 shrink-0" />
+						<input type="search" aria-label="Search settings categories" placeholder="Search settings" value={search} onChange={(event) => setSearch(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground" />
+					</label>
+					<div className="flex gap-1 overflow-x-auto sm:flex-col">
+					{SECTIONS.filter((s) => (hosted || s.id !== "files") && s.label.toLowerCase().includes(search.toLowerCase())).map((s) => (
 						<button
 							key={s.id}
 							type="button"
 							data-testid={`settings-nav-${s.id}`}
 							aria-current={active === s.id}
-							className={`rounded-sm px-3 py-1.5 text-left font-ui text-sm transition-colors ${
-								active === s.id
-									? "bg-accent text-foreground"
-									: "text-muted-foreground hover:bg-accent hover:text-foreground"
-							}`}
+							className={cn("flex min-h-10 shrink-0 items-center gap-3 rounded-md px-3 py-2 text-left font-ui text-sm transition-colors", active === s.id ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent hover:text-foreground")}
 							onClick={() => setActive(s.id)}
 						>
+							<s.icon aria-hidden="true" className="size-[18px] shrink-0" strokeWidth={1.75} />
 							{s.label}
 						</button>
 					))}
+					</div>
+					{!SECTIONS.some((s) => (hosted || s.id !== "files") && s.label.toLowerCase().includes(search.toLowerCase())) && <p role="status" className="px-2 text-sm text-muted-foreground">No categories found.</p>}
 				</nav>
 
 				{/* Content column — one section at a time, this scrolls — and

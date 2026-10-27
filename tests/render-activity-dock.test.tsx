@@ -188,9 +188,11 @@ describe("activity dock pure layer", () => {
 });
 
 describe("activity section render", () => {
-	it("renders nothing while idle (ui-v2: the section appears only while agents run)", () => {
+	it("keeps only the activity header while idle", () => {
 		const html = renderToStaticMarkup(<ActivitySection feed={{ jobs: [], extractions: [] }} />);
-		assert.equal(html, "");
+		assert.match(html, /Background agents/);
+		assert.doesNotMatch(html, /data-testid="activity-blob-/);
+		assert.doesNotMatch(html, /activity-total-cost/);
 	});
 
 	it("renders one blob per running process with its kind, activity, elapsed, and a stop button", () => {

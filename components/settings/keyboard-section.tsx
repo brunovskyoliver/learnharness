@@ -26,7 +26,7 @@ import {
 	type KeyAction,
 	type KeyScope,
 } from "@/src/core";
-import { SettingsRow } from "./controls.tsx";
+import { SettingsGroup, SettingsRow } from "./controls.tsx";
 
 const SCOPES: { scope: KeyScope; label: string }[] = [
 	{ scope: "global", label: "Global" },
@@ -100,9 +100,7 @@ export function KeyboardSection() {
 				const actions = KEYBOARD_ACTIONS.filter((a) => a.scope === scope);
 				if (!actions.length) return null;
 				return (
-					<div key={scope} data-testid={`kbd-scope-${scope}`}>
-						<p className="mb-1 text-xs text-muted-foreground/70">{label}</p>
-						<div className="flex flex-col gap-2">
+					<SettingsGroup key={scope} label={label} testid={`kbd-scope-${scope}`}>
 							{actions.map((def) => {
 								const effective = overrides[def.id] ?? def.binding;
 								return (
@@ -150,11 +148,10 @@ export function KeyboardSection() {
 									</SettingsRow>
 								);
 							})}
-						</div>
-					</div>
+					</SettingsGroup>
 				);
 			})}
-			<div className="mt-1 flex items-center justify-between">
+			<div className="mt-1 flex flex-wrap items-center justify-between gap-3">
 				<span className="text-xs text-muted-foreground/70">Stored on this device (lh:keymap) — overrides only.</span>
 				<button
 					type="button"

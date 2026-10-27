@@ -9,6 +9,7 @@ import type { DemoKitPanel, DemoKitSpec } from "../core/demo-kit.ts";
 
 type Values = Record<string, any>;
 interface PanelView {
+	theme?(): Promise<void> | void;
 	resize?(): Promise<void> | void;
 	update(): Promise<void> | void;
 }
@@ -56,19 +57,22 @@ function load(file: string): Promise<void> {
 function cssVar(name: string, fallback: string): string {
 	return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 }
-const theme = {
-	bg: cssVar("--lh-bg", "#1c1c1c"),
-	surface: cssVar("--lh-surface", "#232323"),
-	surface2: cssVar("--lh-surface-2", "#2a2a2a"),
-	border: cssVar("--lh-border", "#434343"),
-	text: cssVar("--lh-text", "#e6e6e6"),
-	muted: cssVar("--lh-muted", "#8d8d8d"),
-	series: ["--lh-blue", "--lh-teal", "--lh-amber", "--lh-red", "--lh-green"].map((v, i) =>
-		cssVar(v, ["#7cacf8", "#5fd4c4", "#e5b55a", "#f28b82", "#7fd18b"][i]!),
-	),
-	font: cssVar("--lh-font", "system-ui, sans-serif"),
-	mono: cssVar("--lh-mono", "ui-monospace, monospace"),
-};
+function readTheme() {
+	return {
+		bg: cssVar("--lh-bg", "#141414"),
+		surface: cssVar("--lh-surface", "#1c1c1c"),
+		surface2: cssVar("--lh-surface-2", "#2a2a2a"),
+		border: cssVar("--lh-border", "#434343"),
+		text: cssVar("--lh-text", "#e6e6e6"),
+		muted: cssVar("--lh-muted", "#a1a1a1"),
+		series: ["--lh-blue", "--lh-teal", "--lh-amber", "--lh-red", "--lh-green"].map((v, i) =>
+			cssVar(v, ["#7cacf8", "#5fd4c4", "#e5b55a", "#f28b82", "#7fd18b"][i]!),
+		),
+		font: cssVar("--lh-font", "system-ui, sans-serif"),
+		mono: cssVar("--lh-mono", "ui-monospace, monospace"),
+	};
+}
+const theme = readTheme();
 
 const STYLE = `
 #lh-kit{display:flex;flex-direction:column;gap:12px;padding:2px;font-size:var(--lh-demo-size,17px);line-height:1.5}
@@ -103,7 +107,10 @@ const STYLE = `
 .k-chart text{font-size:max(12px,calc(var(--lh-demo-size,17px)*.75))!important}
 .k-flow .react-flow__node{font-size:max(13px,calc(var(--lh-demo-size,17px)*.85))}
 .k-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
-.k-focus .k-panel-head .k-btn{display:none}
+.k-icon-button{display:inline-flex;width:32px;height:32px;flex-shrink:0;align-items:center;justify-content:center;border:0;border-radius:8px;padding:0;background:transparent;color:var(--lh-muted);cursor:pointer}
+.k-icon-button:hover{background:var(--lh-surface-2);color:var(--lh-text)}
+@media(pointer:coarse){.k-icon-button{width:44px;height:44px}}
+.k-focus .k-panel-head .k-icon-button{display:none}
 .k-panel-head h3{margin:0;font-size:1em;color:var(--lh-text);font-weight:600}
 .k-focus .k-grid{display:block;min-width:0;min-height:0}
 #lh-kit.k-focus{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,280px);gap:24px;height:100dvh;box-sizing:border-box;padding:16px}
@@ -382,9 +389,9 @@ class Kit {
 				const heading = el("div", "k-panel-head");
 				if ("title" in panel && panel.title) heading.append(el("h3", "k-title", escapeHtml(panel.title)));
 				if (["chart", "plot3d", "flow"].includes(panel.type)) {
-					const expand = el("button", "k-btn", '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg>');
+					const expand = el("button", "k-icon-button", '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg>');
 					expand.type = "button";
-					expand.title = "Expand graph";
+					expand.title = "Focus graph";
 					expand.setAttribute("aria-label", `Expand ${"title" in panel && panel.title || "graph"}`);
 					expand.onclick = () => { const bounds = box.getBoundingClientRect().toJSON(); this.focus(i); parent.postMessage({ type: "demo-focus", panel: i, bounds }, "*"); };
 					heading.append(expand);
@@ -400,6 +407,13 @@ class Kit {
 			}),
 		);
 		await this.refresh();
+		const applyTheme = async () => {
+			Object.assign(theme, readTheme());
+			await Promise.all(this.views.map((view) => view.theme?.()));
+		};
+		window.addEventListener("lh-demo-theme", () => { void applyTheme().catch((err) => this.report("theme", err)); });
+		// The parent may have sent its appearance while renderer libraries loaded.
+		await applyTheme();
 		window.addEventListener("message", (e) => {
 			if (e.source !== parent || !e.data) return;
 			if (e.data.type === "lh-demo-select" && Number.isInteger(e.data.panel)) { this.panelBoxes[e.data.panel]?.scrollIntoView({ block: "start" }); return; }
@@ -492,9 +506,27 @@ class Kit {
 		};
 		const vl = { ...panel.spec, width: "container", height: panel.width === "half" ? 220 : 260, autosize: { type: "fit", contains: "padding" }, config };
 		const compiled = vegaLite.compile(vl).spec;
+		// Keep Vega's live view and data intact while neutral chrome changes.
+		const roles = { text: theme.text, muted: theme.muted, border: theme.border, font: theme.font };
+		const roleFor = (value: unknown) => Object.entries(roles).find(([, color]) => color === value)?.[0];
+		const bind = (node: any, config = false): void => {
+			if (!node || typeof node !== "object") return;
+			for (const [key, value] of Object.entries(node)) {
+				const role = roleFor(value);
+				if (role && key === "value") { delete node.value; node.signal = `lhTheme_${role}`; }
+				else if (role && config && /(?:color|fill|stroke|font)$/i.test(key)) node[key] = { signal: `lhTheme_${role}` };
+				else bind(value, config);
+			}
+		};
+		bind(compiled.marks);
+		bind(compiled.axes);
+		bind(compiled.legends);
+		bind(compiled.config, true);
+		compiled.signals = [...(compiled.signals ?? []), ...Object.entries(roles).map(([role, value]) => ({ name: `lhTheme_${role}`, value }))];
 		const view = new vega.View(vega.parse(compiled), { renderer: "svg", container: target, hover: true });
 		const names = Object.keys(panel.data);
 		return {
+			theme: async () => { for (const role of Object.keys(roles) as (keyof typeof roles)[]) view.signal(`lhTheme_${role}`, theme[role]); await view.runAsync(); },
 			resize: async () => { view.width(target.clientWidth).height(this.focusIndex === null ? (panel.width === "half" ? 220 : 260) : Math.max(160, box.clientHeight - 50)); await view.resize().runAsync(); },
 			update: async () => {
 				for (const name of names) view.data(name, this.eval(panel.data[name]!) ?? []);
@@ -531,6 +563,22 @@ class Kit {
 		};
 		const SCENE = new Set(["surface", "scatter3d", "mesh3d", "cone", "streamtube", "isosurface", "volume"]);
 		return {
+			theme: async () => {
+				layout.font.family = theme.font;
+				layout.font.color = theme.text;
+				const patch: Values = { "font.family": theme.font, "font.color": theme.text };
+				for (const prefix of ["xaxis", "yaxis", "scene.xaxis", "scene.yaxis", "scene.zaxis"]) {
+					const overrides = prefix.startsWith("scene.") ? extra.scene?.[prefix.slice(6)] : extra[prefix];
+					for (const [key, value] of Object.entries({ color: theme.muted, gridcolor: theme.border, zerolinecolor: theme.border, linecolor: theme.border })) {
+						if (overrides?.[key] === undefined) {
+							patch[`${prefix}.${key}`] = value;
+							const axisLayout = prefix.startsWith("scene.") ? layout.scene[prefix.slice(6)] : (layout as Values)[prefix];
+							axisLayout[key] = value;
+						}
+					}
+				}
+				await Plotly.relayout(target, patch);
+			},
 			resize: async () => { await Plotly.relayout(target, { width: target.clientWidth, height: this.focusIndex === null ? layout.height : Math.max(160, box.clientHeight - 50) }); },
 			update: async () => {
 				const traces = (this.eval(panel.traces) ?? []) as { type?: string }[];
@@ -565,7 +613,7 @@ class Kit {
 			};
 		};
 		const handle = window.LHFlow!.render(target, props());
-		return { update: () => handle.update(props()) };
+		return { update: () => handle.update(props()), theme: () => handle.update(props()) };
 	}
 
 	async selfTest() {

@@ -38,7 +38,7 @@ export function NodePickerControl({ count, onOpen, onClear }: {
 						: "border-dashed border-border/80 bg-transparent text-muted-foreground hover:bg-accent hover:text-foreground")
 				}
 			>
-				<DumbbellIcon aria-hidden="true" className="size-3.5 text-muted-foreground" />
+				<DumbbellIcon aria-hidden="true" className="ui-icon text-muted-foreground" />
 				{count > 0 ? `${count} ${count === 1 ? "node" : "nodes"} selected` : "Pick nodes"}
 			</button>
 			{count > 0 && (

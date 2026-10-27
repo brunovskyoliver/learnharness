@@ -4,12 +4,12 @@
  *  builder's headless test and in the lesson's sandboxed iframe. */
 
 export const DEMO_THEME_VARS = {
-	"--lh-bg": "#1c1c1c",
-	"--lh-surface": "#232323",
+	"--lh-bg": "#141414",
+	"--lh-surface": "#1c1c1c",
 	"--lh-surface-2": "#2a2a2a",
 	"--lh-border": "#434343",
 	"--lh-text": "#e6e6e6",
-	"--lh-muted": "#8d8d8d",
+	"--lh-muted": "#a1a1a1",
 	"--lh-blue": "#7cacf8",
 	"--lh-teal": "#5fd4c4",
 	"--lh-amber": "#e5b55a",
@@ -18,6 +18,33 @@ export const DEMO_THEME_VARS = {
 	"--lh-font": `"LH Sans", system-ui, -apple-system, "Segoe UI", sans-serif`,
 	"--lh-mono": "ui-monospace, SFMono-Regular, Menlo, monospace",
 } as const;
+
+/** Only these app-owned neutral and reading roles cross the sandbox bridge.
+ * Series colors deliberately remain the demo's data palette. */
+export const DEMO_APPEARANCE_PROPERTIES = {
+	"--lh-bg": "--background",
+	"--lh-surface": "--card",
+	"--lh-surface-2": "--accent",
+	"--lh-border": "--border",
+	"--lh-text": "--foreground",
+	"--lh-muted": "--muted-foreground",
+	"--lh-heading-weight": "--lh-heading-weight",
+	"--lh-ink-strong": "--lh-ink-strong",
+	"--lh-ink-italic": "--lh-ink-italic",
+} as const;
+
+/** Values come from computed parent CSS after appearance preferences apply.
+ * Font names from next/font are private to the parent document, so the
+ * bundled iframe reading face is the fallback for explicit local fonts. */
+export function demoAppearanceVars(read: (name: string) => string, family?: string | null): Record<string, string> {
+	const vars: Record<string, string> = {};
+	for (const [name, source] of Object.entries(DEMO_APPEARANCE_PROPERTIES)) {
+		const value = read(source).trim();
+		if (value) vars[name] = value;
+	}
+	vars["--lh-font"] = family ? `${JSON.stringify(family)}, "LH Sans", system-ui, sans-serif` : DEMO_THEME_VARS["--lh-font"];
+	return vars;
+}
 
 export const DEMO_FONT_PATH = "/fonts/source-sans-3-latin.woff2";
 
@@ -29,7 +56,7 @@ export function demoThemeStyle(font = false): string {
 	const face = font
 		? `@font-face{font-family:"LH Sans";src:url("${DEMO_FONT_PATH}") format("woff2");font-weight:200 900;font-display:swap}`
 		: "";
-	return `<style data-lh-theme>${face}:root{color-scheme:dark;${vars}}html{background:var(--lh-bg);color:var(--lh-text);font-family:var(--lh-font)}button,input,select,textarea{font:inherit}</style>`;
+	return `<style data-lh-theme>${face}:root{color-scheme:dark;${vars}}html{background:var(--lh-bg);color:var(--lh-text);font-family:var(--lh-font)}button,input,select,textarea{font:inherit}h1,h2,h3,h4,h5,h6{font-weight:var(--lh-heading-weight,700)}strong,b{color:var(--lh-ink-strong,var(--lh-text))}em,i{color:var(--lh-ink-italic,var(--lh-text))}::selection{background:color-mix(in srgb,var(--lh-text) 24%,var(--lh-bg))}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:1px solid var(--lh-muted);outline-offset:2px}</style>`;
 }
 
 /** Insert the theme at the start of <head> (or of the document). */

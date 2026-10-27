@@ -246,10 +246,10 @@ export function ChainTableBody({
 			    close only. Search + close carve out with lh-no-drag (the mask
 			    law: later in the DOM). */}
 			<TopBar>
-				<span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+				<span className="hidden min-w-0 flex-1 truncate text-xs text-muted-foreground sm:block">
 					{chains.length} {chains.length === 1 ? "chain" : "chains"} · {nodes.length} {nodes.length === 1 ? "idea" : "ideas"}
 				</span>
-				<div className="relative shrink-0">
+				<div className="relative min-w-0 flex-1 sm:max-w-56">
 					<SearchIcon className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
 					<input
 						value={query}
@@ -258,7 +258,7 @@ export function ChainTableBody({
 						placeholder="Search ideas…"
 						aria-label="Search ideas"
 						spellCheck={false}
-						className="lh-no-drag h-8 w-56 rounded-lg border bg-background pl-8 pr-3 text-xs outline-none placeholder:text-muted-foreground focus:border-ring"
+						className="lh-no-drag h-8 w-full rounded-lg border bg-background pl-8 pr-3 text-xs outline-none placeholder:text-muted-foreground focus:border-ring"
 					/>
 				</div>
 			<button
@@ -296,7 +296,7 @@ export function ChainTableBody({
 						data-testid="sort-props"
 						onClick={() => onSort("props")}
 						aria-sort={sort.col === "props" ? (sort.dir === 1 ? "ascending" : "descending") : "none"}
-						className="flex w-14 shrink-0 items-center justify-end gap-1 text-right transition-colors hover:text-foreground"
+						className="order-2 flex w-14 shrink-0 items-center justify-end gap-1 text-right transition-colors hover:text-foreground sm:order-none"
 					>
 						Ideas {dirIcon("props")}
 					</button>
@@ -305,7 +305,7 @@ export function ChainTableBody({
 						data-testid="sort-created"
 						onClick={() => onSort("created")}
 						aria-sort={sort.col === "created" ? (sort.dir === 1 ? "ascending" : "descending") : "none"}
-						className="flex w-20 shrink-0 items-center justify-end gap-1 text-right transition-colors hover:text-foreground"
+						className="order-1 flex w-auto shrink-0 items-center justify-end gap-1 text-right transition-colors hover:text-foreground sm:order-none sm:w-20"
 					>
 						Created {dirIcon("created")}
 					</button>
@@ -358,11 +358,12 @@ export function ChainTableBody({
 								<span className="min-w-0 flex-1 truncate text-sm font-medium">
 									{group.label ?? <span className="text-muted-foreground/60">unlabeled</span>}
 									{group.kind === "notes" && <span className="ml-2 text-[11px] text-muted-foreground/60">notes</span>}
+									<span className="block text-xs font-normal text-muted-foreground sm:hidden">{group.newestCreatedAt.slice(0, 10)}</span>
 								</span>
 								<span className="w-14 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
 									{group.nodeIds.length}
 								</span>
-								<span className="w-20 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+								<span className="hidden w-20 shrink-0 sm:block text-right text-xs tabular-nums text-muted-foreground">
 									{group.newestCreatedAt.slice(0, 10)}
 								</span>
 							</div>
@@ -438,11 +439,12 @@ export function ChainTableBody({
 															</span>
 														);
 													})}
+													<span className="w-full text-xs text-muted-foreground sm:hidden">{dateOf(chain.conclusion)}</span>
 												</span>
 												<span className="w-14 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
 													{memberIds.length}
 												</span>
-												<span className="w-20 shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+												<span className="hidden w-20 shrink-0 sm:block text-right text-xs tabular-nums text-muted-foreground">
 													{dateOf(chain.conclusion)}
 												</span>
 											</div>
@@ -472,7 +474,7 @@ export function ChainTableBody({
 																{node.statement}
 															</span>
 															<span className="w-14 shrink-0" />
-															<span className="w-20 shrink-0" />
+															<span className="hidden w-20 shrink-0 sm:block" />
 														</div>
 													);
 												})}
@@ -491,7 +493,7 @@ export function ChainTableBody({
 				<div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center pb-4">
 					<div
 						data-testid="chain-selection-bar"
-						className="pointer-events-auto flex items-center gap-3 rounded-full border bg-card px-4 py-2 shadow-lg"
+						className="pointer-events-auto mx-2 flex max-w-full flex-wrap items-center justify-center gap-2 rounded-xl border bg-card px-4 py-2 shadow-sm"
 					>
 						<span data-testid="chain-selected-summary" className="text-xs font-medium">
 							{selection.size} {selection.size === 1 ? "idea" : "ideas"} →{" "}

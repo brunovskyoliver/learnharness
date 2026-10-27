@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 
 /**
@@ -52,6 +52,9 @@ const MIN_USABLE = 96; // floor: a shorter cap is an unusable sliver; the
  *  any order and the accounting stays balanced. */
 export const MENU_OPEN_EVENT = "lh:menu-open";
 export const MENU_CLOSE_EVENT = "lh:menu-close";
+
+/** Keep interactive child menus inside the active modal's focus boundary. */
+export const MenuPortalContext = createContext<HTMLElement | null>(null);
 
 export type MenuSide = "up" | "down";
 export type MenuAlign = "left" | "right";
@@ -136,9 +139,11 @@ export function MenuShell({
 	onPointerLeave?: () => void;
 	children: ReactNode;
 }) {
+	const portalContainer = useContext(MenuPortalContext);
 	const menuRef = useRef<HTMLDivElement>(null);
 	const [placed, setPlaced] = useState<MenuPlacement | null>(null);
 	const focusedOnceRef = useRef(false);
+	const returnFocusFrame = useRef<number | null>(null);
 
 	// Announce open↔close for lockable surfaces (see MENU_OPEN_EVENT).
 	useEffect(() => {
@@ -204,6 +209,26 @@ export function MenuShell({
 		return null;
 	};
 
+	// Restore keyboard focus only when it was still in this menu. Pointer
+	// dismissal onto another field must keep the newly chosen focus.
+	useLayoutEffect(() => {
+		if (returnFocusFrame.current !== null) cancelAnimationFrame(returnFocusFrame.current);
+		const trigger = anchor();
+		return () => {
+			const active = document.activeElement;
+			const menu = menuRef.current;
+			if (focusOnOpen && trigger instanceof HTMLElement &&
+				(active === document.body || menu?.contains(active))) {
+				// Radix's focus scope handles removed nodes before this frame.
+				returnFocusFrame.current = requestAnimationFrame(() => {
+					const current = document.activeElement;
+					const liveTrigger = anchor();
+					if (liveTrigger instanceof HTMLElement && liveTrigger.isConnected && (current === document.body || current === portalContainer || menu?.contains(current))) liveTrigger.focus();
+				});
+			}
+		};
+	}, [anchorRef, anchorTestid, focusOnOpen, portalContainer]);
+
 	// Measure + (re)place: on mount, then on every capture-phase scroll and
 	// resize (rAF-throttled). scrollHeight keeps the flip decision honest
 	// after the content changes shape (a search filtering the list).
@@ -250,7 +275,7 @@ export function MenuShell({
 			>
 				{children}
 			</div>,
-			document.body,
+			portalContainer ?? document.body,
 		);
 	}
 	return createPortal(
@@ -272,6 +297,6 @@ export function MenuShell({
 		>
 			{children}
 		</div>,
-		document.body,
+		portalContainer ?? document.body,
 	);
 }

@@ -5,11 +5,16 @@ import { afterEach, test } from "node:test";
 import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { parseHTML } from "linkedom";
-import { NativeSubscriptionConnection, NativeSubscriptionUIProvider, SubscriptionConnections, COPILOT_POLICY_NOTICE, emptySubscriptionStatus } from "../components/settings/subscription-connections.tsx";
-import { ChatGPTUIProvider } from "../components/settings/chatgpt-connection.tsx";
 import type { NativeSubscriptionControlBridge, NativeSubscriptionProviderId, NativeSubscriptionStatus } from "../src/core/contracts/subscriptions.ts";
 const dom = parseHTML("<html><body></body></html>");
 Object.assign(globalThis, { window: dom.window, document: dom.document, Element: dom.window.Element, HTMLElement: dom.window.HTMLElement, CustomEvent: dom.window.CustomEvent, IS_REACT_ACT_ENVIRONMENT: true });
+Object.assign(globalThis, {
+ Node: dom.window.Node, NodeFilter: { SHOW_ELEMENT: 1, FILTER_ACCEPT: 1, FILTER_SKIP: 3 },
+ HTMLInputElement: dom.window.HTMLInputElement, MutationObserver: dom.window.MutationObserver,
+ getComputedStyle: () => ({ display: "block", visibility: "visible" }),
+});
+const { NativeSubscriptionConnection, NativeSubscriptionUIProvider, SubscriptionConnections, COPILOT_POLICY_NOTICE, emptySubscriptionStatus } = await import("../components/settings/subscription-connections.tsx");
+const { ChatGPTUIProvider } = await import("../components/settings/chatgpt-connection.tsx");
 let root: Root | undefined, host: HTMLDivElement | undefined;
 function deferred() { let resolve!: () => void; const promise = new Promise<void>((done) => { resolve = done; }); return { promise, resolve }; }
 function fixture(connected = false) {
@@ -127,7 +132,7 @@ test("required native prompts render and commit cannot be cancelled through butt
 	assert(dialog()); assert.equal(f.calls.cancel, 0);
 	await act(async () => {
 		const backdrop = document.querySelector<HTMLElement>('[data-testid="subscription-dialog-backdrop"]')!;
-		for (const type of ["pointerdown", "pointerup", "click"]) { const event = new window.Event(type, { bubbles: true }); Object.defineProperties(event, { pointerId: { value: 1 }, isPrimary: { value: true }, button: { value: 0 } }); backdrop.dispatchEvent(event); }
+		for (const type of ["pointerdown", "pointerup", "click"]) { const event = new window.Event(type, { bubbles: true }); Object.defineProperties(event, { pointerId: { value: 1 }, isPrimary: { value: true }, button: { value: 0 } }); Object.setPrototypeOf(event, Object.create(Object.getPrototypeOf(event), { target: { value: backdrop, writable: true } })); backdrop.dispatchEvent(event); }
 	});
 	assert(dialog()); assert.equal(f.calls.cancel, 0); await act(async () => f.login.resolve());
 });

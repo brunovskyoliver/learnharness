@@ -33,13 +33,14 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { Dialog } from "radix-ui";
+import { ChevronDownIcon, XIcon } from "lucide-react";
 import { useBackdropDismiss } from "@/components/backdrop-dismiss";
 import type React from "react";
 import { type ModelCatalogEntry, type ModelSlotName, type ModelsSettings } from "@/src/core";
 import { prettyModel } from "@/components/usage-format";
 import { ModelMenuList } from "@/components/settings/model-menu";
-import { MenuShell } from "@/components/menu-shell";
+import { MenuPortalContext, MenuShell } from "@/components/menu-shell";
 import { notifySettingsSaved, useSettingsSaved } from "@/components/settings-signal";
 import { Hint } from "@/components/ui/hint";
 import { type ProviderKeyInfo } from "@/components/settings/keys-section";
@@ -191,12 +192,10 @@ export function SetupKeysBody({
 						data-testid="setup-key-provider"
 						aria-expanded={menuOpen}
 						onClick={onToggleMenu}
-						className="flex h-7 w-full items-center gap-1 rounded-sm border border-border bg-background px-1.5 font-ui text-xs text-foreground transition-colors hover:border-muted-foreground/50"
+						className="flex h-7 w-full items-center gap-1 rounded-sm border border-border bg-background px-2.5 font-ui text-sm text-foreground transition-colors hover:border-muted-foreground/50"
 					>
 						<span className="min-w-0 flex-1 truncate text-left">{provider ? provider.label : "Pick a provider…"}</span>
-						<span aria-hidden className="text-muted-foreground">
-							▾
-						</span>
+						<ChevronDownIcon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
 					</button>
 					{menuOpen && (
 						<MenuShell
@@ -283,6 +282,8 @@ export function SetupDialog({
 	onDone: (models: ModelsSettings) => void;
 }) {
 	const backdropDismiss = useBackdropDismiss(onClose);
+	const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
+	const returnFocus = useRef<HTMLElement | null>(null);
 	const { hosted } = useSettingsDialog();
 	const [body, setBody] = useState<ModelsBody | null>(null);
 	const [failed, setFailed] = useState(false);
@@ -455,31 +456,33 @@ export function SetupDialog({
 		onDone(models);
 	}
 
-	return createPortal(
-		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-background/80"
-			data-testid="setup-backdrop"
-			{...backdropDismiss}
-		>
-			<div
-				role="dialog"
-				aria-modal="true"
-				aria-label="Set up your models"
-				data-testid="setup-dialog"
-				className="settings-dialog-pop flex max-h-[85vh] w-[640px] max-w-[90vw] flex-col overflow-hidden rounded-md border border-border bg-card shadow-xl"
-				onClick={(e) => e.stopPropagation()}
-			>
-				<header className="flex h-13 shrink-0 items-center gap-3 border-b border-white/[0.06] px-5">
-					<h2 className="text-sm font-medium">Set up your models</h2>
+	return (
+		<Dialog.Root open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
+			<Dialog.Portal>
+				<Dialog.Overlay className="fixed inset-0 z-50 bg-background/80" data-testid="setup-backdrop" {...backdropDismiss} />
+				<Dialog.Content
+					ref={setPortalContainer}
+					data-lh-modal-content
+					aria-describedby={undefined}
+					data-testid="setup-dialog"
+					className="fixed inset-4 z-50 m-auto flex h-fit max-h-[calc(100dvh-2rem)] w-[640px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-2xl outline-none"
+					onPointerDownOutside={(event) => event.preventDefault()}
+					onEscapeKeyDown={(event) => event.preventDefault()}
+					onOpenAutoFocus={() => { returnFocus.current = document.activeElement as HTMLElement | null; }}
+					onCloseAutoFocus={(event) => { event.preventDefault(); returnFocus.current?.focus(); }}
+				>
+				<MenuPortalContext.Provider value={portalContainer}>
+				<header className="flex h-13 shrink-0 items-center gap-3 border-b border-border px-5">
+					<Dialog.Title className="text-base font-semibold">Set up your models</Dialog.Title>
 					<Hint label="Close" binding="escape" side="left">
 <button
 						type="button"
 						aria-label="Close setup"
 						data-testid="setup-close"
 						onClick={onClose}
-						className="ml-auto text-muted-foreground transition-colors hover:text-foreground"
+						className="ml-auto flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
 					>
-						✕
+						<XIcon aria-hidden="true" className="size-[18px]" />
 					</button>
 </Hint>
 				</header>
@@ -523,7 +526,7 @@ export function SetupDialog({
 							const catalog =
 								slot === "vision" ? body?.models.filter((m) => m.input.includes("image")) : body?.models;
 							return (
-								<div key={slot} data-testid={`setup-slot-${slot}`} className="flex flex-col gap-1.5">
+								<div key={slot} data-testid={`setup-slot-${slot}`} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4">
 									<span className="flex items-center gap-1.5">
 										<span className="font-ui text-sm text-foreground">{SLOT_META[slot].label}</span>
 										{!body?.slots?.[slot]?.model && !picked[slot] && (
@@ -545,12 +548,10 @@ export function SetupDialog({
 												data-testid={`setup-trigger-${slot}`}
 												aria-expanded={openMenu?.slot === slot && openMenu.kind === "model"}
 												onClick={() => setOpenMenu(openMenu?.slot === slot && openMenu.kind === "model" ? null : { slot, kind: "model" })}
-												className="flex h-7 min-w-40 w-full items-center gap-1 rounded-sm border border-border bg-background px-1.5 font-ui text-xs text-foreground transition-colors hover:border-muted-foreground/50"
+												className="flex h-9 min-w-0 w-full items-center gap-2 rounded-md border border-border bg-background px-2.5 font-ui text-sm text-foreground transition-colors hover:border-muted-foreground/50"
 											>
 												<span className="min-w-0 flex-1 truncate">{entry ? prettyModel(entry.id) : "Pick a model…"}</span>
-												<span aria-hidden className="text-muted-foreground">
-													▾
-												</span>
+												<ChevronDownIcon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
 											</button>
 											{/* Anchor by TESTID, not a ref (the settings-section pattern):
 											    React attaches a host element's ref AFTER its descendants'
@@ -600,14 +601,12 @@ export function SetupDialog({
 												aria-expanded={openMenu?.slot === slot && openMenu.kind === "thinking"}
 												disabled={!entry}
 												onClick={() => setOpenMenu(openMenu?.slot === slot && openMenu.kind === "thinking" ? null : { slot, kind: "thinking" })}
-												className="flex h-7 w-24 items-center gap-1 rounded-sm border border-border bg-background px-1.5 font-ui text-xs text-foreground transition-colors hover:border-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-40"
+												className="flex h-9 w-24 items-center gap-2 rounded-md border border-border bg-background px-2.5 font-ui text-sm text-foreground transition-colors hover:border-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-40"
 											>
 												<span className="min-w-0 flex-1 truncate text-left">
 													{entry ? (level ? THINKING_LABEL[level] ?? level : "…") : "—"}
 												</span>
-												<span aria-hidden className="text-muted-foreground">
-													▾
-												</span>
+												<ChevronDownIcon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
 											</button>
 											{openMenu?.slot === slot && openMenu.kind === "thinking" && (
 												<MenuShell
@@ -646,8 +645,9 @@ export function SetupDialog({
 						</div>
 					</div>
 				)}
-			</div>
-		</div>,
-		document.body,
+				</MenuPortalContext.Provider>
+				</Dialog.Content>
+			</Dialog.Portal>
+		</Dialog.Root>
 	);
 }

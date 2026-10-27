@@ -9,14 +9,22 @@ import { readFileSync } from "node:fs";
 import { renderToStaticMarkup } from "react-dom/server";
 import { createRoot, type Root } from "react-dom/client";
 import { parseHTML } from "linkedom";
-import { UpdateSettings, updateStatusText, MANUAL_UPDATE_HINT, AUTO_UPDATE_HINT, type UpdateState } from "../components/settings/update-settings.tsx";
-import UpdateBanner from "../components/update-banner.tsx";
-import { SettingsDialogBody } from "../components/settings/settings-dialog-content.tsx";
-import { SettingsDialogProvider } from "../components/settings/settings-dialog.tsx";
+import type { UpdateState } from "../components/settings/update-settings.tsx";
+
+
+
 import nextConfig from "../next.config.ts";
 
 const dom = parseHTML("<html><body></body></html>");
-Object.assign(globalThis, { window: dom.window, document: dom.document, CustomEvent: dom.window.CustomEvent });
+Object.assign(globalThis, { window: dom.window, document: dom.document, CustomEvent: dom.window.CustomEvent,
+	Node: dom.window.Node, NodeFilter: { SHOW_ELEMENT: 1, FILTER_ACCEPT: 1, FILTER_SKIP: 3 }, Element: dom.window.Element, HTMLElement: dom.window.HTMLElement,
+	HTMLInputElement: dom.window.HTMLInputElement, MutationObserver: dom.window.MutationObserver,
+	getComputedStyle: () => ({ display: "block", visibility: "visible" }),
+});
+const { UpdateSettings, updateStatusText, MANUAL_UPDATE_HINT, AUTO_UPDATE_HINT } = await import("../components/settings/update-settings.tsx");
+const { default: UpdateBanner } = await import("../components/update-banner.tsx");
+const { SettingsDialogBody } = await import("../components/settings/settings-dialog-content.tsx");
+const { SettingsDialogProvider } = await import("../components/settings/settings-dialog.tsx");
 const originalFetch = globalThis.fetch;
 const roots: { root: Root; host: HTMLElement }[] = [];
 const state = (over: Partial<UpdateState> = {}): UpdateState => ({ status: "idle", version: null, revision: 0, ...over });

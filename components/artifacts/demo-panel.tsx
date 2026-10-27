@@ -91,9 +91,9 @@ export function DemoPanel() {
 				onPointerDown={onPointerDown}
 				onKeyDown={onKeyDown}
 				onDoubleClick={() => commit(DEFAULT_WIDTH)}
-				className={`absolute -left-1.5 top-0 z-10 hidden h-full w-3 cursor-col-resize outline-none md:block ${dragging ? "bg-white/[0.06]" : "hover:bg-white/[0.04] focus-visible:bg-white/[0.06]"}`}
+				className={`absolute -left-1.5 top-0 z-10 hidden h-full w-3 cursor-col-resize outline-none md:block ${dragging ? "bg-accent" : "hover:bg-accent focus-visible:bg-accent"}`}
 			/>
-			<div className="flex h-11 shrink-0 items-center gap-2 px-3">
+			<div className="flex h-13 shrink-0 items-center gap-3 border-b border-border px-3">
 				{panel.demos.length > 1 ? (
 					<select
 						aria-label="Demo"
@@ -117,9 +117,9 @@ export function DemoPanel() {
 					aria-label="Close demo panel"
 					onClick={panel.close}
 					data-testid="demo-panel-close"
-					className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+					className="ui-icon-button text-muted-foreground hover:bg-accent hover:text-foreground"
 				>
-					<XIcon className="size-4" />
+					<XIcon className="ui-icon" />
 				</button>
 			</div>
 			<div className={`min-h-0 flex-1 overflow-hidden p-3 ${dragging ? "pointer-events-none" : ""}`}>

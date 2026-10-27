@@ -4,7 +4,7 @@ export const CLERK_APPEARANCE = {
 	variables: {
 		colorBackground: "#1c1c1c",
 		colorForeground: "#e6e6e6",
-		colorMutedForeground: "#8d8d8d",
+		colorMutedForeground: "#a1a1a1",
 		colorMuted: "#1c1c1c",
 		colorPrimary: "#e6e6e6",
 		colorPrimaryForeground: "#141414",
@@ -12,8 +12,15 @@ export const CLERK_APPEARANCE = {
 		colorInputForeground: "#e6e6e6",
 		colorBorder: "#434343",
 		colorNeutral: "#e6e6e6",
-		colorRing: "#8d8d8d",
+		colorRing: "#a1a1a1",
 		borderRadius: "8px",
+		fontFamily: "var(--font-ui)",
+	},
+	// Elements use the live app roles; literal variables above seed Clerk
+	// shade generation before client appearance preferences are applied.
+	elements: {
+		card: { backgroundColor: "var(--card)", color: "var(--foreground)", borderColor: "var(--border)" },
+		formFieldInput: { backgroundColor: "var(--background)", color: "var(--foreground)", borderColor: "var(--input)" },
 	},
 };
 

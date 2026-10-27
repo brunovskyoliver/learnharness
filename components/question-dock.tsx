@@ -198,7 +198,7 @@ function teaserText(q: string): string {
 function Teaser({ text }: { text: string }) {
 	return text.split(/(`[^`]+`)/g).map((part, i) =>
 		part.length > 2 && part.startsWith("`") && part.endsWith("`") ? (
-			<code key={i} className="rounded bg-white/[0.07] px-[0.3em] font-mono text-[0.9em]">
+			<code key={i} className="rounded bg-muted px-[0.3em] font-mono text-[0.9em]">
 				{part.slice(1, -1)}
 			</code>
 		) : (
@@ -462,6 +462,7 @@ function QuestionDockForm({
 		if (!active || rowCount === 0) return;
 		const onKeyDown = (e: KeyboardEvent) => {
 			const t = e.target as HTMLElement | null;
+			if (e.defaultPrevented || t?.closest?.("[role=dialog], [data-lh-menu]")) return;
 			// A TYPING field is where keys mean text (owner round 4): the
 			// thinking/answer fields, search boxes, renames — never a range
 			// input, whose focus after a click or drag must not kill the
@@ -735,7 +736,7 @@ function QuestionDockForm({
 						aria-label="Confidence that your selected answer is correct"
 						data-testid="confidence-segments"
 						className={cn(
-							"grid min-w-0 flex-1 grid-cols-4 gap-0.5 rounded-md bg-white/[0.04] p-0.5",
+							"grid min-w-0 flex-1 grid-cols-4 gap-0.5 rounded-md bg-muted p-0.5",
 							sel.dontKnow && "pointer-events-none opacity-40",
 						)}
 					>
@@ -751,8 +752,8 @@ function QuestionDockForm({
 								className={cn(
 									"h-7 truncate rounded px-2 text-xs transition-colors outline-none",
 									!sel.dontKnow && confIdx === i
-										? "bg-white/[0.12] font-medium text-foreground"
-										: "text-muted-foreground hover:bg-white/[0.06] hover:text-foreground",
+										? "bg-accent font-medium text-foreground"
+										: "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
 								)}
 							>
 								{label}

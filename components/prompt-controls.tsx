@@ -2,15 +2,16 @@
 
 import type { ComponentProps, ReactNode } from "react";
 import { ArrowUpIcon, SquareIcon } from "lucide-react";
+import { InputGroupAddon } from "@/components/ui/input-group";
 import { cn } from "@/lib/utils";
 
 /** Shared bottom row for chat, new sessions, and learner answers. */
 export function PromptToolbar({ controls, children }: { controls?: ReactNode; children: ReactNode }) {
 	return (
-		<div className="prompt-toolbar">
+		<InputGroupAddon align="block-end" className="prompt-toolbar">
 			<div className="min-w-0 flex-1">{controls}</div>
 			{children}
-		</div>
+		</InputGroupAddon>
 	);
 }
 

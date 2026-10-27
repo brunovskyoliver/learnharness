@@ -61,8 +61,8 @@ export function KeyboardShortcuts() {
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
 			if (e.defaultPrevented) return;
-			// The mobile drawer uses the dialog's native focus cycle.
-			if (e.key === "Tab" && (e.target as Element | null)?.closest?.("[data-mobile-navigation]")) return;
+			// Dialogs own native traversal, including their portaled child menus.
+			if (e.key === "Tab" && (e.target as Element | null)?.closest?.("[data-mobile-navigation], [role=dialog]")) return;
 			// ── Tab is dead (owner, 2026-09-17): preventDefault even when
 			// nothing is bound to it — browser tab-focus is abandoned, and
 			// the default action runs after dispatch, so suppressing it here

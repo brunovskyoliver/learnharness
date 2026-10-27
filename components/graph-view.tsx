@@ -66,6 +66,7 @@
 import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { NotesImportErrors, useNotesImport } from "@/components/notes-import.tsx";
 import Link from "next/link";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { FileTextIcon, ListTreeIcon, Loader2Icon, SearchIcon, SettingsIcon, UploadIcon, WaypointsIcon } from "lucide-react";
 import { incrementalLayout, propositionSessionHref, type GraphCostSummary, type GraphNode, type GraphSnapshot } from "@/src/core";
 import { planCostLabel } from "@/components/usage-format";
@@ -391,7 +392,7 @@ function GraphCostPanel({ costs }: { costs: GraphCostSummary }) {
 	// the pill and this panel must agree).
 	const { unpricedRuns } = displayCostTotals(costs);
 	return (
-		<div className="w-80 max-w-[calc(100vw-1.5rem)] rounded-xl border bg-card/95 p-3 text-xs shadow-lg backdrop-blur">
+		<div className="w-80 max-w-[calc(100vw-1.5rem)] rounded-xl border bg-card p-3 text-xs shadow-sm">
 			<div className="mb-2 flex items-baseline justify-between">
 				<span className="text-xs font-medium text-muted-foreground">
 					Graph pipeline costs
@@ -472,7 +473,7 @@ function GraphSettingsControl({
 				type="button"
 				aria-expanded={open}
 				onClick={() => setOpen((o) => !o)}
-				className={`flex size-9 items-center justify-center rounded-xl border bg-card/85 shadow-lg backdrop-blur transition-colors hover:bg-accent ${
+				className={`flex size-9 items-center justify-center rounded-xl border bg-card shadow-sm transition-colors hover:bg-accent ${
 					open ? "text-foreground" : "text-muted-foreground hover:text-foreground"
 				}`}
 			>
@@ -491,7 +492,7 @@ function GraphSettingsControl({
 				// (pr-2.5) -> scrollbar -> 10px (p-2.5) -> panel edge. The
 				// scrollbar itself does NOT move: it stays pinned at the same
 				// distance from the panel's right border.
-				<div className="absolute right-0 top-full mt-2 flex max-h-[60vh] w-72 flex-col rounded-xl border bg-card/85 p-2.5 shadow-lg backdrop-blur">
+				<div className="absolute right-0 top-full mt-2 flex max-h-[60vh] w-72 flex-col rounded-xl border bg-card p-2.5 shadow-sm">
 					<div className="flex flex-col gap-2 overflow-y-auto pr-2.5">
 							{/* Size/zoom/region sliders: LADDER-mapped 0-100, step 10 (11
 							    stops, every DEFAULT dead-center at 50, every value a nice
@@ -869,7 +870,7 @@ export function GraphChromeRow({
 	return (
 		<>
 			{!isEmpty && (
-				<div className="graph-chrome-fade-in w-56 min-w-0 shrink rounded-xl border bg-card/85 px-1 py-[3px] shadow-lg backdrop-blur">
+				<div className="graph-chrome-fade-in w-56 min-w-0 shrink rounded-xl border bg-card px-1 py-[3px] shadow-sm">
 					<Hint
 						// ⌘F focuses node search (surface-scoped registry action).
 						label="Search ideas"
@@ -897,7 +898,7 @@ export function GraphChromeRow({
 			{/* The chain table (chains overlay, owner plan 2026-09-29). Own
 			    container (36px band), between the search and Import. */}
 			{!isEmpty && (
-				<div className="graph-chrome-fade-in shrink-0 rounded-xl border bg-card/85 px-1 py-[3px] shadow-lg backdrop-blur">
+				<div className="graph-chrome-fade-in shrink-0 rounded-xl border bg-card px-1 py-[3px] shadow-sm">
 					<Hint label="Every reasoning chain" side="bottom">
 						<button
 							type="button"
@@ -905,7 +906,7 @@ export function GraphChromeRow({
 							data-testid="open-chain-table"
 							className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground transition-colors hover:bg-accent"
 						>
-							<ListTreeIcon className="size-3" />
+							<ListTreeIcon className="size-4" />
 							<span className="max-sm:sr-only">Chains</span>
 						</button>
 					</Hint>
@@ -913,7 +914,7 @@ export function GraphChromeRow({
 			)}
 			{/* Import notes — its own container (36px, header band); ALWAYS
 			    rendered (the empty-graph ruling above — the entry point). */}
-			<div className="shrink-0 rounded-xl border bg-card/85 px-1 py-[3px] shadow-lg backdrop-blur">
+			<div className="shrink-0 rounded-xl border bg-card px-1 py-[3px] shadow-sm">
 				<input
 					ref={fileInputRef}
 					type="file"
@@ -939,7 +940,7 @@ export function GraphChromeRow({
 						data-testid="import-notes"
 					className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground transition-colors hover:bg-accent disabled:opacity-50"
 				>
-						<UploadIcon className="size-3" />
+						<UploadIcon className="size-4" />
 						<span className="max-sm:sr-only">{importing ? "Importing…" : "Import notes…"}</span>
 					</button>
 				</Hint>
@@ -1496,13 +1497,13 @@ export function GraphView({
 			{isEmpty ? (
 				// The empty graph keeps the first action clear without zero-valued statistics.
 				<div className="flex h-full w-full items-center justify-center px-4">
-					<div className="flex flex-col items-center gap-3 text-center text-muted-foreground">
-						<WaypointsIcon className="size-10 opacity-40" strokeWidth={1.25} />
-						<div className="text-lg font-medium text-foreground">Knowledge graph</div>
-						<p className="max-w-sm text-sm">
-							Start a session or import notes to build your graph.
-						</p>
-					</div>
+					<Empty>
+						<EmptyHeader>
+							<EmptyMedia variant="icon"><WaypointsIcon /></EmptyMedia>
+							<EmptyTitle>Knowledge graph</EmptyTitle>
+							<EmptyDescription>Start a session or import notes to build your graph.</EmptyDescription>
+						</EmptyHeader>
+					</Empty>
 				</div>
 			) : (
 				<div ref={containerRef} className="relative h-full w-full">
@@ -1627,7 +1628,7 @@ export function GraphView({
 			{pipelineRuns.map((run) => (
 				<div
 					key={run.id}
-					className="flex items-center gap-2 rounded-full border bg-card/85 px-3 py-1.5 text-xs text-muted-foreground shadow-lg backdrop-blur"
+					className="flex items-center gap-2 rounded-full border bg-card px-3 py-1.5 text-xs text-muted-foreground shadow-sm"
 				>
 					<Loader2Icon className="size-3.5 shrink-0 animate-spin" />
 					<span className="capitalize">{run.phase}</span>

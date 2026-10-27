@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { subscriptionLabels, type SessionPricing, type TurnUsage } from "@/src/core";
 import { formatTokens, planCostLabel } from "@/components/usage-format";
 import { ModelControl, catalogLimits, useModelCatalog } from "@/components/model-picker";
 import { SlidersHorizontalIcon } from "lucide-react";
-import { MenuShell } from "@/components/menu-shell";
+import { MenuShell, MenuPortalContext, MENU_OPEN_EVENT, MENU_CLOSE_EVENT } from "@/components/menu-shell";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 
 export function formatContextMeasurement(tokens: number | null, limit: number | null): string {
 	const numerator = tokens === null ? "?" : formatTokens(tokens);
@@ -163,7 +165,7 @@ export function StatsBarDetails({
 							<span className="tabular-nums text-card-foreground">{contextLabel}</span>
 						</div>
 						{contextTokens !== null && limit !== null && limit > 0 && (
-							<div className="mb-3 h-1 overflow-hidden rounded-full bg-white/[0.08]" aria-hidden>
+							<div className="mb-3 h-1 overflow-hidden rounded-full bg-accent" aria-hidden>
 								<div className="h-full rounded-full bg-foreground/60" style={{ width: `${fraction * 100}%` }} />
 							</div>
 						)}
@@ -180,7 +182,7 @@ export function StatsBarDetails({
 								href="https://chatgpt.com/settings/usage"
 								target="_blank"
 								rel="noreferrer"
-								className="mt-3 block border-t border-white/[0.06] pt-2 text-muted-foreground transition-colors hover:text-foreground"
+								className="mt-3 block border-t border-border pt-2 text-muted-foreground transition-colors hover:text-foreground"
 							>
 								Manage usage ↗
 							</a>
@@ -196,28 +198,40 @@ export function StatsBarDetails({
 /** Secondary session controls share one menu, leaving the answer unobstructed. */
 export function StatsBar(props: Parameters<typeof StatsBarDetails>[0]) {
 	const [open, setOpen] = useState(false);
-	const anchor = useRef<HTMLDivElement>(null);
+	const portalContainer = useContext(MenuPortalContext);
 	useEffect(() => {
 		if (!open) return;
-		const pointer = (e: PointerEvent) => {
-			if (!(e.target instanceof Element) || e.target.closest("[data-lh-menu]") || anchor.current?.contains(e.target)) return;
-			setOpen(false);
-		};
-		const key = (e: KeyboardEvent) => {
-			if (e.key !== "Escape" || e.defaultPrevented || document.querySelectorAll("[data-lh-menu]").length > 1) return;
-			e.preventDefault(); e.stopPropagation(); setOpen(false);
-			anchor.current?.querySelector("button")?.focus({ preventScroll: true });
-		};
-		document.addEventListener("pointerdown", pointer);
-		document.addEventListener("keydown", key);
-		return () => { document.removeEventListener("pointerdown", pointer); document.removeEventListener("keydown", key); };
+		window.dispatchEvent(new CustomEvent(MENU_OPEN_EVENT));
+		return () => { window.dispatchEvent(new CustomEvent(MENU_CLOSE_EVENT)); };
 	}, [open]);
 	return <div className="flex min-h-10 items-center gap-3">
 		{props.leadingSlot}
-		<div ref={anchor}>
-			<button type="button" aria-expanded={open} aria-haspopup="dialog" aria-label="Model and usage" title="Model and usage" onClick={() => setOpen(!open)} className="rounded-md px-2 py-2 text-sm text-muted-foreground hover:bg-accent"><SlidersHorizontalIcon className="size-4" /></button>
-			{open && <MenuShell anchorRef={anchor} testid="session-options" preferredSide="up" menuClass="w-80 rounded-lg border bg-card p-3 shadow-lg"><StatsBarDetails {...props} leadingSlot={undefined} /></MenuShell>}
-		</div>
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<Button type="button" variant="ghost" size="sm" aria-label="Model and usage" title="Model and usage" data-testid="session-options-trigger">
+					<SlidersHorizontalIcon data-icon="inline-start" />
+					Options
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent container={portalContainer} side="top" align="start" data-testid="session-options" data-lh-menu="" aria-label="Model and usage" className="w-80 max-w-[calc(100vw-2rem)]" onKeyDownCapture={(event) => {
+				// A focus tooltip must not consume the Options dismissal key.
+				if (event.key === "Escape" && document.querySelectorAll("[data-lh-menu]").length === 1) {
+					event.preventDefault();
+					event.stopPropagation();
+					setOpen(false);
+				}
+			}} onInteractOutside={(event) => {
+				if (event.target instanceof Element && event.target.closest("[data-lh-menu]")) event.preventDefault();
+			}} onFocusOutside={(event) => {
+				if (event.target instanceof Element && event.target.closest("[data-lh-menu]")) event.preventDefault();
+			}} onEscapeKeyDown={(event) => {
+				// The innermost model/usage menu claims the first Escape.
+				if (document.querySelectorAll("[data-lh-menu]").length > 1) event.preventDefault();
+			}}>
+					<h2 className="mb-3 text-sm font-medium">Options</h2>
+					<StatsBarDetails {...props} leadingSlot={undefined} />
+			</PopoverContent>
+		</Popover>
 	</div>;
 }
 

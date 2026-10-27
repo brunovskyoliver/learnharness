@@ -1,11 +1,11 @@
 "use client";
 import { useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
+import { Dialog } from "radix-ui";
 import { useBackdropDismiss } from "@/components/backdrop-dismiss";
 import { Button } from "@/components/ui/button";
 
 export function ConnectionRow({ label, action, disabled, onAction, children, testid, actionTestid }: { label: string; action: string; disabled: boolean; onAction: () => void; children?: React.ReactNode; testid?: string; actionTestid?: string }) {
-	return <div className="flex min-h-10 flex-wrap items-center gap-3" data-testid={testid}>
+	return <div className="flex min-h-14 flex-wrap items-center gap-3 border-b border-border py-3 last:border-b-0" data-testid={testid}>
 		<span className="text-sm text-foreground">{label}</span>
 		{children}
 		<Button type="button" size="xs" variant={action === "Connect" ? "outline" : "ghost"} className={`ml-auto cursor-pointer disabled:cursor-not-allowed ${action === "Connect" ? "" : "text-muted-foreground hover:text-foreground"}`} data-testid={actionTestid} disabled={disabled} onClick={onAction}>{action}</Button>
@@ -39,7 +39,18 @@ export function ConnectionDialog({ children, onClose, busy, label, testid, backd
 		document.addEventListener("keydown", key, true);
 		return () => { document.removeEventListener("keydown", key, true); if (previous?.isConnected) previous.focus(); };
 	}, []);
-	return createPortal(<div className="fixed inset-0 z-[60] flex items-center justify-center bg-background/80" data-testid={backdropTestid} {...backdropDismiss}>
-		<div ref={ref} role="dialog" aria-modal="true" aria-label={label} aria-busy={busy} data-testid={testid} onClick={(event) => event.stopPropagation()} className="settings-dialog-pop mx-4 max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-md border border-border bg-card p-5 shadow-xl">{children}</div>
-	</div>, document.body);
+	return <Dialog.Root open onOpenChange={(open) => { if (!open) onClose(); }}>
+		<Dialog.Portal>
+			<Dialog.Overlay className="fixed inset-0 z-[60] bg-background/80" data-testid={backdropTestid} {...backdropDismiss} />
+			<Dialog.Content ref={ref} data-lh-modal-content aria-describedby={undefined} aria-busy={busy} data-testid={testid}
+				onOpenAutoFocus={(event) => { event.preventDefault(); ref.current?.querySelector<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled])')?.focus(); }}
+				onCloseAutoFocus={(event) => event.preventDefault()}
+				onPointerDownOutside={(event) => event.preventDefault()}
+				onEscapeKeyDown={(event) => event.preventDefault()}
+				className="fixed inset-4 z-[60] m-auto h-fit max-h-[calc(100dvh-2rem)] w-full max-w-[min(32rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-border bg-background p-5 shadow-2xl outline-none">
+				<Dialog.Title asChild><span className="sr-only">{label}</span></Dialog.Title>
+				{children}
+			</Dialog.Content>
+		</Dialog.Portal>
+	</Dialog.Root>;
 }

@@ -30,6 +30,7 @@
  * as text".
  */
 
+import { ChevronDownIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
 	EXTRACTION_CHUNK_TOKENS_FLOOR,
@@ -42,7 +43,7 @@ import { MenuShell } from "@/components/menu-shell";
 import { Hint } from "@/components/ui/hint";
 import { useAppearance } from "./appearance.tsx";
 import { FontMenuList } from "./model-menu";
-import { CommitInput, SettingsRow, ThinSelect, Toggle } from "./controls.tsx";
+import { CommitInput, SettingsGroup, SettingsRow, ThinSelect, Toggle } from "./controls.tsx";
 
 /** The factory reading family — the DEFAULT row's identity (unset =
  *  this). Exported for tests. */
@@ -187,6 +188,7 @@ export function AppearanceSection({
 
 	return (
 		<>
+			<SettingsGroup label="Theme">
 			<SettingsRow label="Background" testid="row-background">
 				<CommitInput
 					value={appearance?.background ?? ""}
@@ -196,6 +198,8 @@ export function AppearanceSection({
 					onCommit={(v) => onSectionChange({ ...appearance, background: v === "" ? null : v })}
 				/>
 			</SettingsRow>
+			</SettingsGroup>
+			<SettingsGroup label="Reading">
 			<SettingsRow label="Reading font" testid="row-font">
 				<span ref={fontMenuOpen ? menuAnchorRef : undefined} className="relative flex items-center gap-2">
 					{/* The MenuTrigger look (agent-section's collapsed
@@ -214,12 +218,10 @@ export function AppearanceSection({
 								aria-expanded={fontMenuOpen}
 								data-testid="font-trigger"
 								onClick={openFontMenu}
-								className="flex h-7 min-w-20 items-center gap-1 rounded-sm border border-border bg-background px-1.5 font-ui text-xs text-foreground transition-colors hover:border-muted-foreground/50"
+								className="flex h-9 w-full min-w-20 items-center gap-2 rounded-md border border-border bg-background px-3 font-ui text-sm text-foreground transition-colors hover:border-muted-foreground/50"
 							>
 								<span className="min-w-0 flex-1 truncate">{appearance?.fontFamily || DEFAULT_READING_FONT}</span>
-								<span aria-hidden className="text-muted-foreground">
-									▾
-								</span>
+								<ChevronDownIcon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
 							</button>
 						);
 						return fontMenuOpen ? (
@@ -276,6 +278,15 @@ export function AppearanceSection({
 					}}
 				/>
 			</SettingsRow>
+			</SettingsGroup>
+			<section aria-label="Reading preview" data-testid="reading-preview" className="rounded-lg border border-border bg-card p-5">
+				<h3 className="mb-3 text-base font-semibold">Live preview</h3>
+				<div style={{ fontSize: `${resolved.proseFontSize}px`, lineHeight: 1.6, fontFamily: "var(--font-prose)" }}>
+					<h4 style={{ fontWeight: resolved.mdRendering.headingWeight }} className="mb-2">Gradient descent</h4>
+					<p>A small learning rate makes <strong style={{ color: "var(--lh-ink-strong)" }}>steady progress</strong>. A larger one can jump across the valley, producing a <em style={{ color: "var(--lh-ink-italic)" }}>zigzag path</em>.</p>
+				</div>
+			</section>
+			<SettingsGroup label="Text emphasis">
 			<SettingsRow label="Heading weight" testid="row-heading-weight">
 				<CommitInput
 					type="number"
@@ -320,6 +331,7 @@ export function AppearanceSection({
 					onCommit={(v) => onSectionChange({ ...appearance, mdRendering: { ...md, italicColor: v === "" ? null : v } })}
 				/>
 			</SettingsRow>
+			</SettingsGroup>
 		</>
 	);
 }

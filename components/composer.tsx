@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { ArrowRightIcon } from "lucide-react";
+import { InputGroup, InputGroupTextarea } from "@/components/ui/input-group";
 import { PromptSubmit, PromptToolbar } from "@/components/prompt-controls";
 import { focusSurfaceInput } from "@/components/input-surface";
 
@@ -90,7 +91,8 @@ export function Composer({
 				act();
 			}}
 		>
-			<textarea
+			<InputGroup className="h-auto flex-col border-0 bg-transparent shadow-none ring-0 has-[[data-slot=input-group-control]:focus-visible]:ring-0">
+			<InputGroupTextarea
 				ref={inputRef}
 				value={value}
 				onChange={(e) => onChange(e.target.value)}
@@ -138,6 +140,7 @@ export function Composer({
 					/>
 				)}
 			</PromptToolbar>
+			</InputGroup>
 		</form>
 	);
 }

@@ -51,6 +51,7 @@
  * missing (the toggle painted its old state until a remount re-fetched).
  */
 
+import { ChevronDownIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { MenuShell } from "@/components/menu-shell";
 import { useSettingsSaved } from "@/components/settings-signal";
@@ -267,14 +268,12 @@ function MenuTrigger({
 			onClick={() => {
 				if (!disabled) onClick();
 			}}
-			className={`flex h-7 items-center gap-1 rounded-sm border border-border bg-background px-1.5 font-ui text-xs text-foreground transition-colors ${
+			className={`flex h-9 min-w-0 items-center gap-2 rounded-md border border-border bg-background px-2.5 font-ui text-sm text-foreground transition-colors ${
 				disabled ? "cursor-not-allowed" : "hover:border-muted-foreground/50"
 			} ${widthClass}`}
 		>
 			<span className="min-w-0 flex-1 truncate">{value || emptyLabel}</span>
-			<span aria-hidden className="text-muted-foreground">
-				▾
-			</span>
+			<ChevronDownIcon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
 		</button>
 	);
 }

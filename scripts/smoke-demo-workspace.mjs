@@ -46,7 +46,10 @@ try {
  const before=await frame.$eval('.k-readouts',e=>e.textContent);
  assert.match(before,/Step1/);
  assert.equal(await page.$('[data-testid="reading-thinking-field"]'),null);
- await page.click('.lesson-footer [aria-haspopup="dialog"]');await page.waitForSelector('[data-testid="stats-model"]');await page.keyboard.press('Escape');
+ await page.click('.lesson-footer [aria-haspopup="dialog"]');await page.waitForSelector('[data-testid="stats-model"]');
+ await page.waitForFunction(()=>document.activeElement?.closest('[data-testid="session-options"]'));
+ await page.keyboard.press('Escape');
+ await page.waitForSelector('[data-testid="session-options"]',{hidden:true});
  assert.equal(await page.$('[data-testid="session-options"]'),null);assert.equal(await page.$('[data-testid="abort-turn-dialog"]'),null);
  const geometry=await page.evaluate(()=>{const dock=document.querySelector('.lesson-footer').getBoundingClientRect();let s=document.querySelector('[data-testid="lesson-content"]').parentElement;while(s&&!/auto|scroll/.test(getComputedStyle(s).overflowY))s=s.parentElement;return {dockHeight:dock.height,spacer:document.querySelector('[data-testid="dock-spacer"]').offsetHeight,questionInLesson:document.querySelector('[data-testid="lesson-content"]').contains(document.querySelector('[data-testid="lesson-question"]')),dockTop:dock.top,scrollBottom:s.getBoundingClientRect().bottom,body:document.body.scrollWidth,viewport:innerWidth};});
  assert.ok(geometry.scrollBottom>geometry.dockTop,JSON.stringify(geometry));assert.ok(geometry.spacer>=geometry.dockHeight-1);assert.ok(geometry.questionInLesson);assert.ok(geometry.body<=geometry.viewport);
