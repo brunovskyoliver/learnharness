@@ -21,7 +21,7 @@ Requested 2026-10-27 after the usage audit (`~/agent-runs/2026-10-27-learning-wo
 
 ## Status
 
-Implementation: complete and verified locally. Not committed, not deployed.
+Implementation: complete and verified locally. Deployed 2026-10-27 (see below).
 
 ## What changed
 
@@ -44,4 +44,17 @@ Implementation: complete and verified locally. Not committed, not deployed.
 - Not tested: Electron window, real touch, hosted mode behind Clerk (font path is excluded from the proxy matcher, so it should be public), a newly built demo from the updated builder prompt (needs a model run).
 - Panel and transcript card keep separate invert state until reload.
 - Workflow ticket (Continue button, confidence, resume line, mistake review, session splitting) not started.
-- Commit, push and deployment not done.
+- GitHub push and merge into local `main` not done.
+
+## Deployment, 2026-10-27
+
+Oliver asked to commit and deploy tickets 02 and 03 together.
+
+- Implementation: commit `287e52b0f01b6ab827af2fb108ad4272578f4804` on local branch `thread-ux-demo-kit` (local `main` unchanged at `bdcbd1b`). Transferred by temporary git bundle; VM `~/learnharness/src` and `~/learnharness.git` main fast-forwarded from `b3a2836`. GitHub not pushed, no PR or merge.
+- Build on the VM: `learnharness:demo-kit-20261027-287e52b`, also `learnharness:amd64`, `sha256:52ca840e8411db8386afe2c81aa434b4543538fb0606a7dac1cd04d453449b21`. Kit build, Next build and server payload steps passed; image contains `public/demo-kit/` and the Source Sans 3 font.
+- Smoke in the image's Chromium: a kit demo loaded from `file://` drew its chart and readout.
+- Deployment: `docker compose up -d --no-deps --no-build app`; running, 0 restarts, Ready. Other containers untouched.
+- Live checks at https://learn.brunovsky.online: `/` 307, `/sign-in` 200, `/api/chats` 401, `/demo-kit/runtime.js`, `vega.js`, `plotly.js`, `flow.css` 200, font 200 with `Access-Control-Allow-Origin: *`; the live stylesheet contains the new session scale, heading, table fade and composer rules.
+- Not exercised: signed-in production use, and a demo built by the model with the new builder.
+- Rollback: `cd ~/learnharness && docker tag learnharness:rollback-demo-kit-20261027 learnharness:amd64 && docker compose up -d --no-deps --no-build app` (image `sha256:d720c758…`, source `b3a2836`). VM record: `~/agent-runs/2026-10-27-demo-kit-deploy/`.
+- VM disk: 12 GB free after the build (was 16 GB); build cache left in place.
