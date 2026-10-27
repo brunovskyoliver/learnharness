@@ -1,5 +1,6 @@
 "use client";
 
+import { requestFullTranscript } from "@/components/transcript-window";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { ChevronDownIcon, ChevronUpIcon, SearchIcon, XIcon } from "lucide-react";
 import { kbdEventForAction, stepSessionMatch } from "@/src/core";
@@ -87,6 +88,8 @@ export function SessionFind({ scopeRef, scrollContextRef }: {
 		const onFind = () => {
 			if (sessionFindHasForegroundLayer(document)) return;
 			if (!open) previousFocus.current = document.activeElement as HTMLElement | null;
+			// Find searches the DOM: mount the deferred older messages first.
+			requestFullTranscript();
 			setOpen(true);
 			// A second Mod+F focuses/selects the retained query, not a second bar.
 			if (open) { inputRef.current?.focus({ preventScroll: true }); inputRef.current?.select(); }

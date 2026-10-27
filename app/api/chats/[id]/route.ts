@@ -1,4 +1,4 @@
-import { compactionInFlight, deleteChatSession, getChat, isTurnRunning, sessionCoverage, sessionCost, stores, turnFailure, type ChatDeleteMode, withTenant } from "@/src/server";
+import { clientMessages, compactionInFlight, deleteChatSession, getChat, isTurnRunning, sessionCoverage, sessionCost, stores, turnFailure, type ChatDeleteMode, withTenant } from "@/src/server";
 
 async function handleGET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
 	const { id } = await params;
@@ -16,7 +16,7 @@ async function handleGET(_req: Request, { params }: { params: Promise<{ id: stri
 	// re-attach to a running turn; coverage is the chat view's ring meter.
 	return Response.json({
 		...chat,
-		messages: chat.messages,
+		messages: clientMessages(chat.messages),
 		pricing: sessionCost(chat),
 		turnInFlight: isTurnRunning(id),
 		// Also reaches idle views that missed the failing turn's stream.

@@ -31,6 +31,7 @@ import { QueuedSteersBody, type QueuedSteerLine } from "@/components/queued-stee
 import { useFieldCycle } from "@/components/field-cycle";
 import { JobsContext } from "@/components/jobs-context";
 import { StatsBar } from "@/components/stats-bar";
+import { ModelSeedContext } from "@/components/model-picker";
 import { useServerEvent, useServerResync } from "@/components/server-events";
 import {
 	isProviderKeyRefusal,
@@ -80,14 +81,15 @@ import { ReadingThinkingField } from "@/components/reading-thinking";
 import { currentUserThinkingOpen, setAllUserThinkingOpen } from "@/components/thinking-block";
 import { slotsConfigured, type ModelsSettings } from "@/src/core";
 import { useSettingsSaved } from "@/components/settings-signal";
+import { readSettingsBody } from "@/components/settings-record";
 import { focusSurfaceInput, inputSurfaceIsEditing } from "@/components/input-surface";
 import { animateDockScroll, DOCK_EASING, DOCK_MOTION_MS, reducedDockMotion } from "@/components/dock-motion";
-import { createSmoothWheelScroller } from "@/components/smooth-wheel-scroll";
 import { TurnReadingPosition } from "@/components/turn-reading-position";
 import { readSessionMetadata } from "@/components/session-metadata";
-import { SessionStateProvider, SessionPartState, useSessionState } from "@/components/session-state";
+import { SessionStateProvider, SessionPartState, useSessionState, useSessionStateStore } from "@/components/session-state";
 import { SessionReadingState } from "@/components/session-reading-state";
 import { SessionTurnRail } from "@/components/session-turn-rail";
+import { TranscriptArrivalScript, TranscriptBackfillSentinel, TranscriptScrollKeeper, useTranscriptWindow } from "@/components/transcript-window-view";
 
 const MermaidOverlay = dynamic(() => import("@/components/session-overlay").then((module) => module.MermaidOverlay), { ssr: false });
 
@@ -213,8 +215,18 @@ function isSubagentSteer(m: LhViewMessage): boolean {
  * never overlapping the transcript at rest, never covering the scrollbar —
  * and DockOverlay animates its height on variant changes.
  */
-export function Chat(props: ComponentProps<typeof ChatView>) {
-	return <SessionStateProvider key={props.chatId} chatId={props.chatId}><ChatView {...props} /></SessionStateProvider>;
+export function Chat({ initialSettings, initialModels, ...props }: ComponentProps<typeof ChatView> & {
+	/** The session's model/thinking settings and the record's models
+	 *  section, read with the page: the composer pills render named. */
+	initialSettings?: ChatSettings;
+	initialModels?: ModelsSettings;
+}) {
+	const modelSeed = useMemo(() => ({ chatId: props.chatId, session: initialSettings, models: initialModels }), [props.chatId, initialSettings, initialModels]);
+	return (
+		<SessionStateProvider key={props.chatId} chatId={props.chatId}>
+			<ModelSeedContext.Provider value={modelSeed}><ChatView {...props} /></ModelSeedContext.Provider>
+		</SessionStateProvider>
+	);
 }
 
 function ChatView({
@@ -273,6 +285,16 @@ function ChatView({
 	const sessionFindScopeRef = useRef<HTMLDivElement | null>(null);
 	const scrollContextRef = useRef<StickToBottomContext | null>(null);
 	const sourceTextParts = useMemo(() => firstSourceTextParts(messages), [messages]);
+	const transcript = useTranscriptWindow(messages);
+	const sessionStateStore = useSessionStateStore();
+	// Arrival growth (measured dock reserve, older chunks) lands instantly;
+	// the smooth follow is for growth the reader watches, i.e. streaming.
+	const [transcriptSettled, setTranscriptSettled] = useState(false);
+	useEffect(() => {
+		if (transcriptSettled || transcript.from > 0) return;
+		const timer = window.setTimeout(() => setTranscriptSettled(true), 300);
+		return () => window.clearTimeout(timer);
+	}, [transcript.from, transcriptSettled]);
 
 	// The reattach settled terminal → the sync-and-continue seam (below).
 	setReattachSettled(() => reattachSettledRef.current());
@@ -590,8 +612,7 @@ function ChatView({
 	// the setup CTA appears/disappears live (it used to lag until reload).
 	useSettingsSaved((section) => {
 		if (section !== "models") return;
-		fetch("/api/settings")
-			.then((r) => r.json() as Promise<{ settings?: { models?: ModelsSettings } | null } | null>)
+		readSettingsBody<{ settings?: { models?: ModelsSettings } | null } | null>()
 			.then((body) => setConfigured(slotsConfigured(body?.settings?.models)))
 			.catch(() => {});
 	});
@@ -1296,7 +1317,7 @@ function ChatView({
 
 				<SessionFind scopeRef={sessionFindScopeRef} scrollContextRef={scrollContextRef} />
 				<div ref={sessionFindScopeRef} className="relative flex min-h-0 flex-1">
-				<Conversation className="@container/session h-full min-w-0 flex-1" initial={false} contextRef={scrollContextRef}>
+				<Conversation className="@container/session h-full min-w-0 flex-1" initial={false} resize={transcriptSettled ? "smooth" : "instant"} contextRef={scrollContextRef}>
 					<SessionMessageNavigation />
 					<TurnReadingPosition busy={busy} messages={messages} onReserve={setReadingReserve} />
 					<SessionTurnRail messages={messages} nativeMessages={nativeMessages} turns={turns} onReserve={setReadingReserve} />
@@ -1309,7 +1330,11 @@ function ChatView({
 								/>
 							)}
 
+							{transcript.from > 0 && <TranscriptBackfillSentinel key={transcript.from} contextRef={scrollContextRef} onNear={transcript.extend} />}
+							<TranscriptScrollKeeper from={transcript.from} contextRef={scrollContextRef}>
 							{messages.map((m, mi) =>
+								// Deferred prefix (transcript window): mounts in idle chunks.
+								transcript.offsets[mi + 1]! <= transcript.from ? null :
 								m.role === "user" && isSubagentSteer(m) ? (
 									// Sub-agent delivery (wake-pipeline steer): NO message bubble — the
 									// artifact card sits in the transcript column directly, full width
@@ -1388,6 +1413,7 @@ function ChatView({
 									first lesson block (the Lacan session, 2026-09-27). */}
 									{m.role === "assistant" &&
 									mi > 0 &&
+									transcript.offsets[mi]! >= transcript.from &&
 									phases[mi] === "teach" &&
 									phases[mi - 1] !== "teach" &&
 									teachStepIndex(m.parts) === -1 ? (
@@ -1427,6 +1453,7 @@ function ChatView({
 									<Message from="assistant" className="max-w-full">
 									<MessageContent className="w-full">
 											{m.parts.map((part, pi) => {
+												if (transcript.offsets[mi]! + pi < transcript.from) return null;
 												const isLastPart = mi === messages.length - 1 && pi === m.parts.length - 1;
 												// The step boundary where teaching begins (round 8): when
 												// the teach flip happens in a LATER step, its PhaseDivider
@@ -1529,6 +1556,7 @@ function ChatView({
 									)}
 								</SessionPartState>
 							))}
+							</TranscriptScrollKeeper>
 
 							{/* THE placeholder, ACTION-gated (owner, optimistic round
 							    3, 2026-10-02): spinner + shimmered Thinking… from the
@@ -1571,7 +1599,8 @@ function ChatView({
 						    the overlay — the flow-space replacement for the old
 						    sticky dock. Zero only pre-measurement (the first layout
 						    effect reports before paint). */}
-						<div aria-hidden data-testid="dock-spacer" style={{ height: Math.max(dockReserve, readingReserve) }} />
+						{/* The arrival script sizes this from the real dock before first paint. */}
+						<div aria-hidden data-testid="dock-spacer" suppressHydrationWarning style={{ height: Math.max(dockReserve, readingReserve) }} />
 				</ConversationContent>
 				<SessionReadingState />
 				{/* The dock: an overlay sibling of the scroller (the
@@ -1655,6 +1684,7 @@ function ChatView({
 					}}
 				/>
 				</Conversation>
+				<TranscriptArrivalScript storageKey={sessionStateStore?.storageKey} gradientHeight={GRADIENT_H} />
 
 				{/* The session-scoped focuses (chrome-melt wave, 2026-09-19): mounted
 				    INSIDE the session area — absolute inset-0 siblings of the scroller,
@@ -1869,7 +1899,6 @@ function DockOverlay({
 	const jumpPendingRef = useRef(false);
 	const ownerRef = useRef(pending?.toolCallId ?? practice?.toolCallId);
 	ownerRef.current = pending?.toolCallId ?? practice?.toolCallId;
-	const wheelScrollerRef = useRef<ReturnType<typeof createSmoothWheelScroller> | null>(null);
 	const scrollGestureAtRef = useRef(0);
 	// Retain wheel intent through inertia and layout changes. Geometry can
 	// move scrollTop against the gesture while the dock changes height.
@@ -2022,37 +2051,31 @@ function DockOverlay({
 		return () => ro.disconnect();
 	}, [scrollRef]);
 
-	// The lesson and overlay share one wheel controller. Native internal
-	// scrollers keep their gestures until an edge, then chain to the lesson.
+	// Native scrolling owns the lesson: the browser scrolls it, so hydration,
+	// markdown and streaming never stutter a gesture (2026-10-27; the eased JS
+	// scroller ran every wheel through rAF). The lesson listener only keeps
+	// the books. The dock overlay is
+	// a sibling, not a descendant, so its wheel is forwarded 1:1. Native
+	// internal scrollers keep their gestures until an edge, then chain.
 	useEffect(() => {
 		const root = blockRef.current;
 		const el = scrollRef.current;
 		if (!root || !el) return;
-		const wheelScroller = createSmoothWheelScroller(el, {
-			onSettled: () => {
+		let settleTimer = 0;
+		const settle = () => {
+			window.clearTimeout(settleTimer);
+			settleTimer = window.setTimeout(() => {
 				if (el.scrollHeight - el.clientHeight - el.scrollTop < EXPAND_DIST) {
 					void scrollToBottom({ animation: "instant" });
 				}
-			},
-		});
-		wheelScrollerRef.current = wheelScroller;
+			}, 140);
+		};
 		const canScroll = (n: HTMLElement, dir: number) => {
 			if (!/auto|scroll/.test(getComputedStyle(n).overflowY)) return false;
 			if (n.scrollHeight - n.clientHeight < 2) return false; // not scrollable
 			return dir < 0 ? n.scrollTop > 0 : n.scrollTop < n.scrollHeight - n.clientHeight - 0.5;
 		};
-		const onWheel = (e: WheelEvent) => {
-			if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.shiftKey || e.deltaY === 0 || Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
-				wheelScroller.cancel();
-				return;
-			}
-			for (let n = e.target as HTMLElement | null; n && n !== root && n !== el; n = n.parentElement) {
-				if (n instanceof HTMLElement && canScroll(n, e.deltaY)) {
-					wheelScroller.cancel();
-					return;
-				}
-			}
-			e.preventDefault();
+		const gesture = (e: WheelEvent) => {
 			readingAnswerRef.current = false;
 			wheelDirectionRef.current = Math.sign(e.deltaY);
 			scrollGestureAtRef.current = Date.now();
@@ -2066,13 +2089,32 @@ function DockOverlay({
 			expandIntentRef.current = false;
 			stopScroll();
 			atBottomRef.current = false;
+			settle();
+		};
+		const plainVertical = (e: WheelEvent) =>
+			!(e.defaultPrevented || e.ctrlKey || e.metaKey || e.shiftKey || e.deltaY === 0 || Math.abs(e.deltaX) > Math.abs(e.deltaY));
+		const onLessonWheel = (e: WheelEvent) => {
+			if (!plainVertical(e)) return;
+			for (let n = e.target as HTMLElement | null; n && n !== el; n = n.parentElement) {
+				if (n instanceof HTMLElement && canScroll(n, e.deltaY)) return;
+			}
+			gesture(e);
+		};
+		const onDockWheel = (e: WheelEvent) => {
+			if (!plainVertical(e)) return;
+			for (let n = e.target as HTMLElement | null; n && n !== root; n = n.parentElement) {
+				if (n instanceof HTMLElement && canScroll(n, e.deltaY)) return;
+			}
+			e.preventDefault();
+			gesture(e);
+			// Trackpads send many small deltas (already smooth): apply 1:1. A
+			// mouse notch is one big delta: animate it like native wheel scroll.
 			const delta = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? el.clientHeight : 1);
-			wheelScroller.scrollBy(delta);
+			el.scrollBy({ top: delta, behavior: Math.abs(delta) >= 40 ? "smooth" : "instant" });
 		};
 		const cancelWheel = () => {
 			readingAnswerRef.current = false;
 			wheelDirectionRef.current = 0;
-			wheelScroller.cancel();
 			if (jumpPendingRef.current) {
 				jumpPendingRef.current = false;
 				scrollMotionRef.current?.cancel();
@@ -2084,7 +2126,6 @@ function DockOverlay({
 			jumpPendingRef.current = false;
 			readingAnswerRef.current = true;
 			wheelDirectionRef.current = 0;
-			wheelScroller.cancel();
 			scrollMotionRef.current?.cancel();
 			scrollMotionRef.current = null;
 			expandIntentRef.current = false;
@@ -2092,21 +2133,24 @@ function DockOverlay({
 		};
 		el.addEventListener("lh:read-answer", readAnswer);
 		el.addEventListener("lh:manual-navigation", readAnswer);
-		el.addEventListener("wheel", onWheel, { passive: false });
-		root.addEventListener("wheel", onWheel, { passive: false });
+		// Not passive, though it never cancels: Chrome then runs this handler
+		// before it scrolls (only the first wheel of a sequence waits), so the
+		// fold machine's scroll handler always sees this gesture's direction
+		// and stamp. Passive let the scroll win on a busy main thread.
+		el.addEventListener("wheel", onLessonWheel, { passive: false });
+		root.addEventListener("wheel", onDockWheel, { passive: false });
 		el.addEventListener("pointerdown", cancelWheel);
 		root.addEventListener("pointerdown", cancelWheel);
 		window.addEventListener("keydown", cancelWheel);
 		return () => {
 			el.removeEventListener("lh:read-answer", readAnswer);
 			el.removeEventListener("lh:manual-navigation", readAnswer);
-			el.removeEventListener("wheel", onWheel);
-			root.removeEventListener("wheel", onWheel);
+			el.removeEventListener("wheel", onLessonWheel);
+			root.removeEventListener("wheel", onDockWheel);
 			el.removeEventListener("pointerdown", cancelWheel);
 			root.removeEventListener("pointerdown", cancelWheel);
 			window.removeEventListener("keydown", cancelWheel);
-			wheelScroller.cancel();
-			wheelScrollerRef.current = null;
+			window.clearTimeout(settleTimer);
 		};
 	}, [scrollRef, scrollToBottom, stopScroll]);
 
@@ -2152,7 +2196,6 @@ function DockOverlay({
 		const element = scrollRef.current;
 		if (!element) return Promise.resolve();
 		expandIntentRef.current = true;
-		wheelScrollerRef.current?.cancel();
 		scrollMotionRef.current?.cancel();
 		stopScroll();
 		const motion = animateDockScroll(element, () => element.scrollHeight - element.clientHeight);
@@ -2171,8 +2214,7 @@ function DockOverlay({
 			if (event?.type !== "wheel") {
 				readingAnswerRef.current = false;
 				wheelDirectionRef.current = 0;
-				wheelScrollerRef.current?.cancel();
-			}
+					}
 			scrollGestureAtRef.current = Date.now();
 			geometryAtRef.current = 0;
 			growthAtRef.current = 0;
@@ -2202,7 +2244,6 @@ function DockOverlay({
 		expandIntentRef.current = true;
 		readingAnswerRef.current = false;
 		wheelDirectionRef.current = 0;
-		wheelScrollerRef.current?.cancel();
 		scrollMotionRef.current?.cancel();
 		stopScroll();
 		const motion = animateDockScroll(element, () => element.scrollHeight - element.clientHeight, (top) => { scrollState.scrollTop = top; }, { cancelOnExternalScroll: true });
@@ -2260,7 +2301,11 @@ function DockOverlay({
 			previousScrollTop = el.scrollTop;
 			if (!pendingRef.current || readingAnswerRef.current || jumpPendingRef.current) return;
 			const userGesture = Date.now() - scrollGestureAtRef.current < DOCK_MOTION_MS;
-			scrollGestureAtRef.current = 0;
+			// Only movement in the gesture's own direction uses the gesture up.
+			// A late event from a cancelled motion (the reveal's last downward
+			// write) must not: native scrolling delivers one event per wheel, not
+			// the old easing's train of retries.
+			if (scrollingUp || scrollingDown) scrollGestureAtRef.current = 0;
 			// Resize mute (owner, resize round): a geometry change re-clamps
 			// scrollTop and the browser emits the clamp as a scroll event —
 			// reading the transient position folded the box to the bar for a
@@ -2376,7 +2421,7 @@ function DockOverlay({
 	return (
 		<div className="pointer-events-none absolute inset-x-0 bottom-0" style={{ right: sbInset }}>
 			<div className="h-24 bg-gradient-to-t from-background via-background/85 to-transparent" />
-			<div ref={blockRef} className="relative bg-background pb-5" style={{ "--dock-max-h": dockMaxH ? `${dockMaxH}px` : undefined } as React.CSSProperties}>
+			<div ref={blockRef} data-dock-block="" className="relative bg-background pb-5" style={{ "--dock-max-h": dockMaxH ? `${dockMaxH}px` : undefined } as React.CSSProperties}>
 				<div className={`${DOCK} flex max-h-[var(--dock-max-h)] flex-col [&>div:not([data-testid=dock-shell])]:shrink-0`}>
 					{setupCta}
 					{/* The queued-steer indicator (owner spec 2026-10-03): quiet

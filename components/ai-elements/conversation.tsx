@@ -24,12 +24,16 @@ export type ConversationContentProps = ComponentProps<
   typeof StickToBottom.Content
 >;
 
+// The scroller's overflow is in the server HTML: the library only sets it
+// after hydration, leaving the first paint clipped and unscrollable.
 export const ConversationContent = ({
   className,
+  scrollClassName,
   ...props
 }: ConversationContentProps) => (
   <StickToBottom.Content
     className={cn("flex flex-col gap-8 p-4", className)}
+    scrollClassName={cn("overflow-y-auto", scrollClassName)}
     {...props}
   />
 );

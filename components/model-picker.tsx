@@ -2,7 +2,7 @@
 
 import { readSessionMetadata } from "@/components/session-metadata";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { ChevronDownIcon, GaugeIcon } from "lucide-react";
 import type { ChatSettings, ModelCatalogEntry, ModelCatalogResponse, ModelsSettings, UserSettings } from "@/src/core";
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
@@ -12,6 +12,7 @@ import { composeSlotModel } from "@/components/settings/agent-section";
 import { MenuShell } from "@/components/menu-shell";
 import { Hint } from "@/components/ui/hint";
 import { notifySettingsSaved, onSettingsSaved, useSettingsSaved } from "@/components/settings-signal";
+import { readSettingsBody } from "@/components/settings-record";
 import { defaultOrderLevel, populateLevel, THINKING_LABEL } from "@/components/thinking-default";
 
 /** GET /api/models is cached per page load for instant menu opens, but
@@ -84,10 +85,17 @@ export function catalogLimits(catalog: Pick<ModelCatalogResponse, "models">): Ma
  * changing the new-session default. Unpicked reads "—" (the
  * no-factory-fallback language: the UI never presents a default model).
  */
+/** Server-read seed for a session page: the session's own settings and the
+ * record's models section, so the pills name the model on the first paint
+ * instead of "—" until two reads land. The reads still run and win. */
+export const ModelSeedContext = createContext<{ chatId: string; session?: ChatSettings; models?: ModelsSettings } | null>(null);
+
 export function ModelControl({ chatId, onModelChange }: { chatId?: string; onModelChange?: (model: string | undefined) => void }) {
 	const { catalog, refresh } = useModelCatalog();
-	const [models, setModels] = useState<ModelsSettings | undefined>();
-	const [session, setSession] = useState<ChatSettings | undefined>();
+	const seed = useContext(ModelSeedContext);
+	const seeded = seed && chatId && seed.chatId === chatId ? seed : null;
+	const [models, setModels] = useState<ModelsSettings | undefined>(seeded?.models);
+	const [session, setSession] = useState<ChatSettings | undefined>(seeded?.session);
 	const [open, setOpen] = useState<"model" | "thinking" | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const containerRef = useRef<HTMLDivElement>(null);
@@ -117,8 +125,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 					/* same read-only posture as a models-section failure */
 				});
 		}
-		fetch("/api/settings")
-			.then((r) => r.json() as Promise<{ settings: { models?: ModelsSettings } | null }>)
+		readSettingsBody<{ settings: { models?: ModelsSettings } | null }>()
 			.then((body) => { if (generation === recordGeneration.current) setModels(body.settings?.models ?? undefined); })
 			.catch(() => {
 				/* the record fetch failing leaves the control read-only

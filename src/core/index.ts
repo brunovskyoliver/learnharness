@@ -75,7 +75,9 @@ export * from "./session-navigation.ts";
 export * from "./auth-keys.ts";
 // keyboard.ts: the shortcut registry + binding normalization (pure, browser-safe).
 export * from "./keyboard.ts";
-export * from "./coverage.ts";
+// coverage.ts stays server-side: its fingerprints use node:crypto, which
+// pulled ~330 KB of crypto-browserify into every page (2026-10-27).
+export type { CoverageEntry, CoverageSlot } from "./coverage.ts";
 // session-markdown.ts (2026-09-27 engine; first consumer 2026-10-06): the
 // ONE session→markdown formatter — the extractor's view and the user-facing
 // export share it. Pure, browser-safe.

@@ -3,6 +3,7 @@ import { isJobLive } from "../agent/subagents/aborts.ts";
 import { coverageOf } from "../core/coverage.ts";
 import { deleteChatTraces, type ChatDeleteMode, type ChatDeletionStats } from "../core/graph-deletion.ts";
 import { titleFromPrompt } from "../core/contracts.ts";
+import type { LhMessage } from "../core/native-messages.ts";
 import { graphRevision } from "./graph.ts";
 import { stores } from "./stores.ts";
 import { isTurnRunning } from "./turn-liveness.ts";
@@ -23,6 +24,27 @@ import { discardChatDeliveries } from "./jobs.ts";
 
 export const { createChat, getChat, listChats } = stores.chatStore;
 export { titleFromPrompt };
+
+/** Provider replay signatures (encrypted reasoning, Gemini thought tags)
+ * are model-facing only: the browser never reads them, and they are the
+ * bulk of a long record (~250 KB of an 860 KB session). Strip them from
+ * page props and transcript GETs; the stored record keeps them. */
+const SIGNATURE_FIELDS = ["thinkingSignature", "textSignature", "thoughtSignature"] as const;
+export function clientMessages(messages: LhMessage[]): LhMessage[] {
+	return messages.map((message) => {
+		if (message.role !== "assistant" || !Array.isArray(message.content)) return message;
+		if (!message.content.some((block) => SIGNATURE_FIELDS.some((field) => field in block))) return message;
+		return {
+			...message,
+			content: message.content.map((block) => {
+				if (!SIGNATURE_FIELDS.some((field) => field in block)) return block;
+				const copy = { ...block } as Record<string, unknown>;
+				for (const field of SIGNATURE_FIELDS) delete copy[field];
+				return copy as unknown as typeof block;
+			}),
+		};
+	});
+}
 export type { ChatDeleteMode, ChatDeletionStats } from "../core/graph-deletion.ts";
 
 /** How long the wind-down wait may take before the caller gets a retryable

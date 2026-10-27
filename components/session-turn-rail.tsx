@@ -1,5 +1,6 @@
 "use client";
 
+import { requestFullTranscript } from "@/components/transcript-window";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStickToBottomContext } from "use-stick-to-bottom";
 import { sessionTurnEntries, type LhMessage, type LhViewMessage, type TurnUsage, type SessionTurnEntry } from "@/src/core";
@@ -123,6 +124,7 @@ export function SessionTurnRail({ messages, nativeMessages, turns, onReserve }: 
 	const jump = (entry: SessionTurnEntry) => {
 		const main = current.current.scrollRef.current;
 		if (!main) return;
+		requestFullTranscript();
 		main.dispatchEvent(new Event("lh:manual-navigation"));
 		current.current.stopScroll();
 		const target = () => [...main.querySelectorAll<HTMLElement>("[data-answer-part-id]")].find((element) => element.dataset.answerPartId === entry.partId);

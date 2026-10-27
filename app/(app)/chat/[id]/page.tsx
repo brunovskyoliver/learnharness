@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { Chat } from "@/components/chat";
 import { slotsConfigured } from "@/src/core";
-import { compactionInFlight, getChat, isTurnRunning, sessionCost, readSettingsRecord, turnFailure, withTenantPage } from "@/src/server";
+import { clientMessages, compactionInFlight, getChat, isTurnRunning, sessionCost, readSettingsRecord, turnFailure, withTenantPage } from "@/src/server";
 
 export const dynamic = "force-dynamic";
 
@@ -28,11 +28,13 @@ async function ChatPage({
 			// Wave D: the record IS native agent history — the client view is
 				// derived app-side (core/view.ts projectView; GET serves the same
 				// native messages).
-				initialMessages={chat.messages}
+				initialMessages={clientMessages(chat.messages)}
 			initialTurns={chat.turns ?? []}
 			initialPricing={sessionCost(chat)}
 			initialError={turnFailure(chat.id)}
 			initialConfigured={slotsConfigured(record?.models)}
+			initialSettings={chat.settings}
+			initialModels={record?.models}
 			initialPrompt={prompt}
 			// A teacher turn that outlived its client: the remounted view must
 			// attach (busy shimmer + poll), never resurrect the stale record.

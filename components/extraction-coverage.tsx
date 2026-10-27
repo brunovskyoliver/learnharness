@@ -10,6 +10,7 @@ import { formatTokens } from "@/components/usage-format";
 import { Hint } from "@/components/ui/hint";
 import { timeAgo } from "@/components/sidebar";
 import { resolveSettings } from "@/src/core";
+import { readSettingsBody } from "@/components/settings-record";
 
 /**
  * The extraction-coverage surfaces (extraction-UX redesign, owner-locked
@@ -69,9 +70,7 @@ export interface GraphRead {
  *  raw settings delta to the factory-true graph section. */
 export async function fetchGraphRead(): Promise<GraphRead | null> {
 	try {
-		const res = await fetch("/api/settings");
-		if (!res.ok) return null;
-		const body = (await res.json()) as { settings?: Parameters<typeof resolveSettings>[0] };
+		const body = await readSettingsBody<{ settings?: Parameters<typeof resolveSettings>[0] }>();
 		const graph = resolveSettings(body.settings ?? null).graph;
 		return { enabled: graph.enabled, chunkTokens: graph.extractionChunkTokens };
 	} catch {

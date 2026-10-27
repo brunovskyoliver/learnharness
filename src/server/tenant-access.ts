@@ -8,7 +8,7 @@ import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { hostedMode, runAsTenant } from "../../config.ts";
 
-export { hostedMode };
+export { hostedMode, runAsTenant };
 
 /** Hosted mode refuses to run without Clerk keys rather than letting
  * Clerk invent a keyless development instance. */

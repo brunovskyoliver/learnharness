@@ -138,7 +138,7 @@ try {
 	await wait(450);
 	await page.click('[aria-label="Your thinking"]');
 	await page.keyboard.down("Control");
-	await page.keyboard.press("KeyA");
+	await page.keyboard.press("KeyA", { commands: ["SelectAll"] });
 	await page.keyboard.up("Control");
 	await page.keyboard.press("Backspace");
 	assert.equal(await page.$eval('[aria-label="Your thinking"]', (element) => element.value), "");
@@ -256,10 +256,17 @@ try {
 	});
 	await wait(450);
 	await page.mouse.move(200, 160);
+	// The lesson scrolls natively (2026-10-27): the wheel is never cancelled,
+	// so the compositor owns the motion. Headless CDP wheels apply at once;
+	// a real trackpad/mouse animates in the browser itself.
+	await page.evaluate(() => {
+		window.lessonWheelPrevented = null;
+		window.dockScroller.addEventListener("wheel", (event) => { setTimeout(() => { window.lessonWheelPrevented = event.defaultPrevented; }); }, { once: true });
+	});
 	sampling = sample();
 	await page.mouse.wheel({ deltaY: 120 });
 	frames = await sampling;
-	assert.ok(new Set(frames.map((frame) => Math.round(frame.scroll))).size >= 4, "lesson wheel input moves through intermediate frames");
+	assert.equal(await page.evaluate(() => window.lessonWheelPrevented), false, "lesson wheel input scrolls natively");
 	assert.ok(Math.abs(frames.at(-1).scroll - frames[0].scroll - 120) <= 1, "lesson scrolling preserves gesture distance");
 	const promptBox = await (await page.$('[data-testid="composer"]')).boundingBox();
 	await page.mouse.move(promptBox.x + promptBox.width / 2, promptBox.y + promptBox.height - 3);

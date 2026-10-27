@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useStickToBottomContext, type StickToBottomContext } from "use-stick-to-bottom";
 import { messageAnchorId, messageIdFromHash } from "@/src/core";
+import { requestFullTranscript } from "@/components/transcript-window";
 
 export type SessionScrollContext = Pick<StickToBottomContext, "scrollRef" | "stopScroll">;
 
@@ -98,7 +99,11 @@ export function SessionMessageNavigation() {
 		const onHash = () => {
 			lastJump.current = null;
 			clearFlash();
-			jump();
+			// The target may sit in the deferred older part of the transcript.
+			if (!jump() && messageIdFromHash(window.location.hash)) {
+				requestFullTranscript();
+				jump();
+			}
 		};
 		window.addEventListener("hashchange", onHash);
 		window.addEventListener("popstate", onHash);
