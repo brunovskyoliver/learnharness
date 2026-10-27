@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, Fragment, lazy, Suspense, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import { usePathname, useRouter } from "next/navigation";
@@ -23,6 +23,8 @@ import { useServerEvent, useServerResync } from "@/components/server-events";
 import type { ChatListItem } from "@/src/core";
 import { kbdEventForAction } from "@/src/core";
 import { notifySettingsSaved } from "@/components/settings-signal";
+import { SidebarFrame } from "@/components/sidebar-frame";
+export { clampSidebarWidth } from "@/components/sidebar-frame";
 
 /**
  * The desktop sidebar sits inline next to the session. Narrow browser
@@ -31,16 +33,7 @@ import { notifySettingsSaved } from "@/components/settings-signal";
  * layout) and across reloads (localStorage).
  */
 
-const MobileSidebar = lazy(() => import("./mobile-sidebar"));
-
 const STORAGE_KEY = "lh:sidebar-open";
-const WIDTH_KEY = "lh:sidebar-width";
-const SIDEBAR_DEFAULT_W = 256;
-/** 208px floor; the main pane always keeps at least 640px. */
-export function clampSidebarWidth(w: number, viewport: number): number {
-	return Math.round(Math.max(208, Math.min(w, viewport - 640)));
-}
-
 /*
  * Narrow-window behavior (owner, 2026-09-17): below SIDEBAR_AUTOCLOSE the
  * sidebar would squeeze the page below the 640px window floor (the two
@@ -339,7 +332,7 @@ export function SessionRow({
 			data-testid={kbdSelected ? "session-row-kbd" : "session-row"}
 			data-session-id={chat.id}
 			className={cn(
-				"group flex h-9 w-full items-center gap-2.5 rounded-md px-2.5 text-left text-sm transition-colors hover:bg-white/[0.06]",
+				"group flex h-9 w-full shrink-0 items-center gap-2.5 rounded-md px-2.5 text-left text-sm transition-colors hover:bg-white/[0.06]",
 				active ? "bg-white/[0.09] text-foreground" : "text-foreground/85",
 				kbdSelected && !active && "bg-white/[0.06] ring-1 ring-inset ring-white/10",
 			)}
@@ -378,7 +371,7 @@ export function RenameRow({ chat, onCommit, onCancel }: { chat: ChatListItem; on
 	return (
 		<div
 			data-testid="session-rename-row"
-			className="flex h-9 w-full items-center gap-2.5 rounded-md bg-white/[0.09] px-2.5"
+			className="flex h-9 w-full shrink-0 items-center gap-2.5 rounded-md bg-white/[0.09] px-2.5"
 		>
 			<span className="size-4 shrink-0" />
 			<input
@@ -665,32 +658,6 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 		// freshness (S6) — no interval, nothing standing.
 	}, [open, pathname, refresh]);
 
-	// Width (ui-v2, after T3 Code): 256px default, drag the right edge to
-	// resize between 208px and (viewport − 640px), double-click resets.
-	const [width, setWidth] = useState(SIDEBAR_DEFAULT_W);
-	const [dragging, setDragging] = useState(false);
-	useEffect(() => {
-		const stored = Number(window.localStorage.getItem(WIDTH_KEY));
-		if (stored) setWidth(clampSidebarWidth(stored, window.innerWidth));
-	}, []);
-	const startResize = (e: React.PointerEvent<HTMLDivElement>) => {
-		e.preventDefault();
-		const x0 = e.clientX;
-		const w0 = width;
-		setDragging(true);
-		const move = (ev: PointerEvent) => setWidth(clampSidebarWidth(w0 + ev.clientX - x0, window.innerWidth));
-		const up = () => {
-			setDragging(false);
-			window.removeEventListener("pointermove", move);
-			window.removeEventListener("pointerup", up);
-			setWidth((w) => {
-				window.localStorage.setItem(WIDTH_KEY, String(w));
-				return w;
-			});
-		};
-		window.addEventListener("pointermove", move);
-		window.addEventListener("pointerup", up);
-	};
 	const [filterOpen, setFilterOpen] = useState(false);
 	const filterRef = useRef<HTMLButtonElement | null>(null);
 	// The menu contract (same as the context menu): outside pointerdown or a
@@ -718,12 +685,8 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 	}, [filterOpen]);
 
 	const sidebar = (
-		<aside
-			className={cn("relative shrink-0 overflow-hidden duration-200", !dragging && "sidebar-motion", overlay && "h-full")}
-			style={{ width: open ? overlay ? "100%" : width : 0 }}
-			aria-hidden={!open}
-		>
-			<div className="flex h-full flex-col border-r border-white/[0.08] bg-(--lh-sidebar)" style={{ width: overlay ? "100%" : width }}>
+		<SidebarFrame open={open} overlay={overlay} onClose={close} hasMenu={Boolean(ctxChatId || filterOpen)}>
+			<div className="flex h-full flex-col border-r border-white/[0.08] bg-(--lh-sidebar)" style={{ width: overlay ? "100%" : "var(--lh-sidebar-width)" }}>
 				{/* Brand band: in Electron it is the window's drag surface and
 				    starts after the traffic lights (.lh-lights-gutter). */}
 				<div className="lh-drag lh-lights-gutter flex h-13 shrink-0 items-center gap-2 px-3">
@@ -763,6 +726,13 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 								// (wrap), Enter opens the walked row — or the first match —
 								// then blurs. Esc leaves the search and is claimed so the
 								// window Esc chain doesn't also fire.
+								onKeyDownCapture={(e) => {
+									if (e.key !== "Tab" || overlay || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+									// Claim before document-level lesson handlers.
+									e.preventDefault();
+									e.stopPropagation();
+									e.currentTarget.closest("aside")?.querySelector<HTMLElement>('[aria-label="Resize sidebar"]')?.focus();
+								}}
 								onKeyDown={(e) => {
 									if (e.key === "Escape") {
 										e.stopPropagation();
@@ -900,23 +870,6 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 					<div className="ml-auto">{account}</div>
 				</div>
 			</div>
-			{/* The resize rail: 4px hit area on the right edge, a 2px line on hover. */}
-			{open && !overlay && (
-				<div
-					role="separator"
-					aria-orientation="vertical"
-					aria-label="Resize sidebar"
-					onPointerDown={startResize}
-					onDoubleClick={() => {
-						setWidth(SIDEBAR_DEFAULT_W);
-						window.localStorage.removeItem(WIDTH_KEY);
-					}}
-					className={cn(
-						"absolute inset-y-0 right-0 z-10 w-1 cursor-col-resize after:absolute after:inset-y-0 after:right-0 after:w-0.5 after:transition-colors hover:after:bg-white/15",
-						dragging && "after:bg-white/20",
-					)}
-				/>
-			)}
 
 			{filterOpen && (
 				<MenuShell
@@ -1024,11 +977,9 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 					onClose={() => setDeleting(null)}
 					onDeleted={onDeleted}
 				/>
-			</aside>
+			</SidebarFrame>
 	);
-	return overlay ? open ? (
-		<Suspense fallback={null}><MobileSidebar width={width} onClose={close} hasMenu={Boolean(ctxChatId || filterOpen)}>{sidebar}</MobileSidebar></Suspense>
-	) : null : sidebar;
+	return sidebar;
 }
 
 /** The app frame: sidebar inline + content. Rendered once in the root layout. */

@@ -255,7 +255,8 @@ try {
 		scroller.scrollTop = Math.floor((scroller.scrollHeight - scroller.clientHeight) / 2);
 	});
 	await wait(450);
-	await page.mouse.move(200, 160);
+	const lessonLeft = await page.$eval('[role="log"]', (element) => element.getBoundingClientRect().left);
+	await page.mouse.move(lessonLeft + 40, 160);
 	// The lesson scrolls natively (2026-10-27): the wheel is never cancelled,
 	// so the compositor owns the motion. Headless CDP wheels apply at once;
 	// a real trackpad/mouse animates in the browser itself.

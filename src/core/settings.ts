@@ -285,7 +285,7 @@ export interface AppearanceSettings {
 	/** The main reading font (everything that is Source Sans 3 today), by
 	 *  name — user-chosen from installed fonts. null = Source Sans 3. */
 	fontFamily?: string | null;
-	/** Reading font size in px (12–24, default 16). Headings render as
+	/** Reading font size in px (12–24, default 17). Headings render as
 	 *  multiples of this, so one knob scales the document coherently. */
 	proseFontSize?: number;
 	/** Session names in CMU Serif (default true — today's look). */
@@ -401,9 +401,9 @@ export const FACTORY_SETTINGS: FactorySettings = {
 		mode: "dark",
 		background: null, // the dark default (#141414) lives in the mode's derivation curve
 		fontFamily: null, // Source Sans 3
-		proseFontSize: 16,
+		proseFontSize: 17,
 		sessionNameSerif: true,
-		mdRendering: { headingWeight: 900, boldColor: null, italicColor: null },
+		mdRendering: { headingWeight: 700, boldColor: null, italicColor: null },
 	},
 	graph: { enabled: true, rendering: true, extractionChunkTokens: 4096 },
 	compaction: { thresholdTokens: 150_000 },

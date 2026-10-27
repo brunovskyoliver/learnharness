@@ -1322,7 +1322,7 @@ function ChatView({
 					<TurnReadingPosition busy={busy} messages={messages} onReserve={setReadingReserve} />
 					<SessionTurnRail messages={messages} nativeMessages={nativeMessages} turns={turns} onReserve={setReadingReserve} />
 					<ConversationContent className="@container min-h-full gap-0 p-0">
-						<div data-testid="lesson-content" data-session-find-root="" className={`${COLUMN} flex flex-1 flex-col gap-4 pt-4`}>
+						<div data-testid="lesson-content" data-session-find-root="" className={`${COLUMN} flex flex-1 flex-col gap-6 pt-4`}>
 							{messages.length === 0 && !busy && (
 								<ConversationEmptyState
 									title="New session"
