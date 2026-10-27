@@ -34,7 +34,7 @@ Approved typography package: 17px/27px prose, 76ch prose measure inside the 52re
 
 Application implementation: complete and verified.
 Sol review: APPROVE after 2 rounds, `gpt-6.1-sol` through provider `codex`, exposed effort high. S1-S3 resolved, no new issues.
-Commit, push, merge, deployment: none.
+Implementation commit: `b3a2836dac2c8c30e23eeb52fee10968dedbbb98`. Transferred to the AI VM bare repository. GitHub push and PR merge: none. Production deployment: verified at https://learn.brunovsky.online on 2026-10-27.
 
 ## Implementation and verification
 
@@ -61,7 +61,7 @@ Round 1: CHANGES, provider `codex`, model `gpt-6.1-sol`, exposed effort `high`. 
 
 Declined or disputed findings: none. Round 2 checked only S1-S3 and changed code, resolved all three, and approved with no new issues. Independent reviewer whitespace and script syntax checks also passed. Logs: `round-1/s1-red.log`, `round-1/s2-red.log`, `round-1/focus-trace.log`, `round-2-sidebar-smoke.log`. All 2426 tests, typecheck and lint pass again after fixes. Sidebar regression now stresses 82 rows and keeps an active answer ready; accidental POST /api/chat is intercepted, so the test cannot invoke a model.
 
-No commit, push, merge or deployment. Review is complete after 2 rounds; neither round exposed usage.
+At review completion there was no commit or deployment. Review completed after 2 rounds; neither round exposed usage. Deployment was subsequently requested by Oliver and completed below.
 
 Review diff before Sol, including the two new files: 12 files, +356/-118.
 
@@ -73,4 +73,18 @@ Review diff after round 1 fixes: 12 files, +410/-118. Added behavior is limited 
 - Sol round 2: [Sol recheck: resize keyboard and saved width](t3-thread://v1/thread:delegated-task:command%3Amcp%3Ae6a34cb8-c006-4781-89a9-d20a06865597%3Adelegate-task%3Athread-ux-sol-round-2-2fc819c9-20261027). Verdict APPROVE, all three should findings resolved. No declined findings. Provider codex, model gpt-6.1-sol, verified effort high. Usage not returned.
 - Final review diff: 12 application/test files, +410/-118, versus +356/-118 before review. This excludes this task report. Behavior was unchanged after approval.
 - Remaining: pre-existing unfinished-question session-switch smoke timeout; proposed completed-tool grouping, turn-marker target sizing, and coarse-pointer target review are separate follow-ups. Native Electron window and physical touch were not tested.
-- Implementation, checks and independent review are complete. Commit/push/merge/deployment were not requested and were not performed.
+- Implementation, checks and independent review are complete. Oliver subsequently requested deployment to the AI server; see the deployment report below.
+
+## Deployment, 2026-10-27
+
+Oliver explicitly requested deployment to AI server `172.29.5.181` and cleanup. Used the established Fleet route as `brunovsky` on host `ai` and the existing VM-build procedure.
+
+- Implementation: local commit `b3a2836dac2c8c30e23eeb52fee10968dedbbb98`, byte-identical to the Sol-approved application/test patch. Transferred by a temporary Git bundle; both `~/learnharness/src` and `~/learnharness.git` were fast-forwarded. GitHub was not pushed. No PR or merge.
+- Build: Docker production build succeeded on the VM, including `next build` and server payload checks. Runtime image carries the implementation revision label. Image `learnharness:thread-ux-20261027-b3a2836`, also tagged `learnharness:amd64`, digest `sha256:d720c7589cc91ea64e5aaf362682abf64743326dbe12fc81531fe477dd939dba`.
+- Deployment: recreated only the app service with `docker compose up -d --no-deps --no-build app`. Existing NFS data mount, environment file, Chromium sandbox configuration and public Caddy routing were preserved. Container running, zero restarts; no startup error markers. Other server containers stayed running.
+- Live verification: https://learn.brunovsky.online returns 307 to sign-in; `/sign-in` returns 200; `/api/chats` returns 401. All 12 sign-in static assets return 200. Public CSS hash matches the new image and contains 17px prose and the 76ch reading measure. Image smoke also confirms capture handlers and runtime prompts. Authenticated production interaction was not exercised; the sidebar/browser regression was completed against isolated data before deployment.
+- Cleanup: temporary Git bundles, remote build script/session, temporary smoke container and two new private build-cache records removed. Targeted cache cleanup reclaimed 629.5 MB + 12.48 MB. Existing caches, volumes, other services and earlier backups were preserved. The current release image and previous image are retained intentionally.
+- Rollback: on the VM, `cd ~/learnharness && docker tag learnharness:rollback-thread-ux-20261027 learnharness:amd64 && docker compose up -d --no-deps --no-build app`. Previous source revision `3ede0d2a8791a0dcbcf2e6e36f12d7602245bcff`. Rollback image `sha256:38311207674774cd2bc5ba36e5f8d05244df4ff7e1746fb59df3678331ee6521`.
+- Evidence: local audit directory contains `deployment-http.json`, `deployment-build.log` and `deployment-final-status.log`. VM build log, cache manifests and rollback metadata are in `/home/brunovsky/agent-runs/2026-10-27-thread-ux-deploy/`.
+
+Remaining follow-ups and the pre-existing unfinished-question switch timeout are unchanged. Implementation, verification, and deployment are complete; no GitHub push or merge was performed.
