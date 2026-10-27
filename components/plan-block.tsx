@@ -13,9 +13,12 @@ import { layout as dagreLayout } from "dagre-d3-es/src/dagre/index.js";
 // d3's curveBasis (the exact recipe dagre-d3's own renderer uses).
 import { curveBasis, line } from "d3-shape";
 import { fitGraphView, fitZoomFor, zoomedGraphView, type Viewport } from "@/components/pan-zoom";
-import type { PlanBlockData, PlanNodeStatus, PlanTree } from "@/src/core";
+import type { PlanBlockData, PlanNodeStatus } from "@/src/core";
 import { derivedNodeStatus, derivePlanStatuses } from "@/src/core";
 import { Hint } from "@/components/ui/hint";
+import { latestTree, type PopupMessage } from "@/components/plan-tree";
+
+export { latestTree, type PopupMessage } from "@/components/plan-tree";
 
 /**
  * PLAN BLOCKS — the plan lives in the chat (wave 4): persisted
@@ -706,26 +709,6 @@ export function PlanBlock({ data, onOpen }: { data: PlanBlockData; onOpen: () =>
 }
 
 // ─── The live plan popup ──────────────────────────────────────────────────────
-
-/** Minimal structural message slice (same trick as phases.ts). */
-export interface PopupMessage {
-	parts: ReadonlyArray<{ type: string; state?: string; input?: unknown; output?: unknown }>;
-}
-
-/** The latest plan tree in the transcript (latest tool-plan_ output). */
-export function latestTree(messages: readonly PopupMessage[]): PlanTree | null {
-	for (let m = messages.length - 1; m >= 0; m--) {
-		const parts = messages[m]?.parts;
-		if (!parts) continue;
-		for (let p = parts.length - 1; p >= 0; p--) {
-			const part = parts[p]!;
-			if (!part.type.startsWith("tool-plan_") || part.state !== "output-available") continue;
-			const output = part.output as { tree?: PlanTree } | undefined;
-			if (output?.tree && Array.isArray(output.tree.nodes)) return output.tree;
-		}
-	}
-	return null;
-}
 
 /** The popup shows the glow, so its frame pads by the glow's reach —
  *  the in-chat block (monochrome, no glow) stays tight at GRAPH_PAD. */

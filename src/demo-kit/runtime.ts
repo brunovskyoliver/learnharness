@@ -4,6 +4,7 @@
  *  same folder only when a panel needs them. Colors and fonts come from the
  *  --lh-* variables injected ahead of the demo (src/core/demo-theme.ts). */
 
+import { DEMO_THEME_VARS, DEMO_SCROLLBAR_CSS } from "../core/demo-theme.ts";
 import { layeredLayout } from "../core/demo-kit-layout.ts";
 import type { DemoKitPanel, DemoKitSpec } from "../core/demo-kit.ts";
 
@@ -59,12 +60,12 @@ function cssVar(name: string, fallback: string): string {
 }
 function readTheme() {
 	return {
-		bg: cssVar("--lh-bg", "#141414"),
-		surface: cssVar("--lh-surface", "#1c1c1c"),
-		surface2: cssVar("--lh-surface-2", "#2a2a2a"),
-		border: cssVar("--lh-border", "#434343"),
-		text: cssVar("--lh-text", "#e6e6e6"),
-		muted: cssVar("--lh-muted", "#a1a1a1"),
+		bg: cssVar("--lh-bg", DEMO_THEME_VARS["--lh-bg"]),
+		surface: cssVar("--lh-surface", DEMO_THEME_VARS["--lh-surface"]),
+		surface2: cssVar("--lh-surface-2", DEMO_THEME_VARS["--lh-surface-2"]),
+		border: cssVar("--lh-border", DEMO_THEME_VARS["--lh-border"]),
+		text: cssVar("--lh-text", DEMO_THEME_VARS["--lh-text"]),
+		muted: cssVar("--lh-muted", DEMO_THEME_VARS["--lh-muted"]),
 		series: ["--lh-blue", "--lh-teal", "--lh-amber", "--lh-red", "--lh-green"].map((v, i) =>
 			cssVar(v, ["#7cacf8", "#5fd4c4", "#e5b55a", "#f28b82", "#7fd18b"][i]!),
 		),
@@ -75,19 +76,20 @@ function readTheme() {
 const theme = readTheme();
 
 const STYLE = `
+${DEMO_SCROLLBAR_CSS}
 #lh-kit{display:flex;flex-direction:column;gap:12px;padding:2px;font-size:var(--lh-demo-size,17px);line-height:1.5}
 .k-controls{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;padding:12px 0;border:0;border-radius:0;background:transparent;order:2}
-.k-field{display:flex;flex-direction:column;gap:4px;min-width:180px;flex:1 1 200px}
+.k-field{display:flex;flex-direction:column;gap:4px;min-width:min(180px,100%);max-width:100%;flex:1 1 200px}
 .k-label{display:flex;justify-content:space-between;gap:8px;color:var(--lh-muted);font-size:.8em}
 .k-label b{color:var(--lh-text);font-weight:600;font-variant-numeric:tabular-nums}
-.k-field input[type=range]{width:100%;accent-color:var(--lh-blue)}
+.k-field input[type=range]{width:100%;accent-color:var(--lh-text)}
 .k-seg{display:flex;gap:2px;padding:2px;border-radius:6px;background:var(--lh-surface-2)}
 .k-seg button,.k-btn{border:0;border-radius:5px;padding:4px 10px;background:transparent;color:var(--lh-muted);cursor:pointer;font-size:.9em}
 .k-seg button[aria-pressed=true]{background:var(--lh-bg);color:var(--lh-text)}
 .k-buttons{display:flex;gap:6px;flex:0 0 auto}
 .k-btn{border:1px solid var(--lh-border);color:var(--lh-text);padding:5px 14px}
 .k-btn:hover{background:var(--lh-surface-2)}
-.k-btn.k-primary{background:var(--lh-blue);border-color:var(--lh-blue);color:#10141c}
+.k-btn.k-primary{background:var(--lh-text);border-color:var(--lh-text);color:var(--lh-bg)}
 .k-toggle{display:flex;align-items:center;gap:8px;color:var(--lh-text);font-size:.9em;cursor:pointer}
 .k-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 .k-panel{grid-column:span 2;min-width:0;border:0;border-radius:0;background:transparent;padding:10px 0}
@@ -100,7 +102,7 @@ const STYLE = `
 .k-readout b{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
 .k-note{border:0;background:transparent;padding:0 2px;color:var(--lh-text)}
 .k-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
-.k-table th,.k-table td{padding:4px 8px;border-bottom:1px solid var(--lh-border);text-align:right}
+.k-table th,.k-table td{padding:4px 8px;text-align:right}
 .k-table th{color:var(--lh-muted);font-weight:500;font-size:.8em}
 .k-table th:first-child,.k-table td:first-child{text-align:left}
 .k-chart{width:100%;min-width:0}
@@ -109,12 +111,12 @@ const STYLE = `
 .k-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px}
 .k-icon-button{display:inline-flex;width:32px;height:32px;flex-shrink:0;align-items:center;justify-content:center;border:0;border-radius:8px;padding:0;background:transparent;color:var(--lh-muted);cursor:pointer}
 .k-icon-button:hover{background:var(--lh-surface-2);color:var(--lh-text)}
-@media(pointer:coarse){.k-icon-button{width:44px;height:44px}}
+@media(pointer:coarse){.k-icon-button{width:44px;height:44px}.k-seg button,.k-btn,.k-toggle,.k-parameters-toggle{min-height:44px}.k-field input[type=range]{min-height:44px}}
 .k-focus .k-panel-head .k-icon-button{display:none}
 .k-panel-head h3{margin:0;font-size:1em;color:var(--lh-text);font-weight:600}
 .k-focus .k-grid{display:block;min-width:0;min-height:0}
 #lh-kit.k-focus{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,280px);gap:24px;height:100dvh;box-sizing:border-box;padding:16px}
-.k-focus .k-controls{grid-column:2;grid-row:1;display:block;overflow:auto;border-left:1px solid var(--lh-border);padding:0 0 0 20px}
+.k-focus .k-controls{grid-column:2;grid-row:1;display:block;overflow:auto;padding:0 0 0 20px}
 .k-focus .k-field{margin-bottom:24px;min-width:0}
 .k-focus .k-grid{grid-column:1;grid-row:1}
 .k-focus:not(:has(.k-controls)) .k-grid{grid-column:1/-1}
@@ -122,8 +124,8 @@ const STYLE = `
 .k-focus .k-panel[hidden]{display:none}
 .k-focus .k-chart,.k-focus .k-flow{flex:1;min-height:160px;height:100%!important}
 .k-parameters-toggle{display:none}
-button:focus-visible,input:focus-visible{outline:2px solid var(--lh-blue);outline-offset:3px}
-@media(max-width:640px){#lh-kit.k-focus{grid-template-columns:1fr;grid-template-rows:minmax(180px,1fr) auto;gap:12px}.k-focus .k-controls{grid-column:1;grid-row:2;border-left:0;border-top:1px solid var(--lh-border);padding:12px 0 0;max-height:45dvh}.k-focus .k-parameters-toggle{display:block;width:100%;text-align:left;margin-bottom:12px}.k-controls.k-collapsed>:not(.k-parameters-toggle){display:none}}
+button:focus-visible,input:focus-visible{outline:2px solid var(--lh-muted);outline-offset:3px}
+@media(max-width:640px){#lh-kit.k-focus{grid-template-columns:1fr;grid-template-rows:minmax(180px,1fr) auto;gap:12px}.k-focus .k-controls{grid-column:1;grid-row:2;padding:12px 0 0;max-height:45dvh}.k-focus .k-parameters-toggle{display:block;width:100%;text-align:left;margin-bottom:12px}.k-controls.k-collapsed>:not(.k-parameters-toggle){display:none}}
 @media(prefers-reduced-motion:reduce){.react-flow__edge-path{animation:none!important}}
 .k-error{padding:8px 10px;border-radius:6px;background:rgba(242,139,130,.12);color:var(--lh-red);font:12px var(--lh-mono)}
 `;

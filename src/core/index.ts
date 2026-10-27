@@ -31,6 +31,8 @@ export * from "./events.ts";
 // client bundle (verified 2026-09-13: chunks contained it while this
 // line existed). Same logic as layout-settle.ts below.
 export * from "./layout.ts";
+export { LINK_DISTANCE, CHARGE_STRENGTH, INCREMENTAL_GRAVITY, CLUSTER_PULL_STRENGTH } from "./layout-defaults.ts";
+export { loadGraphLayout } from "./graph-engine-loader.ts";
 export * from "./plan-tree.ts";
 export * from "./phases.ts";
 export * from "./pending.ts";
@@ -56,7 +58,9 @@ export type { NativeSubscriptionProviderId, NativeSubscriptionLogicalId, NativeS
 export * from "./cost-summary.ts";
 export * from "./fuzzy.ts";
 export * from "./demo-theme.ts";
-export * from "./demo-kit.ts";
+export type { DemoKitSpec, DemoKitPanel } from "./demo-kit.ts";
+export { DemoKitSpecSchema, validateDemoKitSpec } from "./demo-kit.ts";
+export * from "./demo-kit-document.ts";
 export * from "./demo-kit-layout.ts";
 // settings.ts + settings-resolution.ts (settings-storage wave, 2026-09-19):
 // the user-settings record's shape/sanitizer (pure) and its fully-resolved
@@ -71,7 +75,8 @@ export type { ChatDeleteMode, ChatDeletionStats } from "./graph-deletion.ts";
 export * from "./settings-resolution.ts";
 export * from "./search.ts"; // search port (search wave, 2026-09-20)
 export * from "./session-find.ts";
-export * from "./session-navigation.ts";
+export { messageAnchorId, messageIdFromHash, propositionSessionHref } from "./message-links.ts";
+export { sessionTurnEntries, textPartMessageId, firstSourceTextParts, type SessionTurnEntry } from "./session-navigation.ts";
 // auth-keys.ts (auth-keys wave, 2026-09-19): the curated key catalog +
 // shape rules + masking — pure, browser-safe (the auth page binds to the
 // /api/keys routes built on it).

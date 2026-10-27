@@ -46,15 +46,36 @@ try {
  const before=await frame.$eval('.k-readouts',e=>e.textContent);
  assert.match(before,/Step1/);
  assert.equal(await page.$('[data-testid="reading-thinking-field"]'),null);
- await page.click('.lesson-footer [aria-haspopup="dialog"]');await page.waitForSelector('[data-testid="stats-model"]');
- await page.waitForFunction(()=>document.activeElement?.closest('[data-testid="session-options"]'));
+ await page.waitForSelector('[data-testid="teach-check-reveal"]',{visible:true});
+ assert.equal(await page.$eval('[data-testid="lesson-question"]',e=>e.hidden),true,'question starts as a compact summary');
+ await page.click('[data-testid="teach-check-reveal"]');
+ await page.waitForSelector('[data-testid="lesson-question"]',{visible:true});
+ await page.waitForSelector('.lesson-footer [data-testid="stats-model"]',{visible:true});
+ assert.ok(await page.$('.lesson-footer [data-testid="stats-thinking"]'),'reasoning is directly available');
+ assert.equal(await page.$('[data-testid="session-options"]'),null,'no outer Options popup');
+ // The fixture intentionally has no provider credentials. Model/reasoning may
+ // be disabled; the independent usage control must still open and claim Escape.
+ await page.focus('.lesson-footer [data-testid="stats-summary"]');await page.keyboard.press('Enter');
+ await page.waitForSelector('[data-testid="stats-detail"]',{visible:true});
  await page.keyboard.press('Escape');
- await page.waitForSelector('[data-testid="session-options"]',{hidden:true});
- assert.equal(await page.$('[data-testid="session-options"]'),null);assert.equal(await page.$('[data-testid="abort-turn-dialog"]'),null);
- const geometry=await page.evaluate(()=>{const dock=document.querySelector('.lesson-footer').getBoundingClientRect();let s=document.querySelector('[data-testid="lesson-content"]').parentElement;while(s&&!/auto|scroll/.test(getComputedStyle(s).overflowY))s=s.parentElement;return {dockHeight:dock.height,spacer:document.querySelector('[data-testid="dock-spacer"]').offsetHeight,questionInLesson:document.querySelector('[data-testid="lesson-content"]').contains(document.querySelector('[data-testid="lesson-question"]')),dockTop:dock.top,scrollBottom:s.getBoundingClientRect().bottom,body:document.body.scrollWidth,viewport:innerWidth};});
- assert.ok(geometry.scrollBottom>geometry.dockTop,JSON.stringify(geometry));assert.ok(geometry.spacer>=geometry.dockHeight-1);assert.ok(geometry.questionInLesson);assert.ok(geometry.body<=geometry.viewport);
+ await page.waitForSelector('[data-testid="stats-detail"]',{hidden:true});
+ assert.equal(await page.$('[data-testid="abort-turn-dialog"]'),null);
+ const geometry=await page.evaluate(()=>{const dock=document.querySelector('.lesson-footer').getBoundingClientRect();const question=document.querySelector('[data-testid="lesson-question"]');let s=document.querySelector('[data-testid="lesson-content"]').parentElement;while(s&&!/auto|scroll/.test(getComputedStyle(s).overflowY))s=s.parentElement;return {dockHeight:dock.height,spacer:document.querySelector('[data-testid="dock-spacer"]').offsetHeight,questionInLesson:document.querySelector('[data-testid="lesson-content"]').contains(question),questionInDock:document.querySelector('[data-testid="dock-shell"]').contains(question),dockTop:dock.top,scrollBottom:s.getBoundingClientRect().bottom,body:document.body.scrollWidth,viewport:innerWidth};});
+ assert.ok(geometry.scrollBottom>geometry.dockTop,JSON.stringify(geometry));assert.ok(geometry.spacer>=geometry.dockHeight-1);assert.equal(geometry.questionInLesson,false);assert.equal(geometry.questionInDock,true);assert.ok(geometry.body<=geometry.viewport);
  const scrollTop = () => page.evaluate(() => {let s=document.querySelector('[data-testid="lesson-content"]').parentElement;while(s&&!/auto|scroll/.test(getComputedStyle(s).overflowY))s=s.parentElement;return s.scrollTop;});
+ // Opening the floating question changes its measured reserve and animates the
+ // lesson toward the bottom. Capture the focus anchor after that work settles,
+ // rather than sampling an intermediate scroll position before focus arrives.
+ const settleLesson = () => page.waitForFunction(() => {
+  let s=document.querySelector('[data-testid="lesson-content"]').parentElement;while(s&&!/auto|scroll/.test(getComputedStyle(s).overflowY))s=s.parentElement;
+  const shell=document.querySelector('[data-testid="dock-shell"]');
+  const value=[s.scrollTop,s.scrollHeight,s.clientHeight,shell.getBoundingClientRect().height].join(',');
+  const previous=window.workspaceSettled;
+  if(!previous||previous.value!==value||shell.getAnimations().some(a=>a.playState==='running')){window.workspaceSettled={value,since:performance.now()};return false;}
+  return performance.now()-previous.since>=160;
+ },{timeout:5000});
  for(const index of [0,1,2]){
+  await settleLesson();
   const previousTop=await scrollTop();
   if(index===1) await frame.evaluate(async()=>{const plot=document.querySelector('.js-plotly-plot');await window.Plotly.relayout(plot,{'scene.camera':{eye:{x:2,y:1,z:.8}}});});
   await frame.evaluate(i=>document.querySelectorAll('.k-panel-head button')[i].click(),index);
@@ -69,7 +90,7 @@ try {
   await frame.focus('input');await page.keyboard.press('Escape');
   await page.waitForFunction(sel=>!document.querySelector(sel).hasAttribute('data-focused'),{},live);
   assert.equal(await frame.evaluate(()=>window.identity),identity);
-  await page.waitForFunction(top=>{let s=document.querySelector('[data-testid="lesson-content"]').parentElement;while(s&&!/auto|scroll/.test(getComputedStyle(s).overflowY))s=s.parentElement;return Math.abs(s.scrollTop-top)<2;},{timeout:3000},previousTop);
+  await page.waitForFunction(top=>{let s=document.querySelector('[data-testid="lesson-content"]').parentElement;while(s&&!/auto|scroll/.test(getComputedStyle(s).overflowY))s=s.parentElement;return Math.abs(s.scrollTop-top)<2;},{timeout:3000},previousTop).catch(async error=>{const state=await page.evaluate(()=>{let s=document.querySelector('[data-testid="lesson-content"]').parentElement;while(s&&!/auto|scroll/.test(getComputedStyle(s).overflowY))s=s.parentElement;return {scrollTop:s.scrollTop,max:s.scrollHeight-s.clientHeight,compact:document.querySelector('[data-testid="dock-shell"]').dataset.compact,footer:document.querySelector('.lesson-footer').getBoundingClientRect().toJSON(),active:document.activeElement?.outerHTML.slice(0,200)};});throw new Error(`Panel ${index} scroll restoration ${previousTop}: ${JSON.stringify(state)}`,{cause:error});});
  }
  await frame.click('.k-primary');
  await pause(250);
@@ -82,6 +103,7 @@ try {
  await frame.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
  await frame.click('.k-primary');
  await page.click('[data-testid="demo-panel-close"]');await pause(300);assert.equal(await page.$('[data-demo-slot]'),null,'manual close stays closed');
+ const summary=await page.$('[data-testid="question-dock-bar"], [data-testid="teach-check-reveal"]');if(summary)await summary.click();
  await page.click('.question-demo-reference button');await page.waitForSelector('[data-demo-slot]');assert.equal(await frame.evaluate(()=>window.identity),identity);
  await page.select('[data-testid="demo-panel-select"]','steer_legacy');
  const old=await (await page.$('[data-demo-live="steer_legacy"] iframe')).contentFrame();const oldIdentity=await old.evaluate(()=>window.identity);
@@ -100,7 +122,9 @@ try {
  await frame.waitForFunction(()=>!document.querySelector('#lh-kit').classList.contains('k-focus'));
  await frame.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))));
 
+ const mobileSummary=await page.$('[data-testid="question-dock-bar"], [data-testid="teach-check-reveal"]');if(mobileSummary)await mobileSummary.click();
  await page.waitForSelector('[data-testid="thinking-field"] textarea',{visible:true});
+ assert.ok(await page.$eval('[data-testid="lesson-question"]',e=>e.getBoundingClientRect().height<=(window.visualViewport?.height??innerHeight)/2+1),'mobile question is bounded to half the visible screen');
  await page.type('[data-testid="thinking-field"] textarea','My draft survives opening the graph.');
  assert.equal(await page.$eval('[data-testid="thinking-field"] textarea',e=>e.value),'My draft survives opening the graph.','typing retains focus');
  await frame.click('.k-panel-head button');await page.waitForSelector(live+'[data-focused]');

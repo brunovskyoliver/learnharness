@@ -20,7 +20,7 @@
  * - select-none — dragging never highlights the title.
  * - SidebarToggle FIRST — the sidebar reopen when closed, with its
  *   Electron traffic-light gutter (lh-closed-toggle).
- * - border-b border-border px-3, gap-3 rhythm.
+ * - px-3, gap-3 rhythm.
  *
  * The consumer brings the breadcrumb title (text-sm font-medium, ui-v2) and
  * any right-side controls. THE TITLE LAW (owner round 11, 2026-10-05):
@@ -44,18 +44,21 @@ import { SidebarToggle } from "@/components/sidebar";
 export function TopBar({
 	drag = true,
 	onMouseDown,
+	shellMobileNavigation = false,
 	children,
 }: {
 	drag?: boolean;
 	onMouseDown?: React.MouseEventHandler<HTMLElement>;
+	/** Conversation navigation hydrates with the shared shell on mobile. */
+	shellMobileNavigation?: boolean;
 	children?: ReactNode;
 }) {
 	return (
 		<header
 			onMouseDown={onMouseDown}
-			className={`${drag ? "lh-drag " : ""}lh-wco-gutter flex h-13 shrink-0 select-none items-center gap-3 border-b border-border bg-background px-3`}
+			className={`${drag ? "lh-drag " : ""}lh-wco-gutter flex h-13 shrink-0 select-none items-center gap-3 bg-background px-3`}
 		>
-			<SidebarToggle />
+			<SidebarToggle shellMobile={shellMobileNavigation} />
 			{children}
 		</header>
 	);

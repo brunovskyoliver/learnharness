@@ -21,8 +21,12 @@ export async function checkTurnNavigationUi(page, base, quizChatId, completedCha
 	const sampling = page.evaluate(() => new Promise((resolve) => {
 		const frames = [];
 		const start = performance.now();
+		// The expanded floating question grows the reserved tail before paint.
+		// Compare the opening frame against the compact range the arrow is
+		// finishing, then separately verify the final expanded range below.
+		const compactBottom = window.turnScroller.scrollHeight - window.turnScroller.clientHeight;
 		const frame = () => {
-			frames.push({ time: performance.now() - start, scroll: window.turnScroller.scrollTop, distance: window.turnScroller.scrollHeight - window.turnScroller.clientHeight - window.turnScroller.scrollTop, expanded: !document.querySelector('[data-testid="question-dock-bar"]'), height: document.querySelector('[data-testid="dock-shell"]').getBoundingClientRect().height });
+			frames.push({ compactBottom, time: performance.now() - start, scroll: window.turnScroller.scrollTop, distance: window.turnScroller.scrollHeight - window.turnScroller.clientHeight - window.turnScroller.scrollTop, expanded: !document.querySelector('[data-testid="question-dock-bar"]'), height: document.querySelector('[data-testid="dock-shell"]').getBoundingClientRect().height });
 			if (performance.now() - start < 700) requestAnimationFrame(frame);
 			else resolve(frames);
 		};
@@ -31,10 +35,12 @@ export async function checkTurnNavigationUi(page, base, quizChatId, completedCha
 	await page.click('[aria-label="Scroll to latest"]');
 	const frames = await sampling;
 	const firstExpanded = frames.find((frame) => frame.expanded);
-	assert.ok(firstExpanded && firstExpanded.distance <= 2, `the prompt waits for the bottom: ${JSON.stringify(firstExpanded)}`);
+	assert.ok(firstExpanded && firstExpanded.scroll >= firstExpanded.compactBottom - 2, `the prompt waits for the compact conversation bottom: ${JSON.stringify(firstExpanded)}`);
 	assert.ok(firstExpanded.time >= 200, "expansion follows the 240ms scroll phase");
 	assert.ok(new Set(frames.filter((frame) => !frame.expanded).map((frame) => frame.scroll)).size > 3, "scroll phase has intermediate positions");
 	assert.ok(new Set(frames.filter((frame) => frame.expanded).map((frame) => Math.round(frame.height))).size > 3, "expansion has its own intermediate heights");
+	const expandedDistance = await page.evaluate(() => window.turnScroller.scrollHeight - window.turnScroller.clientHeight - window.turnScroller.scrollTop);
+	assert.ok(expandedDistance < 2, `arrow finishes at the bottom after expanded question reserve settles (remaining ${expandedDistance}px)`);
 	console.log("PASS arrow eases to the bottom before expanding the prompt");
 	await page.mouse.move(1100, 180);
 	await page.mouse.wheel({ deltaY: -2200 });
@@ -55,7 +61,9 @@ export async function checkTurnNavigationUi(page, base, quizChatId, completedCha
 	console.log("PASS interrupted arrow sequence and reduced motion");
 
 	await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "no-preference" }]);
-	await page.goto(`${base}/chat/${completedChatId}`, { waitUntil: "networkidle2" });
+	// Session SSE and authored demo requests can remain open. The client
+	// turn rail below is the interaction readiness condition for these checks.
+	await page.goto(`${base}/chat/${completedChatId}`, { waitUntil: "domcontentloaded" });
 	await scroller();
 	await page.waitForSelector('[data-testid="session-turn-rail"]', { visible: true });
 	const selector = '[data-testid="session-turn-rail"] button';

@@ -40,20 +40,15 @@ describe("revealArrival — how a teach question lands", () => {
 		assert.deepEqual(revealArrival(false), { expanded: false, revealed: false });
 	});
 
-	it("queued behind another question: open — the reading already happened", () => {
-		assert.deepEqual(revealArrival(true), { expanded: true, revealed: true });
+	it("a subsequent question also waits for an explicit reveal", () => {
+		assert.deepEqual(revealArrival(true), { expanded: false, revealed: false });
 	});
 });
 
-/**
- * Probe-question arrival state (flicker round, 2026-09-26): open iff the
- * learner is following at the bottom; scrolled up in history → arrive as
- * the collapsed bar, decided DURING RENDER (the old after-paint effect
- * painted one stale-open frame first).
- */
+/** Probe arrivals follow the same explicit summary reveal as lessons. */
 describe("probeArrivalExpanded — how a probe question lands", () => {
-	it("at the bottom following along: open", () => {
-		assert.equal(probeArrivalExpanded(true), true);
+	it("at the bottom following along: stays a summary", () => {
+		assert.equal(probeArrivalExpanded(true), false);
 	});
 
 	it("scrolled up in history: arrive already-collapsed (owner ruling)", () => {

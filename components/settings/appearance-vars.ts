@@ -21,7 +21,7 @@ export function resolveAppearance(delta: AppearanceSettings | undefined) {
 	};
 }
 
-/** One channel clamped on the dark curve: additive offsets matching today's
+/** One channel clamped on the legacy custom-background curve: offsets preserving the saved
  *  shared palette (#141414 → card #1c1c1c (+8) → accent #2a2a2a (+22)
  *  → border #434343 (+47)) — the "per-mode derivation in code" the schema
  *  promises, as the thinnest curve that keeps the palette's relationships. */
@@ -32,7 +32,7 @@ function raise(hex: string, add: number): string {
 	return `#${n.map((c) => Math.min(255, c + add).toString(16).padStart(2, "0")).join("")}`;
 }
 
-/** The derived palette a chosen background implies (dark curve): background
+/** The derived palette an explicit custom background implies (legacy curve): background
  *  itself, the raised surfaces (card/popover/secondary/muted, +8), the
  *  accent (+22), the edges (border/input, +47), and primary-foreground
  *  (the inverted text on primary = the background's own color, as today). */
@@ -58,7 +58,12 @@ export function derivedPalette(background: string): Record<string, string> {
  *  exported for tests. */
 export function appearanceVars(a: ReturnType<typeof resolveAppearance>): Record<string, string> {
 	const vars: Record<string, string> = {};
-	if (a.background !== null) Object.assign(vars, derivedPalette(a.background));
+	if (a.background !== null) {
+		Object.assign(vars, derivedPalette(a.background));
+		// Preserve custom palettes' neutral action contrast, including their
+		// existing inverted foreground. Factory actions use the upstream blue.
+		vars["--primary"] = "var(--foreground)";
+	}
 	if (a.fontFamily !== null) {
 		vars["--font-prose"] = `"${a.fontFamily}", var(--font-sans3), ui-sans-serif, system-ui, sans-serif`;
 	}

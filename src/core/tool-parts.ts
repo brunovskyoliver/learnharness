@@ -27,9 +27,10 @@
  * quiet fallback, never a crash.
  */
 
-import { Value } from "typebox/value";
+import { Check, Clean, Convert } from "typebox/value";
 import type { TSchema } from "typebox";
-import { quizDisplayInputSchema, askInputSchema, askOptionProblems, quizInputProblems, explainInputProblems, explainDisplayInputSchema, type AskToolInput, type QuizToolInput, type ExplainToolInput } from "./question-core.ts";
+import { askOptionProblems, quizInputProblems, explainInputProblems } from "./question-core.ts";
+import { quizDisplayInputSchema, askInputSchema, explainDisplayInputSchema, type AskToolInput, type QuizToolInput, type ExplainToolInput } from "./question-schemas.ts";
 import { healEncodedArguments } from "./argument-heal.ts";
 import { probeDoneInputSchema, type ProbeDoneInput } from "./contracts/probe.ts";
 
@@ -45,9 +46,9 @@ import { probeDoneInputSchema, type ProbeDoneInput } from "./contracts/probe.ts"
 function boundaryParse<T>(schema: TSchema, input: unknown): T | undefined {
 	if (typeof input !== "object" || input === null) return undefined;
 	const converted = structuredClone(input);
-	Value.Convert(schema, converted);
-	if (!Value.Check(schema, converted)) return undefined;
-	return Value.Clean(schema, converted) as T;
+	Convert(schema, converted);
+	if (!Check(schema, converted)) return undefined;
+	return Clean(schema, converted) as T;
 }
 
 /**

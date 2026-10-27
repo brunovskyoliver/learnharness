@@ -3,13 +3,23 @@ import assert from "node:assert/strict";
 /** Isolated fixture sessions only. Uses real session navigation and reloads. */
 export async function checkSessionStateUi(page, base, firstId, secondId, questionId) {
 	const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-	const main = () => page.evaluate(() => {
+	const main = async () => {
+		// Matching SSR markup and hydrated root providers do not prove that
+		// the selectively loaded Chat subtree owns its inputs yet.
+		await page.waitForFunction(() => {
+			const chat = document.querySelector('[data-chat-id]');
+			const field = chat?.querySelector('[data-testid="composer"] textarea, [data-testid="question-dock"] textarea, [data-testid="practice-dock"] textarea');
+			const props = field && Object.keys(field).find((key) => key.startsWith("__reactProps$"));
+			return chat?.dataset.chatId === decodeURIComponent(location.pathname.split("/").at(-1)) && typeof field?.[props]?.onChange === "function";
+		});
+		await page.evaluate(() => {
 		let node = document.querySelector('[data-testid="dock-spacer"]');
 		while (node && !/auto|scroll/.test(getComputedStyle(node).overflowY)) node = node.parentElement;
 		window.stateScroller = node;
-	});
+		});
+	};
 	const open = async (id) => {
-		await page.goto(`${base}/chat/${id}`, { waitUntil: "networkidle2" });
+		await page.goto(`${base}/chat/${id}`, { waitUntil: "domcontentloaded" });
 		await page.waitForSelector('[data-testid="session-row"]');
 		await main();
 		await wait(2200);
@@ -24,7 +34,7 @@ export async function checkSessionStateUi(page, base, firstId, secondId, questio
 		await wait(2200);
 	};
 	await page.setViewport({ width: 1600, height: 1000 });
-	if (!page.url().startsWith(base)) await page.goto(`${base}/chat/${firstId}`, { waitUntil: "networkidle2" });
+	if (!page.url().startsWith(base)) await page.goto(`${base}/chat/${firstId}`, { waitUntil: "domcontentloaded" });
 	const reset = await page.evaluateOnNewDocument((ids) => { if (window !== window.top) return; for (const id of ids) localStorage.removeItem(`lh:session-ui:v1:local:${encodeURIComponent(id)}`); }, [firstId, secondId, questionId]);
 	await open(firstId);
 	await page.removeScriptToEvaluateOnNewDocument(reset.identifier);
@@ -53,10 +63,10 @@ export async function checkSessionStateUi(page, base, firstId, secondId, questio
 		if (sections.tool) assert.ok(await page.$('[data-testid="tool-call-card"][open]'));
 	};
 	await restored();
-	await page.reload({ waitUntil: "networkidle2" });
+	await page.reload({ waitUntil: "domcontentloaded" });
 	await main(); await wait(2300); await restored();
 	console.log("PASS session switching/reload preserve reading, composer, reasoning and tools");
-	await page.reload({ waitUntil: "networkidle2" }); await main();
+	await page.reload({ waitUntil: "domcontentloaded" }); await main();
 	const bounds = await page.evaluate(() => { const box = window.stateScroller.getBoundingClientRect(); return { x: box.left + box.width / 2, y: box.top + 100 }; });
 	await page.mouse.move(bounds.x, bounds.y); await page.mouse.wheel({ deltaY: -250 });
 	await wait(400);
@@ -67,7 +77,7 @@ export async function checkSessionStateUi(page, base, firstId, secondId, questio
 
 	// Explicit deep links win over a saved reading position.
 	const target = await page.$eval('[data-answer-part-id][id]', (node) => node.id);
-	await page.goto(`${base}/chat/${firstId}#${target}`, { waitUntil: "networkidle2" });
+	await page.goto(`${base}/chat/${firstId}#${target}`, { waitUntil: "domcontentloaded" });
 	await main(); await wait(2300);
 	assert.ok(await page.evaluate((id) => {
 		const rect = document.getElementById(id).getBoundingClientRect();
@@ -100,7 +110,7 @@ export async function checkSessionStateUi(page, base, firstId, secondId, questio
 		fields: [...document.querySelectorAll('[data-testid="question-dock"] textarea')].map((node) => node.value),
 		selected: [...document.querySelectorAll('[data-testid="question-dock"] [aria-checked="true"]')].map((node) => node.textContent),
 	})), questionBefore);
-	await page.reload({ waitUntil: "networkidle2" }); await wait(2300);
+	await page.reload({ waitUntil: "domcontentloaded" }); await main(); await wait(2300);
 	assert.deepEqual(await page.$$eval('[data-testid="question-dock"] textarea', (nodes) => nodes.map((node) => node.value)), questionBefore.fields);
 	console.log("PASS revealed question and unfinished answer survive switches and reload");
 	for (const width of [375, 800, 1600]) {
@@ -109,6 +119,12 @@ export async function checkSessionStateUi(page, base, firstId, secondId, questio
 	}
 	console.log("PASS responsive session layout at 375, 800 and 1600px");
 	await page.setViewport({ width: 375, height: 900 }); await wait(100);
+	await page.waitForFunction(() => {
+		const button = document.querySelector('[aria-label="Open sidebar"]');
+		if (!button || button.getAttribute("aria-hidden") === "true") return false;
+		const box = button.getBoundingClientRect();
+		return button.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2));
+	});
 	await page.click('[aria-label="Open sidebar"]');
 	await page.waitForSelector('[role="dialog"]');
 	assert.ok(await page.evaluate(() => document.querySelector('[role="dialog"]').contains(document.activeElement)), "mobile navigation owns keyboard focus");

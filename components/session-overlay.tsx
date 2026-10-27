@@ -195,7 +195,7 @@ export function MermaidOverlay({
 					onClick={onClose}
 					aria-label="Close"
 					data-testid="mermaid-overlay-close"
-					className="ml-auto rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+					className="ui-icon-button ml-auto"
 				>
 					<XIcon className="size-4" />
 				</button>
@@ -204,7 +204,7 @@ export function MermaidOverlay({
 			<div
 				ref={viewportRef}
 				className={cn(
-					"relative min-h-0 flex-1 touch-none overflow-hidden rounded-xl border bg-background select-none",
+					"relative min-h-0 flex-1 touch-none overflow-hidden rounded-xl bg-background select-none",
 					atFloor ? "cursor-default" : "cursor-grab",
 				)}
 				onPointerDown={startDrag}
@@ -262,7 +262,7 @@ export function MermaidOverlay({
 									type="button"
 									aria-label="Zoom out"
 									onClick={() => stepZoom(1 / 1.25)}
-									className="pointer-events-auto flex size-7 items-center justify-center rounded-md border border-border/70 bg-card/80 text-muted-foreground backdrop-blur transition-colors hover:bg-accent hover:text-foreground"
+									className="ui-icon-button pointer-events-auto bg-card"
 								>
 									<MinusIcon className="size-3.5" />
 								</button>
@@ -272,7 +272,7 @@ export function MermaidOverlay({
 									type="button"
 									aria-label="Fit diagram to view"
 									onClick={fitView}
-									className="pointer-events-auto flex size-7 items-center justify-center rounded-md border border-border/70 bg-card/80 text-muted-foreground backdrop-blur transition-colors hover:bg-accent hover:text-foreground"
+									className="ui-icon-button pointer-events-auto bg-card"
 								>
 									<MaximizeIcon className="size-3.5" />
 								</button>
@@ -282,7 +282,7 @@ export function MermaidOverlay({
 									type="button"
 									aria-label="Zoom in"
 									onClick={() => stepZoom(1.25)}
-									className="pointer-events-auto flex size-7 items-center justify-center rounded-md border border-border/70 bg-card/80 text-muted-foreground backdrop-blur transition-colors hover:bg-accent hover:text-foreground"
+									className="ui-icon-button pointer-events-auto bg-card"
 								>
 									<PlusIcon className="size-3.5" />
 								</button>

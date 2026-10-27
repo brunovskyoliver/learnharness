@@ -738,8 +738,14 @@ export function recoverStaleJobs(): void {
 	if (now - s.lastSweepAt < SWEEP_THROTTLE_MS) return;
 	s.lastSweepAt = now;
 	try {
+		const jobsByChat = new Map<string, JobRecord[]>();
+		for (const job of stores.jobStore.listJobs()) {
+			const jobs = jobsByChat.get(job.chatId) ?? [];
+			jobs.push(job);
+			jobsByChat.set(job.chatId, jobs);
+		}
 		for (const chat of stores.chatStore.listChats()) {
-			for (const job of stores.jobStore.listJobs(chat.id)) {
+			for (const job of jobsByChat.get(chat.id) ?? []) {
 				if (isJobLive(job.id)) continue; // never re-run beside live computation
 				if (!stores.chatStore.getChat(job.chatId)) continue;
 				if (isTurnRunning(job.chatId)) continue;
@@ -762,7 +768,7 @@ export function recoverStaleJobs(): void {
 }
 
 /** The /api/jobs entry: job list for the client poll (+ lazy recovery). */
-export function listJobs(chatId: string): JobRecord[] {
+export function listJobs(chatId?: string): JobRecord[] {
 	if (process.env.NODE_ENV !== "test") recoverStaleJobs();
 	return stores.jobStore.listJobs(chatId);
 }

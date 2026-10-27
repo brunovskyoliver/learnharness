@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { createContext, type ComponentProps, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useChatSession } from "@/components/session";
 import { visibleQueuedSteers } from "@/components/session-core";
-import { SetupDialog } from "@/components/setup-dialog";
+import { LazySetupDialog as SetupDialog } from "@/components/lazy-setup-dialog";
 import { Hint } from "@/components/ui/hint";
 import { useZeroKeys, ZeroKeysPill } from "@/components/setup-cta";
 import { useStickToBottomContext, type StickToBottomContext } from "use-stick-to-bottom";
@@ -27,7 +27,7 @@ import { SubagentSteerCard } from "@/components/artifacts/steer-card";
 import { Composer } from "@/components/composer";
 import { useEnterSubmits } from "@/components/enter-submits";
 import { blurAfterPointerClick } from "@/components/focus-hygiene";
-import { dockStateKey } from "@/components/dock-state-key";
+import { dockStateKey, nextDockExpanded } from "@/components/dock-state-key";
 import { QueuedSteersBody, type QueuedSteerLine } from "@/components/queued-steers";
 import { useFieldCycle } from "@/components/field-cycle";
 import { JobsContext } from "@/components/jobs-context";
@@ -45,7 +45,8 @@ import {
 	type LhMessage,
 	type ModelSlotName,
 } from "@/src/core";
-import { PlanBlock, PlanPopup, latestTree } from "@/components/plan-block";
+import { PlanBlock, PlanPopup } from "@/components/lazy-plan-block";
+import { latestTree } from "@/components/plan-tree";
 import dynamic from "next/dynamic";
 import { SessionMermaidContext } from "@/components/session-overlay-context";
 import { AbortTurnDialog, type AbortMode } from "@/components/abort-turn-dialog";
@@ -86,7 +87,7 @@ import { currentUserThinkingOpen, setAllUserThinkingOpen } from "@/components/th
 import { slotsConfigured, type ModelsSettings } from "@/src/core";
 import { useSettingsSaved } from "@/components/settings-signal";
 import { readSettingsBody } from "@/components/settings-record";
-import { focusSurfaceInput, inputSurfaceIsEditing } from "@/components/input-surface";
+import { focusSurfaceInput } from "@/components/input-surface";
 import { animateDockScroll, DOCK_EASING, DOCK_MOTION_MS, reducedDockMotion } from "@/components/dock-motion";
 import { TurnReadingPosition } from "@/components/turn-reading-position";
 import { readSessionMetadata } from "@/components/session-metadata";
@@ -113,7 +114,6 @@ const GRADIENT_H = 0;
 // folds (visual only); reach it again → it re-opens. 96 (was 64, owner
 // round 3) tolerates a small peek upward without folding; the dead band
 // vs EXPAND_DIST absorbs trackpad drift.
-const COLLAPSE_DIST = 96;
 const EXPAND_DIST = 16;
 
 /**
@@ -1213,6 +1213,7 @@ function ChatView({
 				    LH wordmark band, so the header's border-b continues that
 				    band's bottom edge as one line across the app (owner, round 6). */}
 				<TopBar
+					shellMobileNavigation
 					// While renaming the bar is NOT a drag surface: app-region:drag
 					// would eat the mousedown, so click-to-escape (below) could
 					// never fire. Rename mode is interactive mode (owner ask) —
@@ -1550,6 +1551,12 @@ function ChatView({
 														}
 														return null;
 													}
+													case "tool-problem": {
+														if (part.state === "input-streaming") return <LiveToolCard key={pi} part={part as ArtifactPartProps["part"]} />;
+														if (part.toolCallId === activeProblem?.toolCallId) return null;
+														const Renderer = artifactRenderers.problem;
+														return Renderer ? <Renderer key={pi} part={part as ArtifactPartProps["part"]} /> : null;
+													}
 													default: {
 														// A tool call being WRITTEN (owner, streaming round 2026-10-01):
 														// input-streaming spans the whole execution, and the live card —
@@ -1625,7 +1632,7 @@ function ChatView({
 						<div aria-hidden data-testid="dock-spacer" suppressHydrationWarning style={{ height: Math.max(dockReserve, readingReserve) }} />
 				</ConversationContent>
 				<SessionReadingState />
-				{/* Only the answer composer floats over the scrollable lesson. */}
+				{/* The active summary and answer float over the scrollable lesson. */}
 
 				<DockFooter
 					questionTarget={questionTarget}
@@ -1741,7 +1748,7 @@ function ChatView({
 	);
 }
 
-/** The footer owns a layout row below the lesson scroller. Forms remain
+/** The footer floats over the lesson with a measured tail reserve. Forms remain
  * mounted while folded so drafts survive. Height changes suppress the
  * scroll-driven fold machine until the new geometry settles. */
 /**
@@ -1798,20 +1805,13 @@ export function escAbortTarget(s: {
 	return null;
 }
 
-export function revealArrival(wasQuestion: boolean): { expanded: boolean; revealed: boolean } {
-	return wasQuestion ? { expanded: true, revealed: true } : { expanded: false, revealed: false };
+export function revealArrival(_wasQuestion: boolean): { expanded: boolean; revealed: boolean } {
+	return { expanded: false, revealed: false };
 }
 
-/**
- * A PROBE question's arrival state (flicker round, 2026-09-26): open iff
- * the learner is at the bottom following along; scrolled up in history →
- * arrive as the collapsed bar (owner ruling: "it should just remain
- * closed"). Decided DURING RENDER like the teach seam above — the old
- * after-paint effect painted one stale-open frame first (the box "opened
- * and immediately closed" when scrolled up). Pure for tests.
- */
-export function probeArrivalExpanded(isAtBottom: boolean): boolean {
-	return isAtBottom;
+/** A new active question stays a summary until the learner opens it. */
+export function probeArrivalExpanded(_isAtBottom: boolean): boolean {
+	return false;
 }
 
 /**
@@ -1894,11 +1894,10 @@ function DockFooter({
 	const ownerRef = useRef(pending?.toolCallId ?? practice?.toolCallId);
 	ownerRef.current = pending?.toolCallId ?? practice?.toolCallId;
 	const scrollGestureAtRef = useRef(0);
+	const composingRef = useRef(false);
 	// Retain wheel intent through inertia and layout changes. Geometry can
 	// move scrollTop against the gesture while the dock changes height.
-	const wheelDirectionRef = useRef(0);
 	const readingAnswerRef = useRef(false);
-	const hasScrolledRef = useRef(false);
 	// Render-fresh bottom state (flicker round): the arrival block below reads
 	// it DURING RENDER — the same value the after-paint effect used to read a
 	// frame too late. Assigned per render like the other refs below.
@@ -1906,7 +1905,7 @@ function DockFooter({
 	atBottomRef.current = isAtBottom;
 	// Teach-phase mount (session reload with a pending check): the dock starts
 	// as the collapsed invitation too — the check must not pop open on reload.
-	const [expanded, setExpanded] = useSessionState(`dock/${pending?.toolCallId ?? practice?.toolCallId ?? "composer"}/expanded`, !requiresReveal);
+	const [expanded, setExpanded] = useSessionState(`dock/${pending?.toolCallId ?? practice?.toolCallId ?? "composer"}/expanded`, !pending && !practice);
 	// Reveal state (W5): false until the learner clicks the invitation. While
 	// false, the scroll machine must NOT auto-expand at the bottom — the
 	// learner reads the teaching first and opens the check when ready. Once
@@ -1914,8 +1913,7 @@ function DockFooter({
 	const [revealed, setRevealed] = useSessionState(`dock/${pending?.toolCallId ?? practice?.toolCallId ?? "composer"}/revealed`, false);
 
 
-	const pendingId = pending?.toolCallId ?? null;
-	const initialPendingRef = useRef(pendingId);
+	const pendingId = pending?.toolCallId ?? practice?.toolCallId ?? null;
 
 	// Teach-question ARRIVAL state, applied during render — BEFORE the
 	// first paint (owner, scroll-honesty round 2026-09-25). Until now the
@@ -1928,7 +1926,6 @@ function DockFooter({
 	// only motion is the teaching text itself.
 	const prevPendingIdRef = useRef(pendingId);
 	if (pendingId !== prevPendingIdRef.current) {
-		hasScrolledRef.current = false;
 		const wasQuestion = prevPendingIdRef.current !== null;
 		prevPendingIdRef.current = pendingId;
 		if (pendingId && requiresReveal) {
@@ -1936,25 +1933,13 @@ function DockFooter({
 			setExpanded(arrival.expanded);
 			setRevealed(arrival.revealed);
 		} else if (pendingId) {
-			// Probe arrival (flicker round): open iff following at the bottom.
-			// Painted in THIS render — no stale-open frame, no after-paint flip.
+			// Practice and probe arrivals use the same explicit summary reveal.
 			setExpanded(probeArrivalExpanded(atBottomRef.current));
+			setRevealed(false);
+		} else if (atBottomRef.current) {
+			setExpanded(true);
 		}
 	}
-
-	// New question MID-SESSION (flicker round): the open/closed state itself
-	// is decided DURING RENDER above; this effect only owns the reveal
-	// scroll for the at-bottom arrival — and now under the SAME fold
-	// suppression the teach reveal uses (the arrival's growth used to
-	// out-run the scroll catch-up, the position machine read the lag as the
-	// learner leaving, and the dock flashed open → bar → open; reproduced
-	// frame-by-frame 2026-09-26, d peaked ~405px). On session mount the dock
-	// starts in its initial state — no scroll, no morph.
-	useEffect(() => {
-		if (!pendingId || pendingId === initialPendingRef.current) return;
-		if (!requiresReveal && atBottomRef.current) void suppressFoldDuringReveal();
-		// fire only when a NEW question lands
-	}, [pendingId]);
 
 	// ── Fold machine (position, not velocity — owner, scroll round 1) ──
 	// Footer reflow is covered by geometry mute while the fold settles. Leave it → fold; reach it
@@ -1966,8 +1951,6 @@ function DockFooter({
 	// replaces the composer and owns the band.
 	const pendingRef = useRef(!!pending || !!practice);
 	pendingRef.current = !!pending || !!practice;
-	const requiresRevealRef = useRef(requiresReveal);
-	requiresRevealRef.current = requiresReveal;
 	const revealedRef = useRef(revealed);
 	revealedRef.current = revealed;
 
@@ -2009,16 +1992,28 @@ function DockFooter({
 	// gap, carried as --dock-max-h for the docks' scroll areas.
 	const [sbInset, setSbInset] = useState(0);
 	const [dockMaxH, setDockMaxH] = useState<number | null>(null);
+	const [questionMaxH, setQuestionMaxH] = useState<number | null>(null);
+	const [keyboardInset, setKeyboardInset] = useState(0);
 	useEffect(() => {
 		const el = scrollRef.current;
 		if (!el) return;
 		const measure = () => {
 			setSbInset(Math.round((el.offsetWidth - el.clientWidth) / 2));
-			setDockMaxH(Math.max((el.parentElement?.clientHeight ?? el.clientHeight) - 80, 120));
+			const viewport = window.visualViewport;
+			const available = viewport?.height ?? window.innerHeight;
+			setDockMaxH(Math.max(Math.min(el.parentElement?.clientHeight ?? el.clientHeight, available) - 32, 120));
+			setQuestionMaxH(available / 2);
+			setKeyboardInset(Math.max(0, window.innerHeight - available - (viewport?.offsetTop ?? 0)));
 		};
 		measure();
 		window.addEventListener("resize", measure);
-		return () => window.removeEventListener("resize", measure);
+		window.visualViewport?.addEventListener("resize", measure);
+		window.visualViewport?.addEventListener("scroll", measure);
+		return () => {
+			window.removeEventListener("resize", measure);
+			window.visualViewport?.removeEventListener("resize", measure);
+			window.visualViewport?.removeEventListener("scroll", measure);
+		};
 	}, [scrollRef]);
 
 	// GROWTH MUTE (owner round, 2026-10-05 — the generation churn): during a
@@ -2070,9 +2065,7 @@ function DockFooter({
 		};
 		const gesture = (e: WheelEvent) => {
 			readingAnswerRef.current = false;
-			wheelDirectionRef.current = Math.sign(e.deltaY);
 			scrollGestureAtRef.current = Date.now();
-			hasScrolledRef.current = true;
 			// A real gesture must not be discarded by resize/growth immunity.
 			geometryAtRef.current = 0;
 			growthAtRef.current = 0;
@@ -2082,7 +2075,15 @@ function DockFooter({
 			expandIntentRef.current = false;
 			stopScroll();
 			atBottomRef.current = false;
-			settle();
+			// A fold can shorten the range all the way to the current position.
+			// The next downward wheel then has no native scroll event to emit.
+			if (e.deltaY > 0 && !expandedRef.current && el.scrollHeight - el.clientHeight - el.scrollTop <= EXPAND_DIST && (!pendingRef.current || revealedRef.current)) {
+				setRevealed(true);
+				setExpanded(true);
+				void suppressFoldDuringReveal();
+			}
+			if (e.deltaY > 0) settle();
+			else window.clearTimeout(settleTimer);
 		};
 		const plainVertical = (e: WheelEvent) =>
 			!(e.defaultPrevented || e.ctrlKey || e.metaKey || e.shiftKey || e.deltaY === 0 || Math.abs(e.deltaX) > Math.abs(e.deltaY));
@@ -2103,11 +2104,10 @@ function DockFooter({
 			// Trackpads send many small deltas (already smooth): apply 1:1. A
 			// mouse notch is one big delta: animate it like native wheel scroll.
 			const delta = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? el.clientHeight : 1);
-			el.scrollBy({ top: delta, behavior: Math.abs(delta) >= 40 ? "smooth" : "instant" });
+			el.scrollBy({ top: delta, behavior: Math.abs(delta) >= 40 && !reducedDockMotion() ? "smooth" : "instant" });
 		};
 		const cancelWheel = () => {
 			readingAnswerRef.current = false;
-			wheelDirectionRef.current = 0;
 			if (jumpPendingRef.current) {
 				jumpPendingRef.current = false;
 				scrollMotionRef.current?.cancel();
@@ -2118,11 +2118,10 @@ function DockFooter({
 		const readAnswer = () => {
 			jumpPendingRef.current = false;
 			readingAnswerRef.current = true;
-			wheelDirectionRef.current = 0;
 			scrollMotionRef.current?.cancel();
 			scrollMotionRef.current = null;
 			expandIntentRef.current = false;
-			if (pendingRef.current && !inputSurfaceIsEditing(blockRef.current)) setExpanded(false);
+			if (!composingRef.current && !blockRef.current?.contains(document.activeElement)) setExpanded(false);
 		};
 		el.addEventListener("lh:read-answer", readAnswer);
 		el.addEventListener("lh:manual-navigation", readAnswer);
@@ -2156,7 +2155,7 @@ function DockFooter({
 	const reserveRef = useRef(0);
 	const blockRef = useRef<HTMLDivElement>(null);
 	const offer = (blockH: number) => {
-		const next = blockH + GRADIENT_H;
+		const next = blockH + GRADIENT_H + keyboardInset;
 		if (Math.abs(next - reserveRef.current) < 0.5) return;
 		// Reserve GROWTH is the phantom-scroll SOURCE (flicker round,
 		// 2026-09-26): the spacer's height lands in this commit, the smooth
@@ -2191,7 +2190,7 @@ function DockFooter({
 		expandIntentRef.current = true;
 		scrollMotionRef.current?.cancel();
 		stopScroll();
-		const motion = animateDockScroll(element, () => element.scrollHeight - element.clientHeight);
+		const motion = animateDockScroll(element, () => element.scrollHeight - element.clientHeight, undefined, { cancelOnExternalScroll: true });
 		scrollMotionRef.current = motion;
 		return motion.finished.then((completed) => {
 			if (scrollMotionRef.current !== motion) return;
@@ -2203,11 +2202,9 @@ function DockFooter({
 	useEffect(() => {
 		const element = scrollRef.current;
 		const interrupt = (event?: Event) => {
-			if (event?.type === "touchstart") hasScrolledRef.current = true;
 			if (event?.type !== "wheel") {
 				readingAnswerRef.current = false;
-				wheelDirectionRef.current = 0;
-					}
+			}
 			scrollGestureAtRef.current = Date.now();
 			geometryAtRef.current = 0;
 			growthAtRef.current = 0;
@@ -2236,7 +2233,6 @@ function DockFooter({
 		jumpPendingRef.current = true;
 		expandIntentRef.current = true;
 		readingAnswerRef.current = false;
-		wheelDirectionRef.current = 0;
 		scrollMotionRef.current?.cancel();
 		stopScroll();
 		const motion = animateDockScroll(element, () => element.scrollHeight - element.clientHeight, (top) => { scrollState.scrollTop = top; }, { cancelOnExternalScroll: true });
@@ -2247,11 +2243,9 @@ function DockFooter({
 			jumpPendingRef.current = false;
 			expandIntentRef.current = false;
 			if (!completed || ownerRef.current !== owner) return;
-			if (owner) {
-				setRevealed(true);
-				setExpanded(true);
-			}
-			void scrollToBottom({ animation: "instant" });
+			setRevealed(true);
+			setExpanded(true);
+			void suppressFoldDuringReveal();
 		});
 	};
 	const expandAndRevealRef = useRef(expandAndReveal);
@@ -2287,45 +2281,94 @@ function DockFooter({
 		const el = scrollRef.current;
 		if (!el) return;
 		let previousScrollTop = el.scrollTop;
+		let previousScrollRange = el.scrollHeight - el.clientHeight;
 		const onScroll = () => {
-			const scrollingDown = el.scrollTop > previousScrollTop && wheelDirectionRef.current >= 0;
-			const scrollingUp = el.scrollTop < previousScrollTop && wheelDirectionRef.current <= 0;
-			previousScrollTop = el.scrollTop;
-			if (!pendingRef.current || readingAnswerRef.current || jumpPendingRef.current) return;
+			// Wheel events inside sandboxed demos do not bubble to the lesson.
+			// Read direction from native movement; fresh parent gestures can
+			// override geometry immunity when rendering changes the range.
 			const userGesture = Date.now() - scrollGestureAtRef.current < DOCK_MOTION_MS;
+			const scrollingDown = el.scrollTop > previousScrollTop;
+			const scrollingUp = el.scrollTop < previousScrollTop;
+			previousScrollTop = el.scrollTop;
+			const scrollRange = el.scrollHeight - el.clientHeight;
+			const rangeChanged = Math.abs(scrollRange - previousScrollRange) > 1;
+			previousScrollRange = scrollRange;
+			if (readingAnswerRef.current || jumpPendingRef.current) return;
 			// Only movement in the gesture's own direction uses the gesture up.
 			// A late event from a cancelled motion (the reveal's last downward
 			// write) must not: native scrolling delivers one event per wheel, not
 			// the old easing's train of retries.
 			if (scrollingUp || scrollingDown) scrollGestureAtRef.current = 0;
+			// A collapsing reserve or late markdown can clamp/follow the
+			// reading position before ResizeObserver reports the new height.
+			// That movement is layout, not a new gesture toward the bottom.
+			if (rangeChanged && !userGesture) {
+				geometryAtRef.current = Date.now();
+				if (!expandedRef.current) stopScroll();
+				return;
+			}
+			if (scrollingUp && !rangeChanged) {
+				// Opaque iframe wheel chaining cannot reach the wheel listener.
+				// Its native upward scroll must interrupt a reveal immediately.
+				scrollMotionRef.current?.cancel();
+				scrollMotionRef.current = null;
+				expandIntentRef.current = false;
+				geometryAtRef.current = 0;
+				growthAtRef.current = 0;
+				stopScroll();
+				atBottomRef.current = false;
+			}
+			const d = scrollRange - el.scrollTop;
+			// Native wheel chaining from an opaque iframe has no parent wheel
+			// event. A downward move in an unchanged range still reaches bottom,
+			// even during the fold's geometry mute.
+			const reachedBottom = !expandedRef.current && scrollingDown && !rangeChanged && d <= EXPAND_DIST;
 			// Resize mute (owner, resize round): a geometry change re-clamps
 			// scrollTop and the browser emits the clamp as a scroll event —
 			// reading the transient position folded the box to the bar for a
 			// flicker. Real scrolling resumes after the brief mute window.
-			if (!userGesture && Date.now() - geometryAtRef.current < 400) return;
+			if (!userGesture && !reachedBottom && Date.now() - geometryAtRef.current < 400) return;
 			// Growth mute (owner round, 2026-10-05): the transcript growing
 			// under a live turn is not the learner leaving.
-			if (!userGesture && Date.now() - growthAtRef.current < 400) return;
-			const d = el.scrollHeight - el.clientHeight - el.scrollTop;
+			if (!userGesture && !reachedBottom && Date.now() - growthAtRef.current < 400) return;
 			if (expandedRef.current) {
 				// INTENT-GATED FOLD (owner ruling, 2026-10-05): distance alone
 				// folded on stick-to-bottom's catch-up transients; a real fold
 				// needs distance plus a real gesture or stick-to-bottom agreeing
 				// the learner left. A single reduced-motion scroll can arrive
 				// before the library has updated its at-bottom state.
-				if (scrollingUp && d > COLLAPSE_DIST && !expandIntentRef.current && (userGesture || !atBottomRef.current)
-					&& !inputSurfaceIsEditing(blockRef.current)) setExpanded(false);
+				if ((userGesture || !atBottomRef.current) && !nextDockExpanded({
+					expanded: true, distance: d, direction: scrollingUp ? "up" : "none",
+					editing: !!blockRef.current?.contains(document.activeElement), composing: composingRef.current,
+					explicitExpansion: expandIntentRef.current,
+				})) setExpanded(false);
 			} else if (scrollingDown && d <= EXPAND_DIST) {
 				// Automatic expansion belongs only to the last 16px of the
 				// actual scroll range, including the reserved dock space.
-				if (requiresRevealRef.current && !revealedRef.current && !hasScrolledRef.current) return;
+				if (pendingRef.current && !revealedRef.current) return;
 				setRevealed(true);
 				setExpanded(true);
 				void suppressFoldDuringReveal();
 			}
 		};
+		// A fold need not move scrollTop. Remember its settled range even
+		// when no scroll event fires, so the next native gesture stays input.
+		const geometry = new ResizeObserver(() => {
+			const range = el.scrollHeight - el.clientHeight;
+			if (Math.abs(range - previousScrollRange) <= 1) return;
+			// The follow library reattaches after a shrinking reserve reaches
+			// its near-bottom threshold. Reading mode must stay detached.
+			if (!expandedRef.current) stopScroll();
+			if (Date.now() - scrollGestureAtRef.current >= DOCK_MOTION_MS) previousScrollTop = el.scrollTop;
+			previousScrollRange = range;
+		});
+		geometry.observe(el);
+		if (el.firstElementChild) geometry.observe(el.firstElementChild);
 		el.addEventListener("scroll", onScroll, { passive: true });
-		return () => el.removeEventListener("scroll", onScroll);
+		return () => {
+			geometry.disconnect();
+			el.removeEventListener("scroll", onScroll);
+		};
 	}, [scrollRef, scrollToBottom]);
 
 	// Track settled footer height to suppress layout-driven fold feedback.
@@ -2349,18 +2392,22 @@ function DockFooter({
 	// whenever the variant (chat ↔ question ↔ collapsed bar) changes. Typing
 	// growth keeps the same stateKey and is NOT animated.
 	const shellRef = useRef<HTMLDivElement>(null);
-	// Keep the outgoing form painted while its shell shrinks. The form stays
-	// mounted throughout the fold so selections and drafts survive.
-	const contentRef = useRef<HTMLDivElement>(null);
-	const [outgoing, setOutgoing] = useState<{ mode: string; height: number } | null>(null);
 	const heightAnimationRef = useRef<Animation | null>(null);
+	const [outgoing, setOutgoing] = useState<{ mode: string; height: number } | null>(null);
 	// Child textarea growth and viewport reflow need to update the reserve
 	// even when the overlay itself did not render. Ignore animated heights.
 	useEffect(() => {
 		const block = blockRef.current;
 		if (!block) return;
 		const observer = new ResizeObserver(() => {
-			if (!shellRef.current?.getAnimations().length) measureBlock();
+			const shell = shellRef.current;
+			if (!shell || heightAnimationRef.current) return;
+			// Descendant controls may resize without rerendering this owner.
+			// Never overwrite the old height during a variant change.
+			if (prevRef.current?.key === latestStateKeyRef.current) {
+				prevRef.current.height = shell.getBoundingClientRect().height;
+			}
+			measureBlock();
 		});
 		observer.observe(block);
 		return () => observer.disconnect();
@@ -2370,6 +2417,8 @@ function DockFooter({
 	// practice (owner fix, 2026-10-06). Typing growth keeps the key and
 	// never animates; the fold/unfold morphs like teaching always has.
 	const stateKey = dockStateKey(mode, !!pending || !!practice, expanded);
+	const latestStateKeyRef = useRef(stateKey);
+	latestStateKeyRef.current = stateKey;
 	const prevRef = useRef<{ key: string; height: number; expanded: boolean; mode: string } | null>(null);
 	useIsoLayoutEffect(() => {
 		const el = shellRef.current;
@@ -2379,22 +2428,22 @@ function DockFooter({
 			// Same variant: keep the settled height fresh, but never measure while
 			// a morph is in flight — getBoundingClientRect would read the ANIMATED
 			// value and corrupt the start height of the next morph.
-			if (el.getAnimations().length === 0) {
+			if (!heightAnimationRef.current) {
 				const h = el.getBoundingClientRect().height;
 				p.height = h;
 				measureBlock(); // typing growth → the spacer grows with the box
 			}
 			return;
 		}
-		const from = el.getAnimations().length ? el.getBoundingClientRect().height : p?.height;
-		el.getAnimations().forEach((a) => a.cancel());
+		const from = heightAnimationRef.current ? el.getBoundingClientRect().height : p?.height;
+		heightAnimationRef.current?.cancel();
 		heightAnimationRef.current = null;
 		const h = el.getBoundingClientRect().height;
 		// Variant change → re-reserve. Growth applies instantly; a drop (the
 		// fold, or question → composer) is filtered by the offer policy.
 		measureBlock();
 		if (from !== undefined && Math.abs(from - h) > 1 && !reducedDockMotion()) {
-			setOutgoing(p?.expanded && !expanded && p.mode === mode ? { mode, height: p.height - 2 } : null);
+			setOutgoing(p?.expanded && !expanded && p.mode === mode ? { mode, height: from - 2 } : null);
 			const animation = el.animate([{ height: `${from}px` }, { height: `${h}px` }], {
 				duration: DOCK_MOTION_MS,
 				easing: DOCK_EASING,
@@ -2411,8 +2460,8 @@ function DockFooter({
 	});
 
 	return (
-		<div className="lesson-footer pointer-events-none absolute inset-x-0 bottom-0" style={{ right: sbInset }}>
-			<div ref={blockRef} data-dock-block="" className="relative py-3" style={{ "--dock-max-h": dockMaxH ? `${dockMaxH}px` : undefined } as React.CSSProperties}>
+		<div className="lesson-footer pointer-events-none absolute inset-x-0 bottom-0" style={{ right: sbInset, bottom: keyboardInset }}>
+			<div ref={blockRef} data-dock-block="" className="relative py-3" style={{ "--dock-max-h": dockMaxH ? `${dockMaxH}px` : undefined, "--dock-question-max-h": questionMaxH ? `${questionMaxH}px` : undefined, "--dock-input-max-h": questionMaxH ? `${questionMaxH / 2}px` : undefined } as React.CSSProperties}>
 				<div className={`${DOCK} flex max-h-[var(--dock-max-h)] flex-col [&>div:not([data-testid=dock-shell])]:shrink-0`}>
 					{questionTarget && setupCta ? createPortal(setupCta, questionTarget) : null}
 					{/* The queued-steer indicator (owner spec 2026-10-03): quiet
@@ -2422,9 +2471,12 @@ function DockFooter({
 					<QueuedSteersBody steers={queuedSteers} />
 
 
-					<div ref={shellRef} data-testid="dock-shell" onClick={(event) => { if (event.target === event.currentTarget) focusSurfaceInput(event); }} className="prompt-shell pointer-events-auto flex min-h-0 select-none flex-col overflow-hidden">
+					<div ref={shellRef} data-testid="dock-shell" data-compact={!expanded}
+						onCompositionStartCapture={() => { composingRef.current = true; setRevealed(true); setExpanded(true); }}
+						onCompositionEndCapture={() => { composingRef.current = false; }}
+						onFocusCapture={(event) => { if ((event.target as HTMLElement).matches("textarea, input, [contenteditable=true]")) { setRevealed(true); setExpanded(true); } }}
+						onClick={(event) => { if (event.target === event.currentTarget) focusSurfaceInput(event); }} className="prompt-shell pointer-events-auto flex min-h-0 select-none flex-col overflow-hidden data-[compact=true]:[&_.prompt-input]:max-h-11 data-[compact=true]:[&_.prompt-input]:overflow-y-auto data-[compact=true]:[&_[data-prompt-controls]]:hidden data-[compact=true]:[&_.prompt-toolbar]:justify-end data-[compact=true]:[&_[data-testid=composer]_[data-slot=input-group]]:flex-row data-[compact=true]:[&_[data-testid=composer]_.prompt-toolbar]:self-end data-[compact=true]:[&_[data-testid=composer]_.prompt-toolbar]:pb-1 data-[compact=true]:[&_[data-testid=composer]_.prompt-toolbar]:w-auto data-[compact=true]:[&_[data-testid=composer]_.prompt-toolbar]:shrink-0 [&_.prompt-input]:max-h-[var(--dock-input-max-h,12rem)]">
 						<div
-						ref={contentRef}
 						key={mode}
 						className={`flex min-h-0 flex-col ${mode === initialModeRef.current ? "" : "dock-variant"}`}
 					>
@@ -2433,9 +2485,9 @@ function DockFooter({
 									toolName={pending.tool as "quiz" | "probe" | "ask_user_question" | "explain" | "recall"}
 									toolCallId={pending.toolCallId}
 									input={pending.input as never}
-									expanded={true}
-									questionTarget={questionTarget}
-									reveal={false}
+									expanded={expanded}
+									outgoingHeight={outgoing?.mode === mode ? outgoing.height : undefined}
+									reveal={requiresReveal && !revealed}
 									phase={phase}
 									onExpand={expandAndReveal}
 									onSubmit={onSubmitAnswer}
@@ -2447,12 +2499,10 @@ function DockFooter({
 							) : practice ? (
 								<PracticeDock
 									problemCallId={practice.toolCallId}
+									statement={practice.input && typeof practice.input === "object" && "statement" in practice.input && typeof practice.input.statement === "string" ? practice.input.statement : ""}
 									expanded={expanded}
 									outgoingHeight={outgoing?.mode === mode ? outgoing.height : undefined}
-									onExpand={() => {
-										setExpanded(true);
-										void suppressFoldDuringReveal();
-									}}
+									onExpand={expandAndReveal}
 									onSubmit={onSubmitThinking}
 									controls={<StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} />}
 									compactionRunning={compactionRunning}
@@ -2461,11 +2511,6 @@ function DockFooter({
 								composer
 							)}
 						</div>
-						{!pending && practice && !expanded && (
-							<div className="px-3 pb-2">
-								<StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} />
-							</div>
-						)}
 					</div>
 					{/* The latest-message action sits just above the footer. */}
 					<ConversationScrollButton aria-label="Scroll to latest" onClick={jumpToBottomThenExpand} className="pointer-events-auto bottom-full mb-2" />

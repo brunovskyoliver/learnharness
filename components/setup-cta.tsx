@@ -16,7 +16,7 @@
  */
 
 import type { AuthKeyStatus } from "@/src/core";
-import { classifyKeys, type ProviderKeyInfo } from "@/components/settings/keys-section";
+import { classifyKeys, type ProviderKeyInfo } from "@/components/settings/key-classification";
 import { useModelCatalog } from "@/components/model-picker";
 import type { ModelCatalogResponse } from "@/src/core";
 

@@ -20,7 +20,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ListTreeIcon, UploadIcon } from "lucide-react";
-import { ChainTableOverlay } from "@/components/chain-table.tsx";
+import { LazyChainTableOverlay as ChainTableOverlay } from "@/components/lazy-chain-table";
 import { GraphCostControl } from "@/components/graph-view.tsx";
 import { NotesImportErrors, useNotesImport } from "@/components/notes-import.tsx";
 import { Hint } from "@/components/ui/hint";

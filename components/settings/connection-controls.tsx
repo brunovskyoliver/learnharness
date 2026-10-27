@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useRef } from "react";
-import { Dialog } from "radix-ui";
-import { useBackdropDismiss } from "@/components/backdrop-dismiss";
+import { useEffect, useRef, useState, type ComponentProps } from "react";
+import { LoadingModal } from "@/components/loading-modal";
+import type { ConnectionDialog as LoadedDialog } from "./connection-dialog";
 import { Button } from "@/components/ui/button";
 
 export function ConnectionRow({ label, action, disabled, onAction, children, testid, actionTestid }: { label: string; action: string; disabled: boolean; onAction: () => void; children?: React.ReactNode; testid?: string; actionTestid?: string }) {
@@ -19,38 +19,39 @@ export function ConnectionFooter({ leading, children, testid }: { leading?: Reac
 	</div>;
 }
 
-export function ConnectionDialog({ children, onClose, busy, label, testid, backdropTestid }: { children: React.ReactNode; onClose: () => void; busy: boolean; label: string; testid: string; backdropTestid: string }) {
-	const ref = useRef<HTMLDivElement>(null), closeRef = useRef(onClose);
-	closeRef.current = onClose;
-	const backdropDismiss = useBackdropDismiss(() => { if (!busy) onClose(); });
-	useEffect(() => {
-		const previous = document.activeElement as HTMLElement | null;
-		const focusable = () => [...(ref.current?.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled])') ?? [])];
-		focusable()[0]?.focus();
-		const key = (event: KeyboardEvent) => {
-			if (event.key === "Escape") { event.preventDefault(); event.stopImmediatePropagation(); closeRef.current(); }
-			else if (event.key === "Tab") {
-				const items = focusable(), first = items[0], last = items.at(-1);
-				if (!first) { event.preventDefault(); return; }
-				if (event.shiftKey && (document.activeElement === first || !ref.current?.contains(document.activeElement))) { event.preventDefault(); last?.focus(); }
-				else if (!event.shiftKey && (document.activeElement === last || !ref.current?.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
-			}
-		};
-		document.addEventListener("keydown", key, true);
-		return () => { document.removeEventListener("keydown", key, true); if (previous?.isConnected) previous.focus(); };
-	}, []);
-	return <Dialog.Root open onOpenChange={(open) => { if (!open) onClose(); }}>
-		<Dialog.Portal>
-			<Dialog.Overlay className="fixed inset-0 z-[60] bg-background/80" data-testid={backdropTestid} {...backdropDismiss} />
-			<Dialog.Content ref={ref} data-lh-modal-content aria-describedby={undefined} aria-busy={busy} data-testid={testid}
-				onOpenAutoFocus={(event) => { event.preventDefault(); ref.current?.querySelector<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled])')?.focus(); }}
-				onCloseAutoFocus={(event) => event.preventDefault()}
-				onPointerDownOutside={(event) => event.preventDefault()}
-				onEscapeKeyDown={(event) => event.preventDefault()}
-				className="fixed inset-4 z-[60] m-auto h-fit max-h-[calc(100dvh-2rem)] w-full max-w-[min(32rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-border bg-background p-5 shadow-2xl outline-none">
-				<Dialog.Title asChild><span className="sr-only">{label}</span></Dialog.Title>
-				{children}
-			</Dialog.Content>
-		</Dialog.Portal>
-	</Dialog.Root>;
+type DialogComponent = typeof LoadedDialog;
+let loadedDialog: DialogComponent | undefined;
+let request: Promise<DialogComponent> | undefined;
+function loadDialog() {
+ return request ??= import("./connection-dialog").then((module) => (loadedDialog = module.ConnectionDialog));
+}
+
+/** Root connection state remains live while its modal presentation downloads. */
+export function ConnectionDialog(props: ComponentProps<DialogComponent>) {
+ const [Dialog, setDialog] = useState<DialogComponent | undefined>(() => loadedDialog);
+ const [failed, setFailed] = useState(false);
+ const opener = useRef<HTMLElement | null>(null);
+ useEffect(() => {
+  return () => { const trigger = opener.current; setTimeout(() => { if (trigger?.isConnected && !document.querySelector(`[data-testid="${props.testid}"]`)) trigger.focus(); }, 0); };
+ }, []);
+ useEffect(() => {
+  if (Dialog) return;
+  let active = true;
+  loadDialog().then((component) => { if (active) setDialog(() => component); }, () => { if (active) setFailed(true); });
+  return () => { active = false; };
+ }, [Dialog]);
+ useEffect(() => {
+  if (!failed || document.activeElement !== document.body) return;
+  document.querySelector<HTMLElement>(`[data-testid="${props.testid}-loading"]`)?.querySelector<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled])')?.focus();
+ }, [failed]);
+ if (Dialog) return <Dialog {...props} />;
+ return <LoadingModal label={props.label} onClose={props.onClose} busy={props.busy} onOpen={(trigger) => { opener.current = trigger; }} testid={`${props.testid}-loading`} hideTitle={failed}>
+  {failed ? <>
+   <p role="status" className="mb-3 text-xs text-muted-foreground">The standard dialog could not load. Account controls remain available below.</p>
+   {props.children}
+  </> : <>
+   <p role="status" className="text-sm text-muted-foreground">Loading connection…</p>
+   <div className="mt-4 flex justify-end"><Button variant="outline" disabled={props.busy} onClick={props.onClose}>Close</Button></div>
+  </>}
+ </LoadingModal>;
 }

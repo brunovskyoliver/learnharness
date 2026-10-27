@@ -1,6 +1,6 @@
 import { Home } from "@/components/home";
-import { readSettingsRecord, withTenantPage } from "@/src/server";
-import { resolveSettings, slotsConfigured } from "@/src/core";
+import { graphView, readSettingsRecord, withTenantPage } from "@/src/server";
+import { resolveSettings, slotsConfigured, type GraphSnapshot } from "@/src/core";
 
 // Dynamic: the configured state is server-rendered into the page (the
 // setup CTA's truth on the first frame), and every navigation re-reads
@@ -16,8 +16,15 @@ function HomePage() {
 	// the chains view. Resolved through the one core resolver (missing
 	// section / absent key → factory default on); re-read per navigation.
 	const rendering = resolveSettings(record ?? null).graph.rendering;
+	let initialGraph: GraphSnapshot | undefined;
+	// This page already runs inside withTenantPage. Seed the same pure read
+	// as /api/graph, removing the hydration-to-fetch waterfall. Failed reads
+	// retain the ordinary client retry path.
+	if (rendering) {
+		try { initialGraph = graphView(); } catch { /* client retries */ }
+	}
 	return (
-		<Home initialConfigured={slotsConfigured(record?.models)} rendering={rendering} />
+		<Home initialConfigured={slotsConfigured(record?.models)} rendering={rendering} initialGraph={initialGraph} />
 	);
 }
 

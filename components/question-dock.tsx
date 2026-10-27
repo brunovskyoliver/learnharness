@@ -1,6 +1,5 @@
 "use client";
 
-import { createPortal } from "react-dom";
 import { useSessionState } from "@/components/session-state";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowDownIcon, ChevronRightIcon, PlayIcon } from "lucide-react";
@@ -41,25 +40,8 @@ import {
 	type Phase3,
 } from "@/src/core";
 
-/**
- * The question dock — a pending quiz/ask REPLACES the chat composer: the
- * persistent bottom blob morphs into the question. Two voices meet here:
- * the teacher's (question, options, explanation) and the learner's —
- * "Your thinking", a labeled composer-twin field for dumping reasoning,
- * with Submit docked inside it exactly like the chat composer's send.
- *
- * The thinking field is the transfer channel of the whole product (wave-2):
- * never called "optional", Enter makes a NEWLINE (it is for dumping — soon
- * dictated, not typed), submission is the button only, and its size grows
- * with the draft. The
- * "Other…" option is an editable option ROW — circle + inline input,
- * styled like its siblings — so picking Other never displaces thinking.
- *
- * Collapse behavior (scroll-up → slim bar) is owned by the DockOverlay in the
- * chat view, which also owns the persistent shell and its height morph. This
- * component is content only. The expanded form stays MOUNTED while collapsed
- * (hidden, not unmounted) so a half-made selection survives scrolling.
- */
+/** One mounted answer form. Folding hides only question details and choices;
+ * selections, confidence, and the learner's draft keep their owners. */
 
 export interface QuestionDockProps {
 	toolName: "quiz" | "probe" | "ask_user_question" | "explain" | "recall";
@@ -67,7 +49,6 @@ export interface QuestionDockProps {
 	input: QuizToolInput | AskToolInput | ExplainToolInput;
 	/** Collapse state, owned by the DockOverlay (it drives the shell's height morph). */
 	expanded: boolean;
-	/** Paint the outgoing form behind the collapsed bar until the shell settles. */
 	outgoingHeight?: number;
 	/**
 	 * Teach-phase check awaiting its reveal (vision §2, W5): while collapsed,
@@ -92,8 +73,6 @@ export interface QuestionDockProps {
 	 *  this is the affordance. */
 	compactionRunning?: boolean;
 	controls?: ReactNode;
-	/** When supplied, question and choices render in the lesson; input stays in the composer. */
-	questionTarget?: HTMLElement | null;
 }
 
 export function QuestionDock({
@@ -110,7 +89,6 @@ export function QuestionDock({
 	phase = "probe",
 	compactionRunning = false,
 	controls,
-	questionTarget,
 }: QuestionDockProps) {
 	// The probe-phase names (owner, 2026-10-09) canonicalize onto their
 	// teach twins for every dock concern — parse dispatch, labels, kinds:
@@ -154,26 +132,20 @@ export function QuestionDock({
 					}
 				/>
 			)}
-			<div
-				aria-hidden={!expanded}
-				inert={!expanded}
-				className={expanded ? "flex min-h-0 flex-col" : outgoingHeight ? "dock-outgoing pointer-events-none absolute inset-x-0 top-0 flex flex-col" : "invisible h-0 overflow-hidden"}
-				style={!expanded && outgoingHeight ? { height: outgoingHeight } : undefined}
-			>
-				<QuestionDockForm
-					toolName={toolName}
-					toolCallId={toolCallId}
-					input={parsed}
-					phase={phase}
-					active={expanded}
-					onSubmit={onSubmit}
-					initialDraft={initialDraft}
-					onSaveDraft={onSaveDraft}
-					compactionRunning={compactionRunning}
-					controls={controls}
-					questionTarget={questionTarget}
-				/>
-			</div>
+			<QuestionDockForm
+				toolName={toolName}
+				toolCallId={toolCallId}
+				input={parsed}
+				phase={phase}
+				active={expanded}
+				outgoingHeight={outgoingHeight}
+				onReveal={onExpand}
+				onSubmit={onSubmit}
+				initialDraft={initialDraft}
+				onSaveDraft={onSaveDraft}
+				compactionRunning={compactionRunning}
+				controls={controls}
+			/>
 		</div>
 	);
 }
@@ -236,6 +208,7 @@ export function QuestionDockBar({
 			<button
 				type="button"
 				data-testid="teach-check-reveal"
+				aria-expanded={false}
 				onClick={onExpand}
 				className="dock-variant flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-accent/40"
 			>
@@ -256,8 +229,9 @@ export function QuestionDockBar({
 		<button
 			type="button"
 			data-testid="question-dock-bar"
+			aria-expanded={false}
 			onClick={onExpand}
-			className="dock-variant relative z-10 flex w-full items-center gap-2.5 bg-card px-4 py-2.5 text-left text-sm transition-colors hover:bg-accent/40"
+			className="dock-variant relative z-10 flex min-h-11 w-full items-center gap-2.5 bg-card px-4 py-2.5 text-left text-sm transition-colors hover:bg-accent/40"
 		>
 			<span className="shrink-0 text-xs font-medium text-muted-foreground">
 				{label ??
@@ -278,13 +252,14 @@ function QuestionDockForm({
 	toolCallId,
 	input,
 	active,
+	outgoingHeight,
+	onReveal,
 	onSubmit,
 	initialDraft,
 	onSaveDraft,
 	compactionRunning = false,
 	controls,
-	questionTarget,
-}: Omit<QuestionDockProps, "expanded" | "onExpand" | "reveal">) {
+}: Omit<QuestionDockProps, "expanded" | "onExpand" | "reveal"> & { onReveal?: () => void }) {
 	const kind = toolQuestionKind(toolName);
 
 	// Canonical QuestionData, built once per question. Quiz options are
@@ -397,7 +372,7 @@ function QuestionDockForm({
 
 	/* ENTER SUBMITS FROM ANYWHERE (owner round 6, 2026-10-05): the same
 	 * law as the practice dock — dictated answers rarely focus the field. */
-	useEnterSubmits(submit);
+	useEnterSubmits(() => { if (active) submit(); else onReveal?.(); });
 
 	// Selecting Other never clears the thinking field — two channels, the
 	// answer and the reasoning behind it, side by side.
@@ -462,7 +437,7 @@ function QuestionDockForm({
 		if (!active || rowCount === 0) return;
 		const onKeyDown = (e: KeyboardEvent) => {
 			const t = e.target as HTMLElement | null;
-			if (e.defaultPrevented || t?.closest?.("[role=dialog], [data-lh-menu]")) return;
+			if (e.isComposing || e.defaultPrevented || t?.closest?.("[role=dialog], [data-lh-menu]")) return;
 			// A TYPING field is where keys mean text (owner round 4): the
 			// thinking/answer fields, search boxes, renames — never a range
 			// input, whose focus after a click or drag must not kill the
@@ -523,7 +498,7 @@ function QuestionDockForm({
 				if (kbdIdx === null) return; // plain Space keeps scrolling the page
 				e.preventDefault();
 				kbdAct(kbdIdx);
-			} else if (e.key === "Enter") {
+			} else if (!e.isComposing && e.key === "Enter") {
 				if (kbdIdx === null || !canSubmit) return;
 				e.preventDefault();
 				submit();
@@ -541,8 +516,8 @@ function QuestionDockForm({
 			?.scrollIntoView({ block: "nearest" });
 	}, [kbdIdx]);
 
-	const questionContent = <div ref={rootRef} data-testid="lesson-question">
-			<div data-session-find-root="" className={questionTarget === undefined ? "max-h-[var(--dock-max-h,55dvh)] min-h-0 select-text overflow-y-auto px-4 pt-3" : "select-text pt-4"}>
+	const questionContent = <div ref={rootRef} data-testid="lesson-question" hidden={!active && !outgoingHeight} inert={!active} style={!active && outgoingHeight ? { height: outgoingHeight, maxHeight: outgoingHeight } : undefined} className={`${!active && outgoingHeight ? "dock-outgoing pointer-events-none absolute inset-x-0 top-0" : ""} select-text max-h-[var(--dock-question-max-h,50dvh)] min-h-0 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
+			<div data-session-find-root="" className="min-h-0 select-text px-4 pt-3">
 				<div className="mb-1 text-xs font-medium text-muted-foreground">
 					{toolName === "probe"
 						? "Question"
@@ -702,7 +677,7 @@ function QuestionDockForm({
 											// the payload is ready. Every Enter (shift or not — nothing
 											// else could ever happen in a one-line field) rides the
 											// same submit seam as the button.
-											if (e.key === "Enter") {
+											if (!e.nativeEvent.isComposing && e.key === "Enter") {
 												e.preventDefault();
 												submit();
 											}
@@ -722,7 +697,7 @@ function QuestionDockForm({
 				(the dock machine above). "I don't know" greys them out and no
 				value is sent. */}
 			{kind === "quiz" && (
-				<div className="flex shrink-0 items-center gap-3 px-4 py-2.5">
+				<div className="flex shrink-0 flex-col items-stretch gap-2 px-4 py-2.5">
 					<span
 						className={cn(
 							"shrink-0 text-xs font-medium",
@@ -736,7 +711,7 @@ function QuestionDockForm({
 						aria-label="Confidence that your selected answer is correct"
 						data-testid="confidence-segments"
 						className={cn(
-							"grid min-w-0 flex-1 grid-cols-4 gap-0.5 rounded-md bg-muted p-0.5",
+							"grid min-w-0 flex-1 grid-cols-2 gap-1 sm:grid-cols-4 rounded-md bg-muted p-0.5",
 							sel.dontKnow && "pointer-events-none opacity-40",
 						)}
 					>
@@ -750,7 +725,7 @@ function QuestionDockForm({
 								title={`${CONFIDENCE_STOPS[i]}% sure. Adjust with ←/→.`}
 								onClick={() => setConfIdx(i)}
 								className={cn(
-									"h-7 truncate rounded px-2 text-xs transition-colors outline-none",
+									"min-h-11 whitespace-normal rounded px-2 py-2 text-xs transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring",
 									!sel.dontKnow && confIdx === i
 										? "bg-accent font-medium text-foreground"
 										: "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
@@ -766,7 +741,7 @@ function QuestionDockForm({
 	</div>;
 	return (
 		<div data-testid="question-dock" className="flex min-h-0 flex-col">
-			{questionTarget === undefined ? questionContent : questionTarget ? createPortal(questionContent, questionTarget) : null}
+			{questionContent}
 
 			{/* The learner's half of the dock — a composer TWIN: a labeled, bordered
 			    field with Submit docked inside, exactly like the chat composer's
@@ -798,7 +773,7 @@ function QuestionDockForm({
 							onKeyDown={(e) => {
 								// Chat convention: Enter submits, Shift+Enter is a newline;
 								// ⌘/Ctrl+Enter also submits (universal across the app).
-								if (e.key === "Enter" && (e.metaKey || e.ctrlKey || !e.shiftKey)) {
+								if (!e.nativeEvent.isComposing && e.key === "Enter" && (e.metaKey || e.ctrlKey || !e.shiftKey)) {
 									e.preventDefault();
 									submit();
 								}
@@ -820,7 +795,7 @@ function QuestionDockForm({
 								// THE STANDARD CHORD (owner round 5, 2026-10-05): Enter
 								// submits, Shift+Enter is a newline, ⌘/Ctrl+Enter works
 								// too — identical to the practice dock and the composer.
-								if (e.key === "Enter" && (!e.shiftKey || e.metaKey || e.ctrlKey)) {
+								if (!e.nativeEvent.isComposing && e.key === "Enter" && (!e.shiftKey || e.metaKey || e.ctrlKey)) {
 									e.preventDefault();
 									submit();
 								}

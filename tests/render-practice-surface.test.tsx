@@ -2,7 +2,7 @@
  * THE PRACTICE SURFACE — SSR render pins (the render-suite discipline:
  * pure bodies, renderToStaticMarkup, testids). The dock (the active
  * problem replaces the composer with the "Your thinking" field and ONE
- * Send (Enter sends, Shift+Enter is a newline); the statement stays in the lesson),
+ * Send (Enter sends, Shift+Enter is a newline); the active statement expands above it),
  * the transcript cards (the
  * problem's compact-expandable statement — commitment NEVER renders;
  * the conclusion's outcome + verdict + reveal; the learner's thinking
@@ -39,16 +39,19 @@ const part = (over: Partial<ArtifactPartProps["part"]>): ArtifactPartProps["part
 // ── the dock ─────────────────────────────────────────────────────────────────
 
 describe("PracticeDock", () => {
-	it("expanded: only the answer field renders; the statement stays in the lesson", () => {
+	it("expanded: a bounded public statement sits above the mounted trace input", () => {
 		const html = renderToStaticMarkup(
 			<PracticeDock
 				problemCallId="call_p1"
+				statement="Prove the parity claim."
 				expanded={true}
 				onExpand={() => {}}
 				onSubmit={() => {}}
 			/>,
 		);
-		assert.doesNotMatch(html, /overflow-y-auto|--dock-max-h/, "no nested scrolling problem panel");
+		assert.match(html, /Prove the parity claim/);
+		assert.match(html, /overflow-y-auto/);
+		assert.match(html, /--dock-question-max-h,50dvh/, "question content stays within half the visual viewport");
 		assert.match(html, /Your thinking/);
 		assert.match(html, /data-testid="practice-send"/);
 		assert.ok(!html.includes("practice-nudge") && !html.includes("practice-commit"), "the two-lane buttons are gone");
@@ -57,7 +60,7 @@ describe("PracticeDock", () => {
 		assert.match(html, /disabled/);
 	});
 
-	it("collapsed: the slim bar opens the answer field", () => {
+	it("collapsed: the summary opens details while the trace input stays mounted", () => {
 		const html = renderToStaticMarkup(
 			<PracticeDock
 				problemCallId="call_p1"

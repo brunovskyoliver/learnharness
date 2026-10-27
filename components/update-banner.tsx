@@ -11,7 +11,7 @@
  * (autoInstallOnAppQuit); the banner is a courtesy, not a gate.
  */
 
-import { useUpdateState } from "@/components/settings/update-settings.tsx";
+import { useUpdateState } from "@/components/settings/update-state.ts";
 
 export default function UpdateBanner() {
 	const { state: ready } = useUpdateState();

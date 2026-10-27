@@ -166,7 +166,8 @@ describe("practice display surfaces", () => {
 		assert.ok(active);
 		assert.equal((active.input as { statement: unknown }).statement, 17);
 		const expanded = renderToStaticMarkup(dock());
-		assert.equal(parseHTML(expanded).document.querySelector(".lh-prose"), null);
+		assert.equal(parseHTML(expanded).document.querySelector(".lh-prose")?.textContent ?? "", "",
+			"the mounted public-statement surface stays empty when no statement was supplied");
 		const collapsed = renderToStaticMarkup(dock(false));
 		assert.match(collapsed, /data-testid="practice-dock-bar"/);
 		assert.ok(!collapsed.includes(">17<"));

@@ -10,7 +10,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { dockStateKey } from "../components/dock-state-key.ts";
+import { dockStateKey, nextDockExpanded } from "../components/dock-state-key.ts";
 
 describe("dockStateKey (the height-morph trigger)", () => {
 	it("a docked variant carries its fold state — practice included", () => {
@@ -31,8 +31,29 @@ describe("dockStateKey (the height-morph trigger)", () => {
 		);
 	});
 
-	it("an undocked band (the composer) has no fold term", () => {
-		assert.equal(dockStateKey("chat", false, true), "chat:-");
-		assert.equal(dockStateKey("chat", false, false), "chat:-");
+	it("the persistent ordinary composer also morphs when folded", () => {
+		assert.equal(dockStateKey("chat", false, true), "chat:true");
+		assert.equal(dockStateKey("chat", false, false), "chat:false");
+	});
+});
+
+
+describe("reading-history fold state", () => {
+	const state = { expanded: true, distance: 150, direction: "up" as const, editing: false, composing: false };
+	it("collapses beyond 96px and stays compact until the final 16px", () => {
+		assert.equal(nextDockExpanded({ ...state, distance: 96 }), true);
+		assert.equal(nextDockExpanded(state), false);
+		assert.equal(nextDockExpanded({ ...state, expanded: false, direction: "down", distance: 17 }), false);
+		assert.equal(nextDockExpanded({ ...state, expanded: false, direction: "down", distance: 16 }), true);
+	});
+	it("focus, composition, and an explicit expansion protect the editable surface", () => {
+		for (const protection of [{ editing: true }, { composing: true }, { explicitExpansion: true }]) {
+			assert.equal(nextDockExpanded({ ...state, ...protection }), true);
+			assert.equal(nextDockExpanded({ ...state, expanded: false, ...protection }), true);
+		}
+	});
+	it("layout-only movement and transcript growth do not fold the composer", () => {
+		assert.equal(nextDockExpanded({ ...state, direction: "none" }), true);
+		assert.equal(nextDockExpanded({ ...state, direction: "down" }), true);
 	});
 });

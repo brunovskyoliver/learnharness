@@ -9,7 +9,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { PATHS } from "../../config.ts";
+import { PATHS, tenantScoped } from "../../config.ts";
 import { emit } from "../core/events.ts";
 import type { ChatStore } from "../core/ports.ts";
 import type { ChatRecord, ChatSettings, ChatSummary, ExtractionRunUsage, PlanTree, TurnUsage } from "../core/contracts.ts";
@@ -21,6 +21,15 @@ import { phaseAt3Lh } from "../core/phases.ts";
 function chatFile(id: string): string {
 	if (!/^[A-Za-z0-9_-]+$/.test(id)) throw new Error(`Invalid chat id: ${id}`);
 	return path.join(PATHS.chats, `${id}.json`);
+}
+
+interface CachedSummary {
+	stamp: string;
+	summary: ChatSummary;
+}
+
+function summaryCache(): Map<string, CachedSummary> {
+	return tenantScoped("lh.chat-summary-cache", () => new Map<string, CachedSummary>());
 }
 
 /** THE SILENCE LAW (push S6, 2026-10-02): chats-changed announces ONLY
@@ -64,7 +73,9 @@ function saveFollowupStartup(id: string, startup: NonNullable<ChatRecord["follow
  *  lazy migration means existing files only get stamped on their next write.
  *  A future-version guard lives on the read side (getChat). */
 function writeChat(record: ChatRecord): void {
-	fs.writeFileSync(chatFile(record.id), JSON.stringify({ ...record, version: CURRENT_CHAT_VERSION }, null, "\t"), "utf-8");
+	const file = chatFile(record.id);
+	fs.writeFileSync(file, JSON.stringify({ ...record, version: CURRENT_CHAT_VERSION }, null, "\t"), "utf-8");
+	summaryCache().delete(file);
 }
 
 function getChat(id: string): ChatRecord | null {
@@ -85,44 +96,53 @@ function getChat(id: string): ChatRecord | null {
 	return parsed as ChatRecord;
 }
 
+/** Cache projections, not transcripts. Metadata detects edits from another
+ * process; canonical writes also invalidate even within one timestamp tick. */
+function readSummary(id: string, cache: Map<string, CachedSummary>): ChatSummary | null {
+	const file = path.join(PATHS.chats, `${id}.json`);
+	try {
+		const stat = fs.statSync(file, { bigint: true });
+		const stamp = `${stat.dev}:${stat.ino}:${stat.size}:${stat.mtimeNs}:${stat.ctimeNs}`;
+		const cached = cache.get(file);
+		if (cached?.stamp === stamp) return cached.summary;
+		const record = getChat(id);
+		let summary: ChatSummary | null = null;
+		if (record) {
+			try {
+				const { messages, tree, turns, extractions, ...fields } = record;
+				summary = {
+					...fields,
+					kind: fields.kind ?? "teach",
+					messageCount: messages.length,
+					phase: phaseAt3Lh(messages),
+					pendingQuestion: danglingQuestionOf(messages) !== null,
+					pendingProblem: activeProblemOf(messages) !== null,
+				};
+			} catch (err) {
+				console.error(`[chat ${id}] summary projection failed:`, err);
+			}
+		}
+		if (summary) cache.set(file, { stamp, summary });
+		else cache.delete(file); // A transient read failure must remain retryable.
+		return summary;
+	} catch {
+		cache.delete(file);
+		return null;
+	}
+}
+
 function listChats(): ChatSummary[] {
 	try {
 		fs.mkdirSync(PATHS.chats, { recursive: true });
-		return fs
-			.readdirSync(PATHS.chats)
-			.filter((f) => f.endsWith(".json"))
-			.map((f) => getChat(f.slice(0, -5)))
-			.filter((r): r is ChatRecord => r !== null)
-			.map(({ messages, tree, turns, extractions, ...summary }) => {
-				// Per-record isolation (Wave B): a record whose messages fail the
-				// projection (e.g. pre-Wave-B UIMessage-format scratch — the
-				// zero-back-compat wipe makes these "corrupt") must not blank the
-				// whole sidebar — same isolation getChat's per-file catch gives.
-				try {
-					return {
-						// turns and extractions stay out of the list payload (list =
-						// summaries; usage aggregates ride the full record, the picker
-						// never needs them).
-						...summary,
-						// Normalized kind: absent record field reads as teach.
-						kind: summary.kind ?? "teach",
-						messageCount: messages.length,
-						// Record-derived status for the session picker: phase from the
-						// transcript's explicit events (probe_done concluded / verdict
-						// accepted — docs/probe-teach-split.md §4), pending question
-						// from the native dangling-call scan. Wave D: both folds read
-						// the NATIVE record (core/phases.ts phaseAt3Lh +
-						// native-messages.ts danglingQuestionOf). Liveness (busy) is
-						// NOT record-derived — the API route merges it (ChatListItem).
-						phase: phaseAt3Lh(messages),
-						pendingQuestion: danglingQuestionOf(messages) !== null,
-					};
-				} catch (err) {
-					console.error(`[chat ${summary.id}] summary projection failed:`, err);
-					return null;
-				}
-			})
+		const files = fs.readdirSync(PATHS.chats).filter((file) => file.endsWith(".json"));
+		const present = new Set(files.map((file) => path.join(PATHS.chats, file)));
+		const cache = summaryCache();
+		for (const file of cache.keys()) if (!present.has(file)) cache.delete(file);
+		return files
+			.map((file) => readSummary(file.slice(0, -5), cache))
 			.filter((s): s is ChatSummary => s !== null)
+			// Preserve the store's fresh-value contract, including nested settings.
+			.map((summary) => structuredClone(summary))
 			.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 	} catch {
 		return [];
@@ -196,7 +216,9 @@ function renameChat(id: string, title: string): ChatRecord {
  *  choreography (core/graph-deletion.ts), not the store's. */
 function deleteChat(id: string): boolean {
 	try {
-		fs.unlinkSync(chatFile(id));
+		const file = chatFile(id);
+		fs.unlinkSync(file);
+		summaryCache().delete(file);
 		emit("chats-changed", {}); // only a real removal — the present-entry law
 		return true;
 	} catch {

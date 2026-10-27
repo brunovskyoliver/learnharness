@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 export function PromptToolbar({ controls, children }: { controls?: ReactNode; children: ReactNode }) {
 	return (
 		<InputGroupAddon align="block-end" className="prompt-toolbar">
-			<div className="min-w-0 flex-1">{controls}</div>
+			<div data-prompt-controls="" className="min-w-0 flex-1">{controls}</div>
 			{children}
 		</InputGroupAddon>
 	);
@@ -27,7 +27,7 @@ export function PromptSubmit({
 			aria-label={label}
 			title={label}
 			data-stopping={stopping || undefined}
-			className={cn("prompt-submit", className)}
+			className={cn("prompt-submit min-h-11 min-w-11", className)}
 			{...props}
 		>
 			{stopping ? <SquareIcon aria-hidden="true" className="size-3" /> : <ArrowUpIcon aria-hidden="true" className="size-4" />}

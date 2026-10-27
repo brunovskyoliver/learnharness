@@ -15,7 +15,8 @@
  * the learner's edge sits.
  */
 
-import { Type, type Static } from "typebox";
+import { Array as ArrayType, Object as ObjectType, Optional as OptionalType, String as StringType, type Static } from "typebox";
+const Type = { Array: ArrayType, Object: ObjectType, Optional: OptionalType, String: StringType };
 
 /** One dependency strand the planned lesson will rest on. */
 export interface ProbeStrand {

@@ -491,7 +491,8 @@ describe("artifact chrome — scrollbar, invert toggles, downloads (release poli
 		);
 		const html = renderToStaticMarkup(<SubagentSteerCard message={projectNative([steer])[0] as never} />);
 		assert.match(html, /scrolling="no"/, "no internal scrollbar — the wheel chains to the session");
-		assert.match(html, /toggle-invert-demo-brightness/, "the invert switch (house Toggle)");
+		assert.match(html, /aria-label="Invert demo brightness"/, "the brightness control has an accessible name");
+		assert.match(html, /aria-pressed="false"/, "brightness starts uninverted");
 		assert.match(html, /data-testid="demo-download"/);
 		assert.ok(!html.includes("hue-rotate"), "a demo without a light page starts uninverted");
 		assert.match(html, /Wave interference/, "the title heads the card");

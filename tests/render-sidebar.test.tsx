@@ -39,6 +39,10 @@ function render(chat: ChatListItem, active = false) {
 }
 
 describe("SessionRow", () => {
+	it("keeps a native navigation link available before hydration", () => {
+		const chat = item({ id: "slow-network-session" });
+		assert.match(render(chat), /<a[^>]*href="\/chat\/slow-network-session"/);
+	});
 	it("no phase strips, no phase colors — the retired decoration", () => {
 		const html = render(item({ phase: "teach" }));
 		assert.ok(!html.includes("phase-strip"), "strip removed by design (too busy)");
@@ -175,5 +179,18 @@ describe("dateGroup", () => {
 		assert.equal(dateGroup(new Date(2026, 0, 2, 0, 5).toISOString(), now), "Today");
 		assert.equal(dateGroup(new Date(2026, 0, 1, 23, 50).toISOString(), now), "Yesterday");
 		assert.equal(dateGroup(new Date(2025, 11, 31, 12).toISOString(), now), "Earlier");
+	});
+});
+
+describe("sidebar snapshot identities", () => {
+	it("retains unchanged rows and the entire unchanged snapshot, but adopts changed fields and order", async () => {
+		const { reconcileChatSnapshot } = await import("../components/sidebar.tsx");
+		const first = item({ id: "first" }), second = item({ id: "second" });
+		const previous = [first, second];
+		assert.equal(reconcileChatSnapshot(previous, structuredClone(previous)), previous);
+		const updated = reconcileChatSnapshot(previous, [{ ...second, busy: true }, { ...first }]);
+		assert.notEqual(updated[0], second); assert.equal(updated[0]?.busy, true);
+		assert.equal(updated[1], first);
+		assert.deepEqual(reconcileChatSnapshot(previous, []), []);
 	});
 });

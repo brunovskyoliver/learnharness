@@ -1,6 +1,8 @@
 "use client";
 
-import { UserButton } from "@clerk/nextjs";
+import dynamic from "next/dynamic";
+
+const UserButton = dynamic(() => import("@clerk/nextjs").then((module) => module.UserButton));
 
 /** Hosted mode only: the signed-in account's avatar menu (Manage account,
  *  Sign out), at the right end of the sidebar footer. */

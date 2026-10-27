@@ -11,7 +11,16 @@ export async function checkStreamingUi(page, base, record) {
 	});
 	await page.setViewport({ width: 1440, height: 1000 });
 	const reset = await page.evaluateOnNewDocument((id) => { if (window === window.top) localStorage.removeItem(`lh:session-ui:v1:local:${id}`); }, record.id);
-	await page.goto(`${base}/chat/${record.id}`, { waitUntil: "networkidle2" });
+	await page.goto(`${base}/chat/${record.id}`, { waitUntil: "domcontentloaded" });
+	// The root event connection can open before selective Chat hydration.
+	// Require Chat's own live input handler before dispatching fixture events.
+	// An idle SSE sends its first heartbeat at 25s, so OPEN needs that bound.
+	await page.waitForFunction((id) => {
+		const chat = document.querySelector('[data-chat-id]');
+		const field = chat?.querySelector('[data-testid="composer"] textarea');
+		const props = field && Object.keys(field).find((key) => key.startsWith("__reactProps$"));
+		return chat?.dataset.chatId === id && typeof field?.[props]?.onChange === "function" && window.testEventSource?.readyState === EventSource.OPEN;
+	}, { timeout: 30000 }, record.id);
 	await page.removeScriptToEvaluateOnNewDocument(reset.identifier);
 	await page.evaluate((initial) => {
 		const originalFetch = window.fetch.bind(window);

@@ -15,12 +15,19 @@ import { checkTurnNavigationUi } from "./check-turn-navigation-ui.mjs";
 const data = await mkdtemp(path.join(os.tmpdir(), "learning-dock-ui-"));
 const port = Number(process.env.LH_UI_PORT ?? 3101);
 const base = `http://127.0.0.1:${port}`;
+const motionOnly = process.env.LH_UI_MOTION_ONLY === "1";
+const stateOnly = process.env.LH_UI_STATE_ONLY === "1";
+const helpersOnly = process.env.LH_UI_HELPERS_ONLY === "1" || stateOnly;
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const pythonSnippet = "predictions = X @ w\nerrors = predictions - y\nmse = np.mean(errors ** 2)";
 let server;
 let browser;
 let context;
 let page;
+const errors = [];
+const pendingRequests = new Map();
+const motionFailures = [];
+let output = "";
 try {
 	const chat = JSON.parse(await readFile(new URL("../tests/fixtures/golden-data/chats/chat_mv27rrra_feff23b6.json", import.meta.url), "utf8"));
 	const plan = chat.messages.findIndex((message) => message.role === "toolResult" && message.toolName === "plan_init" && message.details?.tree);
@@ -35,6 +42,16 @@ try {
 	const completed = JSON.parse(await readFile(new URL("../tests/fixtures/golden-data/chats/chat_mv27rrra_feff23b6.json", import.meta.url), "utf8"));
 	completed.id = "composer-ui-regression";
 	await writeFile(path.join(data, "chats", `${completed.id}.json`), JSON.stringify(completed));
+	const practice = JSON.parse(await readFile(new URL("../tests/fixtures/golden-data/chats/chat_mv293wv5_10656952.json", import.meta.url), "utf8"));
+	const problem = practice.messages.findIndex((message) => message.role === "assistant" && message.content?.some((part) => part.type === "toolCall" && part.name === "problem"));
+	assert.ok(problem >= 0, "practice fixture has an active problem");
+	practice.id = "practice-dock-ui-regression";
+	practice.messages = practice.messages.slice(0, problem + 2);
+	practice.messages.splice(problem, 0, {
+		...practice.messages[problem], id: "practice-reading-history", role: "assistant",
+		content: [{ type: "text", text: Array.from({ length: 30 }, (_, index) => `Earlier practice note ${index + 1}: compare the evidence with the current estimate before attempting the next problem.`).join("\n\n") }],
+	});
+	await writeFile(path.join(data, "chats", `${practice.id}.json`), JSON.stringify(practice));
 	const fence = "```";
 	const longCode = Array.from({ length: 11 }, (_, i) => `value_${i} = ${i}`).join("\n");
 	const wideCode = `message = "${"x".repeat(200)}"`;
@@ -56,7 +73,6 @@ try {
 		env: { ...process.env, LH_HOSTED: "0", LH_DATA_DIR: data, LH_AUTH_FILE: path.join(data, "auth.json"), NEXT_TELEMETRY_DISABLED: "1" },
 		stdio: ["ignore", "pipe", "pipe"],
 	});
-	let output = "";
 	server.stdout.on("data", (chunk) => { output = (output + chunk).slice(-4000); });
 	server.stderr.on("data", (chunk) => { output = (output + chunk).slice(-4000); });
 	let ready = false;
@@ -72,11 +88,49 @@ try {
 	page = await context.newPage();
 	page.setDefaultTimeout(5000);
 	page.setDefaultNavigationTimeout(30000);
-	const errors = [];
+	const openChat = async (id) => {
+		await page.goto(`${base}/chat/${id}`, { waitUntil: "domcontentloaded" });
+		await page.waitForFunction((expectedId) => {
+			const chat = document.querySelector('[data-chat-id]');
+			const field = chat?.querySelector('[data-testid="composer"] textarea, [data-testid="question-dock"] textarea, [data-testid="practice-dock"] textarea');
+			const props = field && Object.keys(field).find((key) => key.startsWith("__reactProps$"));
+			return chat?.dataset.chatId === expectedId && typeof field?.[props]?.onChange === "function";
+		}, {}, id);
+	};
 	page.on("pageerror", (error) => errors.push(error.message));
+	page.on("request", (request) => { const url = new URL(request.url()); pendingRequests.set(request, { url: url.origin + url.pathname, type: request.resourceType() }); });
+	page.on("requestfinished", (request) => pendingRequests.delete(request));
+	page.on("requestfailed", (request) => pendingRequests.delete(request));
+	if (!motionOnly && !helpersOnly) {
 	await page.setViewport({ width: 2000, height: 1216 });
-	await page.goto(`${base}/chat/${chat.id}`, { waitUntil: "networkidle2" });
+	await openChat(chat.id);
 	await page.waitForSelector('[data-testid="teach-check-reveal"]');
+	// Hold only newly requested script chunks after the CTA is activated. This
+	// exercises the cold lazy boundary without relying on an arbitrary delay.
+	const heldSetupScripts = [];
+	const holdSetup = (request) => {
+		if (request.resourceType() === "script") heldSetupScripts.push(request);
+		else void request.continue();
+	};
+	await page.setRequestInterception(true);
+	page.on("request", holdSetup);
+	await page.focus('[data-testid="setup-cta"]');
+	await page.keyboard.press("Enter");
+	await page.waitForSelector('[data-testid="setup-loading-dialog"] [role="status"]', { visible: true });
+	assert.equal(await page.$eval('[data-testid="setup-loading-dialog"]', (element) => element.contains(document.activeElement)), true, "loading setup owns keyboard focus");
+	await page.waitForFunction(() => !document.querySelector('[data-testid="setup-dialog"]'));
+	assert.ok(heldSetupScripts.length > 0, "setup chunk is requested only when opened");
+	page.off("request", holdSetup);
+	for (const request of heldSetupScripts) await request.continue();
+	await page.setRequestInterception(false);
+	await page.waitForSelector('[data-testid="setup-dialog"]', { visible: true });
+	await page.waitForSelector('[data-testid="setup-loading-dialog"]', { hidden: true });
+	await page.waitForFunction(() => document.querySelector('[data-testid="setup-dialog"]').contains(document.activeElement));
+	await page.click('[data-testid="setup-close"]');
+	await page.waitForSelector('[data-testid="setup-dialog"]', { hidden: true });
+	await page.waitForFunction(() => document.activeElement === document.querySelector('[data-testid="setup-cta"]'));
+	await page.evaluate(() => document.activeElement?.blur());
+	console.log("PASS cold setup loading feedback, modal focus handoff and original CTA focus restoration");
 	await page.evaluate(() => {
 		let element = document.querySelector('[data-testid="dock-spacer"]').parentElement;
 		while (element && !/auto|scroll/.test(getComputedStyle(element).overflowY)) element = element.parentElement;
@@ -85,10 +139,17 @@ try {
 	const sample = () => page.evaluate(() => new Promise((resolve) => {
 		const values = [];
 		const start = performance.now();
+		let collapsedDistance = null;
+		const beforeLayout = () => {
+			if (document.querySelector('[data-testid="dock-shell"]').dataset.compact === "true") collapsedDistance = window.dockScroller.scrollHeight - window.dockScroller.clientHeight - window.dockScroller.scrollTop;
+		};
+		// Capture the threshold before React expands the dock and increases its
+		// reserved tail. The next painted frame legitimately has a larger range.
+		window.dockScroller.addEventListener("scroll", beforeLayout, true);
 		const frame = () => {
-			values.push({ time: performance.now() - start, height: document.querySelector('[data-testid="dock-shell"]').getBoundingClientRect().height, scroll: window.dockScroller.scrollTop, distance: window.dockScroller.scrollHeight - window.dockScroller.clientHeight - window.dockScroller.scrollTop, expanded: !document.querySelector('[data-testid="question-dock-bar"], [data-testid="teach-check-reveal"]') });
+			values.push({ animations: window.dockAnimationTrace ? document.querySelector('[data-testid="dock-shell"]').getAnimations().map((animation) => ({ playState: animation.playState, currentTime: animation.currentTime, keyframes: animation.effect?.getKeyframes() })) : undefined, collapsedDistance, time: performance.now() - start, height: document.querySelector('[data-testid="dock-shell"]').getBoundingClientRect().height, scroll: window.dockScroller.scrollTop, distance: window.dockScroller.scrollHeight - window.dockScroller.clientHeight - window.dockScroller.scrollTop, expanded: document.querySelector('[data-testid="dock-shell"]').dataset.compact === 'false' });
 			if (performance.now() - start < 380) requestAnimationFrame(frame);
-			else resolve(values);
+			else { window.dockScroller.removeEventListener("scroll", beforeLayout, true); resolve(values); }
 		};
 		requestAnimationFrame(frame);
 	}));
@@ -99,6 +160,7 @@ try {
 	assert.ok(new Set(heights).size > 3, "expansion has intermediate heights");
 	assert.ok(heights.at(-1) > heights[0] + 100, "question expands");
 	assert.ok(frames.some((frame) => frame.scroll > frames[0].scroll + 1 && frame.scroll < frames.at(-1).scroll - 1), "reveal scroll moves through intermediate positions");
+	assert.equal(await page.$eval('[data-testid="lesson-question"]', (element) => !!element.closest('[data-testid="dock-shell"]') && !element.closest('[data-testid="lesson-content"]')), true, "active question follows the floating prompt");
 	console.log("PASS coordinated expansion and scroll");
 	assert.equal(await page.$('[data-testid="plan-sidebar"]'), null, "no persistent plan sidebar");
 	assert.equal(await page.$('[data-testid="plan-popup"]'), null, "plan starts closed");
@@ -116,11 +178,13 @@ try {
 	await page.keyboard.type("Keep this draft.");
 	await page.click('[data-kbdrow="0"]');
 	assert.notEqual(await page.evaluate(() => document.activeElement?.tagName), "TEXTAREA", "answer button keeps its action");
+	await page.click('[data-testid="confidence-segments"] [role="radio"]:last-child');
+	const chosenConfidence = await page.$eval('[data-testid="confidence-segments"] [aria-checked="true"]', (element) => element.textContent);
 	await page.evaluate(() => document.activeElement?.blur());
 	const selection = await page.evaluate(() => ({
 		button: getComputedStyle(document.querySelector('button[type="submit"]')).userSelect,
 		input: getComputedStyle(document.querySelector('[aria-label="Your thinking"]')).userSelect,
-		question: getComputedStyle(document.querySelector('[data-testid="question-dock"] > div')).userSelect,
+		question: getComputedStyle(document.querySelector('[data-testid="lesson-question"]')).userSelect,
 	}));
 	assert.deepEqual(selection, { button: "none", input: "text", question: "text" });
 	console.log("PASS blank-area focus and selective text selection");
@@ -132,7 +196,13 @@ try {
 	await page.mouse.wheel({ deltaY: -420 });
 	frames = await sampling;
 	assert.ok(new Set(frames.map((frame) => Math.round(frame.scroll))).size > 3, "wheel over prompt scrolls smoothly");
-	assert.equal(await page.$('[data-testid="question-dock-bar"]'), null, "scrolling up must keep a typed draft expanded, even after the input blurs");
+	await page.waitForSelector('[data-testid="question-dock-bar"]', { visible: true });
+	assert.equal(await page.$eval('[data-testid="lesson-question"]', (element) => element.inert), true, "outgoing choices become inert as soon as folding begins");
+	await page.waitForFunction(() => document.querySelector('[data-testid="lesson-question"]').hidden);
+	await page.click('[data-testid="question-dock-bar"]');
+	await wait(400);
+	assert.equal(await page.$eval('[data-kbdrow="0"]', (element) => element.getAttribute("aria-checked")), "true", "fold preserves the selected answer");
+	assert.equal(await page.$eval('[data-testid="confidence-segments"] [aria-checked="true"]', (element) => element.textContent), chosenConfidence, "fold preserves confidence");
 	assert.equal(await page.$eval('[aria-label="Your thinking"]', (element) => element.value), "Keep this draft.");
 	await page.evaluate(() => { window.dockScroller.scrollTop = window.dockScroller.scrollHeight; });
 	await wait(450);
@@ -153,8 +223,9 @@ try {
 	await wait(400);
 	assert.equal(await page.$eval('[aria-label="Your thinking"]', (element) => element.value), "", "cleared draft stays empty after folding");
 	assert.equal(await page.$eval('[data-kbdrow="0"]', (element) => element.getAttribute("aria-checked")), "true", "fold preserves choice");
-	assert.ok(await page.evaluate(() => window.dockScroller.scrollHeight - window.dockScroller.clientHeight - window.dockScroller.scrollTop < 2), "reveal ends at the bottom");
-	console.log("PASS focused inputs and typed drafts stay open; idle inputs still fold");
+	const revealDistance = await page.evaluate(() => window.dockScroller.scrollHeight - window.dockScroller.clientHeight - window.dockScroller.scrollTop);
+	assert.ok(revealDistance < 2, `reveal ends at the bottom (remaining ${revealDistance}px)`);
+	console.log("PASS focused inputs stay open; folded inputs preserve drafts, choice and confidence");
 	// The lesson can end above the prompt while its reserved tail remains.
 	// Expansion now waits for the final 16px of the actual scroll range.
 	await page.mouse.wheel({ deltaY: -1000 });
@@ -174,7 +245,8 @@ try {
 	await page.mouse.wheel({ deltaY: 100 });
 	frames = await sampling;
 	assert.ok(frames.some((frame) => frame.expanded), "the prompt opens in the final 16px");
-	assert.ok(frames.find((frame) => frame.expanded).distance <= 16, "the lesson-end position does not trigger early expansion");
+	const expansionThreshold = frames.find((frame) => frame.expanded).collapsedDistance;
+	assert.ok(typeof expansionThreshold === "number" && expansionThreshold <= 16, `the lesson-end position does not trigger early expansion (threshold ${expansionThreshold}px)`);
 	await wait(300);
 	assert.equal(await page.$('[data-testid="question-dock-bar"]'), null);
 	assert.equal(await page.$eval('[aria-label="Your thinking"]', (element) => element.value), "");
@@ -206,17 +278,18 @@ try {
 		await wait(450);
 		const layout = await page.evaluate(() => {
 			const prompt = document.querySelector('[data-testid="dock-shell"]').getBoundingClientRect();
-			const question = document.querySelector('[data-testid="question-dock"] > div');
+			const question = document.querySelector('[data-testid="lesson-question"]');
 			return { sidebar: !!document.querySelector('[data-testid="plan-sidebar"]'), top: prompt.top, bottom: prompt.bottom, questionHeight: question.clientHeight, width: document.documentElement.scrollWidth, viewport: innerWidth };
 		});
 		assert.equal(layout.sidebar, false);
 		assert.ok(layout.top >= 52 && layout.bottom <= viewport.height, `prompt stays within ${viewport.width}×${viewport.height}: ${JSON.stringify(layout)}`);
 		assert.ok(layout.questionHeight >= 80, "question remains usable");
+		assert.ok(layout.questionHeight <= viewport.height / 2 + 1, "question stays within half the available screen");
 		assert.ok(layout.width <= layout.viewport, "no horizontal overflow");
 		if (viewport.width === 800) {
 			await page.waitForFunction(() => window.dockScroller.scrollHeight - window.dockScroller.clientHeight - window.dockScroller.scrollTop < 2);
 			const nested = await page.evaluate(() => {
-				const element = document.querySelector('[data-testid="question-dock"] > div');
+				const element = document.querySelector('[data-testid="lesson-question"]');
 				element.scrollTop = 0;
 				const bounds = element.getBoundingClientRect();
 				return { x: bounds.left + 30, y: bounds.top + 30, main: window.dockScroller.scrollTop };
@@ -224,7 +297,7 @@ try {
 			await page.mouse.move(nested.x, nested.y);
 			await page.mouse.wheel({ deltaY: 80 });
 			await wait(100);
-			assert.ok(await page.$eval('[data-testid="question-dock"] > div', (element) => element.scrollTop > 0), "nested question area keeps native scrolling");
+			assert.ok(await page.$eval('[data-testid="lesson-question"]', (element) => element.scrollTop > 0), "nested question area keeps native scrolling");
 			assert.equal(await page.evaluate(() => window.dockScroller.scrollTop), nested.main, "nested scrolling does not move the lesson");
 		}
 	}
@@ -243,7 +316,7 @@ try {
 	assert.equal(await page.$eval('[data-testid="dock-shell"]', (element) => element.getAnimations().length), 0, "reduced motion has no height animation");
 	assert.equal(await page.$eval('[aria-label="Your thinking"]', (element) => element.value), "");
 	await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "no-preference" }]);
-	await page.goto(`${base}/chat/${completed.id}`, { waitUntil: "networkidle2" });
+	await openChat(completed.id);
 	const composer = await page.$('[data-testid="composer"]');
 	const composerBox = await composer.boundingBox();
 	await page.mouse.click(composerBox.x + composerBox.width / 2, composerBox.y + composerBox.height - 3);
@@ -281,7 +354,66 @@ try {
 	await page.click('[aria-label="Scroll to latest"]');
 	await page.waitForFunction(() => window.dockScroller.scrollHeight - window.dockScroller.clientHeight - window.dockScroller.scrollTop < 2);
 	console.log("PASS composer focus and jump-to-latest without a question");
-	await page.goto(`${base}/chat/${codeChat.id}`, { waitUntil: "networkidle2" });
+	if (process.env.LH_UI_TRACE_ANIMATIONS) await page.evaluate(() => {
+		window.dockAnimationTrace = [];
+		const animate = Element.prototype.animate;
+		Element.prototype.animate = function(keyframes, options) {
+			if (this.matches('[data-testid="dock-shell"]')) window.dockAnimationTrace.push({ target: this.dataset.testid, time: performance.now(), keyframes, options, height: this.getBoundingClientRect().height, computedHeight: getComputedStyle(this).height, compact: this.dataset.compact });
+			return animate.call(this, keyframes, options);
+		};
+	});
+	await page.type('[data-testid="composer"] textarea', "Ordinary composer draft");
+	await page.evaluate(() => { window.originalComposerInput = document.querySelector('[data-testid="composer"] textarea'); document.activeElement?.blur(); });
+	await page.mouse.move(lessonLeft + 40, 160);
+	sampling = sample();
+	await page.mouse.wheel({ deltaY: -420 });
+	frames = await sampling;
+	await page.waitForFunction(() => document.querySelector('[data-testid="dock-shell"]').dataset.compact === "true");
+	if (process.env.LH_UI_TRACE_ANIMATIONS && process.env.LH_UI_SCREENSHOT_DIR) {
+		await mkdir(process.env.LH_UI_SCREENSHOT_DIR, { recursive: true });
+		await writeFile(path.join(process.env.LH_UI_SCREENSHOT_DIR, "dock-motion-trace.json"), JSON.stringify({ calls: await page.evaluate(() => window.dockAnimationTrace), frames }, null, 2));
+	}
+	if (new Set(frames.map((frame) => Math.round(frame.height))).size <= 3) motionFailures.push(`ordinary composer has intermediate compacting heights: ${JSON.stringify(frames.map(({time,height,expanded})=>({time:Math.round(time),height:Math.round(height),expanded})))}`);
+	assert.equal(await page.$eval('[data-testid="composer"] textarea', (element) => element.value), "Ordinary composer draft", "compacting preserves the draft");
+	assert.equal(await page.evaluate(() => document.querySelector('[data-testid="composer"] textarea') === window.originalComposerInput), true, "compacting preserves the mounted input");
+	await page.focus('[data-testid="composer"] textarea');
+	await page.waitForFunction(() => document.querySelector('[data-testid="dock-shell"]').dataset.compact === "false");
+	await page.mouse.wheel({ deltaY: -160 });
+	await wait(350);
+	assert.equal(await page.$eval('[data-testid="dock-shell"]', (element) => element.dataset.compact), "false", "focused composer stays expanded");
+	await page.evaluate(() => document.activeElement?.blur());
+	await page.mouse.wheel({ deltaY: -160 });
+	await page.waitForFunction(() => document.querySelector('[data-testid="dock-shell"]').dataset.compact === "true");
+	await page.click('[aria-label="Scroll to latest"]');
+	await page.waitForFunction(() => document.querySelector('[data-testid="dock-shell"]').dataset.compact === "false" && window.dockScroller.scrollHeight - window.dockScroller.clientHeight - window.dockScroller.scrollTop < 2);
+	assert.equal(await page.$eval('[data-testid="composer"] textarea', (element) => element.value), "Ordinary composer draft");
+	console.log("PASS ordinary composer keeps its input and draft, protects focus and expands at latest");
+	await openChat(practice.id);
+	await page.setViewport({ width: 390, height: 844 });
+	await page.waitForSelector('[data-testid="practice-dock-bar"]', { visible: true });
+	assert.equal(await page.$eval('[data-testid="practice-problem-content"]', (element) => element.hidden && element.inert), true, "practice starts with a compact summary");
+	await page.click('[data-testid="practice-dock-bar"]');
+	await page.waitForSelector('[data-testid="practice-problem-content"]', { visible: true });
+	assert.ok(await page.$eval('[data-testid="practice-problem-content"]', (element) => element.textContent.trim().length > 0 && !!element.closest('[data-testid="dock-shell"]')), "expanded practice statement follows the prompt");
+	await page.type('[data-testid="practice-thinking-field"] textarea', "My practice reasoning survives folding.");
+	await page.evaluate(() => {
+		window.practiceInput = document.querySelector('[data-testid="practice-thinking-field"] textarea');
+		document.activeElement?.blur();
+		let scroller = document.querySelector('[data-testid="dock-spacer"]').parentElement;
+		while (scroller && !/auto|scroll/.test(getComputedStyle(scroller).overflowY)) scroller = scroller.parentElement;
+		window.dockScroller = scroller;
+	});
+	const practiceLessonLeft = await page.$eval('[role="log"]', (element) => element.getBoundingClientRect().left);
+	await page.mouse.move(practiceLessonLeft + 20, 100);
+	await page.mouse.wheel({ deltaY: -420 });
+	await page.waitForSelector('[data-testid="practice-dock-bar"]', { visible: true });
+	await page.click('[data-testid="practice-dock-bar"]');
+	await page.waitForSelector('[data-testid="practice-problem-content"]', { visible: true });
+	assert.equal(await page.$eval('[data-testid="practice-thinking-field"] textarea', (element) => element.value), "My practice reasoning survives folding.");
+	assert.equal(await page.evaluate(() => window.practiceInput === document.querySelector('[data-testid="practice-thinking-field"] textarea')), true, "practice folding keeps the input mounted");
+	assert.ok(await page.$eval('[data-testid="practice-problem-content"]', (element) => element.getBoundingClientRect().height <= (window.visualViewport?.height ?? innerHeight) / 2 + 1), "mobile practice content is bounded to half the available viewport");
+	console.log("PASS floating practice summary, expanded statement, mobile bounds and preserved draft/input");
+	await openChat(codeChat.id);
 	await page.setViewport({ width: 1024, height: 768 });
 	await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "no-preference" }]);
 	await page.waitForSelector('[data-testid="md-code"]');
@@ -333,12 +465,14 @@ try {
 	assert.ok(await page.evaluate(() => document.querySelectorAll('[data-testid="md-code"]')[2].querySelector('[data-streamdown="code-block-body"]').scrollWidth > document.querySelectorAll('[data-testid="md-code"]')[2].querySelector('[data-streamdown="code-block-body"]').clientWidth), "unwrapping restores horizontal source scrolling");
 	assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), "code does not overflow the page");
 	if (process.env.LH_UI_SCREENSHOT) await page.screenshot({ path: process.env.LH_UI_SCREENSHOT });
+	}
+	if (!helpersOnly) {
 	await page.setViewport({ width: 2048, height: 1229 });
 	const motionClient = await page.createCDPSession();
 	for (const rate of [1, 4]) {
 		const reset = await page.evaluateOnNewDocument((id) => { if (window === window.top) localStorage.removeItem(`lh:session-ui:v1:local:${id}`); }, recordingChat.id);
 		await motionClient.send("Emulation.setCPUThrottlingRate", { rate });
-		await page.goto(`${base}/chat/${recordingChat.id}`, { waitUntil: "networkidle2" });
+		await openChat(recordingChat.id);
 		await page.removeScriptToEvaluateOnNewDocument(reset.identifier);
 		await page.click('[data-testid="teach-check-reveal"]');
 		await wait(450);
@@ -348,13 +482,21 @@ try {
 			window.stopDockObservation = false;
 			let transitions = 0;
 			const phases = [];
+			window.dockObservationPhases = phases;
+			window.dockDebugScrollEvents = [];
+			window.dockDebugWheelEvents = [];
+			let scroller = document.querySelector('[data-testid="dock-spacer"]').parentElement;
+			while(scroller && !/auto|scroll/.test(getComputedStyle(scroller).overflowY)) scroller=scroller.parentElement;
+			window.debugMotionScroller = scroller;
+			scroller.addEventListener("wheel", (event) => window.dockDebugWheelEvents.push({time:performance.now(),deltaY:event.deltaY,target:event.target.tagName}), true);
+			scroller.addEventListener("scroll", () => { window.dockDebugScrollEvents.push({time:performance.now(),y:scroller.scrollTop,distance:scroller.scrollHeight-scroller.clientHeight-scroller.scrollTop,height:scroller.scrollHeight,client:scroller.clientHeight,compact:document.querySelector('[data-testid="dock-shell"]').dataset.compact});if(window.dockDebugScrollEvents.length>150)window.dockDebugScrollEvents.shift(); }, true);
 			let blankFrames = 0;
 			let previous = !!document.querySelector('[data-testid="question-dock-bar"]');
 			const start = performance.now();
 			const frame = () => {
 				const shell = document.querySelector('[data-testid="dock-shell"]');
 				const bar = !!document.querySelector('[data-testid="question-dock-bar"]');
-				if (bar !== previous) { transitions++; previous = bar; phases.push({ t: Math.round(performance.now() - start), bar, y: Math.round(document.querySelector('[data-testid="dock-spacer"]').parentElement.parentElement.scrollTop), h: Math.round(shell.getBoundingClientRect().height) }); }
+				if (bar !== previous) { transitions++; previous = bar; phases.push({ t: Math.round(performance.now() - start), bar, y: Math.round(scroller.scrollTop), distance: scroller.scrollHeight-scroller.clientHeight-scroller.scrollTop, scrollHeight: scroller.scrollHeight, clientHeight: scroller.clientHeight, h: Math.round(shell.getBoundingClientRect().height) }); }
 				const outgoing = shell.querySelector('.dock-outgoing');
 				const painted = Math.max(shell.firstElementChild.getBoundingClientRect().height, outgoing && Number(getComputedStyle(outgoing).opacity) > .03 ? outgoing.getBoundingClientRect().height : 0);
 				if (shell.getBoundingClientRect().height - painted > 80) blankFrames++;
@@ -363,6 +505,7 @@ try {
 			};
 			requestAnimationFrame(frame);
 		}));
+		void observing.catch(() => {});
 		await page.mouse.wheel({ deltaY: -360 });
 		await page.waitForSelector('[data-testid="question-dock-bar"]');
 		await wait(450);
@@ -378,17 +521,30 @@ try {
 		await page.evaluate(() => { window.stopDockObservation = true; });
 		const stable = await observing;
 		assert.equal(stable.transitions, 4, `two up/down gestures produce exactly two collapses and two openings: ${JSON.stringify(stable.phases)}`);
-		assert.equal(stable.blankFrames, 0, "the outgoing quiz stays painted during the morph");
-		console.log(`PASS recording regression at ${rate}x CPU slowdown: no repeated toggles or blank quiz shell`);
+		if (stable.blankFrames !== 0) motionFailures.push(`the outgoing quiz stays painted during the morph at ${rate}x CPU (${stable.blankFrames} blank frames)`);
+		console.log(`PASS recording regression at ${rate}x CPU slowdown: no repeated toggles; blank frames ${stable.blankFrames}`);
 	}
 	await motionClient.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+	}
+	if (!motionOnly) {
+	if (!helpersOnly) {
 	const resetNavigation = await page.evaluateOnNewDocument((id) => { if (window === window.top) localStorage.removeItem(`lh:session-ui:v1:local:${id}`); }, recordingChat.id);
 	await checkTurnNavigationUi(page, base, recordingChat.id, completed.id);
 	await page.removeScriptToEvaluateOnNewDocument(resetNavigation.identifier);
-	await checkStreamingUi(page, base, completed);
+	}
+	if (!stateOnly) await checkStreamingUi(page, base, completed);
 	await checkSessionStateUi(page, base, completed.id, codeChat.id, recordingChat.id);
+	}
+	assert.deepEqual(motionFailures, [], "all dock height transitions animate");
 	assert.deepEqual(errors, [], "no browser exceptions");
-	console.log("PASS reduced motion; no browser exceptions");
+	console.log("PASS requested dock checks; no browser exceptions");
+} catch (error) {
+	if (process.env.LH_UI_SCREENSHOT_DIR && page) {
+		await mkdir(process.env.LH_UI_SCREENSHOT_DIR, { recursive: true });
+		await page.screenshot({ path: path.join(process.env.LH_UI_SCREENSHOT_DIR, "dock-failure.png") }).catch(() => {});
+		await writeFile(path.join(process.env.LH_UI_SCREENSHOT_DIR, "dock-failure.json"), JSON.stringify({ error: error.message, errors, motionFailures, pendingRequests: [...pendingRequests.values()], serverOutput: output, page: await page.evaluate(() => ({ hydration: (()=>{const chat=document.querySelector("[data-chat-id]");const field=chat?.querySelector("[data-testid=composer] textarea");const key=field&&Object.keys(field).find(k=>k.startsWith("__reactProps$"));return {chatId:chat?.dataset.chatId,field:!!field,propsKey:key,onChange:typeof field?.[key]?.onChange,eventSource:!!window.testEventSource,eventState:window.testEventSource?.readyState};})(), text: document.body.innerText.slice(-6000), observation: window.dockObservationPhases, scrollEvents: window.dockDebugScrollEvents, wheelEvents: window.dockDebugWheelEvents, shell: document.querySelector('[data-testid="dock-shell"]')?.outerHTML.slice(0,1000), distance: window.dockScroller ? window.dockScroller.scrollHeight - window.dockScroller.clientHeight - window.dockScroller.scrollTop : null })).catch(() => null) }, null, 2));
+	}
+	throw error;
 } finally {
 	await page?.close();
 	await context?.close();

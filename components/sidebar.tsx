@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, Fragment, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import { usePathname, useRouter } from "next/navigation";
@@ -24,6 +24,7 @@ import { useServerEvent, useServerResync } from "@/components/server-events";
 import type { ChatListItem } from "@/src/core";
 import { kbdEventForAction } from "@/src/core";
 import { notifySettingsSaved } from "@/components/settings-signal";
+import { createSidebarRefresh } from "@/components/sidebar-refresh";
 import { SidebarFrame } from "@/components/sidebar-frame";
 export { clampSidebarWidth } from "@/components/sidebar-frame";
 
@@ -85,7 +86,8 @@ declare global {
 	}
 }
 
-const SidebarContext = createContext<{ open: boolean; overlay: boolean; close: () => void; toggle: () => void }>({
+const SidebarContext = createContext<{ initializing: boolean; open: boolean; overlay: boolean; close: () => void; toggle: () => void }>({
+	initializing: true,
 	open: false,
 	overlay: false,
 	close: () => {},
@@ -104,9 +106,9 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 		notifySettingsSaved("keys"); // cover changes missed before this root-lifetime subscription
 		return off;
 	}, []);
-	// Start closed so server and client first-render agree (no hydration
-	// mismatch); the stored value is applied after mount.
-	const [open, setOpen] = useState(false);
+	// The server seed is readable before hydration. Bootstrap CSS restores
+	// saved width/closed preference and hides the inline pane on mobile.
+	const [open, setOpen] = useState(true);
 	const [narrow, setNarrow] = useState(false);
 	const [overlayOpen, setOverlayOpen] = useState(false);
 	const [mounted, setMounted] = useState(false);
@@ -184,7 +186,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 	}, [toggle]);
 
 	return (
-		<SidebarContext.Provider value={{ open: narrow ? !IS_ELECTRON && overlayOpen : open, overlay: narrow && !IS_ELECTRON, close, toggle }}>
+		<SidebarContext.Provider value={{ initializing: !mounted, open: narrow ? !IS_ELECTRON && overlayOpen : open, overlay: narrow && !IS_ELECTRON, close, toggle }}>
 			{/* transitions gated on mount: no slide-in flash on page load */}
 			<div className={cn("flex h-dvh", mounted && "[&_.sidebar-motion]:transition-[width,margin,opacity]")}>{children}</div>
 		</SidebarContext.Provider>
@@ -203,12 +205,13 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
  *  so resting layouts are pixel-identical to the old conditional render.
  *  The icon fades with the slot and is clipped by it as it collapses —
  *  no popping in either direction. */
-export function SidebarToggle() {
+export function SidebarToggle({ shellMobile = false }: { shellMobile?: boolean } = {}) {
 	const { open, toggle } = useSidebar();
 	return (
 		<span
 			className={cn(
-				"sidebar-motion lh-no-drag relative flex h-9 shrink-0 overflow-hidden duration-200",
+				"sidebar-toggle-slot sidebar-motion lh-no-drag relative flex h-9 shrink-0 overflow-hidden duration-200",
+				shellMobile && "max-[927px]:invisible",
 				open ? "w-0 -mr-3" : "w-9 mr-0 lh-closed-toggle",
 			)}
 		>
@@ -318,16 +321,21 @@ export function SessionRow({
 	 *  active session, which stays filled. */
 	kbdSelected?: boolean;
 	/** Right-click opens the context menu (Rename / Export / Delete). */
-	onContextMenu?: (e: React.MouseEvent<HTMLButtonElement>) => void;
+	onContextMenu?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
 }) {
 	// Slim row (ui-v2, after T3 Code): a status glyph, the title, the time.
 	// The state text lives in the tooltip; the glyph carries it at a glance.
 	const practice = (chat.kind ?? "teach") === "practice";
 	const waiting = chat.pendingQuestion || (practice && chat.pendingProblem);
 	return (
-		<button
-			type="button"
-			onClick={onOpen}
+		<a
+			href={`/chat/${chat.id}`}
+			suppressHydrationWarning
+			onClick={(event) => {
+				if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+				event.preventDefault();
+				onOpen();
+			}}
 			onContextMenu={onContextMenu}
 			title={`${chat.title}\n${sessionMeta(chat)}`}
 			data-testid={kbdSelected ? "session-row-kbd" : "session-row"}
@@ -346,9 +354,31 @@ export function SessionRow({
 			{(chat.busy || chat.compacting || waiting) && <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground">
 				{chat.busy || chat.compacting ? <SessionStatus busy /> : <MessageCircleQuestionIcon className="ui-icon" aria-label="Waiting for you" />}
 			</span>}
-			<span className="shrink-0 text-xs tabular-nums text-muted-foreground">{shortAgo(chat.updatedAt)}</span>
-		</button>
+			<span suppressHydrationWarning className="shrink-0 text-xs tabular-nums text-muted-foreground">{shortAgo(chat.updatedAt)}</span>
+		</a>
 	);
+}
+
+/** Keep unchanged rows stable during search, events, and navigation. */
+const StableSessionRow = memo(function StableSessionRow({ chat, active, kbdSelected, onOpen, onContextMenu }: {
+	chat: ChatListItem; active: boolean; kbdSelected: boolean;
+	onOpen: (id: string) => void;
+	onContextMenu: (event: React.MouseEvent<HTMLAnchorElement>, chat: ChatListItem) => void;
+}) {
+	return <SessionRow chat={chat} active={active} kbdSelected={kbdSelected}
+		onOpen={useCallback(() => onOpen(chat.id), [onOpen, chat.id])}
+		onContextMenu={useCallback((event: React.MouseEvent<HTMLAnchorElement>) => onContextMenu(event, chat), [onContextMenu, chat])} />;
+});
+
+/** Reuse rows when a refresh has no field changes. */
+export function reconcileChatSnapshot(previous: ChatListItem[] | null, next: ChatListItem[]): ChatListItem[] {
+	if (!previous) return next;
+	const byId = new Map(previous.map((chat) => [chat.id, chat]));
+	const reconciled = next.map((chat) => {
+		const old = byId.get(chat.id);
+		return old && JSON.stringify(old) === JSON.stringify(chat) ? old : chat;
+	});
+	return previous.length === reconciled.length && reconciled.every((chat, i) => chat === previous[i]) ? previous : reconciled;
 }
 
 /** The inline-rename row (wave 6): same geometry as SessionRow, but the
@@ -380,6 +410,7 @@ export function RenameRow({ chat, onCommit, onCancel }: { chat: ChatListItem; on
 				onKeyDown={(e) => {
 					if (e.key === "Enter") e.currentTarget.blur();
 					if (e.key === "Escape") {
+						e.preventDefault();
 						e.stopPropagation(); // discard, not also the sidebar/chat chains
 						onCancel();
 					}
@@ -398,13 +429,15 @@ export function RenameRow({ chat, onCommit, onCancel }: { chat: ChatListItem; on
 export type SessionKindFilter = "teach" | "all" | "practice";
 const KIND_FILTER_KEY = "lh:session-kind-filter";
 
-function SessionsSidebar({ account }: { account?: React.ReactNode }) {
-	const { open, toggle, overlay, close } = useSidebar();
-	const [chats, setChats] = useState<ChatListItem[] | null>(null);
+function SessionsSidebar({ account, initialChats }: { account?: React.ReactNode; initialChats?: ChatListItem[] }) {
+	const { initializing, open, toggle, overlay, close } = useSidebar();
+	const [chats, setChats] = useState<ChatListItem[] | null>(() => initialChats ?? null);
 	const [loadError, setLoadError] = useState(false);
 	const [query, setQuery] = useState("");
 	const [kindFilter, setKindFilter] = useState<SessionKindFilter>("all");
+	const [hydrated, setHydrated] = useState(false);
 	useEffect(() => {
+		setHydrated(true);
 		const stored = window.localStorage.getItem(KIND_FILTER_KEY);
 		if (stored === "teach" || stored === "all" || stored === "practice") setKindFilter(stored);
 	}, []);
@@ -443,27 +476,19 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 			.map((r) => r.c);
 	}, [chats, query, kindFilter]);
 
-	const refreshInFlightRef = useRef(false);
-	const refresh = useCallback(async () => {
-		// In-flight coalesce (S6): event bursts may land several refresh
-		// calls at once — one fetch serves them all; anything newer arrives
-		// with the next event's fetch.
-		if (refreshInFlightRef.current) return;
-		refreshInFlightRef.current = true;
+	const refresh = useMemo(() => createSidebarRefresh(async () => {
 		try {
 			const res = await fetch("/api/chats", { cache: "no-store" });
 			if (!res.ok) throw new Error("Could not load sessions");
 			const d = (await res.json()) as { chats: ChatListItem[] };
 			if (!Array.isArray(d.chats)) throw new Error("Invalid sessions response");
-			setChats(d.chats);
+			setChats((previous) => reconcileChatSnapshot(previous, d.chats));
 			setLoadError(false);
 		} catch {
-			// Keep the last good snapshot; an initial failure is not an empty list.
+			// A failed refresh retains the seed or last successful snapshot.
 			setLoadError(true);
-		} finally {
-			refreshInFlightRef.current = false;
 		}
-	}, []);
+	}), []);
 
 	/* Instant rename propagation (2026-09-17): the chat header's rename
 	   commits dispatch lh:chat-renamed; patch the snapshot in place instead
@@ -549,6 +574,11 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 	   coexist: hovering doesn't claim, a click or an open clears the
 	   selection. */
 	const [kbdIndex, setKbdIndex] = useState<number | null>(null);
+	const openSession = useCallback((id: string) => {
+		setKbdIndex(null);
+		router.push(`/chat/${id}`);
+		if (overlay) close();
+	}, [router, overlay, close]);
 	const searchRef = useRef<HTMLInputElement>(null);
 	const listRef = useRef<HTMLDivElement>(null);
 
@@ -565,11 +595,11 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 	const [renamingId, setRenamingId] = useState<string | null>(null);
 	const [deleting, setDeleting] = useState<ChatListItem | null>(null);
 
-	const openContext = (e: React.MouseEvent<HTMLButtonElement>, chat: ChatListItem) => {
+	const openContext = useCallback((e: React.MouseEvent<HTMLAnchorElement>, chat: ChatListItem) => {
 		e.preventDefault(); // suppress the native menu
 		ctxAnchorRef.current = e.currentTarget;
 		setCtxChatId(chat.id);
-	};
+	}, []);
 
 	// The menu contract (agent-section's): any pointerdown outside the menu
 	// or its row closes it; Esc is CLAIMED so it never also aborts a turn
@@ -585,6 +615,7 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 		};
 		const onKeyDown = (e: KeyboardEvent) => {
 			if (e.key === "Escape") {
+				e.preventDefault();
 				e.stopPropagation();
 				setCtxChatId(null);
 			}
@@ -673,6 +704,7 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 		};
 		const onKeyDown = (e: KeyboardEvent) => {
 			if (e.key === "Escape") {
+				e.preventDefault();
 				e.stopPropagation();
 				setFilterOpen(false);
 			}
@@ -686,11 +718,11 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 	}, [filterOpen]);
 
 	const sidebar = (
-		<SidebarFrame open={open} overlay={overlay} onClose={close} hasMenu={Boolean(ctxChatId || filterOpen)}>
-			<div className="flex h-full flex-col border-r border-border bg-(--lh-sidebar)" style={{ width: overlay ? "100%" : "var(--lh-sidebar-width)" }}>
+		<SidebarFrame bootstrap={initializing} open={open} overlay={overlay} onClose={close} hasMenu={Boolean(ctxChatId || filterOpen || renamingId || deleting)}>
+			<div className="flex h-full flex-col bg-(--lh-sidebar)" style={{ width: overlay ? "100%" : "var(--lh-sidebar-width)" }}>
 				{/* Brand band: in Electron it is the window's drag surface and
 				    starts after the traffic lights (.lh-lights-gutter). */}
-				<div className="lh-drag lh-lights-gutter flex h-13 shrink-0 items-center gap-2 border-b border-border px-3">
+				<div className="lh-drag lh-lights-gutter flex h-13 shrink-0 items-center gap-2 px-3">
 					<Hint label="Home" action="jump-graph" side="right">
 						<Link
 							href="/"
@@ -736,6 +768,7 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 								}}
 								onKeyDown={(e) => {
 									if (e.key === "Escape") {
+										e.preventDefault();
 										e.stopPropagation();
 										e.currentTarget.blur();
 										return;
@@ -818,12 +851,14 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 						shown.map((c, i) => {
 							// Date shelves over the natural most-recent-first order; a
 							// ranked search has no groups.
-							const group = query.trim() ? null : dateGroup(c.updatedAt);
+							// Local calendar shelves wait for hydration: server and reader
+							// may live in different timezones. Seeded rows remain useful.
+							const group = query.trim() || !hydrated ? null : dateGroup(c.updatedAt);
 							const header =
 								group !== null && (i === 0 || dateGroup(shown[i - 1]!.updatedAt) !== group) ? (
 									<div className="flex h-8 shrink-0 items-center gap-2 px-2.5 pt-1 text-xs font-medium text-muted-foreground" data-testid="session-group">
 										{group}
-										<span className="h-px flex-1 bg-accent" aria-hidden="true" />
+										<span className="flex-1" aria-hidden="true" />
 										<span className="tabular-nums">{shown.filter((x) => dateGroup(x.updatedAt) === group).length}</span>
 									</div>
 								) : null;
@@ -835,17 +870,13 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 									onCancel={() => setRenamingId(null)}
 								/>
 							) : (
-								<SessionRow
+								<StableSessionRow
 									key={c.id}
 									chat={c}
 									active={pathname === `/chat/${c.id}`}
 									kbdSelected={i === kbdIndex}
-									onOpen={() => {
-										setKbdIndex(null);
-										router.push(`/chat/${c.id}`);
-										if (overlay) close();
-									}}
-									onContextMenu={(e) => openContext(e, c)}
+									onOpen={openSession}
+									onContextMenu={openContext}
 								/>
 							)}</Fragment>;
 						})
@@ -856,7 +887,7 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 				<ActivitySection />
 
 				{/* Footer: icon buttons left, the account avatar right. */}
-				<div className="flex shrink-0 items-center gap-1 border-t border-white/[0.06] px-2 py-1.5">
+				<div className="flex shrink-0 items-center gap-1 px-2 py-1.5">
 					<Hint label="Settings" action="open-settings" side="top">
 						<button
 							type="button"
@@ -966,12 +997,12 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 						>
 							Delete…
 						</button>
-						<div className="my-0.5 border-t border-border/60" aria-hidden="true" />
+						<div className="my-0.5" aria-hidden="true" />
 						<CoverageMenuBlock chatId={ctxChatId} />
 					</MenuShell>
 				)}
 
-				{/* The two-option delete dialog (wave 6) — portaled to body
+				{/* The two-option delete dialog (wave 6) — portaled within the active modal
 				    by the component itself, lives here for state locality. */}
 				<DeleteSessionDialog
 					chat={deleting}
@@ -986,11 +1017,16 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 /** The app frame: sidebar inline + content. Rendered once in the root layout. */
 /** account: the hosted-mode account row (layout passes it; Clerk stays out
  *  of this module). */
-export function AppShell({ children, account, hosted = false }: { children: React.ReactNode; account?: React.ReactNode; hosted?: boolean }) {
+export function AppShell({ children, account, hosted = false, initialChats }: { children: React.ReactNode; account?: React.ReactNode; hosted?: boolean; initialChats?: ChatListItem[] }) {
 	usePointerBlur();
+	const pathname = usePathname();
+	// Keep mobile navigation interactive while the conversation's richer
+	// rendering modules are still downloading. Its header keeps the same slot.
+	const conversation = pathname.startsWith("/chat/") && pathname !== "/chat/new";
 	return (
 		<SettingsDialogProvider hosted={hosted}>
-			<SessionsSidebar account={account} />
+			<SessionsSidebar account={account} initialChats={initialChats} />
+			{conversation && <div data-mobile-chat-navigation="" className="fixed left-0 top-0 z-40 flex h-13 items-center px-3 min-[928px]:hidden"><SidebarToggle /></div>}
 			<main className="min-w-0 flex-1">{children}</main>
 			{/* The single document-level keydown listener (keyboard wave A) —
 			    after the content in the tree, but it's window-level so order only

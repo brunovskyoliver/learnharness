@@ -4,6 +4,12 @@ import type { NextConfig } from "next";
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as { version: string; homepage: string };
 
 const nextConfig: NextConfig = {
+	// Resolve the public barrels to used exports, retaining the same validators/UI.
+	experimental: {
+		optimizePackageImports: ["@/src/core", "typebox", "typebox/value", "radix-ui"],
+		// Fewer cold-load requests; component chunks retain reuse on navigation.
+		turbopackChunking: { maxChunkCountPerGroup: 8, minChunkSize: 100000, generateComponentChunks: true },
+	},
 	// Keep the development badge from covering the sidebar's Settings control.
 	devIndicators: false,
 	// Public build metadata only; no new runtime Electron version API.

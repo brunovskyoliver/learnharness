@@ -66,17 +66,20 @@
 import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { NotesImportErrors, useNotesImport } from "@/components/notes-import.tsx";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { FileTextIcon, ListTreeIcon, Loader2Icon, SearchIcon, SettingsIcon, UploadIcon, WaypointsIcon } from "lucide-react";
-import { incrementalLayout, propositionSessionHref, type GraphCostSummary, type GraphNode, type GraphSnapshot } from "@/src/core";
+import { FileTextIcon, ListTreeIcon, Loader2Icon, SearchIcon, SettingsIcon, UploadIcon, WaypointsIcon, XIcon } from "lucide-react";
+import { loadGraphLayout, propositionSessionHref, type GraphCostSummary, type GraphNode, type GraphSnapshot } from "@/src/core";
 import { planCostLabel } from "@/components/usage-format";
-import { GraphCanvasRenderer, type GraphRenderSettings } from "./graph-canvas.ts";
+import type { GraphCanvasRenderer, GraphRenderSettings } from "./graph-canvas.ts";
+import { loadGraphRenderer } from "./graph-engine-loader";
+import { useReloadRetry } from "./reload-recovery";
 import { usePopoverDismiss } from "@/components/popover-dismiss";
 import { useActivity } from "@/components/activity-dock";
 import { useServerEvent, useServerResync } from "@/components/server-events";
 import { MenuShell } from "@/components/menu-shell.tsx";
 import { DeleteNodeDialog } from "@/components/delete-node-dialog.tsx";
-import { ChainTableOverlay } from "@/components/chain-table.tsx";
+import { LazyChainTableOverlay as ChainTableOverlay } from "@/components/lazy-chain-table";
 import { Hint } from "@/components/ui/hint";
 import {
 	ARROW_LENGTH_LADDER,
@@ -421,7 +424,7 @@ function GraphCostPanel({ costs }: { costs: GraphCostSummary }) {
 					</div>
 				))}
 			</div>
-			<div className="mt-2 flex flex-col gap-0.5 border-t pt-2">
+			<div className="mt-2 flex flex-col gap-0.5 pt-2">
 				{costs.runs.map((run) => (
 						<div key={run.startedAt} className="flex items-baseline justify-between gap-2 text-[11px]">
 							<span className="min-w-0 flex-1 truncate text-muted-foreground">
@@ -556,7 +559,7 @@ function GraphSettingsControl({
 						    graph. The enable switch is a COMPUTE switch: off skips
 						    the whole build (splat/blur/readback/blit), not just
 						    the paint. */}
-						<div className="mt-1.5 flex flex-col gap-1.5 border-t pt-1.5">
+						<div className="mt-1.5 flex flex-col gap-1.5 pt-1.5">
 							<span className="text-xs font-medium text-muted-foreground">
 								Regions
 							</span>
@@ -677,7 +680,7 @@ function GraphSettingsControl({
 						    the negative it is; cluster pull's far left = off.
 						    Order (user 2026-09-17): general forces first; depth
 						    anchor + its gray-out-able controls last. */}
-						<div className="mt-1.5 flex flex-col gap-1.5 border-t pt-1.5">
+						<div className="mt-1.5 flex flex-col gap-1.5 pt-1.5">
 							<span className="text-xs font-medium text-muted-foreground">
 								Physics
 							</span>
@@ -867,17 +870,59 @@ export function GraphChromeRow({
 	 *  2026-09-29). */
 	onOpenChains: () => void;
 }) {
+	const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+	const searchTriggerRef = useRef<HTMLButtonElement>(null);
+	const restoreSearchFocus = useRef(false);
+	const closeMobileSearch = () => {
+		restoreSearchFocus.current = true;
+		setMobileSearchOpen(false);
+	};
+	useLayoutEffect(() => {
+		if (mobileSearchOpen) searchInputRef.current?.focus();
+		else if (restoreSearchFocus.current) {
+			restoreSearchFocus.current = false;
+			searchTriggerRef.current?.focus();
+		}
+	}, [mobileSearchOpen, searchInputRef]);
+	useEffect(() => {
+		if (isEmpty) return;
+		const onFind = () => {
+			if (window.matchMedia("(max-width: 639px)").matches) setMobileSearchOpen(true);
+			searchInputRef.current?.focus();
+		};
+		window.addEventListener("lh:kbd-find", onFind);
+		return () => window.removeEventListener("lh:kbd-find", onFind);
+	}, [isEmpty, searchInputRef]);
 	return (
 		<>
 			{!isEmpty && (
-				<div className="graph-chrome-fade-in w-56 min-w-0 shrink rounded-xl border bg-card px-1 py-[3px] shadow-sm">
+				<div
+					data-mobile-graph-search={mobileSearchOpen ? "true" : undefined}
+					className={cn("min-w-0 shrink rounded-xl border bg-card px-1 py-[3px] shadow-sm sm:static sm:w-56", mobileSearchOpen ? "fixed inset-x-2 top-2 z-30 w-auto" : "graph-chrome-fade-in w-auto sm:w-56")}
+					onKeyDown={(event) => {
+						if (event.key === "Escape" && mobileSearchOpen && window.matchMedia("(max-width: 639px)").matches) {
+							event.preventDefault();
+							event.stopPropagation();
+							closeMobileSearch();
+						}
+					}}
+				>
+					<button
+						ref={searchTriggerRef}
+						type="button"
+						aria-label="Search ideas"
+						aria-expanded={mobileSearchOpen}
+						onClick={() => setMobileSearchOpen(true)}
+						data-testid="graph-search-toggle"
+						className={cn("size-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent sm:hidden", mobileSearchOpen ? "hidden" : "flex")}
+					><SearchIcon className="size-4" aria-hidden /></button>
 					<Hint
 						// ⌘F focuses node search (surface-scoped registry action).
 						label="Search ideas"
 						action="find"
 						side="bottom"
 					>
-					<div className="relative">
+					<div className={cn("relative items-center gap-1 sm:flex", mobileSearchOpen ? "flex" : "hidden")}>
 						<SearchIcon className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
 						<input
 							ref={searchInputRef}
@@ -886,19 +931,25 @@ export function GraphChromeRow({
 							placeholder="Search ideas…"
 							aria-label="Search ideas"
 							spellCheck={false}
-							className="h-7 w-full rounded-lg border bg-background pl-8 text-xs outline-none placeholder:text-muted-foreground focus:border-ring"
+							className="h-7 min-w-0 w-full rounded-lg border bg-background pl-8 text-xs outline-none placeholder:text-muted-foreground focus:border-ring"
 						/>
+						<button
+							type="button"
+							aria-label="Close search"
+							onClick={closeMobileSearch}
+							className="flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent sm:hidden"
+						><XIcon className="size-4" aria-hidden /></button>
 					</div>
 					</Hint>
 					{noMatch && (
-						<div className="px-1.5 pt-1 text-[11px] text-muted-foreground">No matching ideas.</div>
+						<div className={cn("px-1.5 pt-1 text-[11px] text-muted-foreground", !mobileSearchOpen && "max-sm:hidden")}>No matching ideas.</div>
 					)}
 				</div>
 			)}
 			{/* The chain table (chains overlay, owner plan 2026-09-29). Own
 			    container (36px band), between the search and Import. */}
 			{!isEmpty && (
-				<div className="graph-chrome-fade-in shrink-0 rounded-xl border bg-card px-1 py-[3px] shadow-sm">
+				<div className={cn("graph-chrome-fade-in shrink-0 rounded-xl border bg-card px-1 py-[3px] shadow-sm", mobileSearchOpen && "max-sm:hidden")}>
 					<Hint label="Every reasoning chain" side="bottom">
 						<button
 							type="button"
@@ -914,7 +965,7 @@ export function GraphChromeRow({
 			)}
 			{/* Import notes — its own container (36px, header band); ALWAYS
 			    rendered (the empty-graph ruling above — the entry point). */}
-			<div className="shrink-0 rounded-xl border bg-card px-1 py-[3px] shadow-sm">
+			<div className={cn("shrink-0 rounded-xl border bg-card px-1 py-[3px] shadow-sm", mobileSearchOpen && "max-sm:hidden")}>
 				<input
 					ref={fileInputRef}
 					type="file"
@@ -951,7 +1002,7 @@ export function GraphChromeRow({
 				// at the very right edge, over less of the graph. The fade wrapper
 				// is a plain shrink-0 flex child — the panel itself positions
 				// within GraphSettingsControl's own relative root, unaffected.
-				<div className="graph-chrome-fade-in shrink-0">
+				<div className={cn("graph-chrome-fade-in shrink-0", mobileSearchOpen && "max-sm:hidden")}>
 					<GraphSettingsControl settings={settings} changeSettings={changeSettings} />
 				</div>
 			)}
@@ -960,11 +1011,14 @@ export function GraphChromeRow({
 }
 
 export function GraphView({
+	initialSnapshot,
 	chainSelectOpen = false,
 	practiceSelection,
 	onPracticeSelectionChange,
 	onChainSelectClose,
 }: {
+	/** Tenant-scoped server seed avoids an extra initial graph round trip. */
+	initialSnapshot?: GraphSnapshot;
 	/** PRACTICE SELECT (owner vision, 2026-10-04): the LIFTED, persistent
 	 *  pick set — every check/clear in the chain table (however opened)
 	 *  reports the full node list up immediately; the composer-side chip
@@ -978,7 +1032,7 @@ export function GraphView({
 	const containerRef = useRef<HTMLDivElement | null>(null);
 	const canvasRef = useRef<HTMLCanvasElement | null>(null);
 	const cardRef = useRef<HTMLDivElement | null>(null);
-	const [snapshot, setSnapshot] = useState<GraphSnapshot | null>(null);
+	const [snapshot, setSnapshot] = useState<GraphSnapshot | null>(initialSnapshot ?? null);
 	const [selected, setSelected] = useState<Selection | null>(null);
 	// The latest snapshot for the renderer's click callbacks (they are
 	// constructed once, so they read through this ref, never a closure).
@@ -987,14 +1041,8 @@ export function GraphView({
 
 	// Search panel state: the query text + the settings section toggle.
 	const [query, setQuery] = useState("");
-	// ⌘F (shortcut wave C): the find event focuses the node search —
-	// surface-scoped, dispatched as lh:kbd-find (only this page listens).
+	// The chrome owns mobile expansion before the find shortcut focuses search.
 	const searchInputRef = useRef<HTMLInputElement>(null);
-	useEffect(() => {
-		const onFind = () => searchInputRef.current?.focus();
-		window.addEventListener("lh:kbd-find", onFind);
-		return () => window.removeEventListener("lh:kbd-find", onFind);
-	}, []);
 	// Render settings: SERVER-persisted (data/render-settings.json via
 	// /api/graph/render-settings) — sizes AND the region/physics sections
 	// (user-facing since 2026-09-13; the dev-session era is over). Loaded
@@ -1060,6 +1108,12 @@ export function GraphView({
 	// frozen layout out of the layout effect.
 	const rendererRef = useRef<GraphCanvasRenderer | null>(null);
 	const posRef = useRef<Map<string, { x: number; y: number }> | null>(null);
+	const [layoutSnapshot, setLayoutSnapshot] = useState<GraphSnapshot | null>(null);
+	const [rendererEpoch, setRendererEpoch] = useState(0);
+	const settingsRendererRef = useRef<GraphCanvasRenderer | null>(null);
+	const [readySnapshot, setReadySnapshot] = useState<GraphSnapshot | null>(null);
+	const [engineFailed, setEngineFailed] = useState(false);
+	const graphRecovery = useReloadRetry({ kind: "graph" });
 
 	// The id set that survives the current search — consumed by the
 	// visibility feed and the "no matches" hint.
@@ -1085,6 +1139,7 @@ export function GraphView({
 		if (chainSelectOpen) setChainsOpen(true);
 	}, [chainSelectOpen]);
 	useEffect(() => {
+		if (refreshTick === 0 && initialSnapshot) return;
 		let cancelled = false;
 		fetch("/api/graph")
 			.then((res) => res.json() as Promise<GraphSnapshot>)
@@ -1095,7 +1150,7 @@ export function GraphView({
 		return () => {
 			cancelled = true;
 		};
-	}, [refreshTick]);
+	}, [refreshTick, initialSnapshot]);
 
 	// Notes import (the format-agnostic front door): file picker → POST
 	// /api/graph/import; the runs surface in the status chips below, and the
@@ -1269,7 +1324,8 @@ export function GraphView({
 	// ONLY as a fallback when the ledger is absent (a graph never merged
 	// through the pipeline, e.g. tests or a fresh install).
 	useEffect(() => {
-		if (!snapshot || snapshot.nodes.length === 0) return;
+		if (!snapshot || snapshot.nodes.length === 0 || engineFailed) return;
+		let cancelled = false;
 		// The ledger path: every positioned node uses its resting position;
 		// nodes the ledger doesn't know yet (raced mid-settle) fall through
 		// to seeded scatter below.
@@ -1285,6 +1341,7 @@ export function GraphView({
 				// yet (raced mid-settle) get seeded ring positions instead of
 				// the old ?? 0 origin dump.
 				posRef.current = seedMissingNodePositions(snapshot.nodes, positions);
+				setLayoutSnapshot(snapshot);
 				return () => {
 					posRef.current = null;
 				};
@@ -1294,20 +1351,27 @@ export function GraphView({
 		// the SAME engine the server settle uses (d3-force via
 		// incrementalLayout, seeded deterministic) and freeze the result.
 		// Deterministic for a given node set across remounts.
-		posRef.current = incrementalLayout(snapshot.nodes, snapshot.edges, new Map());
+		void loadGraphLayout().then((incrementalLayout) => {
+			if (cancelled) return;
+			posRef.current = incrementalLayout(snapshot.nodes, snapshot.edges, new Map());
+			setLayoutSnapshot(snapshot);
+		}).catch(() => { if (!cancelled) setEngineFailed(true); });
 		return () => {
+			cancelled = true;
 			posRef.current = null;
 		};
-	}, [snapshot]);
+	}, [snapshot, engineFailed]);
 
 	// Construct the renderer once the canvas exists; destroy when it goes
 	// away (the empty-graph placeholder replaces it). The callbacks are
 	// created once and read through refs, so they never go stale.
 	const isEmpty = snapshot === null || snapshot.nodes.length === 0;
 	useEffect(() => {
-		if (isEmpty) return;
+		if (isEmpty || engineFailed) return;
 		const canvas = canvasRef.current;
 		if (!canvas) return;
+		let cancelled = false;
+		let renderer: GraphCanvasRenderer | null = null;
 		// Persisted camera (2026-09-15): the graph reopens exactly where the
 		// user left it — zoom AND pan, in localStorage (per-device view
 		// state, deliberately NOT the server settings ledger). Absent or
@@ -1343,56 +1407,61 @@ export function GraphView({
 				}
 			}, 250);
 		};
-		const renderer = new GraphCanvasRenderer(
-			canvas,
-			{
-				onSelect: (nodeId, pos) => {
-					const snap = snapshotRef.current;
-					const node = snap?.nodes.find((n) => n.id === nodeId);
-					if (!snap || !node) return;
-					setSelected({
-						node,
-						sourceIds: snap.nodeSessions[node.id] ?? [],
-						anchor: pos,
-					});
-				},
-				onStageClick: () => setSelected(null),
-				// Right-click → the node context menu (node interlude). Null
-				// (empty stage) closes a stale menu; a pick opens one anchored
-				// at the pointer. The name comes from the snapshot — what the
-				// canvas shows is what the menu and dialog speak.
-				onContext: (nodeId, pos) => {
-					if (nodeId === null) {
+		void loadGraphRenderer().then((GraphCanvasRenderer) => {
+			if (cancelled) return;
+			renderer = new GraphCanvasRenderer(
+				canvas,
+				{
+					onSelect: (nodeId, pos) => {
+						const snap = snapshotRef.current;
+						const node = snap?.nodes.find((n) => n.id === nodeId);
+						if (!snap || !node) return;
+						setSelected({
+							node,
+							sourceIds: snap.nodeSessions[node.id] ?? [],
+							anchor: pos,
+						});
+					},
+					onStageClick: () => setSelected(null),
+					// Right-click → the node context menu (node interlude). Null
+					// (empty stage) closes a stale menu; a pick opens one anchored
+					// at the pointer. The name comes from the snapshot — what the
+					// canvas shows is what the menu and dialog speak.
+					onContext: (nodeId, pos) => {
+						if (nodeId === null) {
+							setCtxNode(null);
+							return;
+						}
+						const node = snapshotRef.current?.nodes.find((n) => n.id === nodeId);
+						if (!node) return;
+						setCtxNode({ id: node.id, name: node.name, x: pos.x, y: pos.y });
+					},
+					// Any camera move detaches the card from its node — close
+					// it, and (debounced) remember where the camera stands. The
+					// context menu closes with it: a menu floating over a moved
+					// graph is anchored to nothing.
+					onCameraMove: (t) => {
+						setSelected(null);
 						setCtxNode(null);
-						return;
-					}
-					const node = snapshotRef.current?.nodes.find((n) => n.id === nodeId);
-					if (!node) return;
-					setCtxNode({ id: node.id, name: node.name, x: pos.x, y: pos.y });
+						persistCamera(t);
+					},
+					// Live physics settled: persist the new rest state. Fire-and-
+					// forget — the next snapshot fetch carries the ledger anyway.
+					onCommit: (positions) => {
+						void fetch("/api/graph/positions", {
+							method: "PUT",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify(positions),
+						}).catch((err) => console.error("[graph] positions commit failed", err));
+					},
 				},
-				// Any camera move detaches the card from its node — close
-				// it, and (debounced) remember where the camera stands. The
-				// context menu closes with it: a menu floating over a moved
-				// graph is anchored to nothing.
-				onCameraMove: (t) => {
-					setSelected(null);
-					setCtxNode(null);
-					persistCamera(t);
-				},
-				// Live physics settled: persist the new rest state. Fire-and-
-				// forget — the next snapshot fetch carries the ledger anyway.
-				onCommit: (positions) => {
-					void fetch("/api/graph/positions", {
-						method: "PUT",
-						headers: { "Content-Type": "application/json" },
-						body: JSON.stringify(positions),
-					}).catch((err) => console.error("[graph] positions commit failed", err));
-				},
-			},
-			initialCamera,
-		);
-		rendererRef.current = renderer;
+				initialCamera,
+			);
+			rendererRef.current = renderer;
+			setRendererEpoch((epoch) => epoch + 1);
+		}).catch(() => { if (!cancelled) setEngineFailed(true); });
 		return () => {
+			cancelled = true;
 			rendererRef.current = null;
 			// Flush a pending camera write so an unmount <250ms after a
 			// move still persists the user's last standpoint.
@@ -1405,9 +1474,9 @@ export function GraphView({
 					// best-effort
 				}
 			}
-			renderer.destroy();
+			renderer?.destroy();
 		};
-	}, [isEmpty]);
+	}, [isEmpty, engineFailed]);
 
 	// Feed #1 — data: positions + edges + clusters + resolved colors. Runs
 	// after the layout effect (same commit, declaration order) and after
@@ -1415,7 +1484,7 @@ export function GraphView({
 	useEffect(() => {
 		const renderer = rendererRef.current;
 		const positions = posRef.current;
-		if (!renderer || !snapshot || snapshot.nodes.length === 0 || !positions) return;
+		if (!renderer || !snapshot || snapshot.nodes.length === 0 || !positions || layoutSnapshot !== snapshot) return;
 		renderer.setData({
 			nodes: snapshot.nodes.map((n) => ({
 				id: n.id,
@@ -1436,14 +1505,28 @@ export function GraphView({
 			// Match the app typography (Geist via the body's stack).
 			fontFamily: getComputedStyle(document.body).fontFamily,
 		});
-	}, [snapshot, isEmpty]);
+		// Update paint and typography without resetting the live simulation.
+		const observer = new MutationObserver(() => renderer.setTheme({
+			node: tokenHex(NODE_COLOR_TOKEN),
+			edge: tokenHex("--ring"),
+			label: tokenHex("--muted-foreground"),
+			hoverText: tokenHex("--foreground"),
+		}, getComputedStyle(document.body).fontFamily));
+		observer.observe(document.documentElement, { attributes: true, attributeFilter: ["style", "class"] });
+		return () => observer.disconnect();
+	}, [snapshot, isEmpty, layoutSnapshot, rendererEpoch]);
 
 	// Feed #2 — settings: just marks the frame dirty. No rebuild, no
 	// re-layout, no camera touch (the whole point of the new renderer).
 	const deferredSettings = useDeferredValue(settings);
 	useEffect(() => {
-		rendererRef.current?.setSettings(deferredSettings);
-	}, [deferredSettings, isEmpty]);
+		const renderer = rendererRef.current;
+		if (!renderer) return;
+		// A late download starts with the latest committed settings, even
+		// if an expensive settings update still has a deferred render pending.
+		renderer.setSettings(settingsRendererRef.current === renderer ? deferredSettings : settingsRef.current);
+		settingsRendererRef.current = renderer;
+	}, [deferredSettings, isEmpty, rendererEpoch]);
 
 	// Feed #3 — visibility: hidden nodes drop out of rendering, picking,
 	// hover, AND labels; edges drop when either endpoint is hidden.
@@ -1451,7 +1534,7 @@ export function GraphView({
 		rendererRef.current?.setVisible(query.trim() ? visibleIds : null);
 		// The open detail card cannot outlive its node's visibility.
 		setSelected((sel) => (sel && visibleIds.has(sel.node.id) ? sel : null));
-	}, [visibleIds, query]);
+	}, [visibleIds, query, rendererEpoch]);
 
 	// Feed #4 — region tuning. `isEmpty` in the deps (same as Feed #2):
 	// the settings fetch resolves BEFORE the snapshot creates the renderer,
@@ -1459,14 +1542,23 @@ export function GraphView({
 	// the renderer would silently keep the default tuning forever.
 	useEffect(() => {
 		rendererRef.current?.setRegionTuning(regionTuning);
-	}, [regionTuning, isEmpty]);
+	}, [regionTuning, isEmpty, rendererEpoch]);
 
 	// Feed #5 — physics tuning: rebuilds the live sim in place (drag pins
 	// survive; a mid-settle change re-anneals, the honest response). Same
 	// isEmpty dep as Feed #4 — see there.
 	useEffect(() => {
 		rendererRef.current?.setPhysicsTuning(physicsTuning);
-	}, [physicsTuning, isEmpty]);
+	}, [physicsTuning, isEmpty, rendererEpoch]);
+
+	// Publish readiness after data, settings, visibility, and both tuning feeds
+	// have run against the current renderer and snapshot.
+	useEffect(() => {
+		if (!rendererRef.current || layoutSnapshot !== snapshot || !snapshot || engineFailed) return;
+		// setData scheduled the renderer's draw first; publish after that frame.
+		const frame = requestAnimationFrame(() => setReadySnapshot(snapshot));
+		return () => cancelAnimationFrame(frame);
+	}, [snapshot, layoutSnapshot, rendererEpoch, engineFailed]);
 
 	// Position the detail card: below the clicked node, flipped above near
 	// the bottom edge, clamped horizontally. Imperative (ref + layout effect,
@@ -1493,7 +1585,14 @@ export function GraphView({
 	}, [selected]);
 
 	return (
-		<div className="relative h-full w-full">
+		<div className="relative h-full w-full" data-graph-ready={snapshot !== null && (isEmpty || (readySnapshot === snapshot && !engineFailed)) ? "true" : undefined}>
+			{!isEmpty && engineFailed && <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center px-5">
+				<div role="alert" className="pointer-events-auto flex max-h-[50dvh] max-w-md flex-col items-center gap-3 overflow-y-auto rounded-xl bg-card p-5 text-center text-sm">
+				<p>The knowledge graph could not load. Reload to retry. Your draft will be saved before reloading.</p>
+				<button type="button" onClick={graphRecovery.reload} className="min-h-11 rounded-md border px-4">Reload to retry</button>
+				{graphRecovery.error && <p>{graphRecovery.error}</p>}
+				</div>
+			</div>}
 			{isEmpty ? (
 				// The empty graph keeps the first action clear without zero-valued statistics.
 				<div className="flex h-full w-full items-center justify-center px-4">
@@ -1510,6 +1609,7 @@ export function GraphView({
 					{/* THE single canvas: every layer (hulls, edges, nodes, both
 					    label systems, hover) draws into it, once per frame. */}
 					<canvas ref={canvasRef} className="block h-full w-full touch-none" />
+					{readySnapshot !== snapshot && !engineFailed && <div role="status" aria-label="Loading knowledge graph" className="pointer-events-none absolute inset-0 flex items-center justify-center px-4 text-sm text-muted-foreground">Loading knowledge graph…</div>}
 					{/* The context menu's anchor: a zero-size point at the
 					    right-click position (canvas-relative == container-relative,
 					    the canvas fills this div). */}
@@ -1581,17 +1681,16 @@ export function GraphView({
 			    underlays this row — Electron's drag mask ignores z-index,
 			    so without an explicit carve-out the controls were
 			    unclickable in the desktop app (owner report). The old
-			    flex-wrap (narrow-window wave, 2026-09-17) folded the row
-			    onto two lines below the sidebar threshold — owner rejected
-			    it (2026-09-20): one row always, the search shrinks (see
-			    the header-band comment on the column below). */}
+				    flex-wrap folded the row onto two lines; the owner retained
+				    one row. On phones, search now opens from its icon into a
+				    viewport-wide field while the other actions hide. */}
 			{/* Header band (owner, 2026-09-20): the controls sit IN the
 			    header's visual row — top-2 aligns with the sidebar toggle's
 			    band (header py-2, toggle h-9), every control slimmed to 36px.
 			    The width cap lives HERE on the absolute element (100% resolves
 			    against the full-bleed parent) — the row NEVER wraps (owner
-			    rejected the two-row fold); in narrow windows the search is
-			    the flexible element and shrinks instead. */}
+			    rejected the two-row fold). Desktop search shrinks within this
+			    row; the expanded phone search overlays it at viewport width. */}
 			<div className="lh-no-drag lh-wco-floating absolute right-2 top-2 z-10 flex max-w-[calc(100%-5.5rem)] flex-col items-end gap-2">
 			{/* z-20 (2026-09-20): the row paints above the cost number below
 			    it — without this, the later-in-DOM cost control layered over

@@ -70,15 +70,15 @@ function updateJob(id: string, patch: JobPatch): JobRecord | null {
 	return next;
 }
 
-/** All jobs for a chat, newest activity first. */
-function listJobs(chatId: string): JobRecord[] {
+/** Omitting chatId lets cross-chat feeds read the directory once. */
+function listJobs(chatId?: string): JobRecord[] {
 	try {
 		fs.mkdirSync(jobsDir(), { recursive: true });
 		return fs
 			.readdirSync(jobsDir())
 			.filter((f) => f.endsWith(".json"))
 			.map((f) => getJob(f.slice(0, -5)))
-			.filter((j): j is JobRecord => j !== null && j.chatId === chatId)
+			.filter((j): j is JobRecord => j !== null && (chatId === undefined || j.chatId === chatId))
 			.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 	} catch {
 		return [];

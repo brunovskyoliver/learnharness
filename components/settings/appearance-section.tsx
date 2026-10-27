@@ -192,7 +192,7 @@ export function AppearanceSection({
 			<SettingsRow label="Background" testid="row-background">
 				<CommitInput
 					value={appearance?.background ?? ""}
-					placeholder="#141414"
+					placeholder="#000000"
 					ariaLabel="background hex"
 					testid="input-background"
 					onCommit={(v) => onSectionChange({ ...appearance, background: v === "" ? null : v })}
@@ -201,7 +201,7 @@ export function AppearanceSection({
 			</SettingsGroup>
 			<SettingsGroup label="Reading">
 			<SettingsRow label="Reading font" testid="row-font">
-				<span ref={fontMenuOpen ? menuAnchorRef : undefined} className="relative flex items-center gap-2">
+				<span ref={fontMenuOpen ? menuAnchorRef : undefined} className="relative flex min-w-0 max-w-full items-center gap-2">
 					{/* The MenuTrigger look (agent-section's collapsed
 					    select — it lives unexported there, so the
 					    classes ride inline; the searchable machine is
@@ -279,7 +279,7 @@ export function AppearanceSection({
 				/>
 			</SettingsRow>
 			</SettingsGroup>
-			<section aria-label="Reading preview" data-testid="reading-preview" className="rounded-lg border border-border bg-card p-5">
+			<section aria-label="Reading preview" data-testid="reading-preview" className="rounded-lg bg-card p-5">
 				<h3 className="mb-3 text-base font-semibold">Live preview</h3>
 				<div style={{ fontSize: `${resolved.proseFontSize}px`, lineHeight: 1.6, fontFamily: "var(--font-prose)" }}>
 					<h4 style={{ fontWeight: resolved.mdRendering.headingWeight }} className="mb-2">Gradient descent</h4>

@@ -251,7 +251,7 @@ export function SettingsDialogBody({
 			onClick={(e) => e.stopPropagation()}
 		>
 			{/* Shared header height and section breadcrumb. */}
-			<header className="flex h-13 shrink-0 items-center gap-3 border-b border-border px-5 sm:px-6">
+			<header className="flex h-13 shrink-0 items-center gap-3 px-5 sm:px-6">
 				<span className="text-sm text-muted-foreground">Settings</span>
 				<span aria-hidden="true" className="text-muted-foreground">/</span>
 				<span className="truncate text-sm font-medium">{activeSection.label}</span>
@@ -265,7 +265,7 @@ export function SettingsDialogBody({
 					type="button"
 					aria-label="Close settings"
 					data-testid="settings-close"
-					className="ml-auto size-7 rounded-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+					className="ui-icon-button ml-auto"
 					onClick={onClose}
 				>
 					<XIcon aria-hidden="true" className="mx-auto size-4" />
@@ -278,7 +278,7 @@ export function SettingsDialogBody({
 				<nav
 					aria-label="Settings sections"
 					data-testid="settings-nav"
-					className="flex shrink-0 flex-col gap-3 border-b border-border bg-card p-3 sm:w-56 sm:border-r sm:border-b-0 sm:p-4"
+					className="flex shrink-0 flex-col gap-3 bg-background p-3 sm:w-56 sm:p-4"
 				>
 					<label className="flex h-9 items-center gap-2 rounded-md border border-border bg-background px-2.5 text-muted-foreground">
 						<SearchIcon aria-hidden="true" className="size-4 shrink-0" />

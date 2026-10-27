@@ -2,30 +2,14 @@
 
 import { useSessionState } from "@/components/session-state";
 import { useRef, type ReactNode } from "react";
-import { ArrowUpIcon, ChevronRightIcon } from "lucide-react";
+import { ChevronRightIcon } from "lucide-react";
 import { PromptSubmit, PromptToolbar } from "@/components/prompt-controls";
 import { useEnterSubmits } from "@/components/enter-submits";
 import { focusSurfaceInput } from "@/components/input-surface";
+import { ToolContentResponse } from "@/components/ai-elements/message";
 
-/**
- * The practice dock (practice sessions, owner design 2026-10-04): an
- * ACTIVE problem replaces the chat composer — the persistent bottom blob
- * holds the learner's answer. The statement stays in the lesson; the dock
- * contains "Your thinking", a labeled field with ONE Send button
- * (owner round 2, 2026-10-05): Enter sends, Shift+Enter makes a newline.
- * There are no lanes — whether a submission claims an answer is apparent
- * from the thinking itself; the agent reads it. One problem may carry
- * many submissions; each starts a turn.
- *
- * Collapse (scroll-up → slim bar) is owned by the DockOverlay; this
- * component is content only, and the expanded form stays MOUNTED while
- * collapsed (hidden) so a half-written trace survives scrolling.
- *
- * The commitment (modelSolution, decisionPoints, …) rides the tool call's
- * arguments and is NOT rendered here — only the statement is the
- * learner's. Esc dismisses the problem (the layered-Esc chain; the
- * confirm dialog then the silent route) — claimed by the page, not here.
- */
+/** One mounted trace input beneath an expandable public problem statement.
+ * The committed solution stays out of this component. */
 
 export interface PracticeDockProps {
 	/** The active problem's tool-call id (submissions target it). */
@@ -33,6 +17,7 @@ export interface PracticeDockProps {
 	/** Collapse state, owned by the DockOverlay. */
 	expanded: boolean;
 	outgoingHeight?: number;
+	statement?: string;
 	onExpand: () => void;
 	/** text — POST {type:"thinking"} (one lane; the register is read from the text). */
 	onSubmit: (text: string) => void;
@@ -44,13 +29,7 @@ export interface PracticeDockProps {
 	controls?: ReactNode;
 }
 
-function scrollToProblem(problemCallId: string) {
-	const card = document.querySelector(`[data-testid="problem-card"][data-problem-call-id="${CSS.escape(problemCallId)}"]`);
-	const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-	card?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
-}
-
-export function PracticeDock({ problemCallId, expanded, outgoingHeight, onExpand, onSubmit, compactionRunning = false, controls }: PracticeDockProps) {
+export function PracticeDock({ problemCallId, expanded, outgoingHeight, statement = "", onExpand, onSubmit, compactionRunning = false, controls }: PracticeDockProps) {
 	const [thinking, setThinking] = useSessionState(`problem/${problemCallId}/thinking`, "");
 	// Ref MIRRORS the field ("nothing gets lost", the question-dock
 	// discipline): a submit resuming after `await finishDictation()` reads
@@ -72,29 +51,30 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, onExpand
 	 * means the field is often never focused — the window-level Enter
 	 * (typing surfaces and buttons excluded) submits the trace. Mounted
 	 * while the dock is — collapsed bar included (the trace survives). */
-	useEnterSubmits(submit);
+	useEnterSubmits(() => { if (expanded) submit(); else onExpand(); });
 
 	/* ── the collapsed bar ── */
 	const bar = (
 			<button
 				type="button"
 				data-testid="practice-dock-bar"
+				aria-expanded={false}
 				onClick={onExpand}
 				className="relative z-10 flex w-full cursor-pointer items-center gap-2 bg-card px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
 			>
 				<ChevronRightIcon className="size-4 shrink-0 rotate-90" />
-				<span className="shrink-0 font-medium">Your thinking</span>
-				<span className="min-w-0 flex-1 truncate">{thinking || "Work here, think out loud."}</span>
+				<span className="shrink-0 font-medium">Problem</span>
+				<span className="min-w-0 flex-1 truncate">{statement || "Open the active problem"}</span>
 			</button>
 	);
-	if (!expanded && !outgoingHeight) return bar;
 
 	/* ── the expanded form ── */
 	return (
 		<div className="relative flex min-h-0 flex-col">
 		{!expanded && bar}
-		<div aria-hidden={!expanded} inert={!expanded} className={expanded ? "flex min-h-0 flex-col" : "dock-outgoing pointer-events-none absolute inset-x-0 top-0 flex flex-col"} style={!expanded && outgoingHeight ? { height: outgoingHeight } : undefined}>
+		<div className="flex min-h-0 flex-col">
 		<div data-testid="practice-dock" data-problem={problemCallId} className="flex min-h-0 flex-col">
+			<div hidden={!expanded && !outgoingHeight} inert={!expanded} data-testid="practice-problem-content" style={!expanded && outgoingHeight ? { height: outgoingHeight, maxHeight: outgoingHeight } : undefined} className={`${!expanded && outgoingHeight ? "dock-outgoing pointer-events-none absolute inset-x-0 top-0" : ""} max-h-[var(--dock-question-max-h,50dvh)] min-h-0 select-text overflow-y-auto overscroll-contain px-4 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}><ToolContentResponse>{statement}</ToolContentResponse></div>
 			{/* The learner's half: Enter SENDS (owner round 2, 2026-10-05);
 			    Shift+Enter makes a newline — less to decide about. */}
 			<div
@@ -102,17 +82,6 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, onExpand
 				onClick={focusSurfaceInput}
 				className="input-surface shrink-0"
 			>
-				{/* Ties the field to the problem it answers, wherever the
-				    statement has scrolled to. */}
-				<button
-					type="button"
-					data-testid="practice-problem-link"
-					onClick={() => scrollToProblem(problemCallId)}
-					className="mx-2 mt-2 inline-flex h-6 items-center gap-1.5 rounded-md px-2 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-				>
-					<ArrowUpIcon aria-hidden="true" className="size-3.5" />
-					Answering the problem
-				</button>
 				<textarea
 					aria-label="Your thinking"
 					placeholder="Your thinking"
@@ -124,7 +93,7 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, onExpand
 					onKeyDown={(e) => {
 						// Enter SENDS — the single lane (owner round 2, 2026-10-05);
 						// Shift+Enter is the newline, ⌘/Ctrl+Enter the chord too.
-						if (e.key === "Enter" && (!e.shiftKey || e.metaKey || e.ctrlKey)) {
+						if (!e.nativeEvent.isComposing && e.key === "Enter" && (!e.shiftKey || e.metaKey || e.ctrlKey)) {
 							e.preventDefault();
 							submit();
 						}

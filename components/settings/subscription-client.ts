@@ -9,10 +9,23 @@ type Reply<T> = { value: T; browserAction?: string; error?: string };
 const PATH = "/api/subscriptions";
 const headers = { "Content-Type": "application/json", "x-learnharness-subscriptions": "1" };
 
-async function status() {
-	const response = await fetch(PATH, { headers, cache: "no-store" });
-	if (!response.ok) throw new Error("Subscription status is unavailable.");
-	return response.json() as Promise<{ chatgpt: ChatGPTStatus; native: NativeSubscriptionStatus[] }>;
+type Status = { chatgpt: ChatGPTStatus; native: NativeSubscriptionStatus[] };
+// Share only concurrent reads within this mounted account's notification hub.
+// Settlement (including failure) evicts the request; no stale status TTL.
+const statusReads = new WeakMap<NonNullable<Hub>, Promise<Status>>();
+let unscopedRead: Promise<Status> | undefined;
+function status(hub: Hub): Promise<Status> {
+	const existing = hub ? statusReads.get(hub) : unscopedRead;
+	if (existing) return existing;
+	const pending = (async () => {
+		const response = await fetch(PATH, { headers, cache: "no-store" });
+		if (!response.ok) throw new Error("Subscription status is unavailable.");
+		return response.json() as Promise<Status>;
+	})();
+	if (hub) statusReads.set(hub, pending); else unscopedRead = pending;
+	const clear = () => { if (hub) statusReads.delete(hub); else unscopedRead = undefined; };
+	void pending.then(clear, clear);
+	return pending;
 }
 async function control<T>(providerId: string, op: string, fields: Record<string, unknown> = {}): Promise<Reply<T>> {
 	const response = await fetch(PATH, { method: "POST", headers, body: JSON.stringify({ providerId, op, ...fields }) });
@@ -46,7 +59,7 @@ async function withBrowser<T>(action: () => Promise<Reply<T>>): Promise<T> {
 export function createWebChatGPTBridge(hub: Hub): ChatGPTControlBridge {
 	const call = async (op: string, fields?: Record<string, unknown>) => (await control<ChatGPTStatus>("chatgpt", op, fields)).value;
 	return {
-		status: async () => (await status()).chatgpt,
+		status: async () => (await status(hub)).chatgpt,
 		login: (id) => withBrowser(() => control<ChatGPTStatus>("chatgpt", "login", { id })),
 		cancel: () => call("cancel"), callback: (url) => call("callback", { url }), select: (id) => call("select", { id }),
 		disconnect: (id) => call("disconnect", { id }), logout: (id) => call("logout", { id }),
@@ -57,7 +70,7 @@ export function createWebChatGPTBridge(hub: Hub): ChatGPTControlBridge {
 export function createWebNativeBridge(hub: Hub): NativeSubscriptionControlBridge {
 	const call = async (providerId: NativeSubscriptionProviderId, op: string, fields?: Record<string, unknown>) => { await control(providerId, op, fields); };
 	return {
-		status: async () => (await status()).native,
+		status: async () => (await status(hub)).native,
 		login: (providerId, enabled) => call(providerId, "login", { enabled }),
 		cancel: (providerId) => call(providerId, "cancel"),
 		respond: (providerId, attemptId, promptId, value) => call(providerId, "respond", { attemptId, promptId, value }),

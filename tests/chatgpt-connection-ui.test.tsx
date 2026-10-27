@@ -10,6 +10,8 @@ import { generateKeyPair, exportJWK, SignJWT } from "jose";
 import type { ChatGPTStatus, ChatGPTControlBridge } from "../src/core/index.ts";
 
 const dom = parseHTML("<html><body></body></html>");
+// Linkedom does not implement the native modal methods used by loading shells.
+Object.assign(dom.window.HTMLElement.prototype, { showModal(this: HTMLElement) { this.setAttribute("open", ""); }, close(this: HTMLElement) { this.removeAttribute("open"); } });
 Object.assign(globalThis, { window: dom.window, document: dom.document, Element: dom.window.Element, HTMLElement: dom.window.HTMLElement, CustomEvent: dom.window.CustomEvent, IS_REACT_ACT_ENVIRONMENT: true, localStorage: { getItem: () => null, setItem() {} } });
 Object.assign(globalThis, {
  Node: dom.window.Node, NodeFilter: { SHOW_ELEMENT: 1, FILTER_ACCEPT: 1, FILTER_SKIP: 3 },
@@ -562,4 +564,36 @@ test("hosted paste-back: pending login shows the paste box; a bad paste keeps it
  await paste("http://127.0.0.1:50000/auth/callback?state=s&code=c");
  assert.deepEqual(pastes, ["http://127.0.0.1:50000/auth/callback", "http://127.0.0.1:50000/auth/callback?state=s&code=c"]);
  assert.equal(document.querySelector('[data-testid="chatgpt-account-dialog"]'), null, "completion closes the dialog");
+});
+
+test("failed optional dialog download keeps the original consent and Cancel controls usable without starting OAuth", async () => {
+ const { build } = await import("esbuild");
+ const { outputFiles } = await build({
+  entryPoints: ["components/settings/chatgpt-connection.tsx"], bundle: true, write: false,
+  platform: "node", format: "cjs", external: ["react", "react-dom", "react-dom/*"],
+  plugins: [{ name: "failed-optional-dialog", setup(builder) {
+   builder.onLoad({ filter: /settings\/connection-dialog\.tsx$/ }, () => ({ contents: 'throw new Error("Simulated failed dialog download"); export function ConnectionDialog() {}', loader: "tsx" }));
+  } }],
+ });
+ const bundled = { exports: {} as typeof import("../components/settings/chatgpt-connection.tsx") };
+ new Function("require", "module", "exports", outputFiles[0]!.text)(createRequire(import.meta.url), bundled, bundled.exports);
+ const { ChatGPTUIProvider: Provider, ChatGPTConnection: Connection } = bundled.exports;
+ const f = fixture();
+ host = document.createElement("div"); document.body.append(host); root = createRoot(host);
+ await act(async () => root!.render(<Provider><Connection /></Provider>));
+ await click(byTest("chatgpt-login"));
+ await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+ assert.match(document.body.textContent ?? "", /Account controls remain available below/);
+ assert(byTest("chatgpt-privacy-notice"));
+ assert(byTest("chatgpt-proceed"));
+ const fallbackToggle = () => byTest("chatgpt-account-dialog-loading").querySelector<HTMLElement>('[role="switch"]')!;
+ assert.equal(fallbackToggle().getAttribute("aria-checked"), "true");
+ assert.equal(f.calls.login.length, 0);
+ await click(fallbackToggle());
+ assert.equal(fallbackToggle().getAttribute("aria-checked"), "false");
+ assert.equal(f.calls.login.length, 0);
+ await click(button("Cancel", byTest("chatgpt-account-dialog-loading")));
+ assert.equal(document.querySelector('[data-testid="chatgpt-account-dialog-loading"]'), null);
+ assert.equal(f.calls.login.length, 0);
+ assert.deepEqual(f.calls.consent, []);
 });

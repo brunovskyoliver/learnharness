@@ -47,16 +47,16 @@ describe("PhaseChip (header)", () => {
 });
 
 describe("PhaseDivider (transcript boundary)", () => {
-	it("the plan seam: monochrome dotted rules + node count", () => {
+	it("the plan seam keeps its node count without separator rules", () => {
 		const html = renderToStaticMarkup(<PhaseDivider phase="plan" nodeCount={3} />);
 		assert.ok(html.includes('data-testid="phase-divider-plan"'));
 		assert.match(html, /Plan · 3 nodes/);
-		assert.ok(html.includes("border-dotted"), "dotted rule");
-		assert.ok(html.includes("border-border"), "monochrome rule");
+		assert.ok(!html.includes("border-dotted"), "no dotted separator");
+		assert.ok(!html.includes("border-border"), "no structural border");
 		assert.ok(!html.includes("border-phase-"), "phase-colored rules are retired");
 	});
 
-	it("the teach seam: monochrome rule, no count", () => {
+	it("the teach seam: label without a count", () => {
 		const html = renderToStaticMarkup(<PhaseDivider phase="teach" />);
 		assert.ok(html.includes('data-testid="phase-divider-teach"'));
 		assert.match(html, /Teaching/);

@@ -20,6 +20,8 @@ Object.assign(globalThis, { window: dom.window, document: dom.document, CustomEv
 	Node: dom.window.Node, NodeFilter: { SHOW_ELEMENT: 1, FILTER_ACCEPT: 1, FILTER_SKIP: 3 }, Element: dom.window.Element, HTMLElement: dom.window.HTMLElement,
 	HTMLInputElement: dom.window.HTMLInputElement, MutationObserver: dom.window.MutationObserver,
 	getComputedStyle: () => ({ display: "block", visibility: "visible" }),
+	requestAnimationFrame: (callback: FrameRequestCallback) => setTimeout(() => callback(performance.now()), 0),
+	cancelAnimationFrame: clearTimeout,
 });
 const { UpdateSettings, updateStatusText, MANUAL_UPDATE_HINT, AUTO_UPDATE_HINT } = await import("../components/settings/update-settings.tsx");
 const { default: UpdateBanner } = await import("../components/update-banner.tsx");

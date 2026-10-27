@@ -1,13 +1,10 @@
 "use client";
 
-import { useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { subscriptionLabels, type SessionPricing, type TurnUsage } from "@/src/core";
 import { formatTokens, planCostLabel } from "@/components/usage-format";
 import { ModelControl, catalogLimits, useModelCatalog } from "@/components/model-picker";
-import { SlidersHorizontalIcon } from "lucide-react";
-import { MenuShell, MenuPortalContext, MENU_OPEN_EVENT, MENU_CLOSE_EVENT } from "@/components/menu-shell";
-import { Button } from "@/components/ui/button";
-import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { MenuShell } from "@/components/menu-shell";
 
 export function formatContextMeasurement(tokens: number | null, limit: number | null): string {
 	const numerator = tokens === null ? "?" : formatTokens(tokens);
@@ -141,7 +138,7 @@ export function StatsBarDetails({
 				onPointerLeave={(e) => { if (e.pointerType === "mouse") unpeek(); }}
 				aria-expanded={open}
 				data-testid="stats-summary"
-				className="flex size-8 items-center justify-center rounded-full transition-colors hover:bg-accent hover:text-foreground"
+				className="flex size-11 items-center justify-center rounded-full transition-colors hover:bg-accent hover:text-foreground"
 			>
 				<ContextRing fraction={fraction} />
 				{/* The ring's figures, spoken: the bar shows only the gauge. */}
@@ -195,44 +192,9 @@ export function StatsBarDetails({
 	);
 }
 
-/** Secondary session controls share one menu, leaving the answer unobstructed. */
+/** Model and reasoning triggers stay directly in the composer toolbar. */
 export function StatsBar(props: Parameters<typeof StatsBarDetails>[0]) {
-	const [open, setOpen] = useState(false);
-	const portalContainer = useContext(MenuPortalContext);
-	useEffect(() => {
-		if (!open) return;
-		window.dispatchEvent(new CustomEvent(MENU_OPEN_EVENT));
-		return () => { window.dispatchEvent(new CustomEvent(MENU_CLOSE_EVENT)); };
-	}, [open]);
-	return <div className="flex min-h-10 items-center gap-3">
-		{props.leadingSlot}
-		<Popover open={open} onOpenChange={setOpen}>
-			<PopoverTrigger asChild>
-				<Button type="button" variant="ghost" size="sm" aria-label="Model and usage" title="Model and usage" data-testid="session-options-trigger">
-					<SlidersHorizontalIcon data-icon="inline-start" />
-					Options
-				</Button>
-			</PopoverTrigger>
-			<PopoverContent container={portalContainer} side="top" align="start" data-testid="session-options" data-lh-menu="" aria-label="Model and usage" className="w-80 max-w-[calc(100vw-2rem)]" onKeyDownCapture={(event) => {
-				// A focus tooltip must not consume the Options dismissal key.
-				if (event.key === "Escape" && document.querySelectorAll("[data-lh-menu]").length === 1) {
-					event.preventDefault();
-					event.stopPropagation();
-					setOpen(false);
-				}
-			}} onInteractOutside={(event) => {
-				if (event.target instanceof Element && event.target.closest("[data-lh-menu]")) event.preventDefault();
-			}} onFocusOutside={(event) => {
-				if (event.target instanceof Element && event.target.closest("[data-lh-menu]")) event.preventDefault();
-			}} onEscapeKeyDown={(event) => {
-				// The innermost model/usage menu claims the first Escape.
-				if (document.querySelectorAll("[data-lh-menu]").length > 1) event.preventDefault();
-			}}>
-					<h2 className="mb-3 text-sm font-medium">Options</h2>
-					<StatsBarDetails {...props} leadingSlot={undefined} />
-			</PopoverContent>
-		</Popover>
-	</div>;
+	return <StatsBarDetails {...props} />;
 }
 
 /** The bar's context gauge: a ring filling clockwise with context used. */

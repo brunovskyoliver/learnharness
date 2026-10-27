@@ -6,10 +6,11 @@ import { Conversation, ConversationContent, ConversationEmptyState } from "@/com
 import { Composer } from "@/components/composer";
 import { useFieldCycle } from "@/components/field-cycle";
 import { SidebarToggle } from "@/components/sidebar";
-import { SetupDialog } from "@/components/setup-dialog";
+import { useReloadDraft } from "@/components/reload-recovery";
+import { LazySetupDialog as SetupDialog } from "@/components/lazy-setup-dialog";
 import { useStrongKeyless, useZeroKeys, ZeroKeysPill } from "@/components/setup-cta";
 import { StatsBar } from "@/components/stats-bar";
-import { ChainTableOverlay } from "@/components/chain-table.tsx";
+import { LazyChainTableOverlay as ChainTableOverlay } from "@/components/lazy-chain-table";
 import { ComposerActions, NodePickerControl } from "@/components/composer-actions";
 import type { ChatSettings, GraphSnapshot } from "@/src/core";
 
@@ -247,6 +248,12 @@ export function NewSession({ initialConfigured, mode = "teach" }: { initialConfi
 	// provider has none — the same skip-everything treatment on send.
 	const strongKeyless = useStrongKeyless();
 	const [setupOpen, setSetupOpen] = useState(false);
+	useReloadDraft(() => ({ kind: "new", text: textRef.current, mode, picks: picksRef.current }), (record) => {
+		if (record.draft?.kind !== "new") return;
+		applyText(record.draft.text);
+		applyPicks(record.draft.picks);
+		if (record.overlay.kind === "chains") openPicker();
+	});
 
 	const send = useCallback(() => {
 		const draft = textRef.current.trim();

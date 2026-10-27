@@ -172,7 +172,7 @@ describe("render smoke tests", () => {
 		// INSIDE the dock — never called optional, inviting the dump.
 		assert.ok(html.includes('data-testid="thinking-field"'), "thinking field present");
 		assert.match(html, /Your thinking/, "labeled as the learner's voice (sentence case, ui-v2)");
-		assert.doesNotMatch(html, /<textarea[^>]*placeholder=/, "the compact input has no placeholder copy");
+		assert.match(html, /<textarea[^>]*aria-label="Your thinking"/, "the answer input has an accessible name");
 		assert.ok(!html.includes("optional"), "the field is never called optional");
 		assert.match(html, /Submit answer/, "send becomes Submit answer");
 		assert.ok(!html.includes("Enter to submit"), "no keyboard hint under the field (ui-v2)");
@@ -236,7 +236,7 @@ describe("render smoke tests", () => {
 		assert.match(html, /malformed/);
 	});
 
-	it("both lesson phases keep the empty thinking input free of placeholder copy", () => {
+	it("both lesson phases keep the thinking input accessible and editable", () => {
 		const teach = renderToStaticMarkup(
 			<QuestionDock
 				toolName="quiz"
@@ -251,7 +251,8 @@ describe("render smoke tests", () => {
 		const probe = renderDock({ toolName: "quiz", toolCallId: "q1", input: quizInput as never });
 		for (const html of [teach, probe]) {
 			assert.match(html, /aria-label="Your thinking"/);
-			assert.doesNotMatch(html, /<textarea[^>]*placeholder=/);
+			assert.match(html, /<textarea[^>]*aria-label="Your thinking"[^>]*>/);
+			assert.ok(!/<textarea[^>]*disabled/.test(html), "thinking remains editable");
 		}
 	});
 

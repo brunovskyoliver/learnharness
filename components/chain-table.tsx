@@ -266,22 +266,15 @@ export function ChainTableBody({
 					data-testid="chain-table-close"
 					onClick={onClose}
 					aria-label="Close chains"
-					className="lh-no-drag flex size-8 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-card/80 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+					className="lh-no-drag ui-icon-button"
 				>
 					<XIcon className="size-4" />
 				</button>
 			</TopBar>
 
-			{/* The list: NO per-row lines (owner ruling) — the ONLY horizontal
-			    separators sit between cluster groups; the ALIGNMENT STAIRCASE
-			    carries the hierarchy (owner round 4, "double the indentation":
-			    two-column steps — chains pl-12 aligned with the folder icon,
-			    statements pl-21 where a chain icon would sit).
-			    All three columns sort, small chevron on active. */}
+			{/* Spacing, indentation and tree guides carry the hierarchy. */}
 			<div className="min-h-0 flex-1 overflow-y-auto">
-				{/* The TOP rule (owner round 5: the table is framed — a line under
-			    the header, a line under the last group, lines between groups). */}
-				<div className="sticky top-0 z-10 flex items-center gap-1 border-b border-border/60 bg-background/80 px-3 py-1.5 text-[11px] text-muted-foreground/70 backdrop-blur">
+				<div className="sticky top-0 z-10 flex items-center gap-1 bg-background/80 px-3 py-1.5 text-[11px] text-muted-foreground/70 backdrop-blur">
 					<button
 						type="button"
 						data-testid="sort-name"
@@ -324,10 +317,7 @@ export function ChainTableBody({
 						<div
 							key={group.key}
 							data-testid={`cluster-group-${group.key}`}
-							// The horizontal rules (owner rulings, rounds 2 + 5): between
-							// cluster groups AND under the last one — the table is framed
-							// top (header) and bottom. Never on individual rows.
-							className="relative border-b border-border/60"
+							className="relative"
 						>
 							{/* The TREE THREAD (owner rounds 5–6): a vertical guide at the
 							    expander arrow's column (center 37px: pl-3 + checkbox 14 +
@@ -520,11 +510,8 @@ export function ChainTableBody({
 							</button>
 						) : (
 							<>
-							{/* The danger fence (owner ruling): a divider quarantines
-								    the destructive action at the bar's right end — the
-								    safe actions and the kill switch never blend. The
-								    full-death confirm dialog catches the misclick. */}
-							<span data-testid="chain-danger-divider" aria-hidden="true" className="h-4 w-px bg-border/70" />
+							{/* Space separates Delete from the other actions. */}
+							<span data-testid="chain-danger-divider" aria-hidden="true" className="w-2" />
 							<button
 								type="button"
 								data-testid="chain-delete"

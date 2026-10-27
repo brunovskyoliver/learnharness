@@ -1,15 +1,16 @@
 /** The app theme handed to every demo: CSS variables, a dark page and the
- *  reading font. Injected FIRST in <head>, so a demo's own CSS still wins;
+ *  reading font. Neutral defaults go first in <head>; scrolling invariants go last, so authored
+ *  content keeps its design while native scrollbar tracks stay hidden;
  *  the builder is told to use these variables. The same CSS runs in the
  *  builder's headless test and in the lesson's sandboxed iframe. */
 
 export const DEMO_THEME_VARS = {
-	"--lh-bg": "#141414",
-	"--lh-surface": "#1c1c1c",
-	"--lh-surface-2": "#2a2a2a",
-	"--lh-border": "#434343",
-	"--lh-text": "#e6e6e6",
-	"--lh-muted": "#a1a1a1",
+	"--lh-bg": "#000000",
+	"--lh-surface": "color-mix(in srgb, #0a0a0a 97%, #fff)",
+	"--lh-surface-2": "rgb(255 255 255 / 4%)",
+	"--lh-border": "rgb(255 255 255 / 8%)",
+	"--lh-text": "#f5f5f5",
+	"--lh-muted": "#a3a3a3",
 	"--lh-blue": "#7cacf8",
 	"--lh-teal": "#5fd4c4",
 	"--lh-amber": "#e5b55a",
@@ -56,17 +57,25 @@ export function demoThemeStyle(font = false): string {
 	const face = font
 		? `@font-face{font-family:"LH Sans";src:url("${DEMO_FONT_PATH}") format("woff2");font-weight:200 900;font-display:swap}`
 		: "";
-	return `<style data-lh-theme>${face}:root{color-scheme:dark;${vars}}html{background:var(--lh-bg);color:var(--lh-text);font-family:var(--lh-font)}button,input,select,textarea{font:inherit}h1,h2,h3,h4,h5,h6{font-weight:var(--lh-heading-weight,700)}strong,b{color:var(--lh-ink-strong,var(--lh-text))}em,i{color:var(--lh-ink-italic,var(--lh-text))}::selection{background:color-mix(in srgb,var(--lh-text) 24%,var(--lh-bg))}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:1px solid var(--lh-muted);outline-offset:2px}</style>`;
+	return `<style data-lh-theme>@layer lh-scrollbars;${face}:root{color-scheme:dark;${vars}}html{background:var(--lh-bg);color:var(--lh-text);font-family:var(--lh-font)}button,input,select,textarea{font:inherit}h1,h2,h3,h4,h5,h6{font-weight:var(--lh-heading-weight,700)}strong,b{color:var(--lh-ink-strong,var(--lh-text))}em,i{color:var(--lh-ink-italic,var(--lh-text))}::selection{background:color-mix(in srgb,var(--lh-text) 24%,var(--lh-bg))}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:1px solid var(--lh-muted);outline-offset:2px}</style>`;
 }
 
-/** Insert the theme at the start of <head> (or of the document). */
+/** Kept separate from overridable theme defaults. High specificity and
+ * important defeat authored thin-scrollbar rules without disabling scrolling. */
+export const DEMO_SCROLLBAR_CSS = `@layer lh-scrollbars{:root:root:root,:root:root:root *{scrollbar-width:none!important;-ms-overflow-style:none!important}:root:root:root::-webkit-scrollbar,:root:root:root *::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}}`;
+
+/** Theme defaults precede authored CSS; the scrolling invariant follows it.
+ * This works in sandboxed srcdoc, downloaded demos and the builder test. */
 export function injectDemoTheme(html: string, font = false): string {
 	const style = demoThemeStyle(font);
 	const head = /<head(?:\s[^>]*)?>/i;
 	const root = /<html(?:\s[^>]*)?>/i;
-	if (head.test(html)) return html.replace(head, (m) => `${m}${style}`);
-	if (root.test(html)) return html.replace(root, (m) => `${m}<head>${style}</head>`);
-	return `${style}${html}`;
+	const themed = head.test(html) ? html.replace(head, (m) => `${m}${style}`)
+		: root.test(html) ? html.replace(root, (m) => `${m}<head>${style}</head>`)
+		: `${style}${html}`;
+	const invariant = `<style data-lh-scrollbars>${DEMO_SCROLLBAR_CSS}</style>`;
+	if (/<\/body>/i.test(themed)) return themed.replace(/<\/body>/i, `${invariant}</body>`);
+	return `${themed}${invariant}`;
 }
 
 /** Demos built before the dark default declare a light page. They open

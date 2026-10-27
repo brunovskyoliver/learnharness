@@ -48,6 +48,23 @@ export class SessionStateStore {
 		};
 	}
 
+	/** Explicit reload recovery must verify the latest fields, including any
+	 * write still waiting in the normal debounce window. */
+	persistForReload(): boolean {
+		this.get("composer");
+		try {
+			const storage = this.storage();
+			if (!storage) return false;
+			const body = JSON.stringify({ version: 1, values: this.values });
+			storage.setItem(this.storageKey, body);
+			if (storage.getItem(this.storageKey) !== body) return false;
+			clearTimeout(this.timer);
+			this.timer = undefined;
+			this.dirty = false;
+			return true;
+		} catch { return false; }
+	}
+
 	flush(): void {
 		clearTimeout(this.timer);
 		this.timer = undefined;

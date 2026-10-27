@@ -8,8 +8,9 @@
  *  sandboxed iframe with: p (params), s (state), d (derived), t (step
  *  count), range(start, stop, step) and Math's functions. */
 
-import { Type, type Static } from "typebox";
-import { Value } from "typebox/value";
+import { Array as ArrayType, Boolean as BooleanType, Integer as IntegerType, Literal as LiteralType, Number as NumberType, Object as ObjectType, Optional as OptionalType, Record as RecordType, String as StringType, Union as UnionType, Unknown as UnknownType, type Static } from "typebox";
+const Type = { Array: ArrayType, Boolean: BooleanType, Integer: IntegerType, Literal: LiteralType, Number: NumberType, Object: ObjectType, Optional: OptionalType, Record: RecordType, String: StringType, Union: UnionType, Unknown: UnknownType };
+import { Check, Errors } from "typebox/value";
 
 const Expr = Type.String({ minLength: 1, description: "JavaScript expression over p, s, d, t, range() and Math functions." });
 const Width = Type.Optional(Type.Union([Type.Literal("full"), Type.Literal("half")], { description: "Panel width; default full." }));
@@ -97,18 +98,14 @@ export const DemoKitSpecSchema = Type.Object({
 export type DemoKitSpec = Static<typeof DemoKitSpecSchema>;
 export type DemoKitPanel = DemoKitSpec["panels"][number];
 
-export const DEMO_KIT_RUNTIME_PATH = "/demo-kit/runtime.js";
-const SPEC_ID = "lh-kit-spec";
-
-/** Expression helpers in scope: Math's members plus range(). */
 const SCOPE = ["p", "s", "d", "t", "range", ...Object.getOwnPropertyNames(Math)];
 
 /** Every problem with a spec, as short lines for the builder. Schema first;
  *  then each expression and the step body must compile. Compiling only
  *  parses (new Function never runs the body), so this is safe server-side. */
 export function validateDemoKitSpec(spec: unknown): string[] {
-	if (!Value.Check(DemoKitSpecSchema, spec)) {
-		return [...Value.Errors(DemoKitSpecSchema, spec)].slice(0, 12).map((e) => `${e.instancePath || "/"}: ${e.message}`);
+	if (!Check(DemoKitSpecSchema, spec)) {
+		return [...Errors(DemoKitSpecSchema, spec)].slice(0, 12).map((e) => `${e.instancePath || "/"}: ${e.message}`);
 	}
 	const s = spec as DemoKitSpec;
 	const errors: string[] = [];
@@ -154,26 +151,5 @@ export function validateDemoKitSpec(spec: unknown): string[] {
 	return errors;
 }
 
-/** The stored demo document: the spec as JSON plus the runtime script. */
-export function kitDemoHtml(spec: DemoKitSpec): string {
-	const json = JSON.stringify(spec).replace(/</g, "\\u003c");
-	return [
-		"<!doctype html>",
-		'<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>',
-		'<body><div id="lh-kit"></div>',
-		`<script type="application/json" id="${SPEC_ID}">${json}</script>`,
-		`<script src="${DEMO_KIT_RUNTIME_PATH}"></script>`,
-		"</body></html>",
-	].join("\n");
-}
 
-/** The spec inside a kit demo's HTML, or null for a hand-written demo. */
-export function kitSpecOf(html: string): DemoKitSpec | null {
-	const m = new RegExp(`<script type="application/json" id="${SPEC_ID}">([\\s\\S]*?)</script>`).exec(html);
-	if (!m) return null;
-	try {
-		return JSON.parse(m[1]!) as DemoKitSpec;
-	} catch {
-		return null;
-	}
-}
+export { DEMO_KIT_RUNTIME_PATH, kitDemoHtml, kitSpecOf } from "./demo-kit-document.ts";

@@ -783,6 +783,16 @@ export class GraphCanvasRenderer {
 		this.markDirty();
 	}
 
+	/** Appearance changes repaint existing data; camera, drag and simulation
+	 * history stay live. Font changes also invalidate cached label geometry. */
+	setTheme(colors: CanvasColors, fontFamily: string): void {
+		if (!this.data) return;
+		this.data.colors = colors;
+		this.data.fontFamily = fontFamily;
+		this.geoVersion++;
+		this.markDirty();
+	}
+
 	setSettings(settings: GraphRenderSettings): void {
 		this.settings = settings;
 		this.geoVersion++; // sizes/wrap width changed → rebuild geometry

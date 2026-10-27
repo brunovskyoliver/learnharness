@@ -80,7 +80,7 @@ export function DemoPanel() {
 			aria-label="Demo"
 			data-testid="demo-panel"
 			style={{ "--lh-demo-w": `${clampWidth(width, typeof window === "undefined" ? 1440 : area())}px` } as React.CSSProperties}
-			className="demo-workspace relative flex min-h-0 shrink-0 flex-col bg-background md:h-full md:w-[var(--lh-demo-w)] md:border-b-0 md:border-l"
+			className="demo-workspace relative flex min-h-0 shrink-0 flex-col bg-background md:h-full md:w-[var(--lh-demo-w)]"
 		>
 			<div
 				role="separator"
@@ -93,7 +93,7 @@ export function DemoPanel() {
 				onDoubleClick={() => commit(DEFAULT_WIDTH)}
 				className={`absolute -left-1.5 top-0 z-10 hidden h-full w-3 cursor-col-resize outline-none md:block ${dragging ? "bg-accent" : "hover:bg-accent focus-visible:bg-accent"}`}
 			/>
-			<div className="flex h-13 shrink-0 items-center gap-3 border-b border-border px-3">
+			<div className="flex h-13 shrink-0 items-center gap-3 px-3">
 				{panel.demos.length > 1 ? (
 					<select
 						aria-label="Demo"

@@ -55,7 +55,7 @@ test("plan plus unknown graph rows keep the existing unknown suffix without fabr
  const costs = graphCostSummary({ chats: [{ title: "Scratch", extractions: [{ startedAt: 1, at: "2026-10-24T00:00:00Z", durationMs: 1, stages: { extractor: plan, auditor: unknown } }, { startedAt: 2, at: "2026-10-24T00:00:00Z", durationMs: 1, stages: { extractor: unknown, auditor: plan } }] }], sources: [] });
  await mount(<GraphCostControl costs={costs} />);
  await act(async () => { document.querySelector("button")!.click(); });
- const recent = [...document.querySelectorAll(".border-t .shrink-0.tabular-nums")];
+ const recent = [...document.querySelectorAll(".shrink-0.tabular-nums")];
  assert.equal(recent.length, 2);
  for (const row of recent) assert.equal(row.textContent, "ChatGPT +1 unpriced", "both recent two-stage runs disclose their unknown stage");
  assert.equal((document.body.textContent?.match(/\+1 unpriced/g) ?? []).length, 4, "both mixed stage rows also retain their unknown suffix");

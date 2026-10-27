@@ -1,18 +1,19 @@
-/**
- * The dock shell's variant key (the WAAPI height-morph trigger,
- * components/chat.tsx DockOverlay). Whenever this string CHANGES between
- * renders, the shell morphs its height (120ms) and re-reserves the
- * transcript tail; when it stays the same, height changes are measured
- * only (typing growth never animates).
- *
- * The expanded term (the fold: full form ↔ slim bar) belongs to EVERY
- * docked variant — question AND practice. For two months it keyed on
- * `pending` (the question's tool call) alone, which is null in practice
- * sessions: the practice dock folded and re-expanded with an INSTANT
- * height jump while teaching morphed (owner report 2026-10-06, "opens
- * and closes instantly"). The fold machine itself already treats
- * practice as a dock owner; this key now agrees.
- */
-export function dockStateKey(mode: string, docked: boolean, expanded: boolean): string {
-	return docked ? `${mode}:${expanded}` : `${mode}:-`;
+/** Every composer variant includes its fold state in the height animation key. */
+export function dockStateKey(mode: string, _docked: boolean, expanded: boolean): string {
+	return `${mode}:${expanded}`;
+}
+
+/** Hysteresis keeps reading mode compact until the actual conversation bottom. */
+export function nextDockExpanded({ expanded, distance, direction, editing, composing, explicitExpansion = false }: {
+	expanded: boolean;
+	distance: number;
+	direction: "up" | "down" | "none";
+	editing: boolean;
+	composing: boolean;
+	explicitExpansion?: boolean;
+}): boolean {
+	if (editing || composing || explicitExpansion) return true;
+	if (expanded && direction === "up" && distance > 96) return false;
+	if (!expanded && direction === "down" && distance <= 16) return true;
+	return expanded;
 }

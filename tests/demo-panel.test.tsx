@@ -22,7 +22,7 @@ describe("demo theme", () => {
 	it("goes first in <head>, so the demo's own CSS still wins", () => {
 		const out = injectDemoTheme(LIGHT);
 		assert.ok(out.indexOf("data-lh-theme") < out.indexOf("color-scheme:light"));
-		assert.match(out, /--lh-bg:#141414/);
+		assert.match(out, /--lh-bg:#000000/);
 		assert.ok(!out.includes("@font-face"), "no font without an app server");
 		assert.match(injectDemoTheme(LIGHT, true), /@font-face\{font-family:"LH Sans";src:url\("\/fonts\/source-sans-3-latin\.woff2"\)/);
 	});

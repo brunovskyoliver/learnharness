@@ -97,3 +97,29 @@ test("desktop-dev opener accepts only local action IDs, does not follow redirect
 	for (const target of ["file:///private/fixture", "http://unrelated.invalid", "https://user:pass@unrelated.invalid"]) await assert.rejects(openWebSubscriptionBrowser(action, "http://localhost:3000", { ...options, fetch: async () => new Response(null, { status: 303, headers: { Location: target } }) }));
 	assert.equal(opened.length, 1);
 });
+
+test("concurrent ChatGPT and native status reads share one request per hub, then refresh after settlement", async () => {
+	let reads = 0;
+	let settle!: (response: Response) => void;
+	globalThis.fetch = async () => { reads++; return new Promise<Response>((resolve) => { settle = resolve; }); };
+	const hub = createNotifyHub();
+	const chatgpt = createWebChatGPTBridge(hub), native = createWebNativeBridge(hub);
+	const safe = { available: true, pending: false, allowBackgroundUse: false, activeId: null, accounts: [], error: null };
+	const first = chatgpt.status(), second = native.status();
+	assert.equal(reads, 1);
+	settle(Response.json({ chatgpt: safe, native: [] }));
+	assert.deepEqual(await first, safe); assert.deepEqual(await second, []);
+	const next = native.status(); assert.equal(reads, 2);
+	settle(Response.json({ chatgpt: safe, native: [] })); await next;
+});
+
+test("status failures allow retry, and separate account hubs never share pending responses", async () => {
+	let reads = 0;
+	globalThis.fetch = async () => { reads++; return new Response(null, { status: 503 }); };
+	const hub = createNotifyHub(), bridge = createWebChatGPTBridge(hub);
+	await assert.rejects(Promise.all([bridge.status(), createWebNativeBridge(hub).status()]));
+	assert.equal(reads, 1);
+	await assert.rejects(bridge.status()); assert.equal(reads, 2);
+	await assert.rejects(Promise.all([bridge.status(), createWebChatGPTBridge(createNotifyHub()).status()]));
+	assert.equal(reads, 4);
+});

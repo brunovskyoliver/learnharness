@@ -136,12 +136,9 @@ describe("ChainTableBody — THE shared TopBar + the lines law (owner, round 2)"
 		assert.ok(html.includes('data-testid="chain-table-search"'), "the search input");
 	});
 
-	it("the table is FRAMED: header rule + rules between groups + rule under the last group; rows stay lineless (owner round 5)", () => {
+	it("headers, groups and rows use spacing without structural separator rules", () => {
 		const html = render({ expandedClusters: new Set(["chat1"]) });
-		// every group wrapper carries the rule now — between groups AND under
-		// the last one; the header carries the TOP rule
-		const sep = html.split("border-b border-border/60").length - 1;
-		assert.ok(sep >= 4, "header + 3 group rules");
+		assert.ok(!html.includes("border-b border-border/60"), "no header or group separator rules");
 		// chain rows themselves carry NO border — their entire class list is
 		// the staircase law (pl-12 = aligned with the cluster's FOLDER icon);
 		// the chip outlines' border-border/70 is an outline, not a row line

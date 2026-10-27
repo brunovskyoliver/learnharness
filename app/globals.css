@@ -326,7 +326,6 @@
 .model-menu-footer {
 	flex-shrink: 0;
 	margin: 8px 4px 0;
-	border-top: 1px solid var(--picker-border, var(--border));
 	padding: 10px 8px 4px;
 	color: var(--picker-muted, var(--muted-foreground));
 	font-size: var(--text-xs);
@@ -376,73 +375,33 @@
 	.model-menu-option, .reasoning-menu-option { transition: none; }
 }
 
-/* Palette (owner's hexes): main #141414, raised #1C1C1C, edges #434343.
-   Mono chrome = JetBrains Mono; prose = Source Sans 3; titles = CMU Serif. */
-:root {
+/* Default web dark roles from T3 Code d0b81ceb6e225a7386203d590ec84def4abed281,
+   apps/web/src/index.css. Saved background overrides remain inline. */
+:root, .dark {
 	color-scheme: dark;
 	--radius: 8px;
-	--background: #141414;
-	--foreground: #e6e6e6;
-	--card: #1c1c1c;
-	--card-foreground: #e6e6e6;
-	--popover: #1c1c1c;
-	--popover-foreground: #e6e6e6;
-	--primary: #e6e6e6;
-	--primary-foreground: #141414;
-	--secondary: #1c1c1c;
-	--secondary-foreground: #e6e6e6;
-	--muted: #1c1c1c;
-	--muted-foreground: #a1a1a1;
-	--accent: #2a2a2a;
-	--accent-foreground: #e6e6e6;
-	--destructive: oklch(0.704 0.191 22.216);
-	/* Verdict/state hues (polish pass 2026-10-26): ONE green, ONE red, one
-	   amber app-wide. Danger IS --destructive. Each clears 4.5:1 as text on
-	   its own 15% tint over --card. */
-	--success: oklch(0.72 0.15 150);
-	--warning: oklch(0.8 0.13 85);
-	--border: #434343;
-	--input: #434343;
-	--ring: #a1a1a1;
-	/* Emphasis inks default to the REGULAR TEXT COLOR (owner ruling,
-	   appearance wave 2026-09-26 — the old #ee928c/#6fa9d6 factory
-	   emphasis colors are gone). Explicit overrides land via the
-	   appearance settings vars. */
-	--lh-ink-strong: var(--foreground);
-	--lh-ink-italic: var(--foreground);
-	/* Default reading rhythm; appearance settings may override size and weight. */
-	--lh-prose-size: 17px;
-	--lh-prose-leading: calc(27 / 17);
-	--lh-heading-weight: 700;
-}
-
-/* The app is always dark (<html class="dark">); mirror the same values so
-   the block stays coherent under Tailwind's variant. */
-.dark {
-	--background: #141414;
-	--foreground: #e6e6e6;
-	--card: #1c1c1c;
-	--card-foreground: #e6e6e6;
-	--popover: #1c1c1c;
-	--popover-foreground: #e6e6e6;
-	--primary: #e6e6e6;
-	--primary-foreground: #141414;
-	--secondary: #1c1c1c;
-	--secondary-foreground: #e6e6e6;
-	--muted: #1c1c1c;
-	--muted-foreground: #a1a1a1;
-	--accent: #2a2a2a;
-	--accent-foreground: #e6e6e6;
-	--destructive: oklch(0.704 0.191 22.216);
-	/* Verdict/state hues (polish pass 2026-10-26): ONE green, ONE red, one
-	   amber app-wide. Danger IS --destructive. Each clears 4.5:1 as text on
-	   its own 15% tint over --card. */
-	--success: oklch(0.72 0.15 150);
-	--warning: oklch(0.8 0.13 85);
-	--border: #434343;
-	--input: #434343;
-	--ring: #a1a1a1;
-	/* Same emphasis ruling as the block above: unset = text color. */
+	--background: #000;
+	--foreground: var(--color-neutral-100);
+	--surface-raised: color-mix(in srgb, var(--color-neutral-950) 97%, var(--color-white));
+	--card: var(--surface-raised);
+	--card-foreground: var(--foreground);
+	--popover: var(--surface-raised);
+	--popover-foreground: var(--foreground);
+	--primary: oklch(0.571 0.21 264);
+	--primary-foreground: var(--color-white);
+	--secondary: rgb(255 255 255 / 3%);
+	--secondary-foreground: var(--foreground);
+	--muted: rgb(255 255 255 / 3%);
+	--muted-foreground: var(--color-neutral-400);
+	--accent: rgb(255 255 255 / 4%);
+	--accent-foreground: var(--foreground);
+	--message-surface: color-mix(in srgb, var(--color-neutral-950) 92%, var(--color-white));
+	--destructive: var(--color-red-400);
+	--success: var(--color-emerald-400);
+	--warning: var(--color-amber-400);
+	--border: rgb(255 255 255 / 8%);
+	--input: rgb(255 255 255 / 11%);
+	--ring: var(--primary);
 	--lh-ink-strong: var(--foreground);
 	--lh-ink-italic: var(--foreground);
 	--lh-prose-size: 17px;
@@ -616,24 +575,16 @@ body {
 	line-height: 1.25;
 }
 
-/* Thin dark native scrollbar (app-wide): dark thumb, transparent track. */
-* {
-	scrollbar-width: thin;
-	scrollbar-color: var(--color-border) transparent;
+/* Hidden tracks are an app invariant. Important also defeats later component
+   rules (math, code, menus and textareas) without changing overflow. */
+*, *::before, *::after {
+	scrollbar-width: none !important;
+	-ms-overflow-style: none !important;
 }
-
 ::-webkit-scrollbar {
-	width: 8px;
-	height: 8px;
-}
-
-::-webkit-scrollbar-track {
-	background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-	background: var(--color-border);
-	border-radius: 8px;
+	display: none !important;
+	width: 0 !important;
+	height: 0 !important;
 }
 
 /* Wide tables: fade the edge that hides more columns (md-blocks sets data-clip). */
@@ -645,10 +596,6 @@ body {
 }
 .lh-table-scroll[data-clip="both"] {
 	mask-image: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent);
-}
-
-::-webkit-scrollbar-thumb:hover {
-	background: var(--color-muted-foreground);
 }
 
 /* Dock variant swap — quick fade/rise on content change; the shell's HEIGHT
@@ -1109,4 +1056,40 @@ body {
 :where(input, textarea, [contenteditable="true"]) { caret-color: var(--foreground); }
 @media (pointer: coarse) {
 	.ui-icon-button, .prompt-submit { min-width: 44px; min-height: 44px; }
+}
+
+/* Secondary view controls keep their touch targets while visual grouping uses space. */
+@media (pointer: coarse) {
+	[data-testid="settings-dialog"] :is(input:not([type="checkbox"]):not([type="range"]), select, button:not([role="switch"])) { min-height: 44px; }
+	[data-testid="chain-table"] button { min-height: 44px; }
+	[data-testid="activity-section"] button { min-width: 44px; min-height: 44px; }
+	[data-testid="mermaid-overlay"] button { min-width: 44px; min-height: 44px; }
+	.graph-chrome-fade-in :is(button, input) { min-height: 44px; }
+	.graph-chrome-fade-in button { min-width: 44px; }
+	[data-testid="demos-chip"], [data-testid="plan-chip"],
+	[data-testid="kind-filter"], [data-testid="new-session-practice"],
+	[data-testid="new-session"], [data-testid="settings-entry"],
+	[data-testid="import-notes"], [aria-label="Close sidebar"],
+	.sidebar-toggle-slot button { min-width: 44px; min-height: 44px; }
+	.sidebar-toggle-slot { height: 44px; }
+	.sidebar-toggle-slot.lh-closed-toggle { width: 44px; }
+	[data-testid="lesson-question"] [data-kbdrow],
+	[data-testid="setup-cta"], [data-testid="setup-cta-keys"],
+	[data-testid="session-row"], [data-testid="session-row-kbd"] { min-height: 44px; }
+
+}
+[data-testid="activity-section"] > div > span[aria-hidden="true"] { background: transparent; }
+
+@keyframes lh-text-shimmer {
+  from { background-position: 100% center; }
+  to { background-position: 0% center; }
+}
+.lh-text-shimmer { animation: lh-text-shimmer 2s linear infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .lh-text-shimmer { animation: none; }
+}
+
+/* Server-rendered desktop navigation stays useful before its client code arrives. */
+@media (max-width: 927px) {
+  [data-sidebar-bootstrap] { width: 0 !important; visibility: hidden; }
 }

@@ -34,6 +34,8 @@ import {
 } from "d3-force";
 import type { GraphEdge, GraphNode, Position } from "./contracts.ts";
 import { seededRandom } from "./question-core.ts";
+import { LINK_DISTANCE, CHARGE_STRENGTH, INCREMENTAL_GRAVITY, CLUSTER_PULL_STRENGTH } from "./layout-defaults.ts";
+export { LINK_DISTANCE, CHARGE_STRENGTH, INCREMENTAL_GRAVITY, CLUSTER_PULL_STRENGTH } from "./layout-defaults.ts";
 
 /** A node the d3 simulation mutates (x/y/vx/vy; fx/fy = pinned). */
 export interface LayoutNode extends SimulationNodeDatum {
@@ -217,7 +219,6 @@ export interface ImpLink {
 	conclusion: string;
 }
 
-export const LINK_DISTANCE = 40;
 /** Implication-node id prefix (the mint law lives in core/graph.ts's
  *  newGraphChainId). Layout-side: links TOUCHING an imp node get HALF
  *  the base rest length — the argument's geometry (a converging point)
@@ -226,7 +227,7 @@ export const LINK_DISTANCE = 40;
 const IMP_ID_PREFIX = "arg_";
 const impLinkId = (v: string | number | { id: string }): string =>
 	typeof v === "object" ? v.id : String(v);
-export const CHARGE_STRENGTH = -240; // 2026-09-17: −120 → −240 (user: repulsion default too weak); the default is shared with render-settings (gm-centered in CHARGE_RANGE).
+
 /** Per-tick anchor re-blend: fraction of an anchored node's displacement
  *  from its previous position that SURVIVES each tick. 0.85 = gentle
  *  evolution where forces are strong, stillness where they are not —
@@ -241,14 +242,6 @@ const ANCHOR_RETENTION = 0.85;
  *  (position-space, alpha-independent) keeps gravity's transient sag
  *  from ever moving an anchored node at rest. */
 const BOOTSTRAP_GRAVITY = 0.2;
-/** Exported: the live sim reuses this so its rest state matches the
- *  server settle's equilibrium (one engine, one rest). */
-export const INCREMENTAL_GRAVITY = 0.12;
-/** Exported: default cluster-centroid pull strength (tuned by replay —
- *  compact enough to read as blobs, weak enough that cluster shape is
- *  still the edge network's). */
-export const CLUSTER_PULL_STRENGTH = 0.15;
-
 /**
  * The one force set. Returns a STOPPED simulation — callers drive it
  * manually (tick-per-frame live, or a bounded tick loop when settling).

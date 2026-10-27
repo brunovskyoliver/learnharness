@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useBackdropDismiss } from "@/components/backdrop-dismiss";
+import { MenuPortalContext } from "@/components/menu-shell";
+import { containModalTab } from "@/components/modal-focus";
 import type { ChatDeleteMode, ChatListItem } from "@/src/core";
 
 /** The graph-traces checkbox copy (owner, 2026-09-24 flow rework — was
@@ -50,6 +52,8 @@ export function DeleteSessionDialog({
 	/** Success path — the sidebar owns navigation + list patching. */
 	onDeleted: (id: string, mode: ChatDeleteMode, graphRevision: number) => void;
 }) {
+	const portalContainer = useContext(MenuPortalContext);
+	const modal = useRef<HTMLDivElement>(null);
 	const [traces, setTraces] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const backdropDismiss = useBackdropDismiss(() => {
@@ -69,6 +73,17 @@ export function DeleteSessionDialog({
 			setFailure(null);
 		}
 	}, [chat]);
+
+	// A confirmation inside native mobile navigation owns keyboard focus.
+	useEffect(() => {
+		if (!chat || !portalContainer) return;
+		const previous = document.activeElement;
+		modal.current?.querySelector<HTMLButtonElement>('[data-testid="delete-cancel"]')?.focus();
+		return () => {
+			if (previous instanceof HTMLElement && previous.isConnected && portalContainer.contains(previous)) previous.focus();
+			else portalContainer.querySelector<HTMLElement>('[data-testid="session-search"]')?.focus();
+		};
+	}, [chat, portalContainer]);
 
 	// Esc closes (claimed — a menu/dialog Esc must not also abort a turn).
 	useEffect(() => {
@@ -118,6 +133,13 @@ export function DeleteSessionDialog({
 
 	return createPortal(
 		<div
+			ref={modal}
+			onKeyDown={(event) => {
+				if (portalContainer && event.key === "Tab") {
+					containModalTab(event, event.currentTarget);
+					event.stopPropagation();
+				}
+			}}
 			className="fixed inset-0 z-50 flex items-center justify-center bg-background/80"
 			{...backdropDismiss}
 		>
@@ -131,7 +153,7 @@ export function DeleteSessionDialog({
 				onRun={() => void run()}
 			/>
 		</div>,
-		document.body,
+		portalContainer ?? document.body,
 	);
 }
 

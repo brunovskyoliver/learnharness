@@ -73,6 +73,7 @@ import { prettyModel } from "@/components/usage-format";
 import { cn } from "@/lib/utils";
 import { SettingsGroup, SettingsRow, Toggle, CommitInput } from "./controls.tsx";
 import { ModelMenuList, ThinkingMenuList } from "./model-menu";
+import { composeSlotModel } from "./slot-model";
 import { ChatGPTBackgroundAccess } from "./chatgpt-connection";
 import { NativeSubscriptionBackgroundAccess } from "./subscription-connections";
 
@@ -142,29 +143,7 @@ export function composeGraphTools(agent: AgentSettings | undefined, on: boolean)
 	return { ...agent, graphTools: { enabled: on } };
 }
 
-/** Compose: one slot's model/thinking override. Empty model = absent
- *  override (Default — falls to the factory pin); empty thinking = the
- *  tier keeps its resolved thinking budget. Per-field independence, same
- *  as the schema's ModelSlot. Pure — exported for tests. */
-export function composeSlotModel(
-	models: ModelsSettings | undefined,
-	slot: ModelSlotName,
-	provider: string,
-	id: string,
-	thinking: string,
-): ModelsSettings {
-	const prev = models?.[slot];
-	const next = { ...models };
-	if (!provider && !id && !thinking) {
-		delete next[slot];
-		return next;
-	}
-	next[slot] = {
-		...(provider && id ? { model: { provider, id } } : prev?.model ? { model: prev.model } : {}),
-		...(thinking ? { thinkingLevel: thinking as ThinkingLevel } : {}),
-	};
-	return next;
-}
+export { composeSlotModel } from "./slot-model";
 
 /** Compose: the search-engine preference. null = the explicit pin is
  *  REMOVED (auto-activation takes over — the schema's resting state).

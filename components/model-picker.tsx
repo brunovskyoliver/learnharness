@@ -8,7 +8,7 @@ import type { ChatSettings, ModelCatalogEntry, ModelCatalogResponse, ModelsSetti
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { prettyModel } from "@/components/usage-format";
 import { ModelMenuList, ThinkingMenuList } from "@/components/settings/model-menu";
-import { composeSlotModel } from "@/components/settings/agent-section";
+import { composeSlotModel } from "@/components/settings/slot-model";
 import { MenuShell } from "@/components/menu-shell";
 import { Hint } from "@/components/ui/hint";
 import { notifySettingsSaved, onSettingsSaved, useSettingsSaved } from "@/components/settings-signal";

@@ -4,45 +4,14 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { BrailleSpinner } from "@/components/braille-spinner";
 import { SettingsRow, Toggle } from "./controls.tsx";
-
-/** Observational snapshot from electron/main.cjs; never updater permission. */
-export type UpdateState = {
-	status: "idle" | "checking" | "downloading" | "up-to-date" | "downloaded" | "error" | "disabled";
-	version: string | null;
-	revision: number;
-};
+import { useUpdateState, type UpdateState } from "./update-state.ts";
+export { useUpdateState, type UpdateState } from "./update-state.ts";
 
 export const APP_VERSION = process.env.LH_VERSION ?? "";
 const HOMEPAGE = process.env.LH_HOMEPAGE ?? "";
 export const MANUAL_UPDATE_HINT = "Checking downloads available updates. Downloaded updates install when you quit the app.";
 export const AUTO_UPDATE_HINT = "Check at startup and every 24 hours. Turning this off does not stop updates already in progress or ready to install.";
 const UPDATE_ERROR = "Couldn’t check for updates. Try again later.";
-
-/** Subscribe before requesting the snapshot. IPC replies and pushes can
- * cross; a revision prevents an older reply from hiding a newer event.
- * The banner shares this read-only observer so late loads recover too. */
-export function useUpdateState() {
-	const [state, setState] = useState<UpdateState | null>(null);
-	const [failed, setFailed] = useState(false);
-	useEffect(() => {
-		const lh = window.lh;
-		if (!lh) return;
-		let live = true;
-		let revision = -1;
-		const accept = (next: UpdateState) => {
-			if (!live || next.revision < revision) return;
-			revision = next.revision;
-			setState(next);
-			setFailed(false);
-		};
-		const off = lh.onUpdateStatus?.(accept);
-		void lh.getUpdateState?.().then(accept).catch(() => {
-			if (live && revision === -1) setFailed(true);
-		});
-		return () => { live = false; off?.(); };
-	}, []);
-	return { state, failed };
-}
 
 export function updateStatusText(state: UpdateState | null): string | null {
 	switch (state?.status) {

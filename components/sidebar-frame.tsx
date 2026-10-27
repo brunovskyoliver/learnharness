@@ -1,11 +1,11 @@
 "use client";
 
-import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 const WIDTH_KEY = "lh:sidebar-width";
 const DEFAULT_WIDTH = 256;
-const MobileSidebar = lazy(() => import("./mobile-sidebar"));
+import MobileSidebar from "./mobile-sidebar";
 
 /** Desktop navigation keeps a 208px floor and leaves 640px for the lesson. */
 export function clampSidebarWidth(width: number, viewport: number): number {
@@ -13,7 +13,7 @@ export function clampSidebarWidth(width: number, viewport: number): number {
 }
 
 /** Resize state lives here so pointer moves do not rerender the session list. */
-export function SidebarFrame({ open, overlay, onClose, hasMenu, children }: { open: boolean; overlay: boolean; onClose: () => void; hasMenu: boolean; children: ReactNode }) {
+export function SidebarFrame({ bootstrap = false, open, overlay, onClose, hasMenu, children }: { bootstrap?: boolean; open: boolean; overlay: boolean; onClose: () => void; hasMenu: boolean; children: ReactNode }) {
 	const [preferredWidth, setPreferredWidth] = useState(DEFAULT_WIDTH);
 	const [viewport, setViewport] = useState<number | null>(null);
 	const [dragging, setDragging] = useState(false);
@@ -80,6 +80,7 @@ export function SidebarFrame({ open, overlay, onClose, hasMenu, children }: { op
 
 	const frame = (
 		<aside
+			data-sidebar-bootstrap={bootstrap || undefined}
 			className={cn("relative shrink-0 overflow-hidden duration-200", !dragging && "sidebar-motion", overlay && "h-full")}
 			style={{
 				width: open ? overlay ? "100%" : width : 0,
@@ -125,6 +126,6 @@ export function SidebarFrame({ open, overlay, onClose, hasMenu, children }: { op
 		</aside>
 	);
 	return overlay ? open ? (
-		<Suspense fallback={null}><MobileSidebar width={preferredWidth} onClose={onClose} hasMenu={hasMenu}>{frame}</MobileSidebar></Suspense>
+		<MobileSidebar width={preferredWidth} onClose={onClose} hasMenu={hasMenu}>{frame}</MobileSidebar>
 	) : null : frame;
 }

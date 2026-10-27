@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { parseHTML } from "linkedom";
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { StatsBarDetails as StatsBar, formatContextMeasurement } from "../components/stats-bar.tsx";
+import { StatsBar, formatContextMeasurement } from "../components/stats-bar.tsx";
 import { sessionCost } from "../src/server/pricing.ts";
 import { catalogLimits } from "../components/model-picker.tsx";
 import type { ModelCatalogEntry, ModelCatalogResponse } from "../src/core/contracts.ts";
@@ -29,6 +29,14 @@ function turn(over: Partial<TurnUsage> = {}): TurnUsage {
 }
 
 describe("stats bar", () => {
+	it("model and reasoning triggers are directly available with usage separate", () => {
+		const html = renderToStaticMarkup(<StatsBar chatId="toolbar-test" turns={[]} />);
+		const document = parseHTML(`<html><body>${html}</body></html>`).document;
+		assert.ok(document.querySelector('[data-testid="stats-model"]'));
+		assert.ok(document.querySelector('[data-testid="stats-thinking"]'));
+		assert.ok(document.querySelector('[data-testid="stats-summary"]'));
+		assert.equal(document.querySelector('[data-testid="session-options-trigger"]'), null);
+	});
 	it("drafts expose model controls without inventing session usage", () => {
 		const html = renderToStaticMarkup(
 			<StatsBar turns={[]} />,

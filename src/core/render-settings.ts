@@ -37,8 +37,8 @@ import {
 	CLUSTER_PULL_STRENGTH,
 	INCREMENTAL_GRAVITY,
 	LINK_DISTANCE,
-	type DepthAnchorMode,
-} from "./layout.ts";
+} from "./layout-defaults.ts";
+import type { DepthAnchorMode } from "./layout.ts";
 
 export interface GraphRenderSettings {
 	/** Semantic stamp for the size-unit pivot (2026-09-15): "world" =

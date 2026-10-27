@@ -10,7 +10,6 @@
  * `pele/lazy` loads each diagram type's code on first use.
  */
 
-import { renderAsync } from "pele/lazy";
 
 /** The chart's base font size (px). Pele sizes all text relative to this, so
  *  it's the number the display-width cap (md-blocks) divides by: a chart
@@ -22,6 +21,7 @@ let seq = 0;
 /** Render one chart source to an svg string. The id prefix is unique per
  *  call so two charts on one page never share marker/gradient ids. */
 export async function renderMermaid(chart: string): Promise<string> {
+	const { renderAsync } = await import("pele/lazy");
 	const { svg } = await renderAsync(chart, {
 		fontSize: MERMAID_FONT_SIZE,
 		// Pele measures text on a canvas, so it needs the resolved family

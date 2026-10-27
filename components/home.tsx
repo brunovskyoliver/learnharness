@@ -3,15 +3,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BookOpenIcon, DumbbellIcon } from "lucide-react";
+import dynamic from "next/dynamic";
+
+// This is the initial view; its canvas/layout engines remain conditional imports.
 import { GraphView } from "@/components/graph-view";
-import { MinimalHome } from "@/components/minimal-home";
-import { SetupDialog } from "@/components/setup-dialog";
+const MinimalHome = dynamic(() => import("@/components/minimal-home").then((module) => module.MinimalHome));
+import { LazySetupDialog as SetupDialog } from "@/components/lazy-setup-dialog";
 import { ComposerActions, NodePickerControl } from "@/components/composer-actions";
 import { useStrongKeyless, useZeroKeys, ZeroKeysPill } from "@/components/setup-cta";
 import { useFieldCycle } from "@/components/field-cycle";
 import { SidebarToggle } from "@/components/sidebar";
 import { StatsBar } from "@/components/stats-bar";
 import { Composer } from "@/components/composer";
+import { useReloadDraft } from "@/components/reload-recovery";
+import type { GraphSnapshot } from "@/src/core";
 
 /**
  * Home — the knowledge graph is the main view, full-bleed edge to edge
@@ -22,8 +27,10 @@ import { Composer } from "@/components/composer";
 export function Home({
 	initialConfigured,
 	rendering = true,
+	initialGraph,
 }: {
 	initialConfigured: boolean;
+	initialGraph?: GraphSnapshot;
 	/** GRAPH RENDERING off (owner, 2026-10-06): the home's main view is
 	 * the chains view, not the canvas. Read server-side per navigation —
 	 * changing the setting applies on the next visit home. */
@@ -67,6 +74,14 @@ export function Home({
 	const [mode, setMode] = useState<"teach" | "practice">("teach");
 	const [practiceProps, setPracticeProps] = useState<{ id: string; name: string; statement: string }[]>([]);
 	const [chainSelectOpen, setChainSelectOpen] = useState(false);
+	useReloadDraft(() => ({ kind: "home", text: topicRef.current, mode, picks: practiceProps }), (record) => {
+		if (record.draft?.kind !== "home") return;
+		topicRef.current = record.draft.text;
+		setTopic(record.draft.text);
+		setMode(record.draft.mode);
+		setPracticeProps(record.draft.picks);
+		if (record.overlay.kind === "chains" && record.overlay.selectMode) setChainSelectOpen(true);
+	});
 	// The chain table is CONTROLLED off this id set (the lifted pick).
 	const pickedIds = useMemo(() => new Set(practiceProps.map((p) => p.id)), [practiceProps]);
 
@@ -118,7 +133,7 @@ export function Home({
 	};
 
 	return (
-		<div className="relative h-dvh">
+		<div className="group/home relative h-dvh">
 			{/* Window-drag strip (merged chrome, owner 2026-09-17): a dedicated
 			    mask element, deliberately FIRST in the DOM. Electron's app-region
 			    mask resolves by DOM order — a no-drag element subtracts only drag
@@ -140,6 +155,7 @@ export function Home({
 			<main className="absolute inset-0">
 				{rendering ? (
 					<GraphView
+						initialSnapshot={initialGraph}
 						chainSelectOpen={chainSelectOpen}
 						practiceSelection={pickedIds}
 						onPracticeSelectionChange={setPracticeProps}
@@ -160,7 +176,7 @@ export function Home({
 			    no app-region of its own: the strip's drag comes from the mask
 			    div above, and the toggle's lh-no-drag subtracts from it (it is
 			    later in the tree, so the subtraction sticks). */}
-			<header className="pointer-events-none absolute inset-x-0 top-0 flex h-13 items-center gap-3 px-3">
+			<header className="pointer-events-none absolute inset-x-0 top-0 z-30 flex h-13 items-center gap-3 px-3 max-sm:group-has-[[data-mobile-graph-search=true]]/home:invisible">
 				<div className="pointer-events-auto">
 					<SidebarToggle />
 				</div>
@@ -170,7 +186,7 @@ export function Home({
 			    OVER the graph (no gradient: the graph runs clean under it to the
 			    bottom edge). Matches chat.tsx's DOCK geometry (max-w-[52rem]
 			    px-4) so nothing shifts when a session starts (owner). */}
-			<div className="pointer-events-none absolute inset-x-0 bottom-0 pb-5">
+			<div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 pb-5">
 				<div className="pointer-events-auto mx-auto w-full max-w-[52rem] px-4">
 					{/* The pick bar (owner vision, 2026-10-04): the chain
 					    table's selection is PERSISTENT — picked

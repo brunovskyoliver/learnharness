@@ -399,7 +399,7 @@ export const FACTORY_SETTINGS: FactorySettings = {
 	general: { autoUpdate: true },
 	appearance: {
 		mode: "dark",
-		background: null, // the dark default (#141414) lives in the mode's derivation curve
+		background: null, // the default black canvas lives in globals.css
 		fontFamily: null, // Source Sans 3
 		proseFontSize: 17,
 		sessionNameSerif: false,

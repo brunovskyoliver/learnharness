@@ -110,7 +110,7 @@ export function Composer({
 					// Chat convention: Enter sends, Shift+Enter is a newline.
 					// ⌘/Ctrl+Enter also sends — the universal submit shortcut
 					// across every input in the app (thinking field, answers).
-					if (e.key === "Enter" && (e.metaKey || e.ctrlKey || !e.shiftKey)) {
+					if (!e.nativeEvent.isComposing && e.key === "Enter" && (e.metaKey || e.ctrlKey || !e.shiftKey)) {
 						e.preventDefault();
 						act();
 					}
@@ -127,7 +127,7 @@ export function Composer({
 						type="submit"
 						data-testid="next-problem-button"
 						aria-label="Next problem"
-						className="flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-full bg-primary px-3 font-ui text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
+						className="flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-full bg-primary px-3 font-ui text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
 					>
 						Next problem
 						<ArrowRightIcon className="size-4" />
