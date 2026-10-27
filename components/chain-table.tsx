@@ -144,6 +144,7 @@ export function ChainTableBody({
 	onSelect?: () => void;
 }) {
 	const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
+	const names = useMemo(() => Object.fromEntries([...byId.entries()].map(([id, n]) => [id, { name: n.name }])), [byId]);
 	const chains = useMemo(() => chainsForSelection(nodes, storedChains), [nodes, storedChains]);
 	const searching = query.trim() !== "";
 
@@ -389,7 +390,7 @@ export function ChainTableBody({
 												)}
 											<div
 												data-testid={`chain-row-${chain.id}`}
-												aria-label={formatChainLine(chain, Object.fromEntries([...byId.entries()].map(([id, n]) => [id, { name: n.name }])))}
+													aria-label={formatChainLine(chain, names)}
 												className="flex items-center gap-1 py-1 pl-12 pr-3"
 											>
 												<RowCheckbox
