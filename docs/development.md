@@ -2,7 +2,7 @@
 
 LearnHarness is a Next.js web app with an Electron desktop shell. Lessons use probe, plan and teach phases. Practice runs as a separate session kind. Both persist native agent messages in chat records and use the same session client and server turn lifecycle.
 
-Start with [the UI review guide](ui-review.md), [current interface rules](../DESIGN.md), [product scope](../PRODUCT.md), and [architecture](architecture.md). Earlier product decisions and implementation waves remain in [vision](vision.md) and [plan](plan.md); those historical documents can describe superseded implementations.
+Start with [the UI review guide](ui-review.md), [current interface rules](../DESIGN.md), [product scope](../PRODUCT.md), and [architecture](architecture.md). Earlier product decisions and implementation waves remain in [vision](vision.md); that historical document can describe superseded implementations.
 
 ## Commands
 
@@ -70,7 +70,7 @@ The server owns running turns independently of a browser connection. Detaching a
 
 Practice uses chat records with `kind: "practice"`, `problem` and `conclude` tools, thinking traces and explicit next-problem input. The old separate `/practice` problem-set pipeline and `data/practice/` store are retired.
 
-The interface uses shared graphite tokens, consistent session type icons with separate status indicators, 52px headers and an integrated composer. Model, reasoning and usage controls live behind anchored Options. Settings has searchable categories, grouped fields, live reading preview and immediate persistence. Dialogs own focus and normal Tab traversal; Escape closes the active menu layer first.
+The interface uses the T3 Code black theme tokens, consistent session type icons with separate status indicators, 52px headers and an integrated composer. Model and reasoning selectors sit directly in the composer toolbar, with usage as its own control. Settings has searchable categories, grouped fields, live reading preview and immediate persistence. Dialogs own focus and normal Tab traversal; Escape closes the active menu layer first.
 
 One live sandboxed iframe serves a demo's inline, workspace and focused presentations. The live theme bridge updates neutral colors without replacing the document. Parameters, history and camera survive presentation changes. Legacy arbitrary HTML expands as a whole; individual graph focus uses the demo kit. See [DESIGN.md](../DESIGN.md) for the full UI contract.
 

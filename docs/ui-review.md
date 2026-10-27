@@ -35,7 +35,7 @@ The knowledge-check and practice examples derive from checked-in golden records.
 
 ## Current UI and checks
 
-[DESIGN.md](../DESIGN.md) describes the implemented direction A: shared graphite tokens, consistent session icons and 52px headers, an integrated composer, anchored Options and responsive settings. [PRODUCT.md](../PRODUCT.md) describes the product scope.
+[DESIGN.md](../DESIGN.md) describes the current interface: the T3 Code black theme, consistent session icons and 52px headers, a composer with direct model, reasoning and usage controls, and responsive settings. [PRODUCT.md](../PRODUCT.md) describes the product scope.
 
 ```sh
 npx tsx --test tests/review-seed.test.ts

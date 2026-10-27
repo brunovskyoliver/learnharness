@@ -17,3 +17,7 @@ Concretely: first investigate and plan rigorously (asking the user design questi
 # Scrolling
 
 Hide scrollbar tracks and thumbs throughout the interface, including textareas, code, math, menus, dialogs and rendered demo documents. Keep wheel, touch, keyboard and programmatic scrolling functional. Preserve focus visibility, scroll anchors and access to content behind floating controls.
+
+# Features and the constitution
+
+Every new feature or bug fix follows the Spec Kit flow and the constitution in `.specify/memory/constitution.md`. Read it before planning; a plan passes its Constitution Check (principles I–VIII) before code changes. Start features with the `speckit-feature` skill and bugs with `speckit-bug-assess`. UI rules live in `DESIGN.md`; build UI with the `shadcn` skill and check it with `impeccable` and `web-design-guidelines` before calling it done.

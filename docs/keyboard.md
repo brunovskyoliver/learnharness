@@ -24,19 +24,21 @@ second pillar of input).
 
 ## Rules
 
-- **Tab is dead everywhere** (owner decision: browser tab-focus
-  navigation abandoned). Shift+Tab cycles the thinking level — also
-  while typing in a field (modifier combos are the only keys that fire
-  from typing surfaces; bare keys never do).
+- **Tab cycles the active surface's text fields** (owner, 2026-10-06):
+  forward only, wrapping; Tab from outside the chain focuses the first
+  field (`components/field-cycle.ts`). Dialogs and menus keep their own
+  focus trap. Shift+Tab cycles the thinking level — also while typing in
+  a field (modifier combos are the only keys that fire from typing
+  surfaces; bare keys never do).
 - **Esc priority chain**: topmost popover → cheat sheet → cancel
   dictation (DISCARD — the transcript flush is Cmd+D/Stop only, owner
   round) → abort turn (local stream only — a server-side wake turn has
   no client request to abort). Every element/document-level Esc handler
   that acts calls `e.stopPropagation()` so the window chain never
   double-fires. The session search claims Esc to blur back to normal.
-- **Focus ring**: browser Tab-focus is gone, so `:focus-visible` stays
-  unstyled (an earlier experimental outline was live-rejected — inputs
-  showed a red ring on plain click-focus).
+- **Focus ring**: keyboard focus is always visible (owner, 2026-10-27;
+  constitution principle VI). `app/globals.css` draws a `--ring` outline
+  on `:focus-visible` only, so pointer clicks show no ring.
 
 ## Key map (Wave A — global)
 

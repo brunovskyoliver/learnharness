@@ -21,8 +21,7 @@
  * re-activate the toggle — the report that born this rule. But two button
  * populations keep native Enter-activates:
  *   1. KEYBOARD-focused buttons — :focus-visible means focus arrived by
- *      keyboard (the arrow-walked menus; Tab is dead app-wide, so this
- *      only happens inside overlays);
+ *      keyboard (the arrow-walked menus, Tab's field cycle, overlays);
  *   2. buttons inside an OPEN OVERLAY — menus walk focus with arrows and
  *      Enter activates the walked button natively (menu-shell's contract),
  *      dialogs are their own surfaced layer (the ONE-ESC LAW's layers).

@@ -1,6 +1,6 @@
 # Architecture
 
-Current structure and runtime boundaries, updated 2026-10-27. [Development](development.md) covers commands and storage configuration. [DESIGN.md](../DESIGN.md) covers the implemented interface. [Vision](vision.md), [plan](plan.md), and archived architecture documents retain historical decisions; references there to `UIMessage`, separate practice sets or old renderer layouts are not the current implementation.
+Current structure and runtime boundaries, updated 2026-10-27. [Development](development.md) covers commands and storage configuration. [DESIGN.md](../DESIGN.md) covers the implemented interface. [Vision](vision.md) retains historical decisions; references there to `UIMessage`, separate practice sets or old renderer layouts are not the current implementation.
 
 ## Layers and dependency boundaries
 
@@ -57,11 +57,11 @@ Graph snapshots, chains and birth-source grouping derive from stored evidence. H
 
 ## Interface ownership
 
-The persistent composer owns its form, textarea ref and input mechanics. Options contains model, reasoning and usage controls. Sidebar and demo widths retain their established resize and persistence owners. Session reading state and drafts remain per session; the redesign did not introduce a second conversation scroll owner.
+The persistent composer owns its form, textarea ref and input mechanics. Model and reasoning selectors sit directly in the composer toolbar, with usage as its own control. Sidebar and demo widths retain their established resize and persistence owners. Session reading state and drafts remain per session; the redesign did not introduce a second conversation scroll owner.
 
-Shared semantic tokens map sidebar, lesson, composer, menus, settings, authentication and app-owned demo chrome to the same graphite palette. User appearance settings resolve through the existing appearance provider. Settings writes immediately through section APIs; navigation and layout do not introduce a separate Save transaction.
+Shared semantic tokens map sidebar, lesson, composer, menus, settings, authentication and app-owned demo chrome to the T3 Code black theme pinned in DESIGN.md. User appearance settings resolve through the existing appearance provider. Settings writes immediately through section APIs; navigation and layout do not introduce a separate Save transaction.
 
-Radix dialogs contain focus for Settings, setup and connection overlays. Menus portal into the active modal boundary. Options uses an anchored popover; its nested menus retain their placement and dismissal behavior. Global lesson shortcuts defer inside modal/menu controls. Closing resolves the live opening control even when a tooltip wrapper has replaced its DOM node.
+Radix dialogs contain focus for Settings, setup and connection overlays. Menus portal into the active modal boundary. Composer menus anchor to their toolbar controls; Escape closes the innermost menu first. Global lesson shortcuts defer inside modal/menu controls. Closing resolves the live opening control even when a tooltip wrapper has replaced its DOM node.
 
 A demo keeps one live sandboxed iframe while its inline, workspace and focused presentations change. Parameter, simulation, path and camera state belong to that live document. Parent messages validate the source and allowed payload. Theme messages update app-owned neutral styles and renderer colors without replacing the document; authored demo styles may override injected defaults. Individual graph focus uses demo-kit panels; arbitrary legacy HTML expands as a whole.
 
