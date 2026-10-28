@@ -8,7 +8,7 @@
  *  sandboxed iframe with: p (params), s (state), d (derived), t (step
  *  count), range(start, stop, step) and Math's functions. */
 
-import { Array as ArrayType, Boolean as BooleanType, Integer as IntegerType, Literal as LiteralType, Number as NumberType, Object as ObjectType, Optional as OptionalType, Record as RecordType, String as StringType, Union as UnionType, Unknown as UnknownType, type Static } from "typebox";
+import { Array as ArrayType, Boolean as BooleanType, Integer as IntegerType, Literal as LiteralType, Number as NumberType, Object as ObjectType, Optional as OptionalType, Record as RecordType, String as StringType, Union as UnionType, Unknown as UnknownType, type Static, type TSchema } from "typebox";
 const Type = { Array: ArrayType, Boolean: BooleanType, Integer: IntegerType, Literal: LiteralType, Number: NumberType, Object: ObjectType, Optional: OptionalType, Record: RecordType, String: StringType, Union: UnionType, Unknown: UnknownType };
 import { Check, Errors } from "typebox/value";
 
@@ -80,6 +80,83 @@ const NotePanel = Type.Object({
 	text: Type.String({ minLength: 1, description: "One or two sentences telling the learner what to try. **bold** allowed." }),
 });
 
+const Encoding = Type.Union([Type.Literal("o200k"), Type.Literal("cl100k"), Type.Literal("gpt2")]);
+const Scale = Type.Union([Type.Literal("sequential"), Type.Literal("diverging")]);
+const Metric = Type.Union([Type.Literal("cosine"), Type.Literal("euclidean")]);
+const Activation = Type.Union([Type.Literal("sigmoid"), Type.Literal("tanh"), Type.Literal("relu")]);
+const Loss = Type.Union([Type.Literal("mse"), Type.Literal("bce")]);
+const Strings = Type.Array(Type.String(), { minItems: 1, maxItems: 64 });
+const Numbers = Type.Array(Type.Number(), { minItems: 1, maxItems: 8 });
+const LogitToken = Type.Object({ text: Type.String(), logit: Type.Number() }, { additionalProperties: false });
+const ProbabilityToken = Type.Object({ text: Type.String(), p: Type.Number({ minimum: 0, maximum: 1 }) }, { additionalProperties: false });
+
+/** Literal shapes shared by inline validation and runtime evaluated-data checks. */
+export const ML_PANEL_DATA_SCHEMAS = {
+	heatmap: Type.Object({ rows: Strings, cols: Strings, values: Type.Array(Type.Array(Type.Number(), { minItems: 1, maxItems: 64 }), { minItems: 1, maxItems: 64 }), scale: Scale, min: Type.Optional(Type.Number()), max: Type.Optional(Type.Number()), rowAxis: Type.Optional(Type.String()), colAxis: Type.Optional(Type.String()), digits: Type.Optional(Type.Integer({ minimum: 0, maximum: 8 })) }),
+	tokens: Type.Object({ text: Type.String({ minLength: 1, maxLength: 2000 }), encoding: Type.Optional(Encoding) }, { additionalProperties: false }),
+	next_token: Type.Object({ context: Type.String(), tokens: Type.Union([Type.Array(LogitToken, { minItems: 1, maxItems: 30 }), Type.Array(ProbabilityToken, { minItems: 1, maxItems: 30 })]), temperature: Type.Optional(Type.Number({ exclusiveMinimum: 0, default: 1 })), topK: Type.Optional(Type.Integer({ minimum: 0, default: 0 })), topP: Type.Optional(Type.Number({ exclusiveMinimum: 0, maximum: 1, default: 1 })) }),
+	scatter: Type.Object({ points: Type.Array(Type.Object({ label: Type.String(), x: Type.Number(), y: Type.Number(), z: Type.Optional(Type.Number()), group: Type.Optional(Type.String()) }), { minItems: 1, maxItems: 200 }), groups: Type.Optional(Type.Array(Type.String())), arithmetic: Type.Optional(Type.Object({ plus: Type.Array(Type.String()), minus: Type.Array(Type.String()) })), metric: Metric }),
+	network: Type.Object({ layers: Type.Array(Type.Integer({ minimum: 1, maximum: 8 }), { minItems: 2, maxItems: 5 }), weights: Type.Array(Type.Array(Numbers, { minItems: 1, maxItems: 8 }), { minItems: 1, maxItems: 4 }), biases: Type.Array(Numbers, { minItems: 1, maxItems: 4 }), input: Numbers, target: Numbers, activation: Activation, loss: Loss }),
+	shapes: Type.Object({ dims: Type.Optional(Type.Array(Type.Object({ name: Type.String(), meaning: Type.String() }))), steps: Type.Array(Type.Object({ op: Type.String(), shape: Type.Array(Type.Object({ name: Type.String(), size: Type.Optional(Type.Number()) }), { minItems: 1, maxItems: 6 }) }), { minItems: 1, maxItems: 24 }) }),
+} as const;
+
+export type MlPanelKind = keyof typeof ML_PANEL_DATA_SCHEMAS;
+export type MlPanelData<K extends MlPanelKind> = Static<(typeof ML_PANEL_DATA_SCHEMAS)[K]>;
+export const ML_PANEL_EXPRESSION_FIELDS = {
+	heatmap: ["rows", "cols", "values", "min", "max", "rowAxis", "colAxis", "digits"],
+	tokens: [],
+	next_token: ["context", "tokens", "temperature", "topK", "topP"],
+	scatter: ["points", "groups", "arithmetic"],
+	network: ["layers", "weights", "biases", "input", "target"],
+	shapes: ["dims", "steps"],
+} as const;
+const MlCommon = { title: Title, width: Width, caption: Type.Optional(Type.String({ maxLength: 200 })), link: Type.Optional(Type.String()) };
+const HeatmapPanel = Type.Object({ type: Type.Literal("heatmap"), ...MlCommon, rows: Expr, cols: Expr, values: Expr, scale: Scale, min: Type.Optional(Expr), max: Type.Optional(Expr), rowAxis: Type.Optional(Expr), colAxis: Type.Optional(Expr), digits: Type.Optional(Expr) });
+const TokensPanel = Type.Object({ type: Type.Literal("tokens"), ...MlCommon, text: Type.String({ minLength: 1, maxLength: 2000 }), encoding: Type.Optional(Encoding) });
+const NextTokenPanel = Type.Object({ type: Type.Literal("next_token"), ...MlCommon, context: Expr, tokens: Expr, temperature: Type.Optional(Expr), topK: Type.Optional(Expr), topP: Type.Optional(Expr) });
+const ScatterPanel = Type.Object({ type: Type.Literal("scatter"), ...MlCommon, points: Expr, groups: Type.Optional(Expr), arithmetic: Type.Optional(Expr), metric: Metric });
+const NetworkPanel = Type.Object({ type: Type.Literal("network"), ...MlCommon, layers: Expr, weights: Expr, biases: Expr, input: Expr, target: Expr, activation: Activation, loss: Loss });
+const ShapesPanel = Type.Object({ type: Type.Literal("shapes"), ...MlCommon, dims: Type.Optional(Expr), steps: Expr });
+
+/** Validate known fields only; kit expressions unknown until runtime are omitted. */
+export function mlPanelDataProblems(kind: MlPanelKind, data: Record<string, unknown>): string[] {
+	const errors: string[] = [];
+	const schema = ML_PANEL_DATA_SCHEMAS[kind];
+	for (const [key, value] of Object.entries(data)) {
+		const field = (schema.properties as Record<string, TSchema>)[key];
+		if (field && !Check(field, value)) errors.push(`${key}: invalid ${kind} data`);
+	}
+	if (errors.length) return errors;
+	if (kind === "tokens" && "tokenized" in data) errors.push("tokenized: only the server may supply tokens");
+	if (kind === "heatmap") {
+		const d = data as Partial<MlPanelData<"heatmap">>;
+		if (d.rows && d.values && d.rows.length !== d.values.length) errors.push("values: one row per row label required");
+		if (d.cols && d.values && d.values.some(row => row.length !== d.cols!.length)) errors.push("values: one column per column label required");
+	}
+	if (kind === "next_token") {
+		const d = data as Partial<MlPanelData<"next_token">>;
+		if (d.tokens?.length && "p" in d.tokens[0]! && Math.abs(d.tokens.reduce((sum, token) => sum + ("p" in token ? token.p : 0), 0) - 1) > 0.01) errors.push("tokens: probabilities must sum to 1 ± 0.01");
+	}
+	if (kind === "scatter") {
+		const d = data as Partial<MlPanelData<"scatter">>;
+		if (d.points) {
+			if (new Set(d.points.map(point => point.label)).size !== d.points.length) errors.push("points: labels must be unique");
+			if (d.points.some(point => (point.z !== undefined) !== (d.points![0]!.z !== undefined))) errors.push("points: use all 2D or all 3D points");
+			if (d.arithmetic && [...d.arithmetic.plus, ...d.arithmetic.minus].some(label => !d.points!.some(point => point.label === label))) errors.push("arithmetic: every operand must name a point");
+		}
+	}
+	if (kind === "network") {
+		const d = data as Partial<MlPanelData<"network">>;
+		if (d.layers) {
+			if (d.weights && (d.weights.length !== d.layers.length - 1 || d.weights.some((layer, i) => layer.length !== d.layers![i + 1] || layer.some(row => row.length !== d.layers![i])))) errors.push("weights: shapes must match adjacent layer sizes");
+			if (d.biases && (d.biases.length !== d.layers.length - 1 || d.biases.some((layer, i) => layer.length !== d.layers![i + 1]))) errors.push("biases: shapes must match output layer sizes");
+			if (d.input && d.input.length !== d.layers[0]) errors.push("input: length must match input layer");
+			if (d.target && d.target.length !== d.layers.at(-1)) errors.push("target: length must match output layer");
+		}
+	}
+	return errors;
+}
+
 export const DemoKitSpecSchema = Type.Object({
 	params: Type.Optional(Type.Record(Type.String(), Type.Union([Slider, Select, Toggle]), { description: "Controls, keyed by name (read as p.name)." })),
 	state: Type.Optional(Type.Record(Type.String(), Expr, {
@@ -92,7 +169,7 @@ export const DemoKitSpecSchema = Type.Object({
 		maxSteps: Type.Optional(Type.Integer({ minimum: 1, maximum: 10_000 })),
 	})),
 	derived: Type.Optional(Type.Record(Type.String(), Expr, { description: "Computed values in order, keyed by name (read as d.name)." })),
-	panels: Type.Array(Type.Union([ChartPanel, Plot3dPanel, FlowPanel, ReadoutsPanel, TablePanel, NotePanel]), { minItems: 1 }),
+	panels: Type.Array(Type.Union([ChartPanel, Plot3dPanel, FlowPanel, ReadoutsPanel, TablePanel, NotePanel, HeatmapPanel, TokensPanel, NextTokenPanel, ScatterPanel, NetworkPanel, ShapesPanel]), { minItems: 1 }),
 });
 
 export type DemoKitSpec = Static<typeof DemoKitSpecSchema>;
@@ -128,6 +205,18 @@ export function validateDemoKitSpec(spec: unknown): string[] {
 	}
 	s.panels.forEach((panel, i) => {
 		const at = `panels[${i}]`;
+		if (panel.type in ML_PANEL_DATA_SCHEMAS) {
+			const kind = panel.type as MlPanelKind;
+			const data: Record<string, unknown> = { ...panel };
+			for (const key of ML_PANEL_EXPRESSION_FIELDS[kind]) {
+				const value = data[key];
+				if (typeof value !== "string") continue;
+				expr(`${at}.${key}`, value);
+				try { data[key] = JSON.parse(value); } catch { delete data[key]; }
+			}
+			if ("tokenized" in panel) errors.push(`${at}.tokenized: only the server may supply tokens`);
+			errors.push(...mlPanelDataProblems(kind, data).map(problem => `${at}.${problem}`));
+		}
 		switch (panel.type) {
 			case "chart":
 				for (const [k, e] of Object.entries(panel.data)) expr(`${at}.data.${k}`, e);

@@ -21,7 +21,7 @@
 
 ## Phase 2: Foundational (blocks all stories)
 
-- [ ] T004 [P] Failing tests in `tests/ml-kit-schema.test.ts`: `validateDemoKitSpec` accepts one valid spec per new panel type (data-model.md table) and rejects:
+- [X] T004 [P] Failing tests in `tests/ml-kit-schema.test.ts`: `validateDemoKitSpec` accepts one valid spec per new panel type (data-model.md table) and rejects:
   - a heatmap over 64×64, or with rows/cols lengths that don't match `values`;
   - `tokens` text over 2,000 characters, empty text, or an agent-supplied `tokenized`;
   - `next_token` with over 30 tokens, or with both `logit` and `p` forms;
@@ -29,7 +29,7 @@
   - `network` with under 2 or over 5 layers, a layer over 8, or weight shapes that don't match layer sizes;
   - `shapes` with 0 or over 24 steps, or over 6 dims in a shape;
   - an unknown `scale`, `metric`, `activation`, `loss` or `encoding` value.
-- [ ] T005 Extend `src/core/demo-kit.ts`:
+- [X] T005 Extend `src/core/demo-kit.ts`:
   - six panel schemas (`heatmap`, `tokens`, `next_token`, `scatter`, `network`, `shapes`) with common optional `title`, `width`, `caption` and `link`;
   - literal-field limit checks in `validateDemoKitSpec`;
   - the reserved `tokenized` field refused when supplied by input.
