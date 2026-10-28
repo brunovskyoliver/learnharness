@@ -386,6 +386,7 @@ export function createJobRunner(deps: JobRunnerDeps): JobRunner {
 					}
 					jobStore.updateJob(jobId, { activity: activityLine(toolName, input) });
 				},
+				onWrapUp: () => jobStore.updateJob(jobId, { activity: "writing the brief" }),
 			});
 			if (!brief.trim()) throw new Error("the researcher produced no text");
 			const research: ResearchResult = { brief: brief.trim(), sources: parseSources(brief.trim(), fetchedUrls) };

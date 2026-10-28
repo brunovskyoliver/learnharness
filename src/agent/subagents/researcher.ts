@@ -82,6 +82,8 @@ export interface ResearcherRunOptions {
 	abortSignal?: AbortSignal;
 	onUsage?: (usage: Usage) => void;
 	onToolStart?: (toolName: string, args: unknown) => void;
+	/** The turn cap ran out before the brief; the wrap-up call starts. */
+	onWrapUp?: () => void;
 	/** Debug: raw provider-event recording key (LH_PROVIDER_EVENTS=1). */
 	chatId?: string;
 }
@@ -94,18 +96,35 @@ export interface ResearcherRunOptions {
 export async function runResearcherAgent(prompt: string, opts: ResearcherRunOptions = {}): Promise<string> {
 	const tools = Object.values(createWebTools(opts.search ?? (() => null)));
 	if (opts.pdfDir) tools.push(...Object.values(createPdfReadTools(opts.pdfDir)));
-	const { text } = await runSubagent(tools, {
-		role: "researcher",
-		prompt,
+	const base = {
+		role: "researcher" as const,
 		engine: opts.engine,
 		systemPrompt: INSTRUCTIONS,
-		maxTurns: 12,
 		abortSignal: opts.abortSignal,
 		onUsage: opts.onUsage,
 		onToolStart: opts.onToolStart,
 		chatId: opts.chatId,
+	};
+	const { newMessages, text } = await runSubagent(tools, { ...base, prompt, maxTurns: MAX_TURNS });
+	if (text.trim()) return text;
+
+	// Turn cap spent mid-research (researcher-turn-cap, 2026-10-28): one more
+	// call over everything gathered, asking for the brief. The tools stay
+	// declared — Anthropic rejects tool-call history without them — and the
+	// message forbids calling them; a tool call here still yields "".
+	opts.onWrapUp?.();
+	const wrapUp = await runSubagent(tools, {
+		...base,
+		messages: [...newMessages, { role: "user", content: WRAP_UP_MESSAGE, timestamp: Date.now() }],
+		maxTurns: 1,
 	});
-	return text;
+	return wrapUp.text;
 }
+
+const MAX_TURNS = 12;
+
+/** The wrap-up instruction (owner-approved wording, 2026-10-28). */
+export const WRAP_UP_MESSAGE =
+	"Your research budget is spent and no more tool calls are possible. Write your final brief now, in the required format, from what you have already found. Put anything you could not verify under Gaps.";
 
 export type ResearcherAgent = ReturnType<typeof runResearcherAgent>;
