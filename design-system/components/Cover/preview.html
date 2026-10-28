@@ -1,0 +1,44 @@
+<!-- @dsCard height=288 -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Study ink — cover</title>
+<style>
+	html, body { margin: 0; background: var(--background); }
+	.cover { position: relative; width: 960px; height: 288px; overflow: hidden; background: var(--background); }
+	.art { position: absolute; left: 480px; top: 0; width: 480px; height: 288px; }
+	.amber { fill: var(--primary); }
+	.ink { fill: var(--foreground); }
+	.ink2 { fill: var(--ink-2); }
+	.ink3 { fill: var(--muted-foreground); }
+	.tile { rx: var(--radius-lg); }
+	.rule { stroke: var(--input); stroke-width: 1; }
+	.name { position: absolute; left: 48px; bottom: 64px; margin: 0; max-width: 440px; font-family: var(--font-title); font-weight: 500; font-size: 80px; line-height: 0.95; letter-spacing: -0.8px; color: var(--foreground); }
+	.tagline { position: absolute; left: 48px; bottom: 36px; margin: 0; max-width: 440px; font-family: var(--font-sans); font-size: 14px; color: var(--muted-foreground); }
+</style>
+</head>
+<body>
+<div class="cover">
+	<svg class="art" viewBox="0 0 480 288" aria-hidden="true">
+		<!--
+			blocks: primary 160x232 (space-8 multiples), foreground 240x96, ink-2 96x112, muted-foreground 128x64; corners radius-lg
+			arrangement: one tall amber slab bleeding off the top with satellites stepping right and off the edge
+			pattern: baseline rules, because the system is a reading room built on the 17/27 reading line ("borders not shadows")
+			scales: rules at a 27px pitch (the reading line height) in the input edge; gaps space-4 (16px); radius-lg 10px
+		-->
+		<rect class="amber tile" x="80" y="-16" width="160" height="232"></rect>
+		<rect class="ink tile" x="256" y="72" width="240" height="96"></rect>
+		<rect class="ink2 tile" x="256" y="184" width="96" height="112"></rect>
+		<rect class="ink3 tile" x="368" y="184" width="128" height="64"></rect>
+		<line class="rule" x1="0" y1="54" x2="480" y2="54"></line>
+		<line class="rule" x1="0" y1="81" x2="480" y2="81"></line>
+		<line class="rule" x1="0" y1="108" x2="480" y2="108"></line>
+		<line class="rule" x1="0" y1="135" x2="480" y2="135"></line>
+		<line class="rule" x1="0" y1="162" x2="480" y2="162"></line>
+	</svg>
+	<h1 class="name">Study ink</h1>
+	<p class="tagline">A dark reading room. One amber accent means your turn.</p>
+</div>
+</body>
+</html>
