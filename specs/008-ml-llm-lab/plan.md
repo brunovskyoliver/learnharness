@@ -62,7 +62,7 @@ Lookups appear as quiet rows built on the math-check row skeleton. Three setting
 | V Consent before cost | Pass | The services are free. Automatic paper reading is owner-approved within 10 pages per turn, inside a turn the learner sent. All of it can be switched off with toggles. No background model work is added. |
 | VI Interface follows DESIGN.md | Pass with exception | All UI reuses the kit runtime classes, the math-check row skeleton and the settings rows (ui-contract.md). The `shadcn`, `impeccable` and `web-design-guidelines` skills aren't installed here, so a manual review stands in, as in 005 and 007. |
 | VII Boundaries, tenancy, sandboxing | Pass | Pure maths in `src/core`. Clients in `src/agent`. The route lives in `app/api`, with no store writes. The iframe stays `allow-scripts` only, and the new bridge message is validated by source window and payload. Clients and caches are tenant-scoped. |
-| VIII Performance | Pass (to measure) | Server-only dynamic imports. The panel code ships inside `public/demo-kit/runtime.js`, which isn't in the startup graph. Measure the baseline (T001) and final (T060) with the 005/007 `perf.sh`, and report runtime.js size separately. |
+| VIII Performance | Pass (to measure) | Server-only dynamic imports. The panel code ships inside `public/demo-kit/runtime.js`, which isn't in the startup graph. Measure the baseline (T001) and final (T054) with the 005/007 `perf.sh`, and report runtime.js size separately. |
 
 ## Project Structure
 
