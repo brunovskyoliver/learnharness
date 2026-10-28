@@ -75,6 +75,17 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Report
 
-Preflight access blockers resolved by Oliver’s supplied HTML exports and approval to rebuild the benchmark. Evidence is under `~/agent-runs/2026-10-28-feature-008/`.
+Partial implementation, blocked before T011 by owner-only presentation decisions. T001–T010 are complete (T010 is the required failing test task); T011–T056 remain unbuilt. No feature story is complete.
 
-Pending implementation.
+Changed: pinned tokenizer dependency, six panel schemas with safe literal validation, inline input validation/conversion, three settings toggles, and lookup-row render tests. Only js-tiktoken@1.0.21 was added. Existing draft wording was preserved.
+
+Verified: production baseline build passed before implementation; live T002 probe passed; 142 completed-implementation tests independently re-run by the parent all passed (`foundations-parent-verification.log`). Changed-file lint passes. T010 intentionally fails because lookup-row.tsx is absent. Typecheck currently fails on that missing module and the new panel kinds whose runtime renderers belong to later tasks. The initial full baseline suite passed 2,681 tests with four ETXTBSY headless failures; all four passed on the explicit-Chrome retry. Final full suite, build, UI comparison, accessibility and performance gates have not run and are not claimed.
+
+Design references, probe results, baseline and harness: `~/agent-runs/2026-10-28-feature-008/`. Board screenshots are reference exports, not implementation verification.
+
+Pending owner questions, sent in this thread:
+- Tokenize failed/unfinished states: reuse the existing generic tool row?
+- Tokenize success: raw encoding name (o200k/cl100k/gpt2) and existing generic Input/Output expanded contents?
+- arXiv zero/multiple results: approve `arXiv · {n} papers for '{query}'`?
+
+The handoff requires stopping for undecided copy/behavior; tasks have not been skipped to work around this gate. Resume at T011 after those answers. Commit and PR status are separate from implementation completion; no merge or deployment is authorized.
