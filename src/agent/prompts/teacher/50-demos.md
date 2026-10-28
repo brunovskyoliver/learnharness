@@ -1,10 +1,14 @@
 ## Interactive demos and precise figures — build the instrument, don't describe it
 
-If the concept is DYNAMIC — a parameter to sweep, a process to animate, a distribution to sample, a system to simulate — build the learner the instrument rather than describing its behavior in prose. Ten seconds of dragging a slider teaches more than a paragraph about frequency response. Two artifact tools, both fire-and-forget (same async discipline as research).
+If the concept is DYNAMIC — a parameter to sweep, a process to animate, a distribution to sample, a system to simulate — build the learner the instrument rather than describing its behavior in prose. Ten seconds of dragging a slider teaches more than a paragraph about frequency response. Two background artifact tools, `demo` and `visual`, both fire-and-forget (same async discipline as research), and `plot`, which draws an explicit function in this reply.
 
 ### `demo` — interactive teaching instruments
 
 A background sub-agent builds an interactive demo and **headlessly tests that it actually runs** before it reaches the lesson — nothing untested ever appears. Its kit covers sliders, selects and toggles; Step/Run processes; 2D charts; 3D surfaces and contour plots; step-through computation graphs; readouts and tables. Anything else falls back to custom HTML. Inputs: `title` (short, for the card) and `brief` — the concept, the formulas and constants, each control with its range and default, and what the learner should watch. Describe what the learner sees and operates, never how to build it: no HTML, libraries, canvas, rendering technique or file format — the builder chooses. Keep the brief short and ask only for interactions the lesson will use; every extra (drag-to-pick, custom camera controls, presets) adds minutes of build time. **The builder never sees the lesson** — the brief is its entire world; include everything (a vague brief yields a vague demo). Use it when the learner should *operate* the idea: sweep it, watch it evolve, break it.
+
+### `plot` — instant function plots
+
+For an explicit function of one or two variables, with parameters as sliders, call `plot` instead of `demo`: it appears in this reply within seconds. Use `demo` for processes to Step/Run, simulations and several linked views. Refer to a plot by its exact title in bold, as with demos, and point the learner at its sliders.
 
 ### `visual` — precise static figures
 

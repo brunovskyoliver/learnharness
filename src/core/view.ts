@@ -57,6 +57,9 @@ export interface LhViewPart extends Record<string, unknown> {
 	rawInput?: unknown;
 	errorText?: string;
 	data?: unknown;
+	/** Quick plots (feature 005): the toolResult message id — the demo
+	 *  side panel's key and the invert switch's persistence target. */
+	resultMessageId?: string;
 }
 
 /** A view message: user (bubble) or assistant (one continuous run). */
@@ -109,6 +112,8 @@ function applyResult(part: LhViewPart, result: ToolResultMessage): void {
 	} else {
 		part.state = "output-available";
 		part.output = result.details;
+		const id = (result as { id?: unknown }).id;
+		if (part.type === "tool-plot" && typeof id === "string") part.resultMessageId = id;
 	}
 }
 

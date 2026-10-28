@@ -307,12 +307,20 @@
 	overflow: hidden;
 }
 .waiting-row-action { grid-area: action; margin-top: 6px; }
+/* A waiting lesson's plan progress (feature 003): one small muted line under the teaser. */
+.waiting-row[data-progress] { grid-template-areas: "kind kind" "teaser teaser" "progress progress" "meta action"; }
+.waiting-row-progress { grid-area: progress; }
+/* Calibration misses (feature 004): no kind label, so no kind column. */
+.waiting-row[data-no-kind] { grid-template-areas: "teaser teaser" "meta action"; }
 @media (min-width: 40rem) {
 	.waiting-row {
 		grid-template-columns: auto minmax(0, 1fr) auto;
 		grid-template-areas: "kind meta action" "teaser teaser action";
 		column-gap: 8px;
 	}
+	.waiting-row[data-progress] { grid-template-areas: "kind meta action" "teaser teaser action" "progress progress action"; }
+	.waiting-row[data-no-kind] { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "meta action" "teaser action"; }
+	.waiting-row-progress { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 	.waiting-row-meta { margin-top: 0; }
 	.waiting-row-teaser { display: block; white-space: nowrap; text-overflow: ellipsis; }
 	.waiting-row-action { margin: 0 0 0 8px; }

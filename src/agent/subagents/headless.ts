@@ -246,6 +246,13 @@ async function connectBrowserService(): Promise<import("puppeteer-core").Browser
 	}
 }
 
+/** Stop the resident browser helper (tests: its IPC channel would keep
+ *  the process alive). The next check starts a new one. */
+export function stopBrowserService(): void {
+	browserServiceProc?.kill();
+	browserServiceProc = null;
+}
+
 /** Serialized helper-page use: the helper owns ONE page target (Electron's
  *  CDP has no Target.createTarget — pages must be windows the helper made),
  *  so concurrent jobs queue here instead of fighting over one webContents. */

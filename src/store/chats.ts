@@ -18,6 +18,9 @@ import type { LhMessage } from "../core/native-messages.ts";
 import { activeProblemOf, danglingQuestionOf } from "../core/native-messages.ts";
 import { phaseAt3Lh } from "../core/phases.ts";
 import { waitingItemOf } from "../core/waiting.ts";
+import { lessonProgressOf } from "../core/lesson-progress.ts";
+import { calibrationOf } from "../core/calibration.ts";
+import { courseCountsOf } from "../core/course.ts";
 
 function chatFile(id: string): string {
 	if (!/^[A-Za-z0-9_-]+$/.test(id)) throw new Error(`Invalid chat id: ${id}`);
@@ -121,6 +124,14 @@ function readSummary(id: string, cache: Map<string, CachedSummary>): ChatSummary
 				};
 				const waiting = waitingItemOf(messages, fields.updatedAt);
 				if (waiting) summary.waiting = waiting;
+				const calibration = calibrationOf(messages);
+				if (calibration) summary.calibration = calibration;
+				if (summary.kind !== "practice") {
+					const progress = lessonProgressOf(tree, messages);
+					if (progress) summary.progress = progress;
+					const course = courseCountsOf(tree, messages);
+					if (course) summary.course = course;
+				}
 			} catch (err) {
 				console.error(`[chat ${id}] summary projection failed:`, err);
 			}

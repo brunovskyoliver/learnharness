@@ -5,6 +5,7 @@ import { JobCard, PdfJobCard } from "@/components/artifacts/job-card";
 import { VisualCard } from "@/components/artifacts/visual-card";
 import { ProbeDoneCard } from "@/components/artifacts/probe-done-card";
 import { ToolCallCard } from "@/components/artifacts/tool-call-card";
+import { PlotCard } from "@/components/artifacts/plot-card";
 import { ProblemCard, ConcludeCard } from "@/components/practice-cards";
 
 /**
@@ -28,6 +29,8 @@ export const artifactRenderers: Record<string, ComponentType<ArtifactPartProps>>
 	// Artifacts (W6 fills in the components):
 	demo: DemoCard,
 	visual: VisualCard,
+	// Quick plots (feature 005): the checked plot itself, as a demo.
+	plot: PlotCard,
 	// The probe conclusion: the assessment belongs to the learner as much as
 	// to the transcript (docs/probe-teach-split.md §2). Plain v1 card.
 	probe_done: ProbeDoneCard,

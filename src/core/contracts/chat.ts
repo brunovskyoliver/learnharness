@@ -9,6 +9,8 @@ import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import type { LhMessage } from "../native-messages.ts";
 import type { Phase3 } from "../phases.ts";
 import type { WaitingItem } from "../waiting.ts";
+import type { LessonProgress } from "../lesson-progress.ts";
+import type { ChatCalibration } from "../calibration.ts";
 import type { PlanNodeStatus, PlanTree } from "./plan.ts";
 import type { EmissionStats } from "./graph.ts";
 
@@ -290,6 +292,17 @@ export interface ChatSummary {
 	 *  time, tool call id; never options, answers or solutions. Absent when
 	 *  nothing waits. */
 	waiting?: WaitingItem;
+	/** How much of the lesson's plan is left (feature 003): counts and the
+	 *  next plan topic's title only. Present on teaching sessions whose plan
+	 *  has a topic never checked; absent on practice and finished lessons. */
+	progress?: LessonProgress;
+	/** How the learner's confidence matched graded results in this session
+	 *  (feature 004): per-level counts and the misses made at Certain
+	 *  (question text and link target only; never options, answers or
+	 *  explanations). Absent when no answer counts. */
+	calibration?: ChatCalibration;
+	/** The lesson's course syllabus progress (feature 006): counts only. */
+	course?: { covered: number; items: number };
 	/** The record's model-control settings — rides the list payload via the
 	 *  summary spread (the picker never needs it from here; the full record
 	 *  is its source). */

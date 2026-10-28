@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import { demoPrefersInvert, type DemoResult, type LhViewMessage, type SubagentArtifactData } from "@/src/core";
+import { demoPrefersInvert, type DemoResult, type LhViewMessage, type LhViewPart, type SubagentArtifactData } from "@/src/core";
 
 /** A delivered demo in this session: the steer message that carries it. */
 export interface SessionDemo {
@@ -17,6 +17,14 @@ export interface SessionDemo {
 export function sessionDemos(messages: readonly LhViewMessage[]): SessionDemo[] {
 	const demos: SessionDemo[] = [];
 	for (const m of messages) {
+		if (m.role === "assistant") {
+			// Quick plots (feature 005): a checked plot rides its tool part.
+			for (const part of m.parts) {
+				const plot = plotDemoOf(part);
+				if (plot) demos.push(plot);
+			}
+			continue;
+		}
 		if (m.role !== "user") continue;
 		const part = m.parts.find((p) => p.type === "data-subagent-artifact") as { data?: SubagentArtifactData } | undefined;
 		const data = part?.data;
@@ -31,6 +39,22 @@ export function sessionDemos(messages: readonly LhViewMessage[]): SessionDemo[] 
 		});
 	}
 	return demos;
+}
+
+/** A successful plot part as a session demo, else null. Pure. */
+export function plotDemoOf(part: LhViewPart): SessionDemo | null {
+	const artifact = plotArtifactOf(part);
+	return artifact && part.resultMessageId ? { id: part.resultMessageId, ...artifact } : null;
+}
+
+/** A successful plot part's artifact — also while the turn is live, before
+ *  the record gives it a message id (the card then has no panel button). */
+export function plotArtifactOf(part: LhViewPart): Omit<SessionDemo, "id"> | null {
+	if (part.type !== "tool-plot" || part.state !== "output-available") return null;
+	const output = part.output as { kind?: unknown; result?: Partial<DemoResult>; ui?: { inverted?: boolean } } | undefined;
+	const result = output?.result;
+	if (output?.kind !== "demo" || typeof result?.html !== "string" || result.html.length === 0 || typeof result.title !== "string") return null;
+	return { title: result.title, html: result.html, inverted: output.ui?.inverted ?? demoPrefersInvert(result.html) };
 }
 
 /** Title match for teacher mentions: case, quotes and spacing ignored. */
