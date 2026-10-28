@@ -62,7 +62,7 @@ describe("CalibrationSectionView", () => {
 		assert.ok(html.indexOf("step 7") < html.indexOf("step 3"), "newest first");
 		assert.doesNotMatch(html, /step 2|step 1\b/);
 		assert.match(html, /Why does step 7 overshoot\?/, "markdown stripped");
-		assert.match(html, /Session a · /);
+		assert.match(html, /<span class="min-w-0 truncate">Session a<\/span><span class="shrink-0 whitespace-pre"> · /);
 		assert.match(html, /href="\/chat\/a#message-m7"[^>]*>Review</);
 		assert.match(html, /<button[^>]*>Show all 7<\/button>/);
 	});

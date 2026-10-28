@@ -11,7 +11,8 @@ import type { ArtifactPartProps, LhViewPart, MathCheckDetails } from "@/src/core
  * may see is decided in the view (part.mathCheck): a check for a question
  * not yet answered renders nothing; a grading check during an active
  * problem shows its verdict but not the expressions (they contain the
- * committed answer). Only an agreed check says "Checked with Wolfram".
+ * committed answer). The rows read "Wolfram · {verdict}"; "Checked with
+ * Wolfram" is only the label on answered and concluded cards.
  */
 
 const OUTCOMES = new Set(["agreed", "disagreed", "undecided"]);
@@ -28,9 +29,9 @@ function expressionOf(input: unknown): { lhs: string; rhs: string; assumptions?:
 }
 
 function headline(failed: boolean, d: MathCheckDetails | null): string {
-	if (failed) return "Wolfram check failed";
-	if (!d) return "Wolfram check not finished";
-	if (d.outcome === "agreed") return "Checked with Wolfram · equal";
+	if (failed) return "Wolfram · check failed";
+	if (!d) return "Wolfram · check not finished";
+	if (d.outcome === "agreed") return "Wolfram · equal";
 	if (d.outcome === "disagreed") return "Wolfram · not equal";
 	return "Wolfram · couldn't decide";
 }
@@ -74,9 +75,9 @@ export function MathCheckCard({ part }: ArtifactPartProps) {
 		<SessionDetails stateKey={`tool/${p.toolCallId}`}
 			data-testid="math-check-card"
 			data-outcome={failed ? "failed" : d?.outcome ?? "unfinished"}
-			className="group my-1 w-full max-w-2xl select-none"
+			className="group lh-reading my-1"
 		>
-			<summary className="flex cursor-pointer list-none items-center gap-2 text-sm text-muted-foreground [&::-webkit-details-marker]:hidden">
+			<summary className="flex cursor-pointer select-none list-none items-center gap-2 text-sm text-muted-foreground [&::-webkit-details-marker]:hidden">
 				{agreed && <Check className="size-3.5 shrink-0" aria-hidden="true" />}
 				<span className={`font-medium ${failed ? "text-destructive" : ""}`}>{headline(failed, d)}</span>
 				<ChevronRight className="size-3 shrink-0 opacity-50 transition-transform group-open:rotate-90" aria-hidden="true" />
@@ -96,11 +97,13 @@ export function MathCheckCard({ part }: ArtifactPartProps) {
 				{!visibility.expressionsHidden && d?.reduced && <Row label="Reduced to">{d.reduced}</Row>}
 				{d?.reason && <Row label="Reason" mono={false}>{d.reason}</Row>}
 				{failed && typeof p.errorText === "string" && (
-					<Row label="Error">
+					<Row label="Error" mono={false}>
 						<span className="text-destructive">{p.errorText}</span>
 					</Row>
 				)}
-				{!visibility.expressionsHidden && d?.raw && (
+				{/* The parsed fields already say what an agreed or disagreed reply
+				    said; the raw reply helps only when Wolfram couldn't decide. */}
+				{!visibility.expressionsHidden && d?.outcome === "undecided" && d.raw && (
 					<Row label="Wolfram's reply">
 						<span className="block max-h-64 overflow-auto">{d.raw}</span>
 					</Row>

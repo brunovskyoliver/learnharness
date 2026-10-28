@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useId, useMemo, useState } from "react";
 import { levelLine, mergeCalibration, messageAnchorId, type ChatListItem, type MergedMiss } from "@/src/core";
 import { useSessionList, useSessionListDemand } from "@/components/session-list";
-import { shortAgo } from "@/components/sidebar";
+import { RowMeta } from "@/components/waiting-section";
 import { Teaser, teaserPlain } from "@/components/teaser";
 
 /** Rows shown before "Show all" (owner, 2026-10-28). */
@@ -39,15 +39,15 @@ export function CalibrationSectionView({ chats }: { chats: readonly ChatListItem
 	const shown = showAll ? merged.misses : merged.misses.slice(0, FIRST_MISSES);
 	return (
 		<section aria-labelledby={headingId} data-testid="calibration-section" className="flex flex-col gap-2">
-			<h2 id={headingId} className="px-1 text-xl font-semibold leading-[1.3]">Calibration</h2>
-			<ul className="flex flex-col gap-0.5 px-1">
+			<h2 id={headingId} className="text-xl font-semibold leading-[1.3]">Calibration</h2>
+			<ul className="flex flex-col gap-0.5">
 				{merged.levels.map((level) => (
 					<li key={level.level} className="text-base text-foreground">{levelLine(level)}</li>
 				))}
 			</ul>
-			<h3 id={missesId} className="px-1 pt-2 text-sm font-medium text-muted-foreground">Wrong while Certain</h3>
+			<h3 id={missesId} className="pt-2 text-sm font-medium text-muted-foreground">Wrong while Certain</h3>
 			{merged.misses.length === 0 ? (
-				<p className="px-1 text-ink-2">None yet. Every answer you marked Certain was right.</p>
+				<p className="text-ink-2">None yet. Every answer you marked Certain was right.</p>
 			) : (
 				<>
 					<ul aria-labelledby={missesId} className="flex flex-col gap-1">
@@ -68,9 +68,7 @@ function MissRow({ miss }: { miss: MergedMiss }) {
 	const id = useId();
 	return (
 		<li className="waiting-row" data-testid="calibration-miss" data-no-kind="">
-			<span id={`${id}-meta`} suppressHydrationWarning className="waiting-row-meta min-w-0 truncate text-sm font-medium text-muted-foreground">
-				{miss.title} · {shortAgo(miss.answeredAt)}
-			</span>
+			<RowMeta id={`${id}-meta`} title={miss.title} at={miss.answeredAt} />
 			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-lg leading-[27px] text-foreground">
 				<Teaser text={teaserPlain(miss.question)} />
 			</p>

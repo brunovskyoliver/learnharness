@@ -80,6 +80,17 @@ describe("WaitingSectionView", () => {
 		assert.doesNotMatch(html, /bg-primary/);
 	});
 
+	it("truncates a long title in the meta line, never the time", () => {
+		const html = render([item("a", {}, { title: "A very long session title that will not fit on a phone" })]);
+		assert.match(html, /<span class="min-w-0 truncate">A very long session title that will not fit on a phone<\/span><span class="shrink-0 whitespace-pre"> · /);
+		assert.doesNotMatch(html, /waiting-row-meta[^"]*truncate/, "the meta line itself does not truncate");
+	});
+
+	it("puts the heading on the column edge, with no inset", () => {
+		assert.doesNotMatch(render([item("a", {})]), /px-1/);
+		assert.doesNotMatch(render([item("idle")]), /px-1/);
+	});
+
 	it("says nothing is waiting in one sentence, with no icon", () => {
 		const html = render([item("idle")]);
 		assert.match(html, /Nothing is waiting\. Every check is answered and every problem solved\./);
