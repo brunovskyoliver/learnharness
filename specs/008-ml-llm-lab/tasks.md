@@ -8,8 +8,8 @@
 
 ## Phase 1: Setup
 
-- [ ] T001 Performance baseline: copy `~/agent-runs/2026-10-28-feature-007/perf.sh` (or 005's) to `~/agent-runs/<date>-feature-008/perf.sh` and run `perf.sh baseline` on a production build of the current tree. Also record the byte size of `public/demo-kit/runtime.js` after `node scripts/build-demo-kit.mjs`. Log both in `specs/008-ml-llm-lab/progress.md`.
-- [ ] T002 **Live probe (gate for US4, US5)**, from a machine whose network reaches the services. Record the raw results in `~/agent-runs/<date>-feature-008/probe.md` and a summary under Decisions in `progress.md`:
+- [X] T001 Performance baseline: copy `~/agent-runs/2026-10-28-feature-007/perf.sh` (or 005's) to `~/agent-runs/<date>-feature-008/perf.sh` and run `perf.sh baseline` on a production build of the current tree. Also record the byte size of `public/demo-kit/runtime.js` after `node scripts/build-demo-kit.mjs`. Log both in `specs/008-ml-llm-lab/progress.md`.
+- [X] T002 **Live probe (gate for US4, US5)**, from a machine whose network reaches the services. Record the raw results in `~/agent-runs/<date>-feature-008/probe.md` and a summary under Decisions in `progress.md`:
   - (a) `https://huggingface.co/mcp`, anonymous: `initialize`, `tools/list`, one call each to model search, dataset search and paper search, and 20 calls in quick succession (rate limits);
   - (b) `GET https://huggingface.co/openai-community/gpt2/resolve/main/config.json`;
   - (c) `GET https://api.semanticscholar.org/graph/v1/paper/search?query=attention+is+all+you+need&limit=3&fields=title,authors,year,externalIds,abstract,openAccessPdf`, repeated 10× (rate limiting);
@@ -17,7 +17,7 @@
   - (e) download `https://arxiv.org/pdf/1706.03762` and confirm `pdfExtract(path, "4")` contains "Scaled Dot-Product Attention".
 
   Map Hugging Face's actual anonymous tool names onto `hub_search` per research R5. If a capability is missing, use the R5 fallback and log it. If any service refuses anonymous access entirely, **stop and ask Oliver** before continuing that story.
-- [ ] T003 Add the runtime dependency `js-tiktoken` pinned at `1.0.21` (`npm install --save-exact js-tiktoken@1.0.21`) in `package.json` and `package-lock.json`.
+- [X] T003 Add the runtime dependency `js-tiktoken` pinned at `1.0.21` (`npm install --save-exact js-tiktoken@1.0.21`) in `package.json` and `package-lock.json`.
 
 ## Phase 2: Foundational (blocks all stories)
 
