@@ -293,6 +293,41 @@
 	color: var(--foreground);
 }
 
+/* Home's waiting rows (feature 002). Phones stack kind, a two-line teaser,
+   then meta beside the action; from sm the teaser is one line and the
+   action sits to the right of both lines. */
+.waiting-row {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	grid-template-areas: "kind kind" "teaser teaser" "meta action";
+	align-items: center;
+	column-gap: 12px;
+	row-gap: 2px;
+	border-radius: var(--radius-lg);
+	background: var(--card);
+	padding: 12px 12px 12px 16px;
+}
+.waiting-row-kind { grid-area: kind; }
+.waiting-row-meta { grid-area: meta; margin-top: 6px; }
+.waiting-row-teaser {
+	grid-area: teaser;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	overflow: hidden;
+}
+.waiting-row-action { grid-area: action; margin-top: 6px; }
+@media (min-width: 40rem) {
+	.waiting-row {
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		grid-template-areas: "kind meta action" "teaser teaser action";
+		column-gap: 8px;
+	}
+	.waiting-row-meta { margin-top: 0; }
+	.waiting-row-teaser { display: block; white-space: nowrap; text-overflow: ellipsis; }
+	.waiting-row-action { margin: 0 0 0 8px; }
+}
+
 /* Setup in the toolbar (no key, no models), in place of the model controls. */
 .prompt-setup {
 	display: inline-flex;

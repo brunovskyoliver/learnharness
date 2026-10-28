@@ -19,10 +19,10 @@
  * lifts the pick set; the chip opens the overlay in select mode).
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ListTreeIcon, UploadIcon } from "lucide-react";
+import { ListTreeIcon } from "lucide-react";
 import { LazyChainTableOverlay as ChainTableOverlay } from "@/components/lazy-chain-table";
-import { GraphCostControl } from "@/components/graph-view.tsx";
-import { NotesImportErrors, useNotesImport } from "@/components/notes-import.tsx";
+import { GraphCostControl, type GraphStats } from "@/components/graph-view.tsx";
+import { InOverlayHost } from "@/components/overlay-host";
 import { Hint } from "@/components/ui/hint";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
@@ -121,7 +121,14 @@ export function MinimalHome({
 	practiceSelection,
 	onPracticeSelectionChange,
 	onChainSelectClose,
+	importRevision = 0,
+	onStats,
 }: {
+	/** Bumped by Home's section header when a notes import finishes
+	 *  (feature 002): earlier writes and spend remain, so refetch. */
+	importRevision?: number;
+	/** Counts for the section header (ideas · chains). */
+	onStats?: (stats: GraphStats) => void;
 	/** The lifted pick set drives the overlay's select mode (Done instead
 	 * of the delete fence); the chip in home's composer reflects it. */
 	chainSelectOpen?: boolean;
@@ -136,7 +143,6 @@ export function MinimalHome({
 	const [loadError, setLoadError] = useState(false);
 	const requestRef = useRef(0);
 	const [chainsOpen, setChainsOpen] = useState(false);
-	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	const readState = useCallback(() => {
 		const request = ++requestRef.current;
@@ -170,7 +176,13 @@ export function MinimalHome({
 	}, []);
 	useEffect(() => {
 		readState();
-	}, [readState]);
+	}, [readState, importRevision]);
+
+	const onStatsRef = useRef(onStats);
+	onStatsRef.current = onStats;
+	useEffect(() => {
+		if (snapshot) onStatsRef.current?.({ ideas: snapshot.propositions.length, chains: snapshot.chains.length });
+	}, [snapshot]);
 
 	// The practice chip opens the table in select mode (GraphView's law):
 	// the pick intent raises the overlay; Done/close reports back down.
@@ -178,29 +190,14 @@ export function MinimalHome({
 		if (chainSelectOpen) setChainsOpen(true);
 	}, [chainSelectOpen]);
 
-	// Refetch even after incomplete imports: earlier writes and spend remain.
-	const notesImport = useNotesImport({ onFinish: readState });
-	const { importing, onImportFiles } = notesImport;
 
 	const teachSessions = chats.filter((c) => c.kind === "teach").length;
 	const practiceSessions = chats.filter((c) => c.kind === "practice").length;
 
 	return (
-		<div className="relative h-full">
-			<input
-				ref={fileInputRef}
-				type="file"
-				multiple
-				accept=".md,.markdown,.txt"
-				className="hidden"
-				onChange={(e) => {
-					onImportFiles(e.target.files);
-					e.target.value = ""; // allow re-picking the same file
-				}}
-			/>
-
-			{/* The quiet summary — centered, biased up off the composer. */}
-			<div className="flex h-full items-center justify-center px-6 pb-40">
+		<div data-testid="graph-section-minimal" className="relative h-[260px] overflow-hidden rounded-[10px] bg-card sm:h-[420px]">
+			{/* The quiet summary — centered in Home's graph section. */}
+			<div className="flex h-full items-center justify-center px-6">
 				<div className="flex flex-col items-center gap-4">
 					<KnowledgeSummaryStatus loading={loading && !snapshot} error={loadError} hasData={snapshot !== null} onRetry={readState} />
 					{snapshot && <KnowledgeSummary
@@ -214,15 +211,13 @@ export function MinimalHome({
 			</div>
 
 			{/* The chrome survivors in the graph view's own places (owner,
-			    2026-10-06): the top-right column — actions row (Chains +
-			    Import, the same 36px band pills), the cost pill BELOW it.
-			    The column carries lh-no-drag EXACTLY like the graph
-			    chrome's (the DOM-order mask law): without it the drag band
-			    swallows the clicks in Electron — the buttons dragged the
-			    window instead. Node search and the render-settings gear are
-			    canvas things and stay gone; Import ALWAYS renders (the
-			    entry law). */}
-			<div className="lh-no-drag lh-wco-floating absolute right-2 top-2 z-10 flex max-w-[calc(100%-5.5rem)] flex-col items-end gap-2">
+			    2026-10-06): the top-right column — Chains (the same 36px band
+			    pill), the cost pill BELOW it. Import notes lives in Home's
+			    section header (feature 002). The column carries lh-no-drag
+			    EXACTLY like the graph chrome's (the DOM-order mask law).
+			    Node search and the render-settings gear are canvas things
+			    and stay gone. */}
+			<div className="lh-no-drag absolute right-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-col items-end gap-2">
 				<div className="flex min-w-0 items-start gap-2">
 					<div className="graph-chrome-fade-in shrink-0 rounded-xl border bg-card px-1 py-[3px] ">
 						<Hint label="Every reasoning chain" side="bottom">
@@ -237,22 +232,7 @@ export function MinimalHome({
 							</button>
 						</Hint>
 					</div>
-					<div className="shrink-0 rounded-xl border bg-card px-1 py-[3px] ">
-						<Hint label="Import notes into the graph" side="bottom">
-							<button
-								type="button"
-								disabled={importing}
-								onClick={() => fileInputRef.current?.click()}
-								data-testid="import-notes"
-								className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent disabled:opacity-50"
-							>
-								<UploadIcon className="size-4" />
-								{importing ? "Importing…" : "Import notes…"}
-							</button>
-						</Hint>
-					</div>
 				</div>
-				<NotesImportErrors errors={notesImport.errors} />
 				{costs && costs.runs.length > 0 && <GraphCostControl costs={costs} />}
 			</div>
 
@@ -261,7 +241,7 @@ export function MinimalHome({
 			    DOM-order drag law): app-region subtraction resolves by DOM
 			    order, so a full-bleed surface covering the drag band must
 			    paint after everything it covers. */}
-			<ChainTableOverlay
+			<InOverlayHost><ChainTableOverlay
 				open={chainsOpen && (snapshot?.propositions.length ?? 0) > 0}
 				nodes={snapshot?.propositions ?? []}
 				chains={snapshot?.chains ?? []}
@@ -284,7 +264,7 @@ export function MinimalHome({
 					}
 					onPracticeSelectionChange?.(picked);
 				}}
-			/>
+			/></InOverlayHost>
 		</div>
 	);
 }

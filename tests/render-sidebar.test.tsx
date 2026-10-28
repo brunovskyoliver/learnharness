@@ -65,12 +65,27 @@ describe("SessionRow", () => {
 		}
 	});
 
-	it("a pending question renders NO indicator — resting state, carried by the meta text", () => {
+	it("a pending question shows the amber waiting dot (feature 002), never the old ? icon", () => {
 		const html = render(item({ phase: "teach", pendingQuestion: true }));
-		assert.ok(!html.includes("session-dot"), "no dots");
+		assert.match(html, /<span role="img" aria-label="Waiting for you" data-testid="waiting-dot" class="[^"]*rounded-full bg-primary/);
+		assert.ok(!html.includes("lucide-message-circle-question"), "the repeated ? icon is gone");
 		assert.ok(!html.includes("braille-spinner"), "motion is reserved for working");
 		assert.ok(html.includes("Waiting for input"), "the meta line's text");
 		assert.ok(!html.includes("Waiting for your answer"), "old wording is gone");
+	});
+
+	it("a practice problem waits with the dot; a running turn shows the spinner instead", () => {
+		assert.match(render(item({ kind: "practice", pendingProblem: true })), /data-testid="waiting-dot"/);
+		const busy = render(item({ pendingQuestion: true, busy: true }));
+		assert.ok(busy.includes('data-testid="braille-spinner"'));
+		assert.ok(!busy.includes("waiting-dot"), "running keeps its running indicator");
+	});
+
+	it("titles wrap in full instead of truncating (feature 002)", () => {
+		const html = render(item({ title: "Gradient descent and choosing a learning rate for a noisy loss surface" }));
+		assert.match(html, /<span class="min-w-0 flex-1 break-words py-2 leading-5">Gradient descent and choosing a learning rate for a noisy loss surface<\/span>/);
+		assert.match(html, /min-h-9/);
+		assert.doesNotMatch(html, /class="[^"]*\btruncate\b[^"]*">Gradient/);
 	});
 
 	it("a working session (turn in flight) renders the braille spinner — the ONLY indicator", () => {

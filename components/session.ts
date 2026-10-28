@@ -105,6 +105,7 @@ export function useChatSession({ chatId, initialMessages, initialError, initiall
 	const send = useCallback((input: ChatInput) => void model.send(input), [model]);
 	const continueIfOwed = useCallback((record: readonly LhMessage[]) => void model.continueIfOwed(record), [model]);
 	const steer = useCallback((text: string) => void model.steer(text), [model]);
+	const cancelSteer = useCallback((id: string) => void model.cancelSteer(id), [model]);
 	const submitAnswer = useCallback(
 		(tool: string, toolCallId: string, output: QuestionAnswerData) =>
 			void model.submitAnswer(tool, toolCallId, output),
@@ -136,6 +137,7 @@ export function useChatSession({ chatId, initialMessages, initialError, initiall
 		send,
 		continueIfOwed,
 		steer,
+		cancelSteer,
 		submitAnswer,
 		dismissQuestion,
 		dismissProblem,

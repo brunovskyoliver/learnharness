@@ -10,9 +10,9 @@ async function ChatPage({
 	searchParams,
 }: {
 	params: Promise<{ id: string }>;
-	searchParams: Promise<{ prompt?: string }>;
+	searchParams: Promise<{ prompt?: string; answer?: string }>;
 }) {
-	const [{ id }, { prompt }] = await Promise.all([params, searchParams]);
+	const [{ id }, { prompt, answer }] = await Promise.all([params, searchParams]);
 	const chat = getChat(id);
 	if (!chat) notFound();
 	// The persistent setup CTA's seed (BYOK, owner 2026-09-22): slotsConfigured
@@ -36,6 +36,7 @@ async function ChatPage({
 			initialSettings={chat.settings}
 			initialModels={record?.models}
 			initialPrompt={prompt}
+			initialAnswer={answer}
 			// A teacher turn that outlived its client: the remounted view must
 			// attach (busy shimmer + poll), never resurrect the stale record.
 			initiallyInFlight={isTurnRunning(chat.id)}

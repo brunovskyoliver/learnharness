@@ -47,6 +47,7 @@ import type { LhMessage } from "../src/core/native-messages.ts";
 // store imports already resolved under).
 const dismissRoute = await import("../app/api/chats/[id]/dismiss/route.ts");
 const steerRoute = await import("../app/api/chats/[id]/steer/route.ts");
+const cancelRoute = await import("../app/api/chats/[id]/steer/[steerId]/route.ts");
 const streamRoute = await import("../app/api/chats/[id]/stream/route.ts");
 const recordRoute = await import("../app/api/chats/[id]/route.ts");
 import { PATHS } from "../config.ts";
@@ -1664,6 +1665,48 @@ describe("composer steering: POST /api/chats/[id]/steer", () => {
 		const steerMsg = saved.messages[2] as { id?: string; content?: unknown };
 		assert.equal(steerMsg.id, "steer_live1", "the client-minted id survived to the record");
 		assert.equal(steerMsg.content, "also cover Venus");
+	});
+
+	it("a withdrawn steer never reaches the model or the record; the other one does (feature 002)", async () => {
+		const calls: string[][] = [];
+		let release!: () => void;
+		const gate = new Promise<void>((res) => {
+			release = res;
+		});
+		const faux = createFauxCore({});
+		faux.setResponses([
+			async (context: { messages: unknown[] }) => {
+				calls.push(context.messages.map((m) => JSON.stringify((m as { content: unknown }).content)));
+				await gate;
+				return fauxAssistantMessage([fauxText("Teaching gradient descent…")]);
+			},
+			(context: { messages: unknown[] }) => {
+				calls.push(context.messages.map((m) => JSON.stringify((m as { content: unknown }).content)));
+				return fauxAssistantMessage([fauxText("Then a problem on it.")]);
+			},
+		]);
+		const engine = { model: faux.getModel(), streamFn: faux.streamSimple };
+		const chat = createConfiguredChat("Test: steer withdraw");
+		createdChats.push(chat.id);
+		await handleChatRequest(post(chat.id, { type: "text", text: "teach me" }), agentFactory(engine as never));
+		await waitFor(() => calls.length === 1, 8000, "first model call started");
+
+		assert.equal((await steerPost(chat.id, { input: { type: "steer", id: "steer_keep", text: "then give me a problem" } })).status, 200);
+		assert.equal((await steerPost(chat.id, { input: { type: "steer", id: "steer_drop", text: "WITHDRAWN show it on a plot" } })).status, 200);
+		const removed = await cancelRoute.DELETE(new Request(`http://test/api/chats/${chat.id}/steer/steer_drop`, { method: "DELETE" }), { params: Promise.resolve({ id: chat.id, steerId: "steer_drop" }) });
+		assert.equal(removed.status, 200);
+
+		const viewText = drainRunning(chat.id);
+		release();
+		const body = await viewText;
+		assert.doesNotMatch(body, /WITHDRAWN/, "the withdrawn steer never rides the live stream");
+		assert.equal(calls.length, 2);
+		assert.match(calls[1]!.join("\n"), /then give me a problem/, "the kept steer reached the model");
+		assert.doesNotMatch(calls[1]!.join("\n"), /WITHDRAWN/, "the withdrawn steer reached no agent input");
+		const saved = chatStore.getChat(chat.id)!;
+		assert.ok(saved.messages.some((m) => (m as { id?: string }).id === "steer_keep"));
+		assert.ok(!saved.messages.some((m) => (m as { id?: string }).id === "steer_drop"), "nothing of it in the record");
+		assert.ok(!JSON.stringify(saved.messages).includes("WITHDRAWN"));
 	});
 });
 

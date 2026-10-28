@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { MenuShell } from "@/components/menu-shell";
 import { DeleteSessionDialog } from "@/components/delete-session-dialog";
 import type { ChatDeleteMode } from "@/src/core";
-import { BookOpenIcon, CheckIcon, DumbbellIcon, ListFilterIcon, MessageCircleQuestionIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, SearchIcon, SettingsIcon, SquarePenIcon } from "lucide-react";
+import { BookOpenIcon, CheckIcon, DumbbellIcon, ListFilterIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, PlusIcon, SearchIcon, SettingsIcon } from "lucide-react";
 import { ActivitySection } from "@/components/activity-dock";
 import { CoverageMenuBlock } from "@/components/extraction-coverage";
 import { LhMark } from "@/components/lh-mark";
@@ -20,11 +20,10 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { fuzzyScore } from "@/src/core";
-import { useServerEvent, useServerResync } from "@/components/server-events";
 import type { ChatListItem } from "@/src/core";
 import { kbdEventForAction } from "@/src/core";
 import { notifySettingsSaved } from "@/components/settings-signal";
-import { createSidebarRefresh } from "@/components/sidebar-refresh";
+import { SessionListProvider, useSessionList, useSessionListDemand } from "@/components/session-list";
 import { SidebarFrame } from "@/components/sidebar-frame";
 export { clampSidebarWidth } from "@/components/sidebar-frame";
 
@@ -342,7 +341,7 @@ export function SessionRow({
 			data-session-id={chat.id}
 			aria-current={active ? "page" : undefined}
 			className={cn(
-				"group flex h-9 w-full shrink-0 items-center gap-2.5 rounded-md px-2.5 text-left text-sm transition-colors hover:bg-accent",
+				"group flex min-h-9 w-full shrink-0 items-center gap-2.5 rounded-md px-2.5 text-left text-base transition-colors hover:bg-accent",
 				active ? "bg-accent text-foreground" : "text-ink-2",
 				kbdSelected && !active && "bg-accent ring-1 ring-inset ring-ring/30",
 			)}
@@ -350,11 +349,14 @@ export function SessionRow({
 			<span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground">
 				{practice ? <DumbbellIcon className="ui-icon" aria-label="Practice session" /> : <BookOpenIcon className="ui-icon" aria-label="Lesson session" />}
 			</span>
-			<span className="min-w-0 flex-1 truncate">{chat.title}</span>
-			{(chat.busy || chat.compacting || waiting) && <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground">
-				{chat.busy || chat.compacting ? <SessionStatus busy /> : <MessageCircleQuestionIcon className="ui-icon" aria-label="Waiting for you" />}
-			</span>}
-			<span suppressHydrationWarning className="shrink-0 text-sm tabular-nums text-muted-foreground">{shortAgo(chat.updatedAt)}</span>
+			{/* Whole titles (feature 002): they wrap instead of truncating. */}
+			<span className="min-w-0 flex-1 break-words py-2 leading-5">{chat.title}</span>
+			{chat.busy || chat.compacting ? (
+				<span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground"><SessionStatus busy /></span>
+			) : waiting ? (
+				<span role="img" aria-label="Waiting for you" data-testid="waiting-dot" className="size-[7px] shrink-0 rounded-full bg-primary" />
+			) : null}
+			<span suppressHydrationWarning className="shrink-0 self-center text-sm tabular-nums text-muted-foreground">{shortAgo(chat.updatedAt)}</span>
 		</a>
 	);
 }
@@ -370,16 +372,7 @@ const StableSessionRow = memo(function StableSessionRow({ chat, active, kbdSelec
 		onContextMenu={useCallback((event: React.MouseEvent<HTMLAnchorElement>) => onContextMenu(event, chat), [onContextMenu, chat])} />;
 });
 
-/** Reuse rows when a refresh has no field changes. */
-export function reconcileChatSnapshot(previous: ChatListItem[] | null, next: ChatListItem[]): ChatListItem[] {
-	if (!previous) return next;
-	const byId = new Map(previous.map((chat) => [chat.id, chat]));
-	const reconciled = next.map((chat) => {
-		const old = byId.get(chat.id);
-		return old && JSON.stringify(old) === JSON.stringify(chat) ? old : chat;
-	});
-	return previous.length === reconciled.length && reconciled.every((chat, i) => chat === previous[i]) ? previous : reconciled;
-}
+export { reconcileChatSnapshot } from "@/components/session-list";
 
 /** The inline-rename row (wave 6): same geometry as SessionRow, but the
  *  title line becomes a text input — select-all on entry (the click means
@@ -423,16 +416,43 @@ export function RenameRow({ chat, onCommit, onCancel }: { chat: ChatListItem; on
 	);
 }
 
+/** The menu contract (same as the context menu): an outside pointerdown or
+ *  a claimed Esc closes it; MenuShell returns focus to the trigger. */
+function useMenuDismissal(open: boolean, setOpen: (open: boolean) => void, anchorRef: React.RefObject<HTMLElement | null>) {
+	useEffect(() => {
+		if (!open) return;
+		const onPointerDown = (e: PointerEvent) => {
+			const target = e.target as Node;
+			if (target instanceof Element && target.closest("[data-lh-menu]")) return;
+			if (anchorRef.current?.contains(target)) return;
+			setOpen(false);
+		};
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (e.key === "Escape") {
+				e.preventDefault();
+				e.stopPropagation();
+				setOpen(false);
+			}
+		};
+		document.addEventListener("pointerdown", onPointerDown);
+		document.addEventListener("keydown", onKeyDown);
+		return () => {
+			document.removeEventListener("pointerdown", onPointerDown);
+			document.removeEventListener("keydown", onKeyDown);
+		};
+	}, [open, setOpen, anchorRef]);
+}
+
 /** The three-way kind filter (practice sessions, owner 2026-10-04):
  *  Teaching / All / Practice — a client-side filter over the same
  *  snapshot, persisted in localStorage, defaulting to All. */
 export type SessionKindFilter = "teach" | "all" | "practice";
 const KIND_FILTER_KEY = "lh:session-kind-filter";
 
-function SessionsSidebar({ account, initialChats }: { account?: React.ReactNode; initialChats?: ChatListItem[] }) {
+function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 	const { initializing, open, toggle, overlay, close } = useSidebar();
-	const [chats, setChats] = useState<ChatListItem[] | null>(() => initialChats ?? null);
-	const [loadError, setLoadError] = useState(false);
+	const { chats, loadError, refresh, setChats } = useSessionList();
+	useSessionListDemand(open);
 	const [query, setQuery] = useState("");
 	const [kindFilter, setKindFilter] = useState<SessionKindFilter>("all");
 	const [hydrated, setHydrated] = useState(false);
@@ -475,93 +495,6 @@ function SessionsSidebar({ account, initialChats }: { account?: React.ReactNode;
 			.sort((a, b) => b.score - a.score)
 			.map((r) => r.c);
 	}, [chats, query, kindFilter]);
-
-	const refresh = useMemo(() => createSidebarRefresh(async () => {
-		try {
-			const res = await fetch("/api/chats", { cache: "no-store" });
-			if (!res.ok) throw new Error("Could not load sessions");
-			const d = (await res.json()) as { chats: ChatListItem[] };
-			if (!Array.isArray(d.chats)) throw new Error("Invalid sessions response");
-			setChats((previous) => reconcileChatSnapshot(previous, d.chats));
-			setLoadError(false);
-		} catch {
-			// A failed refresh retains the seed or last successful snapshot.
-			setLoadError(true);
-		}
-	}), []);
-
-	/* Instant rename propagation (2026-09-17): the chat header's rename
-	   commits dispatch lh:chat-renamed; patch the snapshot in place instead
-	   of waiting for the 2.5s poll. */
-	useEffect(() => {
-		const onRenamed = (e: Event) => {
-			const { id, title } = (e as CustomEvent<{ id: string; title: string }>).detail;
-			setChats((prev) => (prev ? prev.map((c) => (c.id === id ? { ...c, title } : c)) : prev));
-		};
-		window.addEventListener("lh:chat-renamed", onRenamed);
-		return () => window.removeEventListener("lh:chat-renamed", onRenamed);
-	}, []);
-
-	/* INSTANT TURN-STATE (owner, sidebar round 2026-10-02): the open
-	   session broadcasts lh:turn-state the instant its turn starts
-	   (submitted — the optimistic machine's own flip) and at settle —
-	   busy mirrors the server's own definition (isTurnRunning), so the
-	   patch is exact: spinner up the moment the action happens, cleared
-	   and refetched once at settle (title/order move with turns). The
-	   events channel is the backstop for everything only the server
-	   knows: other windows, wake turns in unopened sessions. A start on
-	   a chat not yet in the snapshot (a brand-new session) = one
-	   immediate refresh instead of a patch. */
-	const chatsRef = useRef(chats);
-	chatsRef.current = chats;
-	useEffect(() => {
-		const onTurnState = (e: Event) => {
-			const { id, running } = (e as CustomEvent<{ id: string; running: boolean }>).detail;
-			if (running) {
-				if (chatsRef.current?.some((c) => c.id === id)) {
-					setChats((prev) => (prev ? prev.map((c) => (c.id === id ? { ...c, busy: true } : c)) : prev));
-				} else {
-					void refresh(); // the brand-new session: it isn't in the snapshot yet
-				}
-				return;
-			}
-			setChats((prev) => (prev ? prev.map((c) => (c.id === id ? { ...c, busy: false } : c)) : prev));
-			void refresh(); // settle: the server snapshot is now truthful — land it now
-		};
-		window.addEventListener("lh:turn-state", onTurnState);
-		return () => window.removeEventListener("lh:turn-state", onTurnState);
-	}, [refresh]);
-
-	/* PUSH (architecture S6, 2026-10-02): the 2.5s poll is RETIRED — the
-	   last standing network poll in the app. List truth arrives as
-	   events: chats-changed (create/rename/delete — the list-SHAPE
-	   writes), and turn-started/turn-settled for EVERY chat (unfiltered:
-	   any chat's turn flips busy/order/phase in this list). Announced
-	   fetches ride the 250ms trailing debounce (the S4/S5 law); resync
-	   (reconnect / dev-restart) is immediate. lh:turn-state +
-	   lh:chat-renamed stay for same-tab INSTANTS — local beats any
-	   round-trip. */
-	const refreshRef = useRef(refresh);
-	refreshRef.current = refresh;
-	const eventDebounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-	const scheduleEventRefresh = () => {
-		if (eventDebounceRef.current) clearTimeout(eventDebounceRef.current);
-		eventDebounceRef.current = setTimeout(() => {
-			eventDebounceRef.current = undefined;
-			void refreshRef.current();
-		}, 250);
-	};
-	useServerEvent("chats-changed", scheduleEventRefresh);
-	useServerEvent("turn-started", scheduleEventRefresh);
-	useServerEvent("turn-settled", scheduleEventRefresh);
-	useServerEvent("compaction-changed", scheduleEventRefresh);
-	useServerResync(() => void refreshRef.current());
-	useEffect(
-		() => () => {
-			if (eventDebounceRef.current) clearTimeout(eventDebounceRef.current);
-		},
-		[],
-	);
 
 	/* ── Keyboard seams (shortcut wave A, 2026-09-17; search-walk round
 	   2026-10-10) ── ⌘⇧F focuses the search field — and THE SEARCH OWNS THE
@@ -683,42 +616,15 @@ function SessionsSidebar({ account, initialChats }: { account?: React.ReactNode;
 		listRef.current?.querySelectorAll("button")[kbdIndex]?.scrollIntoView({ block: "nearest" });
 	}, [kbdIndex]);
 
-	useEffect(() => {
-		if (!open) return;
-		void refresh();
-		// Opening + navigation refetch; while open, the events channel owns
-		// freshness (S6) — no interval, nothing standing.
-	}, [open, pathname, refresh]);
-
 	const [filterOpen, setFilterOpen] = useState(false);
 	const filterRef = useRef<HTMLButtonElement | null>(null);
-	// The menu contract (same as the context menu): outside pointerdown or a
-	// claimed Esc closes it.
-	useEffect(() => {
-		if (!filterOpen) return;
-		const onPointerDown = (e: PointerEvent) => {
-			const target = e.target as Node;
-			if (target instanceof Element && target.closest("[data-lh-menu]")) return;
-			if (filterRef.current?.contains(target)) return;
-			setFilterOpen(false);
-		};
-		const onKeyDown = (e: KeyboardEvent) => {
-			if (e.key === "Escape") {
-				e.preventDefault();
-				e.stopPropagation();
-				setFilterOpen(false);
-			}
-		};
-		document.addEventListener("pointerdown", onPointerDown);
-		document.addEventListener("keydown", onKeyDown);
-		return () => {
-			document.removeEventListener("pointerdown", onPointerDown);
-			document.removeEventListener("keydown", onKeyDown);
-		};
-	}, [filterOpen]);
+	useMenuDismissal(filterOpen, setFilterOpen, filterRef);
+	const [newOpen, setNewOpen] = useState(false);
+	const newRef = useRef<HTMLButtonElement | null>(null);
+	useMenuDismissal(newOpen, setNewOpen, newRef);
 
 	const sidebar = (
-		<SidebarFrame bootstrap={initializing} open={open} overlay={overlay} onClose={close} hasMenu={Boolean(ctxChatId || filterOpen || renamingId || deleting)}>
+		<SidebarFrame bootstrap={initializing} open={open} overlay={overlay} onClose={close} hasMenu={Boolean(ctxChatId || filterOpen || newOpen || renamingId || deleting)}>
 			<div className="flex h-full flex-col bg-(--lh-sidebar)" style={{ width: overlay ? "100%" : "var(--lh-sidebar-width)" }}>
 				{/* Brand band: in Electron it is the window's drag surface and
 				    starts after the traffic lights (.lh-lights-gutter). */}
@@ -740,104 +646,99 @@ function SessionsSidebar({ account, initialChats }: { account?: React.ReactNode;
 					</Hint>
 				</div>
 
-				{/* Toolbar: ghost search, filter menu, the two "new" doors. */}
-				<div className="flex items-center gap-1 px-2 py-3">
-					<Hint label="Search sessions" action="sessions-search" side="bottom">
-						<label className="flex h-8 min-w-0 flex-1 cursor-text items-center gap-2 rounded-md px-2 text-muted-foreground transition-colors hover:bg-accent focus-within:bg-accent">
-							<SearchIcon className="ui-icon shrink-0" />
-							<input
-								ref={searchRef}
-								data-testid="session-search"
-								value={query}
-								onChange={(e) => {
-									setQuery(e.target.value);
-									// The list reorders under the query every keystroke —
-									// a stale walk index would point at the wrong row.
-									setKbdIndex(null);
-								}}
-								// THE SEARCH OWNS THE WALK: ↑/↓ cycle the filtered rows
-								// (wrap), Enter opens the walked row — or the first match —
-								// then blurs. Esc leaves the search and is claimed so the
-								// window Esc chain doesn't also fire.
-								onKeyDownCapture={(e) => {
-									if (e.key !== "Tab" || overlay || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
-									// Claim before document-level lesson handlers.
-									e.preventDefault();
-									e.stopPropagation();
-									e.currentTarget.closest("aside")?.querySelector<HTMLElement>('[aria-label="Resize sidebar"]')?.focus();
-								}}
-								onKeyDown={(e) => {
-									if (e.key === "Escape") {
+				{/* Toolbar (feature 002): the Search field with the kind filter at
+				    its right end, then one labelled New menu (Lesson, Practice). */}
+				<div className="flex items-center gap-1.5 px-2.5 pb-2 pt-1">
+					<div className="flex h-9 min-w-0 flex-1 items-center rounded-md bg-card pr-1 text-muted-foreground transition-colors focus-within:bg-accent pointer-coarse:h-11">
+						<Hint label="Search sessions" action="sessions-search" side="bottom">
+							<label className="flex h-full min-w-0 flex-1 cursor-text items-center gap-2 pl-2.5">
+								<SearchIcon className="ui-icon shrink-0" />
+								<input
+									ref={searchRef}
+									data-testid="session-search"
+									value={query}
+									onChange={(e) => {
+										setQuery(e.target.value);
+										// The list reorders under the query every keystroke —
+										// a stale walk index would point at the wrong row.
+										setKbdIndex(null);
+									}}
+									// THE SEARCH OWNS THE WALK: ↑/↓ cycle the filtered rows
+									// (wrap), Enter opens the walked row — or the first match —
+									// then blurs. Esc leaves the search and is claimed so the
+									// window Esc chain doesn't also fire.
+									onKeyDownCapture={(e) => {
+										if (e.key !== "Tab" || overlay || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+										// Claim before document-level lesson handlers.
 										e.preventDefault();
 										e.stopPropagation();
-										e.currentTarget.blur();
-										return;
-									}
-									if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
-									const n = shown?.length ?? 0;
-									if (n === 0) return;
-									if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-										e.preventDefault();
-										const dir = e.key === "ArrowDown" ? 1 : -1;
-										setKbdIndex((i) =>
-											i === null || i >= n ? (dir === 1 ? 0 : n - 1) : (i + dir + n) % n,
-										);
-										return;
-									}
-									if (e.key === "Enter") {
-										const target = shown![kbdIndex !== null && kbdIndex < n ? kbdIndex : 0];
-										if (!target) return;
-										e.preventDefault();
-										router.push(`/chat/${target.id}`);
-										if (overlay) close();
-										setKbdIndex(null);
-										e.currentTarget.blur();
-									}
-								}}
-								placeholder="Search"
-								aria-label="Search sessions"
-								className="min-w-0 flex-1 bg-transparent text-sm font-medium text-foreground outline-none placeholder:text-muted-foreground"
-							/>
-						</label>
-					</Hint>
-					<Hint label="Filter" side="bottom">
-						<button
-							ref={filterRef}
-							type="button"
-							data-testid="kind-filter"
-							aria-label="Filter sessions"
-							aria-expanded={filterOpen}
-							onClick={() => setFilterOpen((v) => !v)}
-							className={cn(
-								"flex size-8 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-foreground",
-								kindFilter === "all" ? "text-muted-foreground" : "bg-accent text-foreground",
-							)}
-						>
-							<ListFilterIcon className="ui-icon" />
-						</button>
-					</Hint>
-					<Hint label="New practice" side="bottom">
-						<button
-							type="button"
-							data-testid="new-session-practice"
-							aria-label="New practice"
-							onClick={() => router.push("/chat/new?mode=practice")}
-							className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-						>
-							<DumbbellIcon className="ui-icon" />
-						</button>
-					</Hint>
-					<Hint label="New lesson" side="bottom">
-						<button
-							type="button"
-							data-testid="new-session"
-							aria-label="New lesson"
-							onClick={() => void newSession()}
-							className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-						>
-							<SquarePenIcon className="ui-icon" />
-						</button>
-					</Hint>
+										e.currentTarget.closest("aside")?.querySelector<HTMLElement>('[aria-label="Resize sidebar"]')?.focus();
+									}}
+									onKeyDown={(e) => {
+										if (e.key === "Escape") {
+											e.preventDefault();
+											e.stopPropagation();
+											e.currentTarget.blur();
+											return;
+										}
+										if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+										const n = shown?.length ?? 0;
+										if (n === 0) return;
+										if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+											e.preventDefault();
+											const dir = e.key === "ArrowDown" ? 1 : -1;
+											setKbdIndex((i) =>
+												i === null || i >= n ? (dir === 1 ? 0 : n - 1) : (i + dir + n) % n,
+											);
+											return;
+										}
+										if (e.key === "Enter") {
+											const target = shown![kbdIndex !== null && kbdIndex < n ? kbdIndex : 0];
+											if (!target) return;
+											e.preventDefault();
+											router.push(`/chat/${target.id}`);
+											if (overlay) close();
+											setKbdIndex(null);
+											e.currentTarget.blur();
+										}
+									}}
+									placeholder="Search"
+									aria-label="Search sessions"
+									className="min-w-0 flex-1 bg-transparent text-sm font-medium text-foreground outline-none placeholder:text-muted-foreground"
+								/>
+							</label>
+						</Hint>
+						<Hint label="Filter" side="bottom">
+							<button
+								ref={filterRef}
+								type="button"
+								data-testid="kind-filter"
+								aria-label="Filter sessions"
+								aria-haspopup="menu"
+								aria-expanded={filterOpen}
+								data-active={kindFilter !== "all" || undefined}
+								onClick={() => setFilterOpen((v) => !v)}
+								className={cn(
+									"flex size-7 shrink-0 items-center justify-center rounded-md transition-colors hover:bg-accent hover:text-foreground pointer-coarse:size-11",
+									kindFilter === "all" ? "text-muted-foreground" : "bg-accent text-foreground",
+								)}
+							>
+								<ListFilterIcon className="ui-icon" />
+							</button>
+						</Hint>
+					</div>
+					<button
+						ref={newRef}
+						type="button"
+						data-testid="new-menu"
+						aria-haspopup="menu"
+						aria-expanded={newOpen}
+						onClick={() => setNewOpen((v) => !v)}
+						className="flex h-9 shrink-0 items-center gap-1.5 rounded-md bg-accent pl-2.5 pr-3 text-sm font-medium text-foreground transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_80%,var(--foreground))] pointer-coarse:h-11"
+					>
+						<PlusIcon className="ui-icon" aria-hidden="true" />
+						New
+					</button>
 				</div>
 
 				<div ref={listRef} className="flex flex-1 flex-col gap-px overflow-y-auto px-2 pb-2">
@@ -856,10 +757,10 @@ function SessionsSidebar({ account, initialChats }: { account?: React.ReactNode;
 							const group = query.trim() || !hydrated ? null : dateGroup(c.updatedAt);
 							const header =
 								group !== null && (i === 0 || dateGroup(shown[i - 1]!.updatedAt) !== group) ? (
-									<div className="flex h-8 shrink-0 items-center gap-2 px-2.5 pt-1 text-sm font-medium text-muted-foreground" data-testid="session-group">
-										{group}
+									<div className="flex h-9 shrink-0 items-baseline gap-2 px-2.5 pt-2 text-ink-2" data-testid="session-group">
+										<span className="font-title text-lg font-medium">{group}</span>
 										<span className="flex-1" aria-hidden="true" />
-										<span className="tabular-nums">{shown.filter((x) => dateGroup(x.updatedAt) === group).length}</span>
+										<span className="text-sm tabular-nums text-muted-foreground">{shown.filter((x) => dateGroup(x.updatedAt) === group).length}</span>
 									</div>
 								) : null;
 							return <Fragment key={c.id}>{header}{renamingId === c.id ? (
@@ -903,13 +804,46 @@ function SessionsSidebar({ account, initialChats }: { account?: React.ReactNode;
 				</div>
 			</div>
 
+			{newOpen && (
+				<MenuShell
+					anchorRef={newRef}
+					testid="new-menu-list"
+					preferredSide="down"
+					menuClass="flex w-50 flex-col rounded-[10px] bg-popover p-1 text-base"
+				>
+					<div role="menu" aria-label="New" className="flex flex-col">
+						<button
+							type="button"
+							role="menuitem"
+							data-testid="new-session"
+							onClick={() => { setNewOpen(false); newSession(); }}
+							className="flex h-9 items-center gap-2.5 rounded-md px-2.5 text-left text-foreground transition-colors hover:bg-accent focus-visible:bg-accent pointer-coarse:h-11"
+						>
+							<BookOpenIcon className="ui-icon text-muted-foreground" aria-hidden="true" />
+							<span className="flex-1">Lesson</span>
+						</button>
+						<button
+							type="button"
+							role="menuitem"
+							data-testid="new-session-practice"
+							onClick={() => { setNewOpen(false); router.push("/chat/new?mode=practice"); }}
+							className="flex h-9 items-center gap-2.5 rounded-md px-2.5 text-left text-foreground transition-colors hover:bg-accent focus-visible:bg-accent pointer-coarse:h-11"
+						>
+							<DumbbellIcon className="ui-icon text-muted-foreground" aria-hidden="true" />
+							<span className="flex-1">Practice</span>
+						</button>
+					</div>
+				</MenuShell>
+			)}
+
 			{filterOpen && (
 				<MenuShell
 					anchorRef={filterRef}
 					testid="kind-filter-menu"
 					preferredSide="down"
-					menuClass="flex w-44 flex-col gap-0.5 rounded-lg border border-border bg-card p-1 text-sm "
+					menuClass="flex w-45 flex-col rounded-[10px] bg-popover p-1 text-base"
 				>
+					<span className="px-2.5 pb-1 pt-1.5 text-sm font-medium text-muted-foreground" aria-hidden="true">Show</span>
 					{(
 						[
 							["all", "All sessions"],
@@ -926,10 +860,13 @@ function SessionsSidebar({ account, initialChats }: { account?: React.ReactNode;
 								setFilter(f);
 								setFilterOpen(false);
 							}}
-							className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent"
+							className={cn(
+								"flex h-9 items-center gap-2.5 rounded-md px-2.5 text-left transition-colors hover:bg-accent focus-visible:bg-accent pointer-coarse:h-11",
+								kindFilter === f ? "text-foreground" : "text-ink-2",
+							)}
 						>
 							<span className="flex-1">{label}</span>
-							{kindFilter === f && <CheckIcon className="size-3.5 text-muted-foreground" />}
+							{kindFilter === f && <CheckIcon className="size-4 text-muted-foreground" aria-hidden="true" />}
 						</button>
 					))}
 				</MenuShell>
@@ -1025,13 +962,15 @@ export function AppShell({ children, account, hosted = false, initialChats }: { 
 	const conversation = pathname.startsWith("/chat/") && pathname !== "/chat/new";
 	return (
 		<SettingsDialogProvider hosted={hosted}>
-			<SessionsSidebar account={account} initialChats={initialChats} />
-			{conversation && <div data-mobile-chat-navigation="" className="fixed left-0 top-0 z-40 flex h-13 items-center px-3 min-[928px]:hidden"><SidebarToggle /></div>}
-			<main className="min-w-0 flex-1">{children}</main>
-			{/* The single document-level keydown listener (keyboard wave A) —
-			    after the content in the tree, but it's window-level so order only
-			    matters for the events it dispatches, never for DOM priority. */}
-			<KeyboardShortcuts />
+			<SessionListProvider initialChats={initialChats}>
+				<SessionsSidebar account={account} />
+				{conversation && <div data-mobile-chat-navigation="" className="fixed left-0 top-0 z-40 flex h-13 items-center px-3 min-[928px]:hidden"><SidebarToggle /></div>}
+				<main className="min-w-0 flex-1">{children}</main>
+				{/* The single document-level keydown listener (keyboard wave A) —
+				    after the content in the tree, but it's window-level so order only
+				    matters for the events it dispatches, never for DOM priority. */}
+				<KeyboardShortcuts />
+			</SessionListProvider>
 		</SettingsDialogProvider>
 	);
 }

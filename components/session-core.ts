@@ -194,6 +194,9 @@ export interface SessionState {
 export interface SteerQueueItem {
 	id: string;
 	text: string;
+	/** Why a removal did not happen (feature 002): "Already sent" (the agent
+	 *  had it; the row waits for its card) or "Could not remove". */
+	note?: string;
 }
 
 /** The indicator's fold (pure): a queued steer stays visible until its id
@@ -786,6 +789,35 @@ export class SessionModel {
 		} catch (err) {
 			dropSteer();
 			this.setError((err as Error).message);
+		}
+	}
+
+	/**
+	 *  WITHDRAW a queued steer (feature 002, contracts/steer-cancel.md): the
+	 *  row goes at once — no confirmation, no undo, the text is discarded and
+	 *  the composer draft is never touched. If the agent already had it
+	 *  (409 "already delivered"), the row comes back as "Already sent" until
+	 *  its card lands; any other failure brings it back as "Could not remove".
+	 */
+	async cancelSteer(id: string): Promise<void> {
+		const index = this.steerQueueValue.findIndex((s) => s.id === id);
+		if (index === -1) return;
+		const item = this.steerQueueValue[index]!;
+		this.steerQueueValue = this.steerQueueValue.filter((s) => s.id !== id);
+		this.onChange?.();
+		const restore = (note: string) => {
+			const next = [...this.steerQueueValue];
+			next.splice(Math.min(index, next.length), 0, { ...item, note });
+			this.steerQueueValue = next;
+			this.onChange?.();
+		};
+		try {
+			const res = await this.fetch(`/api/chats/${this.chatId}/steer/${encodeURIComponent(id)}`, { method: "DELETE" });
+			if (res.ok) return;
+			const body = (await res.json().catch(() => null)) as { error?: string } | null;
+			restore(res.status === 409 && body?.error === "already delivered" ? "Already sent" : "Could not remove");
+		} catch {
+			restore("Could not remove");
 		}
 	}
 

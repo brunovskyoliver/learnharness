@@ -23,6 +23,14 @@
 - Q: Does the removed message's text return to the composer? → A: No, it is discarded; the composer draft is untouched.
 - Q: The gear over the graph opens graph display settings, not app Settings. What happens to it? → A: It is removed; its display controls move into a graph section of the Settings dialog.
 
+### Session 2026-10-28 (implementation)
+
+- Q: Home composer mode control: the canvas's "Lesson ▾" menu, or today's Teach | Practice switch? → A: Keep the Teach | Practice switch.
+- Q: The topic field's placeholder under the new h1? → A: Teach mode: "A topic, a question, or a chapter to work through". Practice mode keeps "What do you want to practice?".
+- Q: Where does the chain table open now that the graph is a 420px section? → A: It covers the whole Home content area (the sidebar stays visible); Close returns to the scrolled page.
+- Q: What does the graph section header count? → A: "{n} ideas · {m} chains" (stored propositions and chains).
+- Q: Kind label for an explain question of type predict? → A: "Prediction", everywhere (turn strip, collapsed bar, waiting list): any predict-type question reads "Prediction".
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - See and answer what is waiting, straight from Home (Priority: P1)

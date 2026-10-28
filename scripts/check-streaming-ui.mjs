@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { waitForStableTranscript } from "./check-turn-navigation-ui.mjs";
 
 /** Feed timed native wire events through the real reattach/renderer path.
  * Everything is browser-local; no model or production service is invoked. */
@@ -21,6 +22,7 @@ export async function checkStreamingUi(page, base, record) {
 		const props = field && Object.keys(field).find((key) => key.startsWith("__reactProps$"));
 		return chat?.dataset.chatId === id && typeof field?.[props]?.onChange === "function" && window.testEventSource?.readyState === EventSource.OPEN;
 	}, { timeout: 30000 }, record.id);
+	await waitForStableTranscript(page);
 	await page.removeScriptToEvaluateOnNewDocument(reset.identifier);
 	await page.evaluate((initial) => {
 		const originalFetch = window.fetch.bind(window);

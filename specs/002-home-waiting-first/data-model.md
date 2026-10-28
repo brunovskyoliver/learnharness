@@ -11,7 +11,7 @@ Added to `ChatSummary` as `waiting?: WaitingItem` (absent when nothing waits). C
 | `toolCallId` | string | the pending tool call's id | identifies the item for `?answer=` |
 | `kind` | `"Lesson check" \| "Prediction" \| "Question" \| "Explain" \| "Recall" \| "Problem"` | tool name (+ quiz type) | same labels as the prompt bar's turn strip |
 | `action` | `"Answer" \| "Solve"` | `Solve` for practice problems, else `Answer` | |
-| `teaser` | string | question text, or the problem statement | allowlisted; raw markdown kept, client renders it as a teaser |
+| `teaser` | string | question text, or the problem statement | allowlisted; markdown kept, display-only math repair applied server-side; client strips it to one plain line |
 | `postedAt` | ISO string | timestamp of the assistant message holding the call | falls back to `updatedAt` if absent |
 
 Rules:

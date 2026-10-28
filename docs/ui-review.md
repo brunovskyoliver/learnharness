@@ -15,6 +15,10 @@ Open [localhost:3000](http://localhost:3000). The sidebar lists four threads pre
 | [Active practice](http://localhost:3000/chat/review-practice) | Practice sidebar icon, active problem and reasoning controls |
 | [Practice history](http://localhost:3000/chat/review-practice-history) | Solved and dismissed problems, feedback and between-problem controls |
 
+Home lists three of them under "Waiting for you": two lesson checks and the active practice problem, newest first. Answer or Solve should open the session with the prompt bar expanded on that item and drop `?answer=` from the address; answering it and returning removes the row. Below that, the knowledge graph section holds the live graph at a fixed height: Expand shows it full screen, Escape or Close returns focus to Expand, and Chains covers the whole Home area. With Settings → Graph → Graph rendering off, the same section shows the minimal summary.
+
+In the sidebar, check the Search field with the filter at its right end, the New menu (Lesson, Practice), the amber dots on the three waiting sessions, wrapped titles and the serif date shelves. The graph's display sliders are in Settings → Graph → Display and change the live graph as they save.
+
 The gradient demo runs locally without a model. Try 0.08 and 0.3, reset between runs, focus a graph, rotate its camera and close with Escape. The path, history and parameters should survive presentation changes. Sending an answer or requesting another problem uses the app's configured provider normally. Seeding and viewing the examples do not invoke a model.
 
 Open Settings from the sidebar to inspect searchable categories, grouped fields, narrow layouts and the live reading preview. Changes in Settings persist immediately. Model, reasoning and usage controls sit directly in the prompt toolbar; without a provider key the toolbar shows "Add a provider key" instead. Escape closes a child menu before its parent; Tab traverses settings controls within the dialog.
