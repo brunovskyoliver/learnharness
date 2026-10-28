@@ -26,29 +26,45 @@ const details = (outcome: string, extra: Record<string, unknown> = {}) => ({ out
 
 describe("MathCheckCard", () => {
 	it("names each outcome in words", () => {
-		assert.match(render(part({ output: details("agreed") })), /Checked with Wolfram · equal/);
+		assert.match(render(part({ output: details("agreed") })), /Wolfram · equal/);
 		assert.match(render(part({ output: details("disagreed") })), /Wolfram · not equal/);
 		assert.match(render(part({ output: details("undecided") })), /Wolfram · couldn(&#x27;|')t decide/);
 		const failed = render(part({ state: "output-error", output: undefined, errorText: "The Wolfram check is unavailable: fetch failed." }));
-		assert.match(failed, /Wolfram check failed/);
+		assert.match(failed, /Wolfram · check failed/);
 		assert.match(failed, /fetch failed/);
-		assert.match(render(part({ state: "input-available", output: undefined })), /Wolfram check not finished/);
+		assert.match(render(part({ state: "input-available", output: undefined })), /Wolfram · check not finished/);
 	});
 
-	it("only an agreed check says Checked with Wolfram", () => {
-		for (const outcome of ["disagreed", "undecided"]) assert.ok(!render(part({ output: details(outcome) })).includes("Checked with Wolfram"));
+	it("rows never say Checked with Wolfram (the label belongs to answered cards)", () => {
+		for (const outcome of ["agreed", "disagreed", "undecided"]) assert.ok(!render(part({ output: details(outcome) })).includes("Checked with Wolfram"));
 		assert.ok(!render(part({ state: "output-error", errorText: "x" })).includes("Checked with Wolfram"));
 	});
 
-	it("shows the expressions, assumptions, counterexample and reply when visible", () => {
+	it("shows the expressions, assumptions and counterexample when visible, without repeating the reply", () => {
 		const html = render(part({ output: details("disagreed", { counterexample: "{x -> 5}" }) }));
 		assert.match(html, /D\[Sin\[2 x\], x\] = 3 Cos\[2 x\]/);
 		assert.match(html, /Assuming/);
 		assert.match(html, /x &gt; 0/);
 		assert.match(html, /Counterexample/);
 		assert.match(html, /\{x -&gt; 5\}/);
-		assert.match(html, /Wolfram(&#x27;|')s reply/);
+		assert.ok(!html.includes("OUTCOME"), "the parsed fields already say it");
 		assert.match(html, /Took 3\.9 s/);
+		assert.ok(!render(part({ output: details("agreed") })).includes("OUTCOME"));
+	});
+
+	it("shows Wolfram's reply when it couldn't decide", () => {
+		const html = render(part({ output: details("undecided", { reason: "Needs assumptions." }) }));
+		assert.match(html, /Wolfram(&#x27;|')s reply/);
+		assert.match(html, /OUTCOME: undecided/);
+	});
+
+	it("sits on the reading edge, with the failure reason in prose and the panel selectable", () => {
+		const html = render(part({ state: "output-error", output: undefined, errorText: "The Wolfram check is unavailable: fetch failed." }));
+		assert.match(html, /<details[^>]*class="[^"]*\blh-reading\b/);
+		assert.ok(!/<details[^>]*class="[^"]*select-none/.test(html), "only the summary is unselectable");
+		assert.match(html, /<summary[^>]*class="[^"]*select-none/);
+		assert.ok(!/font-mono[^>]*>[^<]*<span class="text-destructive">The Wolfram check is unavailable/.test(html), "the reason is not mono");
+		assert.match(html, /<div class=""><span class="text-destructive">The Wolfram check is unavailable/);
 	});
 
 	it("renders nothing while its question waits for an answer", () => {

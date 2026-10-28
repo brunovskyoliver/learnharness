@@ -46,11 +46,13 @@ export function LiveToolCard({ part }: ArtifactPartProps) {
 	// (feature 007): the running row shows only that it is checking.
 	if (tool === "math_check") {
 		return (
-			<div data-testid="live-tool-card" data-tool={tool} className="my-1 flex w-full max-w-2xl items-center gap-2 text-sm text-muted-foreground">
-				<BrailleSpinner label={`${toolActivityLabel(tool)} — live`} />
-				<Shimmer duration={1} className="text-sm">
-					{toolActivityLabel(tool)}
-				</Shimmer>
+			<div data-testid="live-tool-card" data-tool={tool} className="lh-reading my-1">
+				<div className="flex items-center gap-2 text-sm text-muted-foreground">
+					<BrailleSpinner label={`${toolActivityLabel(tool)} — live`} />
+					<Shimmer duration={1} className="text-sm">
+						{toolActivityLabel(tool)}
+					</Shimmer>
+				</div>
 			</div>
 		);
 	}
@@ -59,9 +61,9 @@ export function LiveToolCard({ part }: ArtifactPartProps) {
 		<SessionDetails stateKey={`tool/${p.toolCallId}`}
 			data-testid="live-tool-card"
 			data-tool={tool}
-			className="group my-1 w-full max-w-2xl select-none"
+			className="group lh-reading my-1"
 		>
-			<summary className="flex cursor-pointer list-none items-center gap-2 text-sm text-muted-foreground [&::-webkit-details-marker]:hidden">
+			<summary className="flex cursor-pointer select-none list-none items-center gap-2 text-sm text-muted-foreground [&::-webkit-details-marker]:hidden">
 				<BrailleSpinner label={`${toolActivityLabel(tool)} — live`} />
 				<Shimmer duration={1} className="text-sm">
 					{toolActivityLabel(tool)}

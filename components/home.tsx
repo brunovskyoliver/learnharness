@@ -321,7 +321,7 @@ function GraphSection({
 
 	return (
 		<section aria-labelledby={headingId} data-testid="graph-section" className="flex flex-col gap-2.5 sm:gap-3">
-			<div className="flex flex-wrap items-center gap-x-1 gap-y-1 px-1 sm:gap-x-2.5">
+			<div className="flex flex-wrap items-center gap-x-1 gap-y-1 sm:gap-x-2.5">
 				<h2 id={headingId} className="flex-1 whitespace-nowrap text-xl font-semibold leading-[1.3] sm:flex-none">Knowledge graph</h2>
 				{statsLabel && <span data-testid="graph-stats" className="text-sm font-medium text-muted-foreground max-sm:hidden">{statsLabel}</span>}
 				<span className="hidden flex-1 sm:block" aria-hidden="true" />
@@ -359,7 +359,7 @@ function GraphSection({
 					</button>
 				)}
 			</div>
-			{notesImport.errors.length > 0 && <div className="flex flex-col gap-1 px-1"><NotesImportErrors errors={notesImport.errors} /></div>}
+			{notesImport.errors.length > 0 && <div className="flex flex-col gap-1"><NotesImportErrors errors={notesImport.errors} /></div>}
 			{rendering ? (
 				<GraphView
 					section={{ expanded, onCollapse: collapse }}

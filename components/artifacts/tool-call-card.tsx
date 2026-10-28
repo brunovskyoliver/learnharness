@@ -84,9 +84,9 @@ export function ToolCallCard({ part }: ArtifactPartProps) {
 		<SessionDetails stateKey={`tool/${p.toolCallId}`}
 			data-testid="tool-call-card"
 			data-tool={tool}
-			className="group my-1 w-full max-w-2xl select-none"
+			className="group lh-reading my-1"
 		>
-			<summary className="flex cursor-pointer list-none items-center gap-2 text-sm text-muted-foreground [&::-webkit-details-marker]:hidden">
+			<summary className="flex cursor-pointer select-none list-none items-center gap-2 text-sm text-muted-foreground [&::-webkit-details-marker]:hidden">
 				<span className={`font-medium ${failed ? "text-destructive" : ""}`}>
 					{TOOL_LABELS[tool] ?? tool}
 				</span>

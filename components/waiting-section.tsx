@@ -61,13 +61,13 @@ export function WaitingSectionView({ chats, loadError, onRetry }: { chats: reado
 	const open = (items?.length ?? 0) + lessons.length;
 	return (
 		<section aria-labelledby={headingId} data-testid="waiting-section" className="flex flex-col gap-2">
-			<div className="flex items-baseline gap-2.5 px-1">
+			<div className="flex items-baseline gap-2.5">
 				<h2 id={headingId} className="text-xl font-semibold leading-[1.3]">Waiting for you</h2>
 				{items && open > 0 && <span className="text-sm font-medium text-muted-foreground">{open} open</span>}
 			</div>
 			{items === null ? (
 				loadError ? (
-					<div role="status" className="flex flex-wrap items-center gap-2 px-1 text-ink-2">
+					<div role="status" className="flex flex-wrap items-center gap-2 text-ink-2">
 						<p>Could not load what is waiting.</p>
 						<button type="button" onClick={onRetry} className="prompt-secondary">Try again</button>
 					</div>
@@ -78,7 +78,7 @@ export function WaitingSectionView({ chats, loadError, onRetry }: { chats: reado
 					</div>
 				)
 			) : open === 0 ? (
-				<p className="px-1 text-ink-2">Nothing is waiting. Every check is answered and every problem solved.</p>
+				<p className="text-ink-2">Nothing is waiting. Every check is answered and every problem solved.</p>
 			) : (
 				<ul className="flex flex-col gap-1">
 					{items.map((chat) => <WaitingRow key={chat.id} chat={chat} />)}
@@ -89,15 +89,24 @@ export function WaitingSectionView({ chats, loadError, onRetry }: { chats: reado
 	);
 }
 
+/** "{session} · {time}" on a Home row: the title truncates, the time never
+ *  does — on phones a long title would otherwise hide it. */
+export function RowMeta({ id, title, at }: { id: string; title: string; at: string }) {
+	return (
+		<span id={id} suppressHydrationWarning className="waiting-row-meta flex min-w-0 text-sm font-medium text-muted-foreground">
+			<span className="min-w-0 truncate">{title}</span>
+			<span className="shrink-0 whitespace-pre"> · {shortAgo(at)}</span>
+		</span>
+	);
+}
+
 function WaitingRow({ chat }: { chat: Waiting }) {
 	const id = useId();
 	const { kind, action, teaser, postedAt } = chat.waiting;
 	return (
 		<li className="waiting-row" data-testid="waiting-row" data-progress={chat.progress ? "" : undefined}>
 			<span className="waiting-row-kind text-sm font-medium text-primary">{kind}</span>
-			<span id={`${id}-meta`} suppressHydrationWarning className="waiting-row-meta min-w-0 truncate text-sm font-medium text-muted-foreground">
-				{chat.title} · {shortAgo(postedAt)}
-			</span>
+			<RowMeta id={`${id}-meta`} title={chat.title} at={postedAt} />
 			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-lg leading-[27px] text-foreground">
 				<Teaser text={teaserPlain(teaser)} />
 			</p>
@@ -121,9 +130,7 @@ function LessonRow({ chat }: { chat: Unfinished }) {
 	return (
 		<li className="waiting-row" data-testid="waiting-row">
 			<span className="waiting-row-kind text-sm font-medium text-primary">Lesson</span>
-			<span id={`${id}-meta`} suppressHydrationWarning className="waiting-row-meta min-w-0 truncate text-sm font-medium text-muted-foreground">
-				{chat.title} · {shortAgo(chat.updatedAt)}
-			</span>
+			<RowMeta id={`${id}-meta`} title={chat.title} at={chat.updatedAt} />
 			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-lg leading-[27px] text-foreground">
 				{progressLine(chat.progress, chat.course)}
 			</p>
