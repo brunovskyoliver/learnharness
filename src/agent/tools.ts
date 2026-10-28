@@ -16,6 +16,8 @@ import { filterEnabledTools, type EnabledTools } from "../core/pending.ts";
 import type { JobRecord } from "../core/contracts.ts";
 import type { JobStore } from "../core/ports.ts";
 import { jobTools, type DemoInput, type PdfInput, type ResearchInput, type VisualInput } from "./tools/jobs.ts";
+import { plotTool } from "./tools/plot.ts";
+import { courseTool } from "./tools/course.ts";
 import { planTools, type PlanToolContext } from "./tools/plan.ts";
 import { probeDoneTool, type ProbeDoneContext } from "./tools/probe.ts";
 import { proberGraphTools } from "./tools/graph.ts";
@@ -467,6 +469,10 @@ export function createTeacherTools(
 			...(ctx.startFollowup ? { start_followup_session: followupTool(ctx.startFollowup) } : {}),
 			...(ctx.graphStore ? teacherGraphTools({ chatStore: ctx.chatStore, graphStore: ctx.graphStore, startFollowup: ctx.startFollowup }) : {}),
 			...jobTools({ chatId: ctx.chatId, jobStore: ctx.jobStore, spawn: ctx.spawn, searchAvailable: ctx.searchAvailable }),
+			// Quick plots (feature 005): instant, checked, no builder agent.
+			plot: plotTool(),
+			// Course track (feature 006): the syllabus mapped onto the plan.
+			course: courseTool({ chatId: ctx.chatId, chatStore: ctx.chatStore }),
 		},
 		withoutMechanics(enabled),
 		),

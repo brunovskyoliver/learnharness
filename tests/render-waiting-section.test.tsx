@@ -12,7 +12,7 @@ import React from "react";
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { WaitingSectionView, answerHref, waitingSessions } from "../components/waiting-section.tsx";
+import { WaitingSectionView, answerHref, continueHref, continueSessions, progressLine, waitingSessions } from "../components/waiting-section.tsx";
 import { answerOpensDock } from "../components/chat.tsx";
 import type { ChatListItem, WaitingItem } from "../src/core/index.ts";
 
@@ -105,5 +105,66 @@ describe("answerOpensDock — Home's ?answer= on the session side", () => {
 		assert.equal(answerOpensDock("call-1", null), false, "answered meanwhile: nothing waits");
 		assert.equal(answerOpensDock(undefined, "call-1"), false);
 		assert.equal(answerOpensDock("", "call-1"), false);
+	});
+});
+
+describe("Continue rows (feature 003)", () => {
+	const progress = { total: 11, left: 2, next: "Learning by gradient descent" };
+
+	it("lists lessons with topics left and nothing waiting, last active first", () => {
+		const chats = [
+			item("older", undefined, { progress, updatedAt: "2026-10-20T10:00:00.000Z" }),
+			item("asked", {}, { progress }),
+			item("plain"),
+			item("newer", undefined, { progress, updatedAt: "2026-10-27T10:00:00.000Z" }),
+		];
+		assert.deepEqual(continueSessions(chats).map((c) => c.id), ["newer", "older"]);
+	});
+
+	it("formats the progress line", () => {
+		assert.equal(progressLine(progress), "2 of 11 topics left · next: Learning by gradient descent");
+	});
+
+	it("renders a Lesson row after every Answer/Solve row, with Continue", () => {
+		const html = render([
+			item("lesson", undefined, { progress, updatedAt: "2026-10-28T11:00:00.000Z" }),
+			item("check", { postedAt: "2026-10-01T09:00:00.000Z" }),
+		]);
+		assert.ok(html.indexOf("Session check") < html.indexOf("Session lesson"), "Answer/Solve rows come first");
+		assert.match(html, /text-primary">Lesson</);
+		assert.match(html, /2 of 11 topics left · next: Learning by gradient descent/);
+		assert.match(html, /href="\/chat\/lesson\?continue=1"[^>]*>Continue</);
+		assert.match(html, /2 open/, "the heading counts every row");
+	});
+
+	it("a lesson that also waits renders one Answer row carrying the progress line", () => {
+		const html = render([item("both", {}, { progress })]);
+		assert.equal(html.match(/data-testid="waiting-row"/g)?.length, 1);
+		assert.match(html, />Answer</);
+		assert.doesNotMatch(html, />Continue</);
+		assert.match(html, /class="waiting-row-progress[^"]*">2 of 11 topics left · next: Learning by gradient descent</);
+		assert.match(html, /1 open/);
+	});
+
+	it("links Continue to the session's one-shot param", () => {
+		assert.equal(continueHref({ id: "x y" }), "/chat/x%20y?continue=1");
+	});
+
+	it("keeps the empty sentence when no row exists", () => {
+		assert.match(render([item("idle")]), /Nothing is waiting\./);
+	});
+});
+
+describe("course progress on Home (feature 006)", () => {
+	const progress = { total: 11, left: 2, next: "Learning by gradient descent" };
+	it("appends the course count to the progress line", () => {
+		assert.equal(progressLine(progress, { covered: 3, items: 25 }), "2 of 11 topics left · next: Learning by gradient descent · Course: 3 of 25 covered");
+		const lesson = render([item("l", undefined, { progress, course: { covered: 3, items: 25 } })]);
+		assert.match(lesson, /Course: 3 of 25 covered/);
+		const merged = render([item("m", {}, { progress, course: { covered: 0, items: 4 } })]);
+		assert.match(merged, /class="waiting-row-progress[^"]*">2 of 11 topics left · next: Learning by gradient descent · Course: 0 of 4 covered</);
+	});
+	it("leaves the line unchanged without a course", () => {
+		assert.doesNotMatch(render([item("l", undefined, { progress })]), /Course:/);
 	});
 });

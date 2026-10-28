@@ -17,6 +17,7 @@ import { StatsBar } from "@/components/stats-bar";
 import { Composer } from "@/components/composer";
 import { useReloadDraft } from "@/components/reload-recovery";
 import { WaitingSection } from "@/components/waiting-section";
+import { CalibrationSection } from "@/components/calibration-section";
 import { OverlayHostContext } from "@/components/overlay-host";
 import { NotesImportErrors, useNotesImport } from "@/components/notes-import.tsx";
 import { useActivity } from "@/components/activity-dock";
@@ -233,6 +234,7 @@ export function Home({
 					</section>
 
 					<WaitingSection />
+					<CalibrationSection />
 
 					<GraphSection
 						rendering={rendering}

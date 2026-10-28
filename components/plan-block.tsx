@@ -17,6 +17,7 @@ import type { PlanBlockData, PlanNodeStatus } from "@/src/core";
 import { derivedNodeStatus, derivePlanStatuses } from "@/src/core";
 import { Hint } from "@/components/ui/hint";
 import { latestTree, type PopupMessage } from "@/components/plan-tree";
+import { CourseList, courseExists } from "@/components/course-list";
 
 export { latestTree, type PopupMessage } from "@/components/plan-tree";
 
@@ -739,6 +740,10 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 	);
 	const statusOf = (id: string): PlanNodeStatus => (statuses ? derivedNodeStatus(statuses, id) : "upcoming");
 
+	// The course syllabus (feature 006) sits below the diagram; with it the
+	// popup scrolls and the diagram keeps a fixed share of the height.
+	const hasCourse = useMemo(() => !!tree && courseExists(messages), [tree, messages]);
+
 	// Esc closes — claimed at the DOCUMENT level (THE ONE-ESC LAW, owner
 	// keyboard round 2026-10-06): a surfaced layer's Esc is exactly one
 	// action. The window-level chain (dictation cancel → abort) is the
@@ -867,7 +872,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 			// SESSION-SCOPED (absolute, not fixed): the chat page mounts this
 			// INSIDE the session-area div — below the drag bar, right of the
 			// sidebar. 80% + blur: the transcript ghosts through.
-			className="absolute inset-0 z-40 flex flex-col bg-background p-4 "
+			className={cn("absolute inset-0 z-40 flex flex-col bg-background p-4", hasCourse && "overflow-y-auto")}
 			role="dialog"
 			aria-modal="true"
 			aria-label="The full plan"
@@ -895,7 +900,8 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 			<div
 				ref={viewportRef}
 				className={cn(
-					"relative min-h-0 flex-1 touch-none overflow-hidden rounded-xl border bg-background select-none",
+					"relative touch-none overflow-hidden rounded-xl border bg-background select-none",
+					hasCourse ? "h-[60vh] min-h-[280px] shrink-0" : "min-h-0 flex-1",
 					atFloor ? "cursor-default" : "cursor-grab",
 				)}
 				onPointerDown={startDrag}
@@ -974,6 +980,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 					</div>
 				)}
 			</div>
+			{hasCourse && <CourseList messages={messages} />}
 		</div>
 	);
 }

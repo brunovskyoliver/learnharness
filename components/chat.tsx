@@ -241,6 +241,7 @@ function ChatView({
 	initialError,
 	initialPrompt,
 	initialAnswer,
+	initialContinue,
 	initiallyInFlight,
 	initiallyCompacting = false,
 	initialConfigured = false,
@@ -260,6 +261,9 @@ function ChatView({
 	initialPrompt?: string;
 	/** Home's Answer/Solve target (`?answer=<toolCallId>`, feature 002). */
 	initialAnswer?: string;
+	/** Home's Continue (`?continue=1`, feature 003): open at the bottom; the
+	 *  server-computed draft goes into an empty composer only. */
+	initialContinue?: { draft?: string };
 	/** A teacher turn is running server-side but attached to no client
 	 * (navigated away mid-turn, returned while in flight). */
 	initiallyInFlight?: boolean;
@@ -586,6 +590,18 @@ function ChatView({
 		textRef.current = v;
 		setText(v);
 	}, []);
+	// Home's Continue (feature 003), once per mount. The store reads the
+	// saved composer synchronously, before useSyncExternalStore's post-
+	// hydration render, so a kept draft is seen and never replaced.
+	const continueHandledRef = useRef(false);
+	useEffect(() => {
+		if (continueHandledRef.current || !initialContinue) return;
+		continueHandledRef.current = true;
+		clearContinueParam();
+		const draft = continueDraftToApply(sessionStateStore?.get("composer"), initialContinue.draft);
+		if (draft) applyText(draft);
+		requestAnimationFrame(() => requestAnimationFrame(() => void scrollContextRef.current?.scrollToBottom({ animation: "instant" })));
+	}, [initialContinue, sessionStateStore, applyText]);
 	// The BYOK setup flow (owner, 2026-09-22): the persistent CTA and the
 	// refusal interception share one SetupDialog mount. `configured` is
 	// seeded server-side (slotsConfigured on the record) and flips on Save.
@@ -1780,6 +1796,22 @@ function clearAnswerParam() {
 	if (!url.searchParams.has("answer")) return;
 	url.searchParams.delete("answer");
 	window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+/** Drop Home's one-shot `?continue=` (feature 003), like `?answer=`. */
+function clearContinueParam() {
+	const url = new URL(window.location.href);
+	if (!url.searchParams.has("continue")) return;
+	url.searchParams.delete("continue");
+	window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+/** Continue's draft goes only into an empty composer (Principle III):
+ *  the text to apply, or null to leave the composer as it is. */
+export function continueDraftToApply(saved: unknown, draft: string | undefined): string | null {
+	if (!draft) return null;
+	if (typeof saved === "string" && saved.trim()) return null;
+	return draft;
 }
 
 /** Below the sm breakpoint (640px): the phone scroll band (feature 002).

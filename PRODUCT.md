@@ -4,7 +4,7 @@ A learning application for guided lessons, practice, and a persistent knowledge 
 
 The learner reads explanations, experiments with demos, and answers questions. The interface must keep the relevant explanation, visualization, and answer accessible together. Lessons and practice retain their existing question mechanics and saved history.
 
-Primary surfaces: home and knowledge graph, chains, new lesson/practice, session transcript and questions, demo workspace, background activity, settings and setup. Hosted authentication and the Electron shell remain supported.
+Primary surfaces: home and knowledge graph, chains, new lesson/practice, session transcript and questions, demo workspace, background activity, settings and setup. Hosted authentication and the Electron shell remain supported. Home leads with "Waiting for you": every unanswered check and open problem, then every lesson whose plan still has unchecked topics, with a Continue that drafts the next topic without sending it (features 002–003). A "Calibration" section shows how stated confidence matched graded results, with the checks answered wrong while Certain (feature 004).
 
 Local review examples are available through `npm run dev:review`. They cover lesson/demo exploration, a knowledge check, active practice and practice history. Existing data and edits are preserved; the examples are optional and do not seed hosted tenants. See [docs/ui-review.md](docs/ui-review.md).
 

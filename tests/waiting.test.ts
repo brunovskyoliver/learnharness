@@ -151,3 +151,89 @@ describe("the chat summary carries only the allowlist", () => {
 		assert.equal(summary && "waiting" in summary, false);
 	});
 });
+
+describe("the chat summary carries lesson progress (feature 003)", () => {
+	const plan = { nodes: [{ id: "a", title: "Alpha" }, { id: "b", title: "Beta" }, { id: "c", title: "Gamma" }], edges: [], version: 1 };
+	const check = (id: string, nodeId: string) => ask(id, "quiz", { ...quiz, nodeId });
+	const summaryOf = (id: string) => chatStore.listChats().find((c) => c.id === id);
+
+	it("a lesson with topics left carries exactly total, left and next (FR-007)", () => {
+		const chat = chatStore.createChat("Plan left");
+		chatStore.saveTree(chat.id, plan);
+		chatStore.saveMessages(chat.id, [check("q1", "a"), result("q1", "quiz")]);
+		const summary = summaryOf(chat.id);
+		assert.deepEqual(summary?.progress, { total: 3, left: 3, next: "Alpha" });
+		assert.deepEqual(Object.keys(summary!.progress!), ["total", "left", "next"]);
+	});
+
+	it("follows the transcript on the next write (the cache invalidates)", () => {
+		const chat = chatStore.createChat("Plan moves");
+		chatStore.saveTree(chat.id, plan);
+		chatStore.saveMessages(chat.id, [check("q1", "a"), result("q1", "quiz")]);
+		assert.equal(summaryOf(chat.id)?.progress?.next, "Alpha");
+		chatStore.saveMessages(chat.id, [check("q1", "a"), result("q1", "quiz"), check("q2", "b"), result("q2", "quiz")]);
+		assert.deepEqual(summaryOf(chat.id)?.progress, { total: 3, left: 2, next: "Beta" });
+	});
+
+	it("a finished lesson carries none", () => {
+		const chat = chatStore.createChat("Plan done");
+		chatStore.saveTree(chat.id, plan);
+		chatStore.saveMessages(chat.id, ["a", "b", "c"].flatMap((n, i) => [check(`q${i}`, n), result(`q${i}`, "quiz")]));
+		assert.equal(summaryOf(chat.id) && "progress" in summaryOf(chat.id)!, false);
+	});
+
+	it("a practice session never carries progress", () => {
+		const chat = chatStore.createChat("Practice", "practice");
+		chatStore.saveTree(chat.id, plan);
+		assert.equal(summaryOf(chat.id) && "progress" in summaryOf(chat.id)!, false);
+	});
+
+	it("a lesson without a plan carries none", () => {
+		const chat = chatStore.createChat("No plan");
+		assert.equal(summaryOf(chat.id) && "progress" in summaryOf(chat.id)!, false);
+	});
+});
+
+describe("the chat summary carries calibration (feature 004)", () => {
+	const graded = (id: string, confidence: number, correct: boolean): LhMessage[] => [
+		ask(id, "quiz", quiz),
+		({ ...result(id, "quiz"), details: { kind: "quiz", questionText: quiz.question, dontKnow: false, answers: [{ index: 0, label: "It diverges" }], correctIndices: [0], explanation: "SECRET-EXPLANATION", correct, confidence, answeredAt: "2026-10-28T09:20:00.000Z" } }) as never,
+	];
+
+	it("carries exactly levels and misses, each miss on the allowlist", () => {
+		const chat = chatStore.createChat("Calibrated");
+		chatStore.saveMessages(chat.id, [...graded("c1", 95, false), ...graded("c2", 50, true)]);
+		const summary = chatStore.listChats().find((c) => c.id === chat.id)!;
+		assert.deepEqual(Object.keys(summary.calibration!).sort(), ["levels", "misses"]);
+		assert.deepEqual(summary.calibration!.levels, { Certain: { answers: 1, right: 0 }, Unsure: { answers: 1, right: 1 } });
+		assert.deepEqual(Object.keys(summary.calibration!.misses[0]!).sort(), ["answeredAt", "messageId", "question", "toolCallId"]);
+		const wire = JSON.stringify(summary.calibration);
+		for (const secret of ["SECRET-CORRECT-ANSWER", "SECRET-EXPLANATION", "SECRET-OPTION-DESCRIPTION", "It diverges"]) {
+			assert.ok(!wire.includes(secret), `${secret} must not reach the list`);
+		}
+	});
+
+	it("is absent without graded answers", () => {
+		const chat = chatStore.createChat("Ungraded");
+		chatStore.saveMessages(chat.id, [ask("u1", "quiz", quiz)]);
+		const summary = chatStore.listChats().find((c) => c.id === chat.id)!;
+		assert.equal("calibration" in summary, false);
+	});
+});
+
+describe("the chat summary carries course counts (feature 006)", () => {
+	it("counts only, for a lesson with a recorded syllabus", () => {
+		const chat = chatStore.createChat("Course");
+		chatStore.saveTree(chat.id, { nodes: [{ id: "a", title: "Alpha" }, { id: "b", title: "Beta" }], edges: [], version: 1 });
+		const course = { title: "CS229", items: [{ title: "Lecture 1", kind: "lecture", topics: ["a"] }, { title: "PS0", kind: "problem-set", topics: [] }] };
+		chatStore.saveMessages(chat.id, [
+			ask("k1", "course", course),
+			({ ...result("k1", "course"), details: { ok: true, course } }) as never,
+			ask("q1", "quiz", { ...quiz, nodeId: "a" }),
+			result("q1", "quiz"),
+		]);
+		const summary = chatStore.listChats().find((c) => c.id === chat.id)!;
+		assert.deepEqual(summary.course, { covered: 1, items: 2 });
+		assert.deepEqual(Object.keys(summary.course!), ["covered", "items"]);
+	});
+});

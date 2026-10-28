@@ -22,6 +22,7 @@ import { lsTool } from "./ls.ts";
 import { findTool } from "./find.ts";
 import { grepTool } from "./grep.ts";
 import { jobTools, type JobToolContext } from "./jobs.ts";
+import { plotTool } from "./plot.ts";
 import { proberGraphTools, type GraphToolContext } from "./graph.ts";
 import { activeProblemOf } from "../../core/native-messages.ts";
 import type { LhMessage } from "../../core/native-messages.ts";
@@ -227,7 +228,8 @@ export function practiceTools(ctx: PracticeToolContext): Record<string, AgentToo
 	// learner's files (always — the same read-only set the teacher and
 	// prober carry), the research + pdf jobs (available without search
 	// keys; demo/visual stay teach-only), and
-	// the prober's map readers when the settings gate opened. None are
+	// the prober's map readers when the settings gate opened, and plot
+	// (feature 005, on request only). None are
 	// toggle-filtered: problem/conclude are the session; these are
 	// exceptions the doctrine says to reach for rarely.
 	const jobs = ctx.jobs ? jobTools(ctx.jobs) : null;
@@ -244,6 +246,8 @@ export function practiceTools(ctx: PracticeToolContext): Record<string, AgentToo
 		grep: grepTool,
 		...(jobs?.research ? { research: jobs.research } : {}),
 		...(jobs ? { pdf: jobs.pdf! } : {}),
+		// Quick plots (feature 005): on the learner's request only (doctrine).
+		plot: plotTool(),
 		...(ctx.graph ? proberGraphTools(ctx.graph) : {}),
 	});
 }

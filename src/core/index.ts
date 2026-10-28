@@ -37,6 +37,9 @@ export * from "./plan-tree.ts";
 export * from "./phases.ts";
 export * from "./pending.ts";
 export * from "./waiting.ts";
+export * from "./lesson-progress.ts";
+export * from "./calibration.ts";
+export * from "./plot.ts";
 export * from "./prompt-segments.ts";
 export * from "./math-delims.ts";
 // Wave B (owner-approved 2026-09-26): the native record (LhMessage), the
@@ -92,3 +95,4 @@ export type { CoverageEntry, CoverageSlot } from "./coverage.ts";
 // export share it. Pure, browser-safe.
 export * from "./session-markdown.ts";
 export * from "./completed-markdown.ts";
+export * from "./course.ts";
