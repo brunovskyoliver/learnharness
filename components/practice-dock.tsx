@@ -104,7 +104,6 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, statemen
 				<textarea
 					id={`${problemCallId}-thinking`}
 					aria-label="Your thinking"
-					placeholder="Your thinking"
 					value={thinking}
 					onChange={(e) => {
 						thinkingRef.current = e.target.value;

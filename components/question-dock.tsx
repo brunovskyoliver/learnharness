@@ -761,7 +761,6 @@ function QuestionDockForm({
 						<textarea
 							id={`${toolCallId}-answer`}
 							aria-label="Your answer"
-							placeholder="Your answer"
 							value={text}
 							onChange={(e) => {
 								answerTextRef.current = e.target.value;
@@ -783,7 +782,6 @@ function QuestionDockForm({
 							ref={thinkingRef}
 							id={`${toolCallId}-answer`}
 							aria-label="Your thinking"
-							placeholder="Your thinking"
 							value={thinking}
 							onChange={(e) => {
 								thinkingTextRef.current = e.target.value;
