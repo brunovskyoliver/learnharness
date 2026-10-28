@@ -133,8 +133,8 @@ describe("AgentSection (thin SSR)", () => {
 		assert.ok(row.includes('aria-checked="false"'), "stored-off renders off");
 	});
 
-	it("renders the owner's FINAL tool list — research, demo, visual, pdf", () => {
-		assert.deepEqual([...TOGGLE_TOOLS], ["research", "demo", "visual", "pdf"]);
+	it("renders the owner's tool list — research, demo, visual, pdf, math check (feature 007)", () => {
+		assert.deepEqual([...TOGGLE_TOOLS], ["research", "demo", "visual", "pdf", "math_check"]);
 		const html = renderToStaticMarkup(<AgentSection agent={undefined} models={undefined} graph={undefined} onSectionChange={() => {}} onModelsChange={() => {}} />);
 		for (const id of TOGGLE_TOOLS) assert.ok(html.includes(`data-testid="tool-row-${id}"`), id);
 	});
@@ -142,7 +142,7 @@ describe("AgentSection (thin SSR)", () => {
 	it("tools default ON (absent key = enabled)", () => {
 		const html = renderToStaticMarkup(<AgentSection agent={undefined} models={undefined} graph={undefined} onSectionChange={() => {}} onModelsChange={() => {}} />);
 		for (const id of TOGGLE_TOOLS) {
-			assert.ok(tagOf(html, `toggle-tool-${id}`).includes('aria-checked="true"'), `${id} defaults on`);
+			assert.ok(tagOf(html, `toggle-tool-${id.replace("_", "-")}`).includes('aria-checked="true"'), `${id} defaults on`);
 		}
 	});
 

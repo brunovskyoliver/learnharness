@@ -61,6 +61,13 @@ Queued steers sit above the shell as right-aligned rows; each has a × ("Remove 
 - Normal answer, question reasoning, confidence, and practice controls remain. The separate reading-thinking field is removed.
 - Model and reasoning selectors appear directly in the composer toolbar, with usage as its own control. Escape closes the innermost menu first. Demo expand, brightness, and download icons share the workspace title row. Existing session navigation and sidebar resizing remain.
 
+### Math check
+
+- A `math_check` call (feature 007) is one quiet row in the tool-card register, not a card. It says the verdict in words: "Checked with Wolfram · equal" (with a check mark), "Wolfram · not equal", "Wolfram · couldn't decide", "Wolfram check failed" (destructive ink), or "Wolfram check not finished". Collapsed by default. Expanded, it shows the checked `lhs = rhs`, assumptions, counterexample or reduced form in monospace, Wolfram's reply, and the time taken. No amber.
+- While it runs, the row shows only "Checking with Wolfram…" with the spinner. The input is never shown live.
+- A check made before a question renders nothing until that question is answered or the problem concluded. A grading check during an active problem shows the verdict and "Expressions shown after the problem is concluded".
+- Answered quiz and explain cards and conclude cards whose answer was checked end with a muted line, a check mark and "Checked with Wolfram". The words carry the meaning, and the icon is decoration.
+
 ## Settings and secondary views
 
 - Settings uses searchable icon categories, a Settings / section header, grouped fields and a live reading preview. Category navigation scrolls horizontally on narrow screens; field controls stack below labels.

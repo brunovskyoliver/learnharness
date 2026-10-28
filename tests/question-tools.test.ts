@@ -259,8 +259,9 @@ describe("tool toggles (core/pending.ts + factories)", () => {
 		// permanently always-on (the prober's assessment + teaching doctrine
 		// are built on graded questions — the wedge danger), as are the
 		// learner-fs set, plan tools, and probe_done. The settings WRITE side
-		// validates against this list (settings-body).
-		assert.deepEqual(TOGGLEABLE_TOOLS, ["research", "demo", "visual", "pdf"]);
+		// validates against this list (settings-body). Feature 007 (owner
+		// delegation, 2026-10-28) adds the math check, on by default.
+		assert.deepEqual(TOGGLEABLE_TOOLS, ["research", "demo", "visual", "pdf", "math_check"]);
 	});
 
 	it("createProberTools: absent record = full set; explicit false drops exactly that tool; probe_done survives everything", () => {
@@ -295,10 +296,13 @@ describe("tool toggles (core/pending.ts + factories)", () => {
 			spawn: () => {},
 		};
 		const full = Object.keys(createTeacherTools(ctx)).sort();
-		assert.deepEqual(full, ["ask_user_question", "course", "demo", "find", "grep", "ls", "pdf", "plan_init", "plot", "quiz", "read", "research", "visual"]);
+		assert.deepEqual(full, ["ask_user_question", "course", "demo", "find", "grep", "ls", "math_check", "pdf", "plan_init", "plot", "quiz", "read", "research", "visual"]);
 
 		const noResearch = Object.keys(createTeacherTools(ctx, { research: false })).sort();
-		assert.deepEqual(noResearch, ["ask_user_question", "course", "demo", "find", "grep", "ls", "pdf", "plan_init", "plot", "quiz", "read", "visual"]);
+		assert.deepEqual(noResearch, ["ask_user_question", "course", "demo", "find", "grep", "ls", "math_check", "pdf", "plan_init", "plot", "quiz", "read", "visual"]);
+
+		// Math check (feature 007): its own toggle removes exactly it.
+		assert.deepEqual(Object.keys(createTeacherTools(ctx, { math_check: false })).sort(), full.filter((t) => t !== "math_check"));
 
 		// absent = enabled: an empty record and undefined behave identically
 		assert.deepEqual(
@@ -309,7 +313,7 @@ describe("tool toggles (core/pending.ts + factories)", () => {
 
 		// The mechanic switch (owner 2026-09-27): free-recall swaps the teach
 		// quiz for the teach explain — one quizzing tool, whichever is armed.
-		const freeFull = ["ask_user_question", "course", "demo", "explain", "find", "grep", "ls", "pdf", "plan_init", "plot", "read", "research", "visual"];
+		const freeFull = ["ask_user_question", "course", "demo", "explain", "find", "grep", "ls", "math_check", "pdf", "plan_init", "plot", "read", "research", "visual"];
 		assert.deepEqual(Object.keys(createTeacherTools(ctx, { explain: true })).sort(), freeFull);
 		assert.deepEqual(
 			Object.keys(createTeacherTools(ctx, { explain: true, research: false })).sort(),

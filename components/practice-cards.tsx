@@ -1,6 +1,7 @@
 "use client";
 
 import { ToolContentResponse } from "@/components/ai-elements/message";
+import { WolframCheckedLabel } from "@/components/artifacts/math-check-card";
 import { cn } from "@/lib/utils";
 import type { ArtifactPartProps } from "@/src/core";
 
@@ -150,6 +151,8 @@ export function ConcludeCard({ part }: ArtifactPartProps) {
 					</div>
 				</>
 			)}
+			{/* Feature 007: the model solution was checked with Wolfram. */}
+			{part.wolframChecked === true && <WolframCheckedLabel />}
 			<MetadataPopover
 				concludeInput={input}
 				problemInput={(part.problemInput ?? {}) as { mode?: unknown; target?: unknown }}

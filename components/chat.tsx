@@ -21,6 +21,7 @@ import { Shimmer } from "@/components/ai-elements/shimmer";
 import { BrailleSpinner } from "@/components/braille-spinner";
 import { LiveToolCard } from "@/components/artifacts/live-tool-card";
 import { AnsweredCard } from "@/components/answered-card";
+import { isShownMathCheckFailure } from "@/components/artifacts/math-check-card";
 import { artifactRenderers } from "@/components/artifacts";
 import { SubagentSteerCard } from "@/components/artifacts/steer-card";
 import { Composer } from "@/components/composer";
@@ -1523,7 +1524,9 @@ function ChatView({
 												if (
 													part.state === "output-error" &&
 													part.type.startsWith("tool-") &&
-													part.errorText !== "Operation aborted"
+													part.errorText !== "Operation aborted" &&
+													// Feature 007: a failed math check says so in its own row.
+													!isShownMathCheckFailure(part)
 												) {
 													return (
 														<SystemLine key={`retry-${pi}`} testId="tool-retry">
@@ -1572,7 +1575,7 @@ function ChatView({
 														// transcript; answered ones render as graded records.
 														if (part.state === "output-available") {
 															return (
-																<AnsweredCard key={pi} answer={part.output as QuestionAnswerData} input={part.input} />
+																<AnsweredCard key={pi} answer={part.output as QuestionAnswerData} input={part.input} checked={part.wolframChecked === true} />
 															);
 														}
 														return null;

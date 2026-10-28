@@ -200,8 +200,14 @@ describe("the practice agent", () => {
 		const tools = practiceTools(ctxOf([]));
 		assert.deepEqual(
 			Object.keys(tools).sort(),
-			["conclude", "find", "grep", "ls", "plot", "problem", "read"],
+			["conclude", "find", "grep", "ls", "math_check", "plot", "problem", "read"],
 		);
+	});
+
+	it("the math check (feature 007) follows its settings toggle", () => {
+		assert.ok(practiceTools(ctxOf([])).math_check);
+		assert.equal(practiceTools(ctxOf([]), { math_check: false }).math_check, undefined);
+		assert.ok(practiceTools(ctxOf([]), { research: false }).math_check, "other toggles leave it alone");
 	});
 
 	it("THE RARELY-NEEDED SET (owner round 10): jobs + map readers compose in when their roots are passed", () => {
@@ -213,7 +219,7 @@ describe("the practice agent", () => {
 		// not apply the teacher/prober user tool-toggle filter.
 		assert.deepEqual(
 			Object.keys(tools).sort(),
-			["conclude", "find", "grep", "list_propositions", "list_sessions", "ls", "pdf", "plot", "problem", "read", "research"],
+			["conclude", "find", "grep", "list_propositions", "list_sessions", "ls", "math_check", "pdf", "plot", "problem", "read", "research"],
 		);
 		const withSearch = practiceTools({ ...ctxOf([]), jobs: { ...jobs, searchAvailable: () => true }, graph });
 		assert.ok(withSearch.research, "a live engine also keeps research");
