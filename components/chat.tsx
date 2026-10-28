@@ -1,13 +1,12 @@
 "use client";
 
-import { createPortal } from "react-dom";
 
 import { createContext, type ComponentProps, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useChatSession } from "@/components/session";
 import { visibleQueuedSteers } from "@/components/session-core";
 import { LazySetupDialog as SetupDialog } from "@/components/lazy-setup-dialog";
 import { Hint } from "@/components/ui/hint";
-import { useZeroKeys, ZeroKeysPill } from "@/components/setup-cta";
+import { SetupModelsButton, useZeroKeys, ZeroKeysPill } from "@/components/setup-cta";
 import { useStickToBottomContext, type StickToBottomContext } from "use-stick-to-bottom";
 import {
 	Conversation,
@@ -179,7 +178,7 @@ function SystemLine({ children, testId }: { children: React.ReactNode; testId?: 
 	return (
 		<div
 			data-testid={testId}
-			className="flex items-center justify-center gap-1.5 py-1 text-xs text-muted-foreground"
+			className="flex items-center justify-center gap-1.5 py-1 text-sm text-muted-foreground"
 		>
 			{children}
 		</div>
@@ -198,7 +197,7 @@ function ThinkingPlaceholder() {
 	}, []);
 	const seconds = Math.floor((now - start) / 1000);
 	return (
-		<span data-testid="thinking-placeholder" className="flex items-center gap-2 font-ui text-xs font-medium text-muted-foreground">
+		<span data-testid="thinking-placeholder" className="flex items-center gap-2 font-ui text-sm font-medium text-muted-foreground">
 			<BrailleSpinner label="Thinking" />
 			<Shimmer duration={1}>THINKING…</Shimmer>
 			{seconds > 0 && <span className="tabular-nums normal-case text-muted-foreground">{seconds}s</span>}
@@ -1176,6 +1175,14 @@ function ChatView({
 		doSend();
 	};
 
+	// Setup lives in the prompt toolbar, in place of the model controls
+	// (feature 001): keys first, then models. Nothing floats over the lesson.
+	const setupAction = zeroKeys ? (
+		<ZeroKeysPill inline onOpen={() => setSetupOpen(true)} />
+	) : !configured ? (
+		<SetupModelsButton onOpen={() => setSetupOpen(true)} />
+	) : undefined;
+
 	return (
 		<ChatActionsContext.Provider
 			value={{
@@ -1237,7 +1244,7 @@ function ChatView({
 							className="pointer-events-none flex shrink-0 select-none items-center gap-2 text-sm text-muted-foreground"
 						>
 							Practice
-							<span className="text-muted-foreground/50">/</span>
+							<span className="text-muted-foreground">/</span>
 						</span>
 					) : (
 						<PhaseChip phase={phases.at(-1) ?? "probe"} />
@@ -1403,7 +1410,7 @@ function ChatView({
 													<div
 														key={pi}
 														data-testid="practice-next-line"
-														className="my-4 flex items-center justify-center gap-1.5 font-ui text-xs font-medium text-muted-foreground"
+														className="my-4 flex items-center justify-center gap-1.5 font-ui text-sm font-medium text-muted-foreground"
 													>
 														<ArrowRightIcon className="size-3" />
 														Next problem
@@ -1462,12 +1469,12 @@ function ChatView({
 										    transparent prose). The "You" label stays — one register
 										    with the thinking labels. No rail (polish pass 2026-10-26):
 										    the band alone marks authorship; text keeps the 3ch inset. */
-										className="my-2 w-full bg-card py-1 pl-[3ch] pr-4 font-ui text-xs"
+										className="lh-reading my-2 rounded-lg bg-card px-4 py-3 font-ui text-sm"
 									>
 												{/* The rail GROUPS (owner round 4, 2026-10-05): the YOU heading
 												    sits INSIDE the rail, same mono-xs register and same 1ch
 												    rail as the thinking rows — one quote geometry. */}
-												<div className="font-medium text-muted-foreground">You</div>
+												<div className="mb-1 font-medium text-muted-foreground">You</div>
 												<div className="lh-prose whitespace-pre-wrap text-foreground">
 													{m.parts.filter((p) => p.type === "text").map((p) => p.text).join("\n")}
 												</div>
@@ -1516,7 +1523,7 @@ function ChatView({
 													}
 													case "reasoning":
 														return (
-															<Reasoning key={pi} isStreaming={status === "streaming" && isLastPart} className="mb-2">
+															<Reasoning key={pi} isStreaming={status === "streaming" && isLastPart} className="lh-reading mb-2">
 																<ReasoningTrigger />
 																<ReasoningContent>{part.text ?? ""}</ReasoningContent>
 															</Reasoning>
@@ -1608,7 +1615,7 @@ function ChatView({
 						    the THINKING placeholder by construction (the gate sits
 						    BEFORE beginTurn; the settle kick runs after endTurn). */}
 							{compacting && (
-								<span className="flex items-center gap-2 font-ui text-xs font-medium text-muted-foreground">
+								<span className="flex items-center gap-2 font-ui text-sm font-medium text-muted-foreground">
 									<BrailleSpinner label="Compacting context" />
 									<Shimmer duration={1}>COMPACTING CONTEXT…</Shimmer>
 								</span>
@@ -1621,7 +1628,7 @@ function ChatView({
 									Something went wrong: {error.message}
 								</div>
 							)}
-				{pending && (questionDemo.demo || questionDemo.candidates.length > 1 || questionDemo.missing) && <div className="question-demo-reference px-5 py-2 text-sm">
+				{pending && (questionDemo.demo || questionDemo.candidates.length > 1 || questionDemo.missing) && <div className="question-demo-reference lh-reading py-2 text-sm">
 					{questionDemo.demo ? <button type="button" className="underline underline-offset-4" onClick={() => demoPanel.open(questionDemo.demo!.id, questionDemo.panel)}>Using {questionDemo.demo.title}</button> : questionDemo.missing ? <span role="status">The referenced demo is unavailable. You can still answer.</span> : <label>Choose the referenced demo <select aria-label="Referenced demo" defaultValue="" onChange={(e) => demoPanel.open(e.target.value)}><option value="" disabled>Select a demo</option>{questionDemo.candidates.map((d, i) => <option key={d.id} value={d.id}>{d.title} ({i + 1})</option>)}</select></label>}
 				</div>}
 							<div ref={setQuestionTarget} data-question-target="" />
@@ -1650,24 +1657,7 @@ function ChatView({
 					contextTokens={contextTokens}
 					pricing={pricing}
 					queuedSteers={visibleQueuedSteers(steerQueue, nativeMessages)}
-					setupCta={
-						zeroKeys ? (
-							<ZeroKeysPill onOpen={() => setSetupOpen(true)} />
-						) : (
-							!configured && (
-								<div className="pointer-events-auto mb-2 flex justify-center">
-									<button
-										type="button"
-										data-testid="setup-cta"
-										onClick={() => setSetupOpen(true)}
-										className="rounded-sm border border-border bg-card px-3 py-1.5 font-ui text-xs text-foreground transition-colors hover:border-muted-foreground/50 hover:bg-accent cursor-pointer"
-									>
-										Set up your models
-									</button>
-								</div>
-							)
-						)
-					}
+					setupCta={setupAction}
 					composer={
 						<Composer
 							// Stop aborts ANY in-flight turn (stream-reattach wave): the
@@ -1681,7 +1671,7 @@ function ChatView({
 							onSend={onSend}
 							onStop={abortInFlightTurn}
 							canSend={canSend}
-							controls={<StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} />}
+							controls={<StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} setup={setupAction} />}
 							// The pause affordance (owner round 16): the placeholder
 							// IS the hint — empty state, exactly where Enter-on-empty
 							// applies.
@@ -2226,6 +2216,14 @@ function DockFooter({
 		setExpanded(true);
 		void suppressFoldDuringReveal();
 	};
+	// The turn strip's collapse control: an explicit fold, like reading
+	// history. Scrolling back to the bottom (or focusing the field) expands.
+	// Skip takes the Escape path exactly: the same guard and confirmation.
+	const onSkipProblem = () => window.dispatchEvent(new CustomEvent("lh:kbd-abort-turn"));
+	const collapseDock = () => {
+		expandIntentRef.current = false;
+		setExpanded(false);
+	};
 	const jumpToBottomThenExpand = () => {
 		const element = scrollRef.current;
 		if (!element || jumpPendingRef.current) return;
@@ -2462,8 +2460,7 @@ function DockFooter({
 	return (
 		<div className="lesson-footer pointer-events-none absolute inset-x-0 bottom-0" style={{ right: sbInset, bottom: keyboardInset }}>
 			<div ref={blockRef} data-dock-block="" className="relative py-3" style={{ "--dock-max-h": dockMaxH ? `${dockMaxH}px` : undefined, "--dock-question-max-h": questionMaxH ? `${questionMaxH}px` : undefined, "--dock-input-max-h": questionMaxH ? `${questionMaxH / 2}px` : undefined } as React.CSSProperties}>
-				<div className={`${DOCK} flex max-h-[var(--dock-max-h)] flex-col [&>div:not([data-testid=dock-shell])]:shrink-0`}>
-					{questionTarget && setupCta ? createPortal(setupCta, questionTarget) : null}
+				<div className={`${DOCK} relative flex max-h-[var(--dock-max-h)] flex-col [&>div:not([data-testid=dock-shell])]:shrink-0`}>
 					{/* The queued-steer indicator (owner spec 2026-10-03): quiet
 					    one-liners above the shell - right-aligned to where its corner
 					    rounding starts, truncated, no background, no container. A
@@ -2475,7 +2472,7 @@ function DockFooter({
 						onCompositionStartCapture={() => { composingRef.current = true; setRevealed(true); setExpanded(true); }}
 						onCompositionEndCapture={() => { composingRef.current = false; }}
 						onFocusCapture={(event) => { if ((event.target as HTMLElement).matches("textarea, input, [contenteditable=true]")) { setRevealed(true); setExpanded(true); } }}
-						onClick={(event) => { if (event.target === event.currentTarget) focusSurfaceInput(event); }} className="prompt-shell pointer-events-auto flex min-h-0 select-none flex-col overflow-hidden data-[compact=true]:[&_.prompt-input]:max-h-11 data-[compact=true]:[&_.prompt-input]:overflow-y-auto data-[compact=true]:[&_[data-prompt-controls]]:hidden data-[compact=true]:[&_.prompt-toolbar]:justify-end data-[compact=true]:[&_[data-testid=composer]_[data-slot=input-group]]:flex-row data-[compact=true]:[&_[data-testid=composer]_.prompt-toolbar]:self-end data-[compact=true]:[&_[data-testid=composer]_.prompt-toolbar]:pb-1 data-[compact=true]:[&_[data-testid=composer]_.prompt-toolbar]:w-auto data-[compact=true]:[&_[data-testid=composer]_.prompt-toolbar]:shrink-0 [&_.prompt-input]:max-h-[var(--dock-input-max-h,12rem)]">
+						onClick={(event) => { if (event.target === event.currentTarget) focusSurfaceInput(event); }} className="prompt-shell pointer-events-auto flex min-h-0 select-none flex-col overflow-hidden data-[compact=true]:[&_.prompt-input]:max-h-11 data-[compact=true]:[&_.prompt-input]:overflow-y-auto data-[compact=true]:[&_[data-prompt-controls]:not(:has(.prompt-setup))]:hidden data-[compact=true]:[&_.prompt-toolbar]:justify-end data-[compact=true]:[&_[data-testid=composer]_[data-slot=input-group]]:flex-row data-[compact=true]:[&_[data-testid=composer]_.prompt-toolbar]:self-end data-[compact=true]:[&_[data-testid=composer]_.prompt-toolbar]:pb-1 data-[compact=true]:[&_[data-testid=composer]_.prompt-toolbar]:w-auto data-[compact=true]:[&_[data-testid=composer]_.prompt-toolbar]:shrink-0 [&_.prompt-input]:max-h-[var(--dock-input-max-h,12rem)]">
 						<div
 						key={mode}
 						className={`flex min-h-0 flex-col ${mode === initialModeRef.current ? "" : "dock-variant"}`}
@@ -2490,10 +2487,11 @@ function DockFooter({
 									reveal={requiresReveal && !revealed}
 									phase={phase}
 									onExpand={expandAndReveal}
+									onCollapse={collapseDock}
 									onSubmit={onSubmitAnswer}
 									initialDraft={initialQuestionDraft}
 									onSaveDraft={onSaveQuestionDraft}
-									controls={<StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} />}
+									controls={<StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} setup={setupCta} />}
 									compactionRunning={compactionRunning}
 								/>
 							) : practice ? (
@@ -2503,8 +2501,10 @@ function DockFooter({
 									expanded={expanded}
 									outgoingHeight={outgoing?.mode === mode ? outgoing.height : undefined}
 									onExpand={expandAndReveal}
+									onCollapse={collapseDock}
+									onSkip={onSkipProblem}
 									onSubmit={onSubmitThinking}
-									controls={<StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} />}
+									controls={<StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} setup={setupCta} />}
 									compactionRunning={compactionRunning}
 								/>
 							) : (
@@ -2513,7 +2513,7 @@ function DockFooter({
 						</div>
 					</div>
 					{/* The latest-message action sits just above the footer. */}
-					<ConversationScrollButton aria-label="Scroll to latest" onClick={jumpToBottomThenExpand} className="pointer-events-auto bottom-full mb-2" />
+					<ConversationScrollButton aria-label="Scroll to latest" onClick={jumpToBottomThenExpand} className="pointer-events-auto bottom-full left-auto right-4 mb-2 translate-x-0" />
 				</div>
 			</div>
 		</div>

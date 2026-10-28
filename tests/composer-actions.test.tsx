@@ -43,16 +43,17 @@ describe("composer action row", () => {
 			assert.equal(document.querySelector('[data-testid="practice-props-clear"]'), null);
 		});
 
-		it(`${label}: the practice draft uses that same row and order`, () => {
+		it(`${label}: the practice draft keeps the picker row; setup moves into the toolbar (feature 001)`, () => {
 			const document = documentFor(<DraftShell busy={false} text="" onChange={() => {}} onSend={() => {}} mode="practice" setupCta={setup} />);
 			const rows = document.querySelectorAll('[data-testid="composer-actions"]');
 			assert.equal(rows.length, 1);
 			assert.ok(rows[0]!.classList.contains("justify-start"));
 			assert.ok(rows[0]!.firstElementChild!.querySelector('[data-testid="practice-props-chip"]'));
-			assert.equal(rows[0]!.lastElementChild!.tagName, "BUTTON");
+			assert.equal(rows[0]!.children.length, 1, "setup no longer rides the action row");
+			const controls = document.querySelector('[data-prompt-controls]')!;
+			assert.ok(controls.querySelector("button"), "setup renders inside the prompt toolbar");
 		});
 	}
-
 	it("picker-only remains left-aligned", () => {
 		const document = documentFor(<ComposerActions picker={<NodePickerControl count={0} />} />);
 		assert.ok(document.querySelector('[data-testid="composer-actions"]')!.classList.contains("justify-start"));
@@ -70,12 +71,13 @@ describe("composer action row", () => {
 		}
 	});
 
-	it("existing chat callers retain the standalone provider-key pill wrapper", () => {
+	it("the provider-key action is a bare toolbar button (feature 001)", () => {
 		const document = documentFor(<ZeroKeysPill onOpen={() => {}} />);
-		const wrapper = document.body.firstElementChild!;
-		assert.equal(wrapper.tagName, "DIV");
-		assert.ok(wrapper.classList.contains("justify-center"));
-		assert.ok(wrapper.classList.contains("mb-2"));
+		const button = document.body.firstElementChild!;
+		assert.equal(button.tagName, "BUTTON");
+		assert.equal(button.getAttribute("data-testid"), "setup-cta-keys");
+		assert.ok(button.classList.contains("prompt-setup"));
+		assert.equal(button.textContent, "Add a provider key");
 	});
 
 	it("the practice shell preserves a selected node in teaching mode", () => {

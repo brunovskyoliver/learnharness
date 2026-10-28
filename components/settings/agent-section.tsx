@@ -524,29 +524,29 @@ export function AgentSection({
 						setOpenSegment(open ? null : info.path);
 						setSegmentStatus(null);
 					}}
-					className="text-xs text-muted-foreground/70 underline-offset-2 hover:text-foreground hover:underline"
+					className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
 				>
 					{open ? "Hide text" : "Show text"}
 				</button>
 				{open && (
 					<div className="mt-1 flex flex-col gap-2">
 						<div>
-							<p className="mb-1 text-xs text-muted-foreground/70">Source</p>
+							<p className="mb-1 text-sm text-muted-foreground">Source</p>
 							<textarea
 								readOnly
 								value={info.sourceText}
 								aria-label="The original instructions"
-								className="h-24 w-full resize-y rounded-sm border border-border bg-muted p-2 font-ui text-xs text-muted-foreground"
+								className="h-24 w-full resize-y rounded-sm border border-border bg-muted p-2 font-ui text-sm text-muted-foreground"
 							/>
 						</div>
 						<div>
-							<p className="mb-1 text-xs text-muted-foreground/70">Override</p>
+							<p className="mb-1 text-sm text-muted-foreground">Override</p>
 							<textarea
 								value={segmentDraft[info.path] ?? info.overrideText ?? ""}
 								onChange={(e) => setSegmentDraft({ ...segmentDraft, [info.path]: e.target.value })}
 								aria-label="Your version of the instructions"
 								placeholder="Add your own instructions…"
-								className="h-24 w-full resize-y rounded-sm border border-border bg-background p-2 font-ui text-xs text-foreground outline-none"
+								className="h-24 w-full resize-y rounded-sm border border-border bg-background p-2 font-ui text-sm text-foreground outline-none"
 							/>
 						</div>
 						<div className="flex items-center gap-3">
@@ -556,8 +556,8 @@ export function AgentSection({
 								onClick={() => void saveSegment(info.path, segmentDraft[info.path] ?? "")}
 								className={
 									dirty
-										? "text-xs text-foreground underline-offset-2 hover:underline"
-										: "cursor-not-allowed text-xs text-muted-foreground/40 underline-offset-2"
+										? "text-sm text-foreground underline-offset-2 hover:underline"
+										: "cursor-not-allowed text-sm text-muted-foreground underline-offset-2"
 								}
 							>
 								Save
@@ -566,7 +566,7 @@ export function AgentSection({
 								<button
 									type="button"
 									onClick={() => void deleteSegment(info.path)}
-									className="text-xs text-muted-foreground/70 underline-offset-2 hover:text-destructive hover:underline"
+									className="text-sm text-muted-foreground underline-offset-2 hover:text-destructive hover:underline"
 								>
 									Delete
 								</button>
@@ -578,7 +578,7 @@ export function AgentSection({
 							    open at a time (openSegment), so one shared
 							    status reads unambiguously. */}
 							{segmentStatus && (
-								<p className="text-xs text-muted-foreground/70" data-testid="segment-status">
+								<p className="text-sm text-muted-foreground" data-testid="segment-status">
 									{segmentStatus}
 								</p>
 							)}
@@ -764,7 +764,7 @@ export function AgentSection({
 											onClick={() => onSectionChange(composeQuizMechanics(agent, m))}
 											className={cn(
 												"h-8 rounded-md px-3 text-sm font-medium transition-colors",
-												active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
+												active ? "bg-background text-foreground " : "text-muted-foreground hover:text-foreground",
 											)}
 										>
 											{m === "choice" ? "Multiple choice" : "Free recall"}
@@ -816,7 +816,7 @@ export function AgentSection({
 										preferredSide="down"
 											anchorTestid="search-engine-trigger"
 										testid="search-engine-menu"
-										menuClass="flex w-44 flex-col gap-0.5 rounded-xl border border-border bg-card p-2 text-xs shadow-xl"
+										menuClass="flex w-44 flex-col gap-0.5 rounded-xl border border-border bg-card p-2 text-sm "
 									>
 										{engineOption("auto", "Automatic", engine === null, null, () => {
 											onSectionChange(composeSearchEngine(agent, null));
@@ -871,7 +871,7 @@ export function AgentSection({
 
 			<SettingsGroup label="System prompts" testid="group-prompts">
 				{prompts === null ? (
-					<p className="text-xs text-muted-foreground/70">Loading prompt segments…</p>
+					<p className="text-sm text-muted-foreground">Loading prompt segments…</p>
 				) : (
 					<div className="flex flex-col gap-4">
 						{/* The owner's ruled order (2026-09-26): Teacher first,
@@ -880,11 +880,11 @@ export function AgentSection({
 						    order. */}
 						{sectionedSegments(prompts).map((section) => (
 							<div key={section.id} data-testid={`prompt-section-${section.id}`}>
-								<p className="mb-1 text-xs text-muted-foreground/70">
+								<p className="mb-1 text-sm text-muted-foreground">
 									{section.label}
 								</p>
 								{section.hint && (
-									<p className="mb-1 text-xs text-muted-foreground/60">{section.hint}</p>
+									<p className="mb-1 text-sm text-muted-foreground">{section.hint}</p>
 								)}
 								<div className="flex flex-col gap-2">
 									{section.segments.map((info) => segmentRow(info))}

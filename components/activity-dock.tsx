@@ -342,7 +342,7 @@ export function ActivitySection({ feed: feedProp }: { feed?: ActivityFeed }) {
 	// alone (the cost span is population, not decoration).
 	return (
 		<section data-testid="activity-section" className="px-2 pb-2">
-			<div className="flex h-8 items-center gap-2 px-2.5 text-xs font-medium text-muted-foreground">
+			<div className="flex h-8 items-center gap-2 px-2.5 text-sm font-medium text-muted-foreground">
 				<ActivityIcon className="size-3.5 shrink-0" />
 				<span className="truncate whitespace-nowrap">Background agents</span>
 				<span className="h-px min-w-2 flex-1 bg-border" aria-hidden="true" />
@@ -410,7 +410,7 @@ function ActivityBlobRow({
 				role="listitem"
 				data-testid={`activity-blob-${blob.process}`}
 				size="sm"
-				className="flex-col items-stretch gap-0 p-0 text-xs transition-colors hover:bg-accent"
+				className="flex-col items-stretch gap-0 p-0 text-sm transition-colors hover:bg-accent"
 			>
 				<div className="flex items-start gap-1">
 					<CollapsibleTrigger asChild>
@@ -488,7 +488,7 @@ function ActivityBlobRow({
 							</>
 						)}
 						{abortState && (
-							<dd className="col-span-2 text-muted-foreground/80">
+							<dd className="col-span-2 text-muted-foreground">
 								{abortState === "failed" ? "Stopping failed, try again" : "Stopping…"}
 							</dd>
 						)}

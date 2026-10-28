@@ -57,7 +57,7 @@ function PopupFallback({ messages, onClose, failed = false }: PopupProps & { fai
 	}, [onClose]);
 	return (
 		<div role="dialog" aria-modal="true" aria-label="The full plan" data-testid="plan-popup-fallback"
-			className="absolute inset-0 z-40 flex flex-col bg-background/80 p-4 backdrop-blur-sm"
+			className="absolute inset-0 z-40 flex flex-col bg-background p-4 "
 			onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
 			<div className="mb-2 flex items-center justify-between gap-2">
 				<span className="text-sm font-medium">Plan</span>

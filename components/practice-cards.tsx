@@ -64,7 +64,7 @@ export function ProblemCard({ part }: ArtifactPartProps) {
 	const statement = typeof input.statement === "string" ? input.statement : "";
 	return (
 		<div data-testid="problem-card" data-problem-call-id={part.toolCallId} className="lh-card-enter my-1 rounded-xl border bg-card p-4">
-			<div className="mb-1 text-xs font-medium text-muted-foreground">Problem</div>
+			<div className="mb-1 text-sm font-medium text-muted-foreground">Problem</div>
 			<div className="lh-prose">
 				<ToolContentResponse>{statement}</ToolContentResponse>
 			</div>
@@ -111,7 +111,7 @@ export function ConcludeCard({ part }: ArtifactPartProps) {
 	// learner clicked; the record needs only the fact).
 	if (outcome === "dismissed") {
 		return (
-			<div data-testid="conclude-card" className="my-1 px-1 text-sm text-muted-foreground/70">
+			<div data-testid="conclude-card" className="my-1 px-1 text-sm text-muted-foreground">
 				Problem dismissed.
 			</div>
 		);
@@ -122,7 +122,7 @@ export function ConcludeCard({ part }: ArtifactPartProps) {
 			{/* The heading row (owner round 3, 2026-10-05): plain 'Concluded'
 			    eyebrow + the outcome in the quiz cards' EXACT chip register —
 			    no more two same-weight headings stacked. */}
-			<div className="mb-1 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+			<div className="mb-1 flex items-center gap-2 text-sm font-medium text-muted-foreground">
 				Concluded
 				{(OUTCOME_LABEL[outcome] ?? "") !== "" && outcome !== "dismissed" && (
 					<span className={cn("rounded px-1.5 py-0.5", OUTCOME_CHIP[outcome] ?? OUTCOME_CHIP.movedOn)}>
@@ -133,7 +133,7 @@ export function ConcludeCard({ part }: ArtifactPartProps) {
 			{/* The verdict — plain prose under the heading, no 'Verdict:' label
 			    (owner round 3): the same quiet 50% register as quiz explanations. */}
 			{verdict.length > 0 && (
-				<div className="text-sm text-foreground/50">
+				<div className="text-sm text-muted-foreground">
 					<ToolContentResponse>{verdict}</ToolContentResponse>
 				</div>
 			)}
@@ -143,7 +143,7 @@ export function ConcludeCard({ part }: ArtifactPartProps) {
 				<>
 					<div className="my-3 border-t" />
 					<div>
-						<div className="mb-0.5 text-xs font-medium text-muted-foreground">Model solution</div>
+						<div className="mb-0.5 text-sm font-medium text-muted-foreground">Model solution</div>
 						<div className="lh-prose">
 							<ToolContentResponse>{reveal}</ToolContentResponse>
 						</div>
@@ -238,7 +238,7 @@ function MetadataPopover({
 					});
 				}}
 				aria-expanded={open}
-				className="flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+				className="flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
 			>
 				Metadata
 			</button>
@@ -254,9 +254,9 @@ function MetadataPopover({
 						// EVERYTHING, the dialogs' law. Node-card info-box register;
 						// opening BELOW the trigger — always.
 						style={{ position: "fixed", top: anchor.top, left: anchor.left }}
-						className="z-50 w-80 max-w-[calc(100vw-1rem)] rounded-xl border bg-card p-4 text-left shadow-lg"
+						className="z-50 w-80 max-w-[calc(100vw-1rem)] rounded-xl border bg-card p-4 text-left "
 					>
-				<dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
+				<dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
 						<dt className="text-muted-foreground">Mode</dt>
 						<dd className="font-mono">{mode || "—"}</dd>
 						<dt className="text-muted-foreground">Targets</dt>

@@ -109,8 +109,8 @@ export function CopyCorner({
 				aria-label={label}
 				data-testid="md-copy"
 				className={cn(
-					"flex h-6 items-center justify-center rounded-md text-muted-foreground/70 transition-opacity hover:text-foreground focus-visible:opacity-100",
-					text ? "px-1 text-xs" : cn("size-6 hover:bg-accent", !visible && "opacity-0 group-hover/md:opacity-100"),
+					"flex h-6 items-center justify-center rounded-md text-muted-foreground transition-opacity hover:text-foreground focus-visible:opacity-100",
+					text ? "px-1 text-sm" : cn("size-6 hover:bg-accent", !visible && "opacity-0 group-hover/md:opacity-100"),
 				)}
 				onClick={(e) => {
 					blurAfterPointerClick(e);
@@ -221,7 +221,7 @@ function MermaidInline({ chart }: { chart: string }) {
 						type="button"
 						aria-label="Expand diagram"
 						data-testid="md-mermaid-expand"
-												className="flex size-6 items-center justify-center rounded-md text-muted-foreground/70 opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover/md:opacity-100"
+												className="flex size-6 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover/md:opacity-100"
 						onClick={(e) => {
 							blurAfterPointerClick(e);
 							overlay.openMermaid(chart);
@@ -360,14 +360,12 @@ export function MarkdownBlockquote(props: ComponentProps<"blockquote"> & ExtraPr
 	const { children, node, ...rest } = props;
 	const alert = parseAlertMarker(children);
 	if (!alert) {
-		// Plain quote — Streamdown's own styling, restored by hand: overriding
-		// `blockquote` displaced its styled component (the classes below are
-		// its verbatim defaults), and bare <blockquote> rendered unstyled
-		// (owner report, 2026-10-07).
+		// Plain quote: indent and secondary ink, no side rule (feature 001).
+		// Bare <blockquote> renders unstyled (owner report, 2026-10-07).
 		return (
 			<blockquote
 				{...rest}
-				className="my-4 border-l-4 border-muted-foreground/30 pl-4 text-muted-foreground italic"
+				className="my-4 pl-6 text-ink-2 italic"
 				data-streamdown="blockquote"
 			>
 				{children}

@@ -110,8 +110,10 @@ export function ThinkingBlock({
 				// chevron law); the rail narrows (14px gap), padding 4px, pr-4
 				// keeps the text off the band's right edge. In-card rows take
 				// NO band — the accent lift read too light; rail only.
-				"lh-card-enter my-2 w-full border-l-[calc(3ch-14px)] border-muted-foreground/30 py-1 pl-[14px] pr-4 font-ui text-xs",
-				inCard ? "" : "bg-card",
+				// Feature 001: no side rail. Outside cards the row sits on the
+				// lesson's reading edge, distinguished by ink, not a border.
+				"lh-card-enter my-2 w-full py-1 font-ui text-sm",
+				inCard ? "" : "lh-reading",
 			)}
 		>
 			<button
@@ -128,7 +130,7 @@ export function ThinkingBlock({
 				<ChevronDownIcon className={cn("size-4 shrink-0 transition-transform", open ? "rotate-180" : "rotate-0")} />
 			</button>
 			{open && (
-				<span className="lh-prose mt-1.5 block whitespace-pre-wrap italic text-muted-foreground">{text}</span>
+				<span className="lh-prose mt-1.5 block whitespace-pre-wrap pl-4 italic text-ink-2">{text}</span>
 			)}
 		</div>
 	);

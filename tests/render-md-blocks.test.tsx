@@ -122,11 +122,11 @@ describe("md-blocks — codeSource (pure)", () => {
 });
 
 describe("session-scoped overlays (chrome-melt wave, 2026-09-19)", () => {
-	it("mermaid overlay mounts inside the session area — absolute (not fixed), 80% + blur, closeable", () => {
+	it("mermaid overlay mounts inside the session area — absolute (not fixed), opaque, closeable", () => {
 		const html = renderToStaticMarkup(<MermaidOverlay chart="graph TD\nA --> B" onClose={() => {}} />);
 		assert.match(html, /class="absolute inset-0[^"]*z-40/, "absolute inset-0 z-40 — scoped, not fullscreen");
-		assert.ok(html.includes("bg-background/80"), "80% background: the transcript ghosts through");
-		assert.ok(html.includes("backdrop-blur"), "blur surface");
+		assert.ok(html.includes("bg-background"), "opaque ground (feature 001: no blur scrims)");
+		assert.ok(!html.includes("backdrop-blur"), "no blur surface");
 		assert.ok(!html.includes("fixed inset-0"), "never fixed — the drag bar stays uncovered");
 		assert.ok(html.includes('data-testid="mermaid-overlay-close"'), "the close X is present");
 		assert.match(html, /role="dialog"/, "dialog semantics for Esc/aria");
@@ -136,8 +136,8 @@ describe("session-scoped overlays (chrome-melt wave, 2026-09-19)", () => {
 		const html = renderToStaticMarkup(<PlanPopup messages={[]} onClose={() => {}} />);
 		assert.match(html, /data-testid="plan-popup"/);
 		assert.match(html, /class="absolute inset-0[^"]*z-40/, "absolute inset-0 z-40 — scoped, not fullscreen");
-		assert.ok(html.includes("bg-background/80"), "80% background");
-		assert.ok(html.includes("backdrop-blur"), "blur surface");
+		assert.ok(html.includes("bg-background"), "opaque ground");
+		assert.ok(!html.includes("backdrop-blur"), "no blur surface");
 		assert.ok(!html.includes("fixed inset-0"), "never fixed — the drag bar stays uncovered");
 	});
 
@@ -247,19 +247,17 @@ describe("md-blocks — the restored plain blockquote (owner round, 2026-10-07)"
 		const html = renderToStaticMarkup(
 			<MessageResponse mode="static">{"Before.\n\n> An ordinary quote.\n\nAfter."}</MessageResponse>,
 		);
-		assert.ok(html.includes("border-l-4"), "the left border is back");
-		assert.ok(html.includes("text-muted-foreground italic"), "muted italic — the quote register");
+		assert.ok(!html.includes("border-l"), "no side rule (feature 001)");
+		assert.ok(html.includes("pl-6 text-ink-2 italic"), "indent plus secondary ink — the quote register");
 		assert.ok(!html.includes("md-callout"), "a plain quote is not a callout box");
 	});
 });
 
 describe("ThinkingBlock — the document band + ⌘T sync (owner rounds, 2026-10-07)", () => {
-	it("the row is the document band — round four geometry (owner, 2026-10-07)", () => {
+	it("the row sits on the reading edge without a side rail (feature 001)", () => {
 		const html = renderToStaticMarkup(<ThinkingBlock text="banded" defaultOpen />);
-		assert.ok(html.includes("bg-card"), "the card-color band");
-		assert.ok(html.includes("border-l-[calc(3ch-14px)]"), "narrow rail — 14px gap inside the 3ch inset");
-		assert.ok(html.includes("py-1") && html.includes("pl-[14px]"), "4px band padding");
-		assert.ok(html.includes("pr-4"), "the text wraps early — air at the band's right edge");
+		assert.ok(html.includes("lh-reading"), "shares the prose measure and left edge");
+		assert.ok(!html.includes("border-l"), "no side rail");
 		assert.ok(html.includes("w-full"), "full width — no chat side");
 		assert.match(html, /aria-expanded="true"/);
 		assert.ok(html.includes("banded"), "text visible on arrival");
@@ -268,7 +266,7 @@ describe("ThinkingBlock — the document band + ⌘T sync (owner rounds, 2026-10
 	it("in-card rows take no band — the accent step read too light (owner round five)", () => {
 		const html = renderToStaticMarkup(<ThinkingBlock text="in card" inCard />);
 		assert.ok(!html.includes("bg-accent") && !html.includes("bg-card"), "transparent on the card");
-		assert.ok(html.includes("border-l-[calc(3ch-14px)]"), "rail only, same geometry");
+		assert.ok(!html.includes("lh-reading") && !html.includes("border-l"), "card rows keep the card's own edge, no rail");
 	});
 
 	it("⌘T sets every row — explicit sets stomp individual state, late mounts honor the last set", () => {

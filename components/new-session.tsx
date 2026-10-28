@@ -8,7 +8,7 @@ import { useFieldCycle } from "@/components/field-cycle";
 import { SidebarToggle } from "@/components/sidebar";
 import { useReloadDraft } from "@/components/reload-recovery";
 import { LazySetupDialog as SetupDialog } from "@/components/lazy-setup-dialog";
-import { useStrongKeyless, useZeroKeys, ZeroKeysPill } from "@/components/setup-cta";
+import { SetupModelsButton, useStrongKeyless, useZeroKeys, ZeroKeysPill } from "@/components/setup-cta";
 import { StatsBar } from "@/components/stats-bar";
 import { LazyChainTableOverlay as ChainTableOverlay } from "@/components/lazy-chain-table";
 import { ComposerActions, NodePickerControl } from "@/components/composer-actions";
@@ -156,7 +156,6 @@ export function DraftShell({
 									picker={(picks.length > 0 || mode === "practice") && (
 										<NodePickerControl count={picks.length} onOpen={onOpenPicker} onClear={onClearPicks} />
 									)}
-									setup={setupCta}
 								/>
 								<div className="prompt-shell pointer-events-auto">
 									<Composer
@@ -166,7 +165,7 @@ export function DraftShell({
 										onSend={onSend}
 										onStop={() => {}}
 										canSend={canSend}
-										controls={<StatsBar turns={[]} />}
+										controls={<StatsBar turns={[]} setup={setupCta} />}
 										inputRef={composerInputRef}
 										autoFocus
 										// The opening question, same as the graph view's new-session
@@ -318,19 +317,10 @@ export function NewSession({ initialConfigured, mode = "teach" }: { initialConfi
 				}
 				setupCta={
 					zeroKeys ? (
-						<ZeroKeysPill inline onOpen={() => setSetupOpen(true)} />
-					) : (
-						!configured && (
-							<button
-								type="button"
-								data-testid="setup-cta"
-								onClick={() => setSetupOpen(true)}
-								className="rounded-sm border border-border bg-card px-3 py-1.5 font-ui text-xs text-foreground transition-colors hover:border-muted-foreground/50 hover:bg-accent cursor-pointer"
-							>
-								Set up your models
-							</button>
-						)
-					)
+						<ZeroKeysPill onOpen={() => setSetupOpen(true)} />
+					) : !configured ? (
+						<SetupModelsButton onOpen={() => setSetupOpen(true)} />
+					) : undefined
 				}
 			/>
 			{/* First-run setup: the send interception's landing surface — stage

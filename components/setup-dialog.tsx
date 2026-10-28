@@ -203,7 +203,7 @@ export function SetupKeysBody({
 							testid="setup-key-provider-menu"
 							preferredSide="down"
 							align="left"
-							menuClass="flex w-[22rem] flex-col rounded-xl border border-border bg-card p-2 text-xs shadow-xl"
+							menuClass="flex w-[22rem] flex-col rounded-xl border border-border bg-card p-2 text-sm "
 						>
 							<ProviderMenuList providers={providers ?? []} onPick={onPick} />
 						</MenuShell>
@@ -223,21 +223,21 @@ export function SetupKeysBody({
 							data-testid="setup-key-input"
 							disabled={saving}
 							autoFocus
-							className="h-7 min-w-0 flex-1 rounded-sm border border-border bg-background px-1.5 font-mono text-xs text-foreground outline-none placeholder:text-muted-foreground/60 focus:border-muted-foreground/50"
+							className="h-7 min-w-0 flex-1 rounded-sm border border-border bg-background px-1.5 font-mono text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-muted-foreground/50"
 						/>
 						<button
 							type="button"
 							onClick={onSave}
 							disabled={saving || !value.trim()}
 							data-testid="setup-key-save"
-							className="shrink-0 rounded-sm border border-border bg-background px-3 py-1.5 font-ui text-xs text-foreground transition-colors hover:border-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-40"
+							className="shrink-0 rounded-sm border border-border bg-background px-3 py-1.5 font-ui text-sm text-foreground transition-colors hover:border-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-40"
 						>
 							{saving ? "Saving…" : "Save key"}
 						</button>
 					</div>
 				)}
 				{error && (
-					<p role="alert" data-testid="setup-key-error" className="text-xs text-destructive">
+					<p role="alert" data-testid="setup-key-error" className="text-sm text-destructive">
 						{error}
 					</p>
 				)}
@@ -246,13 +246,13 @@ export function SetupKeysBody({
 	if (hosted) {
 		return (
 			<div className="flex flex-col gap-3 px-6 py-5" data-testid="setup-stage-keys">
-				<p className="text-xs text-muted-foreground">
+				<p className="text-sm text-muted-foreground">
 					Connect your ChatGPT subscription. Your plan covers the models, so no API key is needed. You’ll pick your models next.
 				</p>
 				<div data-testid="setup-chatgpt-lead"><ChatGPTConnection setup /></div>
 				<div className="mt-2 flex flex-col gap-3 border-t border-border/60 pt-4" data-testid="setup-other-providers">
-					<h3 className="font-ui text-xs text-muted-foreground">Other providers</h3>
-					<p className="text-xs text-muted-foreground">Or paste an API key, or connect another subscription.</p>
+					<h3 className="font-ui text-sm text-muted-foreground">Other providers</h3>
+					<p className="text-sm text-muted-foreground">Or paste an API key, or connect another subscription.</p>
 					{keyPicker}
 					<SubscriptionConnections setup without="chatgpt" />
 				</div>
@@ -261,11 +261,11 @@ export function SetupKeysBody({
 	}
 	return (
 		<div className="flex flex-col gap-3 px-6 py-5" data-testid="setup-stage-keys">
-			<p className="text-xs text-muted-foreground">
+			<p className="text-sm text-muted-foreground">
 				Choose your AI provider and paste its API key. You’ll pick your models next.
 			</p>
 			{keyPicker}
-			<div className="mt-2 border-t border-border/60 pt-4"><h3 className="mb-3 font-ui text-xs text-muted-foreground">Subscriptions</h3><SubscriptionConnections setup /></div>
+			<div className="mt-2 border-t border-border/60 pt-4"><h3 className="mb-3 font-ui text-sm text-muted-foreground">Subscriptions</h3><SubscriptionConnections setup /></div>
 		</div>
 	);
 }
@@ -459,13 +459,13 @@ export function SetupDialog({
 	return (
 		<Dialog.Root open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
 			<Dialog.Portal>
-				<Dialog.Overlay className="fixed inset-0 z-50 bg-background/80" data-testid="setup-backdrop" {...backdropDismiss} />
+				<Dialog.Overlay className="fixed inset-0 z-50 bg-background" data-testid="setup-backdrop" {...backdropDismiss} />
 				<Dialog.Content
 					ref={setPortalContainer}
 					data-lh-modal-content
 					aria-describedby={undefined}
 					data-testid="setup-dialog"
-					className="fixed inset-4 z-50 m-auto flex h-fit max-h-[calc(100dvh-2rem)] w-[640px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-border bg-background shadow-2xl outline-none"
+					className="fixed inset-4 z-50 m-auto flex h-fit max-h-[calc(100dvh-2rem)] w-[640px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-border bg-background outline-none"
 					onPointerDownOutside={(event) => event.preventDefault()}
 					onEscapeKeyDown={(event) => event.preventDefault()}
 					onOpenAutoFocus={() => { returnFocus.current = document.activeElement as HTMLElement | null; }}
@@ -516,7 +516,7 @@ export function SetupDialog({
 					</div>
 				) : (
 					<div className="flex flex-col gap-4 overflow-y-auto px-6 py-5" data-testid="setup-stage-pickers">
-						<p className="text-xs text-muted-foreground">
+						<p className="text-sm text-muted-foreground">
 							Pick the model for each tier. All three are required before chats can start.
 						</p>
 						{SLOT_ORDER.map((slot) => {
@@ -532,13 +532,13 @@ export function SetupDialog({
 										{!body?.slots?.[slot]?.model && !picked[slot] && (
 											<span
 												data-testid={`setup-needed-${slot}`}
-												className="rounded-sm border border-border px-1 py-0.5 text-xs font-normal tracking-wide text-muted-foreground"
+												className="rounded-sm border border-border px-1 py-0.5 text-sm font-normal tracking-wide text-muted-foreground"
 											>
 												needed
 											</span>
 										)}
 									</span>
-									<span className="text-xs text-muted-foreground/70">{SLOT_META[slot].roster}</span>
+									<span className="text-sm text-muted-foreground">{SLOT_META[slot].roster}</span>
 									{slot !== "strong" && <><ChatGPTBackgroundAccess provider={entry?.provider} /><NativeSubscriptionBackgroundAccess provider={entry?.provider} /></>}
 									<div className="flex items-center gap-2">
 										<div className="relative flex-1">
@@ -568,7 +568,7 @@ export function SetupDialog({
 													testid={`setup-menu-${slot}`}
 													preferredSide="down"
 													align="left"
-													menuClass="flex w-[22rem] flex-col rounded-xl border border-border bg-card p-2 text-xs shadow-xl"
+													menuClass="flex w-[22rem] flex-col rounded-xl border border-border bg-card p-2 text-sm "
 												>
 													<ModelMenuList
 														models={catalog}
@@ -614,7 +614,7 @@ export function SetupDialog({
 													testid={`setup-thinking-menu-${slot}`}
 													preferredSide="down"
 													align="left"
-													menuClass="flex w-44 flex-col gap-0.5 rounded-xl border border-border bg-card p-2 text-xs shadow-xl"
+													menuClass="flex w-44 flex-col gap-0.5 rounded-xl border border-border bg-card p-2 text-sm "
 												>
 													<ThinkingMenuList
 														levels={levelsForEntry.map(String)}
@@ -637,11 +637,11 @@ export function SetupDialog({
 								data-testid="setup-save"
 								disabled={!allPicked || saving}
 								onClick={() => void save()}
-								className="rounded-sm border border-border bg-background px-3 py-1.5 font-ui text-xs text-foreground transition-colors hover:border-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-40"
+								className="rounded-sm border border-border bg-background px-3 py-1.5 font-ui text-sm text-foreground transition-colors hover:border-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-40"
 							>
 								{saving ? "Saving…" : "Save models"}
 							</button>
-							{error && <p className="text-xs text-destructive">{error}</p>}
+							{error && <p className="text-sm text-destructive">{error}</p>}
 						</div>
 					</div>
 				)}

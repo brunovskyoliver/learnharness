@@ -58,9 +58,8 @@
 	width: 20rem;
 	flex-direction: column;
 	gap: 0.375rem;
-	border: 1px solid var(--border);
-	border-radius: 0.875rem;
-	background: var(--card);
+	border-radius: var(--radius-lg);
+	background: var(--popover);
 	padding: 0.875rem 1rem;
 	font-size: 0.875rem;
 	line-height: 1.5;
@@ -118,22 +117,17 @@
 	user-select: text;
 }
 
-/* Composer and menus use the same neutral roles as settings and navigation. */
+/* The prompt bar (feature 001): one raised shell holding four zones (turn
+   strip, prompt body, answer well, toolbar). The shell never takes the
+   focus ring; the answer well does. */
 .prompt-shell {
 	--prompt-surface: var(--card);
-	--prompt-border: var(--border);
 	--prompt-muted: var(--muted-foreground);
 	--prompt-action: var(--primary);
-	--prompt-action-hover: color-mix(in srgb, var(--primary) 85%, var(--background));
+	--prompt-action-hover: color-mix(in srgb, var(--primary) 88%, var(--foreground));
 	--prompt-action-foreground: var(--primary-foreground);
-	border: 1px solid var(--prompt-border);
-	border-radius: 16px;
+	border-radius: var(--radius-lg);
 	background: var(--prompt-surface);
-	transition: border-color 160ms ease;
-}
-
-.prompt-shell:focus-within {
-	border-color: var(--ring);
 }
 
 .prompt-input {
@@ -149,13 +143,64 @@
 	opacity: 1;
 }
 
-/* Controls and send share one centered 32px row; the 8px inset puts the
-   trigger text on the textarea's 16px text edge. */
+/* Zone 1: whose turn it is, and what kind. */
+.turn-strip {
+	display: flex;
+	min-height: 48px;
+	align-items: center;
+	gap: 10px;
+	padding: 0 8px 0 16px;
+}
+
+.turn-label {
+	flex-shrink: 0;
+	border-radius: var(--radius-sm);
+	background: color-mix(in srgb, var(--primary) 14%, transparent);
+	padding: 2px 8px;
+	color: var(--primary);
+	font-size: var(--text-sm);
+	font-weight: 600;
+	line-height: 1.4;
+}
+
+.turn-kind {
+	flex-shrink: 0;
+	color: var(--ink-2);
+	font-size: 14px;
+	font-weight: 500;
+}
+
+/* Zone 3: the answer field sits directly on the shell (owner, 2026-10-28:
+   no inner box). Its label brightens while the field has focus; the caret
+   marks the field itself. */
+.answer-well {
+	align-self: stretch;
+}
+
+/* Compact chat (reading history): the field and the send share one row. */
+[data-compact="true"] [data-testid="composer"] .answer-well {
+	flex: 1;
+}
+
+.answer-well-label {
+	display: block;
+	padding: 12px 16px 0;
+	color: var(--ink-2);
+	font-size: var(--text-sm);
+	font-weight: 500;
+	transition: color 160ms ease;
+}
+
+.answer-well:focus-within .answer-well-label {
+	color: var(--foreground);
+}
+
+/* Controls and the primary action share one centered row. */
 .prompt-toolbar {
 	display: flex;
 	align-items: center;
-	gap: 8px;
-	padding: 0 8px 8px;
+	gap: 4px;
+	padding: 8px;
 }
 
 /* The home composer's row also carries the Teach/Practice switch; on the
@@ -166,10 +211,11 @@
 	}
 }
 
+/* Plain chat send: the one fully round control in the app. */
 .prompt-submit {
 	display: inline-flex;
-	width: 32px;
-	height: 32px;
+	width: 40px;
+	height: 40px;
 	flex-shrink: 0;
 	align-items: center;
 	justify-content: center;
@@ -190,13 +236,91 @@
 	cursor: default;
 }
 
-.prompt-submit[data-stopping] {
+/* Every other primary action is a labelled 6px button. */
+.prompt-primary {
+	display: inline-flex;
+	min-height: 40px;
+	flex-shrink: 0;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	border-radius: var(--radius-sm);
+	background: var(--prompt-action, var(--primary));
+	padding: 0 16px;
+	color: var(--prompt-action-foreground, var(--primary-foreground));
+	font-size: var(--text-base);
+	font-weight: 600;
+	cursor: pointer;
+	transition: background-color 160ms ease, color 160ms ease;
+}
+
+.prompt-primary:hover:not(:disabled) {
+	background: var(--prompt-action-hover, var(--primary));
+}
+
+.prompt-primary:disabled {
+	background: var(--accent);
+	color: var(--muted-foreground);
+	cursor: default;
+}
+
+.prompt-primary[data-quiet] {
+	background: var(--accent);
+	color: var(--foreground);
+	font-weight: 500;
+}
+
+.prompt-primary[data-quiet]:hover:not(:disabled) {
+	background: color-mix(in srgb, var(--accent) 80%, var(--foreground));
+}
+
+.prompt-secondary {
+	display: inline-flex;
+	min-height: 40px;
+	flex-shrink: 0;
+	align-items: center;
+	border-radius: var(--radius-sm);
+	padding: 0 14px;
+	color: var(--ink-2);
+	font-size: var(--text-base);
+	font-weight: 500;
+	cursor: pointer;
+	transition: background-color 160ms ease, color 160ms ease;
+}
+
+.prompt-secondary:hover:not(:disabled) {
 	background: var(--accent);
 	color: var(--foreground);
 }
 
-.prompt-submit[data-stopping]:hover {
-	background: var(--border);
+/* Setup in the toolbar (no key, no models), in place of the model controls. */
+.prompt-setup {
+	display: inline-flex;
+	min-height: 36px;
+	align-items: center;
+	border-radius: var(--radius-sm);
+	background: var(--accent);
+	padding: 0 12px;
+	color: var(--foreground);
+	font-size: 14px;
+	font-weight: 500;
+	cursor: pointer;
+	transition: background-color 160ms ease;
+}
+
+.prompt-setup:hover {
+	background: color-mix(in srgb, var(--accent) 80%, var(--foreground));
+}
+
+@media (pointer: coarse) {
+	.prompt-setup { min-height: 44px; }
+}
+
+.prompt-hint {
+	padding: 0 6px;
+	color: var(--muted-foreground);
+	font-size: var(--text-sm);
+	white-space: nowrap;
 }
 
 .prompt-model-control {
@@ -214,9 +338,11 @@
 	max-width: 100%;
 	align-items: center;
 	gap: 6px;
-	border-radius: 8px;
-	padding: 0 8px;
-	color: var(--prompt-muted, var(--muted-foreground));
+	border-radius: var(--radius-sm);
+	padding: 0 10px;
+	color: var(--ink-2);
+	font-size: 14px;
+	font-weight: 500;
 	cursor: pointer;
 	transition: background-color 160ms ease, color 160ms ease;
 }
@@ -241,8 +367,7 @@
 	--picker-focus: var(--ring);
 	display: flex;
 	flex-direction: column;
-	border: 1px solid var(--picker-border);
-	border-radius: 12px;
+	border-radius: var(--radius-lg);
 	background: var(--picker-surface);
 	padding: 8px;
 	color: var(--foreground);
@@ -293,7 +418,7 @@
 	min-height: 64px;
 	align-items: center;
 	gap: 12px;
-	border-radius: 8px;
+	border-radius: var(--radius-sm);
 	padding: 10px 12px;
 	text-align: left;
 	cursor: pointer;
@@ -368,39 +493,44 @@
 @media (pointer: coarse) {
 	.prompt-model-trigger { min-height: 44px; }
 	.reasoning-menu-option { min-height: 44px; }
+	.prompt-primary, .prompt-secondary { min-height: 44px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.prompt-shell, .prompt-submit, .prompt-model-trigger { transition: none; }
+	.answer-well-label, .prompt-submit, .prompt-primary, .prompt-secondary, .prompt-model-trigger { transition: none; }
 	.model-menu-option, .reasoning-menu-option { transition: none; }
 }
 
-/* Default web dark roles from T3 Code d0b81ceb6e225a7386203d590ec84def4abed281,
-   apps/web/src/index.css. Saved background overrides remain inline. */
+/* Study ink (feature 001, owner decision 2026-10-27): a warm near-black
+   ground with two raised steps, three inks and one amber accent reserved
+   for the learner's turn, the primary action and focus. Saved background
+   overrides remain inline (appearance-vars.ts). */
 :root, .dark {
 	color-scheme: dark;
-	--radius: 8px;
-	--background: #000;
-	--foreground: var(--color-neutral-100);
-	--surface-raised: color-mix(in srgb, var(--color-neutral-950) 97%, var(--color-white));
+	--radius: 6px;
+	--background: #0b0b0a;
+	--foreground: #edece8;
+	--ink-2: #b4b2ab;
+	--surface-raised: #151513;
+	--surface-raised-2: #1d1d1a;
 	--card: var(--surface-raised);
 	--card-foreground: var(--foreground);
-	--popover: var(--surface-raised);
+	--popover: var(--surface-raised-2);
 	--popover-foreground: var(--foreground);
-	--primary: oklch(0.571 0.21 264);
-	--primary-foreground: var(--color-white);
-	--secondary: rgb(255 255 255 / 3%);
+	--primary: #e3a957;
+	--primary-foreground: #0b0b0a;
+	--secondary: var(--surface-raised);
 	--secondary-foreground: var(--foreground);
-	--muted: rgb(255 255 255 / 3%);
-	--muted-foreground: var(--color-neutral-400);
-	--accent: rgb(255 255 255 / 4%);
+	--muted: var(--surface-raised);
+	--muted-foreground: #8a8881;
+	--accent: var(--surface-raised-2);
 	--accent-foreground: var(--foreground);
-	--message-surface: color-mix(in srgb, var(--color-neutral-950) 92%, var(--color-white));
-	--destructive: var(--color-red-400);
-	--success: var(--color-emerald-400);
-	--warning: var(--color-amber-400);
-	--border: rgb(255 255 255 / 8%);
-	--input: rgb(255 255 255 / 11%);
+	--message-surface: var(--surface-raised);
+	--destructive: #f08a7e;
+	--success: #86c2a0;
+	--warning: #e3a957;
+	--border: rgb(255 252 240 / 7%);
+	--input: rgb(255 252 240 / 14%);
 	--ring: var(--primary);
 	--lh-ink-strong: var(--foreground);
 	--lh-ink-italic: var(--foreground);
@@ -409,10 +539,10 @@
 	--lh-heading-weight: 700;
 }
 
-/* CMU Serif bold (titles) — bundled local file, no CDN dependency. */
 @theme inline {
-	/* Fonts: chrome = JetBrains Mono, prose = Source Sans 3, titles = CMU
-	   Serif bold. The JetBrains/SourceSans variables attach in app/layout.tsx.
+	/* Fonts: interface and prose = Source Sans 3, code = JetBrains Mono,
+	   titles = Newsreader (--font-title, non-inline @theme below). The
+	   variables attach in app/fonts.ts.
 	   (owner, typography round) The Tailwind defaults are ALIASED to the app
 	   fonts: `font-mono`/`font-sans` utilities would otherwise fall to the
 	   SYSTEM stacks — a fourth font the app never chose — and streamdown's
@@ -421,37 +551,30 @@
 	--font-prose: var(--font-sans3), ui-sans-serif, system-ui, sans-serif;
 	--font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, monospace;
 	--font-sans: var(--font-sans3), ui-sans-serif, system-ui, sans-serif;
-	/* The modular type ladder — each size carries its own line-height.
-	   Component sizes must pull from this ladder. (owner, typography
-	   round 4: the 10px rung is merged into 11 — one pixel apart was a
-	   distinction with no visible difference, and 10px sits at the mono
-	   legibility floor; quiet labels get their quiet from color +
-	   tracking, not a notch of size. Reading prose = the 16px rung via
-	   --lh-prose-size.) */
-	/* --font-title lives in the NON-inline @theme below: inline tokens get
-	   their literal values baked into the utilities (.font-title{font-family:
-	   lh-cmu,serif}), which made the appearance "session names in serif"
-	   toggle write a runtime --font-title no consumer ever read (owner, fix
-	   wave: toggle looked dead). Non-inline emits :root { --font-title: … }
-	   and the utility reads var(--font-title) — appearance overrides win. */
-	/* --text-xs and --text-sm live in the NON-inline @theme below so the
-	   session area can scale them with the reading size (.lh-session-scale). */
-	--text-base: 14px;
-	--text-base--line-height: 1.45;
-	--text-lg: 16px;
-	--text-lg--line-height: 1.45;
-	--text-xl: 20px;
-	--text-xl--line-height: 1.4;
-	--text-2xl: 25px;
-	--text-2xl--line-height: 1.3;
-	--text-3xl: 32px;
-	--text-3xl--line-height: 1.25;
-	/* Radii ladder — 4/8/12/16 multiples of the 4px base. */
-	--radius-sm: 4px;
-	--radius-md: 8px;
-	--radius-lg: 12px;
-	--radius-xl: 16px;
-	--radius: 8px;
+	/* Each size carries its own line-height; components pull from this
+	   ladder. --font-title, --text-xs and --text-sm live in the NON-inline
+	   @theme below so runtime overrides (appearance, .lh-session-scale)
+	   reach the utilities. */
+	/* Study ink ladder: 12 (mono metadata only) / 13 / 15 / 17 / 22 / 30 / 40. */
+	--text-base: 15px;
+	--text-base--line-height: 1.47;
+	--text-lg: 17px;
+	--text-lg--line-height: 1.59;
+	--text-xl: 22px;
+	--text-xl--line-height: 1.3;
+	--text-2xl: 30px;
+	--text-2xl--line-height: 1.2;
+	--text-3xl: 40px;
+	--text-3xl--line-height: 1.1;
+	/* Three radii: 6 for controls, 10 for cards and the composer, full for
+	   the round send and status dots. */
+	--radius-xs: 6px;
+	--radius-sm: 6px;
+	--radius-md: 6px;
+	--radius-lg: 10px;
+	--radius-xl: 10px;
+	--radius-2xl: 10px;
+	--radius: 6px;
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
 	--color-card: var(--card);
@@ -472,6 +595,7 @@
 	--color-border: var(--border);
 	--color-input: var(--input);
 	--color-ring: var(--ring);
+	--color-ink-2: var(--ink-2);
 }
 
 * {
@@ -508,14 +632,10 @@ body {
 	line-height: var(--lh-prose-leading);
 }
 
-/* Session-name weight (owner, fix wave round 3): with the serif toggle
-   OFF, --font-title resolves to the prose font — Source Sans 3 is loaded
-   as a VARIABLE font, and without an explicit weight the titles render at
-   400, a whisper next to CMU's bold-only face. Request 900: the variable
-   font takes it, and CMU (a single 700 face) snaps to its nearest
-   available weight — the same rendering it already had. */
+/* Titles: the display serif at a reading weight, never black. */
 .font-title {
-	font-weight: 900;
+	font-family: var(--font-title);
+	font-weight: 500;
 }
 
 .lh-prose :where(strong, b) {
@@ -537,9 +657,16 @@ body {
 	padding-left: 1.5rem;
 }
 
-/* Markdown headings follow the appearance preference, defaulting to 700. */
+/* Markdown headings follow the appearance preference, defaulting to 700.
+   Lesson-level headings take the title face, capped at 600 so the serif
+   never goes black. */
 .lh-prose :where(h1, h2, h3, h4, h5, h6) {
 	font-weight: var(--lh-heading-weight, 700);
+}
+.lh-prose :where(h1, h2) {
+	font-family: var(--font-title);
+	font-weight: min(var(--lh-heading-weight, 700), 600);
+	letter-spacing: -0.01em;
 }
 /* Heading sizes are relative to the reading size, matching the old fixed
    32/25/20px at the 17px default, so headings stay above body text when
@@ -692,7 +819,7 @@ body {
 	margin-block: 0.65rem;
 	overflow: hidden;
 	border: 1px solid var(--border);
-	border-radius: 0.5rem;
+	border-radius: var(--radius-sm);
 	background: var(--card);
 }
 .md-code-toolbar {
@@ -958,11 +1085,11 @@ body {
    session-name-serif toggle overrides this var at runtime, so the
    .font-title utility must read it through var(), not carry a baked copy. */
 @theme {
-	--font-title: var(--font-prose);
+	--font-title: var(--font-newsreader), Georgia, serif;
 	--text-xs: 12px;
-	--text-xs--line-height: 1.4;
+	--text-xs--line-height: 1.5;
 	--text-sm: 13px;
-	--text-sm--line-height: 1.4;
+	--text-sm--line-height: 1.38;
 }
 
 /* Labels inside a session follow the reading size: unchanged at the 17px
@@ -1036,7 +1163,9 @@ body {
 .demo-live-workspace { position: fixed; z-index: 35; overflow: hidden; }
 .demo-live-focus { position: fixed; inset: 0; width: 100dvw; height: 100dvh; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); overflow: hidden; }
 .demo-live-focus::backdrop { background: var(--background); }
-.demo-inline-preview { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 16px; background: var(--card); border-radius: 8px; }
+.demo-inline-preview { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 16px; background: var(--card); border-radius: var(--radius-lg); }
+.demo-inline-row { display: flex; width: 100%; min-height: 56px; align-items: center; gap: 12px; padding: 10px 14px; border-radius: var(--radius-lg); background: var(--card); color: var(--foreground); cursor: pointer; transition: background-color 160ms ease; }
+.demo-inline-row:hover { background: var(--accent); }
 .demo-workspace { height: min(340px, 35dvh); }
 @media (min-width: 768px) { .demo-workspace { height: 100%; } }
 

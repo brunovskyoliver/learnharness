@@ -66,7 +66,7 @@ describe("Composer", () => {
 		const html = render({ canSend: false, nextProblem: true });
 		assert.ok(html.includes('data-testid="next-problem-button"'), "the morphed button");
 		assert.match(html, /Next problem/, "the label");
-		assert.ok(html.includes("bg-primary"), "neutral primary — green is for verdicts");
+		assert.ok(html.includes("prompt-primary"), "the labelled primary action (feature 001)");
 		assert.ok(!html.includes('aria-label="Send"'), "the square send is gone in the pause");
 	});
 

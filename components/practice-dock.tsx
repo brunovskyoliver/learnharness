@@ -2,8 +2,9 @@
 
 import { useSessionState } from "@/components/session-state";
 import { useRef, type ReactNode } from "react";
-import { ChevronRightIcon } from "lucide-react";
-import { PromptSubmit, PromptToolbar } from "@/components/prompt-controls";
+import { ChevronDownIcon } from "lucide-react";
+import { AnswerWell, PrimaryAction, PromptToolbar, TurnStrip } from "@/components/prompt-controls";
+import { Teaser, teaserText } from "@/components/question-dock";
 import { useEnterSubmits } from "@/components/enter-submits";
 import { focusSurfaceInput } from "@/components/input-surface";
 import { ToolContentResponse } from "@/components/ai-elements/message";
@@ -19,6 +20,10 @@ export interface PracticeDockProps {
 	outgoingHeight?: number;
 	statement?: string;
 	onExpand: () => void;
+	/** The turn strip's collapse control (owned by the DockOverlay). */
+	onCollapse?: () => void;
+	/** Skip: opens the existing dismiss confirmation (the Escape path). */
+	onSkip?: () => void;
 	/** text — POST {type:"thinking"} (one lane; the register is read from the text). */
 	onSubmit: (text: string) => void;
 	/** Compaction is running for this chat (owner round 14): the thinking
@@ -29,7 +34,7 @@ export interface PracticeDockProps {
 	controls?: ReactNode;
 }
 
-export function PracticeDock({ problemCallId, expanded, outgoingHeight, statement = "", onExpand, onSubmit, compactionRunning = false, controls }: PracticeDockProps) {
+export function PracticeDock({ problemCallId, expanded, outgoingHeight, statement = "", onExpand, onCollapse, onSkip, onSubmit, compactionRunning = false, controls }: PracticeDockProps) {
 	const [thinking, setThinking] = useSessionState(`problem/${problemCallId}/thinking`, "");
 	// Ref MIRRORS the field ("nothing gets lost", the question-dock
 	// discipline): a submit resuming after `await finishDictation()` reads
@@ -53,18 +58,21 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, statemen
 	 * while the dock is — collapsed bar included (the trace survives). */
 	useEnterSubmits(() => { if (expanded) submit(); else onExpand(); });
 
-	/* ── the collapsed bar ── */
+	/* ── the collapsed bar: the turn strip alone ── */
 	const bar = (
 			<button
 				type="button"
 				data-testid="practice-dock-bar"
 				aria-expanded={false}
 				onClick={onExpand}
-				className="relative z-10 flex w-full cursor-pointer items-center gap-2 bg-card px-4 py-3 text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
+				className="relative z-10 turn-strip min-h-[52px] w-full cursor-pointer bg-card text-left transition-colors hover:bg-accent"
 			>
-				<ChevronRightIcon className="size-4 shrink-0 rotate-90" />
-				<span className="shrink-0 font-medium">Problem</span>
-				<span className="min-w-0 flex-1 truncate">{statement || "Open the active problem"}</span>
+				<span className="turn-label">Your turn</span>
+				<span className="min-w-0 flex-1 truncate text-base text-ink-2">
+					<span className="font-medium text-foreground">Problem · </span>
+					{statement ? <Teaser text={teaserText(statement)} /> : "Open the active problem"}
+				</span>
+				<span className="prompt-primary shrink-0" data-quiet="">Solve</span>
 			</button>
 	);
 
@@ -74,7 +82,17 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, statemen
 		{!expanded && bar}
 		<div className="flex min-h-0 flex-col">
 		<div data-testid="practice-dock" data-problem={problemCallId} className="flex min-h-0 flex-col">
-			<div hidden={!expanded && !outgoingHeight} inert={!expanded} data-testid="practice-problem-content" style={!expanded && outgoingHeight ? { height: outgoingHeight, maxHeight: outgoingHeight } : undefined} className={`${!expanded && outgoingHeight ? "dock-outgoing pointer-events-none absolute inset-x-0 top-0" : ""} max-h-[var(--dock-question-max-h,50dvh)] min-h-0 select-text overflow-y-auto overscroll-contain px-4 pt-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}><ToolContentResponse>{statement}</ToolContentResponse></div>
+			{expanded && (
+				<TurnStrip kind="Problem">
+					<span className="flex-1" />
+					{onCollapse && (
+						<button type="button" aria-label="Collapse problem" onClick={onCollapse} className="ui-icon-button size-9">
+							<ChevronDownIcon aria-hidden="true" className="ui-icon" />
+						</button>
+					)}
+				</TurnStrip>
+			)}
+			<div hidden={!expanded && !outgoingHeight} inert={!expanded} data-testid="practice-problem-content" style={!expanded && outgoingHeight ? { height: outgoingHeight, maxHeight: outgoingHeight } : undefined} className={`${!expanded && outgoingHeight ? "dock-outgoing pointer-events-none absolute inset-x-0 top-0" : ""} max-h-[var(--dock-question-max-h,50dvh)] min-h-0 select-text overflow-y-auto overscroll-contain px-4 pb-3.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}><ToolContentResponse>{statement}</ToolContentResponse></div>
 			{/* The learner's half: Enter SENDS (owner round 2, 2026-10-05);
 			    Shift+Enter makes a newline — less to decide about. */}
 			<div
@@ -82,9 +100,10 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, statemen
 				onClick={focusSurfaceInput}
 				className="input-surface shrink-0"
 			>
+				<AnswerWell label="Your thinking" htmlFor={`${problemCallId}-thinking`}>
 				<textarea
+					id={`${problemCallId}-thinking`}
 					aria-label="Your thinking"
-					placeholder="Your thinking"
 					value={thinking}
 					onChange={(e) => {
 						thinkingRef.current = e.target.value;
@@ -99,17 +118,25 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, statemen
 						}
 					}}
 					rows={1}
-					className="prompt-input field-sizing-content lh-input max-h-64 min-h-9 w-full resize-none bg-transparent px-4 pt-1.5 pb-1 outline-none"
+					className="prompt-input field-sizing-content lh-input max-h-64 min-h-10 w-full resize-none bg-transparent px-4 pt-1 pb-2.5 outline-none"
 				/>
-				{compactionRunning && <div role="status" className="px-4 pb-2 text-xs text-muted-foreground">Compacting session…</div>}
+				</AnswerWell>
+				{compactionRunning && <div role="status" className="px-4 pt-2 text-sm text-muted-foreground">Compacting session…</div>}
 				<PromptToolbar controls={controls}>
-					<PromptSubmit
+					{onSkip && (
+						<button type="button" data-testid="practice-skip" onClick={onSkip} className="prompt-secondary">
+							Skip
+						</button>
+					)}
+					<PrimaryAction
 						type="button"
-						label="Submit thinking"
+						aria-label="Submit"
 						data-testid="practice-send"
 						disabled={thinking.trim().length === 0 || compactionRunning}
 						onClick={() => submit()}
-					/>
+					>
+						Submit
+					</PrimaryAction>
 				</PromptToolbar>
 			</div>
 		</div>

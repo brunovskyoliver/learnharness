@@ -341,6 +341,9 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 		if (kind === "model") refresh();
 	};
 
+	// Nothing to pick without a key: the toolbar's setup action stands in.
+	if (noKeys) return null;
+
 	return (
 		<div ref={containerRef} className="prompt-model-control relative" data-testid="model-control">
 			<Hint
@@ -362,7 +365,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 				disabled={noKeys}
 				className="prompt-model-trigger"
 			>
-				<span className="truncate">{effectiveId && !noKeys ? entry?.name ?? prettyModel(effectiveId) : "—"}</span>
+				<span className="truncate">{effectiveId ? entry?.name ?? prettyModel(effectiveId) : "Choose a model"}</span>
 				<ChevronDownIcon aria-hidden="true" className="size-3.5 shrink-0" />
 			</button>
 			</Hint>
@@ -394,7 +397,14 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 				{/* Just the level — the button reads like the model button reads
 				   the model name (owner, stats-control round 1). */}
 				<span className="truncate">
-					{effectiveLevel === undefined || noKeys ? "—" : (THINKING_LABEL[effectiveLevel] ?? effectiveLevel)}
+					{effectiveLevel === undefined ? (
+						"Thinking"
+					) : (
+						<>
+							<span className="max-sm:hidden">Thinking: </span>
+							{(THINKING_LABEL[effectiveLevel] ?? effectiveLevel).toLowerCase()}
+						</>
+					)}
 				</span>
 				<ChevronDownIcon aria-hidden="true" className="size-3.5 shrink-0" />
 			</button>

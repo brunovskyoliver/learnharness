@@ -75,7 +75,7 @@ describe("appearanceVars — the mapping the provider applies", () => {
 		assert.equal(vars["--lh-prose-size"], "17px");
 		assert.equal(vars["--lh-heading-weight"], "700");
 		assert.equal(vars["--font-prose"], undefined, "no font override at factory");
-		assert.equal(vars["--font-title"], "var(--font-prose)", "titles use the reading family");
+		assert.equal(vars["--font-title"], undefined, "factory titles keep the Newsreader stylesheet face");
 		assert.equal(vars["--background"], undefined, "factory palette untouched");
 		assert.equal(vars["--lh-ink-strong"], undefined, "default ink");
 	});
@@ -94,16 +94,16 @@ describe("appearanceVars — the mapping the provider applies", () => {
 		assert.equal(vars["--card"], "#182028", "raised +8 per channel: 10→18, 18→20, 20→28");
 		assert.equal(vars["--font-prose"], `"Georgia", var(--font-sans3), ui-sans-serif, system-ui, sans-serif`);
 		assert.equal(vars["--lh-prose-size"], "18px");
-		assert.equal(vars["--font-title"], "var(--font-prose)", "serif off → titles follow the prose font");
+		assert.equal(vars["--font-title"], "var(--font-prose)", "an explicit reading font applies to titles");
 		assert.equal(vars["--lh-heading-weight"], "700");
 		assert.equal(vars["--lh-ink-strong"], "#ff0000");
 		assert.equal(vars["--lh-ink-italic"], "#00ff00");
 	});
 
-	it("sessionNameSerif false alone: titles move, nothing else does", () => {
+	it("sessionNameSerif false alone: the legacy flag moves nothing", () => {
 		const vars = appearanceVars(resolveAppearance({ sessionNameSerif: false }));
-		assert.equal(vars["--font-title"], "var(--font-prose)");
-		assert.equal(Object.keys(vars).length, 4, "prose-size, heading-weight, font-title, font-ui");
+		assert.equal(vars["--font-title"], undefined);
+		assert.equal(Object.keys(vars).length, 3, "prose-size, heading-weight, font-ui");
 	});
 });
 
@@ -122,7 +122,7 @@ describe("staleVarNames — the removal half of application (owner repro: resets
 		const stale = staleVarNames(applied, factory);
 		assert.ok(stale.includes("--background"));
 		assert.ok(stale.includes("--font-prose"));
-		assert.ok(!stale.includes("--font-title"), "titles always follow the reading family");
+		assert.ok(stale.includes("--font-title"), "clearing the reading font returns titles to the stylesheet face");
 		assert.ok(stale.includes("--lh-ink-strong"));
 		assert.ok(stale.includes("--lh-ink-italic"));
 		assert.ok(!stale.includes("--lh-prose-size"), "always-applied tokens never go stale");

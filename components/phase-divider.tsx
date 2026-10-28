@@ -47,7 +47,7 @@ export function PhaseChip({ phase }: { phase: Phase3 }) {
 			className="pointer-events-none flex shrink-0 select-none items-center gap-2 text-sm text-muted-foreground"
 		>
 			{CHIP_LABEL[phase]}
-			<span className="text-muted-foreground/50">/</span>
+			<span className="text-muted-foreground">/</span>
 		</span>
 	);
 }
@@ -66,13 +66,11 @@ export function PhaseDivider({ phase, nodeCount }: { phase: Phase3; nodeCount?: 
 		phase === "plan" && nodeCount
 			? `Plan · ${nodeCount} node${nodeCount === 1 ? "" : "s"}`
 			: CHIP_LABEL[phase];
+	// A running head on the reading edge (feature 001): left-aligned label,
+	// no rule, no centered pill.
 	return (
-		<div className="my-4 flex w-full items-center gap-3" data-testid={`phase-divider-${phase}`}>
-			<span className="flex-1" aria-hidden />
-			<span className="px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-				{label}
-			</span>
-			<span className="flex-1" aria-hidden />
+		<div className="lh-reading mt-8 mb-3" data-testid={`phase-divider-${phase}`}>
+			<span className="text-sm font-medium text-muted-foreground">{label}</span>
 		</div>
 	);
 }

@@ -25,13 +25,13 @@ export function ConnectionDialog({ children, onClose, busy, label, testid, backd
 	}, []);
 	return <Dialog.Root open onOpenChange={(open) => { if (!open) onClose(); }}>
 		<Dialog.Portal>
-			<Dialog.Overlay className="fixed inset-0 z-[60] bg-background/80" data-testid={backdropTestid} {...backdropDismiss} />
+			<Dialog.Overlay className="fixed inset-0 z-[60] bg-background" data-testid={backdropTestid} {...backdropDismiss} />
 			<Dialog.Content ref={ref} data-lh-modal-content aria-describedby={undefined} aria-busy={busy} data-testid={testid}
 				onOpenAutoFocus={(event) => { event.preventDefault(); ref.current?.querySelector<HTMLElement>('button:not([disabled]), a[href], input:not([disabled]), select:not([disabled])')?.focus(); }}
 				onCloseAutoFocus={(event) => event.preventDefault()}
 				onPointerDownOutside={(event) => event.preventDefault()}
 				onEscapeKeyDown={(event) => event.preventDefault()}
-				className="fixed inset-4 z-[60] m-auto h-fit max-h-[calc(100dvh-2rem)] w-full max-w-[min(32rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-border bg-background p-5 shadow-2xl outline-none">
+				className="fixed inset-4 z-[60] m-auto h-fit max-h-[calc(100dvh-2rem)] w-full max-w-[min(32rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-border bg-background p-5 outline-none">
 				<Dialog.Title asChild><span className="sr-only">{label}</span></Dialog.Title>
 				{children}
 			</Dialog.Content>

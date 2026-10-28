@@ -30,7 +30,7 @@ export const MermaidError = ({
 			{error}
 		</p>
 		<details className="mt-3">
-			<summary className="cursor-pointer text-xs text-muted-foreground">
+			<summary className="cursor-pointer text-sm text-muted-foreground">
 				Show diagram source
 			</summary>
 			<pre className="mt-2 overflow-x-auto rounded-lg bg-muted p-3 font-mono text-xs text-foreground">

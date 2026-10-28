@@ -32,7 +32,7 @@ export function SettingsSection({
 		<section data-testid={testid} className="mx-auto w-full max-w-5xl px-5 py-6 sm:px-8 sm:py-8">
 
 			<h2 className="mb-5 text-xl font-semibold">{title}</h2>
-			{hint && <p className="mb-4 text-xs text-muted-foreground">{hint}</p>}
+			{hint && <p className="mb-4 text-sm text-muted-foreground">{hint}</p>}
 			<FieldGroup className="gap-5">{children}</FieldGroup>
 		</section>
 	);

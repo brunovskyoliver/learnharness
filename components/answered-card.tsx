@@ -66,7 +66,7 @@ export function AnsweredCard({ answer: savedAnswer, input }: { answer: QuestionA
 			className="rounded-xl border bg-card p-4 text-card-foreground [&>*:last-child]:mb-0"
 			data-testid="answered-card"
 		>
-			<div className="mb-1 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+			<div className="mb-1 flex items-center gap-2 text-sm font-medium text-muted-foreground">
 				{/* The tool's OWN name first (owner 2026-10-09): probe-phase
 			    cards label Probe/Recall — the phase boundary visible in the
 			    transcript. No `tool` on old records: kind labels as before. */}
@@ -145,7 +145,7 @@ export function AnsweredCard({ answer: savedAnswer, input }: { answer: QuestionA
 										// Ask-option subtext (owner, 2026-10-12): same markdown path
 										// as the pending dock — LaTeX included. Quiz options carry
 										// none (owner ruling 2026-09-26); the map stays empty for them.
-										<ToolContentResponse className="lh-prose block text-xs text-muted-foreground">
+										<ToolContentResponse className="lh-prose block text-sm text-muted-foreground">
 											{descByIndex.get(opt.index)}
 										</ToolContentResponse>
 									)}
@@ -180,7 +180,7 @@ export function AnsweredCard({ answer: savedAnswer, input }: { answer: QuestionA
 				<div className="mt-3 flex items-center gap-3" data-testid="answered-confidence">
 					{/* Labeled like the dock (polish pass 2026-10-26): unlabeled, the
 					    rail + % read as a progress meter. */}
-					<span className="shrink-0 text-xs font-medium text-muted-foreground">Confidence</span>
+					<span className="shrink-0 text-sm font-medium text-muted-foreground">Confidence</span>
 					<ConfidenceRail value={answer.confidence} className="min-w-0 flex-1" />
 					<span className="w-9 shrink-0 text-right font-mono text-sm tabular-nums text-muted-foreground">
 						{answer.confidence}%
@@ -222,7 +222,7 @@ export function AnsweredCard({ answer: savedAnswer, input }: { answer: QuestionA
 							setWhyOpen((v) => !v);
 							blurAfterPointerClick(e);
 						}}
-						className="flex items-center gap-2 py-1 font-ui text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+						className="flex items-center gap-2 py-1 font-ui text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
 					>
 						Why
 						<ChevronDownIcon className={cn("size-4 shrink-0 transition-transform", whyOpen ? "rotate-180" : "rotate-0")} />

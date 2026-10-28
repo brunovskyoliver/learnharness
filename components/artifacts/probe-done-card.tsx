@@ -40,8 +40,8 @@ export function ProbeDoneCard({ part }: { part: { input?: unknown; output?: unkn
 	const strands = assessment && Array.isArray(assessment.strands) ? assessment.strands : null;
 
 	return (
-		<div data-testid="probe-done-card" className="my-3 rounded-xl border bg-card/60 p-3">
-			<div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+		<div data-testid="probe-done-card" className="my-3 rounded-xl border bg-card p-3">
+			<div className="mb-2 flex items-center gap-2 text-sm font-medium text-muted-foreground">
 				<ClipboardCheckIcon className="size-3.5 text-primary" />
 				Probe concluded — your assessment
 			</div>
@@ -54,7 +54,7 @@ export function ProbeDoneCard({ part }: { part: { input?: unknown; output?: unkn
 			) : strands ? (
 				<div className="space-y-2">
 					{strands.map((s, i) => (
-						<div key={i} className="rounded-lg bg-background/60 px-3 py-2">
+						<div key={i} className="rounded-lg bg-background px-3 py-2">
 							<div className="text-sm font-medium">{s.strand}</div>
 							<div className="mt-0.5 text-sm text-muted-foreground">{s.assessment}</div>
 						</div>
