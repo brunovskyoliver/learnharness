@@ -1,0 +1,12 @@
+<!-- @dsCard group="Actions" height=80 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>SendButton — preview</title></head>
+<body>
+<div id="root" class="si-row"></div>
+<script>
+  var S = window.StudyInk, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h(React.Fragment, null, h(S.SendButton, null), h(S.SendButton, { disabled: true })));
+</script>
+</body>
+</html>

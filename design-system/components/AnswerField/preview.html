@@ -1,0 +1,12 @@
+<!-- @dsCard group="Prompt bar" height=120 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>AnswerField — preview</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var S = window.StudyInk, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div', { className: 'si-stack' }, h('div', { className: 'prompt-shell' }, h(S.AnswerField, { label: 'Your thinking', id: 'a1', rows: 2 })), h('div', { className: 'prompt-shell' }, h(S.AnswerField, { placeholder: 'Ask about this lesson', id: 'a2' }))));
+</script>
+</body>
+</html>

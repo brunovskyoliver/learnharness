@@ -1,0 +1,12 @@
+<!-- @dsCard group="Prompt bar" height=150 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>PromptToolbar — preview</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var S = window.StudyInk, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div', { className: 'si-stack' }, h('div', { className: 'prompt-shell' }, h(S.PromptToolbar, { controls: h(React.Fragment, null, h('button', { type: 'button', className: 'prompt-trigger' }, '[Model]'), h('button', { type: 'button', className: 'prompt-trigger' }, 'Thinking: medium'), h('span', { className: 'prompt-usage' }, '42%')), hint: '↵' }, h(S.PrimaryAction, null, 'Submit answer'))), h('div', { className: 'prompt-shell' }, h(S.PromptToolbar, { setup: h('button', { type: 'button', className: 'prompt-setup' }, 'Add a provider key') }, h(S.SendButton, { disabled: true })))));
+</script>
+</body>
+</html>
