@@ -1,0 +1,12 @@
+<!-- @dsCard group="Prompt bar" height=128 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>TurnStrip — preview</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var S = window.StudyInk, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div', { className: 'si-stack' }, h('div', { className: 'prompt-shell' }, h(S.TurnStrip, { kind: 'Lesson check', onCollapse: function () {} })), h('div', { className: 'prompt-shell' }, h(S.TurnStrip, { kind: 'Problem', teaser: 'Knowledge tracing has three load-bearing features. Name them.', actionLabel: 'Solve' }))));
+</script>
+</body>
+</html>
