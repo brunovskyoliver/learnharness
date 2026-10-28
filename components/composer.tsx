@@ -45,6 +45,7 @@ export function Composer({
 	inputRef,
 	onEscape,
 	placeholder = "Message",
+	accessibleName,
 	nextProblem = false,
 	onNext,
 	controls,
@@ -66,6 +67,8 @@ export function Composer({
 	onEscape?: () => void;
 	/** One-line placeholder, also the field's accessible name. */
 	placeholder?: string;
+	/** The field's name when a visible heading labels it instead (Home's h1). */
+	accessibleName?: string;
 	/** The practice pause is live (owner round 16): Enter on the empty
 	 *  composer fires the next-problem signal instead of doing nothing —
 	 *  the keyboard-first move-on. */
@@ -120,7 +123,7 @@ export function Composer({
 						act();
 					}
 				}}
-				aria-label={placeholder}
+				aria-label={accessibleName ?? placeholder}
 				placeholder={placeholder}
 				autoFocus={autoFocus}
 				rows={1}

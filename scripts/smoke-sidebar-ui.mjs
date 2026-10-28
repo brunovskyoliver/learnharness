@@ -33,7 +33,9 @@ try {
 	const question = { ...fixture, id: "sidebar-question-ui", messages: fixture.messages.slice(0, check + 1) };
 	await writeFile(path.join(data, "chats", `${question.id}.json`), JSON.stringify(question));
 	for (let i = 0; i < 80; i++) {
-		const chat = { ...sample, id: `sidebar-stress-${i}`, title: `Study session ${i}`, messages: [] };
+		// One long title (feature 002): rows wrap whole titles instead of truncating.
+		const title = i === 0 ? "Gradient descent and choosing a learning rate for a noisy, badly conditioned loss surface" : `Study session ${i}`;
+		const chat = { ...sample, id: `sidebar-stress-${i}`, title, messages: [] };
 		await writeFile(path.join(data, "chats", `${chat.id}.json`), JSON.stringify(chat));
 	}
 	server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev", "--hostname", "127.0.0.1", "--port", String(port)], {
@@ -138,9 +140,16 @@ try {
 		await settled(256);
 	}
 	console.log("PASS pointer cancellation, blur, lost capture and double-click reset");
-	const rowHeights = await page.$$eval('[data-testid="session-row"]', (rows) => rows.map((element) => element.getBoundingClientRect().height));
-	assert.equal(rowHeights.length, 82);
-	assert.ok(rowHeights.every((height) => height === 36), "crowded rows remain 36px");
+	const rows = await page.$$eval('[data-testid="session-row"]', (rows) => rows.map((element) => {
+		const title = element.querySelector("span.flex-1");
+		return { id: element.dataset.sessionId, height: element.getBoundingClientRect().height, clipped: title.scrollWidth > title.clientWidth };
+	}));
+	assert.equal(rows.length, 82);
+	const short = rows.filter((row) => row.id.startsWith("sidebar-stress-") && row.id !== "sidebar-stress-0");
+	assert.ok(short.every((row) => row.height === 36), `crowded short-title rows remain 36px: ${JSON.stringify(short.filter((row) => row.height !== 36))}`);
+	const long = rows.find((row) => row.id === "sidebar-stress-0");
+	assert.ok(long.height > 36, `a long title wraps onto more lines: ${JSON.stringify(long)}`);
+	assert.ok(rows.every((row) => !row.clipped), "no title is truncated (feature 002)");
 	const typography = await page.$eval(".lh-reading", (element) => {
 		const prose = element.querySelector(".lh-prose");
 		const heading = prose.querySelector("h2");
@@ -152,12 +161,42 @@ try {
 	});
 	assert.equal(typography.size, "17px");
 	assert.equal(typography.leading, "27px");
-	assert.equal(typography.weight, "700");
+	assert.equal(typography.weight, "600"); // Newsreader headings cap at 600 (DESIGN.md, feature 001)
 	assert.ok(Math.abs(typography.measure - parseFloat(typography.limit)) < 1, "reading column reaches its 76ch cap");
 	assert.equal(typography.paragraphGap, "16px");
 	assert.equal(typography.sectionGap, "32px");
 	assert.equal(typography.headingGap, "12px");
 	console.log(`PASS crowded rows and typography: ${JSON.stringify(typography)}`);
+	// Feature 002 header: Search with the filter inside, one labelled New menu.
+	const header = await page.evaluate(() => {
+		const search = document.querySelector('[data-testid="session-search"]');
+		const filter = document.querySelector('[data-testid="kind-filter"]');
+		return {
+			filterInsideSearch: search.parentElement.parentElement.contains(filter),
+			oldIcons: Boolean(document.querySelector('[aria-label="New practice"], [aria-label="New lesson"]')),
+			newLabel: document.querySelector('[data-testid="new-menu"]').textContent.trim(),
+			shelfFont: getComputedStyle(document.querySelector('[data-testid="session-group"] span')).fontFamily,
+			dot: Boolean(document.querySelector('[data-session-id="sidebar-question-ui"] [role="img"][aria-label="Waiting for you"]')),
+		};
+	});
+	assert.equal(header.filterInsideSearch, true, "the filter sits inside the Search field");
+	assert.equal(header.oldIcons, false, "the separate new-lesson and new-practice icons are gone");
+	assert.equal(header.newLabel, "New");
+	assert.match(header.shelfFont, /Newsreader/, "date shelves use the title serif");
+	assert.equal(header.dot, true, "a waiting session shows the amber dot");
+	await page.focus('[data-testid="new-menu"]');
+	await page.keyboard.press("Enter");
+	await page.waitForSelector('[data-testid="new-menu-list"] [role="menuitem"]', { visible: true });
+	assert.deepEqual(await page.$$eval('[data-testid="new-menu-list"] [role="menuitem"]', (items) => items.map((item) => item.textContent.trim())), ["Lesson", "Practice"]);
+	await page.keyboard.press("Escape");
+	await page.waitForFunction(() => !document.querySelector('[data-testid="new-menu-list"]') && document.activeElement?.dataset.testid === "new-menu");
+	await page.click('[data-testid="kind-filter"]');
+	await page.click('[data-testid="kind-filter-practice"]');
+	assert.equal(await page.$eval('[data-testid="kind-filter"]', (element) => element.dataset.active), "true", "a narrowing filter is visibly on");
+	await page.click('[data-testid="kind-filter"]');
+	await page.click('[data-testid="kind-filter-all"]');
+	assert.equal(await page.$eval('[data-testid="kind-filter"]', (element) => element.dataset.active ?? null), null);
+	console.log("PASS sidebar header: filter inside Search, New menu (Lesson, Practice) by keyboard, waiting dot, serif shelves");
 	if (process.env.LH_UI_SCREENSHOT_DIR) {
 		await mkdir(process.env.LH_UI_SCREENSHOT_DIR, { recursive: true });
 		await page.screenshot({ path: path.join(process.env.LH_UI_SCREENSHOT_DIR, "after-desktop.png") });

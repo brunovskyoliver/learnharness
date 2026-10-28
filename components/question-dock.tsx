@@ -3,6 +3,7 @@
 import { useSessionState } from "@/components/session-state";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronDownIcon } from "lucide-react";
+import { Teaser, teaserPlain } from "@/components/teaser";
 import { AnswerWell, PrimaryAction, PromptToolbar, TurnStrip } from "@/components/prompt-controls";
 import { useEnterSubmits } from "@/components/enter-submits";
 import { ToolContentResponse } from "@/components/ai-elements/message";
@@ -10,7 +11,6 @@ import { cn } from "@/lib/utils";
 import { focusSurfaceInput } from "@/components/input-surface";
 import {
 	buildAnswer,
-	repairMathForDisplay,
 	normalizeQuizType,
 	CONFIDENCE_LABELS,
 	CONFIDENCE_STOPS,
@@ -24,6 +24,8 @@ import {
 	parseAskInput,
 	parseQuizInput,
 	parseExplainInput,
+	repairMathForDisplay,
+	questionKindLabel,
 	toggleOption,
 	toggleOther,
 	type AnswerRequest,
@@ -98,10 +100,6 @@ export function QuestionDock({
 	// ("recall") is explain-shaped. Old records keep the teach names.
 	const canonical =
 		toolName === "probe" ? "quiz" : toolName === "recall" ? "explain" : toolName;
-	// The chip's display name carries the tool's OWN name (owner
-	// 2026-10-09): probe-phase questions label Probe/Recall in the
-	// composer; teach tools keep the standing labels.
-	const toolLabel = toolName === "probe" ? "Question" : toolName === "recall" ? "Recall" : undefined;
 	// Parse, don't cast (src/core/tool-parts.ts): the model authored this
 	// input, and only the schema the tool declared vouches for its shape.
 	// The dock mounts on input-available parts (already validated at the
@@ -125,13 +123,7 @@ export function QuestionDock({
 					question={parsed.question}
 					onExpand={onExpand}
 					variant={reveal ? "reveal" : "collapsed"}
-					toolLabel={toolLabel}
-					label={
-						(canonical === "quiz" || canonical === "explain") &&
-						normalizeQuizType((parsed as { type?: unknown }).type) === "predict"
-							? "Prediction"
-							: undefined
-					}
+					label={questionKindLabel(toolName, (parsed as { type?: unknown }).type)}
 				/>
 			)}
 			<QuestionDockForm
@@ -153,33 +145,12 @@ export function QuestionDock({
 	);
 }
 
-/** A plain-text teaser of a question for the collapsed bar: unwrap math, flatten common LaTeX. */
-export function teaserText(q: string): string {
-	return repairMathForDisplay(q)
-		.replace(/\\\(([\s\S]*?)\\\)/g, "$1") // \(...\) inline math
-		.replace(/\\\[([\s\S]*?)\\\]/g, "$1") // \[...\] display math
-		.replace(/\$\$?([^$]*)\$\$?/g, "$1") // standard $...$/$$...$$ math
-		.replace(/\\frac\{([^{}]*)\}\{([^{}]*)\}/g, "$1/$2")
-		.replace(/\\([a-zA-Z]+)/g, "$1")
-		.replace(/[{}]/g, "")
-		.replace(/(\*\*|__)(.+?)\1/g, "$2") // bold
-		.replace(/(^|\W)[*_](\S.*?)[*_](?=\W|$)/g, "$1$2") // italic
-		.replace(/\s+/g, " ")
-		.trim();
-}
+export { Teaser } from "@/components/teaser";
 
-/** The teaser as inline nodes: `code` spans render as inline code instead
- *  of raw backticks (ui-v2); everything else is plain text. */
-export function Teaser({ text }: { text: string }) {
-	return text.split(/(`[^`]+`)/g).map((part, i) =>
-		part.length > 2 && part.startsWith("`") && part.endsWith("`") ? (
-			<code key={i} className="rounded bg-muted px-[0.3em] font-mono text-[0.9em]">
-				{part.slice(1, -1)}
-			</code>
-		) : (
-			part
-		),
-	);
+/** A plain-text teaser of a question for the collapsed bar: repair math
+ *  debris for display, then unwrap math and flatten common LaTeX. */
+export function teaserText(q: string): string {
+	return teaserPlain(repairMathForDisplay(q));
 }
 
 /** The collapsed strip. Two species (W5): "collapsed" is the scroll minimization
@@ -192,21 +163,16 @@ export function QuestionDockBar({
 	onExpand,
 	variant = "collapsed",
 	label,
-	toolLabel,
 }: {
 	toolName: "quiz" | "ask_user_question" | "explain";
 	question: string;
 	onExpand: () => void;
 	variant?: "collapsed" | "reveal";
-	/** The kind chip's text (owner 2026-10-03): "Prediction" when a
-	 *  predict-type quiz minimizes by scroll — predictions never use the
-	 *  reveal variant, but the scroll-collapse strip can still hide them. */
+	/** The kind chip's text: the shared turn-kind label (src/core/waiting.ts),
+	 *  so the strip, this bar and Home's waiting list agree. */
 	label?: string;
-	/** The chip's TOOL display name (owner 2026-10-09): probe-phase calls
-	 *  label Probe/Recall — the phase boundary visible in the composer. */
-	toolLabel?: string;
 }) {
-	const kind = label ?? toolLabel ?? (toolName === "quiz" ? "Lesson check" : toolName === "explain" ? "Explain" : "Question");
+	const kind = label ?? questionKindLabel(toolName);
 	// Both species share the turn strip (feature 001): the reveal invites
 	// ("Check your understanding"), the scroll fold resumes. The whole row
 	// is the button; the trailing "Answer" is its visible label.
@@ -228,15 +194,6 @@ export function QuestionDockBar({
 	);
 }
 
-/** The turn kind shown in the strip. Probe-phase tools keep their own
- *  names (owner 2026-10-09). */
-function turnKind(toolName: QuestionDockProps["toolName"], kind: string, questionType: string | undefined): string {
-	if (toolName === "probe") return "Question";
-	if (toolName === "recall") return "Recall";
-	if (kind === "quiz") return questionType === "predict" ? "Prediction" : "Lesson check";
-	if (kind === "explain") return "Explain";
-	return "Question";
-}
 
 /** The expanded question: label, question, options, and the unified bottom row. */
 function QuestionDockForm({
@@ -724,7 +681,7 @@ function QuestionDockForm({
 	return (
 		<div data-testid="question-dock" className="flex min-h-0 flex-col">
 			{active && (
-				<TurnStrip kind={turnKind(toolName, kind, qd.questionType)}>
+				<TurnStrip kind={questionKindLabel(toolName, (input as { type?: unknown }).type)}>
 					<span className="flex-1" />
 					{onCollapse && (
 						<button type="button" aria-label="Collapse question" onClick={onCollapse} className="ui-icon-button size-9">
@@ -738,11 +695,10 @@ function QuestionDockForm({
 				<div aria-hidden="true" className="pointer-events-none relative -mt-10 h-10 bg-linear-to-b from-transparent to-card" />
 			)}
 
-			{/* The learner's half of the dock — a composer TWIN: a labeled, bordered
-			    field with Submit docked inside, exactly like the chat composer's
-			    send. Select modes get "Your thinking" (Enter makes a newline — it
-			    is for dumping, soon dictated; the button submits); text mode
-			    keeps "Your answer" with Enter-to-submit. */}
+			{/* The learner's half of the dock — a composer TWIN: the field with
+			    Submit docked below, like the chat composer's send. Select modes
+			    get the optional reasoning field; text mode gets the answer. The
+			    placeholder names each (no separate label, owner 2026-10-28). */}
 			<form
 				className="input-surface shrink-0"
 				onClick={focusSurfaceInput}
@@ -756,11 +712,12 @@ function QuestionDockForm({
 					// Text and controls sit directly on the prompt shell.
 					className="flex flex-col"
 				>
-					<AnswerWell label={qd.mode === "text" ? "Your answer" : "Your thinking"} htmlFor={`${toolCallId}-answer`}>
+					<AnswerWell>
 					{qd.mode === "text" ? (
 						<textarea
 							id={`${toolCallId}-answer`}
 							aria-label="Your answer"
+							placeholder="Type your answer"
 							value={text}
 							onChange={(e) => {
 								answerTextRef.current = e.target.value;
@@ -775,13 +732,14 @@ function QuestionDockForm({
 								}
 							}}
 							rows={1}
-							className="prompt-input field-sizing-content lh-input max-h-48 min-h-10 w-full resize-none bg-transparent px-4 pt-1 pb-2.5 outline-none"
+							className="prompt-input field-sizing-content lh-input max-h-48 min-h-10 w-full resize-none bg-transparent px-4 pt-3 pb-2.5 outline-none"
 						/>
 					) : (
 						<textarea
 							ref={thinkingRef}
 							id={`${toolCallId}-answer`}
 							aria-label="Your thinking"
+							placeholder="Explain your reasoning, or leave blank to submit your choice"
 							value={thinking}
 							onChange={(e) => {
 								thinkingTextRef.current = e.target.value;
@@ -797,7 +755,7 @@ function QuestionDockForm({
 								}
 							}}
 							rows={1}
-							className="prompt-input field-sizing-content lh-input max-h-48 min-h-10 w-full resize-none bg-transparent px-4 pt-1 pb-2.5 outline-none"
+							className="prompt-input field-sizing-content lh-input max-h-48 min-h-10 w-full resize-none bg-transparent px-4 pt-3 pb-2.5 outline-none"
 						/>
 					)}
 					</AnswerWell>

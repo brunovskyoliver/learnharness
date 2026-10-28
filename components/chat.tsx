@@ -1,7 +1,7 @@
 "use client";
 
 
-import { createContext, type ComponentProps, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createContext, type ComponentProps, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { useChatSession } from "@/components/session";
 import { visibleQueuedSteers } from "@/components/session-core";
 import { LazySetupDialog as SetupDialog } from "@/components/lazy-setup-dialog";
@@ -240,6 +240,7 @@ function ChatView({
 	initialPricing,
 	initialError,
 	initialPrompt,
+	initialAnswer,
 	initiallyInFlight,
 	initiallyCompacting = false,
 	initialConfigured = false,
@@ -257,6 +258,8 @@ function ChatView({
 	 *  tag rides the header instead. */
 	kind?: "teach" | "practice";
 	initialPrompt?: string;
+	/** Home's Answer/Solve target (`?answer=<toolCallId>`, feature 002). */
+	initialAnswer?: string;
 	/** A teacher turn is running server-side but attached to no client
 	 * (navigated away mid-turn, returned while in flight). */
 	initiallyInFlight?: boolean;
@@ -281,7 +284,7 @@ function ChatView({
 	// (core/view.ts projectView); sends are ONE explicit input event each
 	// ({chatId, input} — the stash indirection died with the SDK), and the
 	// turn stream is the VERBATIM AgentEvent passthrough the server emits.
-	const { messages, nativeMessages, contextTokens, send, continueIfOwed, steer, steerQueue, submitAnswer, dismissQuestion, dismissProblem, questionDraft, saveQuestionDraft, setMessages, adoptRecord, status, error, stop, clearError, resumeStream, setReattachSettled } =
+	const { messages, nativeMessages, contextTokens, send, continueIfOwed, steer, cancelSteer, steerQueue, submitAnswer, dismissQuestion, dismissProblem, questionDraft, saveQuestionDraft, setMessages, adoptRecord, status, error, stop, clearError, resumeStream, setReattachSettled } =
 		useChatSession({ chatId, initialMessages, initialError, initiallyInFlight });
 
 	const sessionFindScopeRef = useRef<HTMLDivElement | null>(null);
@@ -1657,7 +1660,10 @@ function ChatView({
 					contextTokens={contextTokens}
 					pricing={pricing}
 					queuedSteers={visibleQueuedSteers(steerQueue, nativeMessages)}
+					onRemoveSteer={cancelSteer}
 					setupCta={setupAction}
+					answerTarget={initialAnswer}
+					onAnswerHandled={clearAnswerParam}
 					composer={
 						<Composer
 							// Stop aborts ANY in-flight turn (stream-reattach wave): the
@@ -1766,6 +1772,37 @@ export type EscAbortTarget = "mermaid" | "plan" | "setup" | "question" | "proble
  * (owner report, 2026-10-04: the turn went dead behind it — the old
  * `length === 0` check saw the marker and refused to fire).
  */
+/** Drop Home's one-shot `?answer=` so a reload opens the session as usual.
+ *  The native History API syncs with the Next router without a server
+ *  round trip (node_modules/next/dist/docs, linking-and-navigating). */
+function clearAnswerParam() {
+	const url = new URL(window.location.href);
+	if (!url.searchParams.has("answer")) return;
+	url.searchParams.delete("answer");
+	window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+/** Below the sm breakpoint (640px): the phone scroll band (feature 002).
+ *  One button renders at a time, so `[aria-label="Scroll to latest"]`
+ *  always names the visible one. The server snapshot is desktop. */
+const PHONE_QUERY = "(max-width: 639px)";
+function usePhoneWidth(): boolean {
+	return useSyncExternalStore(
+		(onChange) => {
+			const query = window.matchMedia(PHONE_QUERY);
+			query.addEventListener("change", onChange);
+			return () => query.removeEventListener("change", onChange);
+		},
+		() => window.matchMedia(PHONE_QUERY).matches,
+		() => false,
+	);
+}
+
+/** Does Home's `?answer=` target the item the dock is waiting on? */
+export function answerOpensDock(target: string | undefined, pendingId: string | null): boolean {
+	return Boolean(target) && target === pendingId;
+}
+
 export function initialPromptOwed(messages: readonly { role: string }[], prompt: string | undefined): boolean {
 	if (!prompt) return false;
 	return !messages.some((m) => m.role === "user" || m.role === "assistant");
@@ -1838,6 +1875,9 @@ function DockFooter({
 	chatId,
 	setupCta,
 	queuedSteers,
+	onRemoveSteer,
+	answerTarget,
+	onAnswerHandled,
 }: {
 	questionTarget: HTMLElement | null;
 	onReserve: (height: number) => void;
@@ -1868,11 +1908,21 @@ function DockFooter({
 	/** The queued-steer indicator's lines (composer steering, 2026-10-03):
 	 *  already filtered by visibleQueuedSteers — only undrained steers. */
 	queuedSteers: QueuedSteerLine[];
+	/** Withdraw one undelivered queued steer (feature 002). */
+	onRemoveSteer: (id: string) => void;
 	/** The persistent setup CTA (BYOK, owner 2026-09-22): the same pill
 	 *  home and /chat/new carry, above the composer while slots are unset. */
 	setupCta?: React.ReactNode;
+	/** Home's Answer/Solve (feature 002): `?answer=<toolCallId>`. When it is
+	 *  still the waiting item, the dock opens on it at the bottom; a stale
+	 *  id leaves the session as it would open anyway. */
+	answerTarget?: string;
+	/** Runs once after the target is read, to drop the param. */
+	onAnswerHandled?: () => void;
 }) {
 	const { isAtBottom, scrollToBottom, scrollRef, stopScroll, state: scrollState } = useStickToBottomContext();
+	const phone = usePhoneWidth();
+	const [bandHeld, setBandHeld] = useState(false);
 	useEffect(() => {
 		const el = scrollRef.current;
 		const stop = () => stopScroll();
@@ -2215,6 +2265,14 @@ function DockFooter({
 		setRevealed(true); // the teach-check invitation was accepted (W5)
 		setExpanded(true);
 		void suppressFoldDuringReveal();
+		// Opening the dock puts the caret in the field (owner, 2026-10-28) —
+		// free-text questions and problems only, so choice questions keep
+		// arrow-key walking, and only on fine pointers, so a phone's keyboard
+		// never covers the question.
+		requestAnimationFrame(() => requestAnimationFrame(() => {
+			if (!window.matchMedia("(pointer: fine)").matches) return;
+			shellRef.current?.querySelector<HTMLTextAreaElement>('[data-testid="answer-field"] textarea, [data-testid="practice-thinking-field"] textarea')?.focus({ preventScroll: true });
+		}));
 	};
 	// The turn strip's collapse control: an explicit fold, like reading
 	// history. Scrolling back to the bottom (or focusing the field) expands.
@@ -2229,6 +2287,10 @@ function DockFooter({
 		if (!element || jumpPendingRef.current) return;
 		const owner = ownerRef.current;
 		jumpPendingRef.current = true;
+		// The phone band stays until the jump settles: dropping it at the
+		// at-bottom threshold would shrink the reserve mid-motion, and the
+		// clamp would read as an outside scroll and cancel the expand.
+		setBandHeld(true);
 		expandIntentRef.current = true;
 		readingAnswerRef.current = false;
 		scrollMotionRef.current?.cancel();
@@ -2236,18 +2298,30 @@ function DockFooter({
 		const motion = animateDockScroll(element, () => element.scrollHeight - element.clientHeight, (top) => { scrollState.scrollTop = top; }, { cancelOnExternalScroll: true });
 		scrollMotionRef.current = motion;
 		void motion.finished.then((completed) => {
-			if (scrollMotionRef.current !== motion) return;
+			if (scrollMotionRef.current !== motion) { setBandHeld(false); return; }
 			scrollMotionRef.current = null;
 			jumpPendingRef.current = false;
 			expandIntentRef.current = false;
-			if (!completed || ownerRef.current !== owner) return;
+			if (!completed || ownerRef.current !== owner) { setBandHeld(false); return; }
 			setRevealed(true);
 			setExpanded(true);
-			void suppressFoldDuringReveal();
+			void suppressFoldDuringReveal().finally(() => setBandHeld(false));
 		});
 	};
 	const expandAndRevealRef = useRef(expandAndReveal);
 	expandAndRevealRef.current = expandAndReveal;
+	// Home's Answer/Solve (feature 002): open on the waiting item once.
+	const answerHandledRef = useRef(false);
+	useEffect(() => {
+		if (answerHandledRef.current || answerTarget === undefined) return;
+		answerHandledRef.current = true;
+		onAnswerHandled?.();
+		if (!answerOpensDock(answerTarget, pendingId)) return;
+		// After the mount's own layout (reserve, stick-to-bottom) settles,
+		// exactly like a click on the bar. Not cancelled on cleanup: the
+		// handled guard makes this one-shot (StrictMode re-runs effects).
+		requestAnimationFrame(() => requestAnimationFrame(() => expandAndRevealRef.current()));
+	}, [answerTarget, pendingId, onAnswerHandled]);
 	// ENTER OPENS THE WAITING CHECK (owner, keyboard round 2026-10-06):
 	// while a question waits with the dock CLOSED — behind its reveal
 	// invitation or collapsed by scroll — Enter is never dead. The check
@@ -2465,7 +2539,18 @@ function DockFooter({
 					    one-liners above the shell - right-aligned to where its corner
 					    rounding starts, truncated, no background, no container. A
 					    line dies when its card lands (visibleQueuedSteers). */}
-					<QueuedSteersBody steers={queuedSteers} />
+					<QueuedSteersBody steers={queuedSteers} onRemove={onRemoveSteer} />
+					{/* Phones (feature 002, owner 2026-10-28): scroll-to-latest gets
+					    its own 48px band above the shell, on the ground color, so it
+					    never sits on transcript text. The band exists only while the
+					    button shows and is part of the measured dock, so the
+					    transcript's reachable end stops above it. Desktop keeps the
+					    button at the shell's top-right corner (below). */}
+					{phone && (!isAtBottom || bandHeld) && (
+						<div data-testid="scroll-band" className="pointer-events-auto -mx-4 flex h-12 items-center justify-end bg-background px-4">
+							<ConversationScrollButton aria-label="Scroll to latest" onClick={jumpToBottomThenExpand} className="static translate-x-0" />
+						</div>
+					)}
 
 
 					<div ref={shellRef} data-testid="dock-shell" data-compact={!expanded}
@@ -2513,7 +2598,7 @@ function DockFooter({
 						</div>
 					</div>
 					{/* The latest-message action sits just above the footer. */}
-					<ConversationScrollButton aria-label="Scroll to latest" onClick={jumpToBottomThenExpand} className="pointer-events-auto bottom-full left-auto right-4 mb-2 translate-x-0" />
+					{!phone && <ConversationScrollButton aria-label="Scroll to latest" onClick={jumpToBottomThenExpand} className="pointer-events-auto bottom-full left-auto right-4 mb-2 translate-x-0" />}
 				</div>
 			</div>
 		</div>

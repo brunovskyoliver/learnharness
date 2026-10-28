@@ -19,7 +19,7 @@ import {
 	type UserSettings,
 } from "@/src/core";
 import { useAppearance } from "./appearance.tsx";
-import { SettingsSection } from "./controls.tsx";
+import { SettingsGroup, SettingsSection } from "./controls.tsx";
 import { UpdateSettings } from "./update-settings.tsx";
 import { AgentSection } from "./agent-section.tsx";
 import type { ModelsSettings } from "@/src/core";
@@ -28,6 +28,7 @@ import { notifySettingsSaved } from "@/components/settings-signal";
 import { KeysSection } from "./keys-section.tsx";
 import { Hint } from "@/components/ui/hint";
 import { AppearanceSection, GraphSection } from "./appearance-section.tsx";
+import { GraphDisplaySection } from "./graph-display-section.tsx";
 import { KeyboardSection } from "./keyboard-section.tsx";
 import { FilesSection } from "./files-section.tsx";
 
@@ -401,6 +402,10 @@ export function SettingsDialogBody({
 											void write("graph", next)
 										}
 									/>
+									{/* Display (feature 002): moved here from the gear over the graph. */}
+									<SettingsGroup label="Display" testid="graph-group-display">
+										<div className="py-3"><GraphDisplaySection /></div>
+									</SettingsGroup>
 								</SettingsSection>
 							)}
 							{active === "keyboard" && (

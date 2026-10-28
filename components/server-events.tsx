@@ -35,15 +35,47 @@ export interface NotifySource {
 	onEvent(name: string, cb: (data: string) => void): void;
 }
 
+/** The window's channel. A page left for the back/forward cache closes its
+ *  stream (pagehide) and opens a fresh one if it is restored (pageshow,
+ *  persisted) — the reopen fires the resync callbacks, so views refetch
+ *  what they missed while frozen. Without this, each cached page held its
+ *  stream open: after six full navigations the browser's per-host
+ *  connection pool was spent and the next page could not load (feature
+ *  002, US6 — the dock smoke test's navigation timeout). */
 export function openEventsChannel(): NotifySource {
-	const es = new EventSource("/api/events");
+	let es: EventSource | null = null;
+	let openCb: (() => void) | undefined;
+	const listeners: Array<[string, (data: string) => void]> = [];
+	const listen = (source: EventSource, name: string, cb: (data: string) => void) =>
+		source.addEventListener(name, (ev) => cb((ev as MessageEvent).data));
+	const connect = () => {
+		const source = new EventSource("/api/events");
+		source.onopen = () => openCb?.();
+		for (const [name, cb] of listeners) listen(source, name, cb);
+		es = source;
+	};
+	const onPageHide = () => {
+		es?.close();
+		es = null;
+	};
+	const onPageShow = (event: PageTransitionEvent) => {
+		if (event.persisted && !es) connect();
+	};
+	connect();
+	window.addEventListener("pagehide", onPageHide);
+	window.addEventListener("pageshow", onPageShow);
 	return {
-		close: () => es.close(),
+		close: () => {
+			window.removeEventListener("pagehide", onPageHide);
+			window.removeEventListener("pageshow", onPageShow);
+			onPageHide();
+		},
 		onOpen: (cb) => {
-			es.onopen = () => cb();
+			openCb = cb;
 		},
 		onEvent: (name, cb) => {
-			es.addEventListener(name, (ev) => cb((ev as MessageEvent).data));
+			listeners.push([name, cb]);
+			if (es) listen(es, name, cb);
 		},
 	};
 }

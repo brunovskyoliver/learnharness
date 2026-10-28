@@ -17,6 +17,7 @@ import { CURRENT_CHAT_VERSION } from "../core/contracts.ts";
 import type { LhMessage } from "../core/native-messages.ts";
 import { activeProblemOf, danglingQuestionOf } from "../core/native-messages.ts";
 import { phaseAt3Lh } from "../core/phases.ts";
+import { waitingItemOf } from "../core/waiting.ts";
 
 function chatFile(id: string): string {
 	if (!/^[A-Za-z0-9_-]+$/.test(id)) throw new Error(`Invalid chat id: ${id}`);
@@ -118,6 +119,8 @@ function readSummary(id: string, cache: Map<string, CachedSummary>): ChatSummary
 					pendingQuestion: danglingQuestionOf(messages) !== null,
 					pendingProblem: activeProblemOf(messages) !== null,
 				};
+				const waiting = waitingItemOf(messages, fields.updatedAt);
+				if (waiting) summary.waiting = waiting;
 			} catch (err) {
 				console.error(`[chat ${id}] summary projection failed:`, err);
 			}

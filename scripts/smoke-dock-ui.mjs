@@ -96,6 +96,22 @@ try {
 			const props = field && Object.keys(field).find((key) => key.startsWith("__reactProps$"));
 			return chat?.dataset.chatId === expectedId && typeof field?.[props]?.onChange === "function";
 		}, {}, id);
+		// Long transcripts mount their earlier part in idle chunks after
+		// hydration. Gestures that overlap that growth measure scroll
+		// anchoring, not the dock (feature 002, US6): wait until the
+		// transcript stops growing.
+		await page.waitForFunction(() => new Promise((resolve) => {
+			let main = document.querySelector('[data-testid="dock-spacer"]')?.parentElement;
+			while (main && !/auto|scroll/.test(getComputedStyle(main).overflowY)) main = main.parentElement;
+			if (!main) return resolve(false);
+			let last = main.scrollHeight, since = performance.now();
+			const tick = () => {
+				if (main.scrollHeight !== last) { last = main.scrollHeight; since = performance.now(); }
+				if (performance.now() - since >= 600) resolve(true);
+				else requestAnimationFrame(tick);
+			};
+			requestAnimationFrame(tick);
+		}), { timeout: 30000 });
 	};
 	page.on("pageerror", (error) => errors.push(error.message));
 	page.on("request", (request) => { const url = new URL(request.url()); pendingRequests.set(request, { url: url.origin + url.pathname, type: request.resourceType() }); });

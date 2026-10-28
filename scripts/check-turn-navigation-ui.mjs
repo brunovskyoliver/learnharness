@@ -1,5 +1,21 @@
 import assert from "node:assert/strict";
 
+/** Long transcripts mount their earlier part in idle chunks after hydration;
+ *  wait until the scroller stops growing before measuring positions. */
+export async function waitForStableTranscript(page) {
+	await page.waitForFunction(() => new Promise((resolve) => {
+		let main = document.querySelector('[data-testid="dock-spacer"]')?.parentElement;
+		while (main && !/auto|scroll/.test(getComputedStyle(main).overflowY)) main = main.parentElement;
+		if (!main) return resolve(false);
+		let last = main.scrollHeight, since = performance.now();
+		const tick = () => {
+			if (main.scrollHeight !== last) { last = main.scrollHeight; since = performance.now(); }
+			if (performance.now() - since >= 600) resolve(true); else requestAnimationFrame(tick);
+		};
+		requestAnimationFrame(tick);
+	}), { timeout: 30000 });
+}
+
 /** Run against isolated fixture chats, through actual pointer/keyboard input. */
 export async function checkTurnNavigationUi(page, base, quizChatId, completedChatId) {
 	const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -64,8 +80,12 @@ export async function checkTurnNavigationUi(page, base, quizChatId, completedCha
 	// Session SSE and authored demo requests can remain open. The client
 	// turn rail below is the interaction readiness condition for these checks.
 	await page.goto(`${base}/chat/${completedChatId}`, { waitUntil: "domcontentloaded" });
-	await scroller();
 	await page.waitForSelector('[data-testid="session-turn-rail"]', { visible: true });
+	await waitForStableTranscript(page);
+	// Capture the scroller only once the client view is ready: before the
+	// streamed page is revealed and hydrated, the first dock spacer can sit in
+	// not-yet-revealed markup whose "scroller" never moves (feature 002, US6).
+	await scroller();
 	const selector = '[data-testid="session-turn-rail"] button';
 	const markers = await page.$$(selector);
 	assert.ok(markers.length > 3, "the rail contains session turns");
@@ -88,7 +108,8 @@ export async function checkTurnNavigationUi(page, base, quizChatId, completedCha
 		});
 		await markers[index].click();
 		await wait(500);
-		assert.ok(await page.evaluate(() => new Set(window.turnJumpPositions).size > 3), "turn navigation moves through intermediate scroll positions");
+		const jump = await page.evaluate(() => ({ distinct: new Set(window.turnJumpPositions).size, positions: window.turnJumpPositions.map(Math.round), connected: window.turnScroller.isConnected, height: window.turnScroller.scrollHeight }));
+		assert.ok(jump.distinct > 3, `turn navigation moves through intermediate scroll positions: ${JSON.stringify(jump)}`);
 		const result = await page.evaluate((id) => {
 			const answer = [...window.turnScroller.querySelectorAll('[data-answer-part-id]')].find((element) => element.dataset.answerPartId === id);
 			return { offset: answer.getBoundingClientRect().top - window.turnScroller.getBoundingClientRect().top, active: document.querySelector('[data-testid="session-turn-rail"] [aria-current="step"]')?.dataset.turnPartId };
@@ -133,4 +154,51 @@ export async function checkTurnNavigationUi(page, base, quizChatId, completedCha
 	assert.equal(await page.$eval('[data-testid="session-turn-rail"]', (element) => getComputedStyle(element).display), "none", "narrow sessions keep the gutter clear");
 	assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
 	console.log("PASS turn rail hides when the desktop gutter cannot fit");
+
+	// Feature 002 (US5): on phones, scroll-to-latest sits in its own ground
+	// band above the prompt bar, so it never covers transcript text.
+	for (const width of [320, 390]) {
+		await page.setViewport({ width, height: 844 });
+		await page.goto(`${base}/chat/${completedChatId}`, { waitUntil: "domcontentloaded" });
+		await page.waitForSelector('[data-testid="dock-shell"]', { visible: true });
+		// No rail on phones: wait until the live scroller holds a long transcript.
+		await page.waitForFunction(() => {
+			let main = document.querySelector('[data-testid="dock-spacer"]')?.parentElement;
+			while (main && !/auto|scroll/.test(getComputedStyle(main).overflowY)) main = main.parentElement;
+			window.turnScroller = main;
+			return Boolean(main && main.scrollHeight - main.clientHeight > 2000);
+		});
+		await waitForStableTranscript(page);
+		// A real gesture: programmatic scrollTop never leaves stick-to-bottom's lock.
+		await page.mouse.move(Math.round(width / 2), 200);
+		await page.mouse.wheel({ deltaY: -1500 });
+		await page.waitForSelector('[data-testid="scroll-band"] [aria-label="Scroll to latest"]', { visible: true });
+		await wait(200);
+		const band = await page.evaluate(() => {
+			const band = document.querySelector('[data-testid="scroll-band"]');
+			const button = band.querySelector('[aria-label="Scroll to latest"]');
+			const b = band.getBoundingClientRect();
+			const r = button.getBoundingClientRect();
+			const points = [[r.left + 2, r.top + r.height / 2], [r.right - 2, r.top + r.height / 2], [r.left + r.width / 2, r.top + 2], [r.left + r.width / 2, r.bottom - 2], [r.left + r.width / 2, r.top + r.height / 2]];
+			return {
+				buttons: document.querySelectorAll('[aria-label="Scroll to latest"]').length,
+				background: getComputedStyle(band).backgroundColor,
+				height: Math.round(b.height),
+				contains: b.left <= r.left && b.right >= r.right && b.top <= r.top && b.bottom >= r.bottom,
+				fullWidth: Math.round(b.left) <= 0 && Math.round(b.right) >= innerWidth - 1,
+				onTop: points.every(([x, y]) => button.contains(document.elementFromPoint(x, y))),
+				aboveShell: b.bottom <= document.querySelector('[data-testid="dock-shell"]').getBoundingClientRect().top + 1,
+			};
+		});
+		assert.equal(band.buttons, 1, "exactly one scroll-to-latest button");
+		assert.equal(band.background, "rgb(11, 11, 10)", "the band is the opaque ground, so no text shows under the button");
+		assert.equal(band.height, 48);
+		assert.ok(band.contains && band.fullWidth && band.onTop && band.aboveShell, `the button sits in its band above the prompt bar: ${JSON.stringify(band)}`);
+		await page.click('[aria-label="Scroll to latest"]');
+		await page.waitForFunction(() => !document.querySelector('[data-testid="scroll-band"]'));
+		assert.ok(await page.evaluate(() => window.turnScroller.scrollHeight - window.turnScroller.clientHeight - window.turnScroller.scrollTop < 2), "at the bottom the band is gone and the end is reachable");
+		assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+	}
+	await page.setViewport({ width: 800, height: 900 });
+	console.log("PASS phone scroll-to-latest band at 320 and 390 px covers no transcript text");
 }

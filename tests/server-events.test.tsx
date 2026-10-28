@@ -9,7 +9,7 @@
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { createNotifyHub, wireSource, type NotifySource } from "../components/server-events.tsx";
+import { createNotifyHub, openEventsChannel, wireSource, type NotifySource } from "../components/server-events.tsx";
 
 /** A source the test drives by hand — recordable, closable, honest. */
 function fakeSource() {
@@ -104,5 +104,56 @@ describe("notify hub + wireSource (the client channel wiring)", () => {
 		assert.equal(src.closed, false, "connected until the provider unmounts");
 		disconnect();
 		assert.equal(src.closed, true, "the effect's cleanup closes the source");
+	});
+});
+
+describe("openEventsChannel and the back/forward cache (feature 002, US6)", () => {
+	it("closes the stream when the page is hidden and opens a fresh one, with its listeners, when restored", () => {
+		const sources: FakeEventSource[] = [];
+		class FakeEventSource {
+			closed = false;
+			onopen: (() => void) | null = null;
+			listeners = new Map<string, (ev: { data: string }) => void>();
+			constructor(readonly url: string) { sources.push(this); }
+			addEventListener(name: string, cb: (ev: { data: string }) => void) { this.listeners.set(name, cb); }
+			close() { this.closed = true; }
+		}
+		const windowListeners = new Map<string, (event: { persisted?: boolean }) => void>();
+		const g = globalThis as Record<string, unknown>;
+		const saved = { EventSource: g.EventSource, window: g.window };
+		g.EventSource = FakeEventSource;
+		g.window = {
+			addEventListener: (type: string, cb: (event: { persisted?: boolean }) => void) => windowListeners.set(type, cb),
+			removeEventListener: (type: string) => windowListeners.delete(type),
+		};
+		try {
+			const hub = createNotifyHub();
+			let resyncs = 0;
+			hub.onResync(() => resyncs++);
+			const seen: unknown[] = [];
+			hub.subscribe("chats-changed", (payload) => seen.push(payload));
+			const disconnect = wireSource(openEventsChannel(), hub);
+			assert.equal(sources.length, 1);
+
+			windowListeners.get("pagehide")!({ persisted: true });
+			assert.equal(sources[0]!.closed, true, "a cached page holds no connection");
+
+			windowListeners.get("pageshow")!({ persisted: true });
+			assert.equal(sources.length, 2, "restored: a fresh stream");
+			sources[1]!.onopen?.();
+			assert.equal(resyncs, 1, "the reopen resyncs what the frozen page missed");
+			sources[1]!.listeners.get("chats-changed")!({ data: JSON.stringify({ id: "c1" }) });
+			assert.deepEqual(seen, [{ id: "c1" }], "listeners ride the new stream");
+
+			windowListeners.get("pageshow")!({ persisted: false });
+			assert.equal(sources.length, 2, "a normal load does not open a second stream");
+
+			disconnect();
+			assert.equal(sources[1]!.closed, true);
+			assert.equal(windowListeners.size, 0, "closing removes the page listeners");
+		} finally {
+			g.EventSource = saved.EventSource;
+			g.window = saved.window;
+		}
 	});
 });

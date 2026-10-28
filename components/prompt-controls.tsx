@@ -65,12 +65,11 @@ export function TurnStrip({ kind, children, className }: { kind?: string; childr
 	);
 }
 
-/** Zone 3: the inset answer field with its visible label. The focus ring
- *  surrounds this well only. */
-export function AnswerWell({ label, htmlFor, children }: { label?: string; htmlFor?: string; children: ReactNode }) {
+/** Zone 3: the answer field on the shell. Its placeholder says what to
+ *  write (owner, 2026-10-28: no separate label). */
+export function AnswerWell({ children }: { children: ReactNode }) {
 	return (
 		<div data-testid="answer-well" className="answer-well">
-			{label && <label htmlFor={htmlFor} className="answer-well-label">{label}</label>}
 			{children}
 		</div>
 	);

@@ -8,6 +8,7 @@
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import type { LhMessage } from "../native-messages.ts";
 import type { Phase3 } from "../phases.ts";
+import type { WaitingItem } from "../waiting.ts";
 import type { PlanNodeStatus, PlanTree } from "./plan.ts";
 import type { EmissionStats } from "./graph.ts";
 
@@ -284,6 +285,11 @@ export interface ChatSummary {
 	/** Practice sessions (2026-10-04): a posed problem with no conclude —
 	 *  the sidebar meta's "Problem waiting". Absent on teaching sessions. */
 	pendingProblem: boolean;
+	/** What waits for the learner (feature 002): an allowlisted projection
+	 *  of the unanswered question or open problem — kind, teaser text, posted
+	 *  time, tool call id; never options, answers or solutions. Absent when
+	 *  nothing waits. */
+	waiting?: WaitingItem;
 	/** The record's model-control settings — rides the list payload via the
 	 *  summary spread (the picker never needs it from here; the full record
 	 *  is its source). */

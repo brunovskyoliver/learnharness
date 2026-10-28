@@ -325,6 +325,39 @@ export function steerLiveChat(chatId: string, message: LhMessage): boolean {
 	return true;
 }
 
+/** Withdrawing one queued steer (feature 002) — the cancel route maps it. */
+export type CancelSteerOutcome = "cancelled" | "delivered" | "unknown" | "unsupported";
+
+/** Withdraw one undelivered user steer (feature 002, research R7). A parked
+ *  steer just leaves the registry. A steer handed to the live agent is
+ *  taken out of its steering queue: pi-agent-core has no single-item
+ *  removal, so the queue is cleared and every OTHER message (job results
+ *  included) is steered back in order. Synchronous, so it cannot interleave
+ *  with the agent's drain; absent from the queue means the agent already
+ *  drained it — delivered. Requires steeringMode "all" (teacher-agent.ts),
+ *  the mode this queue arithmetic was checked against. */
+export function cancelUserSteer(chatId: string, steerId: string): CancelSteerOutcome {
+	const s = state();
+	const queue = s.userSteers.get(chatId) ?? [];
+	const entry = queue.find((candidate) => candidate.message.id === steerId);
+	if (!entry) {
+		const record = stores.chatStore.getChat(chatId);
+		return record?.messages.some((message) => message.id === steerId) ? "delivered" : "unknown";
+	}
+	const live = s.liveAgents.get(chatId);
+	if (live && entry.handedTo === live) {
+		if (live.steeringMode !== "all") return "unsupported";
+		const queued = live.peekQueuedMessages();
+		if (!queued.some((message) => (message as { id?: string }).id === steerId)) return "delivered";
+		live.clearSteeringQueue();
+		for (const message of queued) if ((message as { id?: string }).id !== steerId) live.steer(message);
+	}
+	const kept = queue.filter((candidate) => candidate !== entry);
+	if (kept.length === 0) s.userSteers.delete(chatId);
+	else s.userSteers.set(chatId, kept);
+	return "cancelled";
+}
+
 /** TURN SETTLEMENT RECONCILIATION for user steers: delivered ids drop
  *  (the record holds them); undelivered stay parked for the next run.
  *  Memory-only by design (same tradeoff as job markers): a server

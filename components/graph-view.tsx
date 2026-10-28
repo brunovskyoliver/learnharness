@@ -64,54 +64,24 @@
  */
 
 import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { NotesImportErrors, useNotesImport } from "@/components/notes-import.tsx";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { FileTextIcon, ListTreeIcon, Loader2Icon, SearchIcon, SettingsIcon, UploadIcon, WaypointsIcon, XIcon } from "lucide-react";
+import { FileTextIcon, ListTreeIcon, Loader2Icon, SearchIcon, XIcon } from "lucide-react";
 import { loadGraphLayout, propositionSessionHref, type GraphCostSummary, type GraphNode, type GraphSnapshot } from "@/src/core";
 import { planCostLabel } from "@/components/usage-format";
 import type { GraphCanvasRenderer, GraphRenderSettings } from "./graph-canvas.ts";
 import { loadGraphRenderer } from "./graph-engine-loader";
 import { useReloadRetry } from "./reload-recovery";
 import { usePopoverDismiss } from "@/components/popover-dismiss";
-import { useActivity } from "@/components/activity-dock";
+import { onSettingsSaved } from "@/components/settings-signal";
 import { useServerEvent, useServerResync } from "@/components/server-events";
 import { MenuShell } from "@/components/menu-shell.tsx";
 import { DeleteNodeDialog } from "@/components/delete-node-dialog.tsx";
 import { LazyChainTableOverlay as ChainTableOverlay } from "@/components/lazy-chain-table";
+import { InOverlayHost } from "@/components/overlay-host";
+import { containModalTab } from "@/components/modal-focus";
 import { Hint } from "@/components/ui/hint";
-import {
-	ARROW_LENGTH_LADDER,
-	CHARGE_RANGE,
-	CLUSTER_LABEL_SIZE_LADDER,
-	CLUSTER_PULL_RANGE,
-	DEPTH_BASE_RADIUS_RANGE,
-	DEPTH_SPACING_RANGE,
-	DEPTH_STRENGTH_RANGE,
-	DEFAULT_RENDER_SETTINGS,
-	EDGE_WIDTH_LADDER,
-	GRAVITY_RANGE,
-	LABEL_SIZE_LADDER,
-	LABEL_ZOOM_LADDER,
-	LINK_DISTANCE_RANGE,
-	LINK_STRENGTH_RANGE,
-	NODE_SIZE_LADDER,
-	REGION_BITMAP_OPTIONS,
-	REGION_BLUR_LADDER,
-	fromLadderPosition,
-	snapToLadder,
-	toLadderPosition,
-	REGION_DILATION_LADDER,
-	REGION_EDGE_ALPHA_LADDER,
-	VELOCITY_DECAY_RANGE,
-	fromOffSliderPosition,
-	fromSliderPosition,
-	labelZoomDisplay,
-	sanitizeRenderSettings,
-	toOffSliderPosition,
-	toSliderPosition,
-} from "@/src/core";
+import { DEFAULT_RENDER_SETTINGS, sanitizeRenderSettings } from "@/src/core";
 
 /** The uniform node look (no state classes — canvas wants hex, not oklch):
  *  the accent color, until the state model lands. */
@@ -121,12 +91,11 @@ const NODE_COLOR_TOKEN = "--primary";
  *  key: the stored shape is the renderer's d3 transform {k, x, y}. */
 const CAMERA_STORAGE_KEY = "lh.graph.camera.v1";
 
-// ---- Render settings (the settings-panel controls) ------------------------
+// ---- Render settings ------------------------------------------------------
 //
 // The shape, defaults, sanitizer, and slider mappings live in
-// src/core/render-settings.ts (shared with the server store + tests).
-
-type RenderSettings = GraphRenderSettings;
+// src/core/render-settings.ts (shared with the server store + tests); the
+// controls live in Settings → Graph (components/settings/graph-display-section.tsx).
 
 /**
  * Pure filter predicate for the search panel: a node is visible when the
@@ -229,54 +198,6 @@ interface Selection {
 	/** Node position in container pixels (at click time; camera moves
 	 *  dismiss the card, so it never needs re-anchoring). */
 	anchor: { x: number; y: number };
-}
-
-/** One labeled range row for the rendering-settings panel. */
-/** Compact size display for the log sliders: "2", "1.6", "0.75". */
-function sizeDisplay(v: number): string {
-	return `${v >= 1 ? Math.round(v * 10) / 10 : Math.round(v * 100) / 100}`;
-}
-
-function SettingSlider({
-	label,
-	min,
-	max,
-	step,
-	value,
-	display,
-	onChange,
-	disabled,
-}: {
-	label: string;
-	min: number;
-	max: number;
-	step: number;
-	value: number;
-	/** Value display override (e.g. "1.5×" for zoom) — defaults to the raw number. */
-	display?: string;
-	onChange: (v: number) => void;
-	/** Dependency graying (user 2026-09-17): children dim + lock when
-	 *  their parent toggle/mode is off — consistently across sections. */
-	disabled?: boolean;
-}) {
-	return (
-		<label className={`flex flex-col gap-1${disabled ? " opacity-40" : ""}`}>
-			<span className="flex items-center justify-between text-sm text-muted-foreground">
-				{label}
-				<span className="tabular-nums">{display ?? value}</span>
-			</span>
-			<input
-				type="range"
-				min={min}
-				max={max}
-				step={step}
-				value={value}
-				disabled={disabled}
-				onChange={(e) => onChange(Number(e.target.value))}
-				className="h-1.5 w-full accent-primary"
-			/>
-		</label>
-	);
 }
 
 /** Compact token display: 45231 → "45.2k"; absent → "—". */
@@ -445,394 +366,6 @@ function GraphCostPanel({ costs }: { costs: GraphCostSummary }) {
 	);
 }
 
-/**
- * The rendering-settings gear + its collapsible panel (owner, graph-view
- * round 2): its own container at the top right, separate from the search
- * box and the import button — clicking the gear expands/collapses the
- * panel, which drops below the button, right-aligned with it.
- */
-function GraphSettingsControl({
-	settings,
-	changeSettings,
-}: {
-	settings: GraphRenderSettings;
-	changeSettings: (update: (cur: RenderSettings) => RenderSettings) => void;
-}) {
-	const [open, setOpen] = useState(false);
-	// Click anywhere outside (or Escape) closes the panel (2026-09-17) —
-	// the root wraps button + panel, so the toggle itself keeps working.
-	const rootRef = useRef<HTMLDivElement>(null);
-	usePopoverDismiss(rootRef, open, () => setOpen(false));
-	const regionTuning = settings.regions;
-	const physicsTuning = settings.physics;
-	return (
-		<div ref={rootRef} className="relative">
-			<Hint
-				// User language (tooltip wave) — "rendering" is internal.
-				label="Graph display settings"
-				side="bottom"
-			>
-				<button
-				type="button"
-				aria-expanded={open}
-				onClick={() => setOpen((o) => !o)}
-				className={`flex size-9 items-center justify-center rounded-xl border bg-card transition-colors hover:bg-accent ${
-					open ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-				}`}
-			>
-				<SettingsIcon className="size-4" />
-			</button>
-			</Hint>
-			{open && (
-				// Viewport-capped + internally scrollable — the coverage
-				// dropdown's exact pattern (owner, 2026-09-17): max-h keeps a
-				// floor of free space above the window bottom at any height,
-				// and the overflow-y-auto column (which also zeroes the flex
-				// item's min-height) scrolls instead of stretching the page.
-				// w-72 + inner pr (owner, 2026-09-20): the scrollbar used to
-				// press against the content — the panel widens so the scroll
-				// gutter gets real air. Spacing concentric: content -> 10px
-				// (pr-2.5) -> scrollbar -> 10px (p-2.5) -> panel edge. The
-				// scrollbar itself does NOT move: it stays pinned at the same
-				// distance from the panel's right border.
-				<div className="absolute right-0 top-full mt-2 flex max-h-[60vh] w-72 flex-col rounded-xl border bg-card p-2.5 ">
-					<div className="flex flex-col gap-2 overflow-y-auto pr-2.5">
-							{/* Size/zoom/region sliders: LADDER-mapped 0-100, step 10 (11
-							    stops, every DEFAULT dead-center at 50, every value a nice
-							    number — src/core/render-settings.ts). Physics keeps the
-							    fine-grained log sliders (step 5). */}
-							<SettingSlider
-								label="Node size"
-								min={0}
-								max={100}
-								step={10}
-								value={toLadderPosition(settings.nodeSize, NODE_SIZE_LADDER)}
-								display={sizeDisplay(settings.nodeSize)}
-								onChange={(p) =>
-									changeSettings((cur) => ({ ...cur, nodeSize: fromLadderPosition(p, NODE_SIZE_LADDER) }))}
-							/>
-							<SettingSlider
-								label="Edge width"
-								min={0}
-								max={100}
-								step={10}
-								value={toLadderPosition(settings.edgeWidth, EDGE_WIDTH_LADDER)}
-								display={sizeDisplay(settings.edgeWidth)}
-								onChange={(p) =>
-									changeSettings((cur) => ({ ...cur, edgeWidth: fromLadderPosition(p, EDGE_WIDTH_LADDER) }))}
-							/>
-							<SettingSlider
-								label="Arrowhead size"
-								min={0}
-								max={100}
-								step={10}
-								value={toLadderPosition(settings.arrowLength, ARROW_LENGTH_LADDER)}
-								display={sizeDisplay(settings.arrowLength)}
-								onChange={(p) =>
-									changeSettings((cur) => ({ ...cur, arrowLength: fromLadderPosition(p, ARROW_LENGTH_LADDER) }))}
-							/>
-							<SettingSlider
-								label="Label size"
-								min={0}
-								max={100}
-								step={10}
-								value={toLadderPosition(settings.labelSize, LABEL_SIZE_LADDER)}
-								display={sizeDisplay(settings.labelSize)}
-								onChange={(p) =>
-									changeSettings((cur) => ({ ...cur, labelSize: fromLadderPosition(p, LABEL_SIZE_LADDER) }))}
-							/>
-							{/* Display is absolute (ratio / 0.5): "1×" is the default, dead-center (owner, 2026-10-07). */}
-							<SettingSlider
-								label="Labels until zoom"
-								min={0}
-								max={100}
-								step={10}
-								value={toLadderPosition(settings.labelZoom, LABEL_ZOOM_LADDER)}
-								display={labelZoomDisplay(settings.labelZoom)}
-								onChange={(p) =>
-									changeSettings((cur) => ({ ...cur, labelZoom: fromLadderPosition(p, LABEL_ZOOM_LADDER) }))}
-							/>
-							{/* Regions: the blurred cluster tints. Sliders + a fixed-set
-						    dropdown for the bitmap resolution (it's a discrete
-						    choice, not a free number). Server-persisted like the
-						    sizes; every range end was sweep-validated on the real
-						    graph. The enable switch is a COMPUTE switch: off skips
-						    the whole build (splat/blur/readback/blit), not just
-						    the paint. */}
-						<div className="mt-1.5 flex flex-col gap-1.5 pt-1.5">
-							<span className="text-sm font-medium text-muted-foreground">
-								Regions
-							</span>
-							<label className="flex cursor-pointer items-center justify-between text-sm text-muted-foreground">
-								<span>Background colors</span>
-								<input
-									type="checkbox"
-									checked={settings.regions.enabled}
-									onChange={(e) =>
-										changeSettings((cur) => ({
-											...cur,
-											regions: { ...cur.regions, enabled: e.target.checked },
-										}))}
-										className="accent-primary"
-								/>
-							</label>
-							<SettingSlider
-								label="Dilation"
-								disabled={!regionTuning.enabled}
-								min={0}
-								max={100}
-								step={10}
-								value={toLadderPosition(regionTuning.dilation, REGION_DILATION_LADDER)}
-								display={sizeDisplay(regionTuning.dilation)}
-								onChange={(p) =>
-									changeSettings((cur) => ({
-										...cur,
-										regions: { ...cur.regions, dilation: fromLadderPosition(p, REGION_DILATION_LADDER) },
-									}))}
-							/>
-							<SettingSlider
-								label="Blur"
-								disabled={!regionTuning.enabled}
-								min={0}
-								max={100}
-								step={10}
-								value={toLadderPosition(regionTuning.blur, REGION_BLUR_LADDER)}
-								display={sizeDisplay(regionTuning.blur)}
-								onChange={(p) =>
-									changeSettings((cur) => ({
-										...cur,
-										regions: { ...cur.regions, blur: fromLadderPosition(p, REGION_BLUR_LADDER) },
-									}))
-								}
-							/>
-							<SettingSlider
-								label="Edge alpha"
-								disabled={!regionTuning.enabled}
-								min={0}
-								max={100}
-								step={10}
-								value={toLadderPosition(regionTuning.edgeAlpha, REGION_EDGE_ALPHA_LADDER)}
-								display={sizeDisplay(regionTuning.edgeAlpha)}
-								onChange={(p) =>
-									changeSettings((cur) => ({
-										...cur,
-										regions: { ...cur.regions, edgeAlpha: fromLadderPosition(p, REGION_EDGE_ALPHA_LADDER) },
-									}))}
-							/>
-							<label
-								className={`flex items-center justify-between gap-2 text-sm text-muted-foreground${!regionTuning.enabled ? " opacity-40" : ""}`}
-							>
-								<span>Bitmap resolution</span>
-								<select
-									disabled={!regionTuning.enabled}
-									className="rounded-md border bg-background px-1.5 py-0.5 text-sm tabular-nums text-foreground"
-									value={regionTuning.bitmap}
-									onChange={(e) =>
-										changeSettings((cur) => ({
-											...cur,
-											regions: { ...cur.regions, bitmap: Number(e.target.value) },
-										}))
-									}
-								>
-									{REGION_BITMAP_OPTIONS.map((o) => (
-										<option key={o} value={o}>
-											{o}
-										</option>
-									))}
-								</select>
-							</label>
-							{/* Cluster labels moved here 2026-09-16 (user: cluster
-							    stuff lives in the regions section). Decoupled from
-							    the Background colors switch above — labels follow
-							    their own clusterLabels toggle. Size is screen px
-							    (constant at any zoom, unlike node labels). */}
-							<label className="flex cursor-pointer items-center justify-between text-sm text-muted-foreground">
-								<span>Cluster labels</span>
-								<input
-									type="checkbox"
-									checked={settings.clusterLabels}
-									onChange={(e) => changeSettings((cur) => ({ ...cur, clusterLabels: e.target.checked }))}
-									className="accent-primary"
-								/>
-							</label>
-							<SettingSlider
-								label="Cluster label size"
-								disabled={!settings.clusterLabels}
-								min={0}
-								max={100}
-								step={10}
-								value={toLadderPosition(settings.clusterLabelSize, CLUSTER_LABEL_SIZE_LADDER)}
-								display={sizeDisplay(settings.clusterLabelSize)}
-								onChange={(p) =>
-									changeSettings((cur) => ({
-										...cur,
-										clusterLabelSize: fromLadderPosition(p, CLUSTER_LABEL_SIZE_LADDER),
-									}))}
-							/>
-						</div>
-						{/* Physics: the live sim's forces. Every value feeds the SAME
-						    engine the server settle runs (createGraphSimulation);
-						    changing one rebuilds the sim from the current positions —
-						    drag mid-settle re-anneals, pins survive. Sliders over
-						    sweep-validated ranges (src/core/render-settings.ts):
-						    range ends and all four corners settle cleanly — no NaN,
-						    no explosion, no non-settle. Repulsion is displayed as
-						    the negative it is; cluster pull's far left = off.
-						    Order (user 2026-09-17): general forces first; depth
-						    anchor + its gray-out-able controls last. */}
-						<div className="mt-1.5 flex flex-col gap-1.5 pt-1.5">
-							<span className="text-sm font-medium text-muted-foreground">
-								Physics
-							</span>
-							<SettingSlider
-								label="Node repulsion"
-								min={0}
-								max={100}
-								step={5}
-								value={toSliderPosition(-physicsTuning.chargeStrength, -CHARGE_RANGE.max, -CHARGE_RANGE.min)}
-								display={`-${Math.round(-physicsTuning.chargeStrength)}`}
-								onChange={(p) =>
-									changeSettings((cur) => ({
-										...cur,
-										physics: { ...cur.physics, chargeStrength: -fromSliderPosition(p, -CHARGE_RANGE.max, -CHARGE_RANGE.min) },
-									}))}
-							/>
-							<SettingSlider
-								label="Edge attraction"
-								min={0}
-								max={100}
-								step={5}
-								value={toSliderPosition(physicsTuning.linkStrength, LINK_STRENGTH_RANGE.min, LINK_STRENGTH_RANGE.max)}
-								display={sizeDisplay(physicsTuning.linkStrength)}
-								onChange={(p) =>
-									changeSettings((cur) => ({
-										...cur,
-										physics: { ...cur.physics, linkStrength: fromSliderPosition(p, LINK_STRENGTH_RANGE.min, LINK_STRENGTH_RANGE.max) },
-									}))}
-							/>
-							<SettingSlider
-								label="Edge length"
-								min={0}
-								max={100}
-								step={5}
-								value={toSliderPosition(physicsTuning.linkDistance, LINK_DISTANCE_RANGE.min, LINK_DISTANCE_RANGE.max)}
-								display={sizeDisplay(physicsTuning.linkDistance)}
-								onChange={(p) =>
-									changeSettings((cur) => ({
-										...cur,
-										physics: { ...cur.physics, linkDistance: fromSliderPosition(p, LINK_DISTANCE_RANGE.min, LINK_DISTANCE_RANGE.max) },
-									}))}
-							/>
-							<SettingSlider
-								label="Central pull"
-								min={0}
-								max={100}
-								step={5}
-								value={toSliderPosition(physicsTuning.gravity, GRAVITY_RANGE.min, GRAVITY_RANGE.max)}
-								display={sizeDisplay(physicsTuning.gravity)}
-								onChange={(p) =>
-									changeSettings((cur) => ({
-										...cur,
-										physics: { ...cur.physics, gravity: fromSliderPosition(p, GRAVITY_RANGE.min, GRAVITY_RANGE.max) },
-									}))}
-							/>
-							<SettingSlider
-								label="Cluster pull"
-								min={0}
-								max={100}
-								step={5}
-								value={toOffSliderPosition(physicsTuning.clusterPull, CLUSTER_PULL_RANGE.min, CLUSTER_PULL_RANGE.max)}
-								display={physicsTuning.clusterPull <= 0 ? "off" : sizeDisplay(physicsTuning.clusterPull)}
-								onChange={(p) =>
-									changeSettings((cur) => ({
-										...cur,
-										physics: { ...cur.physics, clusterPull: fromOffSliderPosition(p, CLUSTER_PULL_RANGE.min, CLUSTER_PULL_RANGE.max) },
-									}))}
-							/>
-							<SettingSlider
-								label="Friction"
-								min={0}
-								max={100}
-								step={5}
-								value={toSliderPosition(physicsTuning.velocityDecay, VELOCITY_DECAY_RANGE.min, VELOCITY_DECAY_RANGE.max)}
-								display={sizeDisplay(physicsTuning.velocityDecay)}
-								onChange={(p) =>
-									changeSettings((cur) => ({
-										...cur,
-										physics: { ...cur.physics, velocityDecay: fromSliderPosition(p, VELOCITY_DECAY_RANGE.min, VELOCITY_DECAY_RANGE.max) },
-									}))}
-							/>
-							{/* Depth anchor LAST (user 2026-09-17): general
-							    forces first, then the mode + its conditional
-							    controls at the very bottom — the grayed group reads
-							    as a self-contained sub-section. */}
-							<label className="flex items-center justify-between gap-2 text-sm">
-								Depth anchor
-								<select
-									className="rounded border bg-background px-1 py-0.5 text-sm"
-									value={physicsTuning.depthMode}
-									onChange={(e) =>
-										changeSettings((cur) => ({
-											...cur,
-											physics: { ...cur.physics, depthMode: e.target.value as GraphRenderSettings["physics"]["depthMode"] },
-										}))
-									}
-								>
-									<option value="off">Off</option>
-									<option value="vertical">Vertical (up)</option>
-									<option value="radial">Radial (outward)</option>
-								</select>
-							</label>
-							<SettingSlider
-								label="Depth strength"
-								disabled={physicsTuning.depthMode === "off"}
-								min={0}
-								max={100}
-								step={5}
-								value={toSliderPosition(physicsTuning.depthStrength, DEPTH_STRENGTH_RANGE.min, DEPTH_STRENGTH_RANGE.max)}
-								display={sizeDisplay(physicsTuning.depthStrength)}
-								onChange={(p) =>
-									changeSettings((cur) => ({
-										...cur,
-										physics: { ...cur.physics, depthStrength: fromSliderPosition(p, DEPTH_STRENGTH_RANGE.min, DEPTH_STRENGTH_RANGE.max) },
-									}))}
-							/>
-							<SettingSlider
-								label="Depth spacing"
-								disabled={physicsTuning.depthMode === "off"}
-								min={0}
-								max={100}
-								step={5}
-								value={toSliderPosition(physicsTuning.depthSpacing, DEPTH_SPACING_RANGE.min, DEPTH_SPACING_RANGE.max)}
-								display={sizeDisplay(physicsTuning.depthSpacing)}
-								onChange={(p) =>
-									changeSettings((cur) => ({
-										...cur,
-										physics: { ...cur.physics, depthSpacing: fromSliderPosition(p, DEPTH_SPACING_RANGE.min, DEPTH_SPACING_RANGE.max) },
-									}))}
-							/>
-							<SettingSlider
-								label="Base ring radius"
-								disabled={physicsTuning.depthMode !== "radial"}
-								min={0}
-								max={100}
-								step={5}
-								value={toSliderPosition(physicsTuning.depthBaseRadius, DEPTH_BASE_RADIUS_RANGE.min, DEPTH_BASE_RADIUS_RANGE.max)}
-								display={sizeDisplay(physicsTuning.depthBaseRadius)}
-								onChange={(p) =>
-									changeSettings((cur) => ({
-										...cur,
-										physics: { ...cur.physics, depthBaseRadius: fromSliderPosition(p, DEPTH_BASE_RADIUS_RANGE.min, DEPTH_BASE_RADIUS_RANGE.max) },
-									}))}
-							/>
-						</div>
-					</div>
-				</div>
-			)}
-		</div>
-	);
-}
-
 /** The top-chrome actions row's body (empty-graph chrome wave, owner
  *  2026-09-25): Import Notes renders ALWAYS (graph enabled) — it's the
  *  one action that works on an empty graph, the entry point itself;
@@ -846,12 +379,7 @@ export function GraphChromeRow({
 	query,
 	onQuery,
 	noMatch,
-	importing,
 	searchInputRef,
-	fileInputRef,
-	onImportFiles,
-	settings,
-	changeSettings,
 	onOpenChains,
 }: {
 	isEmpty: boolean;
@@ -860,12 +388,7 @@ export function GraphChromeRow({
 	/** The search panel's "No matching ideas." note (computed by the
 	 *  wrapper — it owns visibleIds + the snapshot). */
 	noMatch: boolean;
-	importing: boolean;
 	searchInputRef: React.RefObject<HTMLInputElement | null>;
-	fileInputRef: React.RefObject<HTMLInputElement | null>;
-	onImportFiles: (files: FileList | null) => void;
-	settings: GraphRenderSettings;
-	changeSettings: (update: (cur: RenderSettings) => RenderSettings) => void;
 	/** Opens the chain table overlay (the chains-overlay plan,
 	 *  2026-09-29). */
 	onOpenChains: () => void;
@@ -963,51 +486,25 @@ export function GraphChromeRow({
 					</Hint>
 				</div>
 			)}
-			{/* Import notes — its own container (36px, header band); ALWAYS
-			    rendered (the empty-graph ruling above — the entry point). */}
-			<div className={cn("shrink-0 rounded-xl border bg-card px-1 py-[3px] ", mobileSearchOpen && "max-sm:hidden")}>
-				<input
-					ref={fileInputRef}
-					type="file"
-					multiple
-					accept=".md,.markdown,.txt"
-					className="hidden"
-					onChange={(e) => {
-						onImportFiles(e.target.files);
-						e.target.value = ""; // allow re-picking the same file
-					}}
-				/>
-				<Hint
-					// The one button whose action isn't obvious from its label:
-					// the missing fact is where imports go (owner, subtlety
-					// round 2026-09-25).
-					label="Import notes into the graph"
-					side="bottom"
-				>
-					<button
-						type="button"
-						disabled={importing}
-						onClick={() => fileInputRef.current?.click()}
-						data-testid="import-notes"
-					className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent disabled:opacity-50"
-				>
-						<UploadIcon className="size-4" />
-						<span className="max-sm:sr-only">{importing ? "Importing…" : "Import notes…"}</span>
-					</button>
-				</Hint>
-			</div>
-			{!isEmpty && (
-				// Rendering settings — own component; the gear toggles it. The
-				// gear sits at the far right (owner, round 3) so its panel drops
-				// at the very right edge, over less of the graph. The fade wrapper
-				// is a plain shrink-0 flex child — the panel itself positions
-				// within GraphSettingsControl's own relative root, unaffected.
-				<div className={cn("graph-chrome-fade-in shrink-0", mobileSearchOpen && "max-sm:hidden")}>
-					<GraphSettingsControl settings={settings} changeSettings={changeSettings} />
-				</div>
-			)}
 		</>
 	);
+}
+
+export interface GraphSection {
+	expanded: boolean;
+	/** Escape or Close: the caller collapses and restores focus to Expand. */
+	onCollapse: () => void;
+}
+
+export interface GraphStats {
+	ideas: number;
+	chains: number;
+}
+
+/** "38 ideas · 12 chains" (owner 2026-10-28); null for an empty graph. */
+export function graphStatsLabel(stats: GraphStats | null): string | null {
+	if (!stats || stats.ideas === 0) return null;
+	return `${stats.ideas} ${stats.ideas === 1 ? "idea" : "ideas"} · ${stats.chains} ${stats.chains === 1 ? "chain" : "chains"}`;
 }
 
 export function GraphView({
@@ -1016,7 +513,15 @@ export function GraphView({
 	practiceSelection,
 	onPracticeSelectionChange,
 	onChainSelectClose,
+	section,
+	onStats,
 }: {
+	/** Home's graph section (feature 002): a fixed-height box in the page,
+	 *  or — the same mounted element, so camera, selection and search
+	 *  survive — a full-viewport layer while expanded. Absent = full bleed. */
+	section?: GraphSection;
+	/** Counts for the section header, reported on every snapshot. */
+	onStats?: (stats: GraphStats) => void;
 	/** Tenant-scoped server seed avoids an extra initial graph round trip. */
 	initialSnapshot?: GraphSnapshot;
 	/** PRACTICE SELECT (owner vision, 2026-10-04): the LIFTED, persistent
@@ -1044,9 +549,9 @@ export function GraphView({
 	// The chrome owns mobile expansion before the find shortcut focuses search.
 	const searchInputRef = useRef<HTMLInputElement>(null);
 	// Render settings: SERVER-persisted (data/render-settings.json via
-	// /api/graph/render-settings) — sizes AND the region/physics sections
-	// (user-facing since 2026-09-13; the dev-session era is over). Loaded
-	// once after mount; every user change saves back, debounced. Defaults
+	// /api/graph/render-settings) — sizes AND the region/physics sections.
+	// Edited in Settings → Graph → Display (feature 002); this view reads
+	// them after mount and again whenever that section saves. Defaults
 	// render until the load resolves — a fraction of a second at worst.
 	const [settings, setSettings] = useState<GraphRenderSettings>(DEFAULT_RENDER_SETTINGS);
 	// The two nested sections, unpacked for the renderer feed effects
@@ -1055,53 +560,22 @@ export function GraphView({
 	const physicsTuning = settings.physics;
 	const settingsRef = useRef(settings);
 	settingsRef.current = settings;
-	// True once the user has moved a control this mount: the server copy
-	// must never clobber a (possibly newer) local change.
-	const userTouched = useRef(false);
-	// True once the initial GET settled — saves are held back until then,
-	// so merely mounting never PUTs defaults over the server copy.
-	const serverLoaded = useRef(false);
-	const savePending = useRef(false);
-	const changeSettings = (update: (cur: RenderSettings) => RenderSettings) => {
-		userTouched.current = true;
-		setSettings(update);
-	};
-	const saveToServer = (s: RenderSettings) => {
-		fetch("/api/graph/render-settings", {
-			method: "PUT",
-			headers: { "content-type": "application/json" },
-			body: JSON.stringify(s),
-		}).catch((err) => console.error("[graph] settings save failed:", err));
-	};
-	useEffect(() => {
+	const readRenderSettings = useCallback(() => {
 		fetch("/api/graph/render-settings")
 			.then((res) => (res.ok ? (res.json() as Promise<unknown>) : null))
 			.then((raw) => {
-				// Apply only if the user hasn't already moved a slider —
-				// if they outran the network, their change wins.
-				if (raw !== null && !userTouched.current) setSettings(sanitizeRenderSettings(raw));
+				if (raw !== null) setSettings(sanitizeRenderSettings(raw));
 			})
 			.catch(() => {
-				// server unreachable → in-memory defaults keep working
-			})
-			.finally(() => {
-				serverLoaded.current = true;
-				// A change made during the fetch was held back — send now.
-				if (savePending.current) {
-					savePending.current = false;
-					saveToServer(settingsRef.current);
-				}
+				// server unreachable → the current settings keep working
 			});
 	}, []);
 	useEffect(() => {
-		if (!userTouched.current) return; // mount-run / server-apply: no save
-		if (!serverLoaded.current) {
-			savePending.current = true; // hold until the GET settles
-			return;
-		}
-		const id = setTimeout(() => saveToServer(settings), 400);
-		return () => clearTimeout(id);
-	}, [settings]);
+		readRenderSettings();
+		return onSettingsSaved((section) => {
+			if (section === "graph") readRenderSettings();
+		});
+	}, [readRenderSettings]);
 
 	// The renderer instance lives across snapshot refetches and settings
 	// changes (its camera is never reset by either); `posRef` carries the
@@ -1152,23 +626,9 @@ export function GraphView({
 		};
 	}, [refreshTick, initialSnapshot]);
 
-	// Notes import (the format-agnostic front door): file picker → POST
-	// /api/graph/import; the runs surface in the status chips below, and the
-	// graph refetches when they finish (the runs-empty transition).
-	const fileInputRef = useRef<HTMLInputElement>(null);
-	// The dock's start-site nudge (accuracy wave, 2026-09-19): the import
-	// POST awaits the WHOLE pipeline server-side, so the run registers long
-	// before the response — nudge at click and again at +600ms to catch the
-	// start; from its first setPhase the run announces itself on the events
-	// channel (S5), and the dock rides those announcements thereafter.
-	const refreshActivity = useActivity().refresh;
-	const notesImport = useNotesImport({
-		onStart: () => {
-			refreshActivity();
-			setTimeout(() => refreshActivity(), 600);
-		},
-	});
-	const { importing, onImportFiles } = notesImport;
+	// Notes import lives in Home's section header (feature 002); its runs
+	// surface in the status chips below, and the graph refetches when they
+	// finish (the runs-empty transition).
 
 	// Background pipeline status: read /api/graph/status; whenever a run
 	// LEAVES the feed (finished / aborted / failed), refetch the graph.
@@ -1366,6 +826,38 @@ export function GraphView({
 	// away (the empty-graph placeholder replaces it). The callbacks are
 	// created once and read through refs, so they never go stale.
 	const isEmpty = snapshot === null || snapshot.nodes.length === 0;
+
+	// Home's section header counts (ideas · chains), per snapshot.
+	const onStatsRef = useRef(onStats);
+	onStatsRef.current = onStats;
+	useEffect(() => {
+		if (snapshot) onStatsRef.current?.({ ideas: snapshot.propositions.length, chains: snapshot.chains.length });
+	}, [snapshot]);
+
+	// Expanded (feature 002): the same element becomes a full-viewport
+	// layer — focus moves to Close and stays inside; Escape collapses only
+	// when no inner layer (chain table, menus, dialogs, node menu) is up.
+	const expanded = section?.expanded ?? false;
+	const rootRef = useRef<HTMLDivElement | null>(null);
+	const closeRef = useRef<HTMLButtonElement | null>(null);
+	const collapseRef = useRef(section?.onCollapse);
+	collapseRef.current = section?.onCollapse;
+	const innerLayerOpen = chainsOpen || ctxNode !== null || deletingNode !== null;
+	useEffect(() => {
+		if (expanded) closeRef.current?.focus();
+	}, [expanded]);
+	useEffect(() => {
+		if (!expanded) return;
+		const onKeyDown = (event: KeyboardEvent) => {
+			if (event.key !== "Escape" || event.defaultPrevented || innerLayerOpen) return;
+			if (document.querySelector("[data-lh-menu], [role='dialog'][aria-modal='true']:not([data-expanded])")) return;
+			event.preventDefault();
+			event.stopPropagation();
+			collapseRef.current?.();
+		};
+		document.addEventListener("keydown", onKeyDown);
+		return () => document.removeEventListener("keydown", onKeyDown);
+	}, [expanded, innerLayerOpen]);
 	useEffect(() => {
 		if (isEmpty || engineFailed) return;
 		const canvas = canvasRef.current;
@@ -1585,7 +1077,33 @@ export function GraphView({
 	}, [selected]);
 
 	return (
-		<div className="relative h-full w-full" data-graph-ready={snapshot !== null && (isEmpty || (readySnapshot === snapshot && !engineFailed)) ? "true" : undefined}>
+		<div
+			ref={rootRef}
+			data-testid={section ? "graph-section-view" : undefined}
+			data-expanded={expanded ? "true" : undefined}
+			role={expanded ? "dialog" : undefined}
+			aria-modal={expanded || undefined}
+			aria-label={expanded ? "Knowledge graph" : undefined}
+			tabIndex={expanded ? -1 : undefined}
+			onKeyDown={expanded ? (event) => containModalTab(event, event.currentTarget) : undefined}
+			className={cn(
+				"relative w-full",
+				!section ? "h-full" : expanded ? "fixed inset-0 z-50 h-dvh bg-background outline-none" : "h-[260px] overflow-hidden rounded-[10px] bg-card sm:h-[420px]",
+			)}
+			data-graph-ready={snapshot !== null && (isEmpty || (readySnapshot === snapshot && !engineFailed)) ? "true" : undefined}
+		>
+			{expanded && (
+				<button
+					ref={closeRef}
+					type="button"
+					onClick={section?.onCollapse}
+					data-testid="graph-collapse"
+					className="lh-no-drag lh-closed-toggle prompt-secondary absolute left-2 top-2 z-20 gap-2 bg-card"
+				>
+					<XIcon aria-hidden="true" className="size-4" />
+					Close
+				</button>
+			)}
 			{!isEmpty && engineFailed && <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center px-5">
 				<div role="alert" className="pointer-events-auto flex max-h-[50dvh] max-w-md flex-col items-center gap-3 overflow-y-auto rounded-xl bg-card p-5 text-center text-sm">
 				<p>The knowledge graph could not load. Reload to retry. Your draft will be saved before reloading.</p>
@@ -1596,13 +1114,7 @@ export function GraphView({
 			{isEmpty ? (
 				// The empty graph keeps the first action clear without zero-valued statistics.
 				<div className="flex h-full w-full items-center justify-center px-4">
-					<Empty>
-						<EmptyHeader>
-							<EmptyMedia variant="icon"><WaypointsIcon /></EmptyMedia>
-							<EmptyTitle>Knowledge graph</EmptyTitle>
-							<EmptyDescription>Start a session or import notes to build your graph.</EmptyDescription>
-						</EmptyHeader>
-					</Empty>
+					<p data-testid="graph-empty" className="text-center text-ink-2">Start a session or import notes to build your graph.</p>
 				</div>
 			) : (
 				<div ref={containerRef} className="relative h-full w-full">
@@ -1691,7 +1203,7 @@ export function GraphView({
 			    against the full-bleed parent) — the row NEVER wraps (owner
 			    rejected the two-row fold). Desktop search shrinks within this
 			    row; the expanded phone search overlays it at viewport width. */}
-			<div className="lh-no-drag lh-wco-floating absolute right-2 top-2 z-10 flex max-w-[calc(100%-5.5rem)] flex-col items-end gap-2">
+			<div className={cn("lh-no-drag absolute right-2 top-2 z-10 flex flex-col items-end gap-2", section && !expanded ? "max-w-[calc(100%-1rem)]" : "lh-wco-floating max-w-[calc(100%-5.5rem)]")}>
 			{/* z-20 (2026-09-20): the row paints above the cost number below
 			    it — without this, the later-in-DOM cost control layered over
 			    the settings/coverage dropdowns (owner report), still hoverable
@@ -1706,17 +1218,11 @@ export function GraphView({
 					query={query}
 					onQuery={setQuery}
 					noMatch={snapshot !== null && visibleIds.size === 0 && query.trim() !== ""}
-					importing={importing}
 					searchInputRef={searchInputRef}
-					fileInputRef={fileInputRef}
-					onImportFiles={onImportFiles}
-					settings={settings}
-					changeSettings={changeSettings}
 					onOpenChains={() => setChainsOpen(true)}
 				/>
 			</div>
 
-			<NotesImportErrors errors={notesImport.errors} />
 			{/* Top-right tail (owner, 2026-09-20): the pipeline cost number —
 			    just a number, hover-highlighted, dropdown breakdown — then
 			    the running-pipeline pills under it. Lives BELOW the actions
@@ -1798,7 +1304,7 @@ export function GraphView({
 			    surface covering a drag band must paint AFTER everything it
 			    covers. (DeleteNodeDialog is body-portaled — DOM-irrelevant
 			    here.) */}
-			<ChainTableOverlay
+			<InOverlayHost inPlace={expanded}><ChainTableOverlay
 				open={chainsOpen && !isEmpty}
 				nodes={snapshot?.propositions ?? []}
 				chains={snapshot?.chains ?? []}
@@ -1821,6 +1327,7 @@ export function GraphView({
 					}
 					onPracticeSelectionChange?.(picked);
 				}}
-			/>		</div>
+			/></InOverlayHost>
+		</div>
 	);
 }
