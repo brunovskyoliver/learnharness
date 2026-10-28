@@ -6,6 +6,7 @@ import { VisualCard } from "@/components/artifacts/visual-card";
 import { ProbeDoneCard } from "@/components/artifacts/probe-done-card";
 import { ToolCallCard } from "@/components/artifacts/tool-call-card";
 import { PlotCard } from "@/components/artifacts/plot-card";
+import { MathCheckCard } from "@/components/artifacts/math-check-card";
 import { ProblemCard, ConcludeCard } from "@/components/practice-cards";
 
 /**
@@ -31,6 +32,9 @@ export const artifactRenderers: Record<string, ComponentType<ArtifactPartProps>>
 	visual: VisualCard,
 	// Quick plots (feature 005): the checked plot itself, as a demo.
 	plot: PlotCard,
+	// Math checks (feature 007): the verdict row; hidden while its
+	// question waits for an answer (the view decides, part.mathCheck).
+	math_check: MathCheckCard,
 	// The probe conclusion: the assessment belongs to the learner as much as
 	// to the transcript (docs/probe-teach-split.md §2). Plain v1 card.
 	probe_done: ProbeDoneCard,

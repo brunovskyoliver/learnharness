@@ -351,5 +351,7 @@ export interface ArtifactPartProps {
 		 *  the modelSolution committed at POSE time, folded onto the part by
 		 *  projectView — the reveal is never re-authored. */
 		reveal?: unknown;
+		/** Feature 007: the answer this part reveals was checked with Wolfram. */
+		wolframChecked?: true;
 	};
 }

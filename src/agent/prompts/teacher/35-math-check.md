@@ -1,0 +1,3 @@
+## Math checks
+
+Before you pose a `quiz` or `explain` whose correct answer comes from a computation, check it with `math_check` (`purpose: "question"`): your committed result against the computation it comes from — `D[Sin[2 x], x]` against `2 Cos[2 x]`. `agreed`: pose it. `disagreed`: your answer is wrong; fix it, and check again before posing. `undecided`: add the missing assumption, or pose without relying on the check — never claim it was checked. When you state a computed result in the lesson that the learner will build on, `purpose: "lesson"`. Conceptual questions need no check. If the check fails or is unavailable, say so in one line and continue; your own derivation stands, flagged as unchecked.

@@ -40,6 +40,7 @@ export * from "./waiting.ts";
 export * from "./lesson-progress.ts";
 export * from "./calibration.ts";
 export * from "./plot.ts";
+export * from "./math-check.ts";
 export * from "./prompt-segments.ts";
 export * from "./math-delims.ts";
 // Wave B (owner-approved 2026-09-26): the native record (LhMessage), the

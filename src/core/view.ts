@@ -39,6 +39,7 @@ import { activeCompactionOf, type CompactionDetails } from "./compaction.ts";
 import { QUESTION_TOOLS } from "./pending.ts";
 import type { SubagentArtifactData, SubagentResultMeta } from "./contracts/jobs.ts";
 import type { PlanBlockData } from "./contracts/chat.ts";
+import { MATH_CHECK_TOOL, mathCheckBindings, type MathCheckVisibility } from "./math-check.ts";
 
 /** A view part — the loose part vocabulary the renderers consume (the same
  *  shape names the pre-Wave-D UIMessage dialect used, so the renderer
@@ -60,6 +61,10 @@ export interface LhViewPart extends Record<string, unknown> {
 	/** Quick plots (feature 005): the toolResult message id — the demo
 	 *  side panel's key and the invert switch's persistence target. */
 	resultMessageId?: string;
+	/** Math check parts (feature 007): what the learner may see yet. */
+	mathCheck?: MathCheckVisibility;
+	/** Question, problem and conclude parts whose answer Wolfram checked. */
+	wolframChecked?: true;
 }
 
 /** A view message: user (bubble) or assistant (one continuous run). */
@@ -168,6 +173,8 @@ export function projectView(messages: readonly LhMessage[], live?: LiveTurnState
 	// was summarized away. Everything before it stays visible to the
 	// user (full history is never hidden); only the MODEL's context jumps.
 	const compaction = activeCompactionOf(messages);
+	// Math checks (feature 007): visibility and labels, folded at read time.
+	const mathChecks = mathCheckBindings(messages);
 
 	for (const m of messages) {
 		const role = (m as { role?: string }).role;
@@ -234,6 +241,8 @@ export function projectView(messages: readonly LhMessage[], live?: LiveTurnState
 					reasoning.push({ type: "reasoning", id: `${m.id}-r${reasoningN++}`, text: block.thinking, state: "done" });
 				} else if (block.type === "toolCall") {
 					const part = toolPartOf(block, live, streamingMessage);
+					if (block.name === MATH_CHECK_TOOL) part.mathCheck = mathChecks.checks.get(block.id) ?? { hidden: false, expressionsHidden: false };
+					else if (mathChecks.checked.has(block.id)) part.wolframChecked = true;
 					if (block.name === SEND_TO_USER_TOOL) {
 						// Failed/aborted generations never execute their calls;
 						// the provider error/abort UI already owns that outcome.

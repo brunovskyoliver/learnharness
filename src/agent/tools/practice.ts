@@ -23,6 +23,8 @@ import { findTool } from "./find.ts";
 import { grepTool } from "./grep.ts";
 import { jobTools, type JobToolContext } from "./jobs.ts";
 import { plotTool } from "./plot.ts";
+import { mathCheckTool } from "./math-check.ts";
+import type { EnabledTools } from "../../core/pending.ts";
 import { proberGraphTools, type GraphToolContext } from "./graph.ts";
 import { activeProblemOf } from "../../core/native-messages.ts";
 import type { LhMessage } from "../../core/native-messages.ts";
@@ -221,7 +223,7 @@ export function concludeTool(gate: PracticeGate): AgentTool<typeof concludeInput
 }
 
 /** The practice toolset (the practice agent's whole registry). */
-export function practiceTools(ctx: PracticeToolContext): Record<string, AgentTool<any>> {
+export function practiceTools(ctx: PracticeToolContext, enabled?: EnabledTools): Record<string, AgentTool<any>> {
 	// ONE gate per turn, shared by both tools — the intra-turn truth.
 	const gate = createPracticeGate(ctx);
 	// THE RARELY-NEEDED SET (owner round 10): read/ls/find/grep over the
@@ -248,6 +250,9 @@ export function practiceTools(ctx: PracticeToolContext): Record<string, AgentToo
 		...(jobs ? { pdf: jobs.pdf! } : {}),
 		// Quick plots (feature 005): on the learner's request only (doctrine).
 		plot: plotTool(),
+		// Math check (feature 007): the one practice tool the settings
+		// toggle can remove (its own switch, like the teacher's).
+		...(enabled?.math_check === false ? {} : { math_check: mathCheckTool() }),
 		...(ctx.graph ? proberGraphTools(ctx.graph) : {}),
 	});
 }

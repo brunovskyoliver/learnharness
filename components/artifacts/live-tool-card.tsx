@@ -42,6 +42,19 @@ export function LiveToolCard({ part }: ArtifactPartProps) {
 
 	const hasInput = p.input != null && Object.keys(inp).length > 0;
 
+	// A math check's input may be the answer to a question not yet posed
+	// (feature 007): the running row shows only that it is checking.
+	if (tool === "math_check") {
+		return (
+			<div data-testid="live-tool-card" data-tool={tool} className="my-1 flex w-full max-w-2xl items-center gap-2 text-sm text-muted-foreground">
+				<BrailleSpinner label={`${toolActivityLabel(tool)} — live`} />
+				<Shimmer duration={1} className="text-sm">
+					{toolActivityLabel(tool)}
+				</Shimmer>
+			</div>
+		);
+	}
+
 	return (
 		<SessionDetails stateKey={`tool/${p.toolCallId}`}
 			data-testid="live-tool-card"
