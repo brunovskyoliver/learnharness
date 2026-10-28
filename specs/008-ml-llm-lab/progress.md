@@ -42,6 +42,10 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Log
 
+- T006: inline-input tests failed on the missing module (`t006-red.log`).
+- T007: literal inline schema and single-panel JSON expression conversion implemented; 23 combined schema/input tests pass (`t007-green.log`).
+- T008: new settings tests fail because the three toggles and their approved copy are not present (`t008-red.log`).
+
 - T004: added 14 schema behavior tests; initial run failed because the six panel kinds were absent (`t004-red.log`).
 - T005: added six kit schemas, shared literal-data checks, safe JSON-only literal inspection and expression syntax checks without server evaluation; all 14 tests pass (`t005-green.log`). Existing panels unchanged.
 

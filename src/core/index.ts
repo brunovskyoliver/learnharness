@@ -99,3 +99,4 @@ export * from "./completed-markdown.ts";
 export * from "./course.ts";
 
 export { ML_PANEL_DATA_SCHEMAS, ML_PANEL_EXPRESSION_FIELDS, mlPanelDataProblems, type MlPanelKind, type MlPanelData } from "./demo-kit.ts";
+export { MlVisualInputSchema, mlVisualInputProblems, mlVisualKitSpec, type MlVisualInput } from "./ml-visual.ts";

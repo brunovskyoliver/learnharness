@@ -35,12 +35,12 @@
   - the reserved `tokenized` field refused when supplied by input.
 
   Keep existing panels unchanged. Export new types through `src/core/index.ts`.
-- [ ] T006 [P] Failing tests in `tests/ml-visual-input.test.ts`: `mlVisualInputProblems` and `mlVisualKitSpec` from `src/core/ml-visual.ts`. Cover:
+- [X] T006 [P] Failing tests in `tests/ml-visual-input.test.ts`: `mlVisualInputProblems` and `mlVisualKitSpec` from `src/core/ml-visual.ts`. Cover:
   - title 1–80 characters, caption ≤ 200;
   - per-kind data shapes as in contracts/ml-visual-tool.md;
   - the built spec has exactly one panel of the kind, with data turned into JSON expressions.
-- [ ] T007 Implement `src/core/ml-visual.ts`: `MlVisualInputSchema`, `mlVisualInputProblems` and `mlVisualKitSpec`, per contracts/ml-visual-tool.md.
-- [ ] T008 [P] Failing tests in `tests/settings-pure.test.ts` and `tests/render-settings.test.tsx`:
+- [X] T007 Implement `src/core/ml-visual.ts`: `MlVisualInputSchema`, `mlVisualInputProblems` and `mlVisualKitSpec`, per contracts/ml-visual-tool.md.
+- [X] T008 [P] Failing tests in `tests/settings-pure.test.ts` and `tests/render-settings.test.tsx`:
   - `TOGGLEABLE_TOOLS` ends `"math_check", "ml_visuals", "model_hub", "papers"`;
   - rows render "ML visuals" / "Shows tokens, attention, sampling, networks and shapes as interactive panels", "Model hub" / "Looks up model configs, datasets and papers on Hugging Face" and "Papers" / "Finds papers on arXiv and Semantic Scholar and cites their pages";
   - accessible names are "tool ml visuals", "tool model hub" and "tool papers";

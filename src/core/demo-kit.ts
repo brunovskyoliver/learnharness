@@ -127,7 +127,7 @@ export function mlPanelDataProblems(kind: MlPanelKind, data: Record<string, unkn
 		if (field && !Check(field, value)) errors.push(`${key}: invalid ${kind} data`);
 	}
 	if (errors.length) return errors;
-	if (kind === "tokens" && "tokenized" in data) errors.push("tokenized: only the server may supply tokens");
+	if ("tokenized" in data) errors.push("tokenized: only the server may supply tokens");
 	if (kind === "heatmap") {
 		const d = data as Partial<MlPanelData<"heatmap">>;
 		if (d.rows && d.values && d.rows.length !== d.values.length) errors.push("values: one row per row label required");
