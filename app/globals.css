@@ -749,6 +749,15 @@ body {
 .lh-table-scroll[data-clip="both"] {
 	mask-image: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent);
 }
+.lh-table-scroll:focus-visible {
+	/* The overflow fade must not hide the keyboard focus boundary. */
+	mask-image: none;
+	outline-offset: -2px;
+}
+@media (pointer: coarse) {
+	.lh-table-actions { min-height: 44px; }
+	.lh-table-actions button { min-width: 44px; min-height: 44px; opacity: 1; }
+}
 
 /* Dock variant swap — quick fade/rise on content change; the shell's HEIGHT
    morph is separate (WAAPI in DockOverlay). Re-applied via class toggling, no
@@ -906,6 +915,12 @@ body {
 }
 [data-streamdown="table"] :where(th, td) {
 	font-size: inherit;
+}
+@media (max-width: 639px) {
+	[data-streamdown="table"] {
+		/* Zoom also reduces layout height; Copy remains outside this element. */
+		zoom: var(--lh-table-scale, 1);
+	}
 }
 
 /* Assistant tables may outgrow the reading column: the wrapper spans the

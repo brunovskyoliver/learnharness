@@ -18,6 +18,7 @@ Run `npm run dev:review` for persistent example threads. See [the UI review guid
 - Source Sans 3 is the default for interface text, prose, questions, and demo controls. Lesson headings (prose `h1`/`h2`) and titles use Newsreader at 500–600. A user's explicit reading-font preference applies consistently to interface and titles.
 - Type scale: 12 (monospace metadata only), 13 (UI floor), 15, 17 (reading), 22, 30, 40. No hard-coded sizes outside the scale.
 - Reserve monospace for code and numeric metadata. Retain the 17px/27px reading baseline and existing reading-size settings.
+- Below 640px, oversized Markdown tables shrink proportionally to fit their container, stopping at 13px effective text. Wider tables remain horizontally swipeable with hidden scrollbars and visible keyboard focus. Tables that already fit keep their reading size; Copy controls stay unscaled (owner, 2026-10-28).
 - Use spacing and headings for grouping. Remove structural separator lines between panes, headers, footers and settings/chain rows. Retain input, choice, selection and focus boundaries. Resize handles remain available on hover and keyboard focus.
 - Raised surfaces, selection, borders and muted text use the shared Study ink tokens. Chart data keeps its own colors. Preserve explicit custom background and reading preferences.
 - Scrollbar tracks and thumbs stay hidden across app-owned content and rendered demos. Preserve wheel, touch, keyboard and programmatic scrolling, visible focus and access to overflow content. The project scrolling rule lives in AGENTS.md.

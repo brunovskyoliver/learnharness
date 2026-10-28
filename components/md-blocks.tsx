@@ -394,43 +394,89 @@ export function MarkdownTable(props: ComponentProps<"table"> & ExtraProps) {
 	const { children, node, ...rest } = props;
 	const ref = useRef<HTMLTableElement>(null);
 	const scrollRef = useRef<HTMLDivElement>(null);
+	const containerRef = useRef<HTMLDivElement>(null);
 	// Overlay scrollbars (macOS) hide that a wide table scrolls: fade the
 	// clipped edge(s) instead.
 	const [clip, setClip] = useState<"" | "start" | "end" | "both">("");
 	useEffect(() => {
 		const el = scrollRef.current;
-		if (!el) return;
-		const update = () => {
+		const table = ref.current;
+		const container = containerRef.current;
+		if (!el || !table || !container) return;
+		const phone = window.matchMedia("(max-width: 639px)");
+		let frame = 0;
+		const updateClip = () => {
 			const start = el.scrollLeft > 1;
 			const end = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
 			setClip(start && end ? "both" : start ? "start" : end ? "end" : "");
 		};
-		update();
-		el.addEventListener("scroll", update, { passive: true });
-		const ro = new ResizeObserver(update);
+		const update = () => {
+			frame = 0;
+			// Measure outside the hugging wrapper, and in unscaled CSS pixels:
+			// otherwise each resize could shrink the previous result again.
+			const available = container.clientWidth;
+			const natural = table.offsetWidth;
+			const fontSize = Number.parseFloat(getComputedStyle(table).fontSize);
+			const scale = phone.matches && available > 0 && natural > 0
+				? Math.min(1, Math.max(13 / fontSize, available / natural))
+				: 1;
+			updateClip();
+			const value = String(scale);
+			if (table.style.getPropertyValue("--lh-table-scale") !== value) {
+				table.style.setProperty("--lh-table-scale", value);
+				// Read overflow after the new scale has been laid out.
+				frame = requestAnimationFrame(updateClip);
+			}
+		};
+		const schedule = () => {
+			cancelAnimationFrame(frame);
+			frame = requestAnimationFrame(update);
+		};
+		const onKeyDown = (event: KeyboardEvent) => {
+			// Claim scroll keys at the element, before the lesson's native
+			// document listener can use them to change selection/confidence.
+			if (event.target === el && !event.altKey && !event.metaKey && !event.ctrlKey
+				&& ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End", "PageUp", "PageDown", " "].includes(event.key)) {
+				event.stopPropagation();
+			}
+		};
+		schedule();
+		el.addEventListener("scroll", updateClip, { passive: true });
+		el.addEventListener("keydown", onKeyDown);
+		phone.addEventListener("change", schedule);
+		const ro = new ResizeObserver(schedule);
 		ro.observe(el);
-		if (ref.current) ro.observe(ref.current);
+		ro.observe(table);
+		ro.observe(container);
 		return () => {
-			el.removeEventListener("scroll", update);
+			cancelAnimationFrame(frame);
+			el.removeEventListener("scroll", updateClip);
+			el.removeEventListener("keydown", onKeyDown);
+			phone.removeEventListener("change", schedule);
 			ro.disconnect();
 		};
 	}, []);
 	return (
-		<div className="lh-table-bleed my-4">
+		<div ref={containerRef} className="lh-table-bleed my-4">
 			<div className="group/md relative mx-auto w-fit max-w-full" data-testid="md-table">
-				<div className="mb-1 flex h-6 items-center justify-end" data-testid="md-table-actions">
+				<div className="lh-table-actions mb-1 flex h-6 items-center justify-end" data-testid="md-table-actions">
 					<CopyCorner
 						label="Copy table"
 						getText={() => (ref.current ? tableDataToMarkdown(extractTableDataFromElement(ref.current)) : "")}
 					/>
 				</div>
-				<div ref={scrollRef} data-clip={clip || undefined} className="lh-table-scroll max-w-full overflow-x-auto">
+				<div
+					ref={scrollRef}
+					data-clip={clip || undefined}
+					tabIndex={clip ? 0 : undefined}
+					role={clip ? "region" : undefined}
+					aria-label={clip ? "Scrollable table" : undefined}
+					className="lh-table-scroll max-w-full overflow-x-auto"
+				>
 					<table
 						ref={ref}
-						// No text-sm here — the table text runs at the session prose size
-					// (owner note, 2026-09-19: streamdown's cells pin their own text-sm
-					// 12.5px; globals.css overrides cells to inherit, so tables match the
-					// 16px chat text for a consistent look).
+						// Start at the session reading size. Only oversized phone tables
+						// scale down, keeping at least 13px effective text (2026-10-28).
 						className="w-full border-collapse"
 						data-streamdown="table"
 						{...rest}
