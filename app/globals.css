@@ -141,6 +141,9 @@
 .prompt-input::placeholder {
 	color: var(--prompt-muted, var(--muted-foreground));
 	opacity: 1;
+	/* The caret sits at the text start; the gap keeps it off the
+	   placeholder's first letter (owner, 2026-10-28). */
+	padding-left: 2px;
 }
 
 /* Zone 1: whose turn it is, and what kind. */
