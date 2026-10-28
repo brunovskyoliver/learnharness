@@ -2265,6 +2265,14 @@ function DockFooter({
 		setRevealed(true); // the teach-check invitation was accepted (W5)
 		setExpanded(true);
 		void suppressFoldDuringReveal();
+		// Opening the dock puts the caret in the field (owner, 2026-10-28) —
+		// free-text questions and problems only, so choice questions keep
+		// arrow-key walking, and only on fine pointers, so a phone's keyboard
+		// never covers the question.
+		requestAnimationFrame(() => requestAnimationFrame(() => {
+			if (!window.matchMedia("(pointer: fine)").matches) return;
+			shellRef.current?.querySelector<HTMLTextAreaElement>('[data-testid="answer-field"] textarea, [data-testid="practice-thinking-field"] textarea')?.focus({ preventScroll: true });
+		}));
 	};
 	// The turn strip's collapse control: an explicit fold, like reading
 	// history. Scrolling back to the bottom (or focusing the field) expands.

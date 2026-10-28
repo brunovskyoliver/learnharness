@@ -695,11 +695,10 @@ function QuestionDockForm({
 				<div aria-hidden="true" className="pointer-events-none relative -mt-10 h-10 bg-linear-to-b from-transparent to-card" />
 			)}
 
-			{/* The learner's half of the dock — a composer TWIN: a labeled, bordered
-			    field with Submit docked inside, exactly like the chat composer's
-			    send. Select modes get "Your thinking" (Enter makes a newline — it
-			    is for dumping, soon dictated; the button submits); text mode
-			    keeps "Your answer" with Enter-to-submit. */}
+			{/* The learner's half of the dock — a composer TWIN: the field with
+			    Submit docked below, like the chat composer's send. Select modes
+			    get the optional reasoning field; text mode gets the answer. The
+			    placeholder names each (no separate label, owner 2026-10-28). */}
 			<form
 				className="input-surface shrink-0"
 				onClick={focusSurfaceInput}
@@ -713,11 +712,12 @@ function QuestionDockForm({
 					// Text and controls sit directly on the prompt shell.
 					className="flex flex-col"
 				>
-					<AnswerWell label={qd.mode === "text" ? "Your answer" : "Your thinking"} htmlFor={`${toolCallId}-answer`}>
+					<AnswerWell>
 					{qd.mode === "text" ? (
 						<textarea
 							id={`${toolCallId}-answer`}
 							aria-label="Your answer"
+							placeholder="Type your answer"
 							value={text}
 							onChange={(e) => {
 								answerTextRef.current = e.target.value;
@@ -732,13 +732,14 @@ function QuestionDockForm({
 								}
 							}}
 							rows={1}
-							className="prompt-input field-sizing-content lh-input max-h-48 min-h-10 w-full resize-none bg-transparent px-4 pt-1 pb-2.5 outline-none"
+							className="prompt-input field-sizing-content lh-input max-h-48 min-h-10 w-full resize-none bg-transparent px-4 pt-3 pb-2.5 outline-none"
 						/>
 					) : (
 						<textarea
 							ref={thinkingRef}
 							id={`${toolCallId}-answer`}
 							aria-label="Your thinking"
+							placeholder="Explain your reasoning, or leave blank to submit your choice"
 							value={thinking}
 							onChange={(e) => {
 								thinkingTextRef.current = e.target.value;
@@ -754,7 +755,7 @@ function QuestionDockForm({
 								}
 							}}
 							rows={1}
-							className="prompt-input field-sizing-content lh-input max-h-48 min-h-10 w-full resize-none bg-transparent px-4 pt-1 pb-2.5 outline-none"
+							className="prompt-input field-sizing-content lh-input max-h-48 min-h-10 w-full resize-none bg-transparent px-4 pt-3 pb-2.5 outline-none"
 						/>
 					)}
 					</AnswerWell>

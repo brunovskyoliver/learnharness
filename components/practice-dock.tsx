@@ -100,10 +100,11 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, statemen
 				onClick={focusSurfaceInput}
 				className="input-surface shrink-0"
 			>
-				<AnswerWell label="Your thinking" htmlFor={`${problemCallId}-thinking`}>
+				<AnswerWell>
 				<textarea
 					id={`${problemCallId}-thinking`}
 					aria-label="Your thinking"
+					placeholder="Work through the problem here"
 					value={thinking}
 					onChange={(e) => {
 						thinkingRef.current = e.target.value;
@@ -118,7 +119,7 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, statemen
 						}
 					}}
 					rows={1}
-					className="prompt-input field-sizing-content lh-input max-h-64 min-h-10 w-full resize-none bg-transparent px-4 pt-1 pb-2.5 outline-none"
+					className="prompt-input field-sizing-content lh-input max-h-64 min-h-10 w-full resize-none bg-transparent px-4 pt-3 pb-2.5 outline-none"
 				/>
 				</AnswerWell>
 				{compactionRunning && <div role="status" className="px-4 pt-2 text-sm text-muted-foreground">Compacting session…</div>}

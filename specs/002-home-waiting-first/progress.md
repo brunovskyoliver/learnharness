@@ -2,7 +2,7 @@
 
 ## Stage
 
-Implemented; awaiting owner review (speckit-implement, 2026-10-28). Not committed or pushed. Branch `claude/fervent-bohr-l648pg`, with `main` merged in (design-system mirror from #2).
+Implemented; awaiting owner review (speckit-implement, 2026-10-28). Committed and pushed to PR #3 (652f3bc); follow-up commit makes the answer field read as an input (placeholders instead of a label, focus on open for free-text questions and problems on fine pointers). Branch `claude/fervent-bohr-l648pg`, with `main` merged in (design-system mirror from #2).
 
 Design reference: the canvas export (https://claude.ai/artifact/SChjbajeREM23XcaxEGb1E), four artboards: Home desktop, Home phone, Sidebar New and filter menus, 001 leftovers. Extracted markup kept at `~/agent-runs/2026-10-28-feature-002/canvas/`.
 

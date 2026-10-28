@@ -37,10 +37,10 @@ describe("prompt bar zones", () => {
 		assert.match(html, />Lesson check</);
 	});
 
-	it("the answer well carries a visible label tied to its field", () => {
-		const html = renderToStaticMarkup(<AnswerWell label="Your thinking" htmlFor="f"><textarea id="f" /></AnswerWell>);
+	it("the answer well wraps its field with no separate label", () => {
+		const html = renderToStaticMarkup(<AnswerWell><textarea id="f" /></AnswerWell>);
 		assert.match(html, /data-testid="answer-well"/);
-		assert.match(html, /<label for="f"[^>]*>Your thinking<\/label>/);
+		assert.ok(!html.includes("<label"), "the placeholder names the field");
 	});
 
 	it("an expanded lesson check renders strip, body, well and Submit answer in that order", () => {

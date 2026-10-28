@@ -171,7 +171,7 @@
 }
 
 /* Zone 3: the answer field sits directly on the shell (owner, 2026-10-28:
-   no inner box). Its label brightens while the field has focus; the caret
+   no inner box, no label). A placeholder says what to write; the caret
    marks the field itself. */
 .answer-well {
 	align-self: stretch;
@@ -180,19 +180,6 @@
 /* Compact chat (reading history): the field and the send share one row. */
 [data-compact="true"] [data-testid="composer"] .answer-well {
 	flex: 1;
-}
-
-.answer-well-label {
-	display: block;
-	padding: 12px 16px 0;
-	color: var(--ink-2);
-	font-size: var(--text-sm);
-	font-weight: 500;
-	transition: color 160ms ease;
-}
-
-.answer-well:focus-within .answer-well-label {
-	color: var(--foreground);
 }
 
 /* Controls and the primary action share one centered row. */
@@ -532,7 +519,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.answer-well-label, .prompt-submit, .prompt-primary, .prompt-secondary, .prompt-model-trigger { transition: none; }
+	.prompt-submit, .prompt-primary, .prompt-secondary, .prompt-model-trigger { transition: none; }
 	.model-menu-option, .reasoning-menu-option { transition: none; }
 }
 
