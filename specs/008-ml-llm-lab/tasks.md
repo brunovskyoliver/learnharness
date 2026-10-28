@@ -48,7 +48,7 @@
 
   The `id.replace("_", " ")` in agent-section.tsx only replaces the first underscore; use `replaceAll` and update its test pin.
 - [X] T009 Add the three keys to `TOGGLEABLE_TOOLS` (`src/core/pending.ts`) and `TOGGLE_TOOLS` + `TOOL_COPY` (`components/settings/agent-section.tsx`), and update the pinned lists in `tests/tool-toggles-bridge.test.ts`, `tests/question-tools.test.ts` and `tests/practice-agents.test.ts` the way 007 did.
-- [ ] T010 [P] Failing render tests in `tests/render-lookup-row.test.tsx` for `components/artifacts/lookup-row.tsx`. Check:
+- [X] T010 [P] Failing render tests in `tests/render-lookup-row.test.tsx` for `components/artifacts/lookup-row.tsx`. Check:
   - the skeleton classes from ui-contract.md §B1 (`lh-reading` on `details`; `select-none` only on `summary`);
   - each headline from spec FR-014 and FR-018, for done and failed states;
   - the destructive headline on failure, with the reason not in `font-mono`;

@@ -2,7 +2,7 @@
 
 ## Stage
 
-Implementation in progress: Phase 1 setup (T001–T003) complete; Phase 2 foundational work is next. Oliver supplied local interactive design exports and approved reconstructing the missing T001 benchmark.
+Implementation in progress: T001–T010 complete. T011 is paused for owner decisions on unspecified tokenize row states/content and arXiv multi-result headlines; T012 has not started because task order is binding.
 
 Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Implementation started.** Binding handoff: see [handoff.md](handoff.md).
 
@@ -41,6 +41,10 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- Phase 2 verification through T010: changed-file ESLint passes (`phase2-lint.log`). Typecheck has exactly the expected pending renderer exhaustiveness error and missing T011 lookup-row module (`phase2-typecheck.log`). Baseline headless tests were retried by the parent with explicit CHROME_PATH: all four pass (`baseline-headless-retry.log`), so the initial ETXTBSY errors were environmental.
+
+- T010: added five render tests covering the specified Hub/paper row skeleton, headlines, failures, metadata and links. They fail on the absent lookup-row module as expected (`t010-red.log`); T011 implementation waits for owner decisions on unspecified tokenize and arXiv row states.
 
 - T009: added ML visuals, Model hub and Papers after Math check using existing settings rows/toggles and exact approved copy; accessible names use replaceAll. Updated toggle-list pins; 119 settings/teacher/practice regression tests pass (`t009-green.log`). Tool-registry membership pins remain unchanged until T019/T040/T045 actually register their tools.
 - Phase 2 typecheck interim: extending DemoKitPanel exposes the expected missing renderer cases in runtime.ts:438; parent directed leaving this pending until the renderer tasks rather than adding a placeholder.
