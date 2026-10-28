@@ -90,7 +90,7 @@ const SEARCH_ENGINES = ["tavily", "brave"] as const;
 
 /** The owner's final toggleable-tool list (confirm with the user before
  *  changing — the Teacher stream settled this 2026-09-19). */
-export const TOGGLE_TOOLS = ["research", "demo", "visual", "pdf", "math_check"] as const;
+export const TOGGLE_TOOLS = ["research", "demo", "visual", "pdf", "math_check", "ml_visuals", "model_hub", "papers"] as const;
 
 /** Row copy for the tool toggles (ui-v2: every tool row gets a description). */
 const TOOL_COPY: Record<(typeof TOGGLE_TOOLS)[number], { label: string; hint: string }> = {
@@ -99,6 +99,9 @@ const TOOL_COPY: Record<(typeof TOGGLE_TOOLS)[number], { label: string; hint: st
 	visual: { label: "Figures", hint: "Draws precise figures: plots, geometry, number lines" },
 	pdf: { label: "PDF reading", hint: "Reads PDFs you share and cites the pages it used" },
 	math_check: { label: "Math check", hint: "Checks computed answers and equivalent forms with Wolfram" },
+	ml_visuals: { label: "ML visuals", hint: "Shows tokens, attention, sampling, networks and shapes as interactive panels" },
+	model_hub: { label: "Model hub", hint: "Looks up model configs, datasets and papers on Hugging Face" },
+	papers: { label: "Papers", hint: "Finds papers on arXiv and Semantic Scholar and cites their pages" },
 };
 
 const THINKING_LEVELS: readonly ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
@@ -785,7 +788,7 @@ export function AgentSection({
 					>
 						<Toggle
 							checked={agent?.tools?.[id] ?? true}
-							label={`tool ${id.replace("_", " ")}`}
+							label={`tool ${id.replaceAll("_", " ")}`}
 							onChange={(on) => onSectionChange(composeTool(agent, id, on))}
 						/>
 					</SettingsRow>
