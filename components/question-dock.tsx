@@ -501,7 +501,7 @@ function QuestionDockForm({
 		return () => document.removeEventListener("keydown", onKeyDown);
 	});
 
-	// "More below" cue: only while the scrolling body hides content.
+	// Overflow fade: only while the scrolling body hides content.
 	const [overflowBelow, setOverflowBelow] = useState(false);
 	useEffect(() => {
 		const el = rootRef.current;
@@ -735,9 +735,7 @@ function QuestionDockForm({
 			)}
 			{questionContent}
 			{active && overflowBelow && (
-				<div aria-hidden="true" className="pointer-events-none relative -mt-10 h-10 bg-linear-to-b from-transparent to-card">
-					<span className="absolute right-4 bottom-1.5 rounded-sm bg-accent px-2 py-0.5 text-sm font-medium text-ink-2">More below</span>
-				</div>
+				<div aria-hidden="true" className="pointer-events-none relative -mt-10 h-10 bg-linear-to-b from-transparent to-card" />
 			)}
 
 			{/* The learner's half of the dock — a composer TWIN: a labeled, bordered
@@ -778,7 +776,7 @@ function QuestionDockForm({
 								}
 							}}
 							rows={1}
-							className="prompt-input field-sizing-content lh-input max-h-48 min-h-10 w-full resize-none bg-transparent px-3 pt-1 pb-2.5 outline-none"
+							className="prompt-input field-sizing-content lh-input max-h-48 min-h-10 w-full resize-none bg-transparent px-4 pt-1 pb-2.5 outline-none"
 						/>
 					) : (
 						<textarea
@@ -801,7 +799,7 @@ function QuestionDockForm({
 								}
 							}}
 							rows={1}
-							className="prompt-input field-sizing-content lh-input max-h-48 min-h-10 w-full resize-none bg-transparent px-3 pt-1 pb-2.5 outline-none"
+							className="prompt-input field-sizing-content lh-input max-h-48 min-h-10 w-full resize-none bg-transparent px-4 pt-1 pb-2.5 outline-none"
 						/>
 					)}
 					</AnswerWell>

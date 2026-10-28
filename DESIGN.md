@@ -32,8 +32,8 @@ Run `npm run dev:review` for persistent example threads. See [the UI review guid
 One raised shell, four zones in fixed order; only their contents change.
 
 1. Turn strip: "Your turn" in the accent plus the kind (Lesson check, Question, Prediction, Explain, Recall, Problem) and a collapse control. Collapsed while reading history, the strip replaces the prompt body: label, a one-line teaser (markdown rendered or stripped) and an Answer or Solve button. The answer well stays, so a draft is never hidden.
-2. Prompt body: the question at reading size, any note in secondary ink, choices as full-width rows, then confidence with "I don't know" as a text button. Only this zone scrolls, with a "More below" cue.
-3. Answer well: inset on the ground with a visible label ("Your thinking", "Your answer"). The focus ring surrounds the well, never the whole shell.
+2. Prompt body: the question at reading size, any note in secondary ink, choices as full-width rows, then confidence with "I don't know" as a text button. Only this zone scrolls; a fade at its bottom edge shows there is more.
+3. Answer field: sits directly on the shell, no inner box or fill, with a visible label ("Your thinking", "Your answer") that brightens while the field has focus.
 4. Toolbar: labelled model and thinking triggers ("Choose a model" and "Thinking" when unset, never "—") and the usage ring with a percentage ("?" when the limit is unknown). Without a key or models, the toolbar shows "Add a provider key" or "Set up your models" in their place. It ends in one primary action named with a verb: Submit answer, Submit (with Skip beside it on practice problems; Skip takes the Escape confirmation), Next problem, Stop. Plain chat keeps the round send.
 
 Queued steers sit above the shell as right-aligned rows. Scroll-to-latest sits just above the shell's top-right edge.

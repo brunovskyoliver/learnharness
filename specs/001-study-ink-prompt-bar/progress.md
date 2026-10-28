@@ -29,6 +29,8 @@ Owner decisions (2026-10-27): warm near-black ground; amber accent; Newsreader t
 
 - 2026-10-27: Implementation complete. Suite 2515 tests, 2 failures, both also failing on unchanged code. Typecheck, lint (6 GB heap) and production build pass.
 
+- 2026-10-28: Owner asked to remove the answer field's inner box (fill and edge) and the "More below" text. The field now sits on the shell, its label brightens on focus, and the overflow cue is a fade alone.
+
 ## Report
 
 **What changed**

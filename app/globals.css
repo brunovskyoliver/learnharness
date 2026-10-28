@@ -170,33 +170,29 @@
 	font-weight: 500;
 }
 
-/* Zone 3: the answer well, inset on the ground so writing reads apart
-   from reading. Focus lands here, never on the whole shell. */
+/* Zone 3: the answer field sits directly on the shell (owner, 2026-10-28:
+   no inner box). Its label brightens while the field has focus; the caret
+   marks the field itself. */
 .answer-well {
 	align-self: stretch;
-	margin: 8px 8px 0;
-	border-radius: var(--radius-sm);
-	background: var(--background);
-	box-shadow: inset 0 0 0 1px var(--input);
-	transition: box-shadow 160ms ease;
 }
 
-/* Compact chat (reading history): the well and the send share one row. */
+/* Compact chat (reading history): the field and the send share one row. */
 [data-compact="true"] [data-testid="composer"] .answer-well {
 	flex: 1;
-	margin: 8px 0 8px 8px;
-}
-
-.answer-well:focus-within {
-	box-shadow: inset 0 0 0 2px var(--ring);
 }
 
 .answer-well-label {
 	display: block;
-	padding: 10px 12px 0;
+	padding: 12px 16px 0;
 	color: var(--ink-2);
 	font-size: var(--text-sm);
 	font-weight: 500;
+	transition: color 160ms ease;
+}
+
+.answer-well:focus-within .answer-well-label {
+	color: var(--foreground);
 }
 
 /* Controls and the primary action share one centered row. */
@@ -501,7 +497,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.answer-well, .prompt-submit, .prompt-primary, .prompt-secondary, .prompt-model-trigger { transition: none; }
+	.answer-well-label, .prompt-submit, .prompt-primary, .prompt-secondary, .prompt-model-trigger { transition: none; }
 	.model-menu-option, .reasoning-menu-option { transition: none; }
 }
 

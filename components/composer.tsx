@@ -124,7 +124,7 @@ export function Composer({
 				placeholder={placeholder}
 				autoFocus={autoFocus}
 				rows={1}
-				className="prompt-input field-sizing-content lh-input max-h-48 min-h-11 w-full resize-none bg-transparent px-3 py-2.5 outline-none"
+				className="prompt-input field-sizing-content lh-input max-h-48 min-h-11 w-full resize-none bg-transparent px-4 pt-3 pb-1 outline-none"
 			/>
 			</AnswerWell>
 			<PromptToolbar controls={controls} setup={setup}>
