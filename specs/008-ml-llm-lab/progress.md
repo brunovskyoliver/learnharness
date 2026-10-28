@@ -89,3 +89,5 @@ Pending owner questions, sent in this thread:
 - arXiv zero/multiple results: approve `arXiv · {n} papers for '{query}'`?
 
 The handoff requires stopping for undecided copy/behavior; tasks have not been skipped to work around this gate. Resume at T011 after those answers. Commit and PR status are separate from implementation completion; no merge or deployment is authorized.
+
+Publication: draft PR https://github.com/brunovskyoliver/learnharness/pull/8 targets the unmerged spec branch `claude/confident-edison-h092l5`. Feature branch published through the GitHub connector because local Git lacked push credentials; each published commit tree was checked against its local counterpart. Original local commit history is preserved at `refs/archive/008-local-commits`. No merge, deployment or push to main performed.
