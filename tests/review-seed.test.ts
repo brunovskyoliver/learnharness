@@ -17,8 +17,8 @@ after(() => rm(data, { recursive: true, force: true }));
 
 test("review seeds load through the production store with active lesson and practice states", async () => {
 	const results = await seedReviewChats(data);
-	assert.equal(results.filter(result => result.status === "created").length, 4);
-	assert.equal(chatStore.listChats().length, 4);
+	assert.equal(results.filter(result => result.status === "created").length, 7);
+	assert.equal(chatStore.listChats().length, 7);
 	const lesson = chatStore.getChat("review-gradient-descent");
 	assert.ok(lesson);
 	assert.equal(phaseAt3Lh(lesson.messages), "teach");

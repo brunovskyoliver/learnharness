@@ -53,6 +53,15 @@ const TOOL_LABELS: Record<string, string> = {
 	grep: "Searched files",
 	list_sessions: "Checked past sessions",
 	list_propositions: "Read session ideas",
+	plot: "Plot",
+	ml_visual: "Panel",
+};
+
+/** A checked visual that failed its check: the reason is in the expanded
+ *  card, the agent explains in words; the row never shows the tool name. */
+const FAILED_LABELS: Record<string, string> = {
+	plot: "Plot · failed its check",
+	ml_visual: "Panel · failed its check",
 };
 
 /** Render a tool result body: plain strings verbatim, image-bearing read
@@ -88,7 +97,7 @@ export function ToolCallCard({ part }: ArtifactPartProps) {
 		>
 			<summary className="flex cursor-pointer select-none list-none items-center gap-2 text-sm text-muted-foreground [&::-webkit-details-marker]:hidden">
 				<span className={`font-medium ${failed ? "text-destructive" : ""}`}>
-					{TOOL_LABELS[tool] ?? tool}
+					{(failed ? FAILED_LABELS[tool] : undefined) ?? TOOL_LABELS[tool] ?? tool}
 				</span>
 				{arg && <span className="truncate">{arg}</span>}
 				<ChevronRight className="size-3 shrink-0 opacity-50 transition-transform group-open:rotate-90" />

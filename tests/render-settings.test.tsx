@@ -134,7 +134,7 @@ describe("AgentSection (thin SSR)", () => {
 	});
 
 	it("renders the owner's tool list — research, demo, visual, pdf, math check (feature 007)", () => {
-		assert.deepEqual([...TOGGLE_TOOLS], ["research", "demo", "visual", "pdf", "math_check"]);
+		assert.deepEqual([...TOGGLE_TOOLS], ["research", "demo", "visual", "pdf", "math_check", "ml_visuals", "model_hub", "papers"]);
 		const html = renderToStaticMarkup(<AgentSection agent={undefined} models={undefined} graph={undefined} onSectionChange={() => {}} onModelsChange={() => {}} />);
 		for (const id of TOGGLE_TOOLS) assert.ok(html.includes(`data-testid="tool-row-${id}"`), id);
 	});
@@ -142,7 +142,7 @@ describe("AgentSection (thin SSR)", () => {
 	it("tools default ON (absent key = enabled)", () => {
 		const html = renderToStaticMarkup(<AgentSection agent={undefined} models={undefined} graph={undefined} onSectionChange={() => {}} onModelsChange={() => {}} />);
 		for (const id of TOGGLE_TOOLS) {
-			assert.ok(tagOf(html, `toggle-tool-${id.replace("_", "-")}`).includes('aria-checked="true"'), `${id} defaults on`);
+			assert.ok(tagOf(html, `toggle-tool-${id.replaceAll("_", "-")}`).includes('aria-checked="true"'), `${id} defaults on`);
 		}
 	});
 
@@ -281,4 +281,17 @@ describe("KeyboardSection (thin SSR)", () => {
 		assert.ok(!KEYBOARD_ACTIONS.some((a) => a.id as string === "model-menu-walk"));
 		assert.ok(!KEYBOARD_ACTIONS.some((a) => a.id as string === "model-menu-pick"));
 	});
+});
+
+it("renders the approved ML tools copy and accessible toggle names", () => {
+	const html = renderToStaticMarkup(<AgentSection agent={{}} onSectionChange={() => {}} />);
+	for (const [id, label, hint] of [
+		["ml-visuals", "ML visuals", "Shows tokens, attention, sampling, networks and shapes as interactive panels"],
+		["model-hub", "Model hub", "Looks up model configs, datasets and papers on Hugging Face"],
+		["papers", "Papers", "Finds papers on arXiv and Semantic Scholar and cites their pages"],
+	]) {
+		assert.ok(html.includes(label!)); assert.ok(html.includes(hint!));
+		assert.ok(tagOf(html, `toggle-tool-${id}`).includes(`aria-label="tool ${id!.replaceAll("-", " ")}"`));
+	}
+	assert.ok(html.indexOf("ML visuals") > html.indexOf("Math check"));
 });

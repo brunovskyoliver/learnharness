@@ -48,3 +48,4 @@ export * from "./model-catalog.ts";
 export { subscriptionControlsResponse, subscriptionBrowserResponse } from "./web-subscription-http.ts";
 export { sessionCost } from "./pricing.ts";
 export { filesResponse, listFiles, UPLOAD_MAX_BYTES, type StoredFile } from "./files.ts";
+export { tokenize } from "../agent/tokenizer.ts";

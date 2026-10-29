@@ -21,11 +21,12 @@ import { Shimmer } from "@/components/ai-elements/shimmer";
 import { BrailleSpinner } from "@/components/braille-spinner";
 import { LiveToolCard } from "@/components/artifacts/live-tool-card";
 import { AnsweredCard } from "@/components/answered-card";
+import { isShownLookupFailure } from "@/components/artifacts/lookup-row";
 import { isShownMathCheckFailure } from "@/components/artifacts/math-check-card";
 import { artifactRenderers } from "@/components/artifacts";
 import { SubagentSteerCard } from "@/components/artifacts/steer-card";
 import { Composer } from "@/components/composer";
-import { useEnterSubmits } from "@/components/enter-submits";
+import { mlResultKeepsNativeEnter, useEnterSubmits } from "@/components/enter-submits";
 import { blurAfterPointerClick } from "@/components/focus-hygiene";
 import { dockStateKey, nextDockExpanded } from "@/components/dock-state-key";
 import { QueuedSteersBody, type QueuedSteerLine } from "@/components/queued-steers";
@@ -35,6 +36,7 @@ import { StatsBar } from "@/components/stats-bar";
 import { ModelSeedContext } from "@/components/model-picker";
 import { useServerEvent, useServerResync } from "@/components/server-events";
 import {
+	kitSpecOf,
 	isProviderKeyRefusal,
 	firstSourceTextParts,
 	messageAnchorId,
@@ -867,6 +869,10 @@ function ChatView({
 	const [demoOpenId, setDemoOpenId] = useState<string | null>(null);
 	const [demoPanelIndex, setDemoPanelIndex] = useState<number | undefined>();
 	const demos = useMemo(() => sessionDemos(messages), [messages]);
+	const hasMlResults = useMemo(() => messages.some(message => message.parts.some(part =>
+		["tool-ml_visual", "tool-tokenize", "tool-hub_model", "tool-hub_search", "tool-paper_search", "tool-paper_read"].includes(part.type) &&
+		["output-available", "output-error"].includes(String((part as { state?: string }).state)))) ||
+		demos.some(demo => kitSpecOf(demo.html)?.panels?.some(panel => ["tokens", "next_token", "heatmap", "network", "scatter", "shapes"].includes(panel.type))), [messages, demos]);
 	const demoPanel = useMemo<DemoPanelApi>(
 		() => ({ demos, openId: demoOpenId, panelIndex: demoPanelIndex, open: (id: string, index?: number) => { requestFullTranscript(); setDemoOpenId(id); setDemoPanelIndex(index); }, close: () => setDemoOpenId(null) }),
 		[demos, demoOpenId, demoPanelIndex],
@@ -1227,7 +1233,7 @@ function ChatView({
 		    bottom exactly like the left sidebar, and the header (name + phase
 		    chip) spans from the left sidebar's edge to the panel's edge. The
 		    footer occupies a separate row below the scroller. */}
-		<div data-chat-id={chatId} className="flex h-dvh">
+		<div data-chat-id={chatId} data-chat-ml-lab={hasMlResults || undefined} className="flex h-dvh">
 			<div className="flex min-w-0 flex-1 flex-col">
 				{/* The top bar is its own block (owner, top-fade round 4): in flow
 				    above the scroller on the plain page background — no gradient. Its
@@ -1526,7 +1532,8 @@ function ChatView({
 													part.type.startsWith("tool-") &&
 													part.errorText !== "Operation aborted" &&
 													// Feature 007: a failed math check says so in its own row.
-													!isShownMathCheckFailure(part)
+													!isShownMathCheckFailure(part) && !isShownLookupFailure(part) &&
+													(part.type !== "tool-ml_visual" || String(part.errorText ?? "").startsWith("Invalid tool input"))
 												) {
 													return (
 														<SystemLine key={`retry-${pi}`} testId="tool-retry">
@@ -2369,6 +2376,7 @@ function DockFooter({
 			if (e.key !== "Enter" || e.altKey) return;
 			if (e.shiftKey && !e.metaKey && !e.ctrlKey) return;
 			const t = e.target as HTMLElement | null;
+			if (t && mlResultKeepsNativeEnter(t)) return;
 			if (
 				t &&
 				((t.tagName === "INPUT" && (t as HTMLInputElement).type !== "range") ||

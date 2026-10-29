@@ -2,6 +2,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { buildMlReviewChats } from "./seed-ml.mjs";
+
 const root = fileURLToPath(new URL("../", import.meta.url));
 const fixtures = new URL("../tests/fixtures/golden-data/chats/", import.meta.url);
 
@@ -100,7 +102,7 @@ export async function seedReviewChats(dataDir = process.env.LH_DATA_DIR || path.
 	const chats = path.join(path.resolve(dataDir), "chats");
 	await mkdir(chats, { recursive: true });
 	const results = [];
-	for (const record of buildReviewChats(lesson, practice)) {
+	for (const record of [...buildReviewChats(lesson, practice), ...await buildMlReviewChats(lesson)]) {
 		try {
 			await writeFile(path.join(chats, `${record.id}.json`), JSON.stringify(record, null, "\t") + "\n", { flag: "wx" });
 			results.push({ id: record.id, status: "created" });

@@ -50,7 +50,7 @@ export function plotDemoOf(part: LhViewPart): SessionDemo | null {
 /** A successful plot part's artifact — also while the turn is live, before
  *  the record gives it a message id (the card then has no panel button). */
 export function plotArtifactOf(part: LhViewPart): Omit<SessionDemo, "id"> | null {
-	if (part.type !== "tool-plot" || part.state !== "output-available") return null;
+	if ((part.type !== "tool-plot" && part.type !== "tool-ml_visual") || part.state !== "output-available") return null;
 	const output = part.output as { kind?: unknown; result?: Partial<DemoResult>; ui?: { inverted?: boolean } } | undefined;
 	const result = output?.result;
 	if (output?.kind !== "demo" || typeof result?.html !== "string" || result.html.length === 0 || typeof result.title !== "string") return null;

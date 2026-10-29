@@ -28,7 +28,7 @@ import {
 import { createTeacherAgent } from "../src/agent/teacher-agent.ts";
 import { createTeacherTools } from "../src/agent/tools.ts";
 import { handleChatInput, handleChatRequest } from "../src/server/chat-handler.ts";
-import { effectiveSettings } from "../src/server/stores.ts";
+import { effectiveSettings, stores } from "../src/server/stores.ts";
 import { isTurnRunning } from "../src/server/turn-liveness.ts";
 import { deliverJobResult, registerLiveAgent, setTurnRunner, steerLiveChat, unregisterLiveAgent } from "../src/server/jobs.ts";
 import { SessionModel } from "../components/session-core.ts";
@@ -1784,4 +1784,33 @@ describe("duplicate provider tool-call ids (the Lacan fix)", () => {
 		assert.equal(quizPart?.state, "output-available");
 		assert.equal(quizPart?.output?.kind, "quiz", "the quiz card got ITS answer (the pre-fix bug: it landed on the ask card)");
 	});
+});
+
+
+it("disposes paper files when teacher turns succeed, abort, or fail settlement", async () => {
+	const originalFiles = stores.createPaperFiles;
+	const originalUsage = chatStore.appendTurnUsage;
+	let created = 0, disposed = 0;
+	stores.createPaperFiles = () => { created++; return { write: async () => "unused.pdf", dispose: async () => { disposed++; } }; };
+	try {
+		for (const mode of ["success", "abort", "settlement-failure"]) {
+			const chat = createConfiguredChat(`Test: paper cleanup ${mode}`);
+			createdChats.push(chat.id);
+			const before = disposed;
+			if (mode === "settlement-failure") chatStore.appendTurnUsage = () => { throw new Error("synthetic usage failure"); };
+			if (mode === "abort") {
+				const res = await handleChatRequest(post(chat.id, { type: "text", text: "wait" }), agentFactory(abortableTeacher()));
+				assert.equal(res.status, 200);
+				const settled = drainRunning(chat.id);
+				abortTurn(chat.id);
+				await settled;
+			} else {
+				const { engine } = scriptedTeacher(() => [fauxAssistantMessage([fauxText("Done.")])]);
+				await drainTurn(post(chat.id, { type: "text", text: "read" }), agentFactory(engine));
+			}
+			chatStore.appendTurnUsage = originalUsage;
+			await waitFor(() => disposed > before, 1000, "paper disposal");
+		}
+		assert.equal(created, 3);
+	} finally { stores.createPaperFiles = originalFiles; chatStore.appendTurnUsage = originalUsage; }
 });

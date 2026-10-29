@@ -14,10 +14,14 @@ import {
 } from "../core/question-core.ts";
 import { filterEnabledTools, type EnabledTools } from "../core/pending.ts";
 import type { JobRecord } from "../core/contracts.ts";
-import type { JobStore } from "../core/ports.ts";
+import type { PaperFiles, JobStore } from "../core/ports.ts";
 import { jobTools, type DemoInput, type PdfInput, type ResearchInput, type VisualInput } from "./tools/jobs.ts";
+import { mlVisualTool } from "./tools/ml-visual.ts";
+import { tokenizeTool } from "./tools/tokenize.ts";
 import { plotTool } from "./tools/plot.ts";
 import { courseTool } from "./tools/course.ts";
+import { createPaperTools } from "./tools/papers.ts";
+import { createHubTools } from "./tools/hub.ts";
 import { mathCheckTool } from "./tools/math-check.ts";
 import { planTools, type PlanToolContext } from "./tools/plan.ts";
 import { probeDoneTool, type ProbeDoneContext } from "./tools/probe.ts";
@@ -396,6 +400,7 @@ export function teachQuizToolFor(ctx: Pick<PlanToolContext, "chatId" | "chatStor
 }
 
 export interface TeacherToolContext extends PlanToolContext {
+	paperFiles?: PaperFiles;
 	/** Present only when the graph-tools settings gate is open. */
 	graphStore?: GraphStore;
 	/** Bound to the current lesson and tenant by the turn composition root. */
@@ -472,10 +477,13 @@ export function createTeacherTools(
 			...jobTools({ chatId: ctx.chatId, jobStore: ctx.jobStore, spawn: ctx.spawn, searchAvailable: ctx.searchAvailable }),
 			// Quick plots (feature 005): instant, checked, no builder agent.
 			plot: plotTool(),
+			...(enabled?.ml_visuals === false ? {} : { ml_visual: mlVisualTool(), tokenize: tokenizeTool() }),
 			// Course track (feature 006): the syllabus mapped onto the plan.
 			course: courseTool({ chatId: ctx.chatId, chatStore: ctx.chatStore }),
 			// Math check (feature 007): Wolfram verifies computed answers.
 			math_check: mathCheckTool(),
+			...(enabled?.model_hub === false ? {} : createHubTools()),
+			...(enabled?.papers === false ? {} : createPaperTools(ctx.paperFiles)),
 		},
 		withoutMechanics(enabled),
 		),
