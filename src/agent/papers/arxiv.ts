@@ -46,7 +46,10 @@ async function papers(url: URL, signal?: AbortSignal): Promise<PaperResult[]> {
 }
 export async function arxivSearch(query: string, limit: number, signal?: AbortSignal): Promise<PaperResult[]> {
 	const url = new URL("https://export.arxiv.org/api/query");
-	url.searchParams.set("search_query", `all:${query}`);
+	// arXiv's classic parser accepts ESCAPED_STRING. Keep the submitted
+	// text inside one phrase, including literal quotes and backslashes.
+	const phrase = query.replace(/[\\"]/g, "\\$&");
+	url.searchParams.set("search_query", `all:"${phrase}"`);
 	url.searchParams.set("max_results", String(limit));
 	return papers(url, signal);
 }

@@ -64,7 +64,18 @@ describe("paper tools", () => {
 		assert.equal(d.results[0]?.abstract, "Attention & tensors.");
 		assert.equal(d.results[0]?.pdfUrl, "https://arxiv.org/pdf/1706.03762v7");
 		assert.deepEqual([...new URL(urls[1]!).searchParams.keys()].sort(), ["max_results", "search_query"]);
+		assert.equal(new URL(urls[1]!).searchParams.get("search_query"), 'all:"attention"');
 	});
+	it("keeps quotes, backslashes, Unicode and Boolean-looking text inside one literal arXiv phrase", async () => {
+		const urls: string[] = [];
+		globalThis.fetch = async (url) => { urls.push(String(url)); return String(url).includes("semanticscholar") ? new Response("", { status: 429 }) : new Response(atom); };
+		const query = 'A "quoted" \\ path OR ti:(Échelle)';
+		const result = await toolsWithFiles().paper_search.execute("literal", { query }, undefined);
+		assert.equal(new URL(urls[0]!).searchParams.get("query"), query);
+		assert.equal(new URL(urls[1]!).searchParams.get("search_query"), String.raw`all:"A \"quoted\" \\ path OR ti:(Échelle)"`);
+		assert.equal((result.details as PaperSearch).query, query);
+	});
+
 	it("extracts only selected pages, emits the citation hint, and keeps source text out of details", async () => {
 		const urls: string[] = [];
 		sourceStub(urls);

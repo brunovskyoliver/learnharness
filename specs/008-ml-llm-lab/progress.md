@@ -2,11 +2,14 @@
 
 ## Stage
 
-Implementation in progress: T001–T045 complete. T046's opt-in test is implemented but its live search check exposed an unresolved arXiv query mapping. Waiting for Oliver's phrase-search decision before completing T046. Full story gates and production UI checks remain pending.
+Implementation in progress: T001–T046 complete. Hub and paper tools, registration and opt-in source checks are implemented. The arXiv phrase-search decision is resolved and the unchanged live paper test passes. Continue at T047. Full story gates and production UI checks remain pending.
 
 Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Implementation started.** Binding handoff: see [handoff.md](handoff.md).
 
 ## Decisions
+
+- **Oliver, 2026-10-29, T046:** arXiv fallback searches the submitted query as a quoted phrase across all fields. No title-first branch or broad-keyword retry.
+- T046 technical: escape literal backslashes and double quotes inside the phrase, leaving all other submitted text unchanged and preserving the original query in details/S2 requests. The [arXiv API manual §5.1](https://info.arxiv.org/help/api/user-manual.html#51-details-of-query-construction) documents quoted phrases; the [official classic API parser](https://github.com/arXiv/arxiv-search/blob/develop/search/domain/classic_api/query_parser.py) accepts ESCAPED_STRING and retains its escaped content. Source copies are in the evidence directory.
 
 - **Oliver, 2026-10-29, T044:** when citation authors or year are missing, keep successful page extraction and replace the citation hint with “Citation metadata is incomplete. Cite the paper title and page link.” Supply the real title and page URLs; never fabricate authors/year.
 - T044 technical: temporary PDFs use a new core PaperFiles port and lazy src/store/papers.ts adapter rooted in the current tenant's data directory. Server composition injects the port; teacher settlement/start-failure cleanup and researcher finally dispose it, including pending writes. New filesystem mutation remains in the store adapter. Existing researcher PDF tools remain outside the new ten-page cap.
@@ -78,6 +81,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- T046 complete: the exact outgoing phrase and embedded quote/backslash regressions failed first (`t046-query-red.log`), then passed. Final offline paper/row checks pass 27/27 with the one opt-in live test skipped (`t046-offline.log`). Scoped ESLint and full typecheck pass. The unchanged real paper test now passes 1/1 in 6.94 s (`t046-live-green.log`), finding Attention Is All You Need and extracting the expected page-4 text. No model calls, dependency changes or next-env.d.ts rewrite. The earlier live failure is resolved by Oliver's approved query mapping.
 
 - T046 live check failed at exact-title search (`t046-live.log`): S2 throttled and the unquoted arXiv all-fields query returned five related papers, omitting the original. Read-only diagnostics identify arXiv as the source (`t046-live-diagnostic.json`); quoting the same query returns the original as the second result (`t046-quoted-probe.json`). Parent asked Oliver to choose fallback query semantics. No test assertion was weakened and no query change was made while approval is pending. T046 reopened.
 - T046 independent direct-read diagnostic passed: paper_read 1706.03762 page 4 contains “Scaled Dot-Product Attention”, returns the correct title/page URL, and reports 1 of 10 pages in 3.63 s (`t046-page-probe.json`). Temp files were disposed in finally. This verifies extraction, not the unresolved end-to-end live test.
@@ -199,14 +204,14 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Report
 
-Implementation is complete through T045. Phases 6–7 add Hugging Face search/config tools and Semantic Scholar/arXiv paper search and PDF page reading, with exact approved descriptions/doctrine, teacher/researcher toggles, per-instance call/page limits, turn aborts and tenant-scoped temporary PDFs. Hub config numbers come from config.json, parameters from exact safetensors metadata when available, and rounded download counts remain source strings. New filesystem writes are confined to the store adapter. No new dependency, UI component, amber or model call was introduced.
+Implementation is complete through T046. Phases 6–7 add Hugging Face search/config tools and Semantic Scholar/arXiv paper search and PDF page reading, with exact approved descriptions/doctrine, teacher/researcher toggles, per-instance call/page limits, turn aborts and tenant-scoped temporary PDFs. Hub config numbers come from config.json, parameters from exact safetensors metadata when available, and rounded download counts remain source strings. New filesystem writes are confined to the store adapter. No new dependency, UI component, amber or model call was introduced.
 
 Verification: 39 Hub/MCP/math/row tests passed; 69 paper/researcher/tenant/chat-flow tests passed; 95 final registration/job regressions passed. Scoped ESLint and full typecheck passed after all implementation changes. Parent independently passed 13 Hub tests and 16 paper tests. Teacher cleanup tests cover success, abort and settlement failure; researcher cleanup covers success/failure. Default live tests are skipped. Parent's actual anonymous Hub test passed in about 1.09 s. Direct live arXiv page-4 extraction passed in 3.63 s, including the expected source text.
 
-T046 remains open: the live paper test failed at exact-title search because the unquoted arXiv fallback returned related papers. A quoted all-fields query found the original in a read-only diagnostic. Oliver's query-mapping decision is pending; no alternate semantics were implemented without approval. Logs and raw diagnostics are in `~/agent-runs/2026-10-28-feature-008/`.
+T046 is complete: Oliver approved a quoted phrase across all fields for the arXiv fallback. Exact-query/escaping regressions pass, with 27 final offline paper/row tests passing and one default live skip. The unchanged opt-in live paper test passes 1/1 in 6.94 s, including the exact title and page-4 source text. Final scoped lint and full typecheck pass. Logs, primary-source references and earlier diagnostics are in `~/agent-runs/2026-10-28-feature-008/`.
 
 No broad npm test/build or final UI/performance review was run in these phases; the parent owns those gates. Earlier Phase 3 full suite passed 2,742 tests, zero skipped. Phase 5 screenshots and runtime bundle measurement remain in the preceding log: 67,503 bytes versus T001's 19,804 bytes, outside startup JavaScript. T001 startup baseline remains unchanged; final comparison is T054. No next-env.d.ts rewrite occurred.
 
-After the query decision, complete T046 and continue T047–T056. T048/convergence must also render approved common ML captions. Final production-theme screenshots, composed-demo review and broad gates remain. The ten-page cap applies only to the new paper_read; existing researcher PDF tools remain unchanged.
+Continue T047–T056. T048/convergence must also render approved common ML captions. Final production-theme screenshots, composed-demo review and broad gates remain. The ten-page cap applies only to the new paper_read; existing researcher PDF tools remain unchanged.
 
-Publication: draft PR https://github.com/brunovskyoliver/learnharness/pull/8 targets the unmerged spec branch `claude/confident-edison-h092l5`. New local commits are aecc60b (Hub), c08c6ec (registration/live test), 64e3b0b (PDF fixture), a285314 (paper clients/storage), f4cd1be (paper registration/live test). Parent owns publication. No push, merge or deployment performed.
+Publication: draft PR https://github.com/brunovskyoliver/learnharness/pull/8 targets the unmerged spec branch `claude/confident-edison-h092l5`. The parent published the earlier phase commits with identical trees and remapped SHAs; this query fix remains local for parent review/publication. No push, merge or deployment performed.
