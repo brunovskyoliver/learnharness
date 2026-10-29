@@ -129,7 +129,7 @@
   - scrolling inside the frame above 12×12;
   - the readout;
   - "Illustrative numbers".
-- [ ] T029 [P] [US2] Headless render tests in `tests/plot-headless.test.ts` style (skipped without Chrome, like that file): each of `next_token` and `heatmap` passes the kit self-test, the illustrative label is present, and a cell exposes its value through `aria-label`.
+- [X] T029 [P] [US2] Headless render tests in `tests/plot-headless.test.ts` style (skipped without Chrome, like that file): each of `next_token` and `heatmap` passes the kit self-test, the illustrative label is present, and a cell exposes its value through `aria-label`.
 
 ## Phase 5: User Story 3 — Network, embeddings and shapes (P2)
 

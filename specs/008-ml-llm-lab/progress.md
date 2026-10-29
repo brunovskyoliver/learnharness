@@ -2,7 +2,7 @@
 
 ## Stage
 
-Implementation in progress: T001–T028 complete. Phase 4 (US2) continues at T029. US1 implementation is built; full story gates remain pending the later runtime renderers and production UI checks.
+Implementation in progress: T001–T029 complete. Phase 5 (US3) begins at T030. US1 implementation is built; full story gates remain pending the later runtime renderers and production UI checks.
 
 Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Implementation started.** Binding handoff: see [handoff.md](handoff.md).
 
@@ -58,6 +58,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- T029 / Phase 4 verification: **22/22** targeted tests pass with explicit Chrome, zero skipped (`t029-green.log`): pure maths, complete-document checks, interactive browser checks and existing token/plot regressions. Both panels pass the kit self-test; illustrative labels and heatmap cell/readout aria values are asserted. Runtime rejects expression-driven >30-token and >64-row inputs. First T029 run exposed a test assertion against the headless wrapper’s summary shape, corrected to its documented `{panels, steps}` (`t029-harness-shape.log`); no runtime failure. Targeted ESLint and diff whitespace checks pass; typecheck has only the pending Phase 5 renderer exhaustiveness error (`phase4-final-typecheck.log`). No full test/build rerun or next-env.d.ts change. Runtime bundle is 40,764 bytes, outside app startup JS. All 12 screenshots inspected; production theme, composition with global kit parameters in focus mode, and final accessibility review remain T048/T052–T054. Web Interface Guidelines reviewed for labels, focus, scrolling, touch targets and reduced motion; no transitions introduced.
 
 - T028: heatmap browser tests failed on absent cells (`t028-red.log`); all five sampling/heatmap browser tests now pass (`t028-green.log`). Covered readout/aria equality, roving arrows, row/column emphasis, pinning, both scales, approved derived bounds, constant data, invalid evaluated data and 64×64 scrolling/touch targets. Six `shots/heatmap-{inline,expanded}-{320,390,1440}.png` screenshots compared with Heatmap/Phone: same grid/legend/readout structure, no board-only example switch, contract colour endpoints retained, horizontal scrolling on touch preserves 44px cells. Neutral kit theme/system font differs from the app bridge and remains T052. Targeted lint passes; typecheck has only the pending Phase 5 renderer return. A T027 endpoint regression caught native range rounding 1 to 0.9625 with an extended Top-p minimum; it failed first (`t027-endpoint-red.log`) and passes after using continuous stepping when bounds do not fit the board step.
 
@@ -129,7 +131,9 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Report
 
-Implementation complete through T026: foundations and US1 tokenization, tools, transcript, renderer, tenant-gated editing bridge and exact approved doctrine. T027–T056 remain; Both T027 decisions are approved; implementation resumes. US1 is not claimed to have passed the full story gate: other declared panel kinds still need their scheduled runtime renderers before typecheck/build can pass.
+Phase 4 adds stable sampling distributions, next-token bars/controls and accessible sequential/diverging heatmaps. Approved title/context and extended slider bounds are preserved. New Phase 4 verification: 22 targeted tests pass, targeted lint passes, 12 screenshots inspected at 320/390/1440 inline and expanded. Typecheck remains blocked only by scheduled Phase 5 renderers. No full suite/build rerun in this phase; no deployment or publication by the implementer.
+
+Implementation complete through T029: foundations and US1 tokenization, tools, transcript, renderer, tenant-gated editing bridge and exact approved doctrine. T027–T056 remain; Both T027 decisions are approved; implementation resumes. US1 is not claimed to have passed the full story gate: other declared panel kinds still need their scheduled runtime renderers before typecheck/build can pass.
 
 Changed: pinned tokenizer fixtures (20 strings × three encodings), lazy per-process tokenizers with exact partial UTF-8 bytes, checked ml_visual/tokenize tools under the shared toggle, existing PlotCard/workspace integration, accessible token chips and controls, local-only editing route and validated source-window bridge. Request nonces reject stale replies across document reloads. No model calls or token persistence added. Only js-tiktoken@1.0.21 was added; lookup-row.tsx remains the only new UI component. Approved wording was preserved.
 

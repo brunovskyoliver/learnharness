@@ -74,6 +74,8 @@ it("heatmap provides roving focus, matching hover/readout, pinned cells and resp
 	try {
 		const page = await browser.newPage(); await mount(page, heatmap);
 		assert.equal(await page.$$eval('[role="gridcell"]', e => e.length), 9);
+		assert.equal(await page.$eval(".k-illustrative", e => e.textContent), "Illustrative numbers");
+		assert.deepEqual(await page.evaluate(() => window.__lhKit!.selfTest()), { errors: [], panels: 1, steps: 0 });
 		assert.equal(await page.$$eval('[role="gridcell"][tabindex="0"]', e => e.length), 1);
 		await page.focus('[role="gridcell"]');
 		await page.keyboard.press("ArrowDown"); await page.keyboard.press("ArrowDown"); await page.keyboard.press("ArrowRight");
