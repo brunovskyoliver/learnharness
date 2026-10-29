@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { afterEach, it } from "node:test";
+import { afterEach, beforeEach, it, mock } from "node:test";
+import { mockPdfHttps } from "./helpers/mock-pdf-https.ts";
 import { semanticScholarSearch } from "../src/agent/papers/semantic-scholar.ts";
 import { arxivFetch } from "../src/agent/papers/arxiv.ts";
 import { createHubTools } from "../src/agent/tools/hub.ts";
@@ -7,7 +8,8 @@ import { createPaperTools } from "../src/agent/tools/papers.ts";
 
 const originalFetch = globalThis.fetch;
 const originalTimeout = AbortSignal.timeout;
-afterEach(() => { globalThis.fetch = originalFetch; AbortSignal.timeout = originalTimeout; });
+beforeEach(() => mockPdfHttps());
+afterEach(() => { mock.restoreAll(); globalThis.fetch = originalFetch; AbortSignal.timeout = originalTimeout; });
 
 async function verifyDeadline(run: (signal: AbortSignal) => Promise<unknown>, prepare?: () => Promise<void>) {
 	const deadlines: { ms: number; controller: AbortController }[] = [];
