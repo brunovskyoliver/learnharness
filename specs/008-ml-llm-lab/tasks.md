@@ -225,7 +225,7 @@
 
 ## Phase 9: Polish and cross-cutting
 
-- [ ] T050 Seed review sessions (`scripts/seed-review.mjs`, or a sibling `scripts/seed-ml.mjs` run by `npm run seed:review`), per quickstart.md: "UI review · ML panels", "UI review · ML lookups", "UI review · ML practice". Use synthetic records like the gradient example, with no network.
+- [X] T050 Seed review sessions (`scripts/seed-review.mjs`, or a sibling `scripts/seed-ml.mjs` run by `npm run seed:review`), per quickstart.md: "UI review · ML panels", "UI review · ML lookups", "UI review · ML practice". Use synthetic records like the gradient example, with no network.
 - [ ] T051 DESIGN.md: add "ML panels" (under Demos) and "Lookup rows" (under Math check), summarising ui-contract.md §A–§D with the canvas link. Update PRODUCT.md (one paragraph) and docs/ui-review.md (the three review sessions and what to check).
 - [ ] T052 Browser check (ui-contract.md §E) at 320, 390 and 1440 px on a production build with the seeded data. Screenshots go to `~/agent-runs/<date>-feature-008/shots/`. Record the canvas comparison per board in `progress.md`. Time 5 inline panels from tool call to visible demo and record them against SC-007 (~3 s). Fix every difference, or list it for Oliver.
 - [ ] T053 Accessibility pass: keyboard-only walkthrough of every panel and row, a screen-reader label spot-check (VoiceOver or NVDA if available, otherwise the accessibility tree via Playwright `page.accessibility.snapshot()`), and reduced motion.

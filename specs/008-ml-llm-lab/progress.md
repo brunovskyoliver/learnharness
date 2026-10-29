@@ -86,6 +86,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Log
 
+- T050: new ML seed test failed on the absent generator (`t050-red.log`); five seed/store/CLI/preservation tests now pass (`t050-green.log`). `seed-review.mjs` adds the three named ML sessions through its existing exclusive-write path. Eight demo results cover all six kinds, 3D scatter and linked composition; failed panel, all lookup kinds/failures, citations, real server tokenizer output and active token practice included. Running-state tool fixtures are exported for the production synthetic-stream harness; persisted unfinished calls remain honest settled rows. No network/model calls or real-data writes. Test lint passes; scripts are excluded by the existing lint config.
+
 - T049: the dedicated tokens+heatmap composition passes the real runtime self-test; focusing a chip marks the exact header, and an actual `lh-demo-theme` message changes the applied CSS while preserving text, encoding, pin, matrix values, parameter value and linked header through expansion/return. All six composition tests pass (`t049-green.log`). Parent independently passed the first five composition regressions in 5.79 s.
 - Phase 8 final verification: all 80 targeted builder/tokenizer/schema/math/panel browser tests pass, zero skipped (`phase8-targeted.log`, 17.04 s). Final scoped ESLint and full typecheck exit 0 (`phase8-lint.log`, `phase8-typecheck.log`); nullable DOM assertion types and the test fixture union were corrected after the initial typecheck. `git diff --check` passes. Runtime bundle is 71,263 bytes, excluded from startup JavaScript. No dependency changes or next-env.d.ts rewrite. Full suite/build and final seeded product review remain with the parent.
 
