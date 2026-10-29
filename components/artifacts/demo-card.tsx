@@ -7,7 +7,7 @@ import { InvertDiscIcon } from "@/components/artifacts/invert-disc";
 import { ChatActionsContext } from "@/components/chat";
 import { downloadFile, slugFilename } from "@/components/artifacts/download";
 import { DispatchCard } from "@/components/artifacts/dispatch-card";
-import { injectDemoTheme, DEMO_APPEARANCE_PROPERTIES, demoAppearanceVars, type ArtifactPartProps, type DemoResult, type DemoTokenizeRequest, type DemoTokensReply } from "@/src/core";
+import { kitSpecOf, injectDemoTheme, DEMO_APPEARANCE_PROPERTIES, demoAppearanceVars, type ArtifactPartProps, type DemoResult, type DemoTokenizeRequest, type DemoTokensReply } from "@/src/core";
 import { useAppearance } from "@/components/settings/appearance";
 import { useDemoPresentation } from "@/components/artifacts/demo-presentation";
 import { useDemoPanel } from "@/components/artifacts/demo-panel-context";
@@ -238,6 +238,7 @@ export function DemoFrame({
 		}).catch(() => {});
 	};
 	const srcDoc = useMemo(() => buildDemoSrcDoc(html), [html]);
+	const hasMlPanels = useMemo(() => kitSpecOf(html)?.panels?.some(panel => ["tokens", "next_token", "heatmap", "network", "scatter", "shapes"].includes(panel.type)) ?? false, [html]);
 
 	useEffect(() => {
 		const onMessage = (event: MessageEvent) => {
@@ -270,7 +271,7 @@ export function DemoFrame({
 	}, []);
 
 	const controls = (
-		<div className="flex shrink-0 items-center gap-1.5">
+		<div className="flex shrink-0 items-center gap-1.5" style={hasMlPanels ? { "--ring": "var(--foreground)" } as React.CSSProperties : undefined}>
 			<button type="button" aria-label={focused ? "Close expanded demo" : "Expand demo"} onClick={(event) => { if (!focused) focusInvoker.current = event.currentTarget; focusOrigin.current = dialogRef.current?.getBoundingClientRect() ?? null; setFocused(!focused); }} className="ui-icon-button">{focused ? <XIcon className="ui-icon" /> : <MaximizeIcon className="ui-icon" />}</button>
 			<button type="button" aria-label="Invert demo brightness" title="Invert colors" aria-pressed={inverted} onClick={() => toggleInverted(!inverted)} className="ui-icon-button"><InvertDiscIcon className="ui-icon" /></button>
 			<button

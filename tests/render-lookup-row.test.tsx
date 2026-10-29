@@ -113,3 +113,21 @@ it("preserves rounded Hub download counts as supplied", () => {
 	assert.match(html, /24\.1M/);
 	assert.doesNotMatch(html, /24,100,000/);
 });
+
+it("shows failed ML panel checks as quiet tool rows while malformed inputs retain retry behavior", () => {
+	const failed = failedTranscript("ml_visual", "The panel failed its check and was not shown:\n- invalid evaluated values");
+	assert.ok(failed.includes('data-testid="tool-call-card"'));
+	assert.ok(!failed.includes('data-testid="tool-retry"'));
+	assert.ok(!failed.includes('data-testid="demo-iframe"'));
+	assert.ok(failedTranscript("ml_visual", 'Invalid tool input for tool "ml_visual": missing data').includes('data-testid="tool-retry"'));
+});
+
+it("shows the exact optional parameter count in the existing model field grid", () => {
+	for (const params of [0, 124439808]) {
+		const doc = documentOf(render("hub_model", { ...model, params }));
+		const grid = doc.querySelector(".grid")!;
+		assert.match(grid.textContent!, /Parameters/);
+		assert.ok([...grid.querySelectorAll(".font-mono")].some(node => node.textContent === `safetensors.total ${params}`));
+	}
+	assert.doesNotMatch(render("hub_model", model), /Parameters|safetensors.total/);
+});

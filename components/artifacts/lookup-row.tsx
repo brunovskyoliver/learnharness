@@ -48,7 +48,7 @@ export function LookupRow({ part }: ArtifactPartProps) {
 				</>}
 				{d && "kind" in d && d.kind === "model" && <>
 					<Row label="Model">{d.repo}</Row>
-					<div className="grid grid-cols-2 gap-2">{d.fields.map(field => <Row key={field.key} label={field.label}>{`${field.key} ${field.value}`}</Row>)}</div>
+					<div className="grid grid-cols-2 gap-2">{d.fields.map(field => <Row key={field.key} label={field.label}>{`${field.key} ${field.value}`}</Row>)}{d.params !== undefined && <Row label="Parameters">{`safetensors.total ${d.params}`}</Row>}</div>
 					<a className={LINK_CLASS} href={d.url} target="_blank" rel="noreferrer" aria-label={`Open on Hugging Face · ${d.repo}`}>Open on Hugging Face</a>
 				</>}
 				{d && "kind" in d && d.kind === "search" && d.results.map((result, index) => <div key={`${result.id}/${index}`}>

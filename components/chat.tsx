@@ -1527,7 +1527,8 @@ function ChatView({
 													part.type.startsWith("tool-") &&
 													part.errorText !== "Operation aborted" &&
 													// Feature 007: a failed math check says so in its own row.
-													!isShownMathCheckFailure(part) && !isShownLookupFailure(part)
+													!isShownMathCheckFailure(part) && !isShownLookupFailure(part) &&
+													(part.type !== "tool-ml_visual" || String(part.errorText ?? "").startsWith("Invalid tool input"))
 												) {
 													return (
 														<SystemLine key={`retry-${pi}`} testId="tool-retry">

@@ -2,11 +2,14 @@
 
 ## Stage
 
-Implementation in progress: T001–T049 complete. Composed demos finalize token panels, link exact labels and preserve state through focus/theme changes. Continue at T050. Full story gates and production UI checks remain pending.
+Implementation in progress: T001–T051 complete. T052 production review is checking all seeded panels, row states and settings. Accessibility, performance and full gates follow in task order.
 
 Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Implementation started.** Binding handoff: see [handoff.md](handoff.md).
 
 ## Decisions
+
+- **Oliver, 2026-10-29, T052:** show the optional exact model parameter count in the existing two-column field grid as label “Parameters” and mono value `safetensors.total {count}`. Omit the row when the source omits the count.
+- T052 constraint correction: the existing parent demo-toolbar focus ring inherited amber. Scope its `--ring` to `--foreground` when the stored kit contains any ML panel, preserving the visible ring and unrelated demos. This follows the owner’s no-amber feature constraint; no global focus restyle.
 
 - **Oliver, 2026-10-29, T048:** heatmap cell hover/focus broadcasts its key-column label; row/column headers broadcast their own label.
 - T048 technical: match exact raw label text without trimming or marker normalization. Sampling rows gain roving keyboard focus, retaining list semantics and Sample/readout behavior. Linked events stay inside the runtime and do not echo from receivers or mutate their values/selections.
@@ -85,6 +88,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- T052 in progress: production build passes; isolated `production-data` contains the seven synthetic sessions. Browser review found failed `ml_visual` checks displayed “Retrying…” in full Chat; regression RED→GREEN now routes unavailable/failed checks to the existing quiet tool row while malformed input retains retry behavior. Parameter-row regression RED→GREEN includes zero and exact integer counts. Toolbar-scope regression RED→GREEN covers all six kinds and unchanged ordinary demos. Logs: `t052-failure-*`, `t052-parameters-*`, `t052-focus-*`. Actual reply citations were discovered amber; reported under UI contract C and awaiting owner decision before changing the existing style. T052 remains unchecked.
 
 - T051: DESIGN.md now summarizes the binding panel/row/settings contract and owner overrides, PRODUCT.md describes the lab and privacy/caps, and docs/ui-review.md lists all three ML sessions and the production/keyboard checks. Corrected quickstart’s seed task reference from T030 to T050. Documentation links back to the canvas and contracts.
 
