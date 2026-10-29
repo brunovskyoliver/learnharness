@@ -488,7 +488,10 @@ class Kit {
 		let revision = 0, serial = 0, active = 0;
 		let pinned: number | null = null;
 		let timer: number | undefined, answered = false, closed = false;
-		const prefix = `tokens-${this.panelBoxes.indexOf(box)}-`;
+		// WindowProxy survives iframe navigation; a fresh nonce prevents a reply
+		// from the previous document from matching this document's request.
+		const nonce = Array.from(crypto.getRandomValues(new Uint32Array(2)), n => n.toString(16).padStart(8, "0")).join("");
+		const prefix = `${nonce}-${this.panelBoxes.indexOf(box)}-`;
 		const pending = new Map<string, { text: string; encoding: TokenEncoding; revision: number }>();
 		const piece = (token: Token) => token.text ?? token.bytes!.map(byte => `<0x${byte.toString(16).toUpperCase().padStart(2, "0")}>`).join("");
 		const label = (token: Token, index: number) => `Token ${index + 1} of ${current.length} · “${piece(token)}” · id ${token.id}`;

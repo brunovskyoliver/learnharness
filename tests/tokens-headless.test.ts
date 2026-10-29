@@ -23,11 +23,13 @@ it("token panel renders real pieces, roving focus, encodings and downloaded read
 		assert.match(await page.$eval(".k-readout-line", e => e.textContent), /^Token 2 of/);
 		await page.click('.k-seg button[data-encoding="cl100k"]');
 		assert.equal(await page.$eval('.k-seg button[data-encoding="cl100k"]', e => e.getAttribute("aria-pressed")), "true");
-		await page.waitForFunction(() => document.querySelector("textarea")?.readOnly);
+		await page.waitForFunction(() => !document.querySelector<HTMLElement>(".k-token-offline")!.hidden);
+		assert.equal(await page.$eval("textarea", el => el.readOnly), true);
 		assert.match(await page.$eval(".k-token-offline", e => e.textContent), /Editing works in the app/);
 		for (const width of [320,390,1440]) {
-			await page.setViewport({ width, height: 900 });
+			await page.setViewport({ width, height: 900, isMobile: width < 640, hasTouch: width < 640 });
 			assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+			if (width < 640) assert.equal(await page.$$eval(".k-token,.k-seg button,.k-icon-button", elements => elements.every(el => el.getBoundingClientRect().height >= 44)), true);
 		}
 	} finally { await browser.close(); }
 });
@@ -72,5 +74,13 @@ it("token edits debounce and reject stale, malformed and foreign replies while k
 		await edit("a".repeat(2001));
 		assert.equal(await page.$eval(".k-token-error", e => e.textContent), "2,000 characters at most. Shorten the text to split it.");
 		assert.equal(await page.evaluate(() => (window as any).requests.length), 4);
+		const oldRequest = await page.evaluate(() => (window as any).requests[0]);
+		await page.setContent(injectDemoTheme(kitDemoHtml(await withTokenizedPanels({ panels: [{ type: "tokens", title: "New document", text: "new" }] })), true).replace('<script src="/demo-kit/runtime.js"></script>', ""));
+		await page.evaluate(() => { (window as any).nextRequest = null; window.addEventListener("message", event => { if (event.data?.type === "demo-tokenize") (window as any).nextRequest = event.data; }); });
+		await page.addScriptTag({ content: readFileSync("public/demo-kit/runtime.js", "utf8") });
+		await page.waitForFunction(() => (window as any).nextRequest);
+		assert.notEqual(await page.evaluate(() => (window as any).nextRequest.requestId), oldRequest.requestId);
+		await page.evaluate(request => window.dispatchEvent(new MessageEvent("message", { source: window, data: { type: "lh-demo-tokens", requestId: request.requestId, encoding: request.encoding, tokens: [{ id: 1, text: "old document" }] } })), oldRequest);
+		assert.doesNotMatch(await page.$eval(".k-token-strip", e => e.textContent), /old document/);
 	} finally { await browser.close(); }
 });
