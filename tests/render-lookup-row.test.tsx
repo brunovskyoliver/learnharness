@@ -57,3 +57,53 @@ describe("LookupRow", () => {
 		assert.match(read.documentElement.textContent ?? "", /3 of 10 pages this turn/);
 	});
 });
+
+
+it("uses the approved arXiv count headline for zero or multiple results", () => {
+	for (const count of [0, 2]) {
+		const doc = documentOf(render("paper_search", { source: "arxiv", query: "LoRA", results: Array(count).fill(paper), ms: 1 }));
+		assert.equal(doc.querySelector("summary span")?.textContent, `arXiv · ${count} papers for 'LoRA'`);
+	}
+});
+
+it("uses raw tokenizer names and the existing Input/Output expanded content", () => {
+	for (const encoding of ["o200k", "cl100k", "gpt2"]) {
+		const output = { encoding, count: 1, tokens: [{ id: 15339, text: "hello" }] };
+		const doc = documentOf(render("tokenize", output, { input: { text: "hello", encoding } }));
+		assert.equal(doc.querySelector("summary span")?.textContent, `Tokenized · 1 tokens (${encoding})`);
+		assert.match(doc.querySelector("details > div")?.textContent ?? "", /Input/);
+		assert.match(doc.querySelector("details > div")?.textContent ?? "", /Output/);
+		assert.deepEqual([...doc.querySelectorAll("pre")].map(el => JSON.parse(el.textContent!)), [{ text: "hello", encoding }, output]);
+	}
+});
+
+it("reuses the generic row for failed or unfinished tokenization", () => {
+	for (const extra of [{ state: "output-error", errorText: "Unavailable" }, { state: "input-available" }]) {
+		const doc = documentOf(render("tokenize", undefined, extra));
+		assert.equal(doc.querySelector("details")?.getAttribute("data-testid"), "tool-call-card");
+		assert.equal(doc.querySelector("summary span")?.textContent, "tokenize");
+	}
+});
+
+import { Chat } from "../components/chat.tsx";
+import { ServerEventsProvider } from "../components/server-events.tsx";
+import type { LhMessage } from "../src/core/index.ts";
+
+function failedTranscript(tool: string, error: string): string {
+	const messages = [
+		{ id: "u1", role: "user", content: "Look up this source", timestamp: 1 },
+		{ id: "a1", role: "assistant", content: [{ type: "toolCall", id: "lookup1", name: tool, arguments: { query: "attention" } }], timestamp: 2 },
+		{ id: "r1", role: "toolResult", toolCallId: "lookup1", toolName: tool, content: [{ type: "text", text: error }], isError: true, timestamp: 3 },
+	] as LhMessage[];
+	return renderToStaticMarkup(<ServerEventsProvider><Chat chatId="lookup-test" title="Lookup" initialMessages={messages} /></ServerEventsProvider>);
+}
+
+it("shows unavailable lookup failures in the transcript while invalid inputs retain retry behavior", () => {
+	for (const [tool, headline] of [["hub_search", "Hugging Face · lookup failed"], ["hub_model", "Hugging Face · lookup failed"], ["paper_search", "Papers · search failed"], ["paper_read", "Read · failed"]]) {
+		const failed = failedTranscript(tool!, "The service is unavailable.");
+		assert.ok(failed.includes(headline!));
+		assert.ok(!failed.includes('data-testid="tool-retry"'));
+		assert.ok(failedTranscript(tool!, `Invalid tool input for tool "${tool}": missing query`).includes('data-testid="tool-retry"'));
+	}
+	assert.ok(failedTranscript("tokenize", "The tokenizer is unavailable.").includes('data-testid="tool-call-card"'));
+});

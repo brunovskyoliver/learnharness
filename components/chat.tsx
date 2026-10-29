@@ -21,6 +21,7 @@ import { Shimmer } from "@/components/ai-elements/shimmer";
 import { BrailleSpinner } from "@/components/braille-spinner";
 import { LiveToolCard } from "@/components/artifacts/live-tool-card";
 import { AnsweredCard } from "@/components/answered-card";
+import { isShownLookupFailure } from "@/components/artifacts/lookup-row";
 import { isShownMathCheckFailure } from "@/components/artifacts/math-check-card";
 import { artifactRenderers } from "@/components/artifacts";
 import { SubagentSteerCard } from "@/components/artifacts/steer-card";
@@ -1526,7 +1527,7 @@ function ChatView({
 													part.type.startsWith("tool-") &&
 													part.errorText !== "Operation aborted" &&
 													// Feature 007: a failed math check says so in its own row.
-													!isShownMathCheckFailure(part)
+													!isShownMathCheckFailure(part) && !isShownLookupFailure(part)
 												) {
 													return (
 														<SystemLine key={`retry-${pi}`} testId="tool-retry">

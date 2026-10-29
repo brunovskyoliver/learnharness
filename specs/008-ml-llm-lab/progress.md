@@ -2,11 +2,14 @@
 
 ## Stage
 
-Implementation in progress: T001–T010 complete. T011 is paused for owner decisions on unspecified tokenize row states/content and arXiv multi-result headlines; T012 has not started because task order is binding.
+Implementation in progress: T001–T011 complete; T012 running-row work is next. Oliver approved the pending row decisions on 2026-10-29.
 
 Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Implementation started.** Binding handoff: see [handoff.md](handoff.md).
 
 ## Decisions
+
+- **Oliver, 2026-10-29:** failed/unfinished tokenize results reuse the generic tool row; successful tokenization uses raw encoding names `o200k`, `cl100k`, `gpt2` in the approved headline and the existing generic Input/Output expanded contents. arXiv zero/multiple results use `arXiv · {n} papers for '{query}'`.
+- **Oliver, 2026-10-29:** T011 may add the minimal lookup-failure exception in `components/chat.tsx`, analogous to the math-check exception, with a transcript-rendering regression. Invalid-input retry behavior remains unchanged.
 
 - Schema implementation: share literal data schemas and cross-field validation from `src/core/demo-kit.ts` between inline inputs and future evaluated runtime data. Server validation uses JSON.parse for literal expressions, otherwise syntax-checks without execution. Scalar enums remain literal choices as constrained by the contract.
 
@@ -41,6 +44,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- T011: implemented typed lookup details/headline helpers, the exact math-check row skeleton, approved source fields/links and tokenize behavior, and five registry entries. A real Chat SSR regression failed before the chat exception and passed after it; 20 lookup/math-check tests pass (`t011-transcript-red.log`, `t011-green.log`).
 
 - Phase 2 verification through T010: changed-file ESLint passes (`phase2-lint.log`). Typecheck has exactly the expected pending renderer exhaustiveness error and missing T011 lookup-row module (`phase2-typecheck.log`). Baseline headless tests were retried by the parent with explicit CHROME_PATH: all four pass (`baseline-headless-retry.log`), so the initial ETXTBSY errors were environmental.
 
