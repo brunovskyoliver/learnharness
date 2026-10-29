@@ -51,6 +51,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Log
 
+- T024: copied teacher ML doctrine and practice paragraph verbatim from the approved contract. Existing prompt discovery requires no list pin changes; all 43 prompt/practice regressions pass (`t024-green.log`).
+
 - T022–T023: bridge/route tests first failed on the missing route (`t022-red.log`); 57 bridge, demo and tenant regressions pass (`t023-green.log`). Pure source+payload validation, local-only POST, success/error replies, exact route tokens, malformed/oversized bodies and hosted refusal covered. Read bundled Next.js route-handler guide before implementation. Full lint passes with a 4 GB Node heap after the default 2 GB heap exhausted (`phase3-lint-retry.log`).
 
 - T021 follow-up: document-reload stale-reply regression failed with deterministic request ids, then passed with a fresh bounded crypto nonce; both real-Chrome tests also verify coarse-pointer target heights and offline timeout (`t021-navigation-red.log`, `t021-navigation-green.log`).

@@ -95,7 +95,7 @@
   - `lh-demo-tokens` reply shapes;
   - a route test for `app/api/tokenize/route.ts`: 200 shape, 400 on a bad body, hosted with no tenant refused, no model import.
 - [X] T023 [US1] Implement the bridge in `components/artifacts/demo-card.tsx` and the `DemoBridgeMessage` types in `src/core/contracts.ts`, plus `app/api/tokenize/route.ts`. Read `node_modules/next/dist/docs/` on route handlers first, and follow the auth and tenant pattern of an existing `app/api/*/route.ts`.
-- [ ] T024 [US1] Doctrine: create `src/agent/prompts/teacher/36-ml-lab.md` and append the practice paragraph to `src/agent/prompts/practice/00-base.md`, verbatim from contracts/doctrine.md. Update any prompt-segment pins in tests.
+- [X] T024 [US1] Doctrine: create `src/agent/prompts/teacher/36-ml-lab.md` and append the practice paragraph to `src/agent/prompts/practice/00-base.md`, verbatim from contracts/doctrine.md. Update any prompt-segment pins in tests.
 
 **Checkpoint**: MVP. A token strip renders inline, is checked headless, and is editable in the app.
 
