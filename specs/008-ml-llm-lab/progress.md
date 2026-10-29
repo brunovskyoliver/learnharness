@@ -2,7 +2,7 @@
 
 ## Stage
 
-Implementation in progress: T001–T054 complete. Production, accessibility and final performance review pass. Full gates and final report follow.
+Implementation in progress: T001–T055 complete. Production, accessibility, performance and full gates pass. Final report and review draft follow.
 
 Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Implementation started.** Binding handoff: see [handoff.md](handoff.md).
 
@@ -93,6 +93,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- T055 complete: `CHROME_PATH=…/chrome-headless-shell NODE_OPTIONS=--max-old-space-size=4096 npm test` passes 2,842/2,844 tests with zero failures and only the two opt-in live tests skipped (41.96 s). No pre-existing auth UI failure reproduced. Full `npm run lint`, `npm run typecheck` and `npm run build` pass. `LH_UI_PORT=3190 CHROME_PATH=…/chrome-no-sandbox.sh NODE_OPTIONS=--max-old-space-size=4096 node scripts/smoke-sidebar-ui.mjs` passes all eight checks: drag lag 0.00 px/82 sessions, persistence, bounds/reset, pointer cancellation, typography, sidebar/header keyboard behavior, active-dock rail traversal and mobile overflow/browser exceptions. The evidence-only Chrome wrapper adds `--no-sandbox` for this environment; no smoke/product code changed. Logs: `t055-{test,lint,typecheck,build,smoke}.log`. Build-generated next-env.d.ts changes are absent from the final tree. Parent independently reran all 18 keyboard regressions, zero skips, 881.94 ms (`parent-keyboard-verification.log`).
 
 - T054 complete: unchanged `perf.sh final`/`perf.mjs`, ten cold trials per device with 150 ms latency, 200,000 B/s download, 100,000 B/s upload and 4× CPU. No concurrent heavy job; review server stopped. Baseline → final median: desktop startup 4,844.90 → 4,837.45 ms (−0.15%), sidebar 4,890.95 → 4,885.15 ms (−0.12%); mobile startup 4,827.30 → 4,816.70 ms (−0.22%), sidebar 4,987.45 → 4,969.20 ms (−0.37%). Initial JS 612,829 → 615,137 bytes (+0.38%) on both. All three gated metrics are within 5%. FCP 966 → 966 ms desktop, 964 → 970 ms mobile; API bytes remain 35,237. Runtime 71,263 bytes versus initial 19,804, loaded only with demos and outside startup JS. Raw trials, medians and comparison are `final-perf.json`, `final-summary.json`, `performance-comparison.json`; harness unchanged (SHA256 perf.sh 13d8dbd81823e921e6be88bc1e9969afc08dbb76359861b396158f6ee78555ac, perf.mjs 29430514d1dbb5362d6cca577230711f46439df96ac8bba3b2b52a1674c8d351).
 
