@@ -28,11 +28,12 @@ it("next-token controls recompute, cut, sample and reset the board distribution"
 		await slider(page, "temperature", "1"); await slider(page, "topK", "3");
 		assert.equal(await page.$$eval(".k-sampling-cut", rows => rows.length), 5);
 		assert.match(await page.$eval(".k-sampling-cut", e => e.textContent), /cut by top-k/);
+		// Top-p runs on the renormalised top-3 (mat = 0.522 ≥ 0.5), as in transformers.
 		await slider(page, "topP", "0.5");
-		assert.equal(await page.$$eval(".k-sampling-cut", rows => rows.length), 6);
+		assert.equal(await page.$$eval(".k-sampling-cut", rows => rows.length), 7);
 		assert.match(await page.$eval(".k-sampling-rows", e => e.textContent), /cut by top-p/);
 		await page.evaluate(() => { Math.random = () => 0; }); await page.click(".k-sampling-fields .k-primary");
-		assert.equal(await page.$eval(".k-readout-line", e => e.textContent), "Sampled “mat” · 2 tokens could be drawn");
+		assert.equal(await page.$eval(".k-readout-line", e => e.textContent), "Sampled “mat” · 1 token could be drawn");
 		assert.equal(await page.$$eval(".k-sampling-picked", rows => rows.length), 1);
 		await page.click(".k-sampling-reset");
 		assert.equal(await page.$eval(".k-readout-line", e => e.textContent), "8 of 8 tokens can be drawn. Press Sample to draw one.");

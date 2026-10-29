@@ -129,7 +129,11 @@ export async function runResearcherAgent(prompt: string, opts: ResearcherRunOpti
 			maxTurns: 1,
 		});
 		return wrapUp.text;
-	} finally { await opts.paperFiles?.dispose(); }
+	} finally {
+		// A failed cleanup must never replace a finished brief.
+		try { await opts.paperFiles?.dispose(); }
+		catch (error) { console.error("[researcher] paper cleanup failed:", error); }
+	}
 }
 
 const MAX_TURNS = 12;

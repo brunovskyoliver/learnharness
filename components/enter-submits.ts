@@ -65,7 +65,9 @@ export function chatUsesNativeTraversal(root: ParentNode): boolean {
 export function mlResultKeepsNativeEnter(el: HTMLElement): boolean {
 	if (!el.closest("[data-chat-ml-lab]")) return false;
 	const result = el.matches('summary') && !!el.closest('[data-testid="lookup-row"], [data-testid="tool-call-card"]:is([data-tool="ml_visual"], [data-tool="tokenize"], [data-tool="hub_model"], [data-tool="hub_search"], [data-tool="paper_search"], [data-tool="paper_read"])');
-	const citation = el.matches('a[href*="#page="]') && !!el.closest('.lh-prose, [data-testid="lookup-row"]');
+	// Every link inside a lookup row (Hub page, results, paper titles, pages)
+	// opens on plain Enter, like page citations in prose.
+	const citation = el.matches("a[href]") && (!!el.closest('[data-testid="lookup-row"]') || (el.matches('a[href*="#page="]') && !!el.closest(".lh-prose")));
 	if (!result && !citation) return false;
 	try { return el.matches(":focus-visible"); } catch { return false; }
 }

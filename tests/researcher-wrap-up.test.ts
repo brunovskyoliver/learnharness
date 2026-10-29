@@ -104,6 +104,15 @@ it("disposes researcher paper files after both a successful and a failed run", a
 });
 
 
+it("keeps a finished brief when paper cleanup fails", async () => {
+	const { engine } = scripted([answering(BRIEF)]);
+	const original = console.error; console.error = () => {};
+	try {
+		const text = await runResearcherAgent("q", { engine, paperFiles: { write: async () => "unused.pdf", dispose: async () => { throw new Error("rm failed"); } } });
+		assert.equal(text, BRIEF);
+	} finally { console.error = original; }
+});
+
 it("registers both paper tools unless papers is explicitly disabled", async () => {
 	for (const papers of [undefined, false]) {
 		const { engine, requests } = scripted([answering(BRIEF)]);

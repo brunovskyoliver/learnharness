@@ -33,3 +33,11 @@ describe("server tokenizer", () => {
 		await assert.rejects(withTokenizedPanels({ panels: [{ type: "tokens", text: { expression: "throw new Error()" } }] } as never));
 	});
 });
+
+it("tokenizes special-token text as ordinary text instead of failing", async () => {
+	for (const encoding of ["o200k", "cl100k", "gpt2"] as const) {
+		const tokens = await tokenize("<|endoftext|>", encoding);
+		assert.ok(tokens.length > 1, `${encoding} splits the marker into ordinary pieces`);
+		assert.equal(tokens.map(t => t.text).join(""), "<|endoftext|>");
+	}
+});

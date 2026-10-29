@@ -44,7 +44,10 @@ describe("ML visual parts", () => {
 		const part = mlPart(mlTurn(false));
 		assert.equal(part.state, "output-error");
 		assert.equal(part.resultMessageId, undefined);
-		assert.doesNotMatch(renderToStaticMarkup(<PlotCard part={part as never} />), /<iframe/);
+		const markup = renderToStaticMarkup(<PlotCard part={part as never} />);
+		assert.doesNotMatch(markup, /<iframe/);
+		assert.match(markup, /Panel · failed its check/, "plain words, never the tool name");
+		assert.doesNotMatch(markup, />ml_visual</);
 	});
 
 	it("joins the session's demos beside delivered demos, in transcript order", () => {

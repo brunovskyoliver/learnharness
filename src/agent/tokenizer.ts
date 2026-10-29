@@ -24,7 +24,9 @@ export async function tokenize(text: string, encoding: TokenEncoding): Promise<T
 	let pending = cache.get(encoding);
 	if (!pending) { pending = load(encoding); cache.set(encoding, pending); }
 	const { tokenizer, bytes } = await pending;
-	return tokenizer.encode(text).map(id => {
+	// Special-token text such as <|endoftext|> is tokenized as ordinary text,
+	// which is what a learner typing it into the strip expects to see.
+	return tokenizer.encode(text, [], []).map(id => {
 		const piece = bytes.get(id)!;
 		try { return { id, text: new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(piece) }; }
 		catch { return { id, text: null, bytes: Array.from(piece) }; }

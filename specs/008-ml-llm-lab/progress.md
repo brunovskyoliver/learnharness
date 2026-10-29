@@ -257,6 +257,18 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - Network probes from this environment were blocked (403) for huggingface.co, arxiv.org and semanticscholar.org. Hence task T002.
 - js-tiktoken 1.0.21 was measured locally (research R1).
 - speckit-analyze: 0 critical, 1 high (the drafts; resolved by the PR review), 4 medium fixed.
+- 2026-10-29 review fixes (Oliver approved all review findings and the PR's recorded decisions: native Tab in ML chats, ink focus on 008 surfaces, no amber series, the extra panel copy):
+  - failed plot/panel rows read "Plot · failed its check" / "Panel · failed its check", never the tool name;
+  - tokenize rows show the text and tokens in words, not JSON; singular counts ("1 token", "1 model", "p. 4"); downloads labelled; no raw Semantic Scholar id;
+  - a sampling value bound to a demo parameter has only the demo's slider (two sliders could disagree);
+  - next-token rows get accessible names and update the readout on hover and focus;
+  - sampling order matches transformers: top-k, renormalise, top-p;
+  - heatmap labels stay on one line and the grid scrolls instead of squeezing at 390 px;
+  - plain Enter opens every link in a lookup row;
+  - a failed paper cleanup no longer replaces a finished research brief;
+  - hub_model no longer fetches and discards the model card (up to 25 s); a 404 reads "found nothing", not "unavailable";
+  - `<|endoftext|>` and other special-token text tokenize as ordinary text;
+  - open-access PDF downloads require https to a named public host and re-check each redirect (at most 3).
 
 ## Report
 

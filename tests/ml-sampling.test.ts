@@ -23,7 +23,7 @@ describe("sampling distributions", () => {
 		assert.deepEqual(rows.map(r => r.cut), [null, null, "cut by top-p", "cut by top-k"]);
 		near(rows[0]!.p, 4 / 7); near(rows[1]!.p, 3 / 7);
 		near(rows[2]!.p, 0); near(rows[3]!.p, 0);
-		assert.equal(distribution([{ text: "a", p: 0.4 }, { text: "b", p: 0.3 }, { text: "c", p: 0.2 }, { text: "d", p: 0.1 }], { topK: 2, topP: 0.5 }).filter(r => !r.cut).length, 2);
+		assert.equal(distribution([{ text: "a", p: 0.4 }, { text: "b", p: 0.3 }, { text: "c", p: 0.2 }, { text: "d", p: 0.1 }], { topK: 2, topP: 0.5 }).filter(r => !r.cut).length, 1, "top-p runs on the renormalised top-k distribution (a = 4/7 ≥ 0.5), as in transformers");
 	});
 	it("sums to 100% within 0.1 across the required parameter sweep", () => {
 		for (const temperature of [0.1, 0.5, 1, 2]) for (const topK of [0, 1, 3, 8]) for (const topP of [0.05, 0.5, 0.9, 1]) {

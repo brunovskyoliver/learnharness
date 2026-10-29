@@ -58,11 +58,15 @@ function paperResults(reply: { text: string; structuredContent?: unknown }): { r
 }
 async function getJson(url: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
 	const response = await fetch(url, { signal: AbortSignal.any([AbortSignal.timeout(20_000), ...(signal ? [signal] : [])]) });
+	if (response.status === 404) throw new HubNotFoundError("Hugging Face has nothing at that name.");
 	if (!response.ok) throw new Error(`Hugging Face returned HTTP ${response.status}.`);
 	const value: unknown = await response.json();
 	if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Hugging Face returned an invalid configuration.");
 	return value as Record<string, unknown>;
 }
+
+/** A 404 from the Hub: the name doesn't exist, the service is fine. */
+class HubNotFoundError extends Error {}
 
 /** One pair per teacher turn/researcher run; both tools spend the same cap. */
 export function createHubTools() {
@@ -76,6 +80,8 @@ export function createHubTools() {
 			try { return await run(input, signal); }
 			catch (error) {
 				if (signal?.aborted) throw new Error("Operation aborted");
+				// "Not found" is an answer, not an outage: say which.
+				if (error instanceof HubNotFoundError) throw new Error(`The Hugging Face lookup found nothing: ${error.message}`);
 				throw new Error(`The Hugging Face lookup is unavailable: ${error instanceof Error ? error.message : String(error)}`);
 			}
 		});
@@ -103,10 +109,6 @@ export function createHubTools() {
 				const value = config[key];
 				if (typeof value === "number" && Number.isFinite(value) || typeof value === "string") fields.push({ label, key, value });
 			}
-			// The probe exposes a README, not a service-provided summary. Do
-			// not invent cardSummary or architecture numbers from prose.
-			try { await callMcpTool("huggingface", "hf_fs", { operations: [{ cmd: "cat", args: [`hf://models/${repo}/README.md`] }] }, signal); }
-			catch { signal?.throwIfAborted(); }
 			let metadata: Record<string, unknown> = {};
 			try { metadata = await getJson(`https://huggingface.co/api/models/${repo}`, signal); }
 			catch { signal?.throwIfAborted(); }

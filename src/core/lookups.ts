@@ -36,12 +36,17 @@ export function paperPageRange(pages: readonly number[]): string {
 	return ranges.join(", ");
 }
 
+/** "1 model", "3 models": the count with its noun in the right number. */
+function counted(count: number, plural: string): string {
+	return `${count} ${count === 1 ? plural.replace(/s$/, "") : plural}`;
+}
+
 export function lookupHeadline(details: LookupDetails): string {
-	if ("encoding" in details) return `Tokenized · ${details.count} tokens (${details.encoding})`;
+	if ("encoding" in details) return `Tokenized · ${counted(details.count, "tokens")} (${details.encoding})`;
 	if ("kind" in details) return details.kind === "model"
 		? `Hugging Face · ${details.repo.split("/").at(-1)} config`
-		: `Hugging Face · ${details.results.length} ${details.what} for '${details.query}'`;
-	if ("pages" in details) return `Read · ${details.title} · pp. ${paperPageRange(details.pages)}`;
+		: `Hugging Face · ${counted(details.results.length, details.what)} for '${details.query}'`;
+	if ("pages" in details) return `Read · ${details.title} · ${details.pages.length === 1 ? "p." : "pp."} ${paperPageRange(details.pages)}`;
 	if (details.source === "arxiv" && details.results.length === 1) return `arXiv · ${details.results[0]!.title}`;
-	return `${details.source === "arxiv" ? "arXiv" : "Semantic Scholar"} · ${details.results.length} papers for '${details.query}'`;
+	return `${details.source === "arxiv" ? "arXiv" : "Semantic Scholar"} · ${counted(details.results.length, "papers")} for '${details.query}'`;
 }

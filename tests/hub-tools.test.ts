@@ -111,7 +111,7 @@ describe("Hub tools", () => {
 		assert.match(text(result), /https:\/\/huggingface.co\/openai-community\/gpt2/);
 		assert.doesNotMatch(JSON.stringify(result), /never include|secret/);
 		assert.ok(urls.every((url) => url === "https://huggingface.co/openai-community/gpt2/resolve/main/config.json" || url === "https://huggingface.co/api/models/openai-community/gpt2"));
-		assert.deepEqual(seen, [{ name: "hf_fs", arguments: { operations: [{ cmd: "cat", args: ["hf://models/openai-community/gpt2/README.md"] }] } }]);
+		assert.deepEqual(seen, [], "no MCP call: the card was fetched and discarded before, costing up to 25 s");
 	});
 	it("keeps exact config fields when optional card and metadata sources are unavailable", async () => {
 		globalThis.fetch = async (url) => String(url).includes("/api/") ? new Response("", { status: 503 }) : Response.json(config);
@@ -151,15 +151,19 @@ describe("Hub tools", () => {
 			else await tools.hub_search.execute(String(i), { kind: "models", query: "gpt2" }, undefined);
 		}
 		await assert.rejects(tools.hub_search.execute("six", { kind: "models", query: "gpt2" }, undefined), /5 Hub lookups per turn/);
-		assert.equal(seen.length, 5);
+		assert.equal(seen.length, 4, "four searches over MCP; hub_model reads HTTPS only");
 		await createHubTools().hub_search.execute("new", { kind: "models", query: "gpt2" }, undefined);
-		assert.equal(seen.length, 6);
+		assert.equal(seen.length, 5);
 	});
 	it("reports unavailable and rate-limited lookups as plain errors", async () => {
 		server([{ text: "Hugging Face is limiting anonymous requests right now.", isError: true }]);
 		await assert.rejects(createHubTools().hub_search.execute("rate", { kind: "models", query: "gpt2" }, undefined), /^Error: The Hugging Face lookup is unavailable: .*limiting/);
 		globalThis.fetch = async () => new Response("", { status: 503 });
 		await assert.rejects(createHubTools().hub_model.execute("down", { repo: "gpt2" }, undefined), /The Hugging Face lookup is unavailable: .*503/);
+	});
+	it("says a missing model was not found instead of calling the Hub unavailable", async () => {
+		globalThis.fetch = async () => new Response("", { status: 404 });
+		await assert.rejects(createHubTools().hub_model.execute("missing", { repo: "no-such/model" }, undefined), /^Error: The Hugging Face lookup found nothing: /);
 	});
 	it("honors an already-aborted turn before a network request", async () => {
 		globalThis.fetch = async () => { assert.fail("must not fetch"); };

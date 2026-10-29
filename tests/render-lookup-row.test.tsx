@@ -66,15 +66,18 @@ it("uses the approved arXiv count headline for zero or multiple results", () => 
 	}
 });
 
-it("uses raw tokenizer names and the existing Input/Output expanded content", () => {
+it("uses raw tokenizer names and shows the text and tokens in words, not JSON", () => {
 	for (const encoding of ["o200k", "cl100k", "gpt2"]) {
-		const output = { encoding, count: 1, tokens: [{ id: 15339, text: "hello" }] };
-		const doc = documentOf(render("tokenize", output, { input: { text: "hello", encoding } }));
-		assert.equal(doc.querySelector("summary span")?.textContent, `Tokenized · 1 tokens (${encoding})`);
-		assert.match(doc.querySelector("details > div")?.textContent ?? "", /Input/);
-		assert.match(doc.querySelector("details > div")?.textContent ?? "", /Output/);
-		assert.deepEqual([...doc.querySelectorAll("pre")].map(el => JSON.parse(el.textContent!)), [{ text: "hello", encoding }, output]);
+		const output = { encoding, count: 3, tokens: [{ id: 15339, text: "hello" }, { id: 1917, text: " world" }, { id: 9468, text: null, bytes: [240, 159] }] };
+		const doc = documentOf(render("tokenize", output, { input: { text: "hello world", encoding } }));
+		assert.equal(doc.querySelector("summary span")?.textContent, `Tokenized · 3 tokens (${encoding})`);
+		const panel = doc.querySelector("details > div")?.textContent ?? "";
+		assert.match(panel, /Texthello world/);
+		assert.match(panel, /hello 15339  ␣world 1917  <0xF0><0x9F> 9468/);
+		assert.equal(doc.querySelectorAll("pre").length, 0, "no raw JSON");
 	}
+	const one = documentOf(render("tokenize", { encoding: "gpt2", count: 1, tokens: [{ id: 31373, text: "hello" }] }, { input: { text: "hello", encoding: "gpt2" } }));
+	assert.equal(one.querySelector("summary span")?.textContent, "Tokenized · 1 token (gpt2)");
 });
 
 it("reuses the generic row for failed or unfinished tokenization", () => {

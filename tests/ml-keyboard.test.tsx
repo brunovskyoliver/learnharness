@@ -23,6 +23,8 @@ it("native result Enter is limited to keyboard focus on ML summaries or page cit
 		['<details data-testid="tool-call-card" data-tool="tokenize"><summary>Tokenizer</summary></details>', true],
 		['<div class="lh-prose"><a href="https://arxiv.org/pdf/p#page=4">Paper p. 4</a></div>', true],
 		['<details data-testid="lookup-row" data-tool="paper_read"><a href="https://arxiv.org/pdf/p#page=4">p. 4</a></details>', true],
+		['<details data-testid="lookup-row" data-tool="hub_model"><div><a href="https://huggingface.co/gpt2">Open on Hugging Face</a></div></details>', true],
+		['<details data-testid="lookup-row" data-tool="paper_search"><div><a href="https://arxiv.org/abs/1706.03762">Attention Is All You Need</a></div></details>', true],
 		['<details data-testid="math-check-card"><summary>Math</summary></details>', false],
 		['<details data-testid="tool-call-card" data-tool="read"><summary>Read</summary></details>', false],
 		['<div class="lh-prose"><a href="https://huggingface.co/gpt2">Model</a></div>', false],

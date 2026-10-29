@@ -18,6 +18,12 @@ function detailsOf(tool: string, output: unknown): LookupDetails | null {
 	return null;
 }
 
+/** One token as the token strip shows it: visible whitespace, bytes for partial characters, then the id. */
+function tokenPiece(token: TokenizeDetails["tokens"][number]): string {
+	const piece = token.text === null ? (token.bytes ?? []).map(byte => `<0x${byte.toString(16).toUpperCase().padStart(2, "0")}>`).join("") : token.text.replace(/^ /, "␣").replace(/\n/g, "↵");
+	return `${piece} ${token.id}`;
+}
+
 function Row({ label, children, mono = true }: { label: string; children: React.ReactNode; mono?: boolean }) {
 	return <div><div className="mb-1 font-medium text-muted-foreground">{label}</div><div className={mono ? "whitespace-pre-wrap break-all font-mono text-xs leading-relaxed" : ""}>{children}</div></div>;
 }
@@ -43,8 +49,8 @@ export function LookupRow({ part }: ArtifactPartProps) {
 			<div className="mt-2 space-y-2 rounded-xl border bg-card p-3 text-sm">
 				{failed && typeof p.errorText === "string" && <Row label="Error" mono={false}><span className="text-destructive">{p.errorText}</span></Row>}
 				{d && "encoding" in d && <>
-					{p.input != null && <div><div className="mb-1 font-medium text-muted-foreground">Input</div><pre className="max-h-32 overflow-auto whitespace-pre-wrap break-all font-mono text-xs leading-relaxed">{JSON.stringify(p.input, null, 2)}</pre></div>}
-					<div><div className="mb-1 font-medium text-muted-foreground">Output</div><pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all font-mono text-xs leading-relaxed">{JSON.stringify(p.output, null, 2)}</pre></div>
+					{typeof (p.input as { text?: unknown } | undefined)?.text === "string" && <Row label="Text" mono={false}><span className="whitespace-pre-wrap">{(p.input as { text: string }).text}</span></Row>}
+					<Row label="Tokens"><span className="block max-h-64 overflow-auto">{d.tokens.map(tokenPiece).join("  ")}</span></Row>
 				</>}
 				{d && "kind" in d && d.kind === "model" && <>
 					<Row label="Model">{d.repo}</Row>
@@ -53,11 +59,11 @@ export function LookupRow({ part }: ArtifactPartProps) {
 				</>}
 				{d && "kind" in d && d.kind === "search" && d.results.map((result, index) => <div key={`${result.id}/${index}`}>
 					<a className={LINK_CLASS} href={result.url} target="_blank" rel="noreferrer" aria-label={`${result.title ?? result.id} · Hugging Face`}>{result.title ?? result.id}</a>
-					{(result.task || result.downloads !== undefined) && <p className="text-muted-foreground">{[result.task, result.downloads].filter(value => value !== undefined && value !== "").join(" · ")}</p>}
+					{(result.task || result.downloads !== undefined) && <p className="text-muted-foreground">{[result.task, result.downloads === undefined || result.downloads === "" ? undefined : `${result.downloads} downloads`].filter(value => value !== undefined && value !== "").join(" · ")}</p>}
 				</div>)}
 				{d && "source" in d && d.results.map((result, index) => <div key={`${result.url}/${index}`}>
 					<a className={`${LINK_CLASS} text-[15px]`} href={result.url} target="_blank" rel="noreferrer" aria-label={`${result.title} · ${d.source === "arxiv" ? "arXiv" : "Semantic Scholar"}`}>{result.title}</a>
-					<p className="text-muted-foreground">{[`${result.authors.slice(0, 3).join(", ")}${result.authors.length > 3 ? " et al." : ""}`, result.year, result.arxivId ? `arXiv ${result.arxivId}` : result.s2Id, result.pdfUrl ? "Open-access PDF" : "No open-access PDF"].filter(value => value !== undefined && value !== "").join(" · ")}</p>
+					<p className="text-muted-foreground">{[`${result.authors.slice(0, 3).join(", ")}${result.authors.length > 3 ? " et al." : ""}`, result.year, result.arxivId ? `arXiv ${result.arxivId}` : undefined, result.pdfUrl ? "Open-access PDF" : "No open-access PDF"].filter(value => value !== undefined && value !== "").join(" · ")}</p>
 				</div>)}
 				{d && "pages" in d && <>
 					<div className="flex flex-wrap gap-2">{d.pages.map(page => <a key={page} className={LINK_CLASS} href={`${d.paper.url.replace(/#.*$/, "")}#page=${page}`} target="_blank" rel="noreferrer" aria-label={`${d.title} · p. ${page}`}>p. {page}</a>)}</div>

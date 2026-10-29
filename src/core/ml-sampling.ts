@@ -24,13 +24,17 @@ export function distribution(tokens: SamplingToken[], { temperature = 1, topK = 
 	const total = weights.reduce((sum, weight) => sum + weight, 0);
 	const rows: SamplingRow[] = tokens.map((token, index) => ({ text: token.text, index, base: weights[index]! / total, p: 0, cut: null }));
 	rows.sort((a, b) => b.base - a.base || a.index - b.index);
-	let cumulative = 0;
+	// Same order as Hugging Face transformers: top-k, renormalise, then top-p
+	// over the renormalised distribution, then renormalise once more.
+	rows.forEach((row, rank) => { if (topK > 0 && rank >= topK) row.cut = "cut by top-k"; });
+	const keptByK = rows.reduce((sum, row) => sum + (row.cut ? 0 : row.base), 0);
+	let cumulative = 0, kept = 0;
 	rows.forEach((row, rank) => {
-		if (topK > 0 && rank >= topK) row.cut = "cut by top-k";
-		else if (topP < 1 && rank > 0 && cumulative >= topP - 1e-9) row.cut = "cut by top-p";
-		else cumulative += row.base;
+		if (row.cut) return;
+		if (topP < 1 && rank > 0 && cumulative >= topP - 1e-9) { row.cut = "cut by top-p"; return; }
+		cumulative += row.base / keptByK; kept += row.base;
 	});
-	for (const row of rows) row.p = row.cut ? 0 : row.base / cumulative;
+	for (const row of rows) row.p = row.cut ? 0 : row.base / kept;
 	return rows;
 }
 

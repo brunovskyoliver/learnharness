@@ -178,3 +178,19 @@ it("composed tokens and heatmap pass self-test and retain values and linked head
 		assert.deepEqual(await page.evaluate(() => window.__lhKit!.selfTest()), { errors: [], panels: 2, steps: 0 });
 	} finally { await browser.close(); }
 });
+
+it("a sampling value bound to a demo parameter has one slider, the demo's, which drives the panel", { skip, timeout: 30000 }, async () => {
+	const browser = await puppeteer.launch({ executablePath: chrome, args: ["--no-sandbox"], headless: true });
+	try {
+		const page = await browser.newPage();
+		const sampling = panels[2] as Extract<DemoKitSpec["panels"][number], { type: "next_token" }>;
+		await mount(page, { params: { temperature: { type: "slider", label: "Temperature", min: .1, max: 2, step: .1, value: 1 } }, panels: [{ ...sampling, temperature: "p.temperature" }] });
+		const labels = () => page.$$eval(".k-label", els => els.map(el => el.firstChild?.textContent?.trim()));
+		assert.deepEqual((await labels()).filter(text => text === "Temperature").length, 1);
+		assert.ok((await labels()).includes("Top-k"), "unbound controls stay in the panel");
+		const before = await page.$eval(".k-sampling-row", el => el.textContent);
+		await page.$eval('.k-controls input[type="range"]', (el) => { (el as HTMLInputElement).value = "0.1"; el.dispatchEvent(new Event("input", { bubbles: true })); });
+		await page.waitForFunction((text) => document.querySelector(".k-sampling-row")!.textContent !== text, {}, before);
+		assert.match(await page.$eval(".k-sampling-row", el => el.textContent), /100\.0%|99\.\d%/);
+	} finally { await browser.close(); }
+});

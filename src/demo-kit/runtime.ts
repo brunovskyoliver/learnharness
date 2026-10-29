@@ -183,10 +183,11 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--lh-muted);outli
 @media(max-width:640px){.k-focus .k-panel.k-sampling-focus{grid-template-columns:minmax(0,1fr)}.k-sampling-focus .k-sampling-fields.k-controls{grid-column:1;grid-row:4}}
 .k-heatmap-scroll{max-width:100%;max-height:600px;overflow:auto;padding:4px;box-sizing:border-box}
 .k-heatmap-body{display:flex;gap:24px;align-items:flex-start;min-width:0}
-.k-heatmap-grid{flex:0 0 auto;width:min(var(--k-heatmap-width),calc(100% - 96px));min-width:calc(72px + var(--k-heatmap-columns)*24px);font-variant-numeric:tabular-nums}
+.k-heatmap-grid{flex:0 0 auto;width:min(var(--k-heatmap-width),calc(100% - 96px));min-width:calc(72px + var(--k-heatmap-columns)*40px);font-variant-numeric:tabular-nums}
 .k-heatmap-grid.k-large{width:var(--k-heatmap-width);min-width:var(--k-heatmap-width)}
 .k-heatmap-row{display:grid;grid-template-columns:72px repeat(var(--k-heatmap-columns),minmax(0,1fr));gap:2px;margin-bottom:2px;align-items:center}
-.k-heatmap-label{font-size:.8em;font-weight:400;color:var(--lh-muted);text-align:center;overflow-wrap:anywhere}
+.k-heatmap-label{font-size:.8em;font-weight:400;color:var(--lh-muted);text-align:center;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.k-heatmap-row>[role=columnheader]:first-child{white-space:normal}
 .k-heatmap-row>[role=rowheader]{text-align:right;padding-right:8px}
 .k-heatmap-label.k-active{font-weight:600;color:var(--lh-text)}
 .k-heatmap-cell{min-width:0;height:44px;border:0;border-radius:3px;padding:0;font:inherit;font-size:13px;font-variant-numeric:tabular-nums;cursor:default}
@@ -749,7 +750,10 @@ class Kit {
 				const bar = el("div", "k-sampling-bar"); bar.style.width = `${100 * (row.cut ? row.base : row.p)}%`; track.append(bar);
 				const value = el("span", "k-sampling-value"); value.textContent = row.cut ?? `${(row.p * 100).toFixed(1)}%`;
 				item.tabIndex = index === activeRow ? 0 : -1;
-				item.onfocus = () => { activeRow = index; Array.from(list.children).forEach((node, i) => (node as HTMLElement).tabIndex = i === index ? 0 : -1); };
+				const rowText = `“${row.text.trim()}” · ${value.textContent}`;
+				item.setAttribute("aria-label", rowText);
+				item.onmouseenter = () => { readout.textContent = rowText; };
+				item.onfocus = () => { activeRow = index; readout.textContent = rowText; Array.from(list.children).forEach((node, i) => (node as HTMLElement).tabIndex = i === index ? 0 : -1); };
 				item.onkeydown = event => {
 					const next = event.key === "ArrowDown" || event.key === "ArrowRight" ? (index + 1) % rows.length : event.key === "ArrowUp" || event.key === "ArrowLeft" ? (index + rows.length - 1) % rows.length : event.key === "Home" ? 0 : event.key === "End" ? rows.length - 1 : null;
 					if (next !== null) { event.preventDefault(); (list.children[next] as HTMLElement).focus(); }
@@ -759,7 +763,7 @@ class Kit {
 			}
 			if (hadFocus) (list.children[activeRow] as HTMLElement)?.focus();
 			const kept = rows.filter(row => row.p > 0).length;
-			readout.textContent = picked === null ? `${kept} of ${rows.length} tokens can be drawn. Press Sample to draw one.` : `Sampled “${tokens[picked]!.text.trim()}” · ${kept} tokens could be drawn`;
+			readout.textContent = picked === null ? `${kept} of ${rows.length} tokens can be drawn. Press Sample to draw one.` : `Sampled “${tokens[picked]!.text.trim()}” · ${kept} ${kept === 1 ? "token" : "tokens"} could be drawn`;
 			for (const [key, control] of inputs) {
 				control.input.value = String(values[key]);
 				control.value.textContent = key === "topK" ? values[key] === 0 ? "off" : String(values[key]) : String(Number(values[key].toFixed(key === "temperature" ? 1 : 2))) === String(values[key]) ? values[key].toFixed(key === "temperature" ? 1 : 2) : String(values[key]);
@@ -770,7 +774,11 @@ class Kit {
 			const field = el("label", "k-field"), caption = el("span", "k-label", label), value = el("b"); caption.append(value);
 			const input = el("input"); input.type = "range"; input.name = key; input.autocomplete = "off"; input.min = String(min); input.max = String(max); input.step = String(step); input.setAttribute("aria-label", label);
 			input.oninput = () => { values[key] = Number(input.value); picked = null; render(); };
-			field.append(caption, input); fields.append(field); inputs.set(key, { input, value });
+			field.append(caption, input); inputs.set(key, { input, value });
+			// A value bound to a demo parameter already has its slider in the demo's
+			// controls; a second slider here would disagree with it.
+			const bound = typeof panel[key] === "string" && /\bp\s*(?:\.|\[)/.test(panel[key]);
+			if (!bound) fields.append(field);
 		}
 		const buttons = el("div", "k-buttons");
 		const reset = el("button", "k-btn k-sampling-reset", "Reset"); reset.type = "button"; reset.onclick = () => { values = { ...defaults }; picked = null; render(); };

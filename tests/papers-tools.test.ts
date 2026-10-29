@@ -109,6 +109,29 @@ describe("paper tools", () => {
 		}
 	});
 
+	it("downloads open-access PDFs only over https from public hosts, re-checking each redirect", async () => {
+		const read = async (pdf: string, onPdf: (url: string) => Response) => {
+			const fetched: string[] = [];
+			globalThis.fetch = async (url) => {
+				if (String(url).includes("semanticscholar")) return Response.json({ data: [{ ...s2.data[0], externalIds: {}, openAccessPdf: { url: pdf } }] });
+				fetched.push(String(url)); return onPdf(String(url));
+			};
+			const tools = toolsWithFiles();
+			await tools.paper_search.execute("find", { query: "attention" }, undefined);
+			return { fetched, result: await tools.paper_read.execute("read", { paper: pdf, pages: "4" }, undefined).then(r => r, e => e as Error) };
+		};
+		for (const bad of ["http://papers.example/a.pdf", "https://127.0.0.1/a.pdf", "https://localhost/a.pdf", "https://[::1]/a.pdf"]) {
+			const { fetched, result } = await read(bad, () => new Response(fixture));
+			assert.deepEqual(fetched, [], `${bad} is never fetched`);
+			assert.match(String((result as Error).message ?? text(result as never)), /not https|private address/);
+		}
+		const redirected = await read("https://papers.example/a.pdf", () => new Response(null, { status: 302, headers: { location: "http://169.254.169.254/latest" } }));
+		assert.deepEqual(redirected.fetched, ["https://papers.example/a.pdf"], "the private redirect target is never fetched");
+		const ok = await read("https://papers.example/b.pdf", url => url.endsWith("/b.pdf") ? new Response(null, { status: 301, headers: { location: "/c.pdf" } }) : new Response(fixture));
+		assert.deepEqual(ok.fetched, ["https://papers.example/b.pdf", "https://papers.example/c.pdf"]);
+		assert.match(text(ok.result as never), /--- p\. 4 ---/);
+	});
+
 	it("accepts a direct arXiv id and retrieves its citation metadata", async () => {
 		sourceStub();
 		const result = await toolsWithFiles().paper_read.execute("direct", { paper: "1706.03762", pages: "4" }, undefined);
