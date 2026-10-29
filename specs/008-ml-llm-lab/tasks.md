@@ -212,7 +212,7 @@
   - the request URLs carry only the query or the paper id (FR-022), asserted on the stubbed `fetch` calls.
 - [X] T044 [US5] Implement `src/agent/papers/semantic-scholar.ts`, `src/agent/papers/arxiv.ts` and `src/agent/tools/papers.ts` (contracts/lookups.md) with the draft descriptions verbatim. Download PDFs into a per-turn temp dir (size cap 25 MB, as `pdf-read.ts` does) and remove it after the turn.
 - [X] T045 [US5] Register the tools for the teacher (dropped when `papers === false`) and the researcher, as in T040.
-- [X] T046 [P] [US5] Opt-in live test `tests/papers-live.test.ts` (`LH_LIVE_PAPERS=1`), per quickstart.md.
+- [ ] T046 [P] [US5] Opt-in live test `tests/papers-live.test.ts` (`LH_LIVE_PAPERS=1`), per quickstart.md.
 
 ## Phase 8: User Story 6 — Composed ML demos (P3)
 

@@ -2,7 +2,7 @@
 
 ## Stage
 
-Implementation in progress: T001–T037 complete. Phase 5 renderers and pure mathematics are implemented; all Phase 5 owner questions are resolved. Continue at T038. Full story gates and production UI checks remain pending.
+Implementation in progress: T001–T045 complete. T046's opt-in test is implemented but its live search check exposed an unresolved arXiv query mapping. Waiting for Oliver's phrase-search decision before completing T046. Full story gates and production UI checks remain pending.
 
 Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Implementation started.** Binding handoff: see [handoff.md](handoff.md).
 
@@ -78,6 +78,9 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- T046 live check failed at exact-title search (`t046-live.log`): S2 throttled and the unquoted arXiv all-fields query returned five related papers, omitting the original. Read-only diagnostics identify arXiv as the source (`t046-live-diagnostic.json`); quoting the same query returns the original as the second result (`t046-quoted-probe.json`). Parent asked Oliver to choose fallback query semantics. No test assertion was weakened and no query change was made while approval is pending. T046 reopened.
+- T046 independent direct-read diagnostic passed: paper_read 1706.03762 page 4 contains “Scaled Dot-Product Attention”, returns the correct title/page URL, and reports 1 of 10 pages in 3.63 s (`t046-page-probe.json`). Temp files were disposed in finally. This verifies extraction, not the unresolved end-to-end live test.
 
 - T046: added the opt-in live paper title search and arXiv page-4 extraction test with finally cleanup. Its default invocation skips the one network test (`t046-default.log`).
 
@@ -196,14 +199,14 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Report
 
-Implementation is complete through T037. Phase 5 adds pure network forward/backward computation, vector arithmetic and nearest-point lookup, plus Network, 2D/3D Scatter and Shapes renderers. Network loss reduction and BCE compatibility follow Oliver's answers. Shape transitions are derived from the unchanged schema and start with the first step selected. No amber, new dependency, new UI component, model call or network request was added in this phase.
+Implementation is complete through T045. Phases 6–7 add Hugging Face search/config tools and Semantic Scholar/arXiv paper search and PDF page reading, with exact approved descriptions/doctrine, teacher/researcher toggles, per-instance call/page limits, turn aborts and tenant-scoped temporary PDFs. Hub config numbers come from config.json, parameters from exact safetensors metadata when available, and rounded download counts remain source strings. New filesystem writes are confined to the store adapter. No new dependency, UI component, amber or model call was introduced.
 
-Verified: 38/38 targeted tests pass with real Chrome and no skips, covering the independent hand-computed network fixture, all activation/loss paths, vector arithmetic/metrics, runtime interactions, complete-document self-tests and existing token/sampling/heatmap regressions. Targeted ESLint and full `npm run typecheck` pass. Parent independently verified 22 network/schema tests and nine network/scatter/shapes browser tests, all passing. No full `npm test` or production build rerun in Phase 5; the parent owns the broad gates. Earlier Phase 3 full suite passed 2,742 tests, zero skipped. No `next-env.d.ts` rewrite occurred.
+Verification: 39 Hub/MCP/math/row tests passed; 69 paper/researcher/tenant/chat-flow tests passed; 95 final registration/job regressions passed. Scoped ESLint and full typecheck passed after all implementation changes. Parent independently passed 13 Hub tests and 16 paper tests. Teacher cleanup tests cover success, abort and settlement failure; researcher cleanup covers success/failure. Default live tests are skipped. Parent's actual anonymous Hub test passed in about 1.09 s. Direct live arXiv page-4 extraction passed in 3.63 s, including the expected source text.
 
-All 24 new screenshots at 320, 390 and 1440 px, inline and expanded, are in `~/agent-runs/2026-10-28-feature-008/shots/`: six network, six 2D scatter, six 3D scatter and six shapes. The task log records board comparisons, owner-approved differences and fixes. Keyboard checks cover roving focus, pinning, visible focus, every 3D point label, native step buttons, state through expansion/theme, hidden-scrollbar access and coarse-pointer targets. Neutral kit theme/system fonts differ from the app appearance bridge; final production-theme, seeded-card and composed-demo review remains T048/T052–T053.
+T046 remains open: the live paper test failed at exact-title search because the unquoted arXiv fallback returned related papers. A quoted all-fields query found the original in a read-only diagnostic. Oliver's query-mapping decision is pending; no alternate semantics were implemented without approval. Logs and raw diagnostics are in `~/agent-runs/2026-10-28-feature-008/`.
 
-The iframe-only runtime bundle is 67,503 bytes versus T001's 19,804 bytes; it is outside app startup JavaScript. No final startup-performance claim is made. Parent tokenizer timings remain cold o200k 385.0 ms and warm mean 0.0311 ms. Final startup comparison and smoke-sidebar checks remain T054–T055.
+No broad npm test/build or final UI/performance review was run in these phases; the parent owns those gates. Earlier Phase 3 full suite passed 2,742 tests, zero skipped. Phase 5 screenshots and runtime bundle measurement remain in the preceding log: 67,503 bytes versus T001's 19,804 bytes, outside startup JavaScript. T001 startup baseline remains unchanged; final comparison is T054. No next-env.d.ts rewrite occurred.
 
-Continue with T038–T056. T048/convergence must also render the approved optional common captions for new ML panels, which the current runtime mount omits. Remaining work includes lookups, composed-demo wiring, final review and broad gates. The researcher PDF-cap question remains scoped only to the new paper_read until Oliver answers.
+After the query decision, complete T046 and continue T047–T056. T048/convergence must also render approved common ML captions. Final production-theme screenshots, composed-demo review and broad gates remain. The ten-page cap applies only to the new paper_read; existing researcher PDF tools remain unchanged.
 
-Publication: draft PR https://github.com/brunovskyoliver/learnharness/pull/8 targets the unmerged spec branch `claude/confident-edison-h092l5`. Phase 5 commits are local for the parent to review and publish. No merge, deployment or push to main performed.
+Publication: draft PR https://github.com/brunovskyoliver/learnharness/pull/8 targets the unmerged spec branch `claude/confident-edison-h092l5`. New local commits are aecc60b (Hub), c08c6ec (registration/live test), 64e3b0b (PDF fixture), a285314 (paper clients/storage), f4cd1be (paper registration/live test). Parent owns publication. No push, merge or deployment performed.
