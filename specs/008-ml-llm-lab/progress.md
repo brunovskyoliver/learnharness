@@ -8,6 +8,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Decisions
 
+- T015 technical: finalized token-panel types are separate from agent input; validation always rejects agent-written tokenized. Public compressed ranks provide byte pieces, while the pinned reference fixture uses the package byte map. Imports and per-encoding instances are lazy and cached.
+
 - **Oliver, 2026-10-29:** failed/unfinished tokenize results reuse the generic tool row; successful tokenization uses raw encoding names `o200k`, `cl100k`, `gpt2` in the approved headline and the existing generic Input/Output expanded contents. arXiv zero/multiple results use `arXiv · {n} papers for '{query}'`.
 - **Oliver, 2026-10-29:** T011 may add the minimal lookup-failure exception in `components/chat.tsx`, analogous to the math-check exception, with a transcript-rendering regression. Invalid-input retry behavior remains unchanged.
 
@@ -44,6 +46,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- T014–T015: tokenizer tests first failed on the absent module (`t014-red.log`), then all four passed (`t015-green.log`): 60 fixture comparisons, exact partial UTF-8 bytes, limits, lazy imports and immutable server finalization with agent-token rejection.
 
 - T013: generated and committed 20 reference strings × three encodings using pinned js-tiktoken 1.0.21. Reference bytes come from its source-verified textMap, with fatal UTF-8 decoding and complete-text round trips; production will use public rank data.
 

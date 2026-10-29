@@ -63,13 +63,13 @@
 **Independent test**: spec US1. Fixed strings produce the reference ids. Switching encodings needs no model call. Edits re-split through the bridge.
 
 - [X] T013 [P] [US1] Generate `tests/fixtures/tokenizer-reference.json` once from js-tiktoken 1.0.21: 20 strings including spaces, line breaks, emoji, CJK, an accented word and a 2,000-character string, × the `o200k`, `cl100k` and `gpt2` encodings. Commit the generator script `scripts/gen-tokenizer-fixture.mjs`.
-- [ ] T014 [P] [US1] Failing tests in `tests/tokenize.test.ts` for `src/agent/tokenizer.ts`:
+- [X] T014 [P] [US1] Failing tests in `tests/tokenize.test.ts` for `src/agent/tokenizer.ts`:
   - ids and pieces equal the fixture (SC-001);
   - a partial UTF-8 token has `text: null` and `bytes`;
   - an unknown encoding throws;
   - text over 2,000 characters throws;
   - the encodings load lazily (no import at module load).
-- [ ] T015 [US1] Implement `src/agent/tokenizer.ts` (research R1): a per-process cache of `Tiktoken` instances, `tokenize(text, encoding)` → `Token[]`, and `withTokenizedPanels(spec)`, which fills `tokenized` for each `tokens` panel with all three encodings.
+- [X] T015 [US1] Implement `src/agent/tokenizer.ts` (research R1): a per-process cache of `Tiktoken` instances, `tokenize(text, encoding)` → `Token[]`, and `withTokenizedPanels(spec)`, which fills `tokenized` for each `tokens` panel with all three encodings.
 - [ ] T016 [P] [US1] Failing tests in `tests/tokenize-tool.test.ts`: the `tokenize` tool's model text and details follow contracts/ml-visual-tool.md, and invalid input returns `invalidInputResult`.
 - [ ] T017 [US1] Implement `src/agent/tools/tokenize.ts` with the draft description verbatim.
 - [ ] T018 [P] [US1] Failing tests in `tests/ml-visual-tool.test.ts` with a stubbed headless browser (as `tests/plot-tool.test.ts` does):

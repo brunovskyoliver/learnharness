@@ -174,6 +174,12 @@ export const DemoKitSpecSchema = Type.Object({
 
 export type DemoKitSpec = Static<typeof DemoKitSpecSchema>;
 export type DemoKitPanel = DemoKitSpec["panels"][number];
+export type TokenEncoding = "o200k" | "cl100k" | "gpt2";
+export type Token = { id: number; text: string | null; bytes?: number[] };
+/** Server output only. Agent input schemas never accept tokenized. */
+export type TokenizedPanel = Extract<DemoKitPanel, { type: "tokens" }> & { tokenized: Record<TokenEncoding, Token[]> };
+export type FinalizedDemoKitPanel = Exclude<DemoKitPanel, { type: "tokens" }> | TokenizedPanel;
+export type FinalizedDemoKitSpec = Omit<DemoKitSpec, "panels"> & { panels: FinalizedDemoKitPanel[] };
 
 const SCOPE = ["p", "s", "d", "t", "range", ...Object.getOwnPropertyNames(Math)];
 
