@@ -111,6 +111,29 @@ describe("builder kit tools", () => {
 		assert.deepEqual(kitSpecOf(state.html!), GD);
 	});
 
+	it("write_kit_demo finalizes real token splits without evaluating kit expressions or accepting agent tokens", async () => {
+		const state = { html: null as string | null, testedHtml: null, lastResult: null };
+		const tools = createDemoBuilderTools(state, fake({}));
+		const spec: DemoKitSpec = { panels: [
+			{ type: "tokens", text: "hello", link: "words" },
+			{ type: "heatmap", rows: '["hello"]', cols: '["hello"]', values: '(() => { throw new Error("server must not evaluate expressions"); })()', scale: "sequential", link: "words" },
+			{ type: "tokens", text: "hello", encoding: "gpt2" },
+		] };
+		const written = await tools.write_kit_demo!.execute("ml", { spec }, undefined);
+		assert.match(text(written), /Saved/);
+		const saved = kitSpecOf(state.html!)!;
+		for (const index of [0, 2]) assert.deepEqual((saved.panels[index] as any).tokenized, {
+			o200k: [{ id: 24912, text: "hello" }], cl100k: [{ id: 15339, text: "hello" }], gpt2: [{ id: 31373, text: "hello" }],
+		});
+		assert.deepEqual(saved.panels[1], spec.panels[1]);
+		assert.equal("tokenized" in spec.panels[0]!, false);
+		const previous = state.html;
+		const refused = await tools.write_kit_demo!.execute("forged", { spec: saved }, undefined);
+		assert.match(text(refused), /INVALID SPEC.*nothing saved/s);
+		assert.match(text(refused), /only the server may supply tokens/);
+		assert.equal(state.html, previous);
+	});
+
 	it("run_demo returns the screenshot as an image and reports the kit self-test", async () => {
 		const state = { html: kitDemoHtml(GD), testedHtml: null, lastResult: null };
 		const tools = createDemoBuilderTools(state, fake({ screenshot: png, kitTest: { panels: 6, steps: 30 } }));

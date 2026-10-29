@@ -82,6 +82,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Log
 
+- T047: builder finalization regression failed because saved token panels had no tokenized field (`t047-red.log`); all 64 builder/demo/tokenizer tests pass after finalization (`t047-green.log`). Saved output has all three real encodings for every token panel; forged tokenized is refused without replacing the previous demo, and kit expressions remain unevaluated on the server. Added six one-line panel shapes and the exact approved token instruction to the existing builder prompt.
+
 - T046 complete: the exact outgoing phrase and embedded quote/backslash regressions failed first (`t046-query-red.log`), then passed. Final offline paper/row checks pass 27/27 with the one opt-in live test skipped (`t046-offline.log`). Scoped ESLint and full typecheck pass. The unchanged real paper test now passes 1/1 in 6.94 s (`t046-live-green.log`), finding Attention Is All You Need and extracting the expected page-4 text. No model calls, dependency changes or next-env.d.ts rewrite. The earlier live failure is resolved by Oliver's approved query mapping.
 
 - T046 live check failed at exact-title search (`t046-live.log`): S2 throttled and the unquoted arXiv all-fields query returned five related papers, omitting the original. Read-only diagnostics identify arXiv as the source (`t046-live-diagnostic.json`); quoting the same query returns the original as the second result (`t046-quoted-probe.json`). Parent asked Oliver to choose fallback query semantics. No test assertion was weakened and no query change was made while approval is pending. T046 reopened.

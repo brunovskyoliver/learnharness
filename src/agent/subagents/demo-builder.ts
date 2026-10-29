@@ -6,6 +6,7 @@ import type { PiEngine } from "../models.ts";
 import { runSubagent } from "./pi-run.ts";
 import type { DemoResult } from "../../core/contracts.ts";
 import { getHeadless, type DemoRunResult, type HeadlessApi } from "./headless.ts";
+import { withTokenizedPanels } from "../tokenizer.ts";
 import { healToolRecord } from "../tools/heal.ts";
 import { kitDemoHtml, validateDemoKitSpec, type DemoKitSpec } from "../../core/demo-kit.ts";
 
@@ -78,6 +79,15 @@ Kit spec:
   {"type":"readouts","items":[{"label","value":"<expr>","digits"?}]}
   {"type":"table","title","columns":[…],"rows":"<expr → array of row arrays>"}
   {"type":"note","text":"One sentence on what to try. **bold** allowed."}
+  {"type":"heatmap","title","rows":"<expr → string[]>","cols":"<expr → string[]>","values":"<expr → number[][]>","scale":"sequential"|"diverging","min":"<expr>"?,"max":"<expr>"?,"rowAxis":"<expr>"?,"colAxis":"<expr>"?,"digits":"<expr>"?}
+  {"type":"tokens","title","text":"<literal text, 1–2,000 characters>","encoding":"o200k"|"cl100k"|"gpt2"?} — give \`text\` only; the server tokenizes
+  {"type":"next_token","title","context":"<expr → string>","tokens":"<expr → [{text,logit}] or [{text,p}]>","temperature":"<expr>"?,"topK":"<expr>"?,"topP":"<expr>"?}
+  {"type":"scatter","title","points":"<expr → [{label,x,y,z?,group?}]>","groups":"<expr → string[]>"?,"arithmetic":"<expr → {plus:string[],minus:string[]}>"?,"metric":"cosine"|"euclidean"}
+  {"type":"network","title","layers":"<expr → number[]>","weights":"<expr → number[][][]>","biases":"<expr → number[][]>","input":"<expr → number[]>","target":"<expr → number[]>","activation":"sigmoid"|"tanh"|"relu","loss":"mse"|"bce"}
+  {"type":"shapes","title","dims":"<expr → [{name,meaning}]>"?,"steps":"<expr → [{op,shape:[{name,size?}]}]>"}
+     These six panels also accept an optional caption (one sentence, at most 200 characters) and link string.
+     Panels with the same link highlight matching labels on hover and focus. Heatmap, next_token and scatter
+     show "Illustrative numbers"; tokens and network values are computed. Never supply tokenized.
 - Expressions are JavaScript with p, s, d, t, range(start, stop, step) and Math's functions in scope
   (sin, exp, abs, …). Keep them short; put shared computation in derived.
 
@@ -174,7 +184,7 @@ export function createDemoBuilderTools(
 					onActivity?.(`write_kit_demo: ${problems.length} problem${problems.length === 1 ? "" : "s"}`);
 					return `INVALID SPEC — nothing saved:\n${problems.map((p) => `- ${p}`).join("\n")}`;
 				}
-				state.html = kitDemoHtml(spec as DemoKitSpec);
+				state.html = kitDemoHtml(await withTokenizedPanels(spec as DemoKitSpec));
 				onActivity?.(`write_kit_demo: ${(spec as DemoKitSpec).panels.length} panels`);
 				return "Saved. Now call run_demo to test it and look at the screenshot.";
 			}),
