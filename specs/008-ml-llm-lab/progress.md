@@ -8,9 +8,11 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Decisions
 
+- **Oliver, 2026-10-29, T036:** keep the shapes schema unchanged. Always derive the previous-shape → current-shape transition; use the board's “start” and “no change” text where applicable. Do not add a `change` field.
+
 - T030 technical: the binding UI contract §A5 and Network board combine the output activations and loss into one step, followed by “Start backward”. This controls the step list over T031's shorthand that lists loss separately. Generalize to one forward step per layer, then output and hidden deltas in reverse layer order, then weight gradients.
 
-- **Pending Oliver, T030/T031:** multi-output loss reduction (sum or mean) and BCE activation/target compatibility. Scalar MSE remains the approved ½(y−t)². No implementation assumes either answer.
+- **Oliver, 2026-10-29, T030/T031:** sum output losses: MSE is the sum of ½(y−t)² and BCE is the sum of binary cross entropies. BCE requires sigmoid activation and targets in [0, 1].
 
 - **Oliver, 2026-10-29:** omitted heatmap bounds derive from the data minimum/maximum, including zero for the diverging scale. Query/Key defaults use the binding contract readout pattern.
 
@@ -62,6 +64,10 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- T031: pure forward/backward computation and board-ordered step list implemented. BCE uses the equivalent stable logits formula and sigmoid delta; loss sums preserve the approved scalar fixture. Shared schema/tool validation enforces BCE compatibility. All 22 targeted network/schema tests pass (`t031-green.log`); targeted ESLint passes. No runtime implementation yet.
+
+- T030 complete: added analytic multi-output MSE/BCE cases, saturated sigmoid BCE, finite-difference gradient checks, and invalid-data/BCE compatibility checks. The full eight-test file fails on the absent `ml-net.ts`, as expected (`t030-red.log`). The independently calculated fixture is unchanged.
 
 - T030 partial: wrote the independent scalar worksheet into `tests/fixtures/ml-net-2-3-1.json`, with explicit equations and 40-decimal-place arithmetic before the production module exists. Four tests cover all sigmoid fixture values/gradients, hand-solvable tanh and ReLU examples, and the binding board step order. `npx tsx --test tests/ml-net.test.ts` fails on the absent `src/core/ml-net.ts` as expected (`t030-partial-red.log`). BCE and multi-output tests await Oliver's decisions; T030 remains unchecked and T031 has not started. No runtime edits or screenshots in this partial task.
 

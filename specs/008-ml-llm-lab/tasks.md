@@ -136,13 +136,13 @@
 **Goal**: a network the panel computes itself, an embedding scatter with arithmetic, and a shape tracer.
 **Independent test**: spec US3 and SC-002.
 
-- [ ] T030 [P] [US3] Failing tests in `tests/ml-net.test.ts` against `tests/fixtures/ml-net-2-3-1.json`, hand-checked:
+- [X] T030 [P] [US3] Failing tests in `tests/ml-net.test.ts` against `tests/fixtures/ml-net-2-3-1.json`, hand-checked:
   - weights W1 `[[0.5,-0.4],[0.9,0.2],[-0.3,0.8]]`, b1 `[0.1,-0.2,0.05]`, W2 `[[0.7,-0.6,0.4]]`, b2 `[0.1]`, x `[1,0.5]`, target `[1]`, sigmoid, mse as ½(y−t)²;
   - every activation, the loss, each δ and each weight gradient matches to 4 significant digits;
   - tanh, relu and bce paths too.
 
   Write the fixture by hand computation, not by the implementation under test.
-- [ ] T031 [US3] Implement `src/core/ml-net.ts`: `forward`, `backward`, and a `steps(spec)` list for the stepper (inputs → each layer forward → loss → output δ → each hidden δ → weight gradients).
+- [X] T031 [US3] Implement `src/core/ml-net.ts`: `forward`, `backward`, and a `steps(spec)` list for the stepper (inputs → each layer forward → loss → output δ → each hidden δ → weight gradients).
 - [ ] T032 [P] [US3] Failing tests in `tests/ml-vectors.test.ts`:
   - `plus`/`minus` arithmetic over labelled points;
   - nearest by cosine and by Euclidean distance, excluding the operands;

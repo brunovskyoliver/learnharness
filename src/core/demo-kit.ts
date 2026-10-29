@@ -147,6 +147,7 @@ export function mlPanelDataProblems(kind: MlPanelKind, data: Record<string, unkn
 	}
 	if (kind === "network") {
 		const d = data as Partial<MlPanelData<"network">>;
+		if (d.loss === "bce" && ((d.activation && d.activation !== "sigmoid") || d.target?.some(t => t < 0 || t > 1))) errors.push("bce: requires sigmoid activation and targets from 0 to 1");
 		if (d.layers) {
 			if (d.weights && (d.weights.length !== d.layers.length - 1 || d.weights.some((layer, i) => layer.length !== d.layers![i + 1] || layer.some(row => row.length !== d.layers![i])))) errors.push("weights: shapes must match adjacent layer sizes");
 			if (d.biases && (d.biases.length !== d.layers.length - 1 || d.biases.some((layer, i) => layer.length !== d.layers![i + 1]))) errors.push("biases: shapes must match output layer sizes");
