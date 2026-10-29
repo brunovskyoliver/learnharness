@@ -2,9 +2,9 @@
 
 ## Stage
 
-Implementation in progress: T001–T056 complete. Production, accessibility, performance and full gates pass. Final report and the review-ready PR draft are written; parent convergence and publication follow.
+Done: T001–T056 complete. Production, accessibility, performance and full gates pass. Parent convergence found no remaining work. Publication target: PR #8 on feat/008-ml-llm-lab.
 
-Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Implementation started.** Binding handoff: see [handoff.md](handoff.md).
+Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Implementation complete.** Binding handoff: see [handoff.md](handoff.md).
 
 ## Decisions
 
@@ -93,6 +93,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Binding handoff §5 default:** the 10-page cap covers only the new `paper_read`; the researcher’s existing `web_fetch_pdf` and `pdf_*` tools are unchanged. No owner change superseded this default. This is implementation scope, not a pending decision.
 
 ## Log
+
+- Parent final convergence: 25 functional requirements, nine success criteria, 21 acceptance scenarios, 16 plan decisions, all 56 tasks and eight constitution principles checked against current implementation and recorded verification. Zero missing, partial, contradictory or unrequested findings after applying the owner decisions. tasks.md remains byte-for-byte unchanged (SHA-256 33c6f43f8731dea92ce82dc3df5c5d7a0f270c3f3a8f72ed432ff337715ea5a7); no extension hooks are registered. No roadmap/status file exists to update. Final publication targets PR #8, based on the still-open spec PR #7. No merge, deployment or main push.
 
 - T056 complete: Report rewritten around the final implementation and verified gates. `~/agent-runs/2026-10-28-feature-008/final-pr.md` contains the PR review draft, all six original tool descriptions and all three doctrine additions verbatim (programmatically checked), approved settings/row/fallback copy, demo-builder schema additions, all later owner decisions, performance comparison and honest remaining limits. No implementation decision is pending. No after-implement hooks are registered. Formal convergence and PR publication remain with the parent.
 
@@ -285,4 +287,4 @@ All gated values remain within 5%. Runtime.js is 71,263 bytes versus 19,804 base
 
 Evidence: `~/agent-runs/2026-10-28-feature-008/` contains `shots/production-*`, production review/keyboard/accessibility/touch/timing JSON, actual AX trees, baseline/final benchmark trials and summaries, all RED→GREEN and full-gate logs, and `final-pr.md`. Synthetic SSE supplies running states and carries actual tool results into the real production Chat; no learner data or provider/model configuration was used. Browser-harness corrections and failed diagnostic runs are retained rather than presented as product failures.
 
-Remaining limits: real-model acceptance and deployment were not performed. The ten-page budget applies to new paper_read only, per handoff §5; existing researcher PDF tools are unchanged. VoiceOver/NVDA were unavailable, so actual CDP trees supplied the permitted screen-reader-label check. Impeccable was unavailable; the allowed manual DESIGN review accompanied shadcn and Web Interface Guidelines review. All implementation decisions are resolved. Parent formal convergence, review and publication follow; this phase made no push, PR mutation, merge or deployment.
+Remaining limits: real-model acceptance and deployment were not performed. The ten-page budget applies to new paper_read only, per handoff §5; existing researcher PDF tools are unchanged. VoiceOver/NVDA were unavailable, so actual CDP trees supplied the permitted screen-reader-label check. Impeccable was unavailable; the allowed manual DESIGN review accompanied shadcn and Web Interface Guidelines review. All implementation decisions are resolved. Parent review and formal convergence are complete with zero remaining findings. Publication uses feature branch `feat/008-ml-llm-lab` and [PR #8](https://github.com/brunovskyoliver/learnharness/pull/8), based on the still-open spec PR #7. No merge, deployment or main push.
