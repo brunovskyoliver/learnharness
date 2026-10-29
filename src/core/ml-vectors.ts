@@ -16,7 +16,8 @@ export function arithmetic(points: Point[], expression: Arithmetic): number[] {
 	validatePoints(points);
 	if (!expression || !Array.isArray(expression.plus) || !Array.isArray(expression.minus)) throw new Error("arithmetic: provide plus and minus label lists");
 	const result = coordinates(points[0]!).map(() => 0);
-	for (const [labels, sign] of [[expression.plus, 1], [expression.minus, -1]] as const) for (const label of labels) {
+	// Match the panel's displayed evaluation order, including floating-point cancellation.
+	for (const [labels, sign] of [[expression.plus.slice(0, 1), 1], [expression.minus, -1], [expression.plus.slice(1), 1]] as const) for (const label of labels) {
 		const point = points.find(p => p.label === label);
 		if (!point) throw new Error("arithmetic: every operand must name a point");
 		coordinates(point).forEach((value, i) => { result[i] = result[i]! + sign * value; });

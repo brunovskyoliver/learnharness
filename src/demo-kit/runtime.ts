@@ -956,6 +956,7 @@ class Kit {
 					const operations: { label: string; sign: number }[] = [...expression.plus.slice(0, 1).map(label => ({ label, sign: 1 })), ...expression.minus.map(label => ({ label, sign: -1 })), ...expression.plus.slice(1).map(label => ({ label, sign: 1 }))];
 					expressionText = operations.map((op, i) => `${i === 0 && op.sign === 1 ? "" : op.sign === 1 ? " + " : i === 0 ? "−" : " − "}${op.label}`).join("") || "0";
 					let current = coordinates(points[0]!).map(() => 0);
+					if (operations[0]?.sign === -1) path.push(current);
 					for (const op of operations) { current = current.map((v, i) => v + op.sign * coordinates(points.find(p => p.label === op.label)!)[i]!); path.push(current); }
 					if (!path.length) path.push(current);
 					choiceText.textContent = `Show ${expressionText}`;

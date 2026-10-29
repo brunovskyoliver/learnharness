@@ -171,7 +171,7 @@
   - changed dims raised with an ink edge;
   - the change text written out (it wraps under the shape below 560px);
   - the readout.
-- [ ] T037 [P] [US3] Headless render tests for `network`, `scatter` (2D and 3D) and `shapes` in the T029 file.
+- [X] T037 [P] [US3] Headless render tests for `network`, `scatter` (2D and 3D) and `shapes` in the T029 file.
 
 ## Phase 6: User Story 4 — Lessons cite real model numbers (P2)
 

@@ -33,6 +33,9 @@ describe("embedding vector arithmetic", () => {
 	it("preserves source order when nearest distances tie", () => {
 		assert.equal(nearest([{ label: "first", x: 1, y: 0 }, { label: "second", x: -1, y: 0 }], [0, 0], "euclidean").point.label, "first");
 	});
+	it("evaluates arithmetic in the displayed order so cancellation matches the drawn path", () => {
+		assert.deepEqual(arithmetic([{ label: "large", x: 1e16, y: 1 }, { label: "small", x: 1, y: 1 }], { plus: ["large", "small"], minus: ["large"] }), [1, 1]);
+	});
 	it("refuses malformed data, undefined cosine comparisons and an empty candidate set", () => {
 		for (const p of [[], [{ label: "bad", x: NaN, y: 1 }], [{ label: "a", x: 1, y: 2 }, { label: "b", x: 1, y: 2, z: 3 }], [points[0]!, points[0]!], Array.from({ length: 201 }, (_, i) => ({ label: String(i), x: i, y: i }))]) assert.throws(() => validatePoints(p));
 		assert.throws(() => arithmetic(points, { plus: ["absent"], minus: [] }));
