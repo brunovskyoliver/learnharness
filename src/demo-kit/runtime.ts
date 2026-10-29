@@ -6,10 +6,11 @@
 
 import { DEMO_THEME_VARS, DEMO_SCROLLBAR_CSS } from "../core/demo-theme.ts";
 import { layeredLayout } from "../core/demo-kit-layout.ts";
-import type { DemoKitPanel, DemoKitSpec } from "../core/demo-kit.ts";
+import type { FinalizedDemoKitPanel as DemoKitPanel, FinalizedDemoKitSpec as DemoKitSpec, TokenizedPanel, Token, TokenEncoding } from "../core/demo-kit.ts";
 
 type Values = Record<string, any>;
 interface PanelView {
+	focus?(focused: boolean): void;
 	theme?(): Promise<void> | void;
 	resize?(): Promise<void> | void;
 	update(): Promise<void> | void;
@@ -128,6 +129,29 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--lh-muted);outli
 @media(max-width:640px){#lh-kit.k-focus{grid-template-columns:1fr;grid-template-rows:minmax(180px,1fr) auto;gap:12px}.k-focus .k-controls{grid-column:1;grid-row:2;padding:12px 0 0;max-height:45dvh}.k-focus .k-parameters-toggle{display:block;width:100%;text-align:left;margin-bottom:12px}.k-controls.k-collapsed>:not(.k-parameters-toggle){display:none}}
 @media(prefers-reduced-motion:reduce){.react-flow__edge-path{animation:none!important}}
 .k-error{padding:8px 10px;border-radius:6px;background:rgba(242,139,130,.12);color:var(--lh-red);font:12px var(--lh-mono)}
+.k-token-text{resize:none;box-sizing:border-box;width:100%;border:1px solid var(--lh-border);border-radius:6px;background:var(--lh-bg);color:var(--lh-text);padding:8px 10px;font:inherit;line-height:1.6}
+.k-token-text:focus-visible{outline:2px solid var(--lh-muted);outline-offset:3px}
+.k-token-controls{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin:12px 0}
+.k-token-controls .k-seg{max-width:100%;overflow-x:auto;flex-wrap:nowrap}.k-token-controls .k-seg button{flex-shrink:0;white-space:nowrap}
+.k-token-count,.k-readout-line{font-size:.8em;color:var(--lh-muted);font-variant-numeric:tabular-nums}
+.k-readout-line{min-height:1.4em;margin:12px 0 0}
+.k-token-strip{display:flex;flex-wrap:wrap;gap:6px;max-width:100%;overflow:auto;padding:4px;transition:opacity 160ms}
+.k-token-strip.k-updating{opacity:.6}
+.k-token{display:flex;flex-direction:column;align-items:center;gap:2px;flex-shrink:0;max-width:100%;overflow-wrap:anywhere;border:0;border-radius:6px;padding:8px 10px;background:color-mix(in srgb,var(--k-token-color) 20%,var(--lh-surface));color:var(--lh-text);font:inherit;white-space:pre-wrap;cursor:pointer}
+.k-token:hover,.k-token:focus,.k-token.k-token-pinned{background:color-mix(in srgb,var(--k-token-color) 34%,var(--lh-surface));outline:1px solid var(--k-token-color);outline-offset:-1px}
+.k-token:focus-visible{outline:2px solid var(--lh-muted);outline-offset:3px}
+.k-token-id{font:12px var(--lh-mono);color:var(--lh-muted);font-variant-numeric:tabular-nums}
+.k-token-error{background:transparent;font:inherit;font-size:.8em;padding:0}
+@media(pointer:coarse){.k-token{min-width:44px;min-height:44px}}
+@media(prefers-reduced-motion:reduce){.k-token-strip{transition:none}}
+
+#lh-kit.k-focus:has(.k-tokens-focus) .k-grid{grid-column:1/-1}
+.k-focus .k-panel.k-tokens-focus{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,280px);grid-template-rows:auto auto auto 1fr;gap:12px 24px;align-content:start;height:auto}
+.k-tokens-focus .k-panel-head,.k-tokens-focus .k-token-strip,.k-tokens-focus>.k-readout-line,.k-tokens-focus>.k-error{grid-column:1}
+.k-tokens-focus .k-token-fields{grid-column:2;grid-row:1/5}
+.k-tokens-focus .k-token-controls{align-items:flex-start;flex-direction:column}
+@media(max-width:640px){.k-focus .k-panel.k-tokens-focus{grid-template-columns:minmax(0,1fr)}.k-tokens-focus .k-token-fields{grid-column:1;grid-row:5}.k-tokens-focus .k-token-fields.k-controls{grid-row:5}}
+
 `;
 
 const MATH = Object.getOwnPropertyNames(Math);
@@ -390,7 +414,7 @@ class Kit {
 				this.panelBoxes[i] = box;
 				const heading = el("div", "k-panel-head");
 				if ("title" in panel && panel.title) heading.append(el("h3", "k-title", escapeHtml(panel.title)));
-				if (["chart", "plot3d", "flow"].includes(panel.type)) {
+				if (["chart", "plot3d", "flow", "tokens", "heatmap", "next_token", "scatter", "network", "shapes"].includes(panel.type)) {
 					const expand = el("button", "k-icon-button", '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg>');
 					expand.type = "button";
 					expand.title = "Focus graph";
@@ -431,12 +455,113 @@ class Kit {
 		if (index !== null) this.focusTrigger = document.activeElement as HTMLElement | null;
 		this.focusIndex = index;
 		this.root.classList.toggle("k-focus", index !== null);
-		this.panelBoxes.forEach((box, i) => { box.hidden = index !== null && i !== index; });
+		this.panelBoxes.forEach((box, i) => { box.hidden = index !== null && i !== index; this.views[i]?.focus?.(index === i); });
 		requestAnimationFrame(() => { if (index === null && document.hasFocus()) this.focusTrigger?.focus({ preventScroll: true }); void Promise.all(this.views.map((v, i) => (index === null || index === i) && v.resize?.())); });
+	}
+
+	private tokens(panel: TokenizedPanel, box: HTMLElement): PanelView {
+		if (!panel.tokenized) throw new Error("Token splits must be supplied by the server.");
+		const field = el("label", "k-field");
+		field.append(el("span", "k-label", "Text"));
+		const input = el("textarea", "k-token-text");
+		input.name = "text"; input.autocomplete = "off"; input.rows = 2; input.value = panel.text; input.readOnly = true;
+		field.append(input);
+		const controls = el("div", "k-token-controls");
+		const seg = el("div", "k-seg");
+		const count = el("span", "k-token-count"); count.setAttribute("aria-live", "polite");
+		controls.append(seg, count);
+		const strip = el("div", "k-token-strip");
+		const readout = el("p", "k-readout-line", "Hover or focus a token to read it. Arrow keys move between tokens.");
+		readout.setAttribute("aria-live", "polite");
+		const error = el("p", "k-error k-token-error"); error.hidden = true; error.setAttribute("aria-live", "polite");
+		const offline = el("p", "k-readout-line k-token-offline", "Editing works in the app"); offline.hidden = true;
+		const fields = el("div", "k-token-fields");
+		const toggle = el("button", "k-btn k-parameters-toggle", "Parameters"); toggle.type = "button"; toggle.setAttribute("aria-expanded", "true");
+		toggle.onclick = () => { const collapsed = fields.classList.toggle("k-collapsed"); toggle.setAttribute("aria-expanded", String(!collapsed)); };
+		fields.append(toggle, field, controls);
+		box.append(fields, strip, readout, error, offline);
+		let encoding: TokenEncoding = panel.encoding ?? "o200k";
+		let splitText = panel.text;
+		let current = panel.tokenized[encoding];
+		let cache: Partial<Record<TokenEncoding, Token[]>> = { ...panel.tokenized };
+		let cacheText = panel.text;
+		let revision = 0, serial = 0, active = 0;
+		let pinned: number | null = null;
+		let timer: number | undefined, answered = false, closed = false;
+		const prefix = `tokens-${this.panelBoxes.indexOf(box)}-`;
+		const pending = new Map<string, { text: string; encoding: TokenEncoding; revision: number }>();
+		const piece = (token: Token) => token.text ?? token.bytes!.map(byte => `<0x${byte.toString(16).toUpperCase().padStart(2, "0")}>`).join("");
+		const label = (token: Token, index: number) => `Token ${index + 1} of ${current.length} · “${piece(token)}” · id ${token.id}`;
+		const updating = (value: boolean) => {
+			strip.classList.toggle("k-updating", value);
+			count.textContent = value ? "Updating…" : `${current.length} tokens · ${splitText.length} characters`;
+		};
+		const render = () => {
+			strip.replaceChildren(); pinned = null; active = Math.min(active, Math.max(0, current.length - 1));
+			current.forEach((token, index) => {
+				const chip = el("button", "k-token"); chip.type = "button";
+				chip.style.setProperty("--k-token-color", `var(${["--lh-blue", "--lh-teal", "--lh-red", "--lh-green"][index % 4]})`);
+				chip.tabIndex = index === active ? 0 : -1;
+				chip.setAttribute("aria-label", label(token, index));
+				const text = el("span"); text.textContent = piece(token).replace(/^ /, "␣").replace(/\n/g, "↵");
+				const id = el("span", "k-token-id"); id.textContent = String(token.id); chip.append(text, id);
+				const select = () => { active = index; strip.querySelectorAll<HTMLButtonElement>("button").forEach((button, i) => button.tabIndex = i === index ? 0 : -1); readout.textContent = label(token, index); };
+				chip.onpointerenter = select; chip.onfocus = select;
+				chip.onclick = () => { pinned = index; select(); strip.querySelectorAll("button").forEach((button, i) => button.classList.toggle("k-token-pinned", i === pinned)); };
+				chip.onpointerleave = () => { if (pinned !== null) readout.textContent = label(current[pinned]!, pinned); };
+				chip.onkeydown = event => {
+					const next = event.key === "ArrowRight" || event.key === "ArrowDown" ? (index + 1) % current.length : event.key === "ArrowLeft" || event.key === "ArrowUp" ? (index + current.length - 1) % current.length : event.key === "Home" ? 0 : event.key === "End" ? current.length - 1 : null;
+					if (next !== null) { event.preventDefault(); (strip.children[next] as HTMLElement).focus(); }
+				};
+				strip.append(chip);
+			});
+			readout.textContent = "Hover or focus a token to read it. Arrow keys move between tokens.";
+			updating(false);
+		};
+		const request = () => {
+			const requestId = prefix + (++serial);
+			pending.set(requestId, { text: input.value, encoding, revision });
+			parent.postMessage({ type: "demo-tokenize", requestId, text: input.value, encoding }, "*");
+		};
+		const change = (debounce: boolean) => {
+			revision++; window.clearTimeout(timer); error.hidden = true;
+			if (input.value.length > 2000) { updating(false); error.textContent = "2,000 characters at most. Shorten the text to split it."; error.hidden = false; return; }
+			if (cacheText === input.value && cache[encoding]) { current = cache[encoding]!; splitText = input.value; render(); return; }
+			if (closed) return;
+			updating(true);
+			if (debounce) timer = window.setTimeout(request, 300); else request();
+		};
+		for (const [value, title] of [["o200k", "o200k · GPT-4o"], ["cl100k", "cl100k · GPT-4"], ["gpt2", "GPT-2"]] as const) {
+			const button = el("button", undefined, title); button.type = "button";
+			button.dataset.encoding = value; button.setAttribute("aria-pressed", String(value === encoding));
+			button.onclick = () => { encoding = value; seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", String(b === button))); change(false); };
+			seg.append(button);
+		}
+		input.oninput = () => change(true);
+		window.addEventListener("message", event => {
+			if (closed || event.source !== parent || event.data?.type !== "lh-demo-tokens") return;
+			const data = event.data;
+			const job = pending.get(data.requestId);
+			if (!job) return;
+			const validTokens = data.encoding === job.encoding && Array.isArray(data.tokens) && data.tokens.every((token: Token) => token && Number.isInteger(token.id) && token.id >= 0 && (typeof token.text === "string" || (token.text === null && Array.isArray(token.bytes) && token.bytes.length > 0 && token.bytes.every(byte => Number.isInteger(byte) && byte >= 0 && byte <= 255))));
+			if (typeof data.error !== "string" && !validTokens) return;
+			answered = true; input.readOnly = false; pending.delete(data.requestId);
+			if (job.revision !== revision || job.text !== input.value || job.encoding !== encoding) return;
+			if (typeof data.error === "string") { updating(false); error.textContent = `Couldn't tokenize this text: ${data.error}. The last split stays shown.`; error.hidden = false; return; }
+			if (cacheText !== job.text) { cache = {}; cacheText = job.text; }
+			cache[job.encoding] = data.tokens; current = data.tokens; splitText = job.text; error.hidden = true; render();
+		});
+		render(); request();
+		window.setTimeout(() => {
+			if (answered) return;
+			closed = true; pending.clear(); window.clearTimeout(timer); input.readOnly = true; offline.hidden = false; updating(false);
+		}, 2000);
+		return { update() {}, focus: focused => { box.classList.toggle("k-tokens-focus", focused); fields.classList.toggle("k-controls", focused); } };
 	}
 
 	private async panel(panel: DemoKitPanel, box: HTMLElement): Promise<PanelView> {
 		switch (panel.type) {
+			case "tokens": return this.tokens(panel, box);
 			case "note": {
 				box.append(el("div", undefined, escapeHtml(panel.text).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")));
 				return { update() {} };

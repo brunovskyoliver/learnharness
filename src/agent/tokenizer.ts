@@ -36,7 +36,7 @@ export async function withTokenizedPanels(spec: DemoKitSpec): Promise<FinalizedD
 	if (problems.length) throw new Error(problems.join("\n"));
 	return { ...spec, panels: await Promise.all(spec.panels.map(async panel => {
 		if (panel.type !== "tokens") return panel;
-		const [o200k, cl100k, gpt2] = await Promise.all((["o200k", "cl100k", "gpt2"] as const).map(encoding => tokenize(panel.text, encoding)));
+		const [o200k, cl100k, gpt2] = await Promise.all([tokenize(panel.text, "o200k"), tokenize(panel.text, "cl100k"), tokenize(panel.text, "gpt2")]);
 		return { ...panel, tokenized: { o200k, cl100k, gpt2 } };
 	})) };
 }

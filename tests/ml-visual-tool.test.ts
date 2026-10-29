@@ -3,9 +3,9 @@ import { it } from "node:test";
 import { mlVisualTool } from "../src/agent/tools/ml-visual.ts";
 import type { HeadlessApi } from "../src/agent/subagents/headless.ts";
 import { kitSpecOf } from "../src/core/demo-kit.ts";
-const input = { kind: "tokens", title: "Tokens", data: { text: "hello" } };
+const input = { kind: "tokens" as const, title: "Tokens", data: { text: "hello" } };
 function browser(errors: string[] = [], seen: string[] = []): HeadlessApi {
-	return { available: () => true, runDemo: async (html, options) => {
+	return { available: () => true, runDemo: async (html: string, options?: { settleMs?: number }) => {
 		assert.equal(options?.settleMs, 1500); seen.push(html);
 		return { ok: !errors.length, pageErrors: errors, consoleErrors: [], failedRequests: [] };
 	} } as unknown as HeadlessApi;

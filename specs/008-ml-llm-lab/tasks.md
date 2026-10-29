@@ -78,7 +78,7 @@
   - invalid input gives `invalidInputResult`.
 - [X] T019 [US1] Implement `src/agent/tools/ml-visual.ts` (contracts/ml-visual-tool.md; mirror `src/agent/tools/plot.ts`) with the draft description verbatim. Register `ml_visual` and `tokenize` in `createTeacherTools` (`src/agent/tools.ts`) and the practice registry (`src/agent/tools/practice.ts`), both dropped when `ml_visuals === false`.
 - [X] T020 [US1] Transcript: `ml_visual: PlotCard` in `components/artifacts/index.ts`, and `resultMessageId` for `tool-ml_visual` in `src/core/view.ts` (beside `tool-plot`). Test in `tests/render-plot-part.test.tsx` or a new `tests/render-ml-visual-part.test.tsx`.
-- [ ] T021 [US1] Runtime `tokens` panel in `src/demo-kit/runtime.ts`, exactly per the TokenStrip board and ui-contract.md §A1–A11:
+- [X] T021 [US1] Runtime `tokens` panel in `src/demo-kit/runtime.ts`, exactly per the TokenStrip board and ui-contract.md §A1–A11:
   - text field;
   - `.k-seg` encoding choice ("o200k · GPT-4o", "cl100k · GPT-4", "GPT-2");
   - chips with `␣`/`↵` markers, the id in mono and `<0xNN>` byte pieces;

@@ -8,6 +8,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Decisions
 
+- **Oliver, 2026-10-29:** all six ML panels have Expand buttons, including tokens and shapes (matching the canvas; overrides the incomplete A2 list).
+
 - T015 technical: finalized token-panel types are separate from agent input; validation always rejects agent-written tokenized. Public compressed ranks provide byte pieces, while the pinned reference fixture uses the package byte map. Imports and per-encoding instances are lazy and cached.
 
 - **Oliver, 2026-10-29:** failed/unfinished tokenize results reuse the generic tool row; successful tokenization uses raw encoding names `o200k`, `cl100k`, `gpt2` in the approved headline and the existing generic Input/Output expanded contents. arXiv zero/multiple results use `arXiv · {n} papers for '{query}'`.
@@ -46,6 +48,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- T021: token renderer passes two real-Chrome tests after the initial missing-renderer failure (`t021-red.log`, `t021-green.log`). Covered exact bytes, encodings, keyboard roving/pinning, debounce, malformed/foreign/stale replies, last-good split, limits, read-only offline mode and widths. Screenshots `shots/tokens-{inline,expanded}-{320,390,1440}.png` compared to TokenStrip/Phone: real ids/splits replace sample data; four non-amber series follow owner override; controls scroll sideways on phones and move to the focus sidebar/phone Parameters section. Isolated screenshots use neutral kit defaults and system font because the app appearance/font bridge is absent; production theme/font comparison remains T052. No overflow. shadcn existing kit primitives reused; web-design-guidelines pass after adding live error/count announcements and field metadata. Impeccable is absent, so manual DESIGN.md review used as ui-contract §E allows. Full production/a11y review remains T052–T053.
 
 - T020: transcript regressions failed without ML artifact recognition, then all six ML/plot regressions passed, including result ids, allow-scripts frames, quiet failures and session workspace inclusion (`t020-red.log`, `t020-green.log`). Parent tokenizer timings: cold o200k 385.0 ms, warm mean 0.0311 ms (100 calls), within research targets.
 
