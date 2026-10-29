@@ -89,12 +89,12 @@
   - "Updating…" with chips at 60% opacity;
   - the error texts;
   - read-only text with "Editing works in the app" when no bridge answers within 2 s (draft copy).
-- [ ] T022 [P] [US1] Failing tests in `tests/demo-bridge-tokenize.test.ts`:
+- [X] T022 [P] [US1] Failing tests in `tests/demo-bridge-tokenize.test.ts`:
   - the pure reducer accepts `demo-tokenize` only from the card's iframe window, with a string `requestId` ≤ 40, text ≤ 2,000 characters and a known encoding;
   - everything else is ignored;
   - `lh-demo-tokens` reply shapes;
   - a route test for `app/api/tokenize/route.ts`: 200 shape, 400 on a bad body, hosted with no tenant refused, no model import.
-- [ ] T023 [US1] Implement the bridge in `components/artifacts/demo-card.tsx` and the `DemoBridgeMessage` types in `src/core/contracts.ts`, plus `app/api/tokenize/route.ts`. Read `node_modules/next/dist/docs/` on route handlers first, and follow the auth and tenant pattern of an existing `app/api/*/route.ts`.
+- [X] T023 [US1] Implement the bridge in `components/artifacts/demo-card.tsx` and the `DemoBridgeMessage` types in `src/core/contracts.ts`, plus `app/api/tokenize/route.ts`. Read `node_modules/next/dist/docs/` on route handlers first, and follow the auth and tenant pattern of an existing `app/api/*/route.ts`.
 - [ ] T024 [US1] Doctrine: create `src/agent/prompts/teacher/36-ml-lab.md` and append the practice paragraph to `src/agent/prompts/practice/00-base.md`, verbatim from contracts/doctrine.md. Update any prompt-segment pins in tests.
 
 **Checkpoint**: MVP. A token strip renders inline, is checked headless, and is editable in the app.

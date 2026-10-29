@@ -16,3 +16,10 @@ export * from "./contracts/chat.ts";
 export * from "./contracts/jobs.ts";
 export * from "./contracts/probe.ts";
 export * from "./contracts/models.ts";
+
+/** Sandboxed ML token editing: payloads are checked against the source window. */
+export type DemoTokenizeRequest = { type: "demo-tokenize"; requestId: string; text: string; encoding: import("./demo-kit.ts").TokenEncoding };
+export type DemoTokensReply = { type: "lh-demo-tokens"; requestId: string } & (
+	{ encoding: import("./demo-kit.ts").TokenEncoding; tokens: import("./demo-kit.ts").Token[] } | { error: string }
+);
+export type DemoBridgeMessage = DemoTokenizeRequest | DemoTokensReply;

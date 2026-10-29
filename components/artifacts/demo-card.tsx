@@ -7,7 +7,7 @@ import { InvertDiscIcon } from "@/components/artifacts/invert-disc";
 import { ChatActionsContext } from "@/components/chat";
 import { downloadFile, slugFilename } from "@/components/artifacts/download";
 import { DispatchCard } from "@/components/artifacts/dispatch-card";
-import { injectDemoTheme, DEMO_APPEARANCE_PROPERTIES, demoAppearanceVars, type ArtifactPartProps, type DemoResult } from "@/src/core";
+import { injectDemoTheme, DEMO_APPEARANCE_PROPERTIES, demoAppearanceVars, type ArtifactPartProps, type DemoResult, type DemoTokenizeRequest, type DemoTokensReply } from "@/src/core";
 import { useAppearance } from "@/components/settings/appearance";
 import { useDemoPresentation } from "@/components/artifacts/demo-presentation";
 import { useDemoPanel } from "@/components/artifacts/demo-panel-context";
@@ -75,6 +75,7 @@ export function downloadableDemo(html: string, origin = typeof window === "undef
 }
 
 export interface DemoBridgeState {
+	tokenize?: DemoTokenizeRequest;
 	height: number | null;
 	error: string | null;
 }
@@ -85,9 +86,13 @@ const MIN_HEIGHT = 80;
 const MAX_HEIGHT = 2400;
 
 /** Pure reducer over incoming postMessage data (contracts.ts DemoBridgeMessage). */
-export function reduceDemoBridgeState(state: DemoBridgeState, data: unknown): DemoBridgeState {
+export function reduceDemoBridgeState(state: DemoBridgeState, data: unknown, source?: MessageEventSource | null, frame?: Window | null): DemoBridgeState {
 	if (typeof data !== "object" || data === null) return state;
-	const message = data as { type?: unknown; height?: unknown; message?: unknown };
+	const message = data as { type?: unknown; height?: unknown; message?: unknown; requestId?: unknown; text?: unknown; encoding?: unknown };
+	if (message.type === "demo-tokenize") {
+		if (!frame || source !== frame || typeof message.requestId !== "string" || message.requestId.length > 40 || typeof message.text !== "string" || message.text.length > 2000 || !["o200k", "cl100k", "gpt2"].includes(message.encoding as string)) return state;
+		return { ...state, tokenize: { type: "demo-tokenize", requestId: message.requestId, text: message.text, encoding: message.encoding as DemoTokenizeRequest["encoding"] } };
+	}
 	if (message.type === "demo-resize") {
 		if (typeof message.height !== "number" || !Number.isFinite(message.height) || message.height <= 0) return state;
 		const height = Math.min(Math.max(Math.round(message.height), MIN_HEIGHT), MAX_HEIGHT);
@@ -98,6 +103,18 @@ export function reduceDemoBridgeState(state: DemoBridgeState, data: unknown): De
 		return text === state.error ? state : { ...state, error: text };
 	}
 	return state;
+}
+
+/** The only destination for edited learner text. Never a model or external API. */
+export async function replyDemoTokenize(request: DemoTokenizeRequest, fetcher: typeof fetch = fetch): Promise<DemoTokensReply> {
+	try {
+		const response = await fetcher("/api/tokenize", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: request.text, encoding: request.encoding }) });
+		const data = await response.json();
+		if (!response.ok) throw new Error(typeof data.error === "string" ? data.error : response.statusText);
+		return { type: "lh-demo-tokens", requestId: request.requestId, encoding: data.encoding, tokens: data.tokens };
+	} catch (error) {
+		return { type: "lh-demo-tokens", requestId: request.requestId, error: error instanceof Error ? error.message : String(error) };
+	}
 }
 
 // ─── the demo card ──────────────────────────────────────────────────────────
@@ -227,6 +244,13 @@ export function DemoFrame({
 			// Only messages from THIS demo's iframe (the sandbox gives it an
 			// opaque origin; the window reference still matches).
 			if (!iframeRef.current || event.source !== iframeRef.current.contentWindow) return;
+			if (event.data?.type === "demo-tokenize") {
+				const frame = iframeRef.current;
+				const source = frame.contentWindow;
+				const request = reduceDemoBridgeState(INITIAL_DEMO_BRIDGE_STATE, event.data, event.source, source).tokenize;
+				if (request) void replyDemoTokenize(request).then(reply => { if (iframeRef.current === frame && frame.contentWindow === source) source?.postMessage(reply, "*"); });
+				return;
+			}
 			if (event.data?.type === "demo-focus" && Number.isInteger(event.data.panel) && event.data.panel >= 0) {
 				const box = event.data.bounds;
 				const frameBox = iframeRef.current.getBoundingClientRect();

@@ -8,6 +8,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Decisions
 
+- T023 technical: the server barrel re-exports tokenize because app routes may import only core/server barrels under the existing lint import law. This is required route wiring, not an additional feature or owner design decision.
+
 - **Oliver, 2026-10-29:** all six ML panels have Expand buttons, including tokens and shapes (matching the canvas; overrides the incomplete A2 list).
 
 - T015 technical: finalized token-panel types are separate from agent input; validation always rejects agent-written tokenized. Public compressed ranks provide byte pieces, while the pinned reference fixture uses the package byte map. Imports and per-encoding instances are lazy and cached.
@@ -48,6 +50,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- T022–T023: bridge/route tests first failed on the missing route (`t022-red.log`); 57 bridge, demo and tenant regressions pass (`t023-green.log`). Pure source+payload validation, local-only POST, success/error replies, exact route tokens, malformed/oversized bodies and hosted refusal covered. Read bundled Next.js route-handler guide before implementation. Full lint passes with a 4 GB Node heap after the default 2 GB heap exhausted (`phase3-lint-retry.log`).
 
 - T021 follow-up: document-reload stale-reply regression failed with deterministic request ids, then passed with a fresh bounded crypto nonce; both real-Chrome tests also verify coarse-pointer target heights and offline timeout (`t021-navigation-red.log`, `t021-navigation-green.log`).
 
