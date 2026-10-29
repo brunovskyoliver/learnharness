@@ -143,11 +143,11 @@
 
   Write the fixture by hand computation, not by the implementation under test.
 - [X] T031 [US3] Implement `src/core/ml-net.ts`: `forward`, `backward`, and a `steps(spec)` list for the stepper (inputs → each layer forward → loss → output δ → each hidden δ → weight gradients).
-- [ ] T032 [P] [US3] Failing tests in `tests/ml-vectors.test.ts`:
+- [X] T032 [P] [US3] Failing tests in `tests/ml-vectors.test.ts`:
   - `plus`/`minus` arithmetic over labelled points;
   - nearest by cosine and by Euclidean distance, excluding the operands;
   - 2D and 3D.
-- [ ] T033 [US3] Implement `src/core/ml-vectors.ts`.
+- [X] T033 [US3] Implement `src/core/ml-vectors.ts`.
 - [ ] T034 [US3] Runtime `network` panel (Network board; ui-contract.md §A):
   - an SVG for edges plus positioned neuron buttons;
   - Reset, Back a step, Step forward → Start backward → Step backward;

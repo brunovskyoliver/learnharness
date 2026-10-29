@@ -8,6 +8,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Decisions
 
+- T033 technical: undefined cosine comparisons (zero result or eligible candidate vector), overflow and no eligible nearest candidate refuse through the existing error path. Distance ties preserve source point order; operands stay excluded. This follows honest invalid-data handling without inventing distances or changing eligibility.
+
 - **Oliver, 2026-10-29, T036:** keep the shapes schema unchanged. Always derive the previous-shape → current-shape transition; use the board's “start” and “no change” text where applicable. Do not add a `change` field.
 
 - T030 technical: the binding UI contract §A5 and Network board combine the output activations and loss into one step, followed by “Start backward”. This controls the step list over T031's shorthand that lists loss separately. Generalize to one forward step per layer, then output and hidden deltas in reverse layer order, then weight gradients.
@@ -64,6 +66,10 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- T033: implemented pure labelled vector arithmetic and Euclidean/cosine nearest search. All five tests pass (`t033-green.log`); targeted ESLint passes. Normalizing coordinates before cosine norms avoids avoidable overflow without changing the metric.
+
+- T032: five vector tests fail on the absent module (`t032-red.log`), covering 2D/3D arithmetic, both distance metrics, operand exclusion, source-order ties and invalid inputs. Undefined cosine comparisons and an empty eligible candidate set must refuse through the existing error path.
 
 - T031: pure forward/backward computation and board-ordered step list implemented. BCE uses the equivalent stable logits formula and sigmoid delta; loss sums preserve the approved scalar fixture. Shared schema/tool validation enforces BCE compatibility. All 22 targeted network/schema tests pass (`t031-green.log`); targeted ESLint passes. No runtime implementation yet.
 
