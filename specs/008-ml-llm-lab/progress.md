@@ -75,6 +75,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Log
 
+- T042: committed a reproducible 12-page synthetic PDF and dependency-free generator based on the existing researcher PDF fixture pattern. Existing pdfInfo/pdfExtract verified 12 pages and the known page-4 text. No third-party paper is checked in.
+
 - T041: added the opt-in live GPT-2 search/config test exactly per quickstart; default invocation skips its one network test (`t041-default.log`). No live call made in this task.
 
 - T040: teacher/researcher registration and toggle tests failed before wiring; 92 tool, researcher and job tests now pass (`t040-green.log`), as does full typecheck. The actual server composition is chat-handler.ts, so it supplies fresh agent toggles through subagents/runner.ts; jobs.ts has no corresponding factory to modify. Approved researcher item 6 is pasted verbatim, old synthesis item renumbered to 7.
