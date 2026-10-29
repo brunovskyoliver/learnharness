@@ -7,6 +7,7 @@
 import { DEMO_THEME_VARS, DEMO_SCROLLBAR_CSS } from "../core/demo-theme.ts";
 import { distribution, sample, type SamplingOptions, type SamplingToken, type SamplingRow } from "../core/ml-sampling.ts";
 import { forward, backward, steps, type NetworkSpec, type ForwardPass, type BackwardPass } from "../core/ml-net.ts";
+import { arithmetic, nearest, coordinates, validatePoints, type Point, type Arithmetic } from "../core/ml-vectors.ts";
 import { layeredLayout } from "../core/demo-kit-layout.ts";
 import type { FinalizedDemoKitPanel as DemoKitPanel, FinalizedDemoKitSpec as DemoKitSpec, TokenizedPanel, Token, TokenEncoding } from "../core/demo-kit.ts";
 
@@ -210,12 +211,34 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--lh-muted);outli
 .k-network-loss{font-variant-numeric:tabular-nums;font-size:.9em}
 .k-network-fields{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding-top:12px}
 .k-network-fields .k-btn{border:0;background:var(--lh-surface-2)}.k-network-fields .k-primary{background:var(--lh-text)}.k-network-fields .k-btn:disabled{opacity:.5;cursor:default}
-.k-network-step{color:var(--lh-muted);font-size:.8em;font-variant-numeric:tabular-nums}
+.k-network-step{color:var(--lh-muted);font-size:.8em;font-variant-numeric:tabular-nums;margin-left:8px}
 #lh-kit.k-focus:has(.k-network-focus) .k-grid{grid-column:1/-1}
 .k-focus .k-panel.k-network-focus{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,280px);gap:12px 24px;align-content:start;height:auto}
 .k-network-focus>.k-panel-head,.k-network-focus>.k-network-body,.k-network-focus>.k-readout-line{grid-column:1}
 .k-network-focus .k-network-fields{grid-column:2;grid-row:1/4}.k-network-focus .k-network-fields .k-btn{margin-bottom:6px}
 @media(max-width:640px){.k-focus .k-panel.k-network-focus{grid-template-columns:minmax(0,1fr)}.k-network-focus .k-network-fields.k-controls{grid-column:1;grid-row:4}}
+.k-scatter-scroll{max-width:100%;overflow:auto;padding:4px;box-sizing:border-box}
+.k-scatter-plot{position:relative;min-width:360px;height:360px}
+.k-scatter-svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.k-scatter-point{position:absolute;transform:translate(-50%,-50%);width:44px;height:44px;padding:0;border:0;background:transparent;color:var(--lh-muted);font:inherit;font-size:15px;cursor:pointer}
+.k-scatter-dot{position:absolute;left:17px;top:17px;width:10px;height:10px;border-radius:50%;background:var(--k-point-color)}
+.k-scatter-point.k-active .k-scatter-dot,.k-scatter-point.k-nearest .k-scatter-dot{outline:2px solid var(--lh-text);outline-offset:3px}
+.k-scatter-label{position:absolute;left:30px;top:10px;white-space:nowrap}.k-scatter-point.k-overlap .k-scatter-label{visibility:hidden}
+.k-scatter-point.k-active{color:var(--lh-text);z-index:1}.k-scatter-point.k-active .k-scatter-label{visibility:visible;background:var(--lh-bg)}
+.k-scatter-meta{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}
+.k-scatter-legend{display:flex;flex-wrap:wrap;gap:16px;color:var(--lh-muted);font-size:.8em}
+.k-scatter-legend span{display:flex;align-items:center;gap:6px}.k-scatter-legend i{width:10px;height:10px;border-radius:50%;background:var(--k-point-color)}
+.k-scatter-fields{display:flex;flex-wrap:wrap;gap:12px}.k-scatter-fields input{accent-color:var(--lh-text)}.k-scatter-fields .k-btn{border:0;background:var(--lh-surface-2)}
+.k-scatter-fields[hidden]{display:none}
+.k-scatter-3d{position:relative;min-width:0;height:360px}.k-scatter-3d:focus-within{outline:2px solid var(--lh-muted);outline-offset:2px}
+.k-focus .k-scatter-3d{height:max(410px,calc(100dvh - 240px))}
+.k-scatter-3d .k-scatter-point{width:1px;height:1px;clip-path:inset(50%);overflow:hidden;left:8px;bottom:8px;transform:none}
+.k-scatter-3d .k-scatter-point:focus{width:auto;max-width:calc(100% - 16px);height:44px;clip-path:none;overflow:auto;background:var(--lh-bg);padding:0 10px;display:flex;align-items:center;gap:8px;z-index:1}
+.k-scatter-3d .k-scatter-point:focus .k-scatter-dot,.k-scatter-3d .k-scatter-point:focus .k-scatter-label{position:static;visibility:visible}
+#lh-kit.k-focus:has(.k-scatter-focus) .k-grid{grid-column:1/-1}
+.k-focus .k-panel.k-scatter-focus{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,280px);gap:12px 24px;align-content:start;height:auto}
+.k-scatter-focus>.k-panel-head,.k-scatter-focus>.k-scatter-body,.k-scatter-focus>.k-readout-line{grid-column:1}.k-scatter-focus .k-scatter-fields{grid-column:2;grid-row:1/4}
+@media(max-width:640px){.k-focus .k-panel.k-scatter-focus{grid-template-columns:minmax(0,1fr)}.k-scatter-focus .k-scatter-fields.k-controls{grid-column:1;grid-row:4}}
 `;
 
 const MATH = Object.getOwnPropertyNames(Math);
@@ -841,12 +864,120 @@ class Kit {
 		};
 	}
 
+	private scatter(panel: Extract<DemoKitPanel, { type: "scatter" }>, box: HTMLElement): PanelView {
+		const body = el("div", "k-scatter-body"), scroll = el("div", "k-scatter-scroll"), plot = el("div", "k-scatter-plot"), three = el("div", "k-scatter-3d"), legend = el("div", "k-scatter-legend"), meta = el("div", "k-scatter-meta");
+		const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.classList.add("k-scatter-svg"); svg.setAttribute("aria-hidden", "true"); plot.append(svg); scroll.append(plot); meta.append(legend); body.append(scroll, three, meta);
+		const readout = el("p", "k-readout-line"); readout.setAttribute("aria-live", "polite");
+		const fields = el("div", "k-scatter-fields"), toggle = el("button", "k-btn k-parameters-toggle", "Parameters"); toggle.type = "button"; toggle.setAttribute("aria-expanded", "true");
+		toggle.onclick = () => { const collapsed = fields.classList.toggle("k-collapsed"); toggle.setAttribute("aria-expanded", String(!collapsed)); };
+		const choice = el("label", "k-toggle"), checkbox = el("input"), choiceText = el("span"); checkbox.type = "checkbox"; checkbox.name = "arithmetic"; checkbox.autocomplete = "off"; checkbox.checked = true; choice.append(checkbox, choiceText); fields.append(toggle, choice); meta.append(fields); box.append(body, readout);
+		let points: Point[] = [], groups: string[] = [], expression: Arithmetic | undefined, result: number[] | undefined, closest: ReturnType<typeof nearest> | undefined, expressionText = "", path: number[][] = [], fingerprint = "";
+		let active = 0, selected: number | null = null, pinned: number | null = null, is3d = false, buttons: HTMLButtonElement[] = [], view3d: PanelView | undefined;
+		let renderQueue = Promise.resolve();
+		const palette = ["--lh-blue", "--lh-teal", "--lh-red", "--lh-green"];
+		const color = (point: Point) => palette[Math.max(0, groups.indexOf(point.group ?? "")) % palette.length]!;
+		const pointLabel = (index: number) => `${points[index]!.label} · (${coordinates(points[index]!).map(n => n.toFixed(2)).join(", ")})`;
+		const read = () => { readout.textContent = selected !== null ? pointLabel(selected) : result && closest && checkbox.checked ? `${expressionText} lands nearest “${closest.point.label}” · ${panel.metric === "cosine" ? "Cosine" : "Euclidean"} distance ${closest.distance.toFixed(2)}` : "Focus or hover a point to read it. Arrow keys move between points."; };
+		const traces = () => {
+			const traces: Values[] = [];
+			for (const group of [...new Set(points.map(point => point.group))]) {
+				const members = points.map((point, index) => ({ point, index })).filter(p => p.point.group === group);
+				traces.push({ type: "scatter3d", mode: "markers", x: members.map(p => p.point.x), y: members.map(p => p.point.y), z: members.map(p => p.point.z), text: members.map(p => p.point.label), customdata: members.map(p => p.index), hoverinfo: "text", marker: { size: 5, color: cssVar(color(members[0]!.point), theme.text) } });
+			}
+			if (result && checkbox.checked) {
+				traces.push({ type: "scatter3d", mode: "lines", x: path.map(p => p[0]), y: path.map(p => p[1]), z: path.map(p => p[2]), line: { width: 2, color: theme.muted }, hoverinfo: "skip" });
+				for (let i = 1; i < path.length; i++) {
+					const a = path[i - 1]!, b = path[i]!, delta = b.map((v, j) => v - a[j]!), length = Math.hypot(...delta);
+					if (length) traces.push({ type: "cone", x: [b[0]], y: [b[1]], z: [b[2]], u: [delta[0]! / length], v: [delta[1]! / length], w: [delta[2]! / length], anchor: "tip", sizemode: "absolute", sizeref: Math.max(...points.flatMap(p => coordinates(p).map(Math.abs)), 1) * .04, colorscale: [[0, theme.muted], [1, theme.muted]], showscale: false, hoverinfo: "skip" });
+				}
+				traces.push({ type: "scatter3d", mode: "markers+text", x: [result[0]], y: [result[1]], z: [result[2]], text: [expressionText], textposition: "top center", textfont: { color: theme.text, size: 13 }, marker: { symbol: "circle-open", size: 9, color: theme.text, line: { width: 2 } }, hoverinfo: "skip" });
+			}
+			if (selected !== null) { const p = points[selected]!; traces.push({ name: p.label, type: "scatter3d", mode: "markers+text", x: [p.x], y: [p.y], z: [p.z], text: [p.label], textposition: "top center", textfont: { color: theme.text, size: 15 }, marker: { symbol: "circle-open", size: 9, color: theme.text, line: { width: 2 } }, hoverinfo: "skip" }); }
+			return traces;
+		};
+		const redraw3d = () => { renderQueue = renderQueue.then(async () => { if (is3d) await view3d?.update(); }).catch(error => this.report("scatter", error)); return renderQueue; };
+		const select = (index: number | null) => {
+			selected = index; if (index !== null) active = index;
+			buttons.forEach((button, i) => { button.tabIndex = i === active ? 0 : -1; button.classList.toggle("k-active", i === selected); }); read();
+			if (is3d) void redraw3d();
+		};
+		const resize2d = () => {
+			if (!points.length || is3d) return;
+			const all = [...points.map(coordinates), ...(checkbox.checked ? path : [])];
+			const minX = Math.min(...all.map(p => p[0]!)), maxX = Math.max(...all.map(p => p[0]!)), minY = Math.min(...all.map(p => p[1]!)), maxY = Math.max(...all.map(p => p[1]!));
+			const width = plot.clientWidth, height = plot.clientHeight;
+			const xy = (p: number[]) => [40 + (maxX === minX ? .5 : (p[0]! - minX) / (maxX - minX)) * (width - 140), height - 40 - (maxY === minY ? .5 : (p[1]! - minY) / (maxY - minY)) * (height - 80)];
+			buttons.forEach((button, i) => { const [x, y] = xy(coordinates(points[i]!)); button.style.left = `${x}px`; button.style.top = `${y}px`; button.classList.remove("k-overlap"); });
+			const labels = buttons.map(button => button.querySelector(".k-scatter-label")!.getBoundingClientRect()), shown: DOMRect[] = [];
+			labels.forEach((rect, i) => { const overlap = shown.some(other => rect.left < other.right + 6 && rect.right + 6 > other.left && rect.top < other.bottom + 4 && rect.bottom + 4 > other.top); buttons[i]!.classList.toggle("k-overlap", overlap); if (!overlap) shown.push(rect); });
+			svg.replaceChildren();
+			const shape = (tag: string, attributes: Record<string, string | number>) => { const node = document.createElementNS(svg.namespaceURI, tag); for (const [key, value] of Object.entries(attributes)) node.setAttribute(key, String(value)); svg.append(node); return node; };
+			if (result && checkbox.checked) {
+				for (let i = 1; i < path.length; i++) {
+					const [ax, ay] = xy(path[i - 1]!), [bx, by] = xy(path[i]!), angle = Math.atan2(by! - ay!, bx! - ax!);
+					shape("line", { class: "k-scatter-arrow", x1: ax!, y1: ay!, x2: bx!, y2: by!, stroke: "var(--lh-muted)", "stroke-width": 1.5 });
+					shape("path", { d: `M${bx! - 8 * Math.cos(angle - .4)},${by! - 8 * Math.sin(angle - .4)} L${bx},${by} L${bx! - 8 * Math.cos(angle + .4)},${by! - 8 * Math.sin(angle + .4)}`, fill: "none", stroke: "var(--lh-muted)", "stroke-width": 1.5 });
+				}
+				const [x, y] = xy(result); shape("circle", { class: "k-scatter-ring", cx: x!, cy: y!, r: 10, fill: "none", stroke: "var(--lh-text)", "stroke-width": 2 });
+				const text = shape("text", { x: x! + 14, y: y! + 26, fill: "var(--lh-text)", "font-size": 13 }); text.textContent = expressionText;
+				text.setAttribute("x", String(Math.max(8, Math.min(x! + 14, width - (text as SVGTextElement).getComputedTextLength() - 8))));
+				const annotation = text.getBoundingClientRect();
+				labels.forEach((rect, i) => { if (rect.left < annotation.right + 6 && rect.right + 6 > annotation.left && rect.top < annotation.bottom + 4 && rect.bottom + 4 > annotation.top) buttons[i]!.classList.add("k-overlap"); });
+			}
+		};
+		checkbox.onchange = () => { buttons.forEach((button, i) => button.classList.toggle("k-nearest", checkbox.checked && points[i]!.label === closest?.point.label)); read(); resize2d(); void redraw3d(); };
+		return {
+			focus: focused => { box.classList.toggle("k-scatter-focus", focused && !!expression); fields.classList.toggle("k-controls", focused && !!expression); if (focused && expression) box.append(fields); else meta.append(fields); },
+			resize: async () => { resize2d(); if (is3d) await view3d?.resize?.(); },
+			theme: async () => { if (is3d) { await view3d?.theme?.(); await redraw3d(); } },
+			update: async () => {
+				const data = { points: this.eval(panel.points) as Point[], groups: panel.groups === undefined ? undefined : this.eval(panel.groups), arithmetic: panel.arithmetic === undefined ? undefined : this.eval(panel.arithmetic) as Arithmetic };
+				validatePoints(data.points);
+				if (data.groups !== undefined && (!Array.isArray(data.groups) || data.groups.some((group: unknown) => typeof group !== "string"))) throw new Error("groups: use a list of names");
+				const sum = data.arithmetic ? arithmetic(data.points, data.arithmetic) : undefined, found = sum ? nearest(data.points, sum, panel.metric, [...data.arithmetic!.plus, ...data.arithmetic!.minus]) : undefined;
+				const signature = JSON.stringify(data); if (signature === fingerprint) return; fingerprint = signature;
+				const hadFocus = buttons.some(button => button === document.activeElement); points = data.points; expression = data.arithmetic; result = sum; closest = found; groups = [...new Set<string>([...(data.groups ?? []), ...points.flatMap(p => p.group === undefined ? [] : [p.group])])];
+				is3d = points[0]!.z !== undefined; active = 0; selected = null; pinned = null; buttons.forEach(button => button.remove()); buttons = [];
+				three.hidden = !is3d; scroll.hidden = is3d; fields.hidden = !expression; checkbox.checked = true;
+				path = []; expressionText = "";
+				if (expression) {
+					const operations: { label: string; sign: number }[] = [...expression.plus.slice(0, 1).map(label => ({ label, sign: 1 })), ...expression.minus.map(label => ({ label, sign: -1 })), ...expression.plus.slice(1).map(label => ({ label, sign: 1 }))];
+					expressionText = operations.map((op, i) => `${i === 0 && op.sign === 1 ? "" : op.sign === 1 ? " + " : i === 0 ? "−" : " − "}${op.label}`).join("") || "0";
+					let current = coordinates(points[0]!).map(() => 0);
+					for (const op of operations) { current = current.map((v, i) => v + op.sign * coordinates(points.find(p => p.label === op.label)!)[i]!); path.push(current); }
+					if (!path.length) path.push(current);
+					choiceText.textContent = `Show ${expressionText}`;
+				}
+				legend.replaceChildren(); for (const group of groups) { const item = el("span"), swatch = el("i"); swatch.style.setProperty("--k-point-color", `var(${palette[groups.indexOf(group) % palette.length]})`); swatch.setAttribute("aria-hidden", "true"); item.append(swatch, document.createTextNode(group)); legend.append(item); }
+				points.forEach((point, i) => {
+					const button = el("button", "k-scatter-point"), dot = el("span", "k-scatter-dot"), label = el("span", "k-scatter-label"); button.type = "button"; button.tabIndex = i === active ? 0 : -1; button.dataset.index = String(i); button.setAttribute("aria-label", pointLabel(i)); dot.setAttribute("aria-hidden", "true"); button.style.setProperty("--k-point-color", `var(${color(point)})`); label.textContent = point.label; button.append(dot, label); button.classList.toggle("k-nearest", point.label === closest?.point.label);
+					button.onfocus = () => select(i); button.onpointerenter = () => select(i); button.onclick = () => { pinned = i; select(i); }; button.onpointerleave = () => select(pinned);
+					button.onkeydown = event => { const move = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 0; if (move) { event.preventDefault(); buttons[(i + move + buttons.length) % buttons.length]!.focus(); } };
+					buttons.push(button); (is3d ? three : plot).append(button);
+				});
+				if (is3d) {
+					if (!view3d) {
+						view3d = await this.plot3d({ type: "plot3d", traces: "[]", width: panel.width }, three, traces);
+						const target = three.querySelector(".k-chart") as HTMLElement & { on(name: string, callback: (event: { points: { customdata?: number }[] }) => void): void };
+						target.setAttribute("aria-hidden", "true");
+						await view3d.update();
+						target.on("plotly_hover", event => { const index = event.points[0]?.customdata; if (Number.isInteger(index)) select(index!); });
+						target.on("plotly_unhover", () => select(pinned));
+						target.on("plotly_click", event => { const index = event.points[0]?.customdata; if (Number.isInteger(index)) { pinned = index!; select(index!); } });
+					} else await view3d.update();
+				} else resize2d();
+				read(); if (hadFocus) buttons[active]!.focus();
+			},
+		};
+	}
+
 	private async panel(panel: DemoKitPanel, box: HTMLElement): Promise<PanelView> {
 		switch (panel.type) {
 			case "tokens": return this.tokens(panel, box);
 			case "next_token": return this.nextToken(panel, box);
 			case "heatmap": return this.heatmap(panel, box);
 			case "network": return this.network(panel, box);
+			case "scatter": return this.scatter(panel, box);
 			case "note": {
 				box.append(el("div", undefined, escapeHtml(panel.text).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")));
 				return { update() {} };
@@ -947,7 +1078,7 @@ class Kit {
 		};
 	}
 
-	private async plot3d(panel: Extract<DemoKitPanel, { type: "plot3d" }>, box: HTMLElement): Promise<PanelView> {
+	private async plot3d(panel: Extract<DemoKitPanel, { type: "plot3d" }>, box: HTMLElement, data?: () => Values[]): Promise<PanelView> {
 		await load("plotly.js");
 		const Plotly = window.Plotly;
 		const target = el("div", "k-chart");
@@ -993,7 +1124,7 @@ class Kit {
 			},
 			resize: async () => { await Plotly.relayout(target, { width: target.clientWidth, height: this.focusIndex === null ? layout.height : Math.max(160, box.clientHeight - 50) }); },
 			update: async () => {
-				const traces = (this.eval(panel.traces) ?? []) as { type?: string }[];
+				const traces = (data ? data() : this.eval(panel.traces) ?? []) as { type?: string }[];
 				// 3D scenes fill the panel; 2D plots keep room for axis labels.
 				const scene = traces.some((tr) => SCENE.has(tr.type ?? ""));
 				const margin = scene ? { l: 0, r: 0, t: 0, b: 0, ...(extra.margin ?? {}) } : layout.margin;

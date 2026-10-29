@@ -157,7 +157,7 @@
   - δ in mono with its sign;
   - "–" before a value is computed;
   - no illustrative label.
-- [ ] T035 [US3] Runtime `scatter` panel (Scatter board):
+- [X] T035 [US3] Runtime `scatter` panel (Scatter board):
   - 2D in an SVG with positioned point buttons and overlap-hidden labels;
   - 3D through the kit's Plotly `plot3d` path;
   - the arithmetic ring and arrows;
