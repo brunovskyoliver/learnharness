@@ -70,8 +70,8 @@
   - text over 2,000 characters throws;
   - the encodings load lazily (no import at module load).
 - [X] T015 [US1] Implement `src/agent/tokenizer.ts` (research R1): a per-process cache of `Tiktoken` instances, `tokenize(text, encoding)` → `Token[]`, and `withTokenizedPanels(spec)`, which fills `tokenized` for each `tokens` panel with all three encodings.
-- [ ] T016 [P] [US1] Failing tests in `tests/tokenize-tool.test.ts`: the `tokenize` tool's model text and details follow contracts/ml-visual-tool.md, and invalid input returns `invalidInputResult`.
-- [ ] T017 [US1] Implement `src/agent/tools/tokenize.ts` with the draft description verbatim.
+- [X] T016 [P] [US1] Failing tests in `tests/tokenize-tool.test.ts`: the `tokenize` tool's model text and details follow contracts/ml-visual-tool.md, and invalid input returns `invalidInputResult`.
+- [X] T017 [US1] Implement `src/agent/tools/tokenize.ts` with the draft description verbatim.
 - [ ] T018 [P] [US1] Failing tests in `tests/ml-visual-tool.test.ts` with a stubbed headless browser (as `tests/plot-tool.test.ts` does):
   - a valid `tokens` input returns a demo result whose HTML contains `tokenized`;
   - a failed check throws the contract text;

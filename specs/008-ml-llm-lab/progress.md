@@ -47,6 +47,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Log
 
+- T016–T017: tokenize tool tests failed on the missing module, then both passed; model text uses byte markers, details retain exact bytes, and invalid inputs return retryable problems (`t016-red.log`, `t017-green.log`). Description copied verbatim.
+
 - T014–T015: tokenizer tests first failed on the absent module (`t014-red.log`), then all four passed (`t015-green.log`): 60 fixture comparisons, exact partial UTF-8 bytes, limits, lazy imports and immutable server finalization with agent-token rejection.
 
 - T013: generated and committed 20 reference strings × three encodings using pinned js-tiktoken 1.0.21. Reference bytes come from its source-verified textMap, with fatal UTF-8 decoding and complete-text round trips; production will use public rank data.
