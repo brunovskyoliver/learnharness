@@ -131,3 +131,20 @@ it("shows the exact optional parameter count in the existing model field grid", 
 	}
 	assert.doesNotMatch(render("hub_model", model), /Parameters|safetensors.total/);
 });
+
+import { readFileSync } from "node:fs";
+it("scopes ink keyboard focus to ML lookup rows and the three ML settings toggles", () => {
+	const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+	const rule = css.match(/\/\* Feature 008: ink focus[^]*?\n\}/)?.[0] ?? "";
+	assert.match(rule, /--ring:\s*var\(--foreground\)/);
+	for (const selector of ['[data-testid="lookup-row"]', '[data-tool="ml_visual"]', '[data-tool="tokenize"]', '[data-testid="toggle-tool-ml-visuals"]', '[data-testid="toggle-tool-model-hub"]', '[data-testid="toggle-tool-papers"]']) assert.ok(rule.includes(selector), selector);
+	assert.doesNotMatch(rule, /toggle-tool-math-check|data-tool="plot"|:root/);
+});
+
+it("uses ink for page citations without changing other transcript links", () => {
+	const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+	const rule = css.match(/\.lh-reading \.lh-prose a\[href\*="#page="\] \{[^}]+\}/)?.[0] ?? "";
+	assert.match(rule, /color:\s*var\(--foreground\)/);
+	assert.match(rule, /--ring:\s*var\(--foreground\)/);
+	assert.doesNotMatch(rule, /text-decoration:\s*none|outline:\s*none/);
+});

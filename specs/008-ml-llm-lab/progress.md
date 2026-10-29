@@ -8,6 +8,9 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Decisions
 
+- **Oliver, 2026-10-29, T052:** page-citation links in transcript prose (`#page=` targets) use foreground ink, preserving their existing underline and visible focus. This approves the scoped correction required after UI contract C’s stop-and-report gate; unrelated links are unchanged.
+- T052 no-amber focus scope also covers LookupRow and the three new settings toggles, including generic fallback rows for the six ML/source tools. Existing row skeleton classes and unrelated controls remain unchanged.
+
 - **Oliver, 2026-10-29, T052:** show the optional exact model parameter count in the existing two-column field grid as label “Parameters” and mono value `safetensors.total {count}`. Omit the row when the source omits the count.
 - T052 constraint correction: the existing parent demo-toolbar focus ring inherited amber. Scope its `--ring` to `--foreground` when the stored kit contains any ML panel, preserving the visible ring and unrelated demos. This follows the owner’s no-amber feature constraint; no global focus restyle.
 
@@ -89,7 +92,7 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Log
 
-- T052 in progress: production build passes; isolated `production-data` contains the seven synthetic sessions. Browser review found failed `ml_visual` checks displayed “Retrying…” in full Chat; regression RED→GREEN now routes unavailable/failed checks to the existing quiet tool row while malformed input retains retry behavior. Parameter-row regression RED→GREEN includes zero and exact integer counts. Toolbar-scope regression RED→GREEN covers all six kinds and unchanged ordinary demos. Logs: `t052-failure-*`, `t052-parameters-*`, `t052-focus-*`. Actual reply citations were discovered amber; reported under UI contract C and awaiting owner decision before changing the existing style. T052 remains unchecked.
+- T052 in progress: production build passes; isolated `production-data` contains the seven synthetic sessions. Browser review found failed `ml_visual` checks displayed “Retrying…” in full Chat; regression RED→GREEN now routes unavailable/failed checks to the existing quiet tool row while malformed input retains retry behavior. Parameter-row regression RED→GREEN includes zero and exact integer counts. Toolbar-scope regression RED→GREEN covers all six kinds and unchanged ordinary demos. Logs: `t052-failure-*`, `t052-parameters-*`, `t052-focus-*`. Actual reply citations were discovered amber; reported under UI contract C and Oliver approved the scoped page-link correction. Row/settings focus and page-citation regressions subsequently passed RED→GREEN (`t052-row-focus-*`, `t052-citation-*`). T052 remains unchecked.
 
 - T051: DESIGN.md now summarizes the binding panel/row/settings contract and owner overrides, PRODUCT.md describes the lab and privacy/caps, and docs/ui-review.md lists all three ML sessions and the production/keyboard checks. Corrected quickstart’s seed task reference from T030 to T050. Documentation links back to the canvas and contracts.
 
