@@ -148,7 +148,7 @@
   - nearest by cosine and by Euclidean distance, excluding the operands;
   - 2D and 3D.
 - [X] T033 [US3] Implement `src/core/ml-vectors.ts`.
-- [ ] T034 [US3] Runtime `network` panel (Network board; ui-contract.md §A):
+- [X] T034 [US3] Runtime `network` panel (Network board; ui-contract.md §A):
   - an SVG for edges plus positioned neuron buttons;
   - Reset, Back a step, Step forward → Start backward → Step backward;
   - "Step n of N";

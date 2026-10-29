@@ -67,6 +67,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Log
 
+- T034: browser tests first failed on absent neurons (`t034-red.log`); both now pass (`t034-green.log`). Hand-fixture values, gradients, undo/reset, roving arrows, pinning, state through expansion/theme, finite-data refusal and 44px touch controls covered. Screenshot review exposed edges crossing text with translucent kit surfaces; a regression failed (`t034-edge-red.log`) before edges were shortened to neuron boundaries. All six network screenshots at 320/390/1440 inline/expanded compared to Network/Phone: structure, sign legend and step copy retained; contract forbids board's unselected neuron borders and button borders, so they are absent. Wide graphs scroll inside the panel on phones. Neutral default theme/system font remains a T052 app-bridge comparison. Targeted lint passes; interim typecheck found and corrected vector array-index and browser-test element typing, leaving scheduled renderer exhaustiveness pending. Existing kit primitives follow shadcn guidance; manual DESIGN.md review substitutes for absent impeccable. Parent independently reran 22 core/schema tests, all passing.
+
 - T033: implemented pure labelled vector arithmetic and Euclidean/cosine nearest search. All five tests pass (`t033-green.log`); targeted ESLint passes. Normalizing coordinates before cosine norms avoids avoidable overflow without changing the metric.
 
 - T032: five vector tests fail on the absent module (`t032-red.log`), covering 2D/3D arithmetic, both distance metrics, operand exclusion, source-order ties and invalid inputs. Undefined cosine comparisons and an empty eligible candidate set must refuse through the existing error path.

@@ -19,7 +19,7 @@ export function arithmetic(points: Point[], expression: Arithmetic): number[] {
 	for (const [labels, sign] of [[expression.plus, 1], [expression.minus, -1]] as const) for (const label of labels) {
 		const point = points.find(p => p.label === label);
 		if (!point) throw new Error("arithmetic: every operand must name a point");
-		coordinates(point).forEach((value, i) => { result[i] += sign * value; });
+		coordinates(point).forEach((value, i) => { result[i] = result[i]! + sign * value; });
 	}
 	if (!result.every(Number.isFinite)) throw new Error("arithmetic: calculation overflowed; use smaller finite values");
 	return result;

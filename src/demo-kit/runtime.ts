@@ -6,6 +6,7 @@
 
 import { DEMO_THEME_VARS, DEMO_SCROLLBAR_CSS } from "../core/demo-theme.ts";
 import { distribution, sample, type SamplingOptions, type SamplingToken, type SamplingRow } from "../core/ml-sampling.ts";
+import { forward, backward, steps, type NetworkSpec, type ForwardPass, type BackwardPass } from "../core/ml-net.ts";
 import { layeredLayout } from "../core/demo-kit-layout.ts";
 import type { FinalizedDemoKitPanel as DemoKitPanel, FinalizedDemoKitSpec as DemoKitSpec, TokenizedPanel, Token, TokenEncoding } from "../core/demo-kit.ts";
 
@@ -195,6 +196,26 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--lh-muted);outli
 .k-heatmap-ramp>span{flex:1}
 .k-heatmap-legend-values{display:flex;flex-direction:column;justify-content:space-between}
 @media(pointer:coarse){.k-heatmap-grid{min-width:calc(72px + var(--k-heatmap-columns)*46px)}.k-heatmap-cell{min-width:44px}}
+.k-network-phase{margin:0 0 8px;color:var(--lh-muted);font-size:.8em}
+.k-network-scroll{max-width:100%;overflow:auto;padding:4px;box-sizing:border-box}
+.k-network-diagram{position:relative;width:100%;min-width:var(--k-network-width);height:var(--k-network-height)}
+.k-network-edges{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.k-network-layer{position:absolute;top:4px;transform:translateX(-50%);font-size:.8em;color:var(--lh-muted)}
+.k-neuron{position:absolute;transform:translate(-50%,-50%);width:88px;height:60px;border:0;border-radius:30px;background:var(--lh-surface-2);color:var(--lh-text);font:inherit;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-variant-numeric:tabular-nums}
+.k-neuron-value{font-size:15px;font-weight:600}.k-neuron-gradient{font:12px var(--lh-mono)}
+.k-neuron.k-active{outline:2px solid var(--lh-text);outline-offset:-2px}.k-neuron:focus-visible{outline:2px solid var(--lh-muted);outline-offset:3px}
+.k-network-meta{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-top:8px}
+.k-network-legend{display:flex;flex-wrap:wrap;gap:16px;color:var(--lh-muted);font-size:.8em}
+.k-network-legend span{display:flex;align-items:center;gap:6px}.k-network-legend i{width:18px;height:3px;background:var(--k-weight-color)}
+.k-network-loss{font-variant-numeric:tabular-nums;font-size:.9em}
+.k-network-fields{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding-top:12px}
+.k-network-fields .k-btn{border:0;background:var(--lh-surface-2)}.k-network-fields .k-primary{background:var(--lh-text)}.k-network-fields .k-btn:disabled{opacity:.5;cursor:default}
+.k-network-step{color:var(--lh-muted);font-size:.8em;font-variant-numeric:tabular-nums}
+#lh-kit.k-focus:has(.k-network-focus) .k-grid{grid-column:1/-1}
+.k-focus .k-panel.k-network-focus{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,280px);gap:12px 24px;align-content:start;height:auto}
+.k-network-focus>.k-panel-head,.k-network-focus>.k-network-body,.k-network-focus>.k-readout-line{grid-column:1}
+.k-network-focus .k-network-fields{grid-column:2;grid-row:1/4}.k-network-focus .k-network-fields .k-btn{margin-bottom:6px}
+@media(max-width:640px){.k-focus .k-panel.k-network-focus{grid-template-columns:minmax(0,1fr)}.k-network-focus .k-network-fields.k-controls{grid-column:1;grid-row:4}}
 `;
 
 const MATH = Object.getOwnPropertyNames(Math);
@@ -743,11 +764,89 @@ class Kit {
 		};
 	}
 
+	private network(panel: Extract<DemoKitPanel, { type: "network" }>, box: HTMLElement): PanelView {
+		const body = el("div", "k-network-body"), phase = el("p", "k-network-phase"), scroll = el("div", "k-network-scroll"), diagram = el("div", "k-network-diagram");
+		const edges = document.createElementNS("http://www.w3.org/2000/svg", "svg"); edges.classList.add("k-network-edges");
+		diagram.append(edges); scroll.append(diagram);
+		const meta = el("div", "k-network-meta"), legend = el("div", "k-network-legend"), loss = el("span", "k-network-loss");
+		for (const [text, color] of [["positive weight", "--lh-red"], ["negative weight", "--lh-blue"]]) { const item = el("span"), swatch = el("i"); swatch.style.setProperty("--k-weight-color", `var(${color})`); swatch.setAttribute("aria-hidden", "true"); item.append(swatch, document.createTextNode(text!)); legend.append(item); }
+		legend.append(el("span", undefined, "Thicker edge, larger |w|")); meta.append(legend, loss); body.append(phase, scroll, meta);
+		const readout = el("p", "k-readout-line"); readout.setAttribute("aria-live", "polite");
+		const fields = el("div", "k-network-fields"), toggle = el("button", "k-btn k-parameters-toggle", "Parameters"); toggle.type = "button"; toggle.setAttribute("aria-expanded", "true");
+		toggle.onclick = () => { const collapsed = fields.classList.toggle("k-collapsed"); toggle.setAttribute("aria-expanded", String(!collapsed)); };
+		const reset = el("button", "k-btn k-network-reset", "Reset"), back = el("button", "k-btn k-network-back", "Back a step"), next = el("button", "k-btn k-primary k-network-next", "Step forward"), count = el("span", "k-network-step");
+		for (const button of [reset, back, next]) button.type = "button";
+		fields.append(toggle, reset, back, next, count); box.append(body, readout, fields);
+		let spec: NetworkSpec, pass: ForwardPass, gradients: BackwardPass, sequence: ReturnType<typeof steps> = [], fingerprint = "", step = 0, active = 0, selected: number | null = null, pinned: number | null = null;
+		let nodes: { button: HTMLButtonElement; value: HTMLElement; gradient: HTMLElement; layer: number; neuron: number; label: string }[] = [];
+		let lines: { line: Element; title: SVGTitleElement; layer: number; from: number; to: number; weight: number }[] = [];
+		const resize = () => {
+			for (const edge of lines) {
+				const from = nodes.find(node => node.layer === edge.layer && node.neuron === edge.from)!.button, to = nodes.find(node => node.layer === edge.layer + 1 && node.neuron === edge.to)!.button;
+				const dx = to.offsetLeft - from.offsetLeft, dy = to.offsetTop - from.offsetTop, fraction = 1 / Math.hypot(dx / 44, dy / 30);
+				for (const [key, value] of Object.entries({ x1: from.offsetLeft + dx * fraction, y1: from.offsetTop + dy * fraction, x2: to.offsetLeft - dx * fraction, y2: to.offsetTop - dy * fraction })) edge.line.setAttribute(key, String(value));
+			}
+		};
+		const signed = (value: number) => `${value >= 0 ? "+" : "−"}${Math.abs(value).toFixed(4)}`;
+		const select = (index: number) => { active = index; selected = index; nodes.forEach((node, i) => { node.button.tabIndex = i === active ? 0 : -1; node.button.classList.toggle("k-active", i === selected); }); readout.textContent = nodes[index]!.button.getAttribute("aria-label"); };
+		const render = () => {
+			const current = sequence[step]!, last = spec.layers.length - 1;
+			phase.textContent = current.kind === "inputs" ? "Forward · inputs set" : current.kind === "forward" ? `Forward · layer ${current.layer + 1} of ${spec.layers.length}: ${current.layer === last ? "output and loss" : "hidden activations"}` : current.kind === "weights" ? "Backward · weight gradients" : current.layer === last ? "Backward · output gradient" : `Backward · ${spec.layers.length > 3 ? `layer ${current.layer + 1} of ${spec.layers.length}: ` : ""}hidden gradients`;
+			for (const node of nodes) {
+				const reached = node.layer <= Math.min(step, last), deltaReady = node.layer > 0 && (current.kind === "weights" || current.kind === "backward" && node.layer >= current.layer);
+				const value = reached ? pass.activations[node.layer]![node.neuron]! : null, delta = deltaReady ? gradients.deltas[node.layer - 1]![node.neuron]! : null;
+				node.value.textContent = value === null ? "–" : value.toFixed(3); node.gradient.textContent = delta === null ? "" : `δ ${signed(delta)}`;
+				node.gradient.style.color = `var(${delta === null ? "--lh-muted" : delta >= 0 ? "--lh-red" : "--lh-blue"})`;
+				node.button.setAttribute("aria-label", `${node.label} · value ${value === null ? "not computed yet" : value.toFixed(4)}${delta === null ? "" : ` · gradient ${signed(delta)}`}`);
+			}
+			for (const line of lines) line.title.textContent = `Weight ${line.weight}${current.kind === "weights" ? ` · gradient ${signed(gradients.weightGradients[line.layer]![line.to]![line.from]!)}` : ""}`;
+			loss.textContent = `Target ${spec.target.join(", ")} · Loss ${step >= last ? pass.loss.toFixed(4) : "–"}`;
+			count.textContent = `Step ${step} of ${sequence.length - 1}`; back.disabled = step === 0; next.disabled = step === sequence.length - 1;
+			next.textContent = step < last ? "Step forward" : step === last ? "Start backward" : "Step backward";
+			if (selected !== null) select(selected); else readout.textContent = current.kind === "weights" ? "Weight gradients are ready; focus a neuron to read its values." : "Focus or hover a neuron to read its values.";
+		};
+		reset.onclick = () => { step = 0; pinned = null; selected = null; nodes.forEach(node => node.button.classList.remove("k-active")); render(); };
+		back.onclick = () => { step = Math.max(0, step - 1); render(); }; next.onclick = () => { step = Math.min(sequence.length - 1, step + 1); render(); };
+		return {
+			focus: focused => { box.classList.toggle("k-network-focus", focused); fields.classList.toggle("k-controls", focused); },
+			resize,
+			update: () => {
+				const data: NetworkSpec = { layers: this.eval(panel.layers), weights: this.eval(panel.weights), biases: this.eval(panel.biases), input: this.eval(panel.input), target: this.eval(panel.target), activation: panel.activation, loss: panel.loss };
+				const computed = forward(data), calculated = backward(data), signature = JSON.stringify(data); if (signature === fingerprint) return;
+				fingerprint = signature; spec = data; pass = computed; gradients = calculated; sequence = steps(spec); step = 0; selected = null; pinned = null; active = 0;
+				const hadFocus = diagram.contains(document.activeElement); diagram.replaceChildren(edges); edges.replaceChildren(); nodes = []; lines = [];
+				const height = Math.max(320, Math.max(...spec.layers) * 80 + 40); diagram.style.setProperty("--k-network-height", `${height}px`); diagram.style.setProperty("--k-network-width", `${spec.layers.length * 120}px`);
+				const x = (layer: number) => 100 * (layer + .5) / spec.layers.length, y = (layer: number, neuron: number) => 40 + (neuron + .5) * (height - 40) / spec.layers[layer]!;
+				spec.weights.forEach((matrix, l) => matrix.forEach((row, j) => row.forEach((weight, i) => {
+					const line = document.createElementNS(edges.namespaceURI, "line"), title = document.createElementNS(edges.namespaceURI, "title") as SVGTitleElement;
+					for (const [key, value] of Object.entries({ x1: `${x(l)}%`, y1: y(l, i), x2: `${x(l + 1)}%`, y2: y(l + 1, j), stroke: `var(${weight >= 0 ? "--lh-red" : "--lh-blue"})`, "stroke-width": 1 + 4 * Math.abs(weight) })) line.setAttribute(key, String(value));
+					line.append(title); edges.append(line); lines.push({ line, title, layer: l, from: i, to: j, weight });
+				})));
+				spec.layers.forEach((size, layer) => {
+					const last = spec.layers.length - 1, layerName = layer === 0 ? "Input" : layer === last ? "Output" : `Hidden${spec.layers.length > 3 ? ` ${layer}` : ""}`, heading = el("span", "k-network-layer"); heading.textContent = layerName; heading.style.left = `${x(layer)}%`; diagram.append(heading);
+					for (let neuron = 0; neuron < size; neuron++) {
+						const index = nodes.length, button = el("button", "k-neuron"), value = el("span", "k-neuron-value"), gradient = el("span", "k-neuron-gradient"); button.type = "button"; button.dataset.layer = String(layer); button.dataset.neuron = String(neuron); button.tabIndex = index === active ? 0 : -1;
+						button.style.left = `${x(layer)}%`; button.style.top = `${y(layer, neuron)}px`; button.append(value, gradient); diagram.append(button);
+						const label = `${layerName} ${layer === 0 ? `x${neuron + 1}` : layer === last ? `y${size === 1 ? "" : neuron + 1}` : `h${neuron + 1}`}`;
+						nodes.push({ button, value, gradient, layer, neuron, label });
+						button.onpointerenter = () => select(index); button.onfocus = () => select(index); button.onclick = () => { pinned = index; select(index); }; button.onpointerleave = () => { if (pinned !== null) select(pinned); };
+						button.onkeydown = event => {
+							const nextLayer = event.key === "ArrowRight" ? Math.min(last, layer + 1) : event.key === "ArrowLeft" ? Math.max(0, layer - 1) : layer;
+							const nextNeuron = event.key === "ArrowDown" ? Math.min(size - 1, neuron + 1) : event.key === "ArrowUp" ? Math.max(0, neuron - 1) : Math.min(neuron, spec.layers[nextLayer]! - 1);
+							if (event.key.startsWith("Arrow")) { event.preventDefault(); nodes.find(node => node.layer === nextLayer && node.neuron === nextNeuron)!.button.focus(); }
+						};
+					}
+				}); render(); resize(); if (hadFocus) nodes[active]!.button.focus();
+			},
+		};
+	}
+
 	private async panel(panel: DemoKitPanel, box: HTMLElement): Promise<PanelView> {
 		switch (panel.type) {
 			case "tokens": return this.tokens(panel, box);
 			case "next_token": return this.nextToken(panel, box);
 			case "heatmap": return this.heatmap(panel, box);
+			case "network": return this.network(panel, box);
 			case "note": {
 				box.append(el("div", undefined, escapeHtml(panel.text).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")));
 				return { update() {} };
