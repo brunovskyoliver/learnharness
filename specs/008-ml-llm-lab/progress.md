@@ -45,6 +45,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Log
 
+- T013: generated and committed 20 reference strings × three encodings using pinned js-tiktoken 1.0.21. Reference bytes come from its source-verified textMap, with fatal UTF-8 decoding and complete-text round trips; production will use public rank data.
+
 - T012: six running-row tests failed on generic Working labels, then passed with the exact approved labels and input-hiding branch (`t012-red.log`, `t012-green.log`). Combined foundations/settings/lookup/math/live regressions: 185/185 pass (`phase2-all-tests.log`). Changed-file lint passes; typecheck now reports only the expected pending runtime renderer exhaustiveness error (`phase2-final-typecheck.log`).
 
 - T011: implemented typed lookup details/headline helpers, the exact math-check row skeleton, approved source fields/links and tokenize behavior, and five registry entries. A real Chat SSR regression failed before the chat exception and passed after it; 20 lookup/math-check tests pass (`t011-transcript-red.log`, `t011-green.log`).

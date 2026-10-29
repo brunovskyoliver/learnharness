@@ -62,7 +62,7 @@
 **Goal**: the teacher shows a real token strip in the reply. The learner switches encodings and edits the text.
 **Independent test**: spec US1. Fixed strings produce the reference ids. Switching encodings needs no model call. Edits re-split through the bridge.
 
-- [ ] T013 [P] [US1] Generate `tests/fixtures/tokenizer-reference.json` once from js-tiktoken 1.0.21: 20 strings including spaces, line breaks, emoji, CJK, an accented word and a 2,000-character string, × the `o200k`, `cl100k` and `gpt2` encodings. Commit the generator script `scripts/gen-tokenizer-fixture.mjs`.
+- [X] T013 [P] [US1] Generate `tests/fixtures/tokenizer-reference.json` once from js-tiktoken 1.0.21: 20 strings including spaces, line breaks, emoji, CJK, an accented word and a 2,000-character string, × the `o200k`, `cl100k` and `gpt2` encodings. Commit the generator script `scripts/gen-tokenizer-fixture.mjs`.
 - [ ] T014 [P] [US1] Failing tests in `tests/tokenize.test.ts` for `src/agent/tokenizer.ts`:
   - ids and pieces equal the fixture (SC-001);
   - a partial UTF-8 token has `text: null` and `bytes`;
