@@ -189,8 +189,8 @@
   - hosted with no tenant is refused;
   - only `query`/`repo` leave the server.
 - [X] T039 [US4] Add `huggingface` to `src/agent/mcp/servers.ts` (research R5). Implement `src/agent/tools/hub.ts`, mapping onto the tool names T002 recorded, with the draft descriptions verbatim.
-- [ ] T040 [US4] Register `hub_search` and `hub_model` for the teacher (`src/agent/tools.ts`, dropped when `model_hub === false`). For the researcher, pass them through `runResearcherAgent` options (`src/agent/subagents/researcher.ts`, wired from `src/server/jobs.ts` with the same toggle), and append INSTRUCTIONS item 6 verbatim from contracts/doctrine.md.
-- [ ] T041 [P] [US4] Opt-in live test `tests/hub-live.test.ts` (`LH_LIVE_HF=1`, skipped by default), per quickstart.md.
+- [X] T040 [US4] Register `hub_search` and `hub_model` for the teacher (`src/agent/tools.ts`, dropped when `model_hub === false`). For the researcher, pass them through `runResearcherAgent` options (`src/agent/subagents/researcher.ts`, wired from `src/server/jobs.ts` with the same toggle), and append INSTRUCTIONS item 6 verbatim from contracts/doctrine.md.
+- [X] T041 [P] [US4] Opt-in live test `tests/hub-live.test.ts` (`LH_LIVE_HF=1`, skipped by default), per quickstart.md.
 
 ## Phase 7: User Story 5 — Explanations cite the paper's pages (P3)
 

@@ -1,5 +1,7 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import type { Usage } from "@earendil-works/pi-ai";
+import type { EnabledTools } from "../../core/pending.ts";
+import { createHubTools } from "../tools/hub.ts";
 import { createWebTools } from "../tools/web.ts";
 import { createPdfReadTools } from "../tools/pdf-read.ts";
 import type { SearchProvider } from "../../core/search.ts";
@@ -37,7 +39,8 @@ Process:
    and triages the document (page count, size class, flagged pages). Then read it with
    pdf_extract — for long ones, pdf_search first and extract only the pages that hit.
    Cite claims from a PDF as (p. N).
-6. Synthesize everything into a brief that directly answers the question.
+6. Model and paper sources: use \`hub_model\` for a model's configuration, and \`paper_search\` + \`paper_read\` for papers (10 pages per turn at most). Cite the Hub page or the paper page in the brief.
+7. Synthesize everything into a brief that directly answers the question.
 
 Evaluation — what to keep vs drop:
 - Official docs and primary sources outweigh blog posts and forum threads.
@@ -68,6 +71,7 @@ Numbered findings with inline source citations:
 What couldn't be answered. Suggested next steps.`;
 
 export interface ResearcherRunOptions {
+	toolToggles?: EnabledTools;
 	engine?: PiEngine;
 	/** The search seam (search port wave, 2026-09-20): resolves the LIVE
 	 *  provider per call, null = honestly unavailable (the web_search tool
@@ -95,6 +99,7 @@ export interface ResearcherRunOptions {
  */
 export async function runResearcherAgent(prompt: string, opts: ResearcherRunOptions = {}): Promise<string> {
 	const tools = Object.values(createWebTools(opts.search ?? (() => null)));
+	if (opts.toolToggles?.model_hub !== false) tools.push(...Object.values(createHubTools()));
 	if (opts.pdfDir) tools.push(...Object.values(createPdfReadTools(opts.pdfDir)));
 	const base = {
 		role: "researcher" as const,

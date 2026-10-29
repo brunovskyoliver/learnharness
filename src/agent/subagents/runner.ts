@@ -1,4 +1,5 @@
 import type { PiEngine } from "../models.ts";
+import type { EnabledTools } from "../../core/pending.ts";
 import type { SearchProvider } from "../../core/search.ts";
 import {
 	accumulateJobUsage,
@@ -65,6 +66,7 @@ export const pdfModelOverride: { current?: PiEngine } = {};
 type JobToolInput = ResearchToolInput | DemoToolInput | VisualToolInput | PdfToolInput;
 
 export interface JobRunnerDeps {
+	toolToggles?: () => EnabledTools | undefined;
 	chatStore: ChatStore;
 	jobStore: JobStore;
 	/**
@@ -373,6 +375,7 @@ export function createJobRunner(deps: JobRunnerDeps): JobRunner {
 			const brief = await runResearcherAgent(prompt, {
 				engine: model,
 				search: deps.searchProvider,
+				toolToggles: deps.toolToggles?.(),
 				pdfDir,
 				abortSignal: loop.abortSignal,
 				chatId: loop.chatId,

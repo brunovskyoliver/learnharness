@@ -77,3 +77,16 @@ describe("researcher wrap-up after the turn cap", () => {
 		assert.equal(r.requests.length, 3);
 	});
 });
+
+
+it("registers Hub tools under the researcher's model_hub toggle with the exact source doctrine", async () => {
+	for (const model_hub of [undefined, false]) {
+		const { engine, requests } = scripted([answering(BRIEF)]);
+		await runResearcherAgent("q", { engine, toolToggles: { model_hub } });
+		const systems = requests[0]!.messages.filter((m) => m.role === "system");
+		const names = systems.flatMap((m) => m.toolsAdded?.map((t) => t.name) ?? []);
+		assert.equal(names.includes("hub_search"), model_hub !== false);
+		assert.equal(names.includes("hub_model"), model_hub !== false);
+		assert.match(systems.map((m) => typeof m.content === "string" ? m.content : JSON.stringify(m.content)).join("\n"), /6\. Model and paper sources: use `hub_model` for a model's configuration, and `paper_search` \+ `paper_read` for papers \(10 pages per turn at most\)\. Cite the Hub page or the paper page in the brief\./);
+	}
+});

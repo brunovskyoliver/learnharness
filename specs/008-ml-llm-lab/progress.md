@@ -75,6 +75,10 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Log
 
+- T041: added the opt-in live GPT-2 search/config test exactly per quickstart; default invocation skips its one network test (`t041-default.log`). No live call made in this task.
+
+- T040: teacher/researcher registration and toggle tests failed before wiring; 92 tool, researcher and job tests now pass (`t040-green.log`), as does full typecheck. The actual server composition is chat-handler.ts, so it supplies fresh agent toggles through subagents/runner.ts; jobs.ts has no corresponding factory to modify. Approved researcher item 6 is pasted verbatim, old synthesis item renumbered to 7.
+
 - T039: added anonymous HF server and both tools with exact draft descriptions. The decision/structured-content regressions failed first; 39 Hub/MCP/math/row tests pass (`t039-green.log`). Covers model/dataset/paper routes, rounded counts, config whitelist, exact parameters, shared cap, privacy, abort and tenancy. Optional-card/metadata failure tests failed first and now retain exact config fields without invented data; abort still propagates (`t039-optional-red.log`). Scoped lint and full typecheck pass. Typecheck initially found two test-only argument typing errors; corrected before commit.
 
 - T038: seven offline Hub tests fail on the absent hub.ts module (`t038-red.log`), covering source text/details, exact GPT-2 fields, input/privacy checks, the shared five-call cap, service failures, abort and hosted tenancy. Additional label/count representation decisions are pending Oliver.

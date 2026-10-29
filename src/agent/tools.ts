@@ -20,6 +20,7 @@ import { mlVisualTool } from "./tools/ml-visual.ts";
 import { tokenizeTool } from "./tools/tokenize.ts";
 import { plotTool } from "./tools/plot.ts";
 import { courseTool } from "./tools/course.ts";
+import { createHubTools } from "./tools/hub.ts";
 import { mathCheckTool } from "./tools/math-check.ts";
 import { planTools, type PlanToolContext } from "./tools/plan.ts";
 import { probeDoneTool, type ProbeDoneContext } from "./tools/probe.ts";
@@ -479,6 +480,7 @@ export function createTeacherTools(
 			course: courseTool({ chatId: ctx.chatId, chatStore: ctx.chatStore }),
 			// Math check (feature 007): Wolfram verifies computed answers.
 			math_check: mathCheckTool(),
+			...(enabled?.model_hub === false ? {} : createHubTools()),
 		},
 		withoutMechanics(enabled),
 		),
