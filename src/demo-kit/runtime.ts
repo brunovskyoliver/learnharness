@@ -239,6 +239,18 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--lh-muted);outli
 .k-focus .k-panel.k-scatter-focus{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,280px);gap:12px 24px;align-content:start;height:auto}
 .k-scatter-focus>.k-panel-head,.k-scatter-focus>.k-scatter-body,.k-scatter-focus>.k-readout-line{grid-column:1}.k-scatter-focus .k-scatter-fields{grid-column:2;grid-row:1/4}
 @media(max-width:640px){.k-focus .k-panel.k-scatter-focus{grid-template-columns:minmax(0,1fr)}.k-scatter-focus .k-scatter-fields.k-controls{grid-column:1;grid-row:4}}
+.k-shape-legend{font-size:.8em;color:var(--lh-muted);margin:0 0 16px;overflow-wrap:anywhere}
+.k-shape-list{display:flex;flex-direction:column;gap:4px;list-style:none;padding:0;margin:0}
+.k-shape-step{display:grid;grid-template-columns:20px minmax(0,1fr) minmax(0,auto) minmax(100px,1fr);gap:12px;align-items:center;width:100%;padding:8px 10px;border:0;border-radius:6px;background:transparent;color:var(--lh-text);font:inherit;cursor:pointer;text-align:left}
+.k-shape-step:hover,.k-shape-step[aria-current=step]{background:var(--lh-surface-2)}
+.k-shape-number{color:var(--lh-muted);font-size:.8em;font-variant-numeric:tabular-nums}
+.k-shape-op{font-size:.9em;overflow-wrap:anywhere}
+.k-shape-dims{display:flex;flex-wrap:wrap;align-items:center;gap:4px;font:12px var(--lh-mono);color:var(--lh-muted);min-width:0}
+.k-shape-dim{padding:2px 6px;border-radius:4px;max-width:100%;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.k-shape-changed{background:var(--lh-surface-2);color:var(--lh-text);outline:1px solid var(--lh-text);outline-offset:-1px}
+.k-shape-change{font-size:.8em;color:var(--lh-muted);text-align:right;overflow-wrap:anywhere}
+@media(pointer:coarse){.k-shape-step{min-height:44px}}
+@media(max-width:559px){.k-shape-step{grid-template-columns:20px minmax(0,1fr);gap:6px 12px}.k-shape-dims{grid-column:2;grid-row:2}.k-shape-change{grid-column:2;grid-row:3;text-align:left}}
 `;
 
 const MATH = Object.getOwnPropertyNames(Math);
@@ -971,6 +983,41 @@ class Kit {
 		};
 	}
 
+	private shapes(panel: Extract<DemoKitPanel, { type: "shapes" }>, box: HTMLElement): PanelView {
+		type Dimension = { name: string; size?: number };
+		type ShapeStep = { op: string; shape: Dimension[] };
+		const legend = el("p", "k-shape-legend"), list = el("ol", "k-shape-list"), readout = el("p", "k-readout-line"); readout.setAttribute("aria-live", "polite"); box.append(legend, list, readout);
+		let selected = 0, fingerprint = "", buttons: HTMLButtonElement[] = [];
+		const select = (index: number) => { selected = index; buttons.forEach((button, i) => button.setAttribute("aria-current", i === selected ? "step" : "false")); readout.textContent = buttons[selected]!.getAttribute("aria-label"); };
+		return { update: () => {
+			const steps: ShapeStep[] = this.eval(panel.steps), dims = panel.dims === undefined ? [] : this.eval(panel.dims);
+			if (!Array.isArray(steps) || steps.length < 1 || steps.length > 24 || steps.some(step => !step || typeof step.op !== "string" || !Array.isArray(step.shape) || step.shape.length > 6 || step.shape.some(dim => !dim || typeof dim.name !== "string" || (dim.size !== undefined && !Number.isFinite(dim.size))))) throw new Error("steps: provide 1–24 operations with at most 6 named dimensions and finite sizes each");
+			if (!Array.isArray(dims) || dims.some(dim => !dim || typeof dim.name !== "string" || typeof dim.meaning !== "string")) throw new Error("dims: provide dimension names and meanings");
+			const signature = JSON.stringify({ steps, dims }); if (signature === fingerprint) return; fingerprint = signature;
+			const hadFocus = list.contains(document.activeElement); selected = Math.min(selected, steps.length - 1); buttons = []; list.replaceChildren();
+			legend.textContent = dims.map(dim => `${dim.name} ${dim.meaning}`).join(" · "); legend.hidden = dims.length === 0;
+			const dimension = (dim: Dimension) => `${dim.name}${dim.size === undefined ? "" : ` ${dim.size}`}`;
+			const shape = (dims: Dimension[]) => `(${dims.map(dimension).join(", ")})`;
+			const equal = (a: Dimension, b: Dimension) => a.name === b.name && a.size === b.size;
+			steps.forEach((step, index) => {
+				const previous = steps[index - 1]?.shape;
+				const same = previous && previous.length === step.shape.length && previous.every((dim, i) => equal(dim, step.shape[i]!));
+				const change = previous === undefined ? "start" : same ? "no change" : `${shape(previous)} → ${shape(step.shape)}`;
+				const item = el("li"), button = el("button", "k-shape-step"), number = el("span", "k-shape-number"), operation = el("span", "k-shape-op"), tensor = el("span", "k-shape-dims"), transition = el("span", "k-shape-change");
+				button.type = "button"; button.dataset.step = String(index); number.textContent = String(index + 1); operation.textContent = step.op; transition.textContent = change;
+				button.setAttribute("aria-label", `Step ${index + 1} of ${steps.length} · ${step.op} · (${step.shape.map(dim => dim.name).join(", ")}) · ${change}`);
+				const unused = previous?.slice() ?? [];
+				tensor.append(document.createTextNode("("));
+				for (const dim of step.shape) {
+					const match = unused.findIndex(before => equal(before, dim));
+					const chip = el("span", `k-shape-dim${previous && match < 0 ? " k-shape-changed" : ""}`); chip.textContent = dimension(dim); tensor.append(chip);
+					if (match >= 0) unused.splice(match, 1);
+				}
+				tensor.append(document.createTextNode(")")); button.append(number, operation, tensor, transition); item.append(button); list.append(item); buttons.push(button); button.onclick = () => select(index);
+			}); select(selected); if (hadFocus) buttons[selected]!.focus();
+		} };
+	}
+
 	private async panel(panel: DemoKitPanel, box: HTMLElement): Promise<PanelView> {
 		switch (panel.type) {
 			case "tokens": return this.tokens(panel, box);
@@ -978,6 +1025,7 @@ class Kit {
 			case "heatmap": return this.heatmap(panel, box);
 			case "network": return this.network(panel, box);
 			case "scatter": return this.scatter(panel, box);
+			case "shapes": return this.shapes(panel, box);
 			case "note": {
 				box.append(el("div", undefined, escapeHtml(panel.text).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")));
 				return { update() {} };

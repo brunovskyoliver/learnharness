@@ -164,7 +164,7 @@
   - a legend in words;
   - the readout naming the nearest point and the metric;
   - "Illustrative numbers".
-- [ ] T036 [US3] Runtime `shapes` panel (Shapes board):
+- [X] T036 [US3] Runtime `shapes` panel (Shapes board):
   - the dims legend line;
   - step buttons with `aria-current`;
   - dim chips in mono;

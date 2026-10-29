@@ -8,6 +8,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Decisions
 
+- **Oliver, 2026-10-29, T036:** initially select the first shape step. Changed dimensions compare name and size as a multiset, so reordering unchanged dimensions does not mark them changed and adding a repeated dimension marks the new occurrence.
+
 - T035 technical: Plotly's WebGL points need a semantic keyboard equivalent for UI contract §A6. Roving point buttons are hidden until focused; keyboard focus has a visible chart outline/button, selected-point trace and the same readout as pointer hover. No permanent extra controls or copy. Scatter calls the existing `plot3d` path with a data callback, retaining its loading/theme/camera behavior. Arithmetic displays first plus operand, minus operands, remaining plus operands, preserving the board's “king − man + woman”.
 
 - T033 technical: undefined cosine comparisons (zero result or eligible candidate vector), overflow and no eligible nearest candidate refuse through the existing error path. Distance ties preserve source point order; operands stay excluded. This follows honest invalid-data handling without inventing distances or changing eligibility.
@@ -68,6 +70,10 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- T036: three browser tests first failed on absent shape steps (`t036-red.log`), then passed (`t036-green.log`). Covers first-step default, selection/aria/readout, derived transitions, name+size/multiplicity changes, scalar tensors, limits, retained selection through theme/Expand, phone wrapping and touch targets. All six Shapes screenshots inspected at 320/390/1440 inline/expanded. Owner-approved derived transitions replace the board's authored semantic change text; dimensions and selected-row layout follow the board. Neutral kit theme/system font remain the T052 production comparison. Targeted lint and full typecheck pass (`phase5-typecheck.log`); all declared panel renderers now exist.
+
+- T035 follow-up: keyboard-tested every 3D point, asserting its visible label, named Plotly highlight trace and matching aria/readout, plus Plotly hover/unhover restoring the pinned point. Passed (`t035-3d-labels-green.log`). Base 3D labels use hover/focus to avoid unreadable overlapping WebGL text; the selected point label remains visible.
 
 - T035: four browser tests failed on absent scatter rendering (`t035-red.log`), then passed (`t035-green.log`). Covers 2D arithmetic/rings/arrows, readout/aria equality, keyboard roving/pinning, overlap-hidden labels, real Plotly 3D with visible keyboard focus, camera preservation, invalid expressions, no eligible candidate and zero-vector cosine refusal. Screenshot review found a clipped arithmetic label and unnecessary controls without arithmetic; regressions failed (`t035-label-red.log`, `t035-empty-controls-red.log`) then passed. All 12 scatter screenshots (2D/3D, inline/expanded, 320/390/1440) inspected. Board differences: third data group is red under the no-amber override; plot background/borders omitted under the contract; arithmetic annotation stays inside the plot and overlapping point labels reveal on focus; phone plots scroll internally. 3D uses the existing Plotly view, with its camera retained. Neutral kit theme/system font and production composition remain T052. Targeted lint passes; typecheck reports only scheduled Shapes renderer exhaustiveness.
 

@@ -68,7 +68,18 @@ it("3D scatter uses Plotly with keyboard highlight, pinning and unchanged camera
 		await page.waitForFunction(() => (document.querySelector(".js-plotly-plot") as HTMLElement & { data: { name: string }[] }).data.some(t => t.name === "queen"));
 		assert.equal(await page.$eval(".k-readout-line", e => e.textContent), "queen · (0.80, 0.70, 0.10)");
 		assert.notEqual(await page.$eval(".k-scatter-3d", e => getComputedStyle(e).outlineStyle), "none");
+		for (let i = 0; i < points.length; i++) {
+			await page.focus(`.k-scatter-point[data-index="${i}"]`);
+			await page.waitForFunction(label => (document.querySelector(".js-plotly-plot") as HTMLElement & { data: { name?: string; text?: string[] }[] }).data.some(trace => trace.name === label && trace.text?.[0] === label), {}, points[i]!.label);
+			assert.equal(await page.evaluate(() => document.activeElement!.getAttribute("aria-label")), await page.$eval(".k-readout-line", e => e.textContent));
+			assert.equal(await page.$eval(`.k-scatter-point[data-index="${i}"] .k-scatter-label`, e => getComputedStyle(e).visibility), "visible");
+		}
+		await page.focus('.k-scatter-point[data-index="1"]');
 		await page.keyboard.press("Space");
+		await page.evaluate(() => { const chart = document.querySelector(".js-plotly-plot") as HTMLElement & { emit(name: string, event: unknown): void }; chart.emit("plotly_hover", { points: [{ customdata: 0 }] }); });
+		assert.equal(await page.$eval(".k-readout-line", e => e.textContent), "king · (0.62, 0.78, 0.00)");
+		await page.evaluate(() => { (document.querySelector(".js-plotly-plot") as HTMLElement & { emit(name: string, event: unknown): void }).emit("plotly_unhover", {}); });
+		assert.equal(await page.$eval(".k-readout-line", e => e.textContent), "queen · (0.80, 0.70, 0.10)");
 		await page.evaluate(async () => { const target = document.querySelector(".js-plotly-plot"); await window.Plotly.relayout(target, { "scene.camera.eye": { x: 2, y: 1, z: .5 } }); window.dispatchEvent(new Event("lh-demo-theme")); });
 		await page.waitForFunction(() => (document.querySelector(".js-plotly-plot") as HTMLElement & { layout: { scene: { camera: { eye: { x: number } } } } }).layout.scene.camera.eye.x === 2);
 		assert.deepEqual(await page.evaluate(() => window.__lhKit!.selfTest()), { errors: [], panels: 1, steps: 0 });
