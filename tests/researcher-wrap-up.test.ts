@@ -102,3 +102,14 @@ it("disposes researcher paper files after both a successful and a failed run", a
 		assert.equal(disposed, 1);
 	}
 });
+
+
+it("registers both paper tools unless papers is explicitly disabled", async () => {
+	for (const papers of [undefined, false]) {
+		const { engine, requests } = scripted([answering(BRIEF)]);
+		await runResearcherAgent("q", { engine, toolToggles: { papers } });
+		const names = requests[0]!.messages.filter((m) => m.role === "system").flatMap((m) => m.toolsAdded?.map((t) => t.name) ?? []);
+		assert.equal(names.includes("paper_search"), papers !== false);
+		assert.equal(names.includes("paper_read"), papers !== false);
+	}
+});

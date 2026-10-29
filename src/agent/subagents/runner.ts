@@ -26,7 +26,7 @@ import * as os from "node:os";
 import * as path from "node:path";
 import type { ModelRole } from "../../../config.ts";
 import { ROLE_SLOT, modelsNotConfigured, type ModelSlotName, type ProviderKeyMissing } from "../../core/settings.ts";
-import type { ChatStore, JobStore } from "../../core/ports.ts";
+import type { ChatStore, JobStore, PaperFiles } from "../../core/ports.ts";
 import { runDemoBuilder } from "./demo-builder.ts";
 import { runPdfReaderAgent } from "./pdf-reader.ts";
 import { runResearcherAgent } from "./researcher.ts";
@@ -66,6 +66,7 @@ export const pdfModelOverride: { current?: PiEngine } = {};
 type JobToolInput = ResearchToolInput | DemoToolInput | VisualToolInput | PdfToolInput;
 
 export interface JobRunnerDeps {
+	createPaperFiles?: () => PaperFiles;
 	toolToggles?: () => EnabledTools | undefined;
 	chatStore: ChatStore;
 	jobStore: JobStore;
@@ -376,6 +377,7 @@ export function createJobRunner(deps: JobRunnerDeps): JobRunner {
 				engine: model,
 				search: deps.searchProvider,
 				toolToggles: deps.toolToggles?.(),
+				paperFiles: deps.createPaperFiles?.(),
 				pdfDir,
 				abortSignal: loop.abortSignal,
 				chatId: loop.chatId,

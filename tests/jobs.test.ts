@@ -1907,3 +1907,31 @@ describe("composer steering: steerLiveChat + the deliver-or-requeue lifecycle", 
 		reconcileUserSteers(chatId, [stranded, delivered] as never); // cleanup
 	});
 });
+
+
+it("threads fresh source toggles and per-run paper storage through the research job", async () => {
+	let enabled = false, disposals = 0;
+	const names: string[][] = [];
+	const runner = createJobRunner({ chatStore, jobStore, deliver: fakeDeliver().deliver,
+		toolToggles: () => ({ model_hub: enabled, papers: enabled }),
+		createPaperFiles: () => ({ write: async () => "unused.pdf", dispose: async () => { disposals++; } }),
+	});
+	try {
+		for (const flag of [false, true]) {
+			enabled = flag;
+			const chat = chatStore.createChat("Test: research lookup toggles"); trackChat(chat.id);
+			const job = jobStore.createJob({ kind: "research", chatId: chat.id, toolCallId: `lookup-${flag}` }); trackJob(job.id);
+			researchModelOverride.current = fauxEngine([(context) => {
+				names.push(context.messages.filter((m) => m.role === "system").flatMap((m) => m.toolsAdded?.map((t) => t.name) ?? []));
+				return fauxAssistantMessage([fauxText(BRIEF)]);
+			}]);
+			await runner.runJob(job.id, RESEARCH_INPUT);
+			assert.equal(jobStore.getJob(job.id)?.status, "done");
+		}
+		for (const tool of ["hub_search", "hub_model", "paper_search", "paper_read"]) {
+			assert.equal(names[0]?.includes(tool), false);
+			assert.equal(names[1]?.includes(tool), true);
+		}
+		assert.equal(disposals, 2);
+	} finally { researchModelOverride.current = undefined; }
+});

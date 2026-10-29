@@ -2,6 +2,7 @@ import type { AgentTool } from "@earendil-works/pi-agent-core";
 import type { Usage } from "@earendil-works/pi-ai";
 import type { PaperFiles } from "../../core/ports.ts";
 import type { EnabledTools } from "../../core/pending.ts";
+import { createPaperTools } from "../tools/papers.ts";
 import { createHubTools } from "../tools/hub.ts";
 import { createWebTools } from "../tools/web.ts";
 import { createPdfReadTools } from "../tools/pdf-read.ts";
@@ -102,6 +103,7 @@ export interface ResearcherRunOptions {
 export async function runResearcherAgent(prompt: string, opts: ResearcherRunOptions = {}): Promise<string> {
 	const tools = Object.values(createWebTools(opts.search ?? (() => null)));
 	if (opts.toolToggles?.model_hub !== false) tools.push(...Object.values(createHubTools()));
+	if (opts.toolToggles?.papers !== false) tools.push(...Object.values(createPaperTools(opts.paperFiles)));
 	if (opts.pdfDir) tools.push(...Object.values(createPdfReadTools(opts.pdfDir)));
 	const base = {
 		role: "researcher" as const,

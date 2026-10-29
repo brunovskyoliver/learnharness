@@ -79,6 +79,10 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Log
 
+- T046: added the opt-in live paper title search and arXiv page-4 extraction test with finally cleanup. Its default invocation skips the one network test (`t046-default.log`).
+
+- T045: teacher/researcher paper registration and fresh job-toggle/storage wiring tests failed before implementation, then passed. All 95 tool/researcher/job tests pass (`t045-green.log`); scoped lint and full typecheck pass. Teacher and researcher own separate counters and temp storage; existing researcher web/PDF tools are unchanged. Parent independently reran all 16 paper-tool tests, passing in about 27.24 s.
+
 - T044: implemented S2/arXiv clients, paper tools and lazy tenant temp storage/cleanup. Citation-fallback, terminal cleanup and committed-page regressions failed first (`t044-cleanup-red.log`, `t044-committed-red.log`), then passed. All 69 paper, researcher, tenant and chat-flow tests pass (`t044-green.log`); scoped lint and full typecheck pass. Existing PDF extraction is used, requested pages never silently clamp, downloads enforce 25 MB while streaming, and failed/aborted reads refund reservations.
 
 - T043: 14 offline paper tests fail on the absent papers.ts (`t043-red.log`). Cases cover source parsing/fallback, requested pages and citation hints, whole-call/concurrent caps, invalid/closed PDFs, five-search cap, abort, 25 MB limit, privacy, lazy tenant temp files and fake-timer arXiv spacing/backoff.
