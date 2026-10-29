@@ -1,7 +1,7 @@
 /** Source lookup details stored with tool results and the approved row headlines. */
 export type HubLookup = {
 	kind: "search"; what: "models" | "datasets" | "papers"; query: string;
-	results: { id: string; title?: string; task?: string; downloads?: number; likes?: number; url: string }[];
+	results: { id: string; title?: string; task?: string; downloads?: number | string; likes?: number; url: string }[];
 	ms: number;
 } | {
 	kind: "model"; repo: string; url: string;

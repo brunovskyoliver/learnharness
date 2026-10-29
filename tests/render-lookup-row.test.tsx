@@ -107,3 +107,9 @@ it("shows unavailable lookup failures in the transcript while invalid inputs ret
 	}
 	assert.ok(failedTranscript("tokenize", "The tokenizer is unavailable.").includes('data-testid="tool-call-card"'));
 });
+
+it("preserves rounded Hub download counts as supplied", () => {
+	const html = render("hub_search", { kind: "search", what: "models", query: "gpt2", results: [{ id: "gpt2", downloads: "24.1M", url: "https://huggingface.co/gpt2" }], ms: 1 });
+	assert.match(html, /24\.1M/);
+	assert.doesNotMatch(html, /24,100,000/);
+});

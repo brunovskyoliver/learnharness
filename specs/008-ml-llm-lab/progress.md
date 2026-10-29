@@ -8,6 +8,10 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Decisions
 
+- **Oliver, 2026-10-29, T039:** additional config labels are “Intermediate width”, “Key/value heads”, “Model type”, “Dtype”. Preserve rounded source download counts verbatim, widening HubLookup.downloads to number | string; never turn 24.1M into an exact integer.
+- T039 technical: expose MCP structuredContent through an additional helper while retaining callMcpTool's text API, to consume the probed paper entries without parsing a Markdown table. Reject dot/dotdot repo path segments before URL normalization. Optional cardSummary stays absent because the probed server supplies README source, not a summary; no model-generated or invented excerpt. Exact parameter counts come only from the public model API's safetensors.total. Existing math MCP callers remain unchanged.
+- T040 technical: the researcher runner owns the actual runResearcherAgent call, so its dependency options must carry the same toggle from server/jobs.ts. Insert the approved item 6 verbatim and renumber the existing synthesis item to 7 without changing its wording.
+
 - **Oliver, 2026-10-29, T036:** initially select the first shape step. Changed dimensions compare name and size as a multiset, so reordering unchanged dimensions does not mark them changed and adding a repeated dimension marks the new occurrence.
 
 - T035 technical: Plotly's WebGL points need a semantic keyboard equivalent for UI contract §A6. Roving point buttons are hidden until focused; keyboard focus has a visible chart outline/button, selected-point trace and the same readout as pointer hover. No permanent extra controls or copy. Scatter calls the existing `plot3d` path with a data callback, retaining its loading/theme/camera behavior. Arithmetic displays first plus operand, minus operands, remaining plus operands, preserving the board's “king − man + woman”.
@@ -70,6 +74,10 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- T039: added anonymous HF server and both tools with exact draft descriptions. The decision/structured-content regressions failed first; 39 Hub/MCP/math/row tests pass (`t039-green.log`). Covers model/dataset/paper routes, rounded counts, config whitelist, exact parameters, shared cap, privacy, abort and tenancy. Optional-card/metadata failure tests failed first and now retain exact config fields without invented data; abort still propagates (`t039-optional-red.log`). Scoped lint and full typecheck pass. Typecheck initially found two test-only argument typing errors; corrected before commit.
+
+- T038: seven offline Hub tests fail on the absent hub.ts module (`t038-red.log`), covering source text/details, exact GPT-2 fields, input/privacy checks, the shared five-call cap, service failures, abort and hosted tenancy. Additional label/count representation decisions are pending Oliver.
 
 - T037 / Phase 5 verification: all eight complete-document checks pass (`t037-green.log`), including network, 2D/3D scatter and shapes through the inline headless path. Final targeted regression passes **38/38**, zero skipped (`phase5-targeted-green.log`), including existing token/sampling/heatmap browser regressions. Targeted ESLint and full typecheck pass (`phase5-lint.log`, `phase5-typecheck.log`). Runtime bundle is 67,503 bytes, outside startup JS. No full suite/build rerun and no `next-env.d.ts` change. Parent independently reran nine network/scatter/shapes browser tests, all passing, and inspected network/2D/3D scatter/shape phone screenshots. All 24 new screenshots were inspected by the implementer; final production-theme/composed-demo review remains T048/T052–T054. Web Interface Guidelines checked for focus, labels, scrolling, touch targets and reduced motion; no animations added.
 

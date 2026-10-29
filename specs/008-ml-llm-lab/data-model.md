@@ -27,7 +27,7 @@ Validation (`validateDemoKitSpec`) checks shapes and limits after evaluating lit
 ## Lookup results (tool result `details`)
 
 - **HubLookup**:
-  - `{ kind: "search", what: "models" | "datasets" | "papers", query, results: {id, title?, task?, downloads?, likes?, url}[], ms }`
+  - `{ kind: "search", what: "models" | "datasets" | "papers", query, results: {id, title?, task?, downloads?: number | string, likes?, url}[], ms }`
   - `{ kind: "model", repo, url, fields: {label, key, value}[], params?: number, cardSummary?: string, ms }`
 - **PaperSearch**: `{ source: "semantic-scholar" | "arxiv", query, results: {title, authors: string[], year?, arxivId?, s2Id?, abstract?, pdfUrl?, url}[], ms }`.
 - **PaperRead**: `{ title, paper: {arxivId?, url}, pages: number[], pagesUsedThisTurn: number, cap: 10, ms }`. The extracted text goes to the model only, never into `details`, which keeps transcripts small.

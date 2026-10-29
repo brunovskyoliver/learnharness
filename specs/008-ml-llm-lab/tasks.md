@@ -178,7 +178,7 @@
 **Goal**: `hub_search` and `hub_model` with quiet rows. **Requires T002.**
 **Independent test**: spec US4. A stubbed server returns the config, the numbers appear in the row, and failure is honest.
 
-- [ ] T038 [P] [US4] Failing tests in `tests/hub-tools.test.ts`, with an in-memory MCP server (`@earendil-works/pi-mcp/testing`, as 007's tests do) and a stubbed `fetch` for `config.json`:
+- [X] T038 [P] [US4] Failing tests in `tests/hub-tools.test.ts`, with an in-memory MCP server (`@earendil-works/pi-mcp/testing`, as 007's tests do) and a stubbed `fetch` for `config.json`:
   - search model text and details;
   - `hub_model` field whitelist with labels and keys;
   - GPT-2 config → layers 12, width 768, heads 12, vocabulary 50257, context 1024;
@@ -188,7 +188,7 @@
   - abort;
   - hosted with no tenant is refused;
   - only `query`/`repo` leave the server.
-- [ ] T039 [US4] Add `huggingface` to `src/agent/mcp/servers.ts` (research R5). Implement `src/agent/tools/hub.ts`, mapping onto the tool names T002 recorded, with the draft descriptions verbatim.
+- [X] T039 [US4] Add `huggingface` to `src/agent/mcp/servers.ts` (research R5). Implement `src/agent/tools/hub.ts`, mapping onto the tool names T002 recorded, with the draft descriptions verbatim.
 - [ ] T040 [US4] Register `hub_search` and `hub_model` for the teacher (`src/agent/tools.ts`, dropped when `model_hub === false`). For the researcher, pass them through `runResearcherAgent` options (`src/agent/subagents/researcher.ts`, wired from `src/server/jobs.ts` with the same toggle), and append INSTRUCTIONS item 6 verbatim from contracts/doctrine.md.
 - [ ] T041 [P] [US4] Opt-in live test `tests/hub-live.test.ts` (`LH_LIVE_HF=1`, skipped by default), per quickstart.md.
 
