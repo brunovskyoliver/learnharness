@@ -16,6 +16,8 @@ import { filterEnabledTools, type EnabledTools } from "../core/pending.ts";
 import type { JobRecord } from "../core/contracts.ts";
 import type { JobStore } from "../core/ports.ts";
 import { jobTools, type DemoInput, type PdfInput, type ResearchInput, type VisualInput } from "./tools/jobs.ts";
+import { mlVisualTool } from "./tools/ml-visual.ts";
+import { tokenizeTool } from "./tools/tokenize.ts";
 import { plotTool } from "./tools/plot.ts";
 import { courseTool } from "./tools/course.ts";
 import { mathCheckTool } from "./tools/math-check.ts";
@@ -472,6 +474,7 @@ export function createTeacherTools(
 			...jobTools({ chatId: ctx.chatId, jobStore: ctx.jobStore, spawn: ctx.spawn, searchAvailable: ctx.searchAvailable }),
 			// Quick plots (feature 005): instant, checked, no builder agent.
 			plot: plotTool(),
+			...(enabled?.ml_visuals === false ? {} : { ml_visual: mlVisualTool(), tokenize: tokenizeTool() }),
 			// Course track (feature 006): the syllabus mapped onto the plan.
 			course: courseTool({ chatId: ctx.chatId, chatStore: ctx.chatStore }),
 			// Math check (feature 007): Wolfram verifies computed answers.

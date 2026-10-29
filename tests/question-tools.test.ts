@@ -296,10 +296,11 @@ describe("tool toggles (core/pending.ts + factories)", () => {
 			spawn: () => {},
 		};
 		const full = Object.keys(createTeacherTools(ctx)).sort();
-		assert.deepEqual(full, ["ask_user_question", "course", "demo", "find", "grep", "ls", "math_check", "pdf", "plan_init", "plot", "quiz", "read", "research", "visual"]);
+		assert.deepEqual(full, ["ask_user_question", "course", "demo", "find", "grep", "ls", "math_check", "ml_visual", "pdf", "plan_init", "plot", "quiz", "read", "research", "tokenize", "visual"]);
 
+		assert.deepEqual(Object.keys(createTeacherTools(ctx, { ml_visuals: false })).sort(), full.filter(t => !["ml_visual", "tokenize"].includes(t)));
 		const noResearch = Object.keys(createTeacherTools(ctx, { research: false })).sort();
-		assert.deepEqual(noResearch, ["ask_user_question", "course", "demo", "find", "grep", "ls", "math_check", "pdf", "plan_init", "plot", "quiz", "read", "visual"]);
+		assert.deepEqual(noResearch, ["ask_user_question", "course", "demo", "find", "grep", "ls", "math_check", "ml_visual", "pdf", "plan_init", "plot", "quiz", "read", "tokenize", "visual"]);
 
 		// Math check (feature 007): its own toggle removes exactly it.
 		assert.deepEqual(Object.keys(createTeacherTools(ctx, { math_check: false })).sort(), full.filter((t) => t !== "math_check"));
@@ -313,7 +314,7 @@ describe("tool toggles (core/pending.ts + factories)", () => {
 
 		// The mechanic switch (owner 2026-09-27): free-recall swaps the teach
 		// quiz for the teach explain — one quizzing tool, whichever is armed.
-		const freeFull = ["ask_user_question", "course", "demo", "explain", "find", "grep", "ls", "math_check", "pdf", "plan_init", "plot", "read", "research", "visual"];
+		const freeFull = ["ask_user_question", "course", "demo", "explain", "find", "grep", "ls", "math_check", "ml_visual", "pdf", "plan_init", "plot", "read", "research", "tokenize", "visual"];
 		assert.deepEqual(Object.keys(createTeacherTools(ctx, { explain: true })).sort(), freeFull);
 		assert.deepEqual(
 			Object.keys(createTeacherTools(ctx, { explain: true, research: false })).sort(),

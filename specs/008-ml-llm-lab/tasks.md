@@ -72,11 +72,11 @@
 - [X] T015 [US1] Implement `src/agent/tokenizer.ts` (research R1): a per-process cache of `Tiktoken` instances, `tokenize(text, encoding)` → `Token[]`, and `withTokenizedPanels(spec)`, which fills `tokenized` for each `tokens` panel with all three encodings.
 - [X] T016 [P] [US1] Failing tests in `tests/tokenize-tool.test.ts`: the `tokenize` tool's model text and details follow contracts/ml-visual-tool.md, and invalid input returns `invalidInputResult`.
 - [X] T017 [US1] Implement `src/agent/tools/tokenize.ts` with the draft description verbatim.
-- [ ] T018 [P] [US1] Failing tests in `tests/ml-visual-tool.test.ts` with a stubbed headless browser (as `tests/plot-tool.test.ts` does):
+- [X] T018 [P] [US1] Failing tests in `tests/ml-visual-tool.test.ts` with a stubbed headless browser (as `tests/plot-tool.test.ts` does):
   - a valid `tokens` input returns a demo result whose HTML contains `tokenized`;
   - a failed check throws the contract text;
   - invalid input gives `invalidInputResult`.
-- [ ] T019 [US1] Implement `src/agent/tools/ml-visual.ts` (contracts/ml-visual-tool.md; mirror `src/agent/tools/plot.ts`) with the draft description verbatim. Register `ml_visual` and `tokenize` in `createTeacherTools` (`src/agent/tools.ts`) and the practice registry (`src/agent/tools/practice.ts`), both dropped when `ml_visuals === false`.
+- [X] T019 [US1] Implement `src/agent/tools/ml-visual.ts` (contracts/ml-visual-tool.md; mirror `src/agent/tools/plot.ts`) with the draft description verbatim. Register `ml_visual` and `tokenize` in `createTeacherTools` (`src/agent/tools.ts`) and the practice registry (`src/agent/tools/practice.ts`), both dropped when `ml_visuals === false`.
 - [ ] T020 [US1] Transcript: `ml_visual: PlotCard` in `components/artifacts/index.ts`, and `resultMessageId` for `tool-ml_visual` in `src/core/view.ts` (beside `tool-plot`). Test in `tests/render-plot-part.test.tsx` or a new `tests/render-ml-visual-part.test.tsx`.
 - [ ] T021 [US1] Runtime `tokens` panel in `src/demo-kit/runtime.ts`, exactly per the TokenStrip board and ui-contract.md §A1–A11:
   - text field;

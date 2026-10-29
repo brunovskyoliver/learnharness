@@ -200,12 +200,16 @@ describe("the practice agent", () => {
 		const tools = practiceTools(ctxOf([]));
 		assert.deepEqual(
 			Object.keys(tools).sort(),
-			["conclude", "find", "grep", "ls", "math_check", "plot", "problem", "read"],
+			["conclude", "find", "grep", "ls", "math_check", "ml_visual", "plot", "problem", "read", "tokenize"],
 		);
 	});
 
 	it("the math check (feature 007) follows its settings toggle", () => {
 		assert.ok(practiceTools(ctxOf([])).math_check);
+		assert.ok(practiceTools(ctxOf([])).ml_visual);
+		assert.ok(practiceTools(ctxOf([])).tokenize);
+		assert.equal(practiceTools(ctxOf([]), { ml_visuals: false }).ml_visual, undefined);
+		assert.equal(practiceTools(ctxOf([]), { ml_visuals: false }).tokenize, undefined);
 		assert.equal(practiceTools(ctxOf([]), { math_check: false }).math_check, undefined);
 		assert.ok(practiceTools(ctxOf([]), { research: false }).math_check, "other toggles leave it alone");
 	});
@@ -219,7 +223,7 @@ describe("the practice agent", () => {
 		// not apply the teacher/prober user tool-toggle filter.
 		assert.deepEqual(
 			Object.keys(tools).sort(),
-			["conclude", "find", "grep", "list_propositions", "list_sessions", "ls", "math_check", "pdf", "plot", "problem", "read", "research"],
+			["conclude", "find", "grep", "list_propositions", "list_sessions", "ls", "math_check", "ml_visual", "pdf", "plot", "problem", "read", "research", "tokenize"],
 		);
 		const withSearch = practiceTools({ ...ctxOf([]), jobs: { ...jobs, searchAvailable: () => true }, graph });
 		assert.ok(withSearch.research, "a live engine also keeps research");

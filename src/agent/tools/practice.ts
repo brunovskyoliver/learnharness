@@ -22,6 +22,8 @@ import { lsTool } from "./ls.ts";
 import { findTool } from "./find.ts";
 import { grepTool } from "./grep.ts";
 import { jobTools, type JobToolContext } from "./jobs.ts";
+import { mlVisualTool } from "./ml-visual.ts";
+import { tokenizeTool } from "./tokenize.ts";
 import { plotTool } from "./plot.ts";
 import { mathCheckTool } from "./math-check.ts";
 import type { EnabledTools } from "../../core/pending.ts";
@@ -250,6 +252,7 @@ export function practiceTools(ctx: PracticeToolContext, enabled?: EnabledTools):
 		...(jobs ? { pdf: jobs.pdf! } : {}),
 		// Quick plots (feature 005): on the learner's request only (doctrine).
 		plot: plotTool(),
+			...(enabled?.ml_visuals === false ? {} : { ml_visual: mlVisualTool(), tokenize: tokenizeTool() }),
 		// Math check (feature 007): the one practice tool the settings
 		// toggle can remove (its own switch, like the teacher's).
 		...(enabled?.math_check === false ? {} : { math_check: mathCheckTool() }),
