@@ -8,6 +8,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Decisions
 
+- **Oliver, 2026-10-29:** T027 sliders extend their bounds to include schema-valid supplied values outside temperature 0.1–2 and Top-p 0.05–1, preserving those values without clamping. The title/context decision remains pending.
+
 - T026 technical: the approved NextToken board applies top-k and top-p against the original temperature distribution, then renormalises once. Probability inputs use log(p), preserving zero mass. Stable softmax subtracts the maximum before temperature division.
 
 - T023 technical: the server barrel re-exports tokenize because app routes may import only core/server barrels under the existing lint import law. This is required route wiring, not an additional feature or owner design decision.
@@ -119,7 +121,7 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Report
 
-Implementation complete through T026: foundations and US1 tokenization, tools, transcript, renderer, tenant-gated editing bridge and exact approved doctrine. T027–T056 remain; T027 awaits the two owner decisions logged above. US1 is not claimed to have passed the full story gate: other declared panel kinds still need their scheduled runtime renderers before typecheck/build can pass.
+Implementation complete through T026: foundations and US1 tokenization, tools, transcript, renderer, tenant-gated editing bridge and exact approved doctrine. T027–T056 remain; T027 awaits the title/context decision logged above; slider bounds are now approved. US1 is not claimed to have passed the full story gate: other declared panel kinds still need their scheduled runtime renderers before typecheck/build can pass.
 
 Changed: pinned tokenizer fixtures (20 strings × three encodings), lazy per-process tokenizers with exact partial UTF-8 bytes, checked ml_visual/tokenize tools under the shared toggle, existing PlotCard/workspace integration, accessible token chips and controls, local-only editing route and validated source-window bridge. Request nonces reject stale replies across document reloads. No model calls or token persistence added. Only js-tiktoken@1.0.21 was added; lookup-row.tsx remains the only new UI component. Approved wording was preserved.
 
@@ -127,6 +129,6 @@ Verified: Phase 3 full suite passed 2,742 tests, zero skipped, with explicit Chr
 
 Tokenizer measurements from the parent: cold o200k 385.0 ms, warm 100-call mean 0.0311 ms. Runtime is 26,820 bytes; no final app performance claim. Evidence remains under `~/agent-runs/2026-10-28-feature-008/`.
 
-Continue at T027 after the two owner decisions above; the later T036 Shapes question is also pending. No merge or deployment performed. The parent published the completed commits and updated draft PR #8.
+Continue at T027 after the title/context decision; the later T036 Shapes question is also pending. No merge or deployment performed. The parent published the completed commits and updated draft PR #8.
 
 Publication: draft PR https://github.com/brunovskyoliver/learnharness/pull/8 targets the unmerged spec branch `claude/confident-edison-h092l5`. Feature branch published through the GitHub connector because local Git lacked push credentials; each published commit tree was checked against its local counterpart. Original local commit history is preserved at `refs/archive/008-local-commits`. No merge, deployment or push to main performed.
