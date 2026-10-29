@@ -2,11 +2,15 @@
 
 ## Stage
 
-Implementation in progress: T001–T029 complete. Phase 5 (US3) begins at T030. US1 implementation is built; full story gates remain pending the later runtime renderers and production UI checks.
+Implementation in progress: T001–T029 complete. T030 has a hand-computed fixture and partial failing tests; it remains unchecked pending the multi-output loss reduction and BCE compatibility decisions. No T031 implementation started. US1 implementation is built; full story gates remain pending the later runtime renderers and production UI checks.
 
 Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Implementation started.** Binding handoff: see [handoff.md](handoff.md).
 
 ## Decisions
+
+- T030 technical: the binding UI contract §A5 and Network board combine the output activations and loss into one step, followed by “Start backward”. This controls the step list over T031's shorthand that lists loss separately. Generalize to one forward step per layer, then output and hidden deltas in reverse layer order, then weight gradients.
+
+- **Pending Oliver, T030/T031:** multi-output loss reduction (sum or mean) and BCE activation/target compatibility. Scalar MSE remains the approved ½(y−t)². No implementation assumes either answer.
 
 - **Oliver, 2026-10-29:** omitted heatmap bounds derive from the data minimum/maximum, including zero for the diverging scale. Query/Key defaults use the binding contract readout pattern.
 
@@ -58,6 +62,10 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- T030 partial: wrote the independent scalar worksheet into `tests/fixtures/ml-net-2-3-1.json`, with explicit equations and 40-decimal-place arithmetic before the production module exists. Four tests cover all sigmoid fixture values/gradients, hand-solvable tanh and ReLU examples, and the binding board step order. `npx tsx --test tests/ml-net.test.ts` fails on the absent `src/core/ml-net.ts` as expected (`t030-partial-red.log`). BCE and multi-output tests await Oliver's decisions; T030 remains unchecked and T031 has not started. No runtime edits or screenshots in this partial task.
+
+- Parent Phase 4 verification: independently reran 12 sampling and interactive browser tests after T029; all 12 pass.
 
 - T029 / Phase 4 verification: **22/22** targeted tests pass with explicit Chrome, zero skipped (`t029-green.log`): pure maths, complete-document checks, interactive browser checks and existing token/plot regressions. Both panels pass the kit self-test; illustrative labels and heatmap cell/readout aria values are asserted. Runtime rejects expression-driven >30-token and >64-row inputs. First T029 run exposed a test assertion against the headless wrapper’s summary shape, corrected to its documented `{panels, steps}` (`t029-harness-shape.log`); no runtime failure. Targeted ESLint and diff whitespace checks pass; typecheck has only the pending Phase 5 renderer exhaustiveness error (`phase4-final-typecheck.log`). No full test/build rerun or next-env.d.ts change. Runtime bundle is 40,764 bytes, outside app startup JS. All 12 screenshots inspected; production theme, composition with global kit parameters in focus mode, and final accessibility review remain T048/T052–T054. Web Interface Guidelines reviewed for labels, focus, scrolling, touch targets and reduced motion; no transitions introduced.
 
@@ -133,14 +141,14 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 Phase 4 adds stable sampling distributions, next-token bars/controls and accessible sequential/diverging heatmaps. Approved title/context and extended slider bounds are preserved. New Phase 4 verification: 22 targeted tests pass, targeted lint passes, 12 screenshots inspected at 320/390/1440 inline and expanded. Typecheck remains blocked only by scheduled Phase 5 renderers. No full suite/build rerun in this phase; no deployment or publication by the implementer.
 
-Implementation complete through T029: foundations and US1 tokenization, tools, transcript, renderer, tenant-gated editing bridge and exact approved doctrine. T027–T056 remain; Both T027 decisions are approved; implementation resumes. US1 is not claimed to have passed the full story gate: other declared panel kinds still need their scheduled runtime renderers before typecheck/build can pass.
+Implementation complete through T029: foundations, US1 tokenization, tools, transcript, renderer, tenant-gated editing bridge, approved doctrine and US2 sampling/heatmaps. T030–T056 remain. T030's fixture and partial tests are committed in their expected failing state; BCE and multi-output behavior await Oliver's decisions. US1 is not claimed to have passed the full story gate: other declared panel kinds still need their scheduled runtime renderers before typecheck/build can pass.
 
 Changed: pinned tokenizer fixtures (20 strings × three encodings), lazy per-process tokenizers with exact partial UTF-8 bytes, checked ml_visual/tokenize tools under the shared toggle, existing PlotCard/workspace integration, accessible token chips and controls, local-only editing route and validated source-window bridge. Request nonces reject stale replies across document reloads. No model calls or token persistence added. Only js-tiktoken@1.0.21 was added; lookup-row.tsx remains the only new UI component. Approved wording was preserved.
 
 Verified: Phase 3 full suite passed 2,742 tests, zero skipped, with explicit Chrome; T025–T026 then added seven sampling tests covering 64 parameter combinations, independently rerun successfully by the parent. Full lint passes at 4 GB heap; its first default-heap attempt exhausted memory. Typecheck/build report only future-panel renderer exhaustiveness. The production compilation itself succeeds. Real browser checks cover keyboard pinning/roving, stale/foreign/malformed responses, encodings, debounce, errors, offline mode, no overflow and 44px coarse-pointer targets. Six token runtime screenshots at 320/390/1440 widths are in `~/agent-runs/2026-10-28-feature-008/shots/`; canvas differences and neutral-theme limitation are recorded under T021. Final production seeded-card comparison, full accessibility walkthrough, startup benchmark and smoke-sidebar checks remain T052–T055.
 
-Tokenizer measurements from the parent: cold o200k 385.0 ms, warm 100-call mean 0.0311 ms. Runtime is 26,820 bytes; no final app performance claim. Evidence remains under `~/agent-runs/2026-10-28-feature-008/`.
+Tokenizer measurements from the parent: cold o200k 385.0 ms, warm 100-call mean 0.0311 ms. Runtime is 40,764 bytes after Phase 4; no final app performance claim. Evidence remains under `~/agent-runs/2026-10-28-feature-008/`.
 
-Continue at T027 with both decisions approved; the later T036 Shapes question is also pending. No merge or deployment performed. The parent published the completed commits and updated draft PR #8.
+Continue at T030 after the loss/BCE decisions; the later T036 Shapes question is also pending. Parent independently verified 12 Phase 4 sampling/browser tests, all passing. T030 currently fails by design on its missing production module; no full suite/build rerun after adding this partial test task. No merge or deployment performed. The parent published the completed commits and updated draft PR #8.
 
 Publication: draft PR https://github.com/brunovskyoliver/learnharness/pull/8 targets the unmerged spec branch `claude/confident-edison-h092l5`. Feature branch published through the GitHub connector because local Git lacked push credentials; each published commit tree was checked against its local counterpart. Original local commit history is preserved at `refs/archive/008-local-commits`. No merge, deployment or push to main performed.
