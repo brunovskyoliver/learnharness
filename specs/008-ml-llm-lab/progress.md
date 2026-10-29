@@ -2,7 +2,7 @@
 
 ## Stage
 
-Implementation in progress: T001–T048 complete. Composed demo finalization and linked highlighting are implemented. Continue at T049. Full story gates and production UI checks remain pending.
+Implementation in progress: T001–T049 complete. Composed demos finalize token panels, link exact labels and preserve state through focus/theme changes. Continue at T050. Full story gates and production UI checks remain pending.
 
 Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Implementation started.** Binding handoff: see [handoff.md](handoff.md).
 
@@ -85,6 +85,9 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- T049: the dedicated tokens+heatmap composition passes the real runtime self-test; focusing a chip marks the exact header, and an actual `lh-demo-theme` message changes the applied CSS while preserving text, encoding, pin, matrix values, parameter value and linked header through expansion/return. All six composition tests pass (`t049-green.log`). Parent independently passed the first five composition regressions in 5.79 s.
+- Phase 8 final verification: all 80 targeted builder/tokenizer/schema/math/panel browser tests pass, zero skipped (`phase8-targeted.log`, 17.04 s). Final scoped ESLint and full typecheck exit 0 (`phase8-lint.log`, `phase8-typecheck.log`); nullable DOM assertion types and the test fixture union were corrected after the initial typecheck. `git diff --check` passes. Runtime bundle is 71,263 bytes, excluded from startup JavaScript. No dependency changes or next-env.d.ts rewrite. Full suite/build and final seeded product review remain with the parent.
 
 - T048: caption/overlapping-sidebar tests failed first (`t048-layout-red.log`); linked chip-to-header test failed first (`t048-link-red.log`). Five browser regressions now pass (`t048-green.log`), covering captions, all four applicable local-control sidebars at 1440/390/320, exact group/whitespace matching, one event per origin with no echoes, edited token/evaluated row reapplication, unchanged sampling state, and real Plotly 3D highlights with preserved camera/readout. Screenshot review found stretched sidebar fields and a weak sampling focus ring; both received failing regressions (`t048-review-red.log`) and were fixed before the final green run. Captured composed focus screenshots in the evidence directory and inspected phone/desktop output. Scoped lint and full typecheck pass. Web Interface Guidelines/available DESIGN review found no remaining issues in these changes; impeccable remains unavailable as recorded in the handoff.
 
@@ -212,14 +215,10 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Report
 
-Implementation is complete through T046. Phases 6–7 add Hugging Face search/config tools and Semantic Scholar/arXiv paper search and PDF page reading, with exact approved descriptions/doctrine, teacher/researcher toggles, per-instance call/page limits, turn aborts and tenant-scoped temporary PDFs. Hub config numbers come from config.json, parameters from exact safetensors metadata when available, and rounded download counts remain source strings. New filesystem writes are confined to the store adapter. No new dependency, UI component, amber or model call was introduced.
+Implementation is complete through T049. Phase 8 teaches the demo builder all six ML panel shapes and finalizes tokens on the server. Panels sharing a link exchange exact raw labels locally across chips, heatmap headers, sampling rows and 2D/3D points, retaining numeric and interaction state. Heatmap cells emit the owner-approved key-column label. The common optional captions now render on all six ML panels; composed focus uses one sidebar and one phone Parameters toggle, restoring controls on exit.
 
-Verification: 39 Hub/MCP/math/row tests passed; 69 paper/researcher/tenant/chat-flow tests passed; 95 final registration/job regressions passed. Scoped ESLint and full typecheck passed after all implementation changes. Parent independently passed 13 Hub tests and 16 paper tests. Teacher cleanup tests cover success, abort and settlement failure; researcher cleanup covers success/failure. Default live tests are skipped. Parent's actual anonymous Hub test passed in about 1.09 s. Direct live arXiv page-4 extraction passed in 3.63 s, including the expected source text.
+Verification: 80 targeted tests pass, zero skipped, including six real-browser composition checks. Scoped lint and full typecheck pass. Parent independently verified five composition tests. Existing Phase 6–7 live source results remain recorded above. Direct Puppeteer screenshots cover composed tokens/sampling/scatter/network focus at 1440, 390 and 320 pixels; phone/desktop output was inspected. Evidence is in `~/agent-runs/2026-10-28-feature-008/`. No next-env.d.ts rewrite occurred.
 
-T046 is complete: Oliver approved a quoted phrase across all fields for the arXiv fallback. Exact-query/escaping regressions pass, with 27 final offline paper/row tests passing and one default live skip. The unchanged opt-in live paper test passes 1/1 in 6.94 s, including the exact title and page-4 source text. Final scoped lint and full typecheck pass. Logs, primary-source references and earlier diagnostics are in `~/agent-runs/2026-10-28-feature-008/`.
+Continue T050–T056. Full suite/build, final production-theme seeded app screenshots, feature performance comparison and story gates remain pending with the parent. Runtime bundle is 71,263 bytes versus the T001 baseline of 19,804 bytes, outside startup JavaScript. No new dependency, UI component, amber, model call or external mutation was introduced in Phase 8.
 
-No broad npm test/build or final UI/performance review was run in these phases; the parent owns those gates. Earlier Phase 3 full suite passed 2,742 tests, zero skipped. Phase 5 screenshots and runtime bundle measurement remain in the preceding log: 67,503 bytes versus T001's 19,804 bytes, outside startup JavaScript. T001 startup baseline remains unchanged; final comparison is T054. No next-env.d.ts rewrite occurred.
-
-Continue T047–T056. T048/convergence must also render approved common ML captions. Final production-theme screenshots, composed-demo review and broad gates remain. The ten-page cap applies only to the new paper_read; existing researcher PDF tools remain unchanged.
-
-Publication: draft PR https://github.com/brunovskyoliver/learnharness/pull/8 targets the unmerged spec branch `claude/confident-edison-h092l5`. The parent published the earlier phase commits with identical trees and remapped SHAs; this query fix remains local for parent review/publication. No push, merge or deployment performed.
+Publication: draft PR https://github.com/brunovskyoliver/learnharness/pull/8 targets the unmerged spec branch `claude/confident-edison-h092l5`. Phase 8 commits remain local for parent review/publication. No push, merge, PR edit or deployment performed.

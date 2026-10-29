@@ -8,7 +8,7 @@ import { buildDemoSrcDoc } from "../components/artifacts/demo-card.tsx";
 
 const chrome = process.env.CHROME_PATH;
 const skip = !chrome || !existsSync(chrome) ? "Chrome not available" : !existsSync("public/demo-kit/runtime.js") ? "demo kit not built" : false;
-const panels: DemoKitSpec["panels"] = [
+const panels: Extract<DemoKitSpec["panels"][number], { type: "tokens" | "heatmap" | "next_token" | "scatter" | "network" | "shapes" }>[] = [
 	{ type: "tokens", title: "Tokens", text: "cat dog", encoding: "cl100k" },
 	{ type: "heatmap", title: "Attention", rows: '["cat"," dog"]', cols: '["cat"," dog"]', values: '[[p.scale,0.2],[0.4,0.6]]', scale: "sequential" },
 	{ type: "next_token", title: "Sampling", context: '"cat"', tokens: '[{"text":"cat","logit":1},{"text":" dog","logit":0}]' },
@@ -84,16 +84,16 @@ it("linked chips, headers, sampling rows and points share exact labels only with
 		assert.equal(await page.$eval('.k-panel:nth-child(2) [role="columnheader"].k-linked', el => el.textContent), " dog");
 		const samplingReadout = await page.$eval('.k-panel:nth-child(3) .k-readout-line', el => el.textContent);
 		await page.$eval('.k-scatter-point', el => el.dispatchEvent(new Event("pointerenter")));
-		assert.match(await page.$eval('.k-token.k-linked', el => el.getAttribute("aria-label")), /“cat”/);
+		assert.match(await page.$eval('.k-token.k-linked', el => el.getAttribute("aria-label") ?? ""), /“cat”/);
 		assert.equal(await page.$eval('.k-panel:nth-child(3) .k-readout-line', el => el.textContent), samplingReadout);
 		await page.focus('.k-sampling-row'); await page.keyboard.press('ArrowDown');
 		assert.equal(await page.$$eval('.k-sampling-row[tabindex="0"]', els => els.length), 1);
 		assert.equal(await page.$eval('.k-sampling-row[tabindex="0"]', el => getComputedStyle(el).outlineWidth), "2px");
-		assert.match(await page.$eval('.k-token.k-linked', el => el.getAttribute("aria-label")), /“ dog”/);
+		assert.match(await page.$eval('.k-token.k-linked', el => el.getAttribute("aria-label") ?? ""), /“ dog”/);
 		await page.focus('.k-heatmap-cell[data-row="1"][data-col="0"]');
-		assert.match(await page.$eval('.k-token.k-linked', el => el.getAttribute("aria-label")), /“cat”/, "cell broadcasts its key-column label");
+		assert.match(await page.$eval('.k-token.k-linked', el => el.getAttribute("aria-label") ?? ""), /“cat”/, "cell broadcasts its key-column label");
 		await page.$$eval('.k-panel:nth-child(2) [role="rowheader"]', els => els[1]!.dispatchEvent(new Event("pointerenter")));
-		assert.match(await page.$eval('.k-token.k-linked', el => el.getAttribute("aria-label")), /“ dog”/);
+		assert.match(await page.$eval('.k-token.k-linked', el => el.getAttribute("aria-label") ?? ""), /“ dog”/);
 		await page.evaluate(() => document.getElementById("lh-kit")!.dispatchEvent(new CustomEvent("k-link", { detail: { link: "words", label: "dog" } })));
 		assert.equal(await page.$$eval('.k-token.k-linked', els => els.length), 0, "leading spaces are not silently normalized");
 	} finally { await browser.close(); }
@@ -141,7 +141,40 @@ it("3D linked points receive a Plotly highlight without changing selection or ca
 		assert.equal(await page.$eval('.k-panel:nth-child(2) .k-readout-line', el => el.textContent), readout);
 		assert.equal(await page.$eval('.js-plotly-plot', el => (el as any).layout.scene.camera.eye.x), 2);
 		await page.evaluate(() => (document.querySelector('.js-plotly-plot') as any).emit("plotly_hover", { points: [{ customdata: 0 }] }));
-		assert.match(await page.$eval('.k-token.k-linked', el => el.getAttribute("aria-label")), /“cat”/);
+		assert.match(await page.$eval('.k-token.k-linked', el => el.getAttribute("aria-label") ?? ""), /“cat”/);
+		assert.deepEqual(await page.evaluate(() => window.__lhKit!.selfTest()), { errors: [], panels: 2, steps: 0 });
+	} finally { await browser.close(); }
+});
+
+it("composed tokens and heatmap pass self-test and retain values and linked headers through theme messages and focus", { skip, timeout: 30000 }, async () => {
+	const browser = await puppeteer.launch({ executablePath: chrome, args: ["--no-sandbox"], headless: true });
+	try {
+		const page = await browser.newPage(); await page.setViewport({ width: 1440, height: 900 });
+		await mount(page, { ...spec, panels: panels.slice(0, 2).map(panel => ({ ...panel, link: "words", caption: "Read the values." })) });
+		assert.deepEqual(await page.evaluate(() => window.__lhKit!.selfTest()), { errors: [], panels: 2, steps: 0 });
+		await page.$eval('input[aria-label="Scale"]', el => { el.value = ".4"; el.dispatchEvent(new Event("input")); });
+		await page.click('[data-encoding="gpt2"]');
+		await page.focus('.k-token'); await page.keyboard.press('ArrowRight'); await page.keyboard.press('Enter');
+		assert.equal(await page.$eval('[role="columnheader"].k-linked', el => el.textContent), " dog");
+		const values = () => page.evaluate(() => ({
+			scale: document.querySelector<HTMLInputElement>('input[aria-label="Scale"]')!.value,
+			text: document.querySelector('textarea')!.value,
+			encoding: document.querySelector('[data-encoding][aria-pressed="true"]')!.getAttribute('data-encoding'),
+			tokens: Array.from(document.querySelectorAll('.k-token'), el => el.getAttribute('aria-label')),
+			matrix: Array.from(document.querySelectorAll('.k-heatmap-cell'), el => el.getAttribute('aria-label')),
+			readout: document.querySelector('.k-readout-line')!.textContent,
+			linked: document.querySelector('[role="columnheader"].k-linked')!.textContent,
+			pinned: document.querySelector('.k-token-pinned')!.getAttribute('aria-label'),
+		}));
+		const before = await values();
+		await page.evaluate(() => { (window as any).themeMessages = 0; window.addEventListener("lh-demo-theme", () => (window as any).themeMessages++); });
+		await page.click('.k-panel .k-icon-button');
+		await page.evaluate(() => window.postMessage({ type: "lh-demo-theme", vars: { "--lh-bg": "#ffffff", "--lh-text": "#111111", "--lh-muted": "#666666" } }, "*"));
+		await page.waitForFunction(() => (window as any).themeMessages === 1 && getComputedStyle(document.documentElement).getPropertyValue('--lh-bg').trim() === '#ffffff');
+		assert.deepEqual(await values(), before);
+		await page.evaluate(() => window.postMessage({ type: "lh-demo-focus", panel: null }, "*")); await page.waitForFunction(() => !document.querySelector('.k-focus'));
+		assert.deepEqual(await values(), before);
+		assert.equal(await page.$eval('.k-token.k-linked', el => getComputedStyle(el).color), 'rgb(17, 17, 17)');
 		assert.deepEqual(await page.evaluate(() => window.__lhKit!.selfTest()), { errors: [], panels: 2, steps: 0 });
 	} finally { await browser.close(); }
 });

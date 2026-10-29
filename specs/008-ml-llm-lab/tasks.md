@@ -221,7 +221,7 @@
 
 - [X] T047 [US6] Document the six panel types in the demo builder's prompt (`src/agent/subagents/demo-builder.ts`, the kit section listing `plot3d` and the others). Use the same one-line JSON shape style. For tokens, say: "give `text` only; the server tokenizes". Call `withTokenizedPanels` in `write_kit_demo` before `kitDemoHtml`.
 - [X] T048 [US6] Runtime linked highlight: panels sharing `link` exchange `{link, label}` on hover and focus, and highlight matching rows, columns, chips or points (research R2).
-- [ ] T049 [P] [US6] Headless test: a spec with a `tokens` panel and a `heatmap` panel sharing `link` passes the self-test. Focusing a chip marks the matching heatmap header. Values survive a `lh-demo-theme` message.
+- [X] T049 [P] [US6] Headless test: a spec with a `tokens` panel and a `heatmap` panel sharing `link` passes the self-test. Focusing a chip marks the matching heatmap header. Values survive a `lh-demo-theme` message.
 
 ## Phase 9: Polish and cross-cutting
 
