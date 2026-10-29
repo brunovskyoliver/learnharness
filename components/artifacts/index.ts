@@ -33,6 +33,7 @@ export const artifactRenderers: Record<string, ComponentType<ArtifactPartProps>>
 	visual: VisualCard,
 	// Quick plots (feature 005): the checked plot itself, as a demo.
 	plot: PlotCard,
+	ml_visual: PlotCard,
 	// Math checks (feature 007): the verdict row; hidden while its
 	// question waits for an answer (the view decides, part.mathCheck).
 	math_check: MathCheckCard,

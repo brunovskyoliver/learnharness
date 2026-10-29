@@ -47,7 +47,9 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Log
 
-- T018–T019: ml_visual tool tests failed on its absent module, then passed with finalized token HTML, checked-document identity, approved failure text and input rejection. Teacher/practice registry pins and toggle removals pass; combined 79 tests green (`t018-red.log`, `t019-green.log`).
+- T020: transcript regressions failed without ML artifact recognition, then all six ML/plot regressions passed, including result ids, allow-scripts frames, quiet failures and session workspace inclusion (`t020-red.log`, `t020-green.log`). Parent tokenizer timings: cold o200k 385.0 ms, warm mean 0.0311 ms (100 calls), within research targets.
+
+- T018–T019: ml_visual tool tests failed on its absent module, then passed with finalized token HTML, checked-document identity, approved failure text and input rejection. Teacher/practice registry pins and toggle removals pass; combined 61 tests green (`t018-red.log`, `t019-green.log`).
 
 - T016–T017: tokenize tool tests failed on the missing module, then both passed; model text uses byte markers, details retain exact bytes, and invalid inputs return retryable problems (`t016-red.log`, `t017-green.log`). Description copied verbatim.
 
