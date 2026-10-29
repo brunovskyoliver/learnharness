@@ -178,6 +178,23 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--lh-muted);outli
 .k-sampling-focus .k-sampling-fields{grid-column:2;grid-row:1/5}
 .k-sampling-focus .k-sampling-fields .k-buttons{display:flex}
 @media(max-width:640px){.k-focus .k-panel.k-sampling-focus{grid-template-columns:minmax(0,1fr)}.k-sampling-focus .k-sampling-fields.k-controls{grid-column:1;grid-row:4}}
+.k-heatmap-scroll{max-width:100%;max-height:600px;overflow:auto;padding:4px;box-sizing:border-box}
+.k-heatmap-body{display:flex;gap:24px;align-items:flex-start;min-width:0}
+.k-heatmap-grid{flex:0 0 auto;width:min(var(--k-heatmap-width),calc(100% - 96px));min-width:calc(72px + var(--k-heatmap-columns)*24px);font-variant-numeric:tabular-nums}
+.k-heatmap-grid.k-large{width:var(--k-heatmap-width);min-width:var(--k-heatmap-width)}
+.k-heatmap-row{display:grid;grid-template-columns:72px repeat(var(--k-heatmap-columns),minmax(0,1fr));gap:2px;margin-bottom:2px;align-items:center}
+.k-heatmap-label{font-size:.8em;font-weight:400;color:var(--lh-muted);text-align:center;overflow-wrap:anywhere}
+.k-heatmap-row>[role=rowheader]{text-align:right;padding-right:8px}
+.k-heatmap-label.k-active{font-weight:600;color:var(--lh-text)}
+.k-heatmap-cell{min-width:0;height:44px;border:0;border-radius:3px;padding:0;font:inherit;font-size:13px;font-variant-numeric:tabular-nums;cursor:default}
+.k-heatmap-cell.k-active{outline:2px solid var(--lh-text);outline-offset:-2px}
+.k-heatmap-cell:focus-visible{outline:2px solid var(--lh-muted);outline-offset:2px}
+.k-heatmap-legend{flex:0 0 72px;font-size:.8em;color:var(--lh-muted);font-variant-numeric:tabular-nums}
+.k-heatmap-legend-scale{display:flex;gap:8px;margin-top:8px;height:180px}
+.k-heatmap-ramp{width:14px;flex-shrink:0;display:flex;flex-direction:column;border-radius:4px;overflow:hidden}
+.k-heatmap-ramp>span{flex:1}
+.k-heatmap-legend-values{display:flex;flex-direction:column;justify-content:space-between}
+@media(pointer:coarse){.k-heatmap-grid{min-width:calc(72px + var(--k-heatmap-columns)*46px)}.k-heatmap-cell{min-width:44px}}
 `;
 
 const MATH = Object.getOwnPropertyNames(Math);
@@ -647,7 +664,8 @@ class Kit {
 					control.input.max = String(key === "temperature" ? Math.max(2, values[key]) : key === "topK" ? Math.max(tokens.length, values[key]) : 1);
 					const step = key === "temperature" ? .1 : key === "topP" ? .05 : 1;
 					// Range inputs otherwise silently round schema-valid supplied values.
-					control.input.step = Math.abs((values[key] - Number(control.input.min)) / step - Math.round((values[key] - Number(control.input.min)) / step)) < 1e-9 ? String(step) : "any";
+					const onStep = (value: number) => Math.abs((value - Number(control.input.min)) / step - Math.round((value - Number(control.input.min)) / step)) < 1e-9;
+					control.input.step = onStep(values[key]) && onStep(Number(control.input.max)) ? String(step) : "any";
 				}
 				render();
 			},
@@ -655,10 +673,81 @@ class Kit {
 		};
 	}
 
+	private heatmap(panel: Extract<DemoKitPanel, { type: "heatmap" }>, box: HTMLElement): PanelView {
+		const scroll = el("div", "k-heatmap-scroll"), body = el("div", "k-heatmap-body"), grid = el("div", "k-heatmap-grid"); grid.setAttribute("role", "grid");
+		grid.setAttribute("aria-label", panel.title || "Query ↓ · Key →");
+		const legend = el("div", "k-heatmap-legend"), readout = el("p", "k-readout-line"); readout.setAttribute("aria-live", "polite");
+		body.append(grid, legend); scroll.append(body); box.append(scroll, readout);
+		let rows: string[] = [], cols: string[] = [], matrix: number[][] = [], cells: HTMLButtonElement[] = [], rowLabels: HTMLElement[] = [], colLabels: HTMLElement[] = [];
+		let active = 0, pinned: number | null = null, fingerprint = "", digits = 2, rowAxis = "Query", colAxis = "Key";
+		const label = (index: number) => { const r = Math.floor(index / cols.length), c = index % cols.length; return `${rowAxis} “${rows[r]!.trim()}” → ${colAxis.toLowerCase()} “${cols[c]!.trim()}” · ${matrix[r]![c]!.toFixed(digits)}`; };
+		const select = (index: number) => {
+			active = index;
+			cells.forEach((cell, i) => { cell.tabIndex = i === index ? 0 : -1; cell.classList.toggle("k-active", i === index); cell.setAttribute("aria-selected", String(i === index)); });
+			rowLabels.forEach((item, i) => item.classList.toggle("k-active", i === Math.floor(index / cols.length)));
+			colLabels.forEach((item, i) => item.classList.toggle("k-active", i === index % cols.length));
+			readout.textContent = label(index);
+		};
+		const resize = () => {
+			const showValues = cells.length > 0 && cells[0]!.getBoundingClientRect().width >= 44;
+			for (const cell of cells) (cell.firstElementChild as HTMLElement).hidden = !showValues;
+		};
+		return {
+			resize,
+			update: () => {
+				const data = { rows: this.eval(panel.rows), cols: this.eval(panel.cols), values: this.eval(panel.values), min: panel.min === undefined ? undefined : this.eval(panel.min), max: panel.max === undefined ? undefined : this.eval(panel.max), digits: panel.digits === undefined ? 2 : this.eval(panel.digits), rowAxis: panel.rowAxis === undefined ? "Query" : this.eval(panel.rowAxis), colAxis: panel.colAxis === undefined ? "Key" : this.eval(panel.colAxis) };
+				if (![data.rows, data.cols].every(labels => Array.isArray(labels) && labels.length > 0 && labels.length <= 64 && labels.every(label => typeof label === "string"))) throw new Error("rows and cols: provide 1–64 labels each");
+				if (!Array.isArray(data.values) || data.values.length !== data.rows.length || data.values.some(row => !Array.isArray(row) || row.length !== data.cols.length || row.some(value => typeof value !== "number" || !Number.isFinite(value)))) throw new Error("values: provide a finite number for every row and column, at most 64×64");
+				if (!Number.isInteger(data.digits) || data.digits < 0 || data.digits > 8 || typeof data.rowAxis !== "string" || typeof data.colAxis !== "string") throw new Error("digits and axes: use 0–8 digits and string axis labels");
+				const flat: number[] = data.values.flat();
+				const min = panel.min === undefined ? Math.min(...flat, ...(panel.scale === "diverging" ? [0] : [])) : data.min;
+				const max = panel.max === undefined ? Math.max(...flat, ...(panel.scale === "diverging" ? [0] : [])) : data.max;
+				if (!Number.isFinite(min) || !Number.isFinite(max) || min > max) throw new Error("min and max: use a finite range with min at most max");
+				const signature = JSON.stringify(data); if (signature === fingerprint) return; fingerprint = signature;
+				const hadFocus = grid.contains(document.activeElement);
+				rows = data.rows; cols = data.cols; matrix = data.values; digits = data.digits; rowAxis = data.rowAxis; colAxis = data.colAxis;
+				active = Math.min(active, rows.length * cols.length - 1); pinned = null;
+				grid.setAttribute("aria-label", panel.title || `${rowAxis} ↓ · ${colAxis} →`);
+				const color = (value: number) => {
+					const amount = panel.scale === "sequential" ? max === min ? 0 : (value - min) / (max - min) : value < 0 ? min === 0 ? 0 : value / min : max === 0 ? 0 : value / max;
+					const strength = Math.max(0, Math.min(1, amount));
+					return { background: `color-mix(in srgb,var(${panel.scale === "diverging" && value > 0 ? "--lh-red" : "--lh-blue"}) ${strength * 100}%,var(--lh-bg))`, ink: strength > .55 ? "var(--lh-bg)" : "var(--lh-text)" };
+				};
+				grid.style.setProperty("--k-heatmap-columns", String(cols.length)); grid.style.setProperty("--k-heatmap-width", `${72 + cols.length * 58}px`); grid.classList.toggle("k-large", rows.length > 12 || cols.length > 12);
+				grid.replaceChildren(); cells = []; rowLabels = []; colLabels = [];
+				const header = el("div", "k-heatmap-row"); header.setAttribute("role", "row");
+				const axes = el("div", "k-heatmap-label"); axes.setAttribute("role", "columnheader"); axes.textContent = `${rowAxis} ↓ · ${colAxis} →`; header.append(axes);
+				cols.forEach(text => { const item = el("div", "k-heatmap-label"); item.setAttribute("role", "columnheader"); item.textContent = text; colLabels.push(item); header.append(item); }); grid.append(header);
+				rows.forEach((text, r) => {
+					const row = el("div", "k-heatmap-row"); row.setAttribute("role", "row");
+					const heading = el("div", "k-heatmap-label"); heading.setAttribute("role", "rowheader"); heading.textContent = text; rowLabels.push(heading); row.append(heading);
+					cols.forEach((_, c) => {
+						const index = r * cols.length + c, cell = el("button", "k-heatmap-cell"), value = matrix[r]![c]!, paint = color(value);
+						cell.type = "button"; cell.setAttribute("role", "gridcell"); cell.setAttribute("aria-label", label(index)); cell.dataset.row = String(r); cell.dataset.col = String(c); cell.style.background = paint.background; cell.style.color = paint.ink;
+						const printed = el("span"); printed.textContent = value.toFixed(digits); cell.append(printed);
+						cell.onpointerenter = () => select(index); cell.onfocus = () => select(index); cell.onclick = () => { pinned = index; select(index); };
+						cell.onpointerleave = () => { if (pinned !== null) select(pinned); };
+						cell.onkeydown = event => {
+							const next = event.key === "ArrowRight" ? r * cols.length + Math.min(cols.length - 1, c + 1) : event.key === "ArrowLeft" ? r * cols.length + Math.max(0, c - 1) : event.key === "ArrowDown" ? Math.min(rows.length - 1, r + 1) * cols.length + c : event.key === "ArrowUp" ? Math.max(0, r - 1) * cols.length + c : null;
+							if (next !== null) { event.preventDefault(); cells[next]!.focus(); }
+						}; cells.push(cell); row.append(cell);
+					}); grid.append(row);
+				});
+				legend.replaceChildren(); legend.append(document.createTextNode(panel.scale === "sequential" ? "Attention" : "Weight"));
+				const scale = el("div", "k-heatmap-legend-scale"), ramp = el("div", "k-heatmap-ramp"), numbers = el("div", "k-heatmap-legend-values"); ramp.setAttribute("aria-hidden", "true");
+				const mid = panel.scale === "diverging" ? 0 : min / 2 + max / 2;
+				for (let i = 0; i < 100; i++) { const swatch = el("span"); const fraction = i / 99; const value = fraction <= .5 ? max * (1 - 2 * fraction) + mid * 2 * fraction : mid * (2 - 2 * fraction) + min * (2 * fraction - 1); swatch.style.background = color(value).background; ramp.append(swatch); }
+				for (const value of [max, mid, min]) { const text = el("span", "k-heatmap-legend-value"); text.textContent = value.toFixed(digits); numbers.append(text); }
+				scale.append(ramp, numbers); legend.append(scale); select(active); resize(); if (hadFocus) cells[active]!.focus();
+			},
+		};
+	}
+
 	private async panel(panel: DemoKitPanel, box: HTMLElement): Promise<PanelView> {
 		switch (panel.type) {
 			case "tokens": return this.tokens(panel, box);
 			case "next_token": return this.nextToken(panel, box);
+			case "heatmap": return this.heatmap(panel, box);
 			case "note": {
 				box.append(el("div", undefined, escapeHtml(panel.text).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")));
 				return { update() {} };

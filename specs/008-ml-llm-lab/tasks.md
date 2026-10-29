@@ -120,7 +120,7 @@
   - Reset and **Sample** (`k-primary`);
   - the readout;
   - "Illustrative numbers" in the head.
-- [ ] T028 [US2] Runtime `heatmap` panel (Heatmap board; ui-contract.md §A):
+- [X] T028 [US2] Runtime `heatmap` panel (Heatmap board; ui-contract.md §A):
   - row and column headers, bold when focused;
   - `role=grid` with roving tabindex and arrow keys;
   - sequential and diverging scales from kit tokens;
