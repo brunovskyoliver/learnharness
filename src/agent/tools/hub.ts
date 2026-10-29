@@ -57,7 +57,7 @@ function paperResults(reply: { text: string; structuredContent?: unknown }): { r
 	return { results, text: results.map((p, i) => `${i + 1}. ${p.title} · ${p.id}`).join("\n") || reply.text.trim() };
 }
 async function getJson(url: string, signal?: AbortSignal): Promise<Record<string, unknown>> {
-	const response = await fetch(url, { signal });
+	const response = await fetch(url, { signal: AbortSignal.any([AbortSignal.timeout(20_000), ...(signal ? [signal] : [])]) });
 	if (!response.ok) throw new Error(`Hugging Face returned HTTP ${response.status}.`);
 	const value: unknown = await response.json();
 	if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Hugging Face returned an invalid configuration.");

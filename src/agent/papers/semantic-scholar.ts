@@ -6,7 +6,7 @@ export async function semanticScholarSearch(query: string, limit: number, signal
 	url.searchParams.set("query", query);
 	url.searchParams.set("limit", String(limit));
 	url.searchParams.set("fields", "title,authors,year,externalIds,abstract,openAccessPdf");
-	const response = await fetch(url, { signal });
+	const response = await fetch(url, { signal: AbortSignal.any([AbortSignal.timeout(20_000), ...(signal ? [signal] : [])]) });
 	if (!response.ok) throw new Error(`Semantic Scholar returned HTTP ${response.status}.`);
 	const body: unknown = await response.json();
 	if (!body || typeof body !== "object" || !Array.isArray((body as { data?: unknown }).data)) throw new Error("Semantic Scholar returned an unreadable response.");

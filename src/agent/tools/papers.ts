@@ -29,7 +29,7 @@ function pageNumbers(spec: string, remaining: number): number[] {
 	return [...pages].sort((a, b) => a - b);
 }
 async function download(url: string, signal?: AbortSignal): Promise<Uint8Array> {
-	const response = new URL(url).hostname === "arxiv.org" ? await arxivFetch(url, signal) : await fetch(url, { signal });
+	const response = new URL(url).hostname === "arxiv.org" ? await arxivFetch(url, signal) : await fetch(url, { signal: AbortSignal.any([AbortSignal.timeout(20_000), ...(signal ? [signal] : [])]) });
 	if (!response.ok) throw new Error(`The PDF server returned HTTP ${response.status}.`);
 	if (Number(response.headers.get("content-length")) > MAX_BYTES) { await response.body?.cancel(); throw new Error("The PDF is larger than 25 MB."); }
 	const reader = response.body?.getReader();

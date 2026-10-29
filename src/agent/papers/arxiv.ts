@@ -21,7 +21,7 @@ async function slot(signal?: AbortSignal): Promise<void> {
 export async function arxivFetch(url: string, signal?: AbortSignal): Promise<Response> {
 	for (let attempt = 0; ; attempt++) {
 		await slot(signal);
-		const response = await fetch(url, { signal });
+		const response = await fetch(url, { signal: AbortSignal.any([AbortSignal.timeout(20_000), ...(signal ? [signal] : [])]) });
 		if (response.status !== 429 || attempt === 1) return response;
 		await response.body?.cancel();
 	}
