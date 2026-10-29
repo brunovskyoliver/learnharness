@@ -2,7 +2,7 @@
 
 ## Stage
 
-Implementation in progress: T001–T012 complete. Phase 3 (US1), beginning at T013, is next. Oliver approved the pending row decisions on 2026-10-29.
+Implementation in progress: T001–T024 complete. Phase 4 (US2), beginning at T025, is next. US1 implementation is built; full story gates remain pending the later runtime renderers and production UI checks.
 
 Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Implementation started.** Binding handoff: see [handoff.md](handoff.md).
 
@@ -50,6 +50,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- Phase 3 verification: full `npm test` with explicit Chrome passes **2,742/2,742**, zero skipped (`phase3-full-test.log`); the old auth failures did not reproduce. Full lint passes with `NODE_OPTIONS=--max-old-space-size=4096` (`phase3-final-lint.log`). Typecheck and build fail only on the expected pending five-panel renderer exhaustiveness error at runtime.ts:565 (`phase3-final-typecheck.log`, `phase3-build.log`); the production bundle compiled successfully in 7.8 s before typechecking. No placeholders were added. Build emitted existing filesystem-tracing warnings in unchanged files. Restored next-env.d.ts after build. Runtime bundle is 26,820 bytes versus T001's 19,804 bytes; this iframe-only bundle is outside startup JS. Final startup/performance comparison remains T054.
 
 - T024: copied teacher ML doctrine and practice paragraph verbatim from the approved contract. Existing prompt discovery requires no list pin changes; all 43 prompt/practice regressions pass (`t024-green.log`).
 
@@ -106,14 +108,14 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Report
 
-Foundational implementation complete through T012. The row decisions are resolved. T013–T056 remain unbuilt; no feature story is complete yet.
+Implementation complete through T024: foundations and US1 tokenization, tools, transcript, renderer, tenant-gated editing bridge and exact approved doctrine. T025–T056 remain. US1 is not claimed to have passed the full story gate: other declared panel kinds still need their scheduled runtime renderers before typecheck/build can pass.
 
-Changed: pinned tokenizer dependency, six panel schemas with safe literal validation, inline input validation/conversion, three settings toggles, source/tokenize transcript rows, failure integration and input-hidden running rows. Only js-tiktoken@1.0.21 was added; lookup-row.tsx is the only new UI component. Approved wording was preserved.
+Changed: pinned tokenizer fixtures (20 strings × three encodings), lazy per-process tokenizers with exact partial UTF-8 bytes, checked ml_visual/tokenize tools under the shared toggle, existing PlotCard/workspace integration, accessible token chips and controls, local-only editing route and validated source-window bridge. Request nonces reject stale replies across document reloads. No model calls or token persistence added. Only js-tiktoken@1.0.21 was added; lookup-row.tsx remains the only new UI component. Approved wording was preserved.
 
-Verified: production baseline build passed before implementation; live T002 probe passed; 142 completed-implementation tests independently re-run by the parent all passed (`foundations-parent-verification.log`). The combined Phase 2 regression run now passes 185/185 tests (`phase2-all-tests.log`), including actual Chat SSR failure/retry behavior. Changed-file lint passes. Typecheck currently reports only the new panel kinds whose runtime renderers belong to later tasks. The initial full baseline suite passed 2,681 tests with four ETXTBSY headless failures; all four passed on the explicit-Chrome retry. Final full suite, build, UI comparison, accessibility and performance gates have not run and are not claimed.
+Verified: 2,742 tests pass, zero skipped, with explicit Chrome. Full lint passes at 4 GB heap; its first default-heap attempt exhausted memory. Typecheck/build report only future-panel renderer exhaustiveness. The production compilation itself succeeds. Real browser checks cover keyboard pinning/roving, stale/foreign/malformed responses, encodings, debounce, errors, offline mode, no overflow and 44px coarse-pointer targets. Six token runtime screenshots at 320/390/1440 widths are in `~/agent-runs/2026-10-28-feature-008/shots/`; canvas differences and neutral-theme limitation are recorded under T021. Final production seeded-card comparison, full accessibility walkthrough, startup benchmark and smoke-sidebar checks remain T052–T055.
 
-Design references, probe results, baseline and harness: `~/agent-runs/2026-10-28-feature-008/`. Board screenshots are reference exports, not implementation verification.
+Tokenizer measurements from the parent: cold o200k 385.0 ms, warm 100-call mean 0.0311 ms. Runtime is 26,820 bytes; no final app performance claim. Evidence remains under `~/agent-runs/2026-10-28-feature-008/`.
 
-The three row questions were approved on 2026-10-29 and implemented. Continue at T013. Implementation, publication, merge and deployment remain separate; no merge or deployment is authorized.
+Continue at T025. No merge, deployment or PR changes were performed by the Phase 3 implementer.
 
 Publication: draft PR https://github.com/brunovskyoliver/learnharness/pull/8 targets the unmerged spec branch `claude/confident-edison-h092l5`. Feature branch published through the GitHub connector because local Git lacked push credentials; each published commit tree was checked against its local counterpart. Original local commit history is preserved at `refs/archive/008-local-commits`. No merge, deployment or push to main performed.
