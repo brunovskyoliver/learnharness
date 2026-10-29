@@ -1,5 +1,6 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import type { Usage } from "@earendil-works/pi-ai";
+import type { PaperFiles } from "../../core/ports.ts";
 import type { EnabledTools } from "../../core/pending.ts";
 import { createHubTools } from "../tools/hub.ts";
 import { createWebTools } from "../tools/web.ts";
@@ -71,6 +72,7 @@ Numbered findings with inline source citations:
 What couldn't be answered. Suggested next steps.`;
 
 export interface ResearcherRunOptions {
+	paperFiles?: PaperFiles;
 	toolToggles?: EnabledTools;
 	engine?: PiEngine;
 	/** The search seam (search port wave, 2026-09-20): resolves the LIVE
@@ -110,20 +112,22 @@ export async function runResearcherAgent(prompt: string, opts: ResearcherRunOpti
 		onToolStart: opts.onToolStart,
 		chatId: opts.chatId,
 	};
-	const { newMessages, text } = await runSubagent(tools, { ...base, prompt, maxTurns: MAX_TURNS });
-	if (text.trim()) return text;
+	try {
+		const { newMessages, text } = await runSubagent(tools, { ...base, prompt, maxTurns: MAX_TURNS });
+		if (text.trim()) return text;
 
-	// Turn cap spent mid-research (researcher-turn-cap, 2026-10-28): one more
-	// call over everything gathered, asking for the brief. The tools stay
-	// declared — Anthropic rejects tool-call history without them — and the
-	// message forbids calling them; a tool call here still yields "".
-	opts.onWrapUp?.();
-	const wrapUp = await runSubagent(tools, {
-		...base,
-		messages: [...newMessages, { role: "user", content: WRAP_UP_MESSAGE, timestamp: Date.now() }],
-		maxTurns: 1,
-	});
-	return wrapUp.text;
+		// Turn cap spent mid-research (researcher-turn-cap, 2026-10-28): one more
+		// call over everything gathered, asking for the brief. The tools stay
+		// declared — Anthropic rejects tool-call history without them — and the
+		// message forbids calling them; a tool call here still yields "".
+		opts.onWrapUp?.();
+		const wrapUp = await runSubagent(tools, {
+			...base,
+			messages: [...newMessages, { role: "user", content: WRAP_UP_MESSAGE, timestamp: Date.now() }],
+			maxTurns: 1,
+		});
+		return wrapUp.text;
+	} finally { await opts.paperFiles?.dispose(); }
 }
 
 const MAX_TURNS = 12;

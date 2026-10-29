@@ -14,7 +14,7 @@ import {
 } from "../core/question-core.ts";
 import { filterEnabledTools, type EnabledTools } from "../core/pending.ts";
 import type { JobRecord } from "../core/contracts.ts";
-import type { JobStore } from "../core/ports.ts";
+import type { PaperFiles, JobStore } from "../core/ports.ts";
 import { jobTools, type DemoInput, type PdfInput, type ResearchInput, type VisualInput } from "./tools/jobs.ts";
 import { mlVisualTool } from "./tools/ml-visual.ts";
 import { tokenizeTool } from "./tools/tokenize.ts";
@@ -399,6 +399,7 @@ export function teachQuizToolFor(ctx: Pick<PlanToolContext, "chatId" | "chatStor
 }
 
 export interface TeacherToolContext extends PlanToolContext {
+	paperFiles?: PaperFiles;
 	/** Present only when the graph-tools settings gate is open. */
 	graphStore?: GraphStore;
 	/** Bound to the current lesson and tenant by the turn composition root. */

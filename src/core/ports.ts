@@ -224,3 +224,9 @@ export interface AuthStore {
 	deleteAuthVar(name: string): void;
 }
 
+
+/** Temporary PDFs owned by one teacher turn or researcher run. */
+export interface PaperFiles {
+	write(bytes: Uint8Array): Promise<string>;
+	dispose(): Promise<void>;
+}

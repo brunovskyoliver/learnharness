@@ -8,6 +8,10 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Decisions
 
+- **Oliver, 2026-10-29, T044:** when citation authors or year are missing, keep successful page extraction and replace the citation hint with “Citation metadata is incomplete. Cite the paper title and page link.” Supply the real title and page URLs; never fabricate authors/year.
+- T044 technical: temporary PDFs use a new core PaperFiles port and lazy src/store/papers.ts adapter rooted in the current tenant's data directory. Server composition injects the port; teacher settlement/start-failure cleanup and researcher finally dispose it, including pending writes. New filesystem mutation remains in the store adapter. Existing researcher PDF tools remain outside the new ten-page cap.
+- T044 technical: arXiv API/PDF requests share only process timing reservations, spaced three seconds apart with one retry on 429. Abort cancels waits. Existing linkedom and pdfjs are dynamically imported for Atom/PDF work; no dependency was added. Failed reads release reserved pages; published pagesUsedThisTurn counts only completed reads. Source author names are preserved verbatim.
+
 - **Oliver, 2026-10-29, T039:** additional config labels are “Intermediate width”, “Key/value heads”, “Model type”, “Dtype”. Preserve rounded source download counts verbatim, widening HubLookup.downloads to number | string; never turn 24.1M into an exact integer.
 - T039 technical: expose MCP structuredContent through an additional helper while retaining callMcpTool's text API, to consume the probed paper entries without parsing a Markdown table. Reject dot/dotdot repo path segments before URL normalization. Optional cardSummary stays absent because the probed server supplies README source, not a summary; no model-generated or invented excerpt. Exact parameter counts come only from the public model API's safetensors.total. Existing math MCP callers remain unchanged.
 - T040 technical: the researcher runner owns the actual runResearcherAgent call, so its dependency options must carry the same toggle from server/jobs.ts. Insert the approved item 6 verbatim and renumber the existing synthesis item to 7 without changing its wording.
@@ -74,6 +78,11 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- T044: implemented S2/arXiv clients, paper tools and lazy tenant temp storage/cleanup. Citation-fallback, terminal cleanup and committed-page regressions failed first (`t044-cleanup-red.log`, `t044-committed-red.log`), then passed. All 69 paper, researcher, tenant and chat-flow tests pass (`t044-green.log`); scoped lint and full typecheck pass. Existing PDF extraction is used, requested pages never silently clamp, downloads enforce 25 MB while streaming, and failed/aborted reads refund reservations.
+
+- T043: 14 offline paper tests fail on the absent papers.ts (`t043-red.log`). Cases cover source parsing/fallback, requested pages and citation hints, whole-call/concurrent caps, invalid/closed PDFs, five-search cap, abort, 25 MB limit, privacy, lazy tenant temp files and fake-timer arXiv spacing/backoff.
+- Parent T041 live verification: anonymous HF search and exact GPT-2 config passed 1/1 in about 1.09 s; no model calls.
 
 - T042: committed a reproducible 12-page synthetic PDF and dependency-free generator based on the existing researcher PDF fixture pattern. Existing pdfInfo/pdfExtract verified 12 pages and the known page-4 text. No third-party paper is checked in.
 

@@ -90,3 +90,15 @@ it("registers Hub tools under the researcher's model_hub toggle with the exact s
 		assert.match(systems.map((m) => typeof m.content === "string" ? m.content : JSON.stringify(m.content)).join("\n"), /6\. Model and paper sources: use `hub_model` for a model's configuration, and `paper_search` \+ `paper_read` for papers \(10 pages per turn at most\)\. Cite the Hub page or the paper page in the brief\./);
 	}
 });
+
+
+it("disposes researcher paper files after both a successful and a failed run", async () => {
+	for (const failure of [false, true]) {
+		let disposed = 0;
+		const { engine } = scripted([answering(BRIEF)]);
+		if (failure) engine.streamFn = () => { throw new Error("synthetic researcher failure"); };
+		const run = runResearcherAgent("q", { engine, paperFiles: { write: async () => "unused.pdf", dispose: async () => { disposed++; } } });
+		if (failure) await assert.rejects(run, /synthetic researcher failure/); else await run;
+		assert.equal(disposed, 1);
+	}
+});
