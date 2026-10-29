@@ -231,7 +231,7 @@
 - [X] T053 Accessibility pass: keyboard-only walkthrough of every panel and row, a screen-reader label spot-check (VoiceOver or NVDA if available, otherwise the accessibility tree via Playwright `page.accessibility.snapshot()`), and reduced motion.
 - [X] T054 Performance final: `perf.sh final` and the `runtime.js` size. Initial JS, sidebar readiness and startup must be within 5% of T001. Record the results.
 - [X] T055 Full gates: `npm test`, `npm run lint`, `npm run typecheck`, `npm run build`, `smoke-sidebar-ui`. Record pre-existing failures separately (main currently has 3 in auth UI tests).
-- [ ] T056 Write the `progress.md` Report (what changed, how it was verified, what is left), and list every "draft, owner approval" string for Oliver's review in the PR description.
+- [X] T056 Write the `progress.md` Report (what changed, how it was verified, what is left), and list every "draft, owner approval" string for Oliver's review in the PR description.
 
 ## Dependencies
 
