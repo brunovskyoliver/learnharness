@@ -2,11 +2,13 @@
 
 ## Stage
 
-Implementation in progress: T001–T052 complete. Production review passes at 320, 390 and 1440 px. Accessibility, performance and full gates follow in task order.
+Implementation in progress: T001–T053 complete. Production and accessibility review pass at 320, 390 and 1440 px. Final performance and full gates follow in task order.
 
 Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Implementation started.** Binding handoff: see [handoff.md](handoff.md).
 
 ## Decisions
+
+- **Oliver, 2026-10-29, T053:** chats containing feature-008 results use native Tab/Shift+Tab traversal. Keyboard-focused lookup summaries and paper-citation links retain native Enter. Scope includes page anchors inside paper-read rows as well as prose citations. Ordinary chats, unrelated links and pointer-focus Enter retain their existing behavior. The same exception applies to active QuestionDock and collapsed-question reveal handlers so their earlier document listeners cannot intercept the approved keys.
 
 - **Oliver, 2026-10-29, T052:** page-citation links in transcript prose (`#page=` targets) use foreground ink, preserving their existing underline and visible focus. This approves the scoped correction required after UI contract C’s stop-and-report gate; unrelated links are unchanged.
 - T052 no-amber focus scope also covers LookupRow and the three new settings toggles, including generic fallback rows for the six ML/source tools. Existing row skeleton classes and unrelated controls remain unchanged.
@@ -91,6 +93,9 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- T053 complete: owner-approved keyboard exception implemented in keyboard-shortcuts/enter-submits, with the necessary Chat marker, composed-kit detection, active QuestionDock and collapsed-question integration. Eighteen targeted tests pass after RED→GREEN, including all six completed tools, composed panels, ordinary chats, pointer versus keyboard focus, and prose/paper-row citations. Scoped lint and production build pass. Final real keyboard walkthrough uses **no programmatic focus**: Tab enters all eight panel frames and their dense controls, keyboard Expand/Escape works, all 19 row summaries activate with Enter, page anchors activate with Enter, and unchanged Hub links activate with Ctrl+Enter. Active/collapsed question cases and reverse Shift+Tab pass at 320/390/1440 (`production-keyboard.json`). External-link activation is intercepted only at click to avoid network/navigation; native keyboard activation is still required to produce the click.
+- T053 harness notes: CSS `iframe:focus` did not identify actual iframe focus; inspection now reads document.activeElement and its contentFrame, without changing focus. Fresh browser contexts isolate each width’s persisted row/dock state. Reverse traversal keeps the active question near the viewport; forward traversal through history can legitimately compact it. These checks supplement the earlier 90 focus/motion/AX probes and six touch-scroll checks; the prior shared-keyboard blocker is resolved. Browser scripts and diagnostics remain in the evidence directory.
 
 - T053 in progress: production accessibility probes pass 24 panel frames, 57 settled rows (native Space activation) and 9 settings toggles across 320/390/1440. CDP `Accessibility.getFullAXTree` records actual accessible roles/names for tokens, heatmap grid cells, neuron values/gradients, 2D/3D points, shape steps, rows and settings (`production-ax-*.json`). All six running row types also retain status names and disable braille/shimmer animation under reduced motion. Dense views have one tab stop, arrows reach every item, Sample/temperature/network/shape actions work, coarse panel controls meet 44 px height, and tested transitions are zero under reduced motion. Scope-specific keyboard focus computes foreground ink with a nonzero visible outline. Page citation underline remains visible.
 - T053 touch checks: actual CDP touch swipes move heatmap/network/scatter internal scroll positions at 320 and 390 px, with no page overflow and `scrollbar-width: none` (`production-touch.json`). All 2D/3D scatter points are reachable with arrow navigation after entering the panel. No VoiceOver/NVDA is available in this Linux environment; actual CDP trees are the contract’s fallback.

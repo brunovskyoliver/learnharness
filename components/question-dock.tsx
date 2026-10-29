@@ -1,11 +1,12 @@
 "use client";
 
+
 import { useSessionState } from "@/components/session-state";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronDownIcon } from "lucide-react";
 import { Teaser, teaserPlain } from "@/components/teaser";
 import { AnswerWell, PrimaryAction, PromptToolbar, TurnStrip } from "@/components/prompt-controls";
-import { useEnterSubmits } from "@/components/enter-submits";
+import { chatUsesNativeTraversal, mlResultKeepsNativeEnter, useEnterSubmits } from "@/components/enter-submits";
 import { ToolContentResponse } from "@/components/ai-elements/message";
 import { cn } from "@/lib/utils";
 import { focusSurfaceInput } from "@/components/input-surface";
@@ -387,6 +388,7 @@ function QuestionDockForm({
 		if (!active || rowCount === 0) return;
 		const onKeyDown = (e: KeyboardEvent) => {
 			const t = e.target as HTMLElement | null;
+			if ((e.key === "Tab" && chatUsesNativeTraversal(document)) || (e.key === "Enter" && t && mlResultKeepsNativeEnter(t))) return;
 			if (e.isComposing || e.defaultPrevented || t?.closest?.("[role=dialog], [data-lh-menu]")) return;
 			// A TYPING field is where keys mean text (owner round 4): the
 			// thinking/answer fields, search boxes, renames — never a range
