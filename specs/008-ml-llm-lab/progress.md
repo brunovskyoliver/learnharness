@@ -2,7 +2,7 @@
 
 ## Stage
 
-Implementation in progress: T001–T024 complete. Phase 4 (US2), beginning at T025, is next. US1 implementation is built; full story gates remain pending the later runtime renderers and production UI checks.
+Implementation in progress: T001–T026 complete. Phase 4 (US2) is paused before T027 implementation for owner decisions. US1 implementation is built; full story gates remain pending the later runtime renderers and production UI checks.
 
 Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Implementation started.** Binding handoff: see [handoff.md](handoff.md).
 
@@ -53,7 +53,10 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Log
 
-- T025–T026: sampling tests failed on the absent module (`t025-red.log`), then all seven passed (`t026-green.log`), including the 256-case parameter sweep, cut reasons, original-mass nucleus filtering, probability input, stability, ties and seeded sampling.
+- Phase 4 pause before T027: no next-token or heatmap runtime edits. Owner decisions pending through the parent: (1) mapping required context plus optional title when both are supplied, since the board uses context as its heading; (2) handling schema-valid initial temperature/top-p values outside the board slider bounds (0.1–2 and 0.05–1), proposed extending bounds to preserve values. Do not infer approval or skip to T028. A T027 browser-test draft failed on absent rows as expected (`t027-red.log`); it is preserved only in evidence as `t027-pending-headless.test.ts`, not committed.
+- Phase 4 completed-work verification: T025–T026 tests pass 7/7 (`phase4-paused-test.log`), targeted ESLint passes (`phase4-paused-lint.log`), typecheck reports only the existing pending runtime renderer return at runtime.ts:565 (`phase4-paused-typecheck.log`). No full test/build rerun, no next-env.d.ts changes, no runtime/UI changes. Sampling commit `4cd99dd`.
+
+- T025–T026: sampling tests failed on the absent module (`t025-red.log`), then all seven passed (`t026-green.log`), including the 64-case parameter sweep, cut reasons, original-mass nucleus filtering, probability input, stability, ties and seeded sampling.
 
 - Phase 3 verification: full `npm test` with explicit Chrome passes **2,742/2,742**, zero skipped (`phase3-full-test.log`); the old auth failures did not reproduce. Full lint passes with `NODE_OPTIONS=--max-old-space-size=4096` (`phase3-final-lint.log`). Typecheck and build fail only on the expected pending five-panel renderer exhaustiveness error at runtime.ts:565 (`phase3-final-typecheck.log`, `phase3-build.log`); the production bundle compiled successfully in 7.8 s before typechecking. No placeholders were added. Build emitted existing filesystem-tracing warnings in unchanged files. Restored next-env.d.ts after build. Runtime bundle is 26,820 bytes versus T001's 19,804 bytes; this iframe-only bundle is outside startup JS. Final startup/performance comparison remains T054.
 
@@ -112,7 +115,7 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Report
 
-Implementation complete through T024: foundations and US1 tokenization, tools, transcript, renderer, tenant-gated editing bridge and exact approved doctrine. T025–T056 remain. US1 is not claimed to have passed the full story gate: other declared panel kinds still need their scheduled runtime renderers before typecheck/build can pass.
+Implementation complete through T026: foundations and US1 tokenization, tools, transcript, renderer, tenant-gated editing bridge and exact approved doctrine. T027–T056 remain; T027 awaits the two owner decisions logged above. US1 is not claimed to have passed the full story gate: other declared panel kinds still need their scheduled runtime renderers before typecheck/build can pass.
 
 Changed: pinned tokenizer fixtures (20 strings × three encodings), lazy per-process tokenizers with exact partial UTF-8 bytes, checked ml_visual/tokenize tools under the shared toggle, existing PlotCard/workspace integration, accessible token chips and controls, local-only editing route and validated source-window bridge. Request nonces reject stale replies across document reloads. No model calls or token persistence added. Only js-tiktoken@1.0.21 was added; lookup-row.tsx remains the only new UI component. Approved wording was preserved.
 
@@ -120,6 +123,6 @@ Verified: 2,742 tests pass, zero skipped, with explicit Chrome. Full lint passes
 
 Tokenizer measurements from the parent: cold o200k 385.0 ms, warm 100-call mean 0.0311 ms. Runtime is 26,820 bytes; no final app performance claim. Evidence remains under `~/agent-runs/2026-10-28-feature-008/`.
 
-Continue at T025. No merge, deployment or PR changes were performed by the Phase 3 implementer.
+Continue at T027 after the two owner decisions above. No merge, deployment or PR changes were performed by the Phase 3 implementer.
 
 Publication: draft PR https://github.com/brunovskyoliver/learnharness/pull/8 targets the unmerged spec branch `claude/confident-edison-h092l5`. Feature branch published through the GitHub connector because local Git lacked push credentials; each published commit tree was checked against its local counterpart. Original local commit history is preserved at `refs/archive/008-local-commits`. No merge, deployment or push to main performed.
