@@ -2,7 +2,7 @@
 
 ## Stage
 
-Implementation in progress: T001–T026 complete. Phase 4 (US2) resumes at T027 with title/context and slider-bound decisions approved. US1 implementation is built; full story gates remain pending the later runtime renderers and production UI checks.
+Implementation in progress: T001–T027 complete. Phase 4 (US2) continues at T028. US1 implementation is built; full story gates remain pending the later runtime renderers and production UI checks.
 
 Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Implementation started.** Binding handoff: see [handoff.md](handoff.md).
 
@@ -56,6 +56,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- T027: resumed browser tests first failed on absent sampling rows/context (`t027-resumed-red.log`); both pass after implementation (`t027-green.log`). Controls, cut reasons, seeded Sample, Reset, approved title/context layout, exact out-of-board initial values, 320/390/1440 overflow, coarse-pointer targets and Parameters collapse covered. Targeted lint passes. Screenshots `shots/next_token-{inline,expanded}-{320,390,1440}.png` compare with NextToken/Phone: board rows/copy/ink primary retained; supplied titles add the approved context line; focus controls move to the sidebar or phone Parameters section. Neutral kit defaults/system font differ from board appearance because the app appearance bridge is absent; production theme/font review remains T052. shadcn existing kit primitives reused; manual DESIGN.md review substitutes for absent impeccable per contract §E.
 
 - Parent verification/publication: independently reran all seven sampling tests (64 parameter combinations), all passing. Published completed work through T026 to draft PR #8, preserving each local commit tree exactly through the GitHub connector. Local original commits remain at refs/archive/008-local-through-t026; current branch matches the published tree. PR #7 remains open, so #8 still targets its spec branch. No merge or main push.
 

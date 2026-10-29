@@ -113,7 +113,7 @@
   - cut reasons are "cut by top-k" or "cut by top-p";
   - a seeded `sample(rng)` draws only kept tokens.
 - [X] T026 [US2] Implement `src/core/ml-sampling.ts`.
-- [ ] T027 [US2] Runtime `next_token` panel (NextToken board; ui-contract.md §A):
+- [X] T027 [US2] Runtime `next_token` panel (NextToken board; ui-contract.md §A):
   - rows of label, bar and value;
   - cut rows muted with an outline bar and the reason written out;
   - Temperature, Top-k ("off" at 0) and Top-p fields;

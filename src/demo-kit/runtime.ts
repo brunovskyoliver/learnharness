@@ -5,6 +5,7 @@
  *  --lh-* variables injected ahead of the demo (src/core/demo-theme.ts). */
 
 import { DEMO_THEME_VARS, DEMO_SCROLLBAR_CSS } from "../core/demo-theme.ts";
+import { distribution, sample, type SamplingOptions, type SamplingToken, type SamplingRow } from "../core/ml-sampling.ts";
 import { layeredLayout } from "../core/demo-kit-layout.ts";
 import type { FinalizedDemoKitPanel as DemoKitPanel, FinalizedDemoKitSpec as DemoKitSpec, TokenizedPanel, Token, TokenEncoding } from "../core/demo-kit.ts";
 
@@ -152,6 +153,31 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--lh-muted);outli
 .k-tokens-focus .k-token-controls{align-items:flex-start;flex-direction:column}
 @media(max-width:640px){.k-focus .k-panel.k-tokens-focus{grid-template-columns:minmax(0,1fr)}.k-tokens-focus .k-token-fields{grid-column:1;grid-row:5}.k-tokens-focus .k-token-fields.k-controls{grid-row:5}}
 
+.k-panel-head:has(.k-illustrative){display:grid;grid-template-columns:minmax(0,1fr) auto auto}
+.k-panel-head:has(.k-illustrative) h3{overflow-wrap:anywhere}
+.k-illustrative{font-size:.8em;font-weight:500;color:var(--lh-muted)}
+@media(max-width:559px){.k-panel-head:has(.k-illustrative){grid-template-columns:minmax(0,1fr) auto;gap:2px 12px}.k-panel-head .k-illustrative{grid-column:1;grid-row:2}.k-panel-head:has(.k-illustrative) .k-icon-button{grid-column:2;grid-row:1/3}}
+.k-sampling-context{margin:0 0 12px;overflow-wrap:anywhere}
+.k-sampling-rows{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none;font-variant-numeric:tabular-nums}
+.k-sampling-row{display:grid;grid-template-columns:120px minmax(0,1fr) 132px;gap:12px;align-items:center;min-width:0}
+.k-sampling-label{overflow-wrap:anywhere}
+.k-sampling-track{height:18px;background:var(--lh-surface-2);border-radius:4px;min-width:0}
+.k-sampling-bar{height:100%;background:var(--lh-blue);border-radius:4px}
+.k-sampling-value{text-align:right;font-size:.9em}
+.k-sampling-cut{color:var(--lh-muted)}
+.k-sampling-cut .k-sampling-bar{background:transparent;outline:1px solid var(--lh-muted);outline-offset:-1px}
+.k-sampling-picked .k-sampling-bar{outline:2px solid var(--lh-text);outline-offset:1px}
+.k-sampling-fields{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end;padding-top:12px}
+.k-sampling-fields .k-field{flex:1 1 120px;min-width:0}
+.k-sampling-fields .k-btn{border:0;background:var(--lh-surface-2)}
+.k-sampling-fields .k-primary{background:var(--lh-text)}
+@media(max-width:559px){.k-sampling-row{grid-template-columns:minmax(60px,1fr) minmax(32px,2fr) minmax(88px,1.3fr);gap:8px}.k-sampling-fields .k-field{flex-basis:100%}}
+#lh-kit.k-focus:has(.k-sampling-focus) .k-grid{grid-column:1/-1}
+.k-focus .k-panel.k-sampling-focus{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,280px);gap:12px 24px;align-content:start;height:auto}
+.k-sampling-focus>.k-panel-head,.k-sampling-focus>.k-sampling-body,.k-sampling-focus>.k-readout-line{grid-column:1}
+.k-sampling-focus .k-sampling-fields{grid-column:2;grid-row:1/5}
+.k-sampling-focus .k-sampling-fields .k-buttons{display:flex}
+@media(max-width:640px){.k-focus .k-panel.k-sampling-focus{grid-template-columns:minmax(0,1fr)}.k-sampling-focus .k-sampling-fields.k-controls{grid-column:1;grid-row:4}}
 `;
 
 const MATH = Object.getOwnPropertyNames(Math);
@@ -414,6 +440,7 @@ class Kit {
 				this.panelBoxes[i] = box;
 				const heading = el("div", "k-panel-head");
 				if ("title" in panel && panel.title) heading.append(el("h3", "k-title", escapeHtml(panel.title)));
+				if (["heatmap", "next_token", "scatter"].includes(panel.type)) heading.append(el("span", "k-illustrative", "Illustrative numbers"));
 				if (["chart", "plot3d", "flow", "tokens", "heatmap", "next_token", "scatter", "network", "shapes"].includes(panel.type)) {
 					const expand = el("button", "k-icon-button", '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg>');
 					expand.type = "button";
@@ -562,9 +589,76 @@ class Kit {
 		return { update() {}, focus: focused => { box.classList.toggle("k-tokens-focus", focused); fields.classList.toggle("k-controls", focused); } };
 	}
 
+	private nextToken(panel: Extract<DemoKitPanel, { type: "next_token" }>, box: HTMLElement): PanelView {
+		const body = el("div", "k-sampling-body");
+		const context = el("p", "k-sampling-context");
+		if (panel.title) body.append(context);
+		const list = el("ol", "k-sampling-rows"); body.append(list);
+		const readout = el("p", "k-readout-line"); readout.setAttribute("aria-live", "polite");
+		const fields = el("div", "k-sampling-fields");
+		const toggle = el("button", "k-btn k-parameters-toggle", "Parameters"); toggle.type = "button"; toggle.setAttribute("aria-expanded", "true");
+		toggle.onclick = () => { const collapsed = fields.classList.toggle("k-collapsed"); toggle.setAttribute("aria-expanded", String(!collapsed)); };
+		fields.append(toggle);
+		let defaults: Required<SamplingOptions> = { temperature: 1, topK: 0, topP: 1 };
+		let values = { ...defaults }, tokens: SamplingToken[] = [], rows: SamplingRow[] = [], fingerprint = "";
+		let picked: number | null = null;
+		const inputs = new Map<keyof SamplingOptions, { input: HTMLInputElement; value: HTMLElement }>();
+		const render = () => {
+			rows = distribution(tokens, values);
+			list.replaceChildren();
+			for (const row of rows) {
+				const item = el("li", `k-sampling-row${row.cut ? " k-sampling-cut" : ""}${row.index === picked ? " k-sampling-picked" : ""}`);
+				const label = el("span", "k-sampling-label"); label.textContent = row.text.replace(/^ /, "␣").replace(/\n/g, "↵");
+				const track = el("div", "k-sampling-track"); track.setAttribute("aria-hidden", "true");
+				const bar = el("div", "k-sampling-bar"); bar.style.width = `${100 * (row.cut ? row.base : row.p)}%`; track.append(bar);
+				const value = el("span", "k-sampling-value"); value.textContent = row.cut ?? `${(row.p * 100).toFixed(1)}%`;
+				item.append(label, track, value); list.append(item);
+			}
+			const kept = rows.filter(row => row.p > 0).length;
+			readout.textContent = picked === null ? `${kept} of ${rows.length} tokens can be drawn. Press Sample to draw one.` : `Sampled “${tokens[picked]!.text.trim()}” · ${kept} tokens could be drawn`;
+			for (const [key, control] of inputs) {
+				control.input.value = String(values[key]);
+				control.value.textContent = key === "topK" ? values[key] === 0 ? "off" : String(values[key]) : String(Number(values[key].toFixed(key === "temperature" ? 1 : 2))) === String(values[key]) ? values[key].toFixed(key === "temperature" ? 1 : 2) : String(values[key]);
+				control.input.setAttribute("aria-valuetext", control.value.textContent);
+			}
+		};
+		for (const [key, label, min, max, step] of [["temperature", "Temperature", .1, 2, .1], ["topK", "Top-k", 0, 30, 1], ["topP", "Top-p", .05, 1, .05]] as const) {
+			const field = el("label", "k-field"), caption = el("span", "k-label", label), value = el("b"); caption.append(value);
+			const input = el("input"); input.type = "range"; input.name = key; input.autocomplete = "off"; input.min = String(min); input.max = String(max); input.step = String(step); input.setAttribute("aria-label", label);
+			input.oninput = () => { values[key] = Number(input.value); picked = null; render(); };
+			field.append(caption, input); fields.append(field); inputs.set(key, { input, value });
+		}
+		const buttons = el("div", "k-buttons");
+		const reset = el("button", "k-btn k-sampling-reset", "Reset"); reset.type = "button"; reset.onclick = () => { values = { ...defaults }; picked = null; render(); };
+		const draw = el("button", "k-btn k-primary", "Sample"); draw.type = "button"; draw.onclick = () => { picked = sample(rows).index; render(); };
+		buttons.append(reset, draw); fields.append(buttons); box.append(body, readout, fields);
+		return {
+			update: () => {
+				const data = { context: this.eval(panel.context), tokens: this.eval(panel.tokens), temperature: panel.temperature ? this.eval(panel.temperature) : 1, topK: panel.topK ? this.eval(panel.topK) : 0, topP: panel.topP ? this.eval(panel.topP) : 1 };
+				if (typeof data.context !== "string") throw new Error("context: use a string");
+				distribution(data.tokens, data);
+				const signature = JSON.stringify(data); if (signature === fingerprint) return; fingerprint = signature;
+				tokens = data.tokens; defaults = { temperature: data.temperature, topK: data.topK, topP: data.topP }; values = { ...defaults }; picked = null;
+				const text = `After “${data.context}”`;
+				if (panel.title) context.textContent = text;
+				else { let heading = box.querySelector("h3"); if (!heading) { heading = el("h3", "k-title"); box.querySelector(".k-panel-head")!.prepend(heading); } heading.textContent = text; box.querySelector(".k-icon-button")!.setAttribute("aria-label", `Expand ${text}`); }
+				for (const [key, control] of inputs) {
+					control.input.min = String(key === "temperature" ? Math.min(.1, values[key]) : key === "topP" ? Math.min(.05, values[key]) : 0);
+					control.input.max = String(key === "temperature" ? Math.max(2, values[key]) : key === "topK" ? Math.max(tokens.length, values[key]) : 1);
+					const step = key === "temperature" ? .1 : key === "topP" ? .05 : 1;
+					// Range inputs otherwise silently round schema-valid supplied values.
+					control.input.step = Math.abs((values[key] - Number(control.input.min)) / step - Math.round((values[key] - Number(control.input.min)) / step)) < 1e-9 ? String(step) : "any";
+				}
+				render();
+			},
+			focus: focused => { box.classList.toggle("k-sampling-focus", focused); fields.classList.toggle("k-controls", focused); },
+		};
+	}
+
 	private async panel(panel: DemoKitPanel, box: HTMLElement): Promise<PanelView> {
 		switch (panel.type) {
 			case "tokens": return this.tokens(panel, box);
+			case "next_token": return this.nextToken(panel, box);
 			case "note": {
 				box.append(el("div", undefined, escapeHtml(panel.text).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")));
 				return { update() {} };
