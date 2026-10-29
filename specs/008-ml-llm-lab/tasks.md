@@ -55,7 +55,7 @@
   - field grid labels in words with mono `key value`;
   - links with `target="_blank"`, `rel="noreferrer"` and no amber class.
 - [X] T011 Implement `components/artifacts/lookup-row.tsx` by cloning the skeleton of `components/artifacts/math-check-card.tsx` (ui-contract.md §B), with the headline helpers in `src/core/lookups.ts` (data-model.md "Lookup results"). Register `tokenize`, `hub_search`, `hub_model`, `paper_search` and `paper_read` → `LookupRow` in `components/artifacts/index.ts`.
-- [ ] T012 Running rows: add the `ACTIVITY_LABELS` entries in `src/core/pending.ts` ("Drawing a panel…", "Tokenizing…", "Looking up on Hugging Face…" for both hub tools, "Searching papers…", "Reading a paper…"; canvas copy, draft, owner approval). Extend the input-hiding branch in `components/artifacts/live-tool-card.tsx` from `math_check` to these tools, with a test in `tests/render-math-check.test.tsx` or a new `tests/render-live-rows.test.tsx`.
+- [X] T012 Running rows: add the `ACTIVITY_LABELS` entries in `src/core/pending.ts` ("Drawing a panel…", "Tokenizing…", "Looking up on Hugging Face…" for both hub tools, "Searching papers…", "Reading a paper…"; canvas copy, draft, owner approval). Extend the input-hiding branch in `components/artifacts/live-tool-card.tsx` from `math_check` to these tools, with a test in `tests/render-math-check.test.tsx` or a new `tests/render-live-rows.test.tsx`.
 
 ## Phase 3: User Story 1 — See how text becomes tokens (P1) 🎯 MVP
 

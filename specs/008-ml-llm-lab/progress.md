@@ -2,7 +2,7 @@
 
 ## Stage
 
-Implementation in progress: T001–T011 complete; T012 running-row work is next. Oliver approved the pending row decisions on 2026-10-29.
+Implementation in progress: T001–T012 complete. Phase 3 (US1), beginning at T013, is next. Oliver approved the pending row decisions on 2026-10-29.
 
 Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Implementation started.** Binding handoff: see [handoff.md](handoff.md).
 
@@ -45,6 +45,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Log
 
+- T012: six running-row tests failed on generic Working labels, then passed with the exact approved labels and input-hiding branch (`t012-red.log`, `t012-green.log`). Combined foundations/settings/lookup/math/live regressions: 185/185 pass (`phase2-all-tests.log`). Changed-file lint passes; typecheck now reports only the expected pending runtime renderer exhaustiveness error (`phase2-final-typecheck.log`).
+
 - T011: implemented typed lookup details/headline helpers, the exact math-check row skeleton, approved source fields/links and tokenize behavior, and five registry entries. A real Chat SSR regression failed before the chat exception and passed after it; 20 lookup/math-check tests pass (`t011-transcript-red.log`, `t011-green.log`).
 
 - Phase 2 verification through T010: changed-file ESLint passes (`phase2-lint.log`). Typecheck has exactly the expected pending renderer exhaustiveness error and missing T011 lookup-row module (`phase2-typecheck.log`). Baseline headless tests were retried by the parent with explicit CHROME_PATH: all four pass (`baseline-headless-retry.log`), so the initial ETXTBSY errors were environmental.
@@ -80,19 +82,14 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Report
 
-Partial implementation, blocked before T011 by owner-only presentation decisions. T001–T010 are complete (T010 is the required failing test task); T011–T056 remain unbuilt. No feature story is complete.
+Foundational implementation complete through T012. The row decisions are resolved. T013–T056 remain unbuilt; no feature story is complete yet.
 
-Changed: pinned tokenizer dependency, six panel schemas with safe literal validation, inline input validation/conversion, three settings toggles, and lookup-row render tests. Only js-tiktoken@1.0.21 was added. Existing draft wording was preserved.
+Changed: pinned tokenizer dependency, six panel schemas with safe literal validation, inline input validation/conversion, three settings toggles, source/tokenize transcript rows, failure integration and input-hidden running rows. Only js-tiktoken@1.0.21 was added; lookup-row.tsx is the only new UI component. Approved wording was preserved.
 
-Verified: production baseline build passed before implementation; live T002 probe passed; 142 completed-implementation tests independently re-run by the parent all passed (`foundations-parent-verification.log`). Changed-file lint passes. T010 intentionally fails because lookup-row.tsx is absent. Typecheck currently fails on that missing module and the new panel kinds whose runtime renderers belong to later tasks. The initial full baseline suite passed 2,681 tests with four ETXTBSY headless failures; all four passed on the explicit-Chrome retry. Final full suite, build, UI comparison, accessibility and performance gates have not run and are not claimed.
+Verified: production baseline build passed before implementation; live T002 probe passed; 142 completed-implementation tests independently re-run by the parent all passed (`foundations-parent-verification.log`). The combined Phase 2 regression run now passes 185/185 tests (`phase2-all-tests.log`), including actual Chat SSR failure/retry behavior. Changed-file lint passes. Typecheck currently reports only the new panel kinds whose runtime renderers belong to later tasks. The initial full baseline suite passed 2,681 tests with four ETXTBSY headless failures; all four passed on the explicit-Chrome retry. Final full suite, build, UI comparison, accessibility and performance gates have not run and are not claimed.
 
 Design references, probe results, baseline and harness: `~/agent-runs/2026-10-28-feature-008/`. Board screenshots are reference exports, not implementation verification.
 
-Pending owner questions, sent in this thread:
-- Tokenize failed/unfinished states: reuse the existing generic tool row?
-- Tokenize success: raw encoding name (o200k/cl100k/gpt2) and existing generic Input/Output expanded contents?
-- arXiv zero/multiple results: approve `arXiv · {n} papers for '{query}'`?
-
-The handoff requires stopping for undecided copy/behavior; tasks have not been skipped to work around this gate. Resume at T011 after those answers. Commit and PR status are separate from implementation completion; no merge or deployment is authorized.
+The three row questions were approved on 2026-10-29 and implemented. Continue at T013. Implementation, publication, merge and deployment remain separate; no merge or deployment is authorized.
 
 Publication: draft PR https://github.com/brunovskyoliver/learnharness/pull/8 targets the unmerged spec branch `claude/confident-edison-h092l5`. Feature branch published through the GitHub connector because local Git lacked push credentials; each published commit tree was checked against its local counterpart. Original local commit history is preserved at `refs/archive/008-local-commits`. No merge, deployment or push to main performed.

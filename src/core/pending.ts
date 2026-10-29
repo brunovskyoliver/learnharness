@@ -149,6 +149,12 @@ const ACTIVITY_LABELS: Record<string, string> = {
 	plan_init: "Drawing up the plan…",
 	probe_done: "Concluding the assessment…",
 	math_check: "Checking with Wolfram…",
+	ml_visual: "Drawing a panel…",
+	tokenize: "Tokenizing…",
+	hub_search: "Looking up on Hugging Face…",
+	hub_model: "Looking up on Hugging Face…",
+	paper_search: "Searching papers…",
+	paper_read: "Reading a paper…",
 };
 
 /** The activity label for ONE running tool (owner, streaming round
