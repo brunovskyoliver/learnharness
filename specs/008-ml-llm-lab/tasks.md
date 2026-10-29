@@ -104,7 +104,7 @@
 **Goal**: next-token bars with temperature, top-k and top-p, plus a heatmap with exact values on hover and focus, both labelled illustrative.
 **Independent test**: spec US2 and SC-003, SC-005.
 
-- [ ] T025 [P] [US2] Failing tests in `tests/ml-sampling.test.ts` for `src/core/ml-sampling.ts`:
+- [X] T025 [P] [US2] Failing tests in `tests/ml-sampling.test.ts` for `src/core/ml-sampling.ts`:
   - softmax with temperature from logits;
   - the `p` form normalised;
   - top-k then top-p with renormalisation;
@@ -112,7 +112,7 @@
   - top-k = k leaves exactly k tokens;
   - cut reasons are "cut by top-k" or "cut by top-p";
   - a seeded `sample(rng)` draws only kept tokens.
-- [ ] T026 [US2] Implement `src/core/ml-sampling.ts`.
+- [X] T026 [US2] Implement `src/core/ml-sampling.ts`.
 - [ ] T027 [US2] Runtime `next_token` panel (NextToken board; ui-contract.md §A):
   - rows of label, bar and value;
   - cut rows muted with an outline bar and the reason written out;

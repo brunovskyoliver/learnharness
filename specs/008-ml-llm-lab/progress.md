@@ -8,6 +8,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Decisions
 
+- T026 technical: the approved NextToken board applies top-k and top-p against the original temperature distribution, then renormalises once. Probability inputs use log(p), preserving zero mass. Stable softmax subtracts the maximum before temperature division.
+
 - T023 technical: the server barrel re-exports tokenize because app routes may import only core/server barrels under the existing lint import law. This is required route wiring, not an additional feature or owner design decision.
 
 - **Oliver, 2026-10-29:** all six ML panels have Expand buttons, including tokens and shapes (matching the canvas; overrides the incomplete A2 list).
@@ -50,6 +52,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- T025–T026: sampling tests failed on the absent module (`t025-red.log`), then all seven passed (`t026-green.log`), including the 256-case parameter sweep, cut reasons, original-mass nucleus filtering, probability input, stability, ties and seeded sampling.
 
 - Phase 3 verification: full `npm test` with explicit Chrome passes **2,742/2,742**, zero skipped (`phase3-full-test.log`); the old auth failures did not reproduce. Full lint passes with `NODE_OPTIONS=--max-old-space-size=4096` (`phase3-final-lint.log`). Typecheck and build fail only on the expected pending five-panel renderer exhaustiveness error at runtime.ts:565 (`phase3-final-typecheck.log`, `phase3-build.log`); the production bundle compiled successfully in 7.8 s before typechecking. No placeholders were added. Build emitted existing filesystem-tracing warnings in unchanged files. Restored next-env.d.ts after build. Runtime bundle is 26,820 bytes versus T001's 19,804 bytes; this iframe-only bundle is outside startup JS. Final startup/performance comparison remains T054.
 
