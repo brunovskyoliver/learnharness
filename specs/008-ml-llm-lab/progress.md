@@ -2,11 +2,15 @@
 
 ## Stage
 
-Implementation in progress: T001–T046 complete. Hub and paper tools, registration and opt-in source checks are implemented. The arXiv phrase-search decision is resolved and the unchanged live paper test passes. Continue at T047. Full story gates and production UI checks remain pending.
+Implementation in progress: T001–T048 complete. Composed demo finalization and linked highlighting are implemented. Continue at T049. Full story gates and production UI checks remain pending.
 
 Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Implementation started.** Binding handoff: see [handoff.md](handoff.md).
 
 ## Decisions
+
+- **Oliver, 2026-10-29, T048:** heatmap cell hover/focus broadcasts its key-column label; row/column headers broadcast their own label.
+- T048 technical: match exact raw label text without trimming or marker normalization. Sampling rows gain roving keyboard focus, retaining list semantics and Sample/readout behavior. Linked events stay inside the runtime and do not echo from receivers or mutate their values/selections.
+- T048 composition contract: render the approved optional caption beneath all six ML panels. When global and local controls coexist in focus view, move the existing local controls into the global sidebar after global parameters, retain one phone Parameters toggle, and restore their original parent/focus on exit. This resolves overlapping control columns without adding controls or copy.
 
 - **Oliver, 2026-10-29, T046:** arXiv fallback searches the submitted query as a quoted phrase across all fields. No title-first branch or broad-keyword retry.
 - T046 technical: escape literal backslashes and double quotes inside the phrase, leaving all other submitted text unchanged and preserving the original query in details/S2 requests. The [arXiv API manual §5.1](https://info.arxiv.org/help/api/user-manual.html#51-details-of-query-construction) documents quoted phrases; the [official classic API parser](https://github.com/arXiv/arxiv-search/blob/develop/search/domain/classic_api/query_parser.py) accepts ESCAPED_STRING and retains its escaped content. Source copies are in the evidence directory.
@@ -81,6 +85,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- T048: caption/overlapping-sidebar tests failed first (`t048-layout-red.log`); linked chip-to-header test failed first (`t048-link-red.log`). Five browser regressions now pass (`t048-green.log`), covering captions, all four applicable local-control sidebars at 1440/390/320, exact group/whitespace matching, one event per origin with no echoes, edited token/evaluated row reapplication, unchanged sampling state, and real Plotly 3D highlights with preserved camera/readout. Screenshot review found stretched sidebar fields and a weak sampling focus ring; both received failing regressions (`t048-review-red.log`) and were fixed before the final green run. Captured composed focus screenshots in the evidence directory and inspected phone/desktop output. Scoped lint and full typecheck pass. Web Interface Guidelines/available DESIGN review found no remaining issues in these changes; impeccable remains unavailable as recorded in the handoff.
 
 - T047: builder finalization regression failed because saved token panels had no tokenized field (`t047-red.log`); all 64 builder/demo/tokenizer tests pass after finalization (`t047-green.log`). Saved output has all three real encodings for every token panel; forged tokenized is refused without replacing the previous demo, and kit expressions remain unevaluated on the server. Added six one-line panel shapes and the exact approved token instruction to the existing builder prompt.
 

@@ -13,6 +13,7 @@ import type { FinalizedDemoKitPanel as DemoKitPanel, FinalizedDemoKitSpec as Dem
 
 type Values = Record<string, any>;
 interface PanelView {
+	link?(): Promise<void> | void;
 	focus?(focused: boolean): void;
 	theme?(): Promise<void> | void;
 	resize?(): Promise<void> | void;
@@ -251,6 +252,20 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--lh-muted);outli
 .k-shape-change{font-size:.8em;color:var(--lh-muted);text-align:right;overflow-wrap:anywhere}
 @media(pointer:coarse){.k-shape-step{min-height:44px}}
 @media(max-width:559px){.k-shape-step{grid-template-columns:20px minmax(0,1fr);gap:6px 12px}.k-shape-dims{grid-column:2;grid-row:2}.k-shape-change{grid-column:2;grid-row:3;text-align:left}}
+.k-token.k-linked{outline:2px solid var(--k-token-color);outline-offset:-2px;background:color-mix(in srgb,var(--k-token-color) 34%,var(--lh-bg))}
+.k-heatmap-label.k-linked{color:var(--lh-text);font-weight:600}
+.k-sampling-row.k-linked{outline:1px solid var(--lh-text);outline-offset:2px}
+.k-scatter-point.k-linked .k-scatter-dot{outline:2px solid var(--lh-text);outline-offset:3px}
+.k-scatter-point.k-linked{color:var(--lh-text);z-index:1}.k-scatter-point.k-linked .k-scatter-label{visibility:visible;background:var(--lh-bg)}
+.k-token.k-linked:focus-visible,.k-sampling-row:focus-visible,.k-heatmap-label:focus-visible{outline:2px solid var(--lh-muted);outline-offset:3px}
+.k-panel-caption{grid-column:1;margin:12px 0 0;font-size:.8em;color:var(--lh-muted);overflow-wrap:anywhere}
+#lh-kit.k-focus.k-composed-focus .k-grid{grid-column:1}
+#lh-kit.k-composed-focus .k-panel:not([hidden]){display:flex;flex-direction:column;height:auto}
+.k-focus .k-composed-control-fields{display:flex;flex-direction:column;align-items:stretch;gap:12px;margin-top:24px;padding:0}
+.k-focus .k-composed-control-fields>.k-field{flex:0 0 auto}
+.k-focus .k-composed-control-fields>.k-parameters-toggle{display:none}
+.k-composed-control-fields .k-token-controls{flex-direction:column;align-items:flex-start}
+
 `;
 
 const MATH = Object.getOwnPropertyNames(Math);
@@ -291,11 +306,14 @@ class Kit {
 	d: Values = {};
 	t = 0;
 	errors: string[] = [];
+	private linkedLabels = new Map<string, string>();
 	private compiled = new Map<string, (...args: unknown[]) => unknown>();
 	private views: PanelView[] = [];
 	private panelBoxes: HTMLElement[] = [];
 	private focusIndex: number | null = null;
 	private focusTrigger: HTMLElement | null = null;
+	private globalControls: HTMLElement | null = null;
+	private composedControls: { node: HTMLElement; placeholder: Comment } | null = null;
 	private timer: number | null = null;
 	private runButton: HTMLButtonElement | null = null;
 	private errorBox: HTMLElement;
@@ -304,6 +322,29 @@ class Kit {
 	constructor(private spec: DemoKitSpec, private root: HTMLElement) {
 		this.errorBox = el("div", "k-error");
 		this.errorBox.hidden = true;
+		this.root.addEventListener("k-link", event => {
+			const detail = (event as CustomEvent).detail;
+			if (!detail || typeof detail.link !== "string" || typeof detail.label !== "string") return;
+			this.linkedLabels.set(detail.link, detail.label);
+			this.root.querySelectorAll<HTMLElement>("[data-link-label]").forEach(node => {
+				if (node.dataset.linkGroup === detail.link) node.classList.toggle("k-linked", node.dataset.linkLabel === detail.label);
+			});
+			this.views.forEach((view, i) => { const panel = this.spec.panels[i]!; if ("link" in panel && panel.link === detail.link) void view.link?.(); });
+		});
+	}
+
+	private emitLink(link: string | undefined, label: string) {
+		if (link !== undefined) this.root.dispatchEvent(new CustomEvent("k-link", { detail: { link, label } }));
+	}
+
+	private linkItem(node: HTMLElement, link: string | undefined, label: string, highlight = true) {
+		if (link === undefined) return;
+		if (highlight) {
+			node.dataset.linkGroup = link; node.dataset.linkLabel = label;
+			node.classList.toggle("k-linked", this.linkedLabels.get(link) === label);
+		}
+		const emit = () => this.emitLink(link, label);
+		node.addEventListener("pointerenter", emit); node.addEventListener("focus", emit);
 	}
 
 	private fn(body: string): (...args: unknown[]) => unknown {
@@ -497,6 +538,7 @@ class Kit {
 		style.textContent = STYLE;
 		document.head.append(style);
 		const controls = this.controls();
+		this.globalControls = controls;
 		// A param resets the state when a state expression reads it.
 		const reads = (key: string) =>
 			Object.values(this.spec.state ?? {}).some((e) => new RegExp(`\\bp\\.${key}\\b|\\bp\\[["']${key}["']\\]`).test(e));
@@ -525,7 +567,9 @@ class Kit {
 				if (heading.childNodes.length) box.append(heading);
 				grid.append(box);
 				try {
-					return await this.panel(panel, box);
+					const view = await this.panel(panel, box);
+					if ("caption" in panel && panel.caption) { const caption = el("p", "k-panel-caption"); caption.textContent = panel.caption; box.append(caption); }
+					return view;
 				} catch (err) {
 					this.report(`panels[${i}]`, err);
 					return { update() {} };
@@ -552,10 +596,26 @@ class Kit {
 	}
 
 	private focus(index: number | null) {
+		const active = document.activeElement as HTMLElement | null;
+		if (this.composedControls) {
+			const { node, placeholder } = this.composedControls;
+			placeholder.replaceWith(node); node.classList.remove("k-composed-control-fields"); node.classList.add("k-controls");
+			this.composedControls = null;
+		}
+		this.root.classList.remove("k-composed-focus");
 		if (index !== null) this.focusTrigger = document.activeElement as HTMLElement | null;
 		this.focusIndex = index;
 		this.root.classList.toggle("k-focus", index !== null);
 		this.panelBoxes.forEach((box, i) => { box.hidden = index !== null && i !== index; this.views[i]?.focus?.(index === i); });
+		if (index !== null && this.globalControls) {
+			const local = this.panelBoxes[index]?.querySelector<HTMLElement>(".k-controls");
+			if (local) {
+				const placeholder = document.createComment("panel controls"); local.before(placeholder);
+				this.globalControls.append(local); local.classList.remove("k-controls"); local.classList.add("k-composed-control-fields");
+				this.composedControls = { node: local, placeholder }; this.root.classList.add("k-composed-focus");
+			}
+		}
+		if (active?.isConnected && document.activeElement !== active) active.focus({ preventScroll: true });
 		requestAnimationFrame(() => { if (index === null && document.hasFocus()) this.focusTrigger?.focus({ preventScroll: true }); void Promise.all(this.views.map((v, i) => (index === null || index === i) && v.resize?.())); });
 	}
 
@@ -606,6 +666,7 @@ class Kit {
 				chip.style.setProperty("--k-token-color", `var(${["--lh-blue", "--lh-teal", "--lh-red", "--lh-green"][index % 4]})`);
 				chip.tabIndex = index === active ? 0 : -1;
 				chip.setAttribute("aria-label", label(token, index));
+				this.linkItem(chip, panel.link, piece(token));
 				const text = el("span"); text.textContent = piece(token).replace(/^ /, "␣").replace(/\n/g, "↵");
 				const id = el("span", "k-token-id"); id.textContent = String(token.id); chip.append(text, id);
 				const select = () => { active = index; strip.querySelectorAll<HTMLButtonElement>("button").forEach((button, i) => button.tabIndex = i === index ? 0 : -1); readout.textContent = label(token, index); };
@@ -674,19 +735,29 @@ class Kit {
 		fields.append(toggle);
 		let defaults: Required<SamplingOptions> = { temperature: 1, topK: 0, topP: 1 };
 		let values = { ...defaults }, tokens: SamplingToken[] = [], rows: SamplingRow[] = [], fingerprint = "";
-		let picked: number | null = null;
+		let picked: number | null = null, activeRow = 0;
 		const inputs = new Map<keyof SamplingOptions, { input: HTMLInputElement; value: HTMLElement }>();
 		const render = () => {
 			rows = distribution(tokens, values);
+			const hadFocus = list.contains(document.activeElement);
+			activeRow = Math.min(activeRow, Math.max(0, rows.length - 1));
 			list.replaceChildren();
-			for (const row of rows) {
+			for (const [index, row] of rows.entries()) {
 				const item = el("li", `k-sampling-row${row.cut ? " k-sampling-cut" : ""}${row.index === picked ? " k-sampling-picked" : ""}`);
 				const label = el("span", "k-sampling-label"); label.textContent = row.text.replace(/^ /, "␣").replace(/\n/g, "↵");
 				const track = el("div", "k-sampling-track"); track.setAttribute("aria-hidden", "true");
 				const bar = el("div", "k-sampling-bar"); bar.style.width = `${100 * (row.cut ? row.base : row.p)}%`; track.append(bar);
 				const value = el("span", "k-sampling-value"); value.textContent = row.cut ?? `${(row.p * 100).toFixed(1)}%`;
+				item.tabIndex = index === activeRow ? 0 : -1;
+				item.onfocus = () => { activeRow = index; Array.from(list.children).forEach((node, i) => (node as HTMLElement).tabIndex = i === index ? 0 : -1); };
+				item.onkeydown = event => {
+					const next = event.key === "ArrowDown" || event.key === "ArrowRight" ? (index + 1) % rows.length : event.key === "ArrowUp" || event.key === "ArrowLeft" ? (index + rows.length - 1) % rows.length : event.key === "Home" ? 0 : event.key === "End" ? rows.length - 1 : null;
+					if (next !== null) { event.preventDefault(); (list.children[next] as HTMLElement).focus(); }
+				};
+				this.linkItem(item, panel.link, row.text);
 				item.append(label, track, value); list.append(item);
 			}
+			if (hadFocus) (list.children[activeRow] as HTMLElement)?.focus();
 			const kept = rows.filter(row => row.p > 0).length;
 			readout.textContent = picked === null ? `${kept} of ${rows.length} tokens can be drawn. Press Sample to draw one.` : `Sampled “${tokens[picked]!.text.trim()}” · ${kept} tokens could be drawn`;
 			for (const [key, control] of inputs) {
@@ -773,12 +844,13 @@ class Kit {
 				grid.replaceChildren(); cells = []; rowLabels = []; colLabels = [];
 				const header = el("div", "k-heatmap-row"); header.setAttribute("role", "row");
 				const axes = el("div", "k-heatmap-label"); axes.setAttribute("role", "columnheader"); axes.textContent = `${rowAxis} ↓ · ${colAxis} →`; header.append(axes);
-				cols.forEach(text => { const item = el("div", "k-heatmap-label"); item.setAttribute("role", "columnheader"); item.textContent = text; colLabels.push(item); header.append(item); }); grid.append(header);
+				cols.forEach(text => { const item = el("div", "k-heatmap-label"); item.setAttribute("role", "columnheader"); item.textContent = text; item.tabIndex = -1; this.linkItem(item, panel.link, text); colLabels.push(item); header.append(item); }); grid.append(header);
 				rows.forEach((text, r) => {
 					const row = el("div", "k-heatmap-row"); row.setAttribute("role", "row");
-					const heading = el("div", "k-heatmap-label"); heading.setAttribute("role", "rowheader"); heading.textContent = text; rowLabels.push(heading); row.append(heading);
+					const heading = el("div", "k-heatmap-label"); heading.setAttribute("role", "rowheader"); heading.textContent = text; heading.tabIndex = -1; this.linkItem(heading, panel.link, text); rowLabels.push(heading); row.append(heading);
 					cols.forEach((_, c) => {
 						const index = r * cols.length + c, cell = el("button", "k-heatmap-cell"), value = matrix[r]![c]!, paint = color(value);
+						this.linkItem(cell, panel.link, cols[c]!, false);
 						cell.type = "button"; cell.setAttribute("role", "gridcell"); cell.setAttribute("aria-label", label(index)); cell.dataset.row = String(r); cell.dataset.col = String(c); cell.style.background = paint.background; cell.style.color = paint.ink;
 						const printed = el("span"); printed.textContent = value.toFixed(digits); cell.append(printed);
 						cell.onpointerenter = () => select(index); cell.onfocus = () => select(index); cell.onclick = () => { pinned = index; select(index); };
@@ -904,7 +976,7 @@ class Kit {
 				}
 				traces.push({ type: "scatter3d", mode: "markers+text", x: [result[0]], y: [result[1]], z: [result[2]], text: [expressionText], textposition: "top center", textfont: { color: theme.text, size: 13 }, marker: { symbol: "circle-open", size: 9, color: theme.text, line: { width: 2 } }, hoverinfo: "skip" });
 			}
-			if (selected !== null) { const p = points[selected]!; traces.push({ name: p.label, type: "scatter3d", mode: "markers+text", x: [p.x], y: [p.y], z: [p.z], text: [p.label], textposition: "top center", textfont: { color: theme.text, size: 15 }, marker: { symbol: "circle-open", size: 9, color: theme.text, line: { width: 2 } }, hoverinfo: "skip" }); }
+			for (const index of new Set([selected, ...points.flatMap((point, i) => panel.link !== undefined && this.linkedLabels.get(panel.link) === point.label ? [i] : [])])) { if (index === null) continue; const p = points[index]!; traces.push({ name: p.label, type: "scatter3d", mode: "markers+text", x: [p.x], y: [p.y], z: [p.z], text: [p.label], textposition: "top center", textfont: { color: theme.text, size: 15 }, marker: { symbol: "circle-open", size: 9, color: theme.text, line: { width: 2 } }, hoverinfo: "skip" }); }
 			return traces;
 		};
 		const redraw3d = () => { renderQueue = renderQueue.then(async () => { if (is3d) await view3d?.update(); }).catch(error => this.report("scatter", error)); return renderQueue; };
@@ -939,6 +1011,7 @@ class Kit {
 		};
 		checkbox.onchange = () => { buttons.forEach((button, i) => button.classList.toggle("k-nearest", checkbox.checked && points[i]!.label === closest?.point.label)); read(); resize2d(); void redraw3d(); };
 		return {
+			link: () => redraw3d(),
 			focus: focused => { box.classList.toggle("k-scatter-focus", focused && !!expression); fields.classList.toggle("k-controls", focused && !!expression); if (focused && expression) box.append(fields); else meta.append(fields); },
 			resize: async () => { resize2d(); if (is3d) await view3d?.resize?.(); },
 			theme: async () => { if (is3d) { await view3d?.theme?.(); await redraw3d(); } },
@@ -964,6 +1037,7 @@ class Kit {
 				legend.replaceChildren(); for (const group of groups) { const item = el("span"), swatch = el("i"); swatch.style.setProperty("--k-point-color", `var(${palette[groups.indexOf(group) % palette.length]})`); swatch.setAttribute("aria-hidden", "true"); item.append(swatch, document.createTextNode(group)); legend.append(item); }
 				points.forEach((point, i) => {
 					const button = el("button", "k-scatter-point"), dot = el("span", "k-scatter-dot"), label = el("span", "k-scatter-label"); button.type = "button"; button.tabIndex = i === active ? 0 : -1; button.dataset.index = String(i); button.setAttribute("aria-label", pointLabel(i)); dot.setAttribute("aria-hidden", "true"); button.style.setProperty("--k-point-color", `var(${color(point)})`); label.textContent = point.label; button.append(dot, label); button.classList.toggle("k-nearest", point.label === closest?.point.label);
+					this.linkItem(button, panel.link, point.label);
 					button.onfocus = () => select(i); button.onpointerenter = () => select(i); button.onclick = () => { pinned = i; select(i); }; button.onpointerleave = () => select(pinned);
 					button.onkeydown = event => { const move = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 0; if (move) { event.preventDefault(); buttons[(i + move + buttons.length) % buttons.length]!.focus(); } };
 					buttons.push(button); (is3d ? three : plot).append(button);
@@ -974,7 +1048,7 @@ class Kit {
 						const target = three.querySelector(".k-chart") as HTMLElement & { on(name: string, callback: (event: { points: { customdata?: number }[] }) => void): void };
 						target.setAttribute("aria-hidden", "true");
 						await view3d.update();
-						target.on("plotly_hover", event => { const index = event.points[0]?.customdata; if (Number.isInteger(index)) select(index!); });
+						target.on("plotly_hover", event => { const index = event.points[0]?.customdata; if (Number.isInteger(index)) { select(index!); this.emitLink(panel.link, points[index!]!.label); } });
 						target.on("plotly_unhover", () => select(pinned));
 						target.on("plotly_click", event => { const index = event.points[0]?.customdata; if (Number.isInteger(index)) { pinned = index!; select(index!); } });
 					} else await view3d.update();
