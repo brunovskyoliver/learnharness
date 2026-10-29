@@ -4,9 +4,9 @@
  * Keyboard shortcuts (shortcut wave A, 2026-09-17) — the single document-level
  * keydown listener. Owns the pieces that belong to no surface in particular:
  *
- * - Tab is DEAD: browser tab-focus navigation is abandoned by owner decision
- *   (2026-09-17). Tab is suppressed everywhere (preventDefault, no-op) and
- *   Shift+Tab cycles the thinking level instead.
+ * - Ordinary chats retain the owner’s composer-field/thinking Tab cycle.
+ *   Dialogs and chats containing ML results use native Tab/Shift+Tab traversal
+ *   (feature 008 owner exception, 2026-10-29).
  * - Esc is a layered dismiss: topmost popover first (popovers stopPropagation
  *   on their own Esc — usePopoverDismiss + ModelControl), then abort of an in-flight
  *   turn.
@@ -23,6 +23,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { chatUsesNativeTraversal } from "@/components/enter-submits";
 import { useBackdropDismiss } from "@/components/backdrop-dismiss";
 import { useRouter } from "next/navigation";
 import {
@@ -61,6 +62,8 @@ export function KeyboardShortcuts() {
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
 			if (e.defaultPrevented) return;
+			// ML-result chats retain native Tab/Shift+Tab (owner, feature 008).
+			if (e.key === "Tab" && chatUsesNativeTraversal(document)) return;
 			// Dialogs own native traversal, including their portaled child menus.
 			if (e.key === "Tab" && (e.target as Element | null)?.closest?.("[data-mobile-navigation], [role=dialog]")) return;
 			// ── Browser tab-focus traversal is replaced outside dialogs

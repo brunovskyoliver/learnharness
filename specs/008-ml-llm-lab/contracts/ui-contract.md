@@ -26,7 +26,8 @@ Every "MUST" below is checked in review. A deviation needs Oliver's approval fir
 6. **Dense views are one tab stop** with arrow keys inside (roving `tabindex`): heatmap cells (`role="grid"`/`row`/`gridcell`), token chips, scatter points and network neurons. Enter or Space pins the item to the readout. Every focusable item has an `aria-label` that carries the same information as the readout. Focus outline: the kit's `button:focus-visible` rule.
 7. **Numbers**: tabular numerals in the kit font. Monospace (`--lh-mono`, 12px) only for token ids, gradients shown under neurons, and tensor shapes.
 8. **Colours by role**:
-   - token chips cycle the five series at 20% over `--lh-surface` (34% and an inset 1px series outline when focused);
+   - **Owner override (2026-10-29): no amber in feature 008, including data series.** Categorical colours cycle blue, teal, red, green. Charts and 3D plots outside 008 keep the kit's five-series order.
+   - token chips cycle those four series at 20% over `--lh-surface` (34% and an inset 1px series outline when focused);
    - heatmap sequential is `--lh-bg` → `--lh-blue`; diverging is `--lh-blue` (negative) → `--lh-bg` → `--lh-red` (positive), with a legend showing min, mid and max;
    - next_token bars are `--lh-blue`. Cut rows are muted text and an outline-only bar, and the reason is written in the value column ("cut by top-k", "cut by top-p");
    - network edges: red for positive and blue for negative weight, width `1 + 4|w|` px, legend in words;

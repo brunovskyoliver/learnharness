@@ -56,6 +56,22 @@ export function buttonKeepsNativeEnter(el: HTMLElement): boolean {
 	return !!el.closest(OVERLAY_ROOTS);
 }
 
+/** Owner exception (feature 008): result-bearing ML chats use native Tab traversal. */
+export function chatUsesNativeTraversal(root: ParentNode): boolean {
+	return root.querySelector("[data-chat-ml-lab]") !== null;
+}
+
+/** Keep native activation on keyboard-focused ML summaries and paper page links. */
+export function mlResultKeepsNativeEnter(el: HTMLElement): boolean {
+	if (!el.closest("[data-chat-ml-lab]")) return false;
+	const result = el.matches('summary') && !!el.closest('[data-testid="lookup-row"], [data-testid="tool-call-card"]:is([data-tool="ml_visual"], [data-tool="tokenize"], [data-tool="hub_model"], [data-tool="hub_search"], [data-tool="paper_search"], [data-tool="paper_read"])');
+	// Every link inside a lookup row (Hub page, results, paper titles, pages)
+	// opens on plain Enter, like page citations in prose.
+	const citation = el.matches("a[href]") && (!!el.closest('[data-testid="lookup-row"]') || (el.matches('a[href*="#page="]') && !!el.closest(".lh-prose")));
+	if (!result && !citation) return false;
+	try { return el.matches(":focus-visible"); } catch { return false; }
+}
+
 /** Mount-scoped: while the dock is mounted (a problem/question is active),
  *  plain Enter anywhere outside a typing surface or button submits it. */
 export function useEnterSubmits(submit: () => void): void {
@@ -67,7 +83,7 @@ export function useEnterSubmits(submit: () => void): void {
 			if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
 			if (isTypingSurface(e)) return;
 			const target = e.target as HTMLElement | null;
-			if (target?.tagName === "BUTTON" && buttonKeepsNativeEnter(target)) return;
+			if (target && ((target.tagName === "BUTTON" && buttonKeepsNativeEnter(target)) || mlResultKeepsNativeEnter(target))) return;
 			e.preventDefault();
 			submitRef.current();
 		};

@@ -1270,3 +1270,18 @@ body {
 @media (max-width: 927px) {
   [data-sidebar-bootstrap] { width: 0 !important; visibility: hidden; }
 }
+
+/* Feature 008: ink focus stays local to its rows and settings controls. */
+[data-testid="lookup-row"],
+[data-testid="tool-call-card"]:is([data-tool="ml_visual"], [data-tool="tokenize"], [data-tool="hub_model"], [data-tool="hub_search"], [data-tool="paper_search"], [data-tool="paper_read"]),
+[data-testid="toggle-tool-ml-visuals"],
+[data-testid="toggle-tool-model-hub"],
+[data-testid="toggle-tool-papers"] {
+	--ring: var(--foreground);
+}
+
+/* Owner-approved page citations keep the existing underline and visible focus. */
+.lh-reading .lh-prose a[href*="#page="] {
+	color: var(--foreground);
+	--ring: var(--foreground);
+}

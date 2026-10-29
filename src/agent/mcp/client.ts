@@ -43,8 +43,8 @@ function aborted(signal?: AbortSignal): boolean {
 	return signal?.aborted === true;
 }
 
-/** Call one tool on a listed server; returns its text content. */
-export async function callMcpTool(serverId: McpServerId, tool: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<string> {
+/** Call one tool on a listed server, retaining optional structured data. */
+export async function callMcpToolResult(serverId: McpServerId, tool: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<{ text: string; structuredContent?: unknown }> {
 	const server: McpServerEntry | undefined = MCP_SERVERS[serverId];
 	if (!server) throw new Error(`Unknown MCP server "${String(serverId)}".`);
 	const map = slots();
@@ -59,7 +59,7 @@ export async function callMcpTool(serverId: McpServerId, tool: string, args: Rec
 			const result = await client.callTool(tool, args, { signal, timeoutMs: server.timeoutMs });
 			const text = result.content.flatMap((c) => (c.type === "text" ? [c.text] : [])).join("\n");
 			if (result.isError) throw new McpToolError(text || `${server.label} reported an error.`);
-			return text;
+			return { text, structuredContent: result.structuredContent };
 		} catch (error) {
 			if (error instanceof McpToolError) throw error;
 			if (aborted(signal)) throw new Error("Operation aborted");
@@ -73,4 +73,9 @@ export async function callMcpTool(serverId: McpServerId, tool: string, args: Rec
 	}
 	const reason = lastError instanceof Error ? lastError.message : String(lastError);
 	throw new McpUnavailableError(`${server.label} is unavailable: ${reason}`);
+}
+
+/** Existing text-only API used by the Wolfram tools. */
+export async function callMcpTool(serverId: McpServerId, tool: string, args: Record<string, unknown>, signal?: AbortSignal): Promise<string> {
+	return (await callMcpToolResult(serverId, tool, args, signal)).text;
 }

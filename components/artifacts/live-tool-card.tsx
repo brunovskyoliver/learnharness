@@ -42,9 +42,9 @@ export function LiveToolCard({ part }: ArtifactPartProps) {
 
 	const hasInput = p.input != null && Object.keys(inp).length > 0;
 
-	// A math check's input may be the answer to a question not yet posed
-	// (feature 007): the running row shows only that it is checking.
-	if (tool === "math_check") {
+	// Math checks and ML/source tools show only their activity while running.
+	// Inputs may contain answers or learner text and never appear live.
+	if (["math_check", "ml_visual", "tokenize", "hub_search", "hub_model", "paper_search", "paper_read"].includes(tool)) {
 		return (
 			<div data-testid="live-tool-card" data-tool={tool} className="lh-reading my-1">
 				<div className="flex items-center gap-2 text-sm text-muted-foreground">

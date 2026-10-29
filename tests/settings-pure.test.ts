@@ -388,3 +388,10 @@ describe("composeQuizMechanics (the segmented control's write)", () => {
 		}
 	});
 });
+
+import { TOGGLEABLE_TOOLS } from "../src/core/pending.ts";
+
+it("ML tool settings follow Math check and preserve independent choices", () => {
+	assert.deepEqual(TOGGLEABLE_TOOLS.slice(-4), ["math_check", "ml_visuals", "model_hub", "papers"]);
+	assert.deepEqual(composeTool({ tools: { papers: true } }, "ml_visuals", false).tools, { papers: true, ml_visuals: false });
+});

@@ -1,5 +1,9 @@
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import type { Usage } from "@earendil-works/pi-ai";
+import type { PaperFiles } from "../../core/ports.ts";
+import type { EnabledTools } from "../../core/pending.ts";
+import { createPaperTools } from "../tools/papers.ts";
+import { createHubTools } from "../tools/hub.ts";
 import { createWebTools } from "../tools/web.ts";
 import { createPdfReadTools } from "../tools/pdf-read.ts";
 import type { SearchProvider } from "../../core/search.ts";
@@ -37,7 +41,8 @@ Process:
    and triages the document (page count, size class, flagged pages). Then read it with
    pdf_extract — for long ones, pdf_search first and extract only the pages that hit.
    Cite claims from a PDF as (p. N).
-6. Synthesize everything into a brief that directly answers the question.
+6. Model and paper sources: use \`hub_model\` for a model's configuration, and \`paper_search\` + \`paper_read\` for papers (10 pages per turn at most). Cite the Hub page or the paper page in the brief.
+7. Synthesize everything into a brief that directly answers the question.
 
 Evaluation — what to keep vs drop:
 - Official docs and primary sources outweigh blog posts and forum threads.
@@ -68,6 +73,8 @@ Numbered findings with inline source citations:
 What couldn't be answered. Suggested next steps.`;
 
 export interface ResearcherRunOptions {
+	paperFiles?: PaperFiles;
+	toolToggles?: EnabledTools;
 	engine?: PiEngine;
 	/** The search seam (search port wave, 2026-09-20): resolves the LIVE
 	 *  provider per call, null = honestly unavailable (the web_search tool
@@ -95,6 +102,8 @@ export interface ResearcherRunOptions {
  */
 export async function runResearcherAgent(prompt: string, opts: ResearcherRunOptions = {}): Promise<string> {
 	const tools = Object.values(createWebTools(opts.search ?? (() => null)));
+	if (opts.toolToggles?.model_hub !== false) tools.push(...Object.values(createHubTools()));
+	if (opts.toolToggles?.papers !== false) tools.push(...Object.values(createPaperTools(opts.paperFiles)));
 	if (opts.pdfDir) tools.push(...Object.values(createPdfReadTools(opts.pdfDir)));
 	const base = {
 		role: "researcher" as const,
@@ -105,20 +114,26 @@ export async function runResearcherAgent(prompt: string, opts: ResearcherRunOpti
 		onToolStart: opts.onToolStart,
 		chatId: opts.chatId,
 	};
-	const { newMessages, text } = await runSubagent(tools, { ...base, prompt, maxTurns: MAX_TURNS });
-	if (text.trim()) return text;
+	try {
+		const { newMessages, text } = await runSubagent(tools, { ...base, prompt, maxTurns: MAX_TURNS });
+		if (text.trim()) return text;
 
-	// Turn cap spent mid-research (researcher-turn-cap, 2026-10-28): one more
-	// call over everything gathered, asking for the brief. The tools stay
-	// declared — Anthropic rejects tool-call history without them — and the
-	// message forbids calling them; a tool call here still yields "".
-	opts.onWrapUp?.();
-	const wrapUp = await runSubagent(tools, {
-		...base,
-		messages: [...newMessages, { role: "user", content: WRAP_UP_MESSAGE, timestamp: Date.now() }],
-		maxTurns: 1,
-	});
-	return wrapUp.text;
+		// Turn cap spent mid-research (researcher-turn-cap, 2026-10-28): one more
+		// call over everything gathered, asking for the brief. The tools stay
+		// declared — Anthropic rejects tool-call history without them — and the
+		// message forbids calling them; a tool call here still yields "".
+		opts.onWrapUp?.();
+		const wrapUp = await runSubagent(tools, {
+			...base,
+			messages: [...newMessages, { role: "user", content: WRAP_UP_MESSAGE, timestamp: Date.now() }],
+			maxTurns: 1,
+		});
+		return wrapUp.text;
+	} finally {
+		// A failed cleanup must never replace a finished brief.
+		try { await opts.paperFiles?.dispose(); }
+		catch (error) { console.error("[researcher] paper cleanup failed:", error); }
+	}
 }
 
 const MAX_TURNS = 12;

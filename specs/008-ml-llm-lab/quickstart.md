@@ -21,7 +21,7 @@ Expected:
 
 ## Seeded browser check
 
-1. Seed with `node scripts/seed-review.mjs`, plus 008's seed (T030): sessions "UI review · ML panels" (one reply per panel kind, plus a failed panel), "UI review · ML lookups" (every row state, including failures and a citation paragraph) and "UI review · ML practice" (a practice problem with a tokens panel).
+1. Seed with `node scripts/seed-review.mjs`, which includes 008's seed (T050): sessions "UI review · ML panels" (one reply per panel kind, plus a failed panel), "UI review · ML lookups" (every row state, including failures and a citation paragraph) and "UI review · ML practice" (a practice problem with a tokens panel).
 2. Run `npm run build && npm start`, with `LH_DATA_DIR` set to the seeded dir.
 3. At 1440, 390 and 320 px:
    - open each session;

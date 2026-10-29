@@ -105,6 +105,8 @@ const jobRunner = createJobRunner({
 	// null = honestly unavailable; the dispatch-level drop (below) uses the
 	// same signal so keyless servers never see the research tool at all.
 	searchProvider,
+	toolToggles: () => effectiveSettings().agent.tools,
+	createPaperFiles: () => stores.createPaperFiles(),
 });
 /** The app's ONE extraction pipeline instance — both front doors share it:
  *  quiz-triggered session runs (turn-service) and notes imports
@@ -417,6 +419,8 @@ export async function handleChatInput(
 	// split, no plan/question/job tools; the whole registry is
 	// problem + conclude. buildAgent stays honored (the test seam is
 	// uniform across kinds).
+	const paperFiles = stores.createPaperFiles();
+	const disposePaperFiles = () => { void paperFiles.dispose().catch((error) => console.error(`[chat ${chatId}] paper cleanup failed:`, error)); };
 	const constructed: TeachingAgent = buildAgent
 		? buildAgent({ ...agentOpts, teaching })
 		: record.kind === "practice"
@@ -446,6 +450,7 @@ export async function handleChatInput(
 			: teaching
 			? createTeacherAgent(
 					{
+						paperFiles,
 						chatId,
 						chatStore: stores.chatStore,
 						...(graphToolsEnabled(effective) ? { graphStore: stores.graphStore } : {}),
@@ -529,6 +534,7 @@ export async function handleChatInput(
 			},
 			onSettleError: settlementErrorText,
 			onSettleFailure: (error, reportedErrorText) => {
+				disposePaperFiles();
 				// POST only acknowledges acceptance; the submitter may attach
 				// after this turn has already failed and left the registry.
 				rememberTurnFailure(chatId, reportedErrorText ?? settlementErrorText(error));
@@ -543,6 +549,7 @@ export async function handleChatInput(
 				settleSteers(chatId, persisted, true, constructed);
 			},
 			onFinish: (turnMessages, isAborted) => {
+				disposePaperFiles();
 				// Wave B: the record write is the agent's own final state —
 				// the new messages are the slice past the merged base.
 				const stamped = persistTurn(stores.chatStore, chatId, persistBaseCount, turnMessages, isAborted);
@@ -649,6 +656,7 @@ export async function handleChatInput(
 		if (stagedAutomatic && requestCycle && !(await requestCycle.admission)) return Response.json({ error: "Automatic follow-up remains deferred in its queue." }, { status: 403 });
 		return Response.json({ ok: true });
 	} catch (err) {
+		disposePaperFiles();
 		// The stream never started, so no onFinish will fire — clear the registry
 		// or a malformed request would lock the chat until the TTL eviction.
 		endTurn(chatId);

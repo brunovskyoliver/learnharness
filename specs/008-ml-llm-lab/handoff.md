@@ -59,7 +59,7 @@ You are implementing an approved plan. Every decision has been made. Your job is
    - Colours and fonts only through the kit variables (`--lh-*`). No hex literals and no Tailwind in `runtime.ts`.
    - Reuse `.k-panel`, `.k-panel-head`, `.k-icon-button`, `.k-field`, `.k-label`, `.k-seg`, `.k-btn`, `.k-btn.k-primary` and `.k-error`. Add new classes only for things that don't exist yet (chips, cells, neurons, readout line, illustrative label). Prefix them `k-` and put them in the existing `STYLE` string.
 2. **Panel head:** the title on the left. On the right, "Illustrative numbers" (exact text, `.8em`, weight 500, muted, plain text, not a badge) for `heatmap`, `next_token` and `scatter` only, then the Expand icon button. Below 560px the label moves under the title.
-3. **No amber for state or emphasis, anywhere.** The primary button is the kit's ink fill. Amber appears only as the third data series.
+3. **No amber for state or emphasis, anywhere.** The primary button is the kit's ink fill. Owner override 2026-10-29: no amber in feature 008 data series either (blue, teal, red, green).
 4. **No borders, cards, shadows or gradients** inside panels. The only edges are the text field, focus outlines and the selected-item outline.
 5. **Readout line:** every panel has one live (`aria-live="polite"`) readout line in muted `.8em`, using the copy patterns in ui-contract.md §A4. Pointer hover and keyboard focus produce the same readout.
 6. **Dense views are one tab stop** (roving tabindex) with arrow keys inside: heatmap cells (`role=grid`), chips, points and neurons. Every item has an `aria-label` that matches the readout.

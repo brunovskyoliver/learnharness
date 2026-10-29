@@ -261,7 +261,7 @@ describe("tool toggles (core/pending.ts + factories)", () => {
 		// learner-fs set, plan tools, and probe_done. The settings WRITE side
 		// validates against this list (settings-body). Feature 007 (owner
 		// delegation, 2026-10-28) adds the math check, on by default.
-		assert.deepEqual(TOGGLEABLE_TOOLS, ["research", "demo", "visual", "pdf", "math_check"]);
+		assert.deepEqual(TOGGLEABLE_TOOLS, ["research", "demo", "visual", "pdf", "math_check", "ml_visuals", "model_hub", "papers"]);
 	});
 
 	it("createProberTools: absent record = full set; explicit false drops exactly that tool; probe_done survives everything", () => {
@@ -296,10 +296,13 @@ describe("tool toggles (core/pending.ts + factories)", () => {
 			spawn: () => {},
 		};
 		const full = Object.keys(createTeacherTools(ctx)).sort();
-		assert.deepEqual(full, ["ask_user_question", "course", "demo", "find", "grep", "ls", "math_check", "pdf", "plan_init", "plot", "quiz", "read", "research", "visual"]);
+		assert.deepEqual(full, ["ask_user_question", "course", "demo", "find", "grep", "hub_model", "hub_search", "ls", "math_check", "ml_visual", "paper_read", "paper_search", "pdf", "plan_init", "plot", "quiz", "read", "research", "tokenize", "visual"]);
 
+		assert.deepEqual(Object.keys(createTeacherTools(ctx, { papers: false })).sort(), full.filter(t => !["paper_search", "paper_read"].includes(t)));
+		assert.deepEqual(Object.keys(createTeacherTools(ctx, { model_hub: false })).sort(), full.filter(t => !["hub_search", "hub_model"].includes(t)));
+		assert.deepEqual(Object.keys(createTeacherTools(ctx, { ml_visuals: false })).sort(), full.filter(t => !["ml_visual", "tokenize"].includes(t)));
 		const noResearch = Object.keys(createTeacherTools(ctx, { research: false })).sort();
-		assert.deepEqual(noResearch, ["ask_user_question", "course", "demo", "find", "grep", "ls", "math_check", "pdf", "plan_init", "plot", "quiz", "read", "visual"]);
+		assert.deepEqual(noResearch, ["ask_user_question", "course", "demo", "find", "grep", "hub_model", "hub_search", "ls", "math_check", "ml_visual", "paper_read", "paper_search", "pdf", "plan_init", "plot", "quiz", "read", "tokenize", "visual"]);
 
 		// Math check (feature 007): its own toggle removes exactly it.
 		assert.deepEqual(Object.keys(createTeacherTools(ctx, { math_check: false })).sort(), full.filter((t) => t !== "math_check"));
@@ -313,7 +316,7 @@ describe("tool toggles (core/pending.ts + factories)", () => {
 
 		// The mechanic switch (owner 2026-09-27): free-recall swaps the teach
 		// quiz for the teach explain — one quizzing tool, whichever is armed.
-		const freeFull = ["ask_user_question", "course", "demo", "explain", "find", "grep", "ls", "math_check", "pdf", "plan_init", "plot", "read", "research", "visual"];
+		const freeFull = ["ask_user_question", "course", "demo", "explain", "find", "grep", "hub_model", "hub_search", "ls", "math_check", "ml_visual", "paper_read", "paper_search", "pdf", "plan_init", "plot", "read", "research", "tokenize", "visual"];
 		assert.deepEqual(Object.keys(createTeacherTools(ctx, { explain: true })).sort(), freeFull);
 		assert.deepEqual(
 			Object.keys(createTeacherTools(ctx, { explain: true, research: false })).sort(),

@@ -11,6 +11,12 @@ export interface McpServerEntry {
 }
 
 export const MCP_SERVERS = {
+	huggingface: {
+		label: "Hugging Face",
+		url: "https://huggingface.co/mcp",
+		transport: "streamable-http",
+		timeoutMs: 25_000,
+	},
 	/** Wolfram Cloud MCP: free, no authentication (support.wolfram.com/75237). */
 	wolfram: {
 		label: "Wolfram",

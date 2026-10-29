@@ -118,7 +118,7 @@ function applyResult(part: LhViewPart, result: ToolResultMessage): void {
 		part.state = "output-available";
 		part.output = result.details;
 		const id = (result as { id?: unknown }).id;
-		if (part.type === "tool-plot" && typeof id === "string") part.resultMessageId = id;
+		if ((part.type === "tool-plot" || part.type === "tool-ml_visual") && typeof id === "string") part.resultMessageId = id;
 	}
 }
 
