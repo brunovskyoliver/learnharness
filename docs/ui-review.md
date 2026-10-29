@@ -6,13 +6,16 @@ Start the app with example threads:
 npm run dev:review
 ```
 
-Open [localhost:3000](http://localhost:3000). The sidebar lists four threads prefixed with `UI review`:
+Open [localhost:3000](http://localhost:3000). The sidebar lists seven threads prefixed with `UI review`:
 
 | Thread | What to inspect |
 | --- | --- |
 | [Gradient descent](http://localhost:3000/chat/review-gradient-descent) | Lesson and demo split, 3D surface and path, loss history, parameters, graph focus, question, confidence and composer |
 | [Knowledge check](http://localhost:3000/chat/review-belief-check) | Longer lesson history, plan, math, answered questions and a pending check |
 | [Active practice](http://localhost:3000/chat/review-practice) | Practice sidebar icon, active problem and reasoning controls |
+| [ML panels](http://localhost:3000/chat/review-ml-panels) | All six panel kinds, 3D scatter, linked composition and a failed panel |
+| [ML lookups](http://localhost:3000/chat/review-ml-lookups) | Hub model/search, paper search/read, tokenize, success/failure/unfinished rows and page citations |
+| [ML practice](http://localhost:3000/chat/review-ml-practice) | Active practice with editable real tokens, without revealing its solution |
 | [Practice history](http://localhost:3000/chat/review-practice-history) | Solved and dismissed problems, feedback and between-problem controls |
 
 Home lists three of them under "Waiting for you": two lesson checks and the active practice problem, newest first. Answer or Solve should open the session with the prompt bar expanded on that item and drop `?answer=` from the address; answering it and returning removes the row. A lesson whose plan still has unchecked topics and nothing waiting gets a "Lesson" row after them ("{n} of {total} topics left · next: …", Continue); Continue opens it at the bottom with "Continue with …" in an empty composer and drops `?continue=`, and leaves an existing draft untouched. "Calibration" follows: the review data contributes lines per confidence level; Review on a miss opens its session at the message before that check. Below that, the knowledge graph section holds the live graph at a fixed height: Expand shows it full screen, Escape or Close returns focus to Expand, and Chains covers the whole Home area. With Settings → Graph → Graph rendering off, the same section shows the minimal summary.
@@ -58,3 +61,7 @@ Quick plots (feature 005): a session where the agent called `plot` shows the plo
 Course track (feature 006): a lesson with a recorded syllabus shows a Course section below the diagram in the plan popup (states derived from checks; links open in a new tab) and "Course: n of m covered" on its Home row.
 
 Math check (feature 007): in a session where the agent called `math_check`, each check is one quiet row on the reading edge: "Wolfram · equal", "Wolfram · not equal", "Wolfram · couldn't decide" or "Wolfram · check failed". Expanding a row shows the checked expressions, any counterexample, and Wolfram's reply when it couldn't decide. A check made before a question shows nothing until that question is answered. A grading check during an active problem shows its verdict with "Expressions shown after the problem is concluded". Answered and concluded cards whose answer was checked end with "Checked with Wolfram". The switch is Settings → Agent → Math check.
+
+ML lab review (feature 008): build with `npm run build`, seed an isolated `LH_DATA_DIR` with `npm run seed:review`, then use the same directory with `npm start`. At 320, 390 and 1440px, inspect every panel inline and expanded, expand every lookup row, and inspect the three Agent toggles after Math check. Compare the [nine canvas boards](https://claude.ai/artifact/EmWdcYcnZrXu5Ng1VyHiA6). Verify no page overflow, hidden scrollbar tracks, visible keyboard focus, 44px touch targets, reduced motion and preserved state across focus/theme changes. Edit token text and switch encodings through the actual `/api/tokenize` bridge; move sampling controls, step the network and select shape steps. For dense views use one Tab stop and arrows, with the same readout as pointer hover. Paper links retain page fragments and open in a new tab.
+
+The ML review generator uses synthetic native records and the real local tokenizer, with no network or model. Persisted unfinished calls are settled rows; running rows require a synthetic session stream in the browser review harness and are not misrepresented as running after reload. No submission is required to inspect these examples. The production UI evidence and performance harness live under `~/agent-runs/2026-10-28-feature-008/`.

@@ -86,6 +86,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 
 ## Log
 
+- T051: DESIGN.md now summarizes the binding panel/row/settings contract and owner overrides, PRODUCT.md describes the lab and privacy/caps, and docs/ui-review.md lists all three ML sessions and the production/keyboard checks. Corrected quickstart’s seed task reference from T030 to T050. Documentation links back to the canvas and contracts.
+
 - T050: new ML seed test failed on the absent generator (`t050-red.log`); five seed/store/CLI/preservation tests now pass (`t050-green.log`). `seed-review.mjs` adds the three named ML sessions through its existing exclusive-write path. Eight demo results cover all six kinds, 3D scatter and linked composition; failed panel, all lookup kinds/failures, citations, real server tokenizer output and active token practice included. Running-state tool fixtures are exported for the production synthetic-stream harness; persisted unfinished calls remain honest settled rows. No network/model calls or real-data writes. Test lint passes; scripts are excluded by the existing lint config.
 
 - T049: the dedicated tokens+heatmap composition passes the real runtime self-test; focusing a chip marks the exact header, and an actual `lh-demo-theme` message changes the applied CSS while preserving text, encoding, pin, matrix values, parameter value and linked header through expansion/return. All six composition tests pass (`t049-green.log`). Parent independently passed the first five composition regressions in 5.79 s.
