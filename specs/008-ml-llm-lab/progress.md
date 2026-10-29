@@ -2,7 +2,7 @@
 
 ## Stage
 
-Implementation in progress: T001–T053 complete. Production and accessibility review pass at 320, 390 and 1440 px. Final performance and full gates follow in task order.
+Implementation in progress: T001–T054 complete. Production, accessibility and final performance review pass. Full gates and final report follow.
 
 Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Implementation started.** Binding handoff: see [handoff.md](handoff.md).
 
@@ -93,6 +93,8 @@ Specified, clarified, designed, planned, tasked and analyzed on 2026-10-28. **Im
 - **Open question for Oliver**: does the 10-page cap also cover the researcher's existing `web_fetch_pdf` and `pdf_*` tools? Until he answers, it covers only the new `paper_read`, and the existing tools are unchanged.
 
 ## Log
+
+- T054 complete: unchanged `perf.sh final`/`perf.mjs`, ten cold trials per device with 150 ms latency, 200,000 B/s download, 100,000 B/s upload and 4× CPU. No concurrent heavy job; review server stopped. Baseline → final median: desktop startup 4,844.90 → 4,837.45 ms (−0.15%), sidebar 4,890.95 → 4,885.15 ms (−0.12%); mobile startup 4,827.30 → 4,816.70 ms (−0.22%), sidebar 4,987.45 → 4,969.20 ms (−0.37%). Initial JS 612,829 → 615,137 bytes (+0.38%) on both. All three gated metrics are within 5%. FCP 966 → 966 ms desktop, 964 → 970 ms mobile; API bytes remain 35,237. Runtime 71,263 bytes versus initial 19,804, loaded only with demos and outside startup JS. Raw trials, medians and comparison are `final-perf.json`, `final-summary.json`, `performance-comparison.json`; harness unchanged (SHA256 perf.sh 13d8dbd81823e921e6be88bc1e9969afc08dbb76359861b396158f6ee78555ac, perf.mjs 29430514d1dbb5362d6cca577230711f46439df96ac8bba3b2b52a1674c8d351).
 
 - T053 complete: owner-approved keyboard exception implemented in keyboard-shortcuts/enter-submits, with the necessary Chat marker, composed-kit detection, active QuestionDock and collapsed-question integration. Eighteen targeted tests pass after RED→GREEN, including all six completed tools, composed panels, ordinary chats, pointer versus keyboard focus, and prose/paper-row citations. Scoped lint and production build pass. Final real keyboard walkthrough uses **no programmatic focus**: Tab enters all eight panel frames and their dense controls, keyboard Expand/Escape works, all 19 row summaries activate with Enter, page anchors activate with Enter, and unchanged Hub links activate with Ctrl+Enter. Active/collapsed question cases and reverse Shift+Tab pass at 320/390/1440 (`production-keyboard.json`). External-link activation is intercepted only at click to avoid network/navigation; native keyboard activation is still required to produce the click.
 - T053 harness notes: CSS `iframe:focus` did not identify actual iframe focus; inspection now reads document.activeElement and its contentFrame, without changing focus. Fresh browser contexts isolate each width’s persisted row/dock state. Reverse traversal keeps the active question near the viewport; forward traversal through history can legitimately compact it. These checks supplement the earlier 90 focus/motion/AX probes and six touch-scroll checks; the prior shared-keyboard blocker is resolved. Browser scripts and diagnostics remain in the evidence directory.
