@@ -5,10 +5,10 @@ import type { ConnectionDialog as LoadedDialog } from "./connection-dialog";
 import { Button } from "@/components/ui/button";
 
 export function ConnectionRow({ label, action, disabled, onAction, children, testid, actionTestid }: { label: string; action: string; disabled: boolean; onAction: () => void; children?: React.ReactNode; testid?: string; actionTestid?: string }) {
-	return <div className="flex min-h-14 flex-wrap items-center gap-3 border-b border-border py-3 last:border-b-0" data-testid={testid}>
+	return <div className="flex min-h-14 flex-wrap items-center gap-3 py-3" data-testid={testid}>
 		<span className="text-sm text-foreground">{label}</span>
 		{children}
-		<Button type="button" size="xs" variant={action === "Connect" ? "outline" : "ghost"} className={`ml-auto cursor-pointer disabled:cursor-not-allowed ${action === "Connect" ? "" : "text-muted-foreground hover:text-foreground"}`} data-testid={actionTestid} disabled={disabled} onClick={onAction}>{action}</Button>
+		<Button type="button" size="xs" variant={action === "Connect" ? "outline" : "ghost"} className={`ml-auto cursor-pointer disabled:cursor-not-allowed pointer-coarse:min-h-11 ${action === "Connect" ? "" : "text-muted-foreground hover:text-foreground"}`} data-testid={actionTestid} disabled={disabled} onClick={onAction}>{action}</Button>
 	</div>;
 }
 

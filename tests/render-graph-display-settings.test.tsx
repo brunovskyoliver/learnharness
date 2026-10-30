@@ -1,7 +1,7 @@
 /**
  * Settings → Graph → Display (feature 002): the graph's display controls,
  * moved out of the gear that floated over the graph. SSR pins: the full
- * control set renders from the settings value, dependent controls dim with
+ * control set renders from the settings value, dependent controls lock with
  * their switch, and the section shows an honest loading state before the
  * saved settings arrive (effects never run under renderToStaticMarkup).
  */
@@ -22,10 +22,11 @@ describe("GraphDisplayControls", () => {
 		}
 	});
 
-	it("dims region controls while background colors are off", () => {
+	it("region controls use the muted ink and lock while background colors are off, with no opacity", () => {
 		const off = { ...DEFAULT_RENDER_SETTINGS, regions: { ...DEFAULT_RENDER_SETTINGS.regions, enabled: false } };
 		const html = renderToStaticMarkup(<GraphDisplayControls settings={off} changeSettings={() => {}} />);
-		assert.match(html, /opacity-40"><span[^>]*>Dilation/);
+		assert.match(html, /<span class="[^"]*text-muted-foreground[^"]*">Dilation/);
+		assert.ok(!html.includes("opacity-"));
 	});
 });
 

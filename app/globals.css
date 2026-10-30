@@ -1263,6 +1263,13 @@ body {
 	.ui-icon-button, .prompt-submit { min-width: 44px; min-height: 44px; }
 }
 
+/* Settings: unavailable controls use the muted ink token, never opacity
+   (owner, 2026-10-30). The row jump's highlight is a raised-2 step. */
+[data-settings-surface] [data-slot="button"]:disabled { opacity: 1; color: var(--muted-foreground); }
+[data-settings-jump] { background: var(--accent); }
+[data-testid="settings-search-results"] button:focus-visible,
+[data-testid="settings-nav"] button:focus-visible { outline-offset: -1px; }
+
 /* Secondary view controls keep their touch targets while visual grouping uses space. */
 @media (pointer: coarse) {
 	[data-testid="settings-dialog"] :is(input:not([type="checkbox"]):not([type="range"]), select, button:not([role="switch"])) { min-height: 44px; }

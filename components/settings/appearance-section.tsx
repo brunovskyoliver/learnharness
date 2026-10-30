@@ -189,7 +189,7 @@ export function AppearanceSection({
 	return (
 		<>
 			<SettingsGroup label="Theme">
-			<SettingsRow label="Background" testid="row-background">
+			<SettingsRow label="Background" testid="row-background" rowId="background">
 				<CommitInput
 					value={appearance?.background ?? ""}
 					placeholder="#000000"
@@ -200,8 +200,8 @@ export function AppearanceSection({
 			</SettingsRow>
 			</SettingsGroup>
 			<SettingsGroup label="Reading">
-			<SettingsRow label="Reading font" testid="row-font">
-				<span ref={fontMenuOpen ? menuAnchorRef : undefined} className="relative flex min-w-0 max-w-full items-center gap-2">
+			<SettingsRow label="Reading font" testid="row-font" rowId="font">
+				<span ref={fontMenuOpen ? menuAnchorRef : undefined} className="relative flex w-full min-w-0 items-center gap-2">
 					{/* The MenuTrigger look (agent-section's collapsed
 					    select — it lives unexported there, so the
 					    classes ride inline; the searchable machine is
@@ -218,7 +218,7 @@ export function AppearanceSection({
 								aria-expanded={fontMenuOpen}
 								data-testid="font-trigger"
 								onClick={openFontMenu}
-								className="flex h-9 w-full min-w-20 items-center gap-2 rounded-md border border-border bg-background px-3 font-ui text-sm text-foreground transition-colors hover:border-muted-foreground/50"
+								className="flex h-9 w-full min-w-20 items-center gap-2 rounded-md text-left border border-input bg-background px-3 font-ui text-sm text-foreground transition-colors hover:bg-accent pointer-coarse:h-11"
 							>
 								<span className="min-w-0 flex-1 truncate">{appearance?.fontFamily || DEFAULT_READING_FONT}</span>
 								<ChevronDownIcon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
@@ -237,7 +237,7 @@ export function AppearanceSection({
 							preferredSide="down"
 							anchorTestid="font-trigger"
 							testid="font-menu"
-							menuClass="flex w-[18rem] flex-col gap-0.5 rounded-xl border border-border bg-card p-2 text-sm "
+							menuClass="flex w-[18rem] max-w-[calc(100vw-2rem)] flex-col gap-0.5 rounded-lg bg-popover p-2 text-sm"
 						>
 							<FontMenuList
 								families={localFonts === undefined ? undefined : (localFonts ?? [...CURATED_FALLBACK_FONTS])}
@@ -257,7 +257,7 @@ export function AppearanceSection({
 					)}
 				</span>
 			</SettingsRow>
-			<SettingsRow label="Reading font size" testid="row-prose-size">
+			<SettingsRow label="Reading font size" testid="row-prose-size" rowId="prose-size">
 				<CommitInput
 					type="number"
 					value={String(appearance?.proseFontSize ?? "")}
@@ -280,14 +280,14 @@ export function AppearanceSection({
 			</SettingsRow>
 			</SettingsGroup>
 			<section aria-label="Reading preview" data-testid="reading-preview" className="rounded-lg bg-card p-5">
-				<h3 className="mb-3 text-base font-semibold">Live preview</h3>
+				<h3 className="mb-3 font-title text-lg font-medium">Live preview</h3>
 				<div style={{ fontSize: `${resolved.proseFontSize}px`, lineHeight: 1.6, fontFamily: "var(--font-prose)" }}>
 					<h4 style={{ fontWeight: resolved.mdRendering.headingWeight }} className="mb-2">Gradient descent</h4>
 					<p>A small learning rate makes <strong style={{ color: "var(--lh-ink-strong)" }}>steady progress</strong>. A larger one can jump across the valley, producing a <em style={{ color: "var(--lh-ink-italic)" }}>zigzag path</em>.</p>
 				</div>
 			</section>
 			<SettingsGroup label="Text emphasis">
-			<SettingsRow label="Heading weight" testid="row-heading-weight">
+			<SettingsRow label="Heading weight" testid="row-heading-weight" rowId="heading-weight">
 				<CommitInput
 					type="number"
 					value={String(md?.headingWeight ?? "")}
@@ -313,7 +313,7 @@ export function AppearanceSection({
 			{/* The emphasis inks default to the REGULAR TEXT COLOR now
 			    (appearance wave, 2026-09-26) — the empty-state labels say
 			    so; explicit hex overrides ride unchanged. */}
-			<SettingsRow label="Bold color" testid="row-bold-color">
+			<SettingsRow label="Bold color" testid="row-bold-color" rowId="bold-color">
 				<CommitInput
 					value={md?.boldColor ?? ""}
 					placeholder="same as text"
@@ -322,7 +322,7 @@ export function AppearanceSection({
 					onCommit={(v) => onSectionChange({ ...appearance, mdRendering: { ...md, boldColor: v === "" ? null : v } })}
 				/>
 			</SettingsRow>
-			<SettingsRow label="Italic color" testid="row-italic-color">
+			<SettingsRow label="Italic color" testid="row-italic-color" rowId="italic-color">
 				<CommitInput
 					value={md?.italicColor ?? ""}
 					placeholder="same as text"
@@ -363,7 +363,7 @@ export function GraphSection({
 			    switch below arrived: off ≠ no graph, off = the graph stops
 			    growing. The testid keeps the old name's shape (row-enabled) so
 			    this stays one rename, not a test re-pin. */}
-			<SettingsRow label="Extraction" hint="Off = the graph stops growing" testid="graph-row-enabled">
+			<SettingsRow label="Extraction" hint="Off = the graph stops growing" testid="graph-row-enabled" rowId="extraction">
 				<Toggle
 					checked={graph?.enabled ?? true}
 					label="extraction enabled"
@@ -379,7 +379,7 @@ export function GraphSection({
 			    round): display-only. Off = the home shows the chains view
 			    instead of the canvas. The ledgers, the pipeline, everything
 			    data keeps working — that is the extraction switch above. */}
-			<SettingsRow label="Graph rendering" hint="Off = home shows the chains view" testid="graph-row-rendering">
+			<SettingsRow label="Graph rendering" hint="Off = home shows the chains view" testid="graph-row-rendering" rowId="rendering">
 				<Toggle
 					checked={graph?.rendering ?? true}
 					label="graph rendering enabled"
@@ -389,7 +389,7 @@ export function GraphSection({
 			<SettingsRow
 				label="Extraction chunk budget"
 				hint={`${resolved.extractionChunkTokens} tok`}
-				testid="graph-row-chunk-tokens"
+				testid="graph-row-chunk-tokens" rowId="chunk-budget"
 			>
 				<CommitInput
 					type="number"

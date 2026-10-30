@@ -4,13 +4,14 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { BrailleSpinner } from "@/components/braille-spinner";
 import { SettingsRow, Toggle } from "./controls.tsx";
+import { AUTO_UPDATE_HINT } from "./settings-index";
 import { useUpdateState, type UpdateState } from "./update-state.ts";
 export { useUpdateState, type UpdateState } from "./update-state.ts";
 
 export const APP_VERSION = process.env.LH_VERSION ?? "";
 const HOMEPAGE = process.env.LH_HOMEPAGE ?? "";
 export const MANUAL_UPDATE_HINT = "Checking downloads available updates. Downloaded updates install when you quit the app.";
-export const AUTO_UPDATE_HINT = "Check at startup and every 24 hours. Turning this off does not stop updates already in progress or ready to install.";
+export { AUTO_UPDATE_HINT };
 const UPDATE_ERROR = "Couldn’t check for updates. Try again later.";
 
 export function updateStatusText(state: UpdateState | null): string | null {
@@ -55,25 +56,26 @@ export function UpdateSettings({
 			<SettingsRow
 				label={`Version ${version || "unknown"}`}
 				testid="row-version"
+				rowId="version"
 				hint={
 					<>
 						{status && <span className="block" role="status" data-testid="update-status">{status}</span>}
 						{active && <span className="block">{MANUAL_UPDATE_HINT}</span>}
-						{releaseNotes && <a href={releaseNotes} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:text-foreground hover:underline" data-testid="release-notes">Release notes</a>}
+						{releaseNotes && <a href={releaseNotes} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:text-foreground hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center" data-testid="release-notes">Release notes</a>}
 					</>
 				}
 			>
 				{active && (state.status === "downloaded" ? (
-					<Button type="button" size="xs" className="cursor-pointer" data-testid="update-restart" onClick={() => window.lh?.installUpdate?.()}>Restart</Button>
+					<Button type="button" size="xs" className="cursor-pointer pointer-coarse:min-h-11" data-testid="update-restart" onClick={() => window.lh?.installUpdate?.()}>Restart</Button>
 				) : (
-					<Button type="button" size="xs" variant="outline" className="cursor-pointer disabled:cursor-not-allowed" data-testid="update-check" disabled={busy} aria-busy={busy} onClick={check}>
+					<Button type="button" size="xs" variant="outline" className="cursor-pointer disabled:cursor-not-allowed pointer-coarse:min-h-11" data-testid="update-check" disabled={busy} aria-busy={busy} onClick={check}>
 						{busy && <BrailleSpinner label={state.status === "downloading" ? "Downloading update" : "Checking for updates"} />}
 						Check for updates
 					</Button>
 				))}
 			</SettingsRow>
 			{active && (
-				<SettingsRow label="Automatic updates" hint={AUTO_UPDATE_HINT} testid="row-auto-update">
+				<SettingsRow label="Automatic updates" hint={AUTO_UPDATE_HINT} testid="row-auto-update" rowId="auto-update">
 					<Toggle checked={autoUpdate} label="auto update" onChange={onAutoUpdateChange} />
 				</SettingsRow>
 			)}

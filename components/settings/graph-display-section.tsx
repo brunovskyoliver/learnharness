@@ -32,7 +32,10 @@ import {
 	toSliderPosition,
 	type GraphRenderSettings,
 } from "@/src/core";
+import { cn } from "@/lib/utils";
 import { notifySettingsSaved } from "@/components/settings-signal";
+import { SettingsFailure } from "./controls.tsx";
+import { displayRowId } from "./settings-index";
 
 /**
  * Settings → Graph → Display (feature 002): the graph's display controls,
@@ -45,12 +48,15 @@ export function GraphDisplaySection() {
 	const [settings, setSettings] = useState<GraphRenderSettings | null>(null);
 	const [loadError, setLoadError] = useState(false);
 	const [saveError, setSaveError] = useState(false);
-	// True once the user has moved a control: the server copy must never
+	const [saveRequest, setSaveRequest] = useState(0);
+	const [loadRequest, setLoadRequest] = useState(0);
+// True once the user has moved a control: the server copy must never
 	// clobber a (possibly newer) local change.
 	const userTouched = useRef(false);
 	useEffect(() => {
+		setLoadError(false);
 		fetch("/api/graph/render-settings")
-			.then((res) => (res.ok ? (res.json() as Promise<unknown>) : Promise.reject(new Error(`HTTP ${res.status}`))))
+.then((res) => (res.ok ? (res.json() as Promise<unknown>) : Promise.reject(new Error(`HTTP ${res.status}`))))
 			.then((raw) => {
 				if (!userTouched.current) setSettings(sanitizeRenderSettings(raw));
 			})
@@ -58,7 +64,7 @@ export function GraphDisplaySection() {
 				setLoadError(true);
 				if (!userTouched.current) setSettings(DEFAULT_RENDER_SETTINGS);
 			});
-	}, []);
+	}, [loadRequest]);
 	// Saves are debounced (sliders fire per step); the last value wins.
 	useEffect(() => {
 		if (!settings || !userTouched.current) return;
@@ -76,16 +82,16 @@ export function GraphDisplaySection() {
 				.catch(() => setSaveError(true));
 		}, 400);
 		return () => clearTimeout(id);
-	}, [settings]);
+	}, [settings, saveRequest]);
 	const changeSettings = useCallback((update: (cur: GraphRenderSettings) => GraphRenderSettings) => {
 		userTouched.current = true;
 		setSettings((cur) => update(cur ?? DEFAULT_RENDER_SETTINGS));
 	}, []);
 	if (!settings) return <p role="status" className="text-sm text-muted-foreground">Loading display settings…</p>;
 	return (
-		<div data-testid="graph-display-settings" className="flex flex-col gap-2">
-			{loadError && <p role="status" className="text-sm text-muted-foreground">Could not load the saved display settings. Showing the defaults.</p>}
-			{saveError && <p role="alert" className="text-sm text-destructive">Could not save the display settings. The next change retries.</p>}
+		<div data-testid="graph-display-settings" className="flex flex-col gap-3">
+			{loadError && <SettingsFailure testid="graph-display-load-error" message="Could not load the saved display settings. Showing the defaults." onRetry={() => setLoadRequest((request) => request + 1)} />}
+			{saveError && <SettingsFailure testid="graph-display-save-error" message="Could not save the display settings." onRetry={() => setSaveRequest((request) => request + 1)} />}
 			<GraphDisplayControls settings={settings} changeSettings={changeSettings} />
 		</div>
 	);
@@ -115,13 +121,13 @@ function SettingSlider({
 	/** Value display override (e.g. "1.5×" for zoom) — defaults to the raw number. */
 	display?: string;
 	onChange: (v: number) => void;
-	/** Dependency graying (user 2026-09-17): children dim + lock when
-	 *  their parent toggle/mode is off — consistently across sections. */
+	/** Unavailable (owner, 2026-10-30): children use the muted ink and lock
+	 *  when their parent toggle or mode is off, with no opacity. */
 	disabled?: boolean;
 }) {
 	return (
-		<label className={`flex flex-col gap-1${disabled ? " opacity-40" : ""}`}>
-			<span className="flex items-center justify-between text-sm text-ink-2">
+		<label data-settings-row={displayRowId(label)} className="flex scroll-mt-4 flex-col gap-1 rounded-md">
+			<span className={cn("flex items-center justify-between text-sm", disabled ? "text-muted-foreground" : "text-ink-2")}>
 				{label}
 				<span className="tabular-nums">{display ?? value}</span>
 			</span>
@@ -133,7 +139,7 @@ function SettingSlider({
 				value={value}
 				disabled={disabled}
 				onChange={(e) => onChange(Number(e.target.value))}
-				className="h-1.5 w-full accent-primary"
+				className={cn("h-1.5 w-full accent-ink-2 pointer-coarse:h-11", disabled && "cursor-not-allowed accent-muted-foreground")}
 			/>
 		</label>
 	);
@@ -213,11 +219,11 @@ export function GraphDisplayControls({
 		    graph. The enable switch is a COMPUTE switch: off skips
 		    the whole build (splat/blur/readback/blit), not just
 		    the paint. */}
-		<div className="mt-1.5 flex flex-col gap-1.5 pt-1.5">
-			<span className="text-sm font-medium text-muted-foreground">
+		<div className="mt-3 flex flex-col gap-3">
+			<h4 className="text-sm font-medium text-foreground">
 				Regions
-			</span>
-			<label className="flex cursor-pointer items-center justify-between text-sm text-muted-foreground">
+			</h4>
+			<label data-settings-row={displayRowId("Background colors")} className="flex scroll-mt-4 cursor-pointer items-center justify-between rounded-md text-sm text-ink-2 pointer-coarse:min-h-11">
 				<span>Background colors</span>
 				<input
 					type="checkbox"
@@ -274,12 +280,13 @@ export function GraphDisplayControls({
 					}))}
 			/>
 			<label
-				className={`flex items-center justify-between gap-2 text-sm text-muted-foreground${!regionTuning.enabled ? " opacity-40" : ""}`}
+				data-settings-row={displayRowId("Bitmap resolution")}
+				className={cn("flex scroll-mt-4 items-center justify-between gap-2 rounded-md text-sm", regionTuning.enabled ? "text-ink-2" : "text-muted-foreground")}
 			>
 				<span>Bitmap resolution</span>
 				<select
 					disabled={!regionTuning.enabled}
-					className="rounded-md border bg-background px-1.5 py-0.5 text-sm tabular-nums text-foreground"
+					className={cn("rounded-md border border-input bg-background px-1.5 py-0.5 text-sm tabular-nums pointer-coarse:min-h-11", regionTuning.enabled ? "text-foreground" : "cursor-not-allowed text-muted-foreground")}
 					value={regionTuning.bitmap}
 					onChange={(e) =>
 						changeSettings((cur) => ({
@@ -300,7 +307,7 @@ export function GraphDisplayControls({
 			    the Background colors switch above — labels follow
 			    their own clusterLabels toggle. Size is screen px
 			    (constant at any zoom, unlike node labels). */}
-			<label className="flex cursor-pointer items-center justify-between text-sm text-muted-foreground">
+			<label data-settings-row={displayRowId("Cluster labels")} className="flex scroll-mt-4 cursor-pointer items-center justify-between rounded-md text-sm text-ink-2 pointer-coarse:min-h-11">
 				<span>Cluster labels</span>
 				<input
 					type="checkbox"
@@ -334,10 +341,10 @@ export function GraphDisplayControls({
 		    the negative it is; cluster pull's far left = off.
 		    Order (user 2026-09-17): general forces first; depth
 		    anchor + its gray-out-able controls last. */}
-		<div className="mt-1.5 flex flex-col gap-1.5 pt-1.5">
-			<span className="text-sm font-medium text-muted-foreground">
+		<div className="mt-3 flex flex-col gap-3">
+			<h4 className="text-sm font-medium text-foreground">
 				Physics
-			</span>
+			</h4>
 			<SettingSlider
 				label="Node repulsion"
 				min={0}
@@ -420,10 +427,10 @@ export function GraphDisplayControls({
 			    forces first, then the mode + its conditional
 			    controls at the very bottom — the grayed group reads
 			    as a self-contained sub-section. */}
-			<label className="flex items-center justify-between gap-2 text-sm">
+			<label data-settings-row={displayRowId("Depth anchor")} className="flex scroll-mt-4 items-center justify-between gap-2 rounded-md text-sm text-ink-2">
 				Depth anchor
 				<select
-					className="rounded border bg-background px-1 py-0.5 text-sm"
+					className="rounded-md border border-input bg-background px-1 py-0.5 text-sm text-foreground pointer-coarse:min-h-11"
 					value={physicsTuning.depthMode}
 					onChange={(e) =>
 						changeSettings((cur) => ({

@@ -91,7 +91,7 @@ describe("FontMenuList (thin SSR)", () => {
 			<FontMenuList families={["Georgia", "Menlo"]} effectiveFamily={null} onPick={() => {}} />,
 		);
 		const defaultRow = unset.split('data-testid="font-option-default"')[1]?.split("</button>")[0] ?? "";
-		assert.ok(defaultRow.includes("bg-muted/60"), "unset → the default row is the effective one");
+		assert.ok(defaultRow.includes("bg-muted"), "unset → the default row is the effective one");
 
 		const menlo = renderToStaticMarkup(
 			<FontMenuList families={["Georgia", "Menlo"]} effectiveFamily="Menlo" onPick={() => {}} />,

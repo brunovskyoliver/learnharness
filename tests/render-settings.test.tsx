@@ -20,6 +20,9 @@ import type { GraphSettings } from "../src/core/index.ts";
 import { SettingsDialogBody } from "../components/settings/settings-dialog-content.tsx";
 import { SettingsDialogProvider } from "../components/settings/settings-dialog.tsx";
 import { KEYBOARD_ACTIONS } from "../src/core/index.ts";
+import { readdirSync, readFileSync } from "node:fs";
+import { ConnectionRow } from "../components/settings/connection-controls.tsx";
+import { SettingsFailure, SettingsGroup, SettingsSection } from "../components/settings/controls.tsx";
 
 /** The full opening tag of the element carrying a testid — attribute
  *  order in React output is not contractual, so assertions run on the
@@ -122,7 +125,8 @@ describe("AgentSection (thin SSR)", () => {
 		assert.ok(html.includes("Lets the tutor consult your knowledge map between sessions"), "the describing hint");
 		assert.ok((html.split('data-testid="graph-tools-row"')[1] ?? "").includes('aria-checked="true"'), "absent = on");
 		const rowHtml = html.split('data-testid="graph-tools-row"')[1]?.split('data-testid="tool-row-')[0] ?? "";
-		assert.ok(!rowHtml.includes("opacity-40"), "lit while the graph is on (the search row may dim — no keys in SSR)");
+		assert.ok(!tagOf(html, "graph-tools-row").includes("data-disabled"), "available while the graph is on (the search row may lock, with no keys in SSR)");
+		assert.ok(rowHtml.includes("Lets the tutor"));
 	});
 
 	it("graph disabled dims the graph-tools row with the honest hint (the predicate composes)", () => {
@@ -130,7 +134,11 @@ describe("AgentSection (thin SSR)", () => {
 			<AgentSection agent={undefined} models={undefined} graph={{ enabled: false }} onSectionChange={() => {}} onModelsChange={() => {}} />,
 		);
 		const row = html.split('data-testid="graph-tools-row"')[1]?.split('data-testid="tool-row-')[0] ?? "";
-		assert.ok(tagOf(html, "graph-tools-row").includes("opacity-40"), "row dims when the graph is off");
+		const tag = tagOf(html, "graph-tools-row");
+		assert.ok(tag.includes('data-disabled="true"'), "the row is unavailable when the graph is off");
+		assert.ok(!/ opacity-\d|"opacity-\d/.test(tag), "no opacity on the row");
+		assert.ok(row.includes("text-muted-foreground"), "muted ink on the label");
+		assert.ok(tagOf(html, "toggle-graph-tools").includes("disabled"), "the control locks");
 		assert.ok(row.includes("Graph is disabled"), "the reason hint replaces the description");
 		assert.ok(row.includes("disabled"), "toggle untouchable while the graph is off");
 	});
@@ -306,4 +314,57 @@ it("renders the approved ML tools copy and accessible toggle names", () => {
 	}
 	assert.ok(html.indexOf("ML visuals") > html.indexOf("Math check"));
 	assert.ok(html.indexOf("Creates and revises pages") > html.indexOf("Finds papers on arXiv"), "Pages comes after Papers");
+});
+
+describe("Settings meets DESIGN.md (feature 009, findings 6-12)", () => {
+	const dir = new URL("../components/settings/", import.meta.url);
+	const sources = readdirSync(dir).filter((name) => name.endsWith(".tsx")).map((name) => [name, readFileSync(new URL(name, dir), "utf8")] as const);
+	const strip = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+	it("titles sit on the scale in the title serif", () => {
+		const html = renderToStaticMarkup(<SettingsSection title="Agent"><SettingsGroup label="Models">x</SettingsGroup></SettingsSection>);
+		assert.match(html, /<h2 class="[^"]*font-title[^"]*text-xl/);
+		assert.match(html, /<h3 class="[^"]*font-title[^"]*text-lg/);
+	});
+
+	it("radii are 6px controls and 10px cards only; no rounded-sm, -xl or bare rounded", () => {
+		for (const [name, source] of sources) assert.doesNotMatch(strip(source), /\brounded-(sm|xl|2xl|xs)\b|\brounded(?=[\s"`])/, name);
+		assert.ok(sources.find(([name]) => name === "settings-dialog-content.tsx")![1].includes("rounded-lg border border-border bg-background"), "dialog frame is 10px");
+	});
+
+	it("connection rows have no separator", () => {
+		const html = renderToStaticMarkup(<ConnectionRow label="ChatGPT" action="Connect" disabled={false} onAction={() => {}} testid="row" />);
+		assert.ok(!tagOf(html, "row").includes("border-b"));
+		for (const [name, source] of sources) assert.doesNotMatch(strip(source), /\bborder-b\b|\blast:border-b/, name);
+	});
+
+	it("no opacity on text or surfaces in components/settings, apart from cancelling the field primitive's", () => {
+		for (const [name, source] of sources) {
+			const cleaned = strip(source).replaceAll("group-data-[disabled=true]/field:opacity-100", "");
+			assert.doesNotMatch(cleaned, /\bopacity-\d|\b(bg|border|text)-[a-z-]+\/\d+/, name);
+		}
+	});
+
+	it("a disabled Button in Settings uses muted ink, not its opacity", () => {
+		const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
+		assert.match(css, /\[data-settings-surface\] \[data-slot="button"\]:disabled \{ opacity: 1; color: var\(--muted-foreground\); \}/);
+	});
+
+	it("small controls grow to 44px on coarse pointers", () => {
+		const html = renderToStaticMarkup(<AgentSection agent={undefined} models={undefined} graph={undefined} compaction={undefined} onSectionChange={() => {}} onModelsChange={() => {}} onCompactionChange={() => {}} />);
+		assert.ok(tagOf(html, "slot-model-strong").includes("pointer-coarse:h-11"));
+		assert.ok(tagOf(html, "input-compaction-threshold").includes("pointer-coarse:h-11"));
+		assert.ok(tagOf(html, "quiz-mechanics-free").includes("pointer-coarse:h-11"));
+		assert.ok(tagOf(renderToStaticMarkup(<ConnectionRow label="x" action="Connect" disabled={false} onAction={() => {}} actionTestid="act" />), "act").includes("pointer-coarse:min-h-11"));
+		assert.ok(tagOf(html, "toggle-tool-demo").includes("pointer-coarse:before:-inset-3.5"));
+		for (const name of ["keys-section.tsx"]) assert.doesNotMatch(sources.find(([file]) => file === name)![1], /h-7 (?![^"`]*pointer-coarse:h-11)/);
+	});
+
+	it("a failure reads in words, with details on demand and Try again", () => {
+		const html = renderToStaticMarkup(<SettingsFailure testid="f" retryTestid="r" detailsTestid="d" message="Your Agent settings could not be saved." detail="500: secret" onRetry={() => {}} />);
+		assert.ok(html.includes("Your Agent settings could not be saved."));
+		assert.ok(tagOf(html, "f").includes('role="alert"'));
+		assert.ok(html.includes("Show details") && !html.includes("500: secret"), "raw detail stays hidden until asked");
+		assert.ok(html.includes("Try again"));
+	});
 });

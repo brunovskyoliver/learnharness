@@ -6,6 +6,8 @@
  * intercepted. Optional: LH_UI_SCREENSHOT_DIR saves evidence, LH_UI_PORT picks
  * the port, LH_UI_MENTIONS_ONLY=1 runs only the @ part, LH_UI_PAGES_ONLY=1 only
  * the page pane (real editor corpus, reload, two tabs, restore, phone layer).
+ * LH_UI_SETTINGS_ONLY=1 runs only Settings: search, row jump, Escape layers,
+ * deep link, persistence after reload, failed load and failed save.
  * Set TMPDIR under the home folder for a snap Chromium, whose /tmp is private.
  */
 import assert from "node:assert/strict";
@@ -62,6 +64,7 @@ const MATH_PAGE = "# Title with $x^2$\n\nLet $f(x) = x^2$ and **Gradient descent
 
 const mentionsOnly = process.env.LH_UI_MENTIONS_ONLY === "1";
 const pagesOnly = process.env.LH_UI_PAGES_ONLY === "1";
+const settingsOnly = process.env.LH_UI_SETTINGS_ONLY === "1";
 let server;
 let browser;
 
@@ -490,6 +493,9 @@ try {
 	}
 	assert.ok(ready, "isolated server starts");
 	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true });
+	if (settingsOnly) {
+		for (const width of [1440, 390, 320]) await checkSettings(width);
+	} else {
 	for (const width of pagesOnly ? (process.env.LH_UI_PAGE_WIDTHS ?? "1440,390,320").split(",").filter(Boolean).map(Number) : []) await checkPages(width);
 	if (process.env.LH_UI_ROWS_ONLY === "1") {
 		await checkPageRows();
@@ -510,6 +516,8 @@ try {
 		assert.equal(upload.status, 201, name);
 	}
 	for (const width of pagesOnly ? [] : process.env.LH_UI_WIDTHS?.split(",").map(Number) ?? [1440, 390, 320]) await checkMentions(width);
+	if (!mentionsOnly && !pagesOnly) for (const width of [1440, 390, 320]) await checkSettings(width);
+	}
 } finally {
 	await browser?.close();
 	if (server && server.exitCode === null) {
@@ -517,6 +525,110 @@ try {
 		await new Promise((resolve) => server.once("exit", resolve));
 	}
 	await rm(root, { recursive: true, force: true });
+}
+
+/** Settings against the audit: search, row jump, Escape, deep link, persistence, failed states. */
+async function checkSettings(width) {
+	const page = await browser.newPage();
+	page.setDefaultTimeout(20000);
+	const phone = width < 768;
+	await page.setViewport(phone ? { width, height: 844, isMobile: true, hasTouch: true } : { width, height: 900 });
+	// A smooth row jump would move the targets under Puppeteer's clicks.
+	await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
+	const failures = { load: false, save: false };
+	await page.setRequestInterception(true);
+	page.on("request", (request) => {
+		const url = new URL(request.url());
+		if (failures.load && url.pathname === "/api/settings" && request.method() === "GET") return request.respond({ status: 500, contentType: "application/json", body: "{}" });
+		if (failures.save && url.pathname.startsWith("/api/settings/") && request.method() === "PUT") return request.respond({ status: 500, contentType: "application/json", body: JSON.stringify({ error: "raw internal" }) });
+		return request.continue();
+	});
+	const id = (name) => `[data-testid="${name}"]`;
+	const openSettings = async () => {
+		await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
+		if (phone) { await page.waitForSelector('[aria-label="Open sidebar"]', { visible: true }); for (let i = 0; i < 30 && !(await page.$("[data-mobile-navigation]")); i++) { await page.click('[aria-label="Open sidebar"]'); await pause(300); } }
+		await page.waitForSelector(id("settings-entry"), { visible: true });
+		await page.click(id("settings-entry"));
+		await page.waitForSelector(id("settings-dialog"), { visible: true });
+	};
+	const type = async (text) => {
+		await page.click(id("settings-search"));
+		await page.keyboard.down("Control"); await page.keyboard.press("a"); await page.keyboard.up("Control");
+		await page.keyboard.type(text);
+	};
+	const noOverflow = async (label) => {
+		const fits = await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth);
+		assert.ok(fits, `${label} fits at ${width}`);
+	};
+	try {
+		await openSettings();
+		await page.waitForSelector(id("section-keys"));
+		// Search finds rows, not just categories.
+		await type("thinking");
+		await page.waitForSelector(id("settings-result-slot-strong"), { visible: true });
+		await noOverflow("search results");
+		await type("zzzqq");
+		await page.waitForSelector(id("settings-search-empty"), { visible: true });
+		// Escape clears the search and leaves the dialog open, then closes it.
+		await page.keyboard.press("Escape");
+		await page.waitForSelector(id("settings-nav-agent"), { visible: true });
+		assert.ok(await page.$(id("settings-dialog")), "the first Escape only clears the search");
+		// Jump: section changes and the row's control holds focus.
+		await type("font");
+		await page.waitForSelector(id("settings-result-font"), { visible: true });
+		await page.click(id("settings-result-font"));
+		await page.waitForSelector(id("row-font"), { visible: true });
+		await page.waitForFunction(() => document.activeElement?.matches('[data-testid="font-trigger"]'));
+		await type("thinking");
+		await page.click(id("settings-result-slot-vision"));
+		await page.waitForFunction(() => document.activeElement?.matches('[data-testid="slot-model-vision"]'));
+		// Hidden scrollbars and no page overflow on the real section.
+		await noOverflow("agent section");
+		// Immediate persistence, and it survives a reload.
+		await page.click(id("settings-nav-agent"));
+		await page.waitForSelector(id("toggle-tool-demo"), { visible: true });
+		const saved = page.waitForResponse((r) => r.url().endsWith("/api/settings/agent") && r.request().method() === "PUT");
+		await page.click(id("toggle-tool-demo"));
+		assert.equal((await saved).status(), 200);
+		await page.reload({ waitUntil: "domcontentloaded" });
+		await openSettings();
+		await page.click(id("settings-nav-agent"));
+		await page.waitForSelector(id("toggle-tool-demo"), { visible: true });
+		assert.equal(await page.$eval(id("toggle-tool-demo"), (el) => el.getAttribute("aria-checked")), "false", "the switch persisted");
+		// Failed save: words, details, Try again; the stored value stays.
+		failures.save = true;
+		await page.click(id("toggle-tool-demo"));
+		await page.waitForSelector(id("settings-error"), { visible: true });
+		assert.match(await page.$eval(id("settings-error"), (el) => el.textContent), /Your Agent settings could not be saved\./);
+		await page.click(id("settings-error-details"));
+		assert.match(await page.$eval(id("settings-error"), (el) => el.textContent), /500: raw internal/);
+		assert.equal(await page.$eval(id("toggle-tool-demo"), (el) => el.getAttribute("aria-checked")), "false");
+		failures.save = false;
+		await page.click(id("settings-error-retry"));
+		await page.waitForSelector(id("settings-error"), { hidden: true });
+		await page.waitForFunction(() => document.querySelector('[data-testid="toggle-tool-demo"]').getAttribute("aria-checked") === "true");
+		// Escape closes the dialog when nothing inside claims it.
+		await page.evaluate(() => document.activeElement?.blur());
+		await page.keyboard.press("Escape");
+		await page.waitForSelector(id("settings-dialog"), { hidden: true });
+		// Deep link (the provider row unfolds through the shared open path).
+		failures.load = true;
+		await openSettings();
+		await page.waitForSelector(id("settings-load-error"), { visible: true });
+		failures.load = false;
+		await page.click(id("settings-load-retry"));
+		await page.waitForSelector(id("section-keys"), { visible: true });
+		await type("tavily");
+		await page.click(id("settings-result-TAVILY_API_KEY"));
+		await page.waitForSelector(id("key-tavily_api_key-input"), { visible: true });
+		assert.ok(await page.$eval(id("key-tavily_api_key-input"), (el) => el === document.activeElement), "the unfolded key field holds focus");
+		await page.keyboard.press("Escape");
+		await page.waitForSelector(id("key-tavily_api_key-input"), { hidden: true });
+		assert.ok(await page.$(id("settings-dialog")), "Escape folds the key editor before the dialog");
+		console.log(`PASS settings search, jump, Escape, persistence and failed states at ${width}`);
+	} finally {
+		await page.close();
+	}
 }
 
 async function checkPages(width) {

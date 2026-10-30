@@ -174,21 +174,21 @@ description: "Tasks for feature 009: Library and canvas pages"
 
 ### Tests
 
-- [ ] T074 [P] [US5] tests/settings-index.test.tsx: drift test between `data-settings-row` and the index in every section and mode; "thinking" and "font" find rows; desktop-only and hosted-only rows filtered
-- [ ] T075 [P] [US5] Extend tests/render-settings.test.tsx: type classes, radii, no `border-b` on connection rows, no `opacity-` on text in components/settings, dimmed row uses muted ink with a locked control, failed save reads in words with Show details and Try again, failed load has Try again that refetches, coarse-pointer classes on small controls
+- [X] T074 [P] [US5] tests/settings-index.test.tsx: drift test between `data-settings-row` and the index in every section and mode; "thinking" and "font" find rows; desktop-only and hosted-only rows filtered
+- [X] T075 [P] [US5] Extend tests/render-settings.test.tsx: type classes, radii, no `border-b` on connection rows, no `opacity-` on text in components/settings, dimmed row uses muted ink with a locked control, failed save reads in words with Show details and Try again, failed load has Try again that refetches, coarse-pointer classes on small controls
 
 ### Implementation
 
-- [ ] T076 [US5] Create components/settings/settings-index.ts, moving `TOOL_COPY` there, and add `rowId` to `SettingsRow` in controls.tsx plus `data-settings-row` on rows in agent-section.tsx, appearance-section.tsx, keyboard-section.tsx, update-settings.tsx, keys-section.tsx, connection-controls.tsx and graph-display-section.tsx
-- [ ] T077 [US5] Add search results under category headings and the row jump effect in components/settings/settings-dialog-content.tsx, keeping the keys unfold (finding 5, FR-017)
-- [ ] T078 [P] [US5] Type scale in components/settings/controls.tsx lines 34 and 54 (finding 6)
-- [ ] T079 [US5] Radii in every file listed under finding 7 in contracts/ui-contract.md
-- [ ] T080 [P] [US5] Remove the separator in components/settings/connection-controls.tsx:8 (finding 8)
-- [ ] T081 [US5] Coarse-pointer 44 px targets in every file listed under finding 9
-- [ ] T082 [US5] Muted ink and locked controls in controls.tsx, graph-display-section.tsx, keys-section.tsx, agent-section.tsx and toggle.tsx, and a scoped override for components/ui/field.tsx; update the 2026-09-20 comment in controls.tsx (finding 10)
-- [ ] T083 [US5] Plain errors, Show details and Try again; loading skeleton and load retry in components/settings/settings-dialog-content.tsx (findings 11 and 12)
-- [ ] T084 [P] [US5] Correct the scrollbar comments at components/settings/settings-dialog-content.tsx:132 and 306 (finding 14); record finding 13 as closed by T020 and T024 in progress.md
-- [ ] T085 [US5] Extend scripts/check-library-ui.mjs: settings search and jump, Escape, deep link, persistence after reload, at 320, 390 and 1440 px
+- [X] T076 [US5] Create components/settings/settings-index.ts, moving `TOOL_COPY` there, and add `rowId` to `SettingsRow` in controls.tsx plus `data-settings-row` on rows in agent-section.tsx, appearance-section.tsx, keyboard-section.tsx, update-settings.tsx, keys-section.tsx, connection-controls.tsx and graph-display-section.tsx
+- [X] T077 [US5] Add search results under category headings and the row jump effect in components/settings/settings-dialog-content.tsx, keeping the keys unfold (finding 5, FR-017)
+- [X] T078 [P] [US5] Type scale in components/settings/controls.tsx lines 34 and 54 (finding 6)
+- [X] T079 [US5] Radii in every file listed under finding 7 in contracts/ui-contract.md
+- [X] T080 [P] [US5] Remove the separator in components/settings/connection-controls.tsx:8 (finding 8)
+- [X] T081 [US5] Coarse-pointer 44 px targets in every file listed under finding 9
+- [X] T082 [US5] Muted ink and locked controls in controls.tsx, graph-display-section.tsx, keys-section.tsx, agent-section.tsx and toggle.tsx, and a scoped override for components/ui/field.tsx; update the 2026-09-20 comment in controls.tsx (finding 10)
+- [X] T083 [US5] Plain errors, Show details and Try again; loading skeleton and load retry in components/settings/settings-dialog-content.tsx (findings 11 and 12)
+- [X] T084 [P] [US5] Correct the scrollbar comments at components/settings/settings-dialog-content.tsx:132 and 306 (finding 14); record finding 13 as closed by T020 and T024 in progress.md
+- [X] T085 [US5] Extend scripts/check-library-ui.mjs: settings search and jump, Escape, deep link, persistence after reload, at 320, 390 and 1440 px
 
 **Checkpoint**: SC-005 can be checked against the audit.
 
