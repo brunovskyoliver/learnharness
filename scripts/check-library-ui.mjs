@@ -491,11 +491,17 @@ try {
 	assert.ok(ready, "isolated server starts");
 	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true });
 	for (const width of pagesOnly ? (process.env.LH_UI_PAGE_WIDTHS ?? "1440,390,320").split(",").filter(Boolean).map(Number) : []) await checkPages(width);
-	if (pagesOnly) await checkPageCorpus();
+	if (process.env.LH_UI_ROWS_ONLY === "1") {
+		await checkPageRows();
+		await checkPageAndDemo();
+	}
+	else if (pagesOnly) await checkPageCorpus();
 	if (!mentionsOnly && !pagesOnly) {
 		await checkLibrary();
 		for (const width of [1440, 390, 320]) await checkPages(width);
 		await checkPageCorpus();
+		await checkPageRows();
+		await checkPageAndDemo();
 	}
 	// A clean folder, then the @ lists over known names.
 	for (const name of pagesOnly ? [] : await readdir(files).catch(() => [])) await rm(path.join(files, name));
@@ -693,6 +699,138 @@ async function checkPages(width) {
 	await closePane();
 	assert.deepEqual(errors, [], `${width}px: no browser exceptions`);
 	await page.close();
+}
+
+/** The transcript rows, from a seeded tool result, since no model runs here. */
+async function checkPageRows() {
+	const made = await pageApi.create("Row page", "Agent text with $x$.\n");
+	const lesson = await golden("chat_mv27rrra_feff23b6");
+	const replyBase = lesson.messages.find((m) => m.role === "assistant" && m.stopReason === "stop");
+	const call = (id, name, args) => ({ ...replyBase, id: `a_${id}`, stopReason: "toolUse", content: [{ type: "toolCall", id, name, arguments: args }] });
+	const result = (id, name, details) => ({ id: `r_${id}`, role: "toolResult", toolCallId: id, toolName: name, content: [{ type: "text", text: JSON.stringify(details) }], details, isError: false, timestamp: 3 });
+	const steps = [
+		["c1", "page_create", { name: "Row page", content: "SECRET" }, { outcome: "created", itemId: made.id, name: "Row page", version: 1 }],
+		["c2", "page_revise", { item: "Row page", baseVersion: 1, content: "SECRET" }, { outcome: "revised", itemId: made.id, name: "Row page", version: 3, savedLearnerVersion: 2 }],
+		["c3", "page_revise", { item: "Row page", baseVersion: 1, content: "SECRET" }, { outcome: "stale", reason: "The page is at version 3 (the learner's edits were saved). Read it and redo your edit.", itemId: made.id }],
+		["c4", "page_create", { name: "x", content: "SECRET" }, { outcome: "failed", reason: "Pages can't be written while a question is waiting for his answer." }],
+		["c5", "library_read", { item: "Row page" }, { outcome: "read", itemId: made.id, name: "Row page", kind: "page", size: 10 }],
+		["c6", "library_read", { item: "gone" }, { outcome: "failed", reason: "That item was deleted from the Library." }],
+	];
+	const chats = path.join(data, "chats");
+	await mkdir(chats, { recursive: true });
+	await writeFile(path.join(chats, "page-rows.json"), JSON.stringify({
+		...structuredClone(lesson), id: "page-rows", settings: { model: { provider: "openrouter", id: "openai/gpt-4o" } },
+		messages: [
+			{ id: "m_user", role: "user", content: "Make a page.", timestamp: 1 },
+			...steps.flatMap(([id, name, args, details]) => [call(id, name, args), result(id, name, details)]),
+			{ ...replyBase, id: "m_done", content: [{ type: "text", text: "Done." }] },
+		],
+	}));
+	for (const width of [1440, 390, 320]) {
+		const page = await browser.newPage();
+		page.setDefaultTimeout(30000);
+		await page.setViewport({ width, height: 900 });
+		await page.goto(`${base}/chat/page-rows`, { waitUntil: "domcontentloaded" });
+		await page.waitForSelector('[data-testid="page-row"]', { timeout: 60000 });
+		await page.waitForFunction(() => document.querySelectorAll('[data-testid="page-row"]').length === 6);
+		const headlines = await page.$$eval('[data-testid="page-row"] summary', (rows) => rows.map((el) => el.innerText.trim()));
+		assert.deepEqual(headlines, ["Page · created Row page", "Page · revised Row page · version 3", "Page · couldn't revise, it changed", "Page · failed", "Library · read Row page", "Library · failed"]);
+		assert.ok(!(await page.$eval("[data-chat-id]", (el) => el.innerText)).includes("SECRET"), "inputs never show");
+		// Its open state is saved per session, so an earlier width may have left it open.
+		if (!(await page.$eval('[data-testid="page-row"][data-tool="page_revise"]', (el) => el.open))) await (await page.$$('[data-testid="page-row"] summary'))[1].click();
+		await page.waitForFunction(() => document.querySelector('[data-tool="page_revise"]')?.innerText.includes("Saved your edits first as version 2"));
+		if (shots) await page.screenshot({ path: path.join(shots, `page-${width}-rows.png`) });
+		// The row opens the pane beside the chat.
+		await page.click('[data-testid="page-row"][data-tool="page_revise"] [aria-label="Open Row page"]');
+		await page.waitForSelector(editor, { timeout: 60000 });
+		await page.waitForFunction(() => document.querySelector('[data-testid="page-editor"] .katex'));
+		if (shots) await page.screenshot({ path: path.join(shots, `page-${width}-beside-chat.png`) });
+		const box = await page.$eval('[data-testid="page-pane"]', (el) => { const r = el.getBoundingClientRect(); return [r.left, r.width]; });
+		if (width < 768) assert.deepEqual(box, [0, width]);
+		else assert.ok(box[0] > 200 && box[1] < width - 200, `beside the chat: ${box}`);
+		// An outside version while the page is open: clean tab follows; dirty one keeps its text.
+		const before = await pageApi.read(made.id);
+		const marker = `Outside ${width}`;
+		await fetch(`${base}/api/library/pages/${made.id}/versions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ base: before.head.n, rev: 0, content: `${marker}\n` }) });
+		await page.waitForFunction((text) => document.querySelector('[data-testid="page-editor"]')?.textContent.includes(text), {}, marker);
+		await page.click(`${editor} p`, { offset: { x: 2, y: 6 } });
+		await page.keyboard.type("Mine ");
+		await pause(300);
+		const now = await pageApi.read(made.id);
+		await fetch(`${base}/api/library/pages/${made.id}/versions`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ base: now.head.n, rev: now.draft?.rev ?? 0, content: `Revision ${width} with $x$.\n` }) });
+		await page.waitForSelector('[data-testid="page-conflict"]');
+		assert.ok((await page.$eval(editor, (el) => el.textContent)).includes("Mine "), "his text stays");
+		if (shots) await page.screenshot({ path: path.join(shots, `page-${width}-revision-conflict.png`) });
+		await page.click('[data-testid="page-use-latest"]');
+		await page.waitForFunction((text) => document.querySelector('[data-testid="page-editor"]')?.textContent.includes(text), {}, `Revision ${width}`);
+		const versions = await pageApi.versions(made.id);
+		const texts = await Promise.all(versions.map((v) => pageApi.text(made.id, v.n)));
+		assert.ok(texts.some((t) => t.includes("Mine ")), "his text is in history");
+		await page.click(width < 768 ? '[data-testid="page-back"]' : '[data-testid="page-close"]');
+		await page.waitForFunction(() => !document.querySelector('[data-testid="page-pane"]'));
+		await page.close();
+		console.log(`PASS ${width}px rows read as agreed, open the pane, an outside revision follows or conflicts with no loss`);
+	}
+}
+
+/** The shared column: a question's automatic demo doesn't replace an open page;
+ *  an explicit open of either wins; the one iframe stays alive throughout. */
+async function checkPageAndDemo() {
+	const made = await pageApi.create("Beside demo", "Page beside a demo.\n");
+	const lesson = await golden("chat_mv27rrra_feff23b6");
+	const plan = lesson.messages.findIndex((m) => m.role === "toolResult" && m.toolName === "plan_init" && m.details?.tree);
+	const check = lesson.messages.findIndex((m, i) => i > plan && m.role === "assistant" && m.content?.some((p) => p.type === "toolCall" && p.name === "quiz" && p.arguments.type === "check"));
+	const html = '<html><body><input aria-label="Value" value="3"><script>window.identity=Math.random()</script></body></html>';
+	const demo = { id: "steer_demo", role: "custom", customType: "subagent-steer", content: "Demo delivered.", display: true, details: { jobId: "d", kind: "demo", toolCallId: "demo-job", result: { title: "Page and demo", html, tested: true } }, timestamp: 2 };
+	const replyBase = lesson.messages.find((m) => m.role === "assistant" && m.stopReason === "stop");
+	const details = { outcome: "created", itemId: made.id, name: "Beside demo", version: 1 };
+	const question = structuredClone(lesson.messages[check]);
+	for (const part of question.content) if (part.type === "toolCall" && part.name === "quiz") part.arguments.demoRef = { messageId: demo.id };
+	await writeFile(path.join(data, "chats", "page-demo.json"), JSON.stringify({
+		...structuredClone(lesson), id: "page-demo", settings: { model: { provider: "openrouter", id: "openai/gpt-4o" } },
+		messages: [
+			...lesson.messages.slice(0, check),
+			demo,
+			{ ...replyBase, id: "a_pc", stopReason: "toolUse", content: [{ type: "toolCall", id: "pc", name: "page_create", arguments: { name: "Beside demo", content: "x" } }] },
+			{ id: "r_pc", role: "toolResult", toolCallId: "pc", toolName: "page_create", content: [{ type: "text", text: "{}" }], details, isError: false, timestamp: 3 },
+			question,
+		],
+	}));
+	const page = await browser.newPage();
+	page.setDefaultTimeout(30000);
+	await page.setViewport({ width: 1440, height: 900 });
+	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
+	await openPage(page, "Beside demo");
+	await page.goto(`${base}/chat/page-demo`, { waitUntil: "domcontentloaded" });
+	await page.waitForSelector('[data-testid="page-pane"]', { timeout: 60000 });
+	await page.waitForSelector(".question-demo-reference button", { timeout: 60000 });
+	await pause(800);
+	assert.equal(await page.$('[data-testid="demo-panel"]'), null, "the automatic open leaves the page");
+	assert.ok(await page.$('[data-testid="page-pane"]'));
+	await page.click(".question-demo-reference button");
+	await page.waitForSelector('[data-testid="demo-panel"]');
+	await page.waitForFunction(() => !document.querySelector('[data-testid="page-pane"]'));
+	// The lesson fixture holds other demos; only this one's document counts.
+	const thisDemo = async () => {
+		const found = [];
+		for (const frame of page.frames()) if (await frame.$('input[aria-label="Value"]').catch(() => null)) found.push(frame);
+		return found;
+	};
+	for (let i = 0; i < 40 && (await thisDemo()).length === 0; i++) await pause(250);
+	assert.equal((await thisDemo()).length, 1, "one live iframe");
+	const identity = await (await thisDemo())[0].evaluate(() => window.identity);
+	if (shots) await page.screenshot({ path: path.join(shots, "page-1440-demo-open.png") });
+	await page.evaluate(() => { const row = document.querySelector('[data-testid="page-row"]'); row.open = true; });
+	await page.waitForSelector('[data-testid="page-row"] [aria-label="Open Beside demo"]');
+	await page.$eval('[data-testid="page-row"] [aria-label="Open Beside demo"]', (el) => el.click());
+	await page.waitForSelector('[data-testid="page-pane"]');
+	await page.waitForFunction(() => !document.querySelector('[data-testid="demo-panel"]'));
+	if (shots) await page.screenshot({ path: path.join(shots, "page-1440-page-over-demo.png") });
+	assert.equal((await thisDemo()).length, 1, "still one iframe, back in the transcript");
+	assert.equal(await (await thisDemo())[0].evaluate(() => window.identity), identity, "the demo did not reload");
+	await page.click('[data-testid="page-close"]');
+	await page.close();
+	console.log("PASS page and demo share the column: automatic open respected, explicit open wins, same iframe");
 }
 
 /** Every corpus entry through the real editor: open, save untouched, then type

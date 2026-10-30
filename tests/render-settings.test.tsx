@@ -144,7 +144,7 @@ describe("AgentSection (thin SSR)", () => {
 	});
 
 	it("renders the owner's tool list — research, demo, visual, pdf, math check (feature 007)", () => {
-		assert.deepEqual([...TOGGLE_TOOLS], ["research", "demo", "visual", "pdf", "math_check", "ml_visuals", "model_hub", "papers"]);
+		assert.deepEqual([...TOGGLE_TOOLS], ["research", "demo", "visual", "pdf", "math_check", "ml_visuals", "model_hub", "papers", "pages"]);
 		const html = renderToStaticMarkup(<AgentSection agent={undefined} models={undefined} graph={undefined} onSectionChange={() => {}} onModelsChange={() => {}} />);
 		for (const id of TOGGLE_TOOLS) assert.ok(html.includes(`data-testid="tool-row-${id}"`), id);
 	});
@@ -299,9 +299,11 @@ it("renders the approved ML tools copy and accessible toggle names", () => {
 		["ml-visuals", "ML visuals", "Shows tokens, attention, sampling, networks and shapes as interactive panels"],
 		["model-hub", "Model hub", "Looks up model configs, datasets and papers on Hugging Face"],
 		["papers", "Papers", "Finds papers on arXiv and Semantic Scholar and cites their pages"],
+		["pages", "Pages", "Creates and revises pages you can edit beside the lesson"],
 	]) {
 		assert.ok(html.includes(label!)); assert.ok(html.includes(hint!));
 		assert.ok(tagOf(html, `toggle-tool-${id}`).includes(`aria-label="tool ${id!.replaceAll("-", " ")}"`));
 	}
 	assert.ok(html.indexOf("ML visuals") > html.indexOf("Math check"));
+	assert.ok(html.indexOf("Creates and revises pages") > html.indexOf("Finds papers on arXiv"), "Pages comes after Papers");
 });

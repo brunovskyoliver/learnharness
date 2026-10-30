@@ -147,20 +147,20 @@ description: "Tasks for feature 009: Library and canvas pages"
 
 ### Tests
 
-- [ ] T063 [P] [US4] Tool tests in tests/page-tools.test.ts: create; revise with `content` and with `edits`; a stale base refuses after committing the learner's draft as a version; a `find` matching zero or two times refuses; repeated `toolCallId` is idempotent; refused during a dangling question and an active problem; versions attributed to `agent` and restorable; no learner or agent text lost in any order
-- [ ] T064 [P] [US4] Toggle tests in tests/settings-body.test.ts and tests/render-settings.test.tsx: `pages` accepted; off removes `page_create` and `page_revise` from teacher and practice registries; `library_read` stays; the prober never holds page tools
-- [ ] T065 [P] [US4] Row tests in tests/render-page-row.test.tsx: each headline in contracts/ui-contract.md; running shows no input; opening from the row
-- [ ] T066 [P] [US4] Test in tests/chats-delete.test.ts or the existing chat deletion test: deleting a session keeps the page and clears `origin.chatId`
+- [X] T063 [P] [US4] Tool tests in tests/page-tools.test.ts: create; revise with `content` and with `edits`; a stale base refuses after committing the learner's draft as a version; a `find` matching zero or two times refuses; repeated `toolCallId` is idempotent; refused during a dangling question and an active problem; versions attributed to `agent` and restorable; no learner or agent text lost in any order
+- [X] T064 [P] [US4] Toggle tests in tests/settings-body.test.ts and tests/render-settings.test.tsx: `pages` accepted; off removes `page_create` and `page_revise` from teacher and practice registries; `library_read` stays; the prober never holds page tools
+- [X] T065 [P] [US4] Row tests in tests/render-page-row.test.tsx: each headline in contracts/ui-contract.md; running shows no input; opening from the row
+- [X] T066 [P] [US4] Test in tests/chats-delete.test.ts or the existing chat deletion test: deleting a session keeps the page and clears `origin.chatId`
 
 ### Implementation
 
-- [ ] T067 [P] [US4] Create src/core/page-edits.ts with pure find/replace
-- [ ] T068 [US4] Create src/agent/tools/pages.ts per contracts/agent-tools.md and register in src/agent/tools.ts and src/agent/tools/practice.ts behind `enabled?.pages`
-- [ ] T069 [US4] Add `pages` to `TOGGLEABLE_TOOLS` in src/core/pending.ts and to `TOGGLE_TOOLS` and `TOOL_COPY` in components/settings/agent-section.tsx; add activity labels
-- [ ] T070 [US4] Add headlines to src/core/lookups.ts and create components/library/page-row.tsx on the components/artifacts/lookup-row.tsx skeleton; extend the native-focus list in components/chat.tsx:873 if the owner wants these rows included
-- [ ] T071 [US4] Add src/agent/prompts/teacher/47-pages.md verbatim from approved contracts/doctrine.md
-- [ ] T072 [US4] Clear `origin.chatId` on session deletion in src/server/chats.ts through the store
-- [ ] T073 [US4] Extend scripts/check-library-ui.mjs with a stubbed tool result: row opens the pane; open draft plus revision shows the conflict or update line
+- [X] T067 [P] [US4] Create src/core/page-edits.ts with pure find/replace
+- [X] T068 [US4] Create src/agent/tools/pages.ts per contracts/agent-tools.md and register in src/agent/tools.ts and src/agent/tools/practice.ts behind `enabled?.pages`
+- [X] T069 [US4] Add `pages` to `TOGGLEABLE_TOOLS` in src/core/pending.ts and to `TOGGLE_TOOLS` and `TOOL_COPY` in components/settings/agent-section.tsx; add activity labels
+- [X] T070 [US4] Add headlines to src/core/lookups.ts and create components/library/page-row.tsx on the components/artifacts/lookup-row.tsx skeleton; extend the native-focus list in components/chat.tsx:873 if the owner wants these rows included
+- [X] T071 [US4] Add src/agent/prompts/teacher/47-pages.md verbatim from approved contracts/doctrine.md
+- [X] T072 [US4] Clear `origin.chatId` on session deletion in src/server/chats.ts through the store
+- [X] T073 [US4] Extend scripts/check-library-ui.mjs with a stubbed tool result: row opens the pane; open draft plus revision shows the conflict or update line
 
 **Checkpoint**: all P1 and P2 stories work.
 

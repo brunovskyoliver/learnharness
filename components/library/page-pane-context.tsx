@@ -8,7 +8,14 @@ import type { LibraryKind } from "@/src/core";
 
 /** What the pane has open. Small and free of the editor, so it can sit in the
  *  layout; the pane itself loads on the first open (research R14). */
-export interface PaneItem { id: string; name: string; kind: LibraryKind; size: number }
+export interface PaneItem {
+	id: string;
+	name: string;
+	kind: LibraryKind;
+	size: number;
+	/** Open on its version list, from a transcript row. */
+	history?: boolean;
+}
 
 export interface PagePaneApi {
 	item: PaneItem | null;

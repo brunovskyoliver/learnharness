@@ -171,7 +171,8 @@ export function PaneHeader({ phone, name, status, actions, onClose, closeLabel }
 
 function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi; phone: boolean }) {
 	const { controller, state, loadFailed, flush } = usePageDraft(item.id);
-	const [history, setHistory] = useState(false);
+	const [history, setHistory] = useState(!!item.history);
+	useEffect(() => { if (item.history) setHistory(true); }, [item.history, pane.openCount]);
 	const editor = useRef<PageEditorHandle>(null);
 	flush.current = () => editor.current?.flush();
 	const root = useRef<HTMLElement | null>(null);

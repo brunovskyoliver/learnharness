@@ -12,11 +12,13 @@ import {
 	quizInputObject,
 	quizInputProblems,
 } from "../core/question-core.ts";
+import { activeProblemOf, danglingQuestionOf } from "../core/native-messages.ts";
 import { filterEnabledTools, type EnabledTools } from "../core/pending.ts";
 import type { JobRecord } from "../core/contracts.ts";
 import type { PaperFiles, JobStore } from "../core/ports.ts";
 import { jobTools, type JobDispatchInput } from "./tools/jobs.ts";
 import { libraryTools, type LibraryToolContext } from "./tools/library.ts";
+import { PAGE_BLOCKED_PROBLEM, PAGE_BLOCKED_QUESTION, pageTools } from "./tools/pages.ts";
 import { mlVisualTool } from "./tools/ml-visual.ts";
 import { tokenizeTool } from "./tools/tokenize.ts";
 import { plotTool } from "./tools/plot.ts";
@@ -495,6 +497,16 @@ export function createTeacherTools(
 			math_check: mathCheckTool(),
 			...(enabled?.model_hub === false ? {} : createHubTools()),
 			...(enabled?.papers === false ? {} : createPaperTools(ctx.paperFiles)),
+			// Pages (feature 009): not for the prober, which assesses and doesn't teach.
+			...(enabled?.pages === false || !ctx.library ? {} : pageTools({
+				store: ctx.library.store,
+				chatId: ctx.chatId,
+				blocked: () => {
+					const messages = ctx.chatStore.getChat(ctx.chatId)?.messages ?? [];
+					if (danglingQuestionOf(messages)) return PAGE_BLOCKED_QUESTION;
+					return activeProblemOf(messages) ? PAGE_BLOCKED_PROBLEM : null;
+				},
+			})),
 		},
 		withoutMechanics(enabled),
 		),

@@ -55,6 +55,7 @@ import { AbortTurnDialog, type AbortMode } from "@/components/abort-turn-dialog"
 import { ArrowRightIcon, DumbbellIcon, PanelRightIcon, PencilIcon, WaypointsIcon } from "lucide-react";
 import { DemoPanel } from "@/components/artifacts/demo-panel";
 import { PagePaneSlot, usePagePane } from "@/components/library/page-pane-context";
+import { isShownPageFailure } from "@/components/library/page-row";
 import { DemoPanelContext, sessionDemos, type DemoPanelApi } from "@/components/artifacts/demo-panel-context";
 import type { PlanBlockData } from "@/src/core";
 import { QuestionDock } from "@/components/question-dock";
@@ -1547,7 +1548,7 @@ function ChatView({
 													part.type.startsWith("tool-") &&
 													part.errorText !== "Operation aborted" &&
 													// Feature 007: a failed math check says so in its own row.
-													!isShownMathCheckFailure(part) && !isShownLookupFailure(part) &&
+													!isShownMathCheckFailure(part) && !isShownLookupFailure(part) && !isShownPageFailure(part) &&
 													(part.type !== "tool-ml_visual" || String(part.errorText ?? "").startsWith("Invalid tool input"))
 												) {
 													return (

@@ -23,13 +23,14 @@ import { findTool } from "./find.ts";
 import { grepTool } from "./grep.ts";
 import { jobTools, type JobToolContext } from "./jobs.ts";
 import { libraryTools, type LibraryToolContext } from "./library.ts";
+import { PAGE_BLOCKED_PROBLEM, PAGE_BLOCKED_QUESTION, pageTools } from "./pages.ts";
 import { mlVisualTool } from "./ml-visual.ts";
 import { tokenizeTool } from "./tokenize.ts";
 import { plotTool } from "./plot.ts";
 import { mathCheckTool } from "./math-check.ts";
 import type { EnabledTools } from "../../core/pending.ts";
 import { proberGraphTools, type GraphToolContext } from "./graph.ts";
-import { activeProblemOf } from "../../core/native-messages.ts";
+import { activeProblemOf, danglingQuestionOf } from "../../core/native-messages.ts";
 import type { LhMessage } from "../../core/native-messages.ts";
 import { concludeResult, invalidInputResult, problemResult } from "../tool-execute.ts";
 import { healEncodedArguments, healToolRecord } from "./heal.ts";
@@ -256,6 +257,16 @@ export function practiceTools(ctx: PracticeToolContext, enabled?: EnabledTools):
 		...(jobs ? { pdf: jobs.pdf! } : {}),
 		...(jobs?.image ? { image: jobs.image } : {}),
 		...(ctx.library ? libraryTools(ctx.library) : {}),
+		// Pages (feature 009). The gate is the turn's truth: a problem concluded or
+		// posed earlier in this turn isn't in the stored record yet.
+		...(enabled?.pages === false || !ctx.library ? {} : pageTools({
+			store: ctx.library.store,
+			chatId: ctx.chatId,
+			blocked: () => {
+				if (gate.problemActive) return PAGE_BLOCKED_PROBLEM;
+				return danglingQuestionOf(ctx.chatStore.getChat(ctx.chatId)?.messages ?? []) ? PAGE_BLOCKED_QUESTION : null;
+			},
+		})),
 		// Quick plots (feature 005): on the learner's request only (doctrine).
 		plot: plotTool(),
 			...(enabled?.ml_visuals === false ? {} : { ml_visual: mlVisualTool(), tokenize: tokenizeTool() }),

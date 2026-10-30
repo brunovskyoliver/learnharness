@@ -102,4 +102,4 @@ export * from "./course.ts";
 
 export { ML_PANEL_DATA_SCHEMAS, ML_PANEL_EXPRESSION_FIELDS, mlPanelDataProblems, type MlPanelKind, type MlPanelData } from "./demo-kit.ts";
 export { MlVisualInputSchema, mlVisualInputProblems, mlVisualKitSpec, type MlVisualInput } from "./ml-visual.ts";
-export { lookupFailureHeadline, lookupHeadline, paperPageRange, type HubLookup, type PaperResult, type PaperSearch, type PaperRead, type TokenizeDetails, type LookupDetails } from "./lookups.ts";
+export { lookupFailureHeadline, lookupHeadline, pageRowHeadline, paperPageRange, type PageRowDetails, type HubLookup, type PaperResult, type PaperSearch, type PaperRead, type TokenizeDetails, type LookupDetails } from "./lookups.ts";

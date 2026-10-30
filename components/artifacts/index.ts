@@ -7,6 +7,7 @@ import { ProbeDoneCard } from "@/components/artifacts/probe-done-card";
 import { ToolCallCard } from "@/components/artifacts/tool-call-card";
 import { PlotCard } from "@/components/artifacts/plot-card";
 import { LookupRow } from "@/components/artifacts/lookup-row";
+import { PageRow } from "@/components/library/page-row";
 import { MathCheckCard } from "@/components/artifacts/math-check-card";
 import { ProblemCard, ConcludeCard } from "@/components/practice-cards";
 
@@ -43,6 +44,9 @@ export const artifactRenderers: Record<string, ComponentType<ArtifactPartProps>>
 	hub_model: LookupRow,
 	paper_search: LookupRow,
 	paper_read: LookupRow,
+	page_create: PageRow,
+	page_revise: PageRow,
+	library_read: PageRow,
 	// The probe conclusion: the assessment belongs to the learner as much as
 	// to the transcript (docs/probe-teach-split.md §2). Plain v1 card.
 	probe_done: ProbeDoneCard,

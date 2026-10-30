@@ -261,7 +261,7 @@ describe("tool toggles (core/pending.ts + factories)", () => {
 		// learner-fs set, plan tools, and probe_done. The settings WRITE side
 		// validates against this list (settings-body). Feature 007 (owner
 		// delegation, 2026-10-28) adds the math check, on by default.
-		assert.deepEqual(TOGGLEABLE_TOOLS, ["research", "demo", "visual", "pdf", "math_check", "ml_visuals", "model_hub", "papers"]);
+		assert.deepEqual(TOGGLEABLE_TOOLS, ["research", "demo", "visual", "pdf", "math_check", "ml_visuals", "model_hub", "papers", "pages"]);
 	});
 
 	it("createProberTools: absent record = full set; explicit false drops exactly that tool; probe_done survives everything", () => {

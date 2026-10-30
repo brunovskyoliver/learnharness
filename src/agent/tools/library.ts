@@ -48,27 +48,35 @@ export function findLibraryEntry(catalog: readonly (LibraryItem | LibraryTombsto
 		?? null;
 }
 
-async function readLibrary(ctx: LibraryToolContext, input: { item: string; offset?: number; limit?: number; pages?: string; search?: string }): Promise<string> {
+/** What the transcript row reads. The model gets `text` unchanged. */
+export type LibraryReadDetails = { outcome: "read"; itemId: string; name: string; kind: LibraryItem["kind"]; size: number } | { outcome: "failed"; reason: string };
+type ReadResult = { text: string; details: LibraryReadDetails };
+const failedRead = (reason: string): ReadResult => ({ text: reason, details: { outcome: "failed", reason } });
+
+async function readLibrary(ctx: LibraryToolContext, input: { item: string; offset?: number; limit?: number; pages?: string; search?: string }): Promise<ReadResult> {
 	const entry = findLibraryEntry(await ctx.store.catalog(), input.item);
-	if (!entry) return `Nothing in the Library is called ${input.item}. Use library_list to see what is there.`;
-	if (isTombstone(entry)) return DELETED_SENTENCE;
-	const wrap = (body: string) => renderLibraryItem({ id: entry.id, name: entry.name, kind: entry.kind }, body);
+	if (!entry) return failedRead(`Nothing in the Library is called ${input.item}. Use library_list to see what is there.`);
+	if (isTombstone(entry)) return failedRead(DELETED_SENTENCE);
+	const wrap = (body: string): ReadResult => ({
+		text: renderLibraryItem({ id: entry.id, name: entry.name, kind: entry.kind }, body),
+		details: { outcome: "read", itemId: entry.id, name: entry.name, kind: entry.kind, size: entry.size },
+	});
 	switch (entry.kind) {
 		case "image":
-			return `${entry.name} is an image. Use the image tool with a specific question.`;
+			return failedRead(`${entry.name} is an image. Use the image tool with a specific question.`);
 		case "other":
-			return `${entry.name} is a kind of file that can't be read.`;
+			return failedRead(`${entry.name} is a kind of file that can't be read.`);
 		case "pdf": {
-			if (entry.textState === "none") return `No text could be read from ${entry.name}.`;
+			if (entry.textState === "none") return failedRead(`No text could be read from ${entry.name}.`);
 			const file = ctx.store.documentPath(entry);
 			if (input.search) {
 				const { hits } = await pdfSearch(file, input.search, { literal: true });
-				if (hits.length === 0) return `Nothing in ${entry.name} matches "${input.search}".`;
+				if (hits.length === 0) return failedRead(`Nothing in ${entry.name} matches "${input.search}".`);
 				return wrap(readTextSlice(hits.map((hit) => `--- Page ${hit.page}, line ${hit.line} ---\n${hit.context}`).join("\n"), input.offset, input.limit));
 			}
 			if (input.pages) return wrap(readTextSlice(await pdfExtract(file, input.pages), input.offset, input.limit));
 			const overview = await ctx.pdfOverview(entry);
-			return overview === null ? `No text could be read from ${entry.name}.` : wrap(overview);
+			return overview === null ? failedRead(`No text could be read from ${entry.name}.`) : wrap(overview);
 		}
 		default: {
 			const slice = readTextSlice(await ctx.store.readText(entry), input.offset, input.limit);

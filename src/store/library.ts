@@ -413,6 +413,16 @@ async function createPage(rawName: string, content: string, options: PageCreateO
 	if (tooLarge(content)) return LIBRARY_REFUSALS.pageTooLarge;
 	return withLock(async () => {
 		const catalog = await loadReconciled();
+		if (options.toolCallId) {
+			// The same call again returns its page, whatever has happened to it since.
+			for (const item of liveItems(catalog)) {
+				if (item.kind !== "page" || item.origin.type !== "agent") continue;
+				const versions = await readVersions(item.id);
+				if (!versions.some((v) => v.toolCallId === options.toolCallId)) continue;
+				const head = await headOf(item.id, versions);
+				if (head) return { item, head: { ...head, n: versions.find((v) => v.toolCallId === options.toolCallId)!.n } };
+			}
+		}
 		const taken = await takenKeys(catalog);
 		if (taken.has(nameKey(name))) return nameTaken(name, taken);
 		const now = new Date().toISOString();
