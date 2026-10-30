@@ -116,24 +116,24 @@ description: "Tasks for feature 009: Library and canvas pages"
 
 ### Tests
 
-- [ ] T049 [P] [US3] Store tests in tests/library-pages.test.ts: versions are append-only; a content file with no line is skipped; draft compare-and-swap gives 409 `stale`; restore adds one version and keeps all others; `PAGE_MAX_BYTES` gives 413 with the draft kept; a dirty draft is committed before restore
-- [ ] T050 [P] [US3] Route tests in tests/library-pages-api.test.ts per contracts/library-api.md, including a tenant scope check
-- [ ] T051 [P] [US3] Draft logic tests in tests/page-draft.test.ts on the pure reducer behind `use-page-draft`: reload restores local text, failed PUT keeps text and says so, two-tab conflict with Keep mine and Use latest both keep both texts, clean tab follows an update, dirty tab keeps its text
-- [ ] T052 [P] [US3] Render tests in tests/render-page-pane.test.tsx: save states, conflict line, history, the editor exposes an accessible name and visible focus
+- [X] T049 [P] [US3] Store tests in tests/library-pages.test.ts: versions are append-only; a content file with no line is skipped; draft compare-and-swap gives 409 `stale`; restore adds one version and keeps all others; `PAGE_MAX_BYTES` gives 413 with the draft kept; a dirty draft is committed before restore
+- [X] T050 [P] [US3] Route tests in tests/library-pages-api.test.ts per contracts/library-api.md, including a tenant scope check
+- [X] T051 [P] [US3] Draft logic tests in tests/page-draft.test.ts on the pure reducer behind `use-page-draft`: reload restores local text, failed PUT keeps text and says so, two-tab conflict with Keep mine and Use latest both keep both texts, clean tab follows an update, dirty tab keeps its text
+- [X] T052 [P] [US3] Render tests in tests/render-page-pane.test.tsx: save states, conflict line, history, the editor exposes an accessible name and visible focus
 
 ### Implementation
 
-- [ ] T053 [US3] Add versions, draft and restore to src/store/library.ts per data-model.md ("`bytes` at most 1,048,576"; content file with flag "wx" written before its line)
-- [ ] T054 [US3] Add page handlers to src/server/library.ts and create app/api/library/pages/route.ts, pages/[id]/route.ts, pages/[id]/draft/route.ts, pages/[id]/versions/route.ts, pages/[id]/versions/[n]/route.ts, pages/[id]/restore/route.ts
-- [ ] T055 [US3] Extract components/workspace-pane.tsx from components/artifacts/demo-panel.tsx, with no change to demo behavior; confirm scripts/smoke-demo-workspace.mjs passes
-- [ ] T056a [US3] Before T056: add TipTap with Markdown and math extensions, measure the chunk, and test Markdown round trips in tests/page-editor-roundtrip.test.ts on a corpus of headings, lists, tables, code, inline and display math, links and demo title links. Any loss of content blocks the phase and goes to the owner.
-- [ ] T056 [US3] Create components/library/page-editor.tsx, the single swappable editor component, using TipTap, loaded on demand, storing Markdown, hidden scrollbars
-- [ ] T057 [P] [US3] Create components/library/page-preview.tsx, read-only rendering for version history only (dynamic; existing Streamdown setup from components/ai-elements/message.tsx, debounced 200 ms) and page-history.tsx
-- [ ] T058 [US3] Create components/library/use-page-draft.ts (local backup, 1 s draft save, version on Save, close and leave, conflict state) and subscribe to `library-changed` through components/server-events.tsx
-- [ ] T059 [US3] Create components/library/page-pane.tsx and page-pane-context.tsx; mount in app/(app)/layout.tsx scope, components/chat.tsx and library-view.tsx; move T023's read-only view into the pane; add the "New page" action that T020 left out until pages exist; keep the one live demo iframe; make automatic demo opening respect an open page
-- [ ] T060 [US3] Add the phone full-screen layer with Back to chat and focus containment in components/library/page-pane.tsx and app/globals.css
-- [ ] T061 [US3] Make bold demo titles in the preview use `DemoPanelContext` as chat does, and render plain outside a chat
-- [ ] T062 [US3] Extend scripts/check-library-ui.mjs: reload with an unsaved draft, two real tabs, restore, phone layer, pane resize at 320, 390 and 1440 px
+- [X] T053 [US3] Add versions, draft and restore to src/store/library.ts per data-model.md ("`bytes` at most 1,048,576"; content file with flag "wx" written before its line)
+- [X] T054 [US3] Add page handlers to src/server/library.ts and create app/api/library/pages/route.ts, pages/[id]/route.ts, pages/[id]/draft/route.ts, pages/[id]/versions/route.ts, pages/[id]/versions/[n]/route.ts, pages/[id]/restore/route.ts
+- [X] T055 [US3] Extract components/workspace-pane.tsx from components/artifacts/demo-panel.tsx, with no change to demo behavior; confirm scripts/smoke-demo-workspace.mjs passes
+- [X] T056a [US3] Before T056: add TipTap with Markdown and math extensions, measure the chunk, and test Markdown round trips in tests/page-editor-roundtrip.test.ts on a corpus of headings, lists, tables, code, inline and display math, links and demo title links. Any loss of content blocks the phase and goes to the owner.
+- [X] T056 [US3] Create components/library/page-editor.tsx, the single swappable editor component, using TipTap, loaded on demand, storing Markdown, hidden scrollbars
+- [X] T057 [P] [US3] Create components/library/page-preview.tsx, read-only rendering for version history only (dynamic; existing Streamdown setup from components/ai-elements/message.tsx, debounced 200 ms) and page-history.tsx
+- [X] T058 [US3] Create components/library/use-page-draft.ts (local backup, 1 s draft save, version on Save, close and leave, conflict state) and subscribe to `library-changed` through components/server-events.tsx
+- [X] T059 [US3] Create components/library/page-pane.tsx and page-pane-context.tsx; mount in app/(app)/layout.tsx scope, components/chat.tsx and library-view.tsx; move T023's read-only view into the pane; add the "New page" action that T020 left out until pages exist; keep the one live demo iframe; make automatic demo opening respect an open page
+- [X] T060 [US3] Add the phone full-screen layer with Back to chat and focus containment in components/library/page-pane.tsx and app/globals.css
+- [X] T061 [US3] Make bold demo titles in the preview use `DemoPanelContext` as chat does, and render plain outside a chat
+- [X] T062 [US3] Extend scripts/check-library-ui.mjs: reload with an unsaved draft, two real tabs, restore, phone layer, pane resize at 320, 390 and 1440 px
 
 **Checkpoint**: pages work for the learner, and @ can reference them (T038 already handles kind `page`).
 

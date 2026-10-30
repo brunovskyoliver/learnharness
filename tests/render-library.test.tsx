@@ -81,10 +81,12 @@ describe("LibraryRow", () => {
 			assert.ok(html.includes('rel="noreferrer"'));
 		}
 	});
-	it("text kinds open in place, collapsed until asked", () => {
-		const html = renderToStaticMarkup(<LibraryRow item={item()} {...rowProps} />);
-		assert.ok(html.includes('aria-expanded="false"'));
-		assert.ok(!html.includes("This is your original"));
+	it("text kinds and pages open through a button, for the pane", () => {
+		for (const kind of ["markdown", "page"] as const) {
+			const html = renderToStaticMarkup(<LibraryRow item={item({ kind })} {...rowProps} />);
+			assert.match(html, /<button[^>]*aria-label="Open week 3 notes\.md"/);
+			assert.ok(!html.includes("This is your original"));
+		}
 	});
 	it("kinds with no reader download instead", () => {
 		const html = renderToStaticMarkup(<LibraryRow item={item({ kind: "other", name: "a.exe" })} {...rowProps} />);

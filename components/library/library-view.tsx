@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
-import { SearchIcon, UploadIcon, XIcon } from "lucide-react";
+import { FilePlusIcon, SearchIcon, UploadIcon, XIcon } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -10,6 +10,7 @@ import { useServerEvent, useServerResync } from "@/components/server-events";
 import { MAX_FILE_BYTES, nameKey, type LibraryItem } from "@/src/core";
 import { DeleteItemDialog } from "./delete-item-dialog.tsx";
 import { LibraryRow } from "./library-row.tsx";
+import { createBlankPage, PagePaneSlot, usePagePane } from "./page-pane-context.tsx";
 import { runUploadQueue, sendFile } from "./upload.ts";
 
 const RAISED_2 = "bg-accent text-foreground hover:bg-[color-mix(in_srgb,var(--accent)_80%,var(--foreground))] pointer-coarse:h-11";
@@ -66,6 +67,8 @@ interface Clash { name: string; suggestedName: string; answer: (keepBoth: boolea
 
 /** The full Library view: upload, list, search, rename, open and delete. */
 export function LibraryView() {
+	const pane = usePagePane();
+	const [creating, setCreating] = useState(false);
 	const [items, setItems] = useState<LibraryItem[] | null>(null);
 	const [loadFailed, setLoadFailed] = useState(false);
 	const [refreshFailed, setRefreshFailed] = useState(false);
@@ -128,11 +131,29 @@ export function LibraryView() {
 		clash?.answer(keepBoth);
 		setClash(null);
 	};
+	const newPage = async () => {
+		setCreating(true);
+		const result = await createBlankPage();
+		setCreating(false);
+		if ("error" in result) {
+			setRefusals((list) => [...list, { id: nextRefusal.current++, name: "New page", message: result.error }]);
+			return;
+		}
+		pane?.open(result.item);
+		void refresh();
+	};
+	// A rename in the list reaches the open pane's header.
+	const openItem = pane?.item;
+	const listed = openItem && items?.find((item) => item.id === openItem.id);
+	useEffect(() => {
+		if (openItem && listed && (listed.name !== openItem.name || listed.size !== openItem.size)) pane?.update({ id: listed.id, name: listed.name, kind: listed.kind, size: listed.size });
+	}, [listed, openItem, pane]);
 	const hasFiles = (event: DragEvent) => event.dataTransfer.types.includes("Files");
 
 	return (
+		<div className="session-workspace-layout flex h-dvh flex-col md:flex-row">
 		<div
-			className={`flex h-dvh min-w-0 flex-col ${dragging ? "outline-2 -outline-offset-4 outline-border" : ""}`}
+			className={`flex min-h-0 min-w-0 flex-1 flex-col ${dragging ? "outline-2 -outline-offset-4 outline-border" : ""}`}
 			data-testid="library-view"
 			onDragOver={(event) => {
 				if (!hasFiles(event)) return;
@@ -154,10 +175,16 @@ export function LibraryView() {
 				<div className="mx-auto flex w-full max-w-[52rem] flex-col gap-4 px-4 pb-12 pt-3 sm:pt-11">
 					<div className="flex flex-wrap items-center justify-between gap-3">
 						<h1 className="font-title text-2xl font-medium leading-[1.2] tracking-[-0.3px]">Library</h1>
-						<Button ref={uploadButton} type="button" className={RAISED_2} onClick={() => picker.current?.click()} data-testid="library-upload">
-							<UploadIcon className="ui-icon" aria-hidden="true" />
-							Upload
-						</Button>
+						<div className="flex flex-wrap gap-2">
+							<Button ref={uploadButton} type="button" className={RAISED_2} onClick={() => picker.current?.click()} data-testid="library-upload">
+								<UploadIcon className="ui-icon" aria-hidden="true" />
+								Upload
+							</Button>
+							<Button type="button" className={RAISED_2} disabled={creating} onClick={() => void newPage()} data-testid="library-new-page">
+								<FilePlusIcon className="ui-icon" aria-hidden="true" />
+								New page
+							</Button>
+						</div>
 						<input
 							ref={picker}
 							type="file"
@@ -235,6 +262,7 @@ export function LibraryView() {
 				item={deleting}
 				onClose={() => setDeleting(null)}
 				onDeleted={() => {
+					if (pane?.item && pane.item.id === deleting?.id) pane.close();
 					setDeleting(null);
 					void refresh();
 				}}
@@ -251,6 +279,8 @@ export function LibraryView() {
 					</div>
 				</DialogContent>
 			</Dialog>
+		</div>
+		<PagePaneSlot />
 		</div>
 	);
 }

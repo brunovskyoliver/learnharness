@@ -13,10 +13,11 @@ import { PATHS, tenantScoped } from "../../config.ts";
 import { emit } from "../core/events.ts";
 import {
 	CATALOG_VERSION, CONTENT_CHECK_BYTES, contentMatches, isTombstone, kindForName, LIBRARY_REFUSALS, LibraryCatalogError,
-	nameKey, suggestName, uploadName,
-	type LibraryCatalog, type LibraryItem, type LibraryKind, type LibraryRefusal, type LibraryTextState, type LibraryTombstone,
+	nameKey, PAGE_MAX_BYTES, suggestName, uploadName,
+	type LibraryCatalog, type LibraryItem, type LibraryKind, type LibraryOrigin, type LibraryRefusal, type LibraryTextState, type LibraryTombstone,
+	type PageDraft, type PageHead, type PageState, type PageStale, type PageVersion, type PageVersionCause, type PageWriteResult,
 } from "../core/library.ts";
-import type { LibraryStore } from "../core/ports.ts";
+import type { AgentRevision, AgentRevisionResult, LibraryStore, PageCreateOptions } from "../core/ports.ts";
 
 const STALE_UPLOAD_MS = 24 * 60 * 60 * 1000;
 
@@ -284,6 +285,290 @@ async function remove(id: string): Promise<boolean> {
 	});
 }
 
+// ── Pages (data-model.md): append-only versions and one learner draft ──────
+
+const pageDir = (id: string) => path.join(PATHS.library, "pages", id);
+const versionsFile = (id: string) => path.join(pageDir(id), "versions.jsonl");
+const contentFile = (id: string, n: number) => path.join(pageDir(id), `v${n}.md`);
+const draftFile = (id: string) => path.join(pageDir(id), "draft.json");
+
+const tooLarge = (content: string) => Buffer.byteLength(content) > PAGE_MAX_BYTES;
+
+/** Lines in order. A crash can leave a torn last line; it is not a version. */
+async function readVersions(id: string): Promise<PageVersion[]> {
+	const raw = await fs.readFile(versionsFile(id), "utf8").catch((err) => {
+		if (isCode(err, "ENOENT")) return "";
+		throw err;
+	});
+	const versions: PageVersion[] = [];
+	for (const line of raw.split("\n")) {
+		if (!line.trim()) continue;
+		try {
+			const parsed = JSON.parse(line) as PageVersion;
+			if (typeof parsed.n === "number") versions.push(parsed);
+		} catch { /* torn line */ }
+	}
+	return versions;
+}
+
+/** Higher than any line and any file: a content file with no line keeps its number. */
+async function nextVersionNumber(id: string, versions: readonly PageVersion[]): Promise<number> {
+	const names = await fs.readdir(pageDir(id)).catch(() => [] as string[]);
+	const onDisk = names.map((name) => /^v(\d+)\.md$/.exec(name)?.[1]).filter(Boolean).map(Number);
+	return Math.max(0, ...onDisk, ...versions.map((v) => v.n)) + 1;
+}
+
+async function appendSynced(file: string, text: string): Promise<void> {
+	const handle = await fs.open(file, "a+");
+	try {
+		const { size } = await handle.stat();
+		let lead = "";
+		if (size > 0) {
+			const last = new Uint8Array(1);
+			await handle.read(last, 0, 1, size - 1);
+			if (last[0] !== 0x0a) lead = "\n";
+		}
+		await handle.appendFile(`${lead}${text}\n`);
+		await handle.sync();
+	} finally {
+		await handle.close();
+	}
+}
+
+/** Content first, synced, with "wx"; the line after. Then the catalog follows. */
+async function appendVersion(
+	catalog: LibraryCatalog, item: LibraryItem, versions: readonly PageVersion[], content: string,
+	meta: Pick<PageVersion, "author" | "base" | "cause"> & Partial<Pick<PageVersion, "restoredFrom" | "chatId" | "toolCallId">>,
+): Promise<{ version: PageVersion; item: LibraryItem }> {
+	await fs.mkdir(pageDir(item.id), { recursive: true });
+	const n = await nextVersionNumber(item.id, versions);
+	const handle = await fs.open(contentFile(item.id, n), "wx");
+	try {
+		await handle.writeFile(content);
+		await handle.sync();
+	} finally {
+		await handle.close();
+	}
+	const version: PageVersion = { n, at: new Date().toISOString(), bytes: Buffer.byteLength(content), ...meta };
+	await appendSynced(versionsFile(item.id), JSON.stringify(version));
+	const next: LibraryItem = { ...item, headVersion: n, size: version.bytes, updatedAt: version.at };
+	replace(catalog, item.id, next);
+	await writeCatalog(catalog);
+	return { version, item: next };
+}
+
+const readVersionText = (id: string, n: number) => fs.readFile(contentFile(id, n), "utf8");
+
+async function readDraft(id: string): Promise<PageDraft | null> {
+	const raw = await fs.readFile(draftFile(id), "utf8").catch((err) => {
+		if (isCode(err, "ENOENT")) return null;
+		throw err;
+	});
+	if (raw === null) return null;
+	try { return JSON.parse(raw) as PageDraft; } catch { return null; }
+}
+
+async function writeDraft(id: string, draft: PageDraft): Promise<void> {
+	const temp = `${draftFile(id)}.${nanoid(8)}.tmp`;
+	const handle = await fs.open(temp, "wx");
+	try {
+		await handle.writeFile(JSON.stringify(draft));
+		await handle.sync();
+	} finally {
+		await handle.close();
+	}
+	await fs.rename(temp, draftFile(id));
+}
+
+const clearDraft = (id: string) => fs.rm(draftFile(id), { force: true });
+
+/** Always above the last rev, and above a cleared draft's rev too, since the
+ *  clock moves on: a tab holding an old rev can never match a newer draft. */
+const nextRev = (draft: PageDraft | null) => Math.max((draft?.rev ?? 0) + 1, Date.now());
+
+const headOf = async (id: string, versions: readonly PageVersion[]): Promise<PageHead | null> => {
+	const last = versions.at(-1);
+	if (!last) return null;
+	return { n: last.n, content: await readVersionText(id, last.n), author: last.author, at: last.at };
+};
+
+/** The page under the lock: its catalog entry, versions, head and draft. */
+async function loadPage(catalog: LibraryCatalog, id: string) {
+	const item = liveItems(catalog).find((i) => i.id === id && i.kind === "page");
+	if (!item) return null;
+	const versions = await readVersions(id);
+	const head = await headOf(id, versions);
+	if (!head) return null;
+	const draft = await readDraft(id);
+	return { item, versions, head, draft };
+}
+
+function changed(itemId: string, version: PageVersion) {
+	emit("library-changed", { itemId, version: version.n, author: version.author });
+}
+
+async function createPage(rawName: string, content: string, options: PageCreateOptions): Promise<{ item: LibraryItem; head: PageHead } | LibraryRefusal> {
+	const name = uploadName(rawName);
+	if (!name) return LIBRARY_REFUSALS.invalidName;
+	if (tooLarge(content)) return LIBRARY_REFUSALS.pageTooLarge;
+	return withLock(async () => {
+		const catalog = await loadReconciled();
+		const taken = await takenKeys(catalog);
+		if (taken.has(nameKey(name))) return nameTaken(name, taken);
+		const now = new Date().toISOString();
+		const origin: LibraryOrigin = options.author === "agent" ? { type: "agent", ...(options.chatId ? { chatId: options.chatId } : {}) } : { type: "learner" };
+		const created: LibraryItem = { id: newId(), name, kind: "page", size: 0, createdAt: now, updatedAt: now, origin, headVersion: 0 };
+		catalog.items.push(created);
+		const { version, item } = await appendVersion(catalog, created, [], content, {
+			author: options.author,
+			base: 0,
+			cause: options.author === "agent" ? "agent-create" : "save",
+			...(options.chatId ? { chatId: options.chatId } : {}),
+			...(options.toolCallId ? { toolCallId: options.toolCallId } : {}),
+		});
+		changed(item.id, version);
+		return { item, head: { n: version.n, content, author: version.author, at: version.at } };
+	});
+}
+
+const staleOf = (head: PageHead, draft: PageDraft | null): PageStale => ({
+	stale: true,
+	head,
+	draft: draft ? { base: draft.base, rev: draft.rev, content: draft.content } : null,
+});
+
+async function savePageDraft(id: string, input: { base: number; rev: number; content: string }): Promise<PageWriteResult<{ rev: number }>> {
+	if (tooLarge(input.content)) return "too-large";
+	return withLock(async () => {
+		const page = await loadPage(await readCatalog(), id);
+		if (!page) return "missing";
+		const { head, draft } = page;
+		if (input.base !== head.n || input.rev !== (draft?.rev ?? 0)) return staleOf(head, draft);
+		// Back to exactly the head: nothing is unsaved.
+		if (input.content === head.content) {
+			if (draft) await clearDraft(id);
+			return { rev: 0 };
+		}
+		const rev = nextRev(draft);
+		await writeDraft(id, { base: input.base, rev, content: input.content, updatedAt: new Date().toISOString() });
+		return { rev };
+	});
+}
+
+async function commitPageVersion(
+	id: string,
+	input: { base: number; rev: number; content: string; cause?: PageVersionCause },
+): Promise<PageWriteResult<{ version: PageVersion; created: boolean; otherVersion?: number }>> {
+	if (tooLarge(input.content)) return "too-large";
+	return withLock(async () => {
+		const catalog = await readCatalog();
+		const page = await loadPage(catalog, id);
+		if (!page) return "missing";
+		const { item, versions, head, draft } = page;
+		const conflict = input.cause === "conflict";
+		if (!conflict && (input.base !== head.n || input.rev !== (draft?.rev ?? 0))) return staleOf(head, draft);
+		let current = { item, versions, head: head.n, content: head.content };
+		let otherVersion: number | undefined;
+		// Keep mine and Use latest: the other side's unsaved text goes in first.
+		if (conflict && draft && draft.content !== head.content && draft.content !== input.content) {
+			const saved = await appendVersion(catalog, item, versions, draft.content, { author: "learner", base: draft.base, cause: "conflict" });
+			otherVersion = saved.version.n;
+			current = { item: saved.item, versions: [...versions, saved.version], head: saved.version.n, content: draft.content };
+		}
+		await clearDraft(id);
+		// Saving exactly what is already the newest makes no version.
+		if (input.content === current.content) {
+			if (otherVersion) changed(id, current.versions.at(-1)!);
+			return { version: current.versions.at(-1)!, created: false, ...(otherVersion ? { otherVersion } : {}) };
+		}
+		const { version } = await appendVersion(catalog, current.item, current.versions, input.content, {
+			author: "learner",
+			base: input.base,
+			cause: input.cause ?? "save",
+		});
+		changed(id, version);
+		return { version, created: true, ...(otherVersion ? { otherVersion } : {}) };
+	});
+}
+
+async function restorePageVersion(id: string, n: number): Promise<{ version: PageVersion } | "missing"> {
+	return withLock(async () => {
+		const catalog = await readCatalog();
+		const page = await loadPage(catalog, id);
+		if (!page) return "missing";
+		if (!page.versions.some((v) => v.n === n)) return "missing";
+		const { head, draft } = page;
+		let { item, versions } = page;
+		if (draft && draft.content !== head.content) {
+			const saved = await appendVersion(catalog, item, versions, draft.content, { author: "learner", base: draft.base, cause: "save" });
+			item = saved.item;
+			versions = [...versions, saved.version];
+		}
+		await clearDraft(id);
+		const { version } = await appendVersion(catalog, item, versions, await readVersionText(id, n), {
+			author: "learner", base: versions.at(-1)!.n, cause: "restore", restoredFrom: n,
+		});
+		changed(id, version);
+		return { version };
+	});
+}
+
+/** The order in contracts/agent-tools.md: the learner's draft becomes his own
+ *  version before anything else can refuse, so no ordering loses his text. */
+async function revisePageAsAgent(id: string, revision: AgentRevision): Promise<AgentRevisionResult> {
+	return withLock(async () => {
+		const catalog = await readCatalog();
+		const page = await loadPage(catalog, id);
+		if (!page) return { outcome: "missing" };
+		const { head, draft } = page;
+		let { item, versions } = page;
+		if (revision.toolCallId) {
+			const repeat = versions.find((v) => v.toolCallId === revision.toolCallId);
+			if (repeat) return { outcome: "revised", item, version: repeat, repeated: true };
+		}
+		let savedLearnerVersion: number | undefined;
+		let headNumber = head.n;
+		let headText = head.content;
+		if (draft && draft.content !== head.content) {
+			const saved = await appendVersion(catalog, item, versions, draft.content, { author: "learner", base: draft.base, cause: "before-agent" });
+			item = saved.item;
+			versions = [...versions, saved.version];
+			savedLearnerVersion = headNumber = saved.version.n;
+			headText = draft.content;
+			changed(id, saved.version);
+		}
+		if (draft) await clearDraft(id);
+		if (revision.baseVersion !== headNumber) return { outcome: "stale", head: headNumber, savedLearnerVersion };
+		const next = revision.apply(headText);
+		if (typeof next !== "string") return { outcome: "refused", reason: next.refused, savedLearnerVersion };
+		if (tooLarge(next)) return { outcome: "too-large", savedLearnerVersion };
+		const written = await appendVersion(catalog, item, versions, next, {
+			author: "agent",
+			base: headNumber,
+			cause: "agent-revise",
+			...(revision.chatId ? { chatId: revision.chatId } : {}),
+			...(revision.toolCallId ? { toolCallId: revision.toolCallId } : {}),
+		});
+		changed(id, written.version);
+		return { outcome: "revised", item: written.item, version: written.version, savedLearnerVersion };
+	});
+}
+
+/** A deleted session's agent-made pages stay, without their link (owner, 2026-10-30). */
+async function unlinkChat(chatId: string): Promise<void> {
+	await withLock(async () => {
+		const catalog = await readCatalog();
+		let touched = false;
+		for (const item of liveItems(catalog)) {
+			if (item.origin.type === "agent" && item.origin.chatId === chatId) {
+				replace(catalog, item.id, { ...item, origin: { type: "agent" } });
+				touched = true;
+			}
+		}
+		if (touched) await writeCatalog(catalog);
+	});
+}
+
 export const libraryStore: LibraryStore = {
 	list: () => withLock(async () => {
 		await sweepStaleUploads();
@@ -292,12 +577,33 @@ export const libraryStore: LibraryStore = {
 	}),
 	get: (id) => withLock(async () => liveItems(await loadReconciled()).find((i) => i.id === id) ?? null),
 	catalog: () => withLock(async () => (await loadReconciled()).items),
-	readText: (item) => fs.readFile(
-		item.kind === "page"
-			? path.join(PATHS.library, "pages", item.id, `v${item.headVersion ?? 1}.md`)
-			: path.join(PATHS.files, item.name),
-		"utf8",
-	),
+	readText: async (item) => {
+		if (item.kind !== "page") return fs.readFile(path.join(PATHS.files, item.name), "utf8");
+		const last = (await readVersions(item.id)).at(-1);
+		return readVersionText(item.id, last?.n ?? item.headVersion ?? 1);
+	},
+	createPage,
+	readPage: (id) => withLock(async (): Promise<PageState | null> => {
+		const page = await loadPage(await readCatalog(), id);
+		if (!page) return null;
+		const { item, head, draft } = page;
+		// The log is the truth; a crash can leave the catalog one step behind.
+		return { item: { ...item, headVersion: head.n }, head, draft: draft ? { base: draft.base, rev: draft.rev, content: draft.content } : null };
+	}),
+	savePageDraft,
+	commitPageVersion,
+	listPageVersions: (id) => withLock(async () => {
+		const page = await loadPage(await readCatalog(), id);
+		return page ? [...page.versions].reverse() : null;
+	}),
+	readPageVersion: (id, n) => withLock(async () => {
+		const page = await loadPage(await readCatalog(), id);
+		const version = page?.versions.find((v) => v.n === n);
+		return version ? { version, content: await readVersionText(id, n) } : null;
+	}),
+	restorePageVersion,
+	revisePageAsAgent,
+	unlinkChat,
 	writeUpload,
 	rename,
 	remove,

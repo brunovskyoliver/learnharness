@@ -54,6 +54,7 @@ import { SessionMermaidContext } from "@/components/session-overlay-context";
 import { AbortTurnDialog, type AbortMode } from "@/components/abort-turn-dialog";
 import { ArrowRightIcon, DumbbellIcon, PanelRightIcon, PencilIcon, WaypointsIcon } from "lucide-react";
 import { DemoPanel } from "@/components/artifacts/demo-panel";
+import { PagePaneSlot, usePagePane } from "@/components/library/page-pane-context";
 import { DemoPanelContext, sessionDemos, type DemoPanelApi } from "@/components/artifacts/demo-panel-context";
 import type { PlanBlockData } from "@/src/core";
 import { QuestionDock } from "@/components/question-dock";
@@ -874,15 +875,23 @@ function ChatView({
 		["tool-ml_visual", "tool-tokenize", "tool-hub_model", "tool-hub_search", "tool-paper_search", "tool-paper_read"].includes(part.type) &&
 		["output-available", "output-error"].includes(String((part as { state?: string }).state)))) ||
 		demos.some(demo => kitSpecOf(demo.html)?.panels?.some(panel => ["tokens", "next_token", "heatmap", "network", "scatter", "shapes"].includes(panel.type))), [messages, demos]);
+	// A demo or a page shares the column; the most recent explicit open wins.
+	const pagePane = usePagePane();
+	const closePage = pagePane?.close;
 	const demoPanel = useMemo<DemoPanelApi>(
-		() => ({ demos, openId: demoOpenId, panelIndex: demoPanelIndex, open: (id: string, index?: number) => { requestFullTranscript(); setDemoOpenId(id); setDemoPanelIndex(index); }, close: () => setDemoOpenId(null) }),
-		[demos, demoOpenId, demoPanelIndex],
+		() => ({ demos, openId: demoOpenId, panelIndex: demoPanelIndex, open: (id: string, index?: number) => { requestFullTranscript(); closePage?.(); setDemoOpenId(id); setDemoPanelIndex(index); }, close: () => setDemoOpenId(null) }),
+		[demos, demoOpenId, demoPanelIndex, closePage],
 	);
+	const pageOpens = pagePane?.openCount ?? 0;
+	useEffect(() => { if (pageOpens > 0) setDemoOpenId(null); }, [pageOpens]);
+	const pageIsOpen = !!pagePane?.item;
 
 	const questionDemo = useMemo(() => resolveQuestionDemo(demos, pending?.input), [demos, pending?.input]);
 	const autoOpenedQuestion = useRef<string | null>(null);
 	useEffect(() => {
 		if (!pending || autoOpenedQuestion.current === pending.toolCallId || !questionDemo.demo) return;
+		// A question's automatic open doesn't replace an open page; its "Using" link stays.
+		if (pageIsOpen) { autoOpenedQuestion.current = pending.toolCallId; return; }
 		// Backfill runs outside React's effect to avoid flushSync during commit.
 		const timer = window.setTimeout(() => { autoOpenedQuestion.current = pending.toolCallId; demoPanel.open(questionDemo.demo!.id, questionDemo.panel); }, 0);
 		return () => window.clearTimeout(timer);
@@ -1733,6 +1742,7 @@ function ChatView({
 				</Conversation>
 				<TranscriptArrivalScript storageKey={sessionStateStore?.storageKey} gradientHeight={GRADIENT_H} />
 				<DemoPanel />
+				<PagePaneSlot />
 
 				{/* The session-scoped focuses (chrome-melt wave, 2026-09-19): mounted
 				    INSIDE the session area — absolute inset-0 siblings of the scroller,

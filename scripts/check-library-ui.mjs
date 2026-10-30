@@ -4,7 +4,8 @@
  * CHROME_PATH=/path/to/chrome node scripts/check-library-ui.mjs
  * Then the @ list in every field and the sent labels, with model submissions
  * intercepted. Optional: LH_UI_SCREENSHOT_DIR saves evidence, LH_UI_PORT picks
- * the port, LH_UI_MENTIONS_ONLY=1 runs only the @ part.
+ * the port, LH_UI_MENTIONS_ONLY=1 runs only the @ part, LH_UI_PAGES_ONLY=1 only
+ * the page pane (real editor corpus, reload, two tabs, restore, phone layer).
  * Set TMPDIR under the home folder for a snap Chromium, whose /tmp is private.
  */
 import assert from "node:assert/strict";
@@ -28,7 +29,39 @@ const fixtures = path.join(root, "fixtures");
 const files = path.join(data, "files");
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const row = (name) => `[data-testid="library-row"]:has([aria-label="Delete ${name}"])`;
+const pageApi = {
+	create: async (name, content) => {
+		const r = await fetch(`${base}/api/library/pages`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name, content }) });
+		assert.equal(r.status, 201, name);
+		return (await r.json()).item;
+	},
+	read: async (id) => (await fetch(`${base}/api/library/pages/${id}`)).json(),
+	versions: async (id) => (await (await fetch(`${base}/api/library/pages/${id}/versions`)).json()).versions,
+	text: async (id, n) => (await (await fetch(`${base}/api/library/pages/${id}/versions/${n}`)).json()).content,
+};
+const SAVE = process.platform === "darwin" ? "Meta" : "Control";
+const saveKeys = async (page) => {
+	await page.keyboard.down(SAVE);
+	await page.keyboard.press("s");
+	await page.keyboard.up(SAVE);
+};
+const editor = '[data-testid="page-editor"]';
+const openPage = async (page, name) => {
+	await page.waitForSelector(`[aria-label="Open ${name}"]`);
+	await page.click(`[aria-label="Open ${name}"]`);
+	await page.waitForSelector(editor, { timeout: 60000 });
+};
+/** Save state text, once it settles on one of `wanted`. */
+const waitSave = (page, ...wanted) => page.waitForFunction((list) => list.some((text) => document.querySelector('[data-testid="page-save-state"]')?.textContent.startsWith(text)), {}, wanted);
+const hiddenScrollbars = (page) => page.$eval(editor, (el) => {
+	const host = el.closest(".lh-page-editor-host");
+	return [getComputedStyle(host).scrollbarWidth, getComputedStyle(el).scrollbarWidth];
+});
+
+const MATH_PAGE = "# Title with $x^2$\n\nLet $f(x) = x^2$ and **Gradient descent and step size**.\n\n$$\n\\int_0^1 x^2 \\, dx = \\frac{1}{3}\n$$\n\n| A | B |\n|---|---|\n| $a$ | `$b` |\n\n- one\n  - two\n\n```bash\necho \"$HOME @notes.pdf\"\n```\n";
+
 const mentionsOnly = process.env.LH_UI_MENTIONS_ONLY === "1";
+const pagesOnly = process.env.LH_UI_PAGES_ONLY === "1";
 let server;
 let browser;
 
@@ -151,13 +184,14 @@ async function checkWidth(width) {
 	assert.ok(existsSync(path.join(files, "renamed.md")));
 	assert.ok(!existsSync(path.join(files, "notes (2).md")));
 
-	// Text opens read-only in place.
+	// Text opens read-only in the pane.
 	await page.click('[aria-label="Open notes.md"]');
 	await page.waitForFunction(() => document.querySelector('[data-testid="library-read-only"] pre')?.textContent.includes("first bytes"));
 	assert.ok((await page.$eval('[data-testid="library-read-only"]', (el) => el.innerText)).includes("This is your original; it can't be edited here."));
 	await assertLayout("read-only");
 	await shot(page, "read-only");
-	await page.click('[aria-label="Open notes.md"]');
+	await page.click(mobile ? '[data-testid="page-back"]' : '[data-testid="page-close"]');
+	await page.waitForFunction(() => !document.querySelector('[data-testid="page-pane"]'));
 
 	// Refusals name the file and stay until dismissed; nothing is stored.
 	await pick(await fixture("program.exe", "binary"), await fixture("empty.md", ""), await fixture("fake.pdf", "not a pdf"));
@@ -456,14 +490,20 @@ try {
 	}
 	assert.ok(ready, "isolated server starts");
 	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true });
-	if (!mentionsOnly) await checkLibrary();
+	for (const width of pagesOnly ? (process.env.LH_UI_PAGE_WIDTHS ?? "1440,390,320").split(",").filter(Boolean).map(Number) : []) await checkPages(width);
+	if (pagesOnly) await checkPageCorpus();
+	if (!mentionsOnly && !pagesOnly) {
+		await checkLibrary();
+		for (const width of [1440, 390, 320]) await checkPages(width);
+		await checkPageCorpus();
+	}
 	// A clean folder, then the @ lists over known names.
-	for (const name of await readdir(files).catch(() => [])) await rm(path.join(files, name));
-	for (const name of ["notes.md", "Week 3 notes.md", "paper-one.md", "paper-two.md", "paper-three.md", "paper-four.md", "paper-five.md", "paper-six.md", "paper-seven.md"]) {
+	for (const name of pagesOnly ? [] : await readdir(files).catch(() => [])) await rm(path.join(files, name));
+	for (const name of pagesOnly ? [] : ["notes.md", "Week 3 notes.md", "paper-one.md", "paper-two.md", "paper-three.md", "paper-four.md", "paper-five.md", "paper-six.md", "paper-seven.md"]) {
 		const upload = await fetch(`${base}/api/library/upload?name=${encodeURIComponent(name)}`, { method: "POST", body: `# ${name}\n` });
 		assert.equal(upload.status, 201, name);
 	}
-	for (const width of process.env.LH_UI_WIDTHS?.split(",").map(Number) ?? [1440, 390, 320]) await checkMentions(width);
+	for (const width of pagesOnly ? [] : process.env.LH_UI_WIDTHS?.split(",").map(Number) ?? [1440, 390, 320]) await checkMentions(width);
 } finally {
 	await browser?.close();
 	if (server && server.exitCode === null) {
@@ -471,6 +511,246 @@ try {
 		await new Promise((resolve) => server.once("exit", resolve));
 	}
 	await rm(root, { recursive: true, force: true });
+}
+
+async function checkPages(width) {
+	const mobile = width < 768;
+	const shot = async (page, name) => { if (shots) await page.screenshot({ path: path.join(shots, `page-${width}-${name}.png`) }); };
+	const page = await browser.newPage();
+	page.setDefaultTimeout(30000);
+	const errors = [];
+	page.on("pageerror", (error) => errors.push(error.message));
+	await page.setViewport({ width, height: mobile ? 800 : 900 });
+	const tag = `w${width}`;
+	const noOverflow = async (label) => {
+		const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+		assert.ok(over <= 0, `${width}px ${label}: page overflow ${over}`);
+	};
+	const closePane = async () => {
+		await page.click(mobile ? '[data-testid="page-back"]' : '[data-testid="page-close"]');
+		await page.waitForFunction(() => !document.querySelector('[data-testid="page-pane"]'));
+	};
+	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
+
+	// New page: it opens beside the list, and the first load of the editor is on demand.
+	await page.waitForSelector('[data-testid="library-new-page"]');
+	assert.equal(await page.evaluate(() => performance.getEntriesByType("resource").some((r) => /tiptap|prosemirror/i.test(r.name))), false);
+	await page.click('[data-testid="library-new-page"]');
+	await page.waitForSelector(editor, { timeout: 60000 });
+	const created = await page.$eval('[data-testid="page-name"]', (el) => el.textContent);
+	assert.ok(created.startsWith("Untitled page"), created);
+	await shot(page, "new");
+	await noOverflow("new page");
+
+	// Typing: reload before the save shows.
+	await page.click(editor);
+	await page.keyboard.type(`typed before reload ${tag}`);
+	await page.reload({ waitUntil: "domcontentloaded" });
+	await page.waitForFunction((text) => document.querySelector('[data-testid="page-editor"]')?.textContent.includes(text), { timeout: 60000 }, `typed before reload ${tag}`);
+	console.log(`PASS ${width}px reload with unsaved text keeps it, and reopens the page`);
+
+	// Cmd/Ctrl+S makes a version.
+	await page.click(editor);
+	await saveKeys(page);
+	await waitSave(page, "Saved");
+	await closePane();
+
+	// A page with math: formatted in place, and opening then saving changes nothing.
+	const item = await pageApi.create(`Maths ${tag}`, MATH_PAGE);
+	if (mobile && !(await page.$(`[aria-label="Open Maths ${tag}"]`))) await page.reload({ waitUntil: "domcontentloaded" });
+	await openPage(page, `Maths ${tag}`);
+	await page.waitForFunction(() => document.querySelectorAll('[data-testid="page-editor"] .katex').length >= 4);
+	assert.ok(await page.$(`${editor} table`), "a table renders");
+	assert.ok(await page.$(`${editor} pre code`), "a code block renders");
+	assert.ok(await page.$(`${editor} [data-type="block-math"] .katex-display`), "display math renders as display");
+	await shot(page, "math");
+	await noOverflow("math page");
+	await page.click(`${editor} h1`, { offset: { x: 4, y: 12 } });
+	await saveKeys(page);
+	await pause(1400);
+	assert.deepEqual((await pageApi.versions(item.id)).map((v) => v.n), [1], "opening and saving makes no version");
+	assert.equal((await pageApi.read(item.id)).head.content, MATH_PAGE);
+	assert.equal((await pageApi.read(item.id)).draft, null);
+	assert.deepEqual(await hiddenScrollbars(page), ["none", "none"].map((v, i) => (i === 0 ? v : v)), "hidden tracks");
+	assert.equal(await page.evaluate(() => {
+		const el = document.querySelector('[data-testid="page-editor"]');
+		el.focus();
+		return el.getAttribute("aria-label");
+	}), `Page Maths ${tag}`);
+
+	// A math edit through its dialog changes that TeX and leaves every other byte.
+	// Dispatched on the formula: at 320 px it can wrap, and its box's centre is then outside the glyphs.
+	await page.$eval(`${editor} p .tiptap-mathematics-render`, (el) => el.click());
+	await page.waitForSelector('[data-testid="page-math-source"]');
+	assert.equal(await page.$eval('[data-testid="page-math-source"]', (el) => el.value), "f(x) = x^2");
+	await shot(page, "math-dialog");
+	await page.$eval('[data-testid="page-math-source"]', (el) => el.select());
+	await page.keyboard.type("g(y)");
+	await page.click('[data-testid="page-math-save"]');
+	await page.waitForFunction(() => !document.querySelector('[data-testid="page-math-source"]'));
+	await pause(300);
+	await saveKeys(page);
+	await waitSave(page, "Saved");
+	await page.waitForFunction(async (id) => (await (await fetch(`/api/library/pages/${id}`)).json()).head.n === 2, {}, item.id);
+	assert.equal((await pageApi.read(item.id)).head.content, MATH_PAGE.replace("$f(x) = x^2$", "$g(y)$"), "only the edited formula changed");
+
+	// Restore: one more version, none erased.
+	await page.click('[data-testid="page-history-toggle"]');
+	await page.waitForSelector('[data-testid="page-history"]');
+	await page.waitForFunction(() => /Version 2 · You/.test(document.querySelector('[data-testid="page-history"]').innerText));
+	const row1 = await page.evaluateHandle(() => [...document.querySelectorAll('[data-testid="page-history"] li button')].find((b) => b.textContent.startsWith("Version 1")));
+	await row1.click();
+	await page.waitForFunction(() => document.querySelector('[data-testid="page-preview"] .katex'));
+	await shot(page, "history");
+	await noOverflow("history");
+	await page.click('[data-testid="page-restore"]');
+	await page.waitForFunction(async (id) => (await (await fetch(`/api/library/pages/${id}/versions`)).json()).versions.length === 3, {}, item.id);
+	await page.waitForSelector(editor);
+	assert.equal((await pageApi.read(item.id)).head.content, MATH_PAGE);
+	assert.equal((await pageApi.versions(item.id))[0].restoredFrom, 1);
+	console.log(`PASS ${width}px math rendered, no-op save stored nothing, formula edit exact, restore adds one`);
+
+	// Two real tabs.
+	const other = await browser.newPage();
+	await other.setViewport({ width, height: mobile ? 800 : 900 });
+	await other.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
+	await other.waitForSelector(editor, { timeout: 60000 });
+	await page.bringToFront();
+	await page.click(`${editor} h1`, { offset: { x: 4, y: 12 } });
+	await page.keyboard.type("A");
+	await waitSave(page, "Draft saved");
+	await other.bringToFront();
+	await other.click(`${editor} h1`, { offset: { x: 4, y: 12 } });
+	await other.keyboard.type("B");
+	await other.waitForSelector('[data-testid="page-conflict"]', { timeout: 15000 });
+	assert.ok((await other.$eval('[data-testid="page-conflict"]', (el) => el.innerText)).includes("This page changed elsewhere. Your text is safe here."));
+	const otherText = await other.$eval(editor, (el) => el.textContent);
+	assert.ok(otherText.includes("B"));
+	if (shots) await other.screenshot({ path: path.join(shots, `page-${width}-conflict.png`) });
+	await other.click('[data-testid="page-keep-mine"]');
+	await other.waitForFunction(() => !document.querySelector('[data-testid="page-conflict"]'));
+	const heads = await Promise.all((await pageApi.versions(item.id)).map((v) => pageApi.text(item.id, v.n)));
+	assert.ok(heads.some((text) => /^# .*A/.test(text) && !/^# .*B/.test(text)), "tab A's text is in history");
+	assert.ok(heads[0].split("\n")[0].includes("B"), "tab B's text is newest");
+	// Tab A sees an update while it holds what became a version: nothing is lost.
+	await page.bringToFront();
+	await page.waitForFunction(() => document.querySelector('[data-testid="page-editor"]').textContent.length > 0);
+	await other.close();
+	await page.waitForSelector('[data-testid="page-conflict"], [data-testid="page-save-state"]');
+	console.log(`PASS ${width}px two tabs: conflict line, text kept, both in history`);
+	if (await page.$('[data-testid="page-keep-mine"]')) {
+		await page.click('[data-testid="page-use-latest"]');
+		await page.waitForFunction(() => !document.querySelector('[data-testid="page-conflict"]'));
+	}
+	await waitSave(page, "Saved", "Draft saved");
+
+	if (mobile) {
+		// A full-screen layer, with chat one action away and focus held in.
+		const box = await page.$eval('[data-testid="page-pane"]', (el) => { const r = el.getBoundingClientRect(); return [r.left, r.top, r.width, r.height]; });
+		assert.deepEqual(box, [0, 0, width, 800]);
+		await shot(page, "phone-layer");
+		await page.focus('[data-testid="page-back"]');
+		for (let i = 0; i < 12; i++) {
+			await page.keyboard.press("Tab");
+			assert.ok(await page.evaluate(() => !!document.activeElement?.closest('[data-testid="page-pane"]')), `focus stays in the layer, tab ${i}`);
+		}
+		const coarse = await page.$eval('[data-testid="page-back"]', (el) => el.getBoundingClientRect().height);
+		assert.ok(coarse > 0);
+		await page.focus('[data-testid="page-history-toggle"]');
+		await page.keyboard.press("Escape");
+		await page.waitForFunction(() => !document.querySelector('[data-testid="page-pane"]'));
+		await openPage(page, `Maths ${tag}`);
+	} else {
+		// The pane resizes from the keyboard and stays beside the list.
+		const before = await page.$eval('[data-testid="page-pane"]', (el) => el.getBoundingClientRect().width);
+		await page.focus('[aria-label="Resize page panel"]');
+		await page.keyboard.press("ArrowLeft");
+		await page.keyboard.press("ArrowLeft");
+		await page.waitForFunction((w) => document.querySelector('[data-testid="page-pane"]').getBoundingClientRect().width === w + 32, {}, before);
+		assert.ok(await page.$eval('[data-testid="library-view"]', (el) => el.getBoundingClientRect().width >= 420), "the list keeps its room");
+		await shot(page, "resized");
+		await page.focus(editor);
+		await page.keyboard.press("Escape");
+		assert.ok(await page.evaluate(() => !document.activeElement?.closest('[data-testid="page-pane"]')), "Escape leaves the page on desktop");
+		assert.ok(await page.$('[data-testid="page-pane"]'), "and the pane stays");
+	}
+
+	// Leaving the route commits a version; coming back shows it.
+	await page.click(`${editor} h1`, { offset: { x: 4, y: 12 } });
+	await page.keyboard.type("L");
+	await pause(200);
+	const count = (await pageApi.versions(item.id)).length;
+	await page.evaluate(() => window.next.router.push("/"));
+	await page.waitForFunction(() => !document.querySelector('[data-testid="library-view"]'), { timeout: 30000 });
+	await page.waitForFunction(async ([id, n]) => (await (await fetch(`/api/library/pages/${id}/versions`)).json()).versions.length === n + 1, {}, [item.id, count]);
+	const last = await pageApi.versions(item.id);
+	assert.equal(last[0].cause, "autosave-close");
+	await page.goBack({ waitUntil: "domcontentloaded" }).catch(() => {});
+	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
+	await page.waitForFunction(() => document.querySelector('[data-testid="page-editor"]'), { timeout: 60000 });
+	console.log(`PASS ${width}px ${mobile ? "phone layer, focus contained, Escape closes" : "resize, Escape"}, leaving the route makes a version`);
+
+	await closePane();
+	assert.deepEqual(errors, [], `${width}px: no browser exceptions`);
+	await page.close();
+}
+
+/** Every corpus entry through the real editor: open, save untouched, then type
+ *  and undo by hand, save again. Node can't catch what ProseMirror itself does. */
+async function checkPageCorpus() {
+	const source = await readFile(new URL("../tests/fixtures/page-roundtrip-corpus.ts", import.meta.url), "utf8");
+	const module = path.join(root, "corpus.mjs");
+	await writeFile(module, source.replace(": readonly { name: string; md: string }[]", ""));
+	const { PAGE_CORPUS } = await import(module);
+	const page = await browser.newPage();
+	page.setDefaultTimeout(30000);
+	await page.setViewport({ width: 1440, height: 900 });
+	const failures = [];
+	let typedThenUndone = 0;
+	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
+	for (const [i, { name, md }] of PAGE_CORPUS.entries()) {
+		const label = `Corpus ${i}`;
+		const item = await pageApi.create(label, md);
+		await page.reload({ waitUntil: "domcontentloaded" });
+		await openPage(page, label);
+		await page.focus(editor);
+		await saveKeys(page);
+		await pause(150);
+		await page.keyboard.down("Control");
+		await page.keyboard.press("End");
+		await page.keyboard.up("Control");
+		await page.keyboard.type("Z");
+		await pause(200);
+		// With a formula selected the key is refused, and Backspace would really delete it.
+		if ((await page.$eval(editor, (el) => el.textContent)).includes("Z")) {
+			typedThenUndone++;
+			await page.keyboard.press("Backspace");
+			await pause(200);
+		}
+		await saveKeys(page);
+		await pause(250);
+		await page.click('[data-testid="page-close"]');
+		await page.waitForFunction(() => !document.querySelector('[data-testid="page-pane"]'));
+		await pause(150);
+		const state = await pageApi.read(item.id);
+		const versions = await pageApi.versions(item.id);
+		if (state.head.content !== md || versions.length !== 1 || state.draft) failures.push(`${name}: versions ${versions.length}, draft ${!!state.draft}, ${JSON.stringify(state.head.content)}`);
+	}
+	// A key pressed while a formula is selected doesn't overwrite it.
+	const math = await pageApi.create("Corpus math first", "$$\nx\n$$\n\nAfter.\n");
+	await page.reload({ waitUntil: "domcontentloaded" });
+	await openPage(page, "Corpus math first");
+	await page.focus(editor);
+	await page.keyboard.type("Z");
+	await pause(1400);
+	assert.ok((await page.$eval(editor, (el) => el.textContent)).includes("After."));
+	assert.ok(await page.$(`${editor} [data-type="block-math"]`), "the formula is still there");
+	await page.click('[data-testid="page-close"]');
+	await pause(300);
+	assert.equal((await pageApi.read(math.id)).head.content, "$$\nx\n$$\n\nAfter.\n");
+	await page.close();
+	assert.deepEqual(failures, [], "the real editor changes no stored byte without an edit");
+	console.log(`PASS ${PAGE_CORPUS.length} corpus pages through the real editor, ${typedThenUndone} also typed then undone: stored bytes identical, no version`);
 }
 
 async function checkLibrary() {

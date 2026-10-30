@@ -6,9 +6,9 @@
  */
 import { Readable } from "node:stream";
 import {
-	ACCEPTED_EXTENSIONS, extensionOf, isRefusal, kindForName, LIBRARY_REFUSALS, LibraryCatalogError, MAX_FILE_BYTES,
+	ACCEPTED_EXTENSIONS, extensionOf, isPageStale, isRefusal, kindForName, LIBRARY_REFUSALS, LibraryCatalogError, MAX_FILE_BYTES,
 	REFERENCE_INLINE_MAX_BYTES, uploadName,
-	type LibraryItem, type LibraryRefusal, type LibraryRefusalCode,
+	type LibraryItem, type LibraryRefusal, type LibraryRefusalCode, type PageVersionCause, type PageWriteResult,
 } from "../core/library.ts";
 import { libraryStore, openDocumentStream } from "../store/library.ts";
 import { indexAfterUpload } from "./library-text.ts";
@@ -119,5 +119,89 @@ export function libraryContentResponse(request: Request, id: string): Promise<Re
 		if (!opened) return missing();
 		const download = new URL(request.url).searchParams.get("download") === "1";
 		return new Response(Readable.toWeb(opened.stream) as ReadableStream<Uint8Array>, { headers: contentHeaders(item, opened.size, download) });
+	});
+}
+
+// ── Pages (contracts/library-api.md) ──
+
+const pageGone = () => json({ error: "That page is no longer in your Library." }, 404);
+const pageTooBig = () => refusal(LIBRARY_REFUSALS.pageTooLarge);
+/** Causes a client may name. The rest are the server's own to write. */
+const CLIENT_CAUSES: readonly PageVersionCause[] = ["save", "autosave-close", "conflict"];
+
+async function jsonBody(request: Request): Promise<Record<string, unknown> | null> {
+	const body = await request.json().catch(() => null) as unknown;
+	return body && typeof body === "object" && !Array.isArray(body) ? body as Record<string, unknown> : null;
+}
+
+/** base, rev and content, or null when the body is not that shape. */
+function pageWriteInput(body: Record<string, unknown> | null) {
+	if (!body || !Number.isInteger(body.base) || !Number.isInteger(body.rev) || typeof body.content !== "string") return null;
+	return { base: body.base as number, rev: body.rev as number, content: body.content };
+}
+
+function pageWriteResponse<T extends object>(result: PageWriteResult<T>, success: (value: T) => Response): Response {
+	if (result === "missing") return pageGone();
+	if (result === "too-large") return pageTooBig();
+	if (isPageStale(result)) return json({ error: "This page changed elsewhere.", code: "stale", head: result.head, draft: result.draft }, 409);
+	return success(result);
+}
+
+export function pageCreateResponse(request: Request): Promise<Response> {
+	return guarded(async () => {
+		const body = await jsonBody(request);
+		if (typeof body?.name !== "string" || (body.content !== undefined && typeof body.content !== "string")) return refusal(LIBRARY_REFUSALS.invalidName);
+		const result = await libraryStore.createPage(body.name, (body.content as string | undefined) ?? "", { author: "learner" });
+		if (isRefusal(result)) return refusal(result);
+		return json(result, 201);
+	});
+}
+
+export function pageReadResponse(id: string): Promise<Response> {
+	return guarded(async () => {
+		const page = await libraryStore.readPage(id);
+		return page ? json(page) : pageGone();
+	});
+}
+
+export function pageDraftResponse(request: Request, id: string): Promise<Response> {
+	return guarded(async () => {
+		const input = pageWriteInput(await jsonBody(request));
+		if (!input) return json({ error: "That draft could not be read." }, 400);
+		return pageWriteResponse(await libraryStore.savePageDraft(id, input), (ok) => json(ok));
+	});
+}
+
+export function pageCommitResponse(request: Request, id: string): Promise<Response> {
+	return guarded(async () => {
+		const body = await jsonBody(request);
+		const input = pageWriteInput(body);
+		if (!input) return json({ error: "That version could not be read." }, 400);
+		const cause = CLIENT_CAUSES.find((c) => c === body?.cause);
+		const result = await libraryStore.commitPageVersion(id, { ...input, ...(cause ? { cause } : {}) });
+		return pageWriteResponse(result, (ok) => json(ok, ok.created ? 201 : 200));
+	});
+}
+
+export function pageVersionsResponse(id: string): Promise<Response> {
+	return guarded(async () => {
+		const versions = await libraryStore.listPageVersions(id);
+		return versions ? json({ versions }) : pageGone();
+	});
+}
+
+export function pageVersionResponse(id: string, n: string): Promise<Response> {
+	return guarded(async () => {
+		const found = /^\d+$/.test(n) ? await libraryStore.readPageVersion(id, Number(n)) : null;
+		return found ? json(found) : json({ error: "That version doesn't exist." }, 404);
+	});
+}
+
+export function pageRestoreResponse(request: Request, id: string): Promise<Response> {
+	return guarded(async () => {
+		const body = await jsonBody(request);
+		if (!Number.isInteger(body?.n)) return json({ error: "That version doesn't exist." }, 404);
+		const result = await libraryStore.restorePageVersion(id, body!.n as number);
+		return result === "missing" ? json({ error: "That version doesn't exist." }, 404) : json(result, 201);
 	});
 }

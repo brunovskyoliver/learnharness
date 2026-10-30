@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSettingsDialog } from "@/components/settings/settings-dialog.tsx";
+import { opensInPane, usePagePane } from "@/components/library/page-pane-context";
 import { NO_LONGER_IN_LIBRARY, referenceLabel, type LibraryReference } from "@/src/core";
 
 /** Live ids, fetched only once a transcript has references and shared across
@@ -22,22 +23,27 @@ function currentLibraryIds(): Promise<Set<string> | null> {
 	return liveIds.ids;
 }
 
-const opensInTab = (ref: LibraryReference) => ref.mode !== "missing" && ref.kind !== "page";
+const LINK = "text-foreground underline decoration-foreground/40 underline-offset-2 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center";
 
 export function ReferenceRow({ reference, deleted = false }: { reference: LibraryReference; deleted?: boolean }) {
 	const { open } = useSettingsDialog();
 	const { prefix, suffix } = referenceLabel(reference);
-	const linked = opensInTab(reference) && !deleted;
+	const pane = usePagePane();
+	const available = reference.mode !== "missing" && !deleted;
+	const inPane = available && !!pane && opensInPane(reference.kind);
+	const inTab = available && !inPane && reference.kind !== "page";
 	return (
 		<li data-testid="reference-row" className="text-sm text-ink-2 [overflow-wrap:anywhere]">
 			{prefix}
-			{linked ? (
+			{inPane ? (
+				<button type="button" aria-label={`Open ${reference.name}`} className={LINK} onClick={() => pane.open({ id: reference.itemId, name: reference.name, kind: reference.kind, size: reference.size ?? 0 })}>{reference.name}</button>
+			) : inTab ? (
 				<a
 					href={`/api/library/items/${encodeURIComponent(reference.itemId)}/content`}
 					target="_blank"
 					rel="noreferrer"
 					aria-label={`Open ${reference.name}`}
-					className="text-foreground underline decoration-foreground/40 underline-offset-2 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center"
+					className={LINK}
 				>{reference.name}</a>
 			) : (
 				<span className="text-foreground">{reference.name}</span>

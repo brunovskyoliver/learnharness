@@ -27,7 +27,7 @@ import type {
 	NotesSource,
 } from "./contracts.ts";
 import type { UserSettings } from "./settings.ts";
-import type { LibraryItem, LibraryRefusal, LibraryTextState, LibraryTombstone } from "./library.ts";
+import type { LibraryItem, LibraryRefusal, LibraryTextState, LibraryTombstone, PageAuthor, PageHead, PageState, PageVersion, PageVersionCause, PageWriteResult } from "./library.ts";
 
 // ─── ChatStore — the session record's home (data/chats) ─────────────────────
 
@@ -188,7 +188,43 @@ export interface LibraryStore {
 	readDerived(id: string): Promise<unknown>;
 	writeDerived(id: string, value: unknown): Promise<void>;
 	documentPath(item: Pick<LibraryItem, "name">): string;
+	/** A new page with its first version. */
+	createPage(name: string, content: string, options: PageCreateOptions): Promise<{ item: LibraryItem; head: PageHead } | LibraryRefusal>;
+	/** Head and draft, or null for an unknown id, a document or a tombstone. */
+	readPage(id: string): Promise<PageState | null>;
+	/** Compare-and-swap on base and rev; a mismatch changes nothing. */
+	savePageDraft(id: string, input: { base: number; rev: number; content: string }): Promise<PageWriteResult<{ rev: number }>>;
+	/** Text exactly equal to the newest version makes no version (`created: false`).
+	 *  `cause: "conflict"` passes the compare and commits the other side's draft
+	 *  first, reported as `otherVersion`. */
+	commitPageVersion(id: string, input: { base: number; rev: number; content: string; cause?: PageVersionCause }): Promise<PageWriteResult<{ version: PageVersion; created: boolean; otherVersion?: number }>>;
+	/** Newest first, metadata only. */
+	listPageVersions(id: string): Promise<PageVersion[] | null>;
+	readPageVersion(id: string, n: number): Promise<{ version: PageVersion; content: string } | null>;
+	/** Commits a dirty draft, then adds one version with the old text. */
+	restorePageVersion(id: string, n: number): Promise<{ version: PageVersion } | "missing">;
+	/** Agent revision under the page lock, per contracts/agent-tools.md. */
+	revisePageAsAgent(id: string, revision: AgentRevision): Promise<AgentRevisionResult>;
+	/** Clear origin.chatId from pages made in a deleted session. */
+	unlinkChat(chatId: string): Promise<void>;
 }
+
+export interface PageCreateOptions { author: PageAuthor; chatId?: string; toolCallId?: string }
+
+export interface AgentRevision {
+	baseVersion: number;
+	chatId?: string;
+	toolCallId?: string;
+	/** The new text from the head's, or why it can't apply. Runs under the lock. */
+	apply: (head: string) => string | { refused: string };
+}
+
+export type AgentRevisionResult =
+	| { outcome: "revised"; item: LibraryItem; version: PageVersion; savedLearnerVersion?: number; repeated?: boolean }
+	| { outcome: "stale"; head: number; savedLearnerVersion?: number }
+	| { outcome: "refused"; reason: string; savedLearnerVersion?: number }
+	| { outcome: "too-large"; savedLearnerVersion?: number }
+	| { outcome: "missing" };
 
 /**
  * The one record for every non-secret product preference (core/settings.ts

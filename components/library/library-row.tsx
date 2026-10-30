@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { PencilIcon, Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatBytes, KIND_LABEL, PAGE_MAX_BYTES, type LibraryItem } from "@/src/core";
+import { formatBytes, KIND_LABEL, type LibraryItem } from "@/src/core";
+import { opensInPane, usePagePane } from "./page-pane-context.tsx";
 
 const ACTION = "size-9 text-muted-foreground pointer-coarse:size-11";
 const OPEN = "flex min-w-0 flex-1 flex-col gap-0.5 rounded-[10px] px-3 py-2.5 text-left transition-colors hover:bg-accent";
@@ -17,49 +18,6 @@ function metaLine(item: LibraryItem): string {
 	return parts.join(" · ");
 }
 
-/** The read-only view for text kinds. Moves into the page pane in T059. */
-function ReadOnlyView({ item }: { item: LibraryItem }) {
-	const [text, setText] = useState<string | null>(null);
-	const [failed, setFailed] = useState(false);
-	const tooLong = item.size > PAGE_MAX_BYTES;
-	const load = useCallback(async () => {
-		setFailed(false);
-		try {
-			const response = await fetch(contentUrl(item.id), { cache: "no-store" });
-			if (!response.ok) throw new Error(String(response.status));
-			setText(await response.text());
-		} catch {
-			setFailed(true);
-		}
-	}, [item.id]);
-	useEffect(() => { if (!tooLong) void load(); }, [load, tooLong]);
-	return (
-		<div className="flex flex-col gap-2 px-3 pb-3" data-testid="library-read-only">
-			<p className="text-sm text-muted-foreground">This is your original; it can&apos;t be edited here.</p>
-			{tooLong ? (
-				<p className="flex flex-wrap items-center gap-2 text-sm text-ink-2">
-					Too long to preview
-					<a href={contentUrl(item.id, true)} className="prompt-secondary">Download</a>
-				</p>
-			) : failed ? (
-				<div role="status" className="flex flex-wrap items-center gap-2 text-sm text-ink-2">
-					<p>{item.name} could not be loaded.</p>
-					<button type="button" className="prompt-secondary" onClick={() => void load()}>Try again</button>
-				</div>
-			) : text === null ? (
-				<p role="status" className="text-sm text-muted-foreground">Loading…</p>
-			) : (
-				<pre
-					// Keyboard users scroll it; the track stays hidden globally.
-					tabIndex={0}
-					aria-label={item.name}
-					className={`max-h-[60vh] overflow-auto whitespace-pre-wrap rounded-md text-base [overflow-wrap:anywhere] ${item.kind === "code" || item.kind === "csv" ? "font-mono" : "font-ui"}`}
-				>{text}</pre>
-			)}
-		</div>
-	);
-}
-
 /** One Library item. Every action's accessible name includes the item's name. */
 export function LibraryRow({ item, onRenamed, onDelete }: {
 	item: LibraryItem;
@@ -68,7 +26,7 @@ export function LibraryRow({ item, onRenamed, onDelete }: {
 }) {
 	const [renaming, setRenaming] = useState(false);
 	const [renameError, setRenameError] = useState<string | null>(null);
-	const [expanded, setExpanded] = useState(false);
+	const pane = usePagePane();
 	const renameButton = useRef<HTMLButtonElement>(null);
 	const discard = useRef(false);
 	const saving = useRef(false);
@@ -109,7 +67,7 @@ export function LibraryRow({ item, onRenamed, onDelete }: {
 		</>
 	);
 	const newTab = item.kind === "pdf" || item.kind === "image";
-	const readable = item.kind !== "other" && !newTab;
+	const readable = opensInPane(item.kind);
 
 	return (
 		<li className="rounded-[10px] bg-card" data-testid="library-row">
@@ -144,7 +102,7 @@ export function LibraryRow({ item, onRenamed, onDelete }: {
 				) : newTab ? (
 					<a href={contentUrl(item.id)} target="_blank" rel="noreferrer" aria-label={`Open ${item.name}`} className={OPEN}>{body}</a>
 				) : readable ? (
-					<button type="button" aria-label={`Open ${item.name}`} aria-expanded={expanded} className={OPEN} onClick={() => setExpanded((open) => !open)}>{body}</button>
+					<button type="button" aria-label={`Open ${item.name}`} className={OPEN} onClick={() => pane?.open({ id: item.id, name: item.name, kind: item.kind, size: item.size })}>{body}</button>
 				) : (
 					<a href={contentUrl(item.id, true)} aria-label={`Open ${item.name}`} className={OPEN}>{body}</a>
 				)}
@@ -177,7 +135,6 @@ export function LibraryRow({ item, onRenamed, onDelete }: {
 					</>
 				)}
 			</div>
-			{expanded && readable && <ReadOnlyView key={item.updatedAt} item={item} />}
 		</li>
 	);
 }

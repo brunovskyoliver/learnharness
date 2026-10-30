@@ -159,6 +159,29 @@ export function formatBytes(bytes: number): string {
 }
 
 /** Why a write was refused. Nothing is stored or changed on any of these. */
+// ── Pages (data-model.md) ──
+export type PageAuthor = "learner" | "agent";
+export type PageVersionCause = "save" | "autosave-close" | "before-agent" | "conflict" | "restore" | "agent-create" | "agent-revise";
+export interface PageVersion {
+	n: number;
+	author: PageAuthor;
+	at: string;
+	bytes: number;
+	base: number;
+	cause: PageVersionCause;
+	restoredFrom?: number;
+	chatId?: string;
+	toolCallId?: string;
+}
+export interface PageHead { n: number; content: string; author: PageAuthor; at: string }
+export interface PageDraft { base: number; rev: number; content: string; updatedAt: string }
+export type PageDraftView = Pick<PageDraft, "base" | "rev" | "content">;
+export interface PageState { item: LibraryItem; head: PageHead; draft: PageDraftView | null }
+export interface PageStale { stale: true; head: PageHead; draft: PageDraftView | null }
+/** What a page write answers: the result, or why nothing changed. */
+export type PageWriteResult<T> = T | PageStale | "missing" | "too-large";
+export const isPageStale = (value: unknown): value is PageStale => typeof value === "object" && value !== null && "stale" in value;
+
 export type LibraryRefusalCode = "invalid_name" | "empty" | "length_mismatch" | "too_large" | "unsupported_type" | "content_mismatch" | "name_taken";
 export interface LibraryRefusal {
 	refused: LibraryRefusalCode;
@@ -173,6 +196,7 @@ export const LIBRARY_REFUSALS = {
 	empty: { refused: "empty", message: "This file is empty." },
 	lengthMismatch: { refused: "length_mismatch", message: "The upload did not arrive whole, so nothing was saved." },
 	tooLarge: { refused: "too_large", message: "This file is over the 50 MB limit." },
+	pageTooLarge: { refused: "too_large", message: "A page can be at most 1 MB." },
 	unsupportedType: { refused: "unsupported_type", message: "This kind of file isn't accepted." },
 	contentMismatch: { refused: "content_mismatch", message: "This file's contents don't match its type." },
 } as const satisfies Record<string, LibraryRefusal>;
