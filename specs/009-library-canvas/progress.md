@@ -12,6 +12,8 @@ Updated: 2026-10-30
 
 - 2026-10-30 Gate 2: owner replied go. Wording, UI contract and defaults 4-15 in plan.md approved. Chromium installed on the VM with apt (snap, /snap/bin/chromium) at owner request; use it instead of the temporary @sparticuz/chromium in T002.
 
+- 2026-10-30 Technical choices the contracts leave open (reversible, logged per constitution I): a document's `updatedAt` is its bytes' mtime and a rename keeps it, which is what lets reconcile recover a mid-rename crash without a new field. A rename to a different kind is allowed only if the bytes pass that kind's content check, otherwise 400. Files whose names break the name rules (never producible by uploads) stay on disk but are not listed. Stale `<data>/tmp/upload-*` older than a day are swept on listing.
+
 ## Log
 - 2026-10-30 audit: ~/agent-runs/2026-10-30-app-audit/audit.md
 - 2026-10-30 specify: spec.md written on branch feat/009-library-canvas.
@@ -20,9 +22,10 @@ Updated: 2026-10-30
 
 - 2026-10-30 analyze: 1 CRITICAL resolved by owner; 1 HIGH (no FR traceability) and 2 MEDIUM open; awaiting go.
 
-- 2026-10-30 T001 baseline on 4a91642 (code identical to main): lint and typecheck pass. `npm test` without a browser: 2815 pass, 13 fail, 27 skipped. Existing failures: 12 in tests/plot-headless and tests/ml-sampling-headless, because the snap binary found at /usr/bin/chromium has a private /tmp and cannot open file:///tmp/lh-demo-*; and "one app-wide background preference" in tests/chatgpt-auth.test.ts, which passes on rerun (flaky, as in the audit).
+- 2026-10-30 T001 baseline on 4a91642 (code identical to main): lint and typecheck pass. `npm test` without a browser: 2815 pass, 13 fail, 27 skipped. Existing failures: 12 in tests/plot-headless and tests/ml-sampling-headless, because /usr/bin/chromium-browser (a stub that launches the snap) was picked up, and the snap has a private /tmp, so it and cannot open file:///tmp/lh-demo-*; and "one app-wide background preference" in tests/chatgpt-auth.test.ts, which passes on rerun (flaky, as in the audit).
 - 2026-10-30 T002 owner change: snap Chromium 156.0.8078.47 through ~/agent-runs/2026-10-30-feature-009/chrome-no-sandbox.sh, no @sparticuz/chromium. It needs `TMPDIR` in the home folder as well as `CHROME_PATH`, because of the snap's private /tmp. With both, the 12 browser tests pass and the full suite is 2853 pass, 0 fail, 2 skipped (live network tests). Log: t002-full-test.log.
 - 2026-10-30 T003 baseline from a production build of 4a91642 (main's code; the branch adds only specs), isolated data. Throttled benchmark, ten runs per device, medians: desktop startup 4884.7 ms, sidebar 4938 ms, FCP 980 ms; mobile startup 4864.5 ms, sidebar 5050.2 ms, FCP 978 ms; JS 615,373 encoded bytes on both. This resolves `TODO(PERF_BASELINE)` for this feature. scripts/measure-session-performance.mjs only runs three desktop trials per invocation, so the ten-run desktop and mobile numbers come from perf.mjs (008's harness, through `LH_BROWSER_URL`); the repo script ran four times (12 desktop runs) alongside it. Evidence: baseline-summary.json, baseline-perf.json, baseline-repo-script.jsonl.
 - 2026-10-30 T004-T006: proxy body limit, PATHS.library, DESIGN.md section.
+- 2026-10-30 T007-T011: core library rules, LibraryStore port, `library-changed`, store and tests. Two existing tests (dismissal-park, jobs) needed a cast because the event union gained a payload with no `chatId`.
 
 ## Report

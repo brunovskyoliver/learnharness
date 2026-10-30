@@ -29,11 +29,11 @@ description: "Tasks for feature 009: Library and canvas pages"
 
 **Purpose**: types and the store that US1-US4 share. No story starts before this phase ends.
 
-- [ ] T007 [P] Tests for name rules, kind detection and limits in tests/library-core.test.ts
-- [ ] T008 [P] Create src/core/library.ts with item types, the accepted extensions per kind, `MAX_FILE_BYTES` = 52,428,800, `REFERENCE_INLINE_MAX_BYTES` = 32 KiB, `REFERENCE_MESSAGE_MAX_BYTES` = 64 KiB, `REFERENCE_MAX_PER_MESSAGE` = 8, `OUTLINE_MAX_BYTES` = 8 KiB, `PAGE_MAX_BYTES` = 1,048,576, and `uploadName` moved from src/server/files.ts ("NFC, trimmed, 1-200 characters, no separators, no leading dot, no control characters")
-- [ ] T009 Add the `LibraryStore` port to src/core/ports.ts and `library-changed` to `ServerEvents` in src/core/events.ts
-- [ ] T010 Tests for the catalog in tests/library-store.test.ts: reconcile adds existing files with bytes unchanged, skips symlinks, tombstones vanished files, recovers a crash mid-rename by size and mtime, refuses a newer `version`, refuses to recreate an unreadable catalog, and two tenants never see each other
-- [ ] T011 Create src/store/library.ts with the catalog (temp file and rename, `version: 1`), reconcile, a per-tenant lock through `tenantScoped`, `writeUpload` (stream to `<data>/tmp`, `fs.link` to target, unlink temp), rename with `previousNames`, and delete leaving a tombstone; wire it in src/server/stores.ts
+- [X] T007 [P] Tests for name rules, kind detection and limits in tests/library-core.test.ts
+- [X] T008 [P] Create src/core/library.ts with item types, the accepted extensions per kind, `MAX_FILE_BYTES` = 52,428,800, `REFERENCE_INLINE_MAX_BYTES` = 32 KiB, `REFERENCE_MESSAGE_MAX_BYTES` = 64 KiB, `REFERENCE_MAX_PER_MESSAGE` = 8, `OUTLINE_MAX_BYTES` = 8 KiB, `PAGE_MAX_BYTES` = 1,048,576, and `uploadName` moved from src/server/files.ts ("NFC, trimmed, 1-200 characters, no separators, no leading dot, no control characters")
+- [X] T009 Add the `LibraryStore` port to src/core/ports.ts and `library-changed` to `ServerEvents` in src/core/events.ts
+- [X] T010 Tests for the catalog in tests/library-store.test.ts: reconcile adds existing files with bytes unchanged, skips symlinks, tombstones vanished files, recovers a crash mid-rename by size and mtime, refuses a newer `version`, refuses to recreate an unreadable catalog, and two tenants never see each other
+- [X] T011 Create src/store/library.ts with the catalog (temp file and rename, `version: 1`), reconcile, a per-tenant lock through `tenantScoped`, `writeUpload` (stream to `<data>/tmp`, `fs.link` to target, unlink temp), rename with `previousNames`, and delete leaving a tombstone; wire it in src/server/stores.ts
 
 **Checkpoint**: `npm test` green for the store; nothing visible yet.
 

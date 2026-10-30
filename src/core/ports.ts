@@ -27,6 +27,7 @@ import type {
 	NotesSource,
 } from "./contracts.ts";
 import type { UserSettings } from "./settings.ts";
+import type { LibraryItem, LibraryRefusal, LibraryTextState } from "./library.ts";
 
 // ─── ChatStore — the session record's home (data/chats) ─────────────────────
 
@@ -163,6 +164,26 @@ export interface JobStore {
 }
 
 // ─── SettingsStore — THE user settings record (settings-storage wave, 2026-09-19) ──
+
+/** The learner's documents and pages (feature 009). */
+export interface LibraryStore {
+	/** Live items after reconciling with the folder, by name. Throws
+	 *  LibraryCatalogError when the catalog can't be used. */
+	list(): Promise<LibraryItem[]>;
+	/** A live item, or null for an unknown id or a tombstone. */
+	get(id: string): Promise<LibraryItem | null>;
+	/** Store a validated name's bytes. Never overwrites; refusals store nothing. */
+	writeUpload(name: string, body: AsyncIterable<Uint8Array>, declaredBytes: number): Promise<LibraryItem | LibraryRefusal>;
+	/** Rename, moving the file too. Null for an unknown id. */
+	rename(id: string, name: string): Promise<LibraryItem | LibraryRefusal | null>;
+	/** Delete the bytes and leave a tombstone. False for an unknown id. */
+	remove(id: string): Promise<boolean>;
+	setTextState(id: string, state: LibraryTextState): Promise<void>;
+	/** Cached text info: rebuildable, null when absent or damaged. */
+	readDerived(id: string): Promise<unknown>;
+	writeDerived(id: string, value: unknown): Promise<void>;
+	documentPath(item: Pick<LibraryItem, "name">): string;
+}
 
 /**
  * The one record for every non-secret product preference (core/settings.ts

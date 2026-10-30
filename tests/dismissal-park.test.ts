@@ -92,7 +92,7 @@ describe("the park registry", () => {
 		const before = chatStore.getChat(chat)!.messages.length;
 		let emitted = 0;
 		const off = subscribe((e) => {
-			if (e.type === "record-changed" && e.chatId === chat) emitted++;
+			if (e.type === "record-changed" && (e as { chatId?: string }).chatId === chat) emitted++;
 		});
 		applyParkedDismissal(chatStore, chat);
 		off();
@@ -113,7 +113,7 @@ describe("applyParkedDismissal — against real records", () => {
 		});
 		let emitted = 0;
 		const off = subscribe((e) => {
-			if (e.type === "record-changed" && e.chatId === chat) emitted++;
+			if (e.type === "record-changed" && (e as { chatId?: string }).chatId === chat) emitted++;
 		});
 		applyParkedDismissal(chatStore, chat);
 		off();
@@ -138,7 +138,7 @@ describe("applyParkedDismissal — against real records", () => {
 		parkDismissal(chat, { type: "dismiss-problem", problemCallId: "call-ghost" });
 		let emitted = 0;
 		const off = subscribe((e) => {
-			if (e.type === "record-changed" && e.chatId === chat) emitted++;
+			if (e.type === "record-changed" && (e as { chatId?: string }).chatId === chat) emitted++;
 		});
 		applyParkedDismissal(chatStore, chat);
 		off();

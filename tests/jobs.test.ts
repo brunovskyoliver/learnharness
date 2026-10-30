@@ -286,7 +286,7 @@ describe("job store", () => {
 	it("every mutation emits jobs-changed {chatId}; reads emit nothing", () => {
 		const got: { chatId?: string }[] = [];
 		const off = subscribe((e) => {
-			if (e.type === "jobs-changed") got.push({ chatId: e.chatId });
+			if (e.type === "jobs-changed") got.push({ chatId: (e as { chatId?: string }).chatId });
 		});
 		const job = jobStore.createJob({ kind: "research", chatId: "chat_storeemit", toolCallId: "call-emit" });
 		trackJob(job.id);
