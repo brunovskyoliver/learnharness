@@ -81,6 +81,40 @@ Queued steers sit above the shell as right-aligned rows; each has a × ("Remove 
 - Settings uses searchable icon categories, a Settings / section header, grouped fields and a live reading preview. Category navigation scrolls horizontally on narrow screens; field controls stack below labels.
 - Settings, setup and connection dialogs contain focus. Menus portal into the active modal boundary. Closing returns focus to the opening control; settings retain immediate persistence and existing section/row deep links.
 - Home, chains and activity share the same surface and control tokens. Loading, empty and failed requests remain distinct; refresh failures retain the last successful data. Home's layout is described under Home above.
+- Unavailable rows in Settings and the graph display panel use the muted ink token on label and hint with a locked control, never opacity. This replaces the 2026-09-20 ruling (owner, 2026-10-30).
+
+## Library, @ list and page pane
+
+Feature 009; the binding reference is its [UI contract](specs/009-library-canvas/contracts/ui-contract.md). All surfaces use Study ink tokens, with no amber except keyboard focus and the primary action.
+
+### Library view
+
+- The sidebar has one labelled row, "Library" (`LibraryIcon`, 15px), under Search and New and above the date shelves. It links to `/library` and carries `aria-current="page"` there.
+- `/library` is one column, `max-w-[52rem]` like Home, under the shared top bar: the title "Library" (title serif, 30px), "Upload" and "New page" (raised-2, neither primary), then the "Search your Library" field, which filters names on the client.
+- Rows are raised, 10px. The name is 15px and wraps. The meta line is `{Kind} · {size} · {date}`, plus "Made by the agent" or "No text could be read" when true. Clicking the row opens the item ("Open {name}"); "Rename {name}" and "Delete {name}" are named buttons.
+- Upload is a file picker and a drop on the page, with a row and a percent per upload in flight. Refusals name the file and the reason and stay until dismissed.
+- A name clash asks "{name} is already in your Library." with "Keep both as {suggested}" and "Cancel". Originals are never replaced.
+- The delete dialog follows the session one: "Delete {name}?" and, for a page, "Its whole version history goes too." The name is in the interface font.
+- Empty: "Nothing here yet. Upload a document or start a page." Loading uses row skeletons. Failed: "Your Library could not be loaded." with Try again. A failed refresh keeps the list.
+- Pages open in the pane. Markdown, text, code and CSV open read-only with "This is your original; it can't be edited here." PDF and images open in a new tab. Over 1 MiB of text shows "Too long to preview" and Download.
+
+### @ list
+
+- It opens above the field, inside the prompt shell's width: raised-2, 10px, no border, up to 6 rows scrolling with hidden tracks. A row is the name, then `{Kind} · {size}` in meta, at least 44px on coarse pointers.
+- The textarea is a `combobox` over a `listbox`. Up and Down move, Enter or Tab insert `@name ` at the token and keep focus, and Escape closes only the list. Clicking keeps focus in the field.
+- No match shows "Nothing matched" as a status: Enter does the field's normal action, Tab inserts nothing and the text stays. A space after an unmatched query closes the list. "Your Library is empty.", "Loading your Library…" and "Your Library could not be loaded." leave the draft untouched.
+- It serves the chat, Home and new-session composer, both question fields and the practice field. When the text has references, one muted 13px line in the answer well reads "Attaching {name}, {name}".
+- Sent messages show one quiet, always visible row per reference on the reading edge (13px, `ink-2`, the name in foreground), with the mode and reason worded as in the contract.
+
+### Page pane
+
+- A resizable pane shared with the demo workspace shows a demo or a page; the most recent explicit open wins and the one live iframe stays mounted. A question's automatic demo open does not replace an open page.
+- The 52px header holds the page name (click to rename), a muted save state ("Saved", "Saving…", "Draft saved", "Not saved. Your text is kept in this browser." with Try again), History and close. The body is one rich-text surface at reading size, with no separate preview pane.
+- Cmd/Ctrl+S saves a version. Escape returns focus to the transcript on desktop and closes the layer on phones.
+- A conflict shows "This page changed elsewhere. Your text is safe here." with "Keep mine" and "Use latest". An agent update on a clean page shows "Updated by the agent · version {n}" for 4s and announces it in a live region.
+- History lists `Version {n} · {You | Agent} · {time}`, with a read-only preview and "Restore this version".
+- Below 768px the pane is a full-screen layer with contained focus and "Back to chat". The composer's draft stays mounted underneath.
+- Transcript rows follow the math-check skeleton with no amber: "Page · created {name}", "Page · revised {name} · version {n}", "Page · couldn't revise, it changed", "Page · failed", "Library · read {name}" and "Library · failed". Running rows show only the spinner and activity label.
 
 ## Demos
 

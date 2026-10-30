@@ -16,12 +16,12 @@ description: "Tasks for feature 009: Library and canvas pages"
 
 **Purpose**: a browser, a baseline and the config.
 
-- [ ] T001 Run `npm test`, `npm run lint` and `npm run typecheck` on the branch before changes and record existing failures in specs/009-library-canvas/progress.md
-- [ ] T002 Set up a temporary `@sparticuz/chromium` and a `--no-sandbox` wrapper under `~/agent-runs/2026-10-30-feature-009/` (not in the repo, per research R13), re-run the audit's 12 browser-dependent tests with `CHROME_PATH`, and record the results in specs/009-library-canvas/progress.md
-- [ ] T003 Measure the startup baseline from `main` with scripts/measure-session-performance.mjs through `LH_BROWSER_URL` using that browser, ten runs desktop and mobile, and save it under `~/agent-runs/2026-10-30-feature-009/`; note in progress.md that this resolves `TODO(PERF_BASELINE)` for this feature
-- [ ] T004 [P] Add `experimental.proxyClientMaxBodySize: "51mb"` to next.config.ts with a comment pointing at research R4
-- [ ] T005 [P] Add `PATHS.library` to config.ts and fix the `PATHS.files` comment so it no longer says hosted only
-- [ ] T006 Write the "Library, @ list and page pane" section in DESIGN.md from contracts/ui-contract.md, including the opacity ruling under "Settings and secondary views" (FR-010, FR-012)
+- [X] T001 Run `npm test`, `npm run lint` and `npm run typecheck` on the branch before changes and record existing failures in specs/009-library-canvas/progress.md
+- [X] T002 Set up a temporary `@sparticuz/chromium` and a `--no-sandbox` wrapper under `~/agent-runs/2026-10-30-feature-009/` (not in the repo, per research R13), re-run the audit's 12 browser-dependent tests with `CHROME_PATH`, and record the results in specs/009-library-canvas/progress.md
+- [X] T003 Measure the startup baseline from `main` with scripts/measure-session-performance.mjs through `LH_BROWSER_URL` using that browser, ten runs desktop and mobile, and save it under `~/agent-runs/2026-10-30-feature-009/`; note in progress.md that this resolves `TODO(PERF_BASELINE)` for this feature
+- [X] T004 [P] Add `experimental.proxyClientMaxBodySize: "51mb"` to next.config.ts with a comment pointing at research R4
+- [X] T005 [P] Add `PATHS.library` to config.ts and fix the `PATHS.files` comment so it no longer says hosted only
+- [X] T006 Write the "Library, @ list and page pane" section in DESIGN.md from contracts/ui-contract.md, including the opacity ruling under "Settings and secondary views" (FR-010, FR-012)
 
 ---
 
