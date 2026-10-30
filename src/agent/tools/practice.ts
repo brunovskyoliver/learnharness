@@ -22,6 +22,7 @@ import { lsTool } from "./ls.ts";
 import { findTool } from "./find.ts";
 import { grepTool } from "./grep.ts";
 import { jobTools, type JobToolContext } from "./jobs.ts";
+import { libraryTools, type LibraryToolContext } from "./library.ts";
 import { mlVisualTool } from "./ml-visual.ts";
 import { tokenizeTool } from "./tokenize.ts";
 import { plotTool } from "./plot.ts";
@@ -49,6 +50,9 @@ export interface PracticeToolContext {
 	 *  Each absent context (tests) = absent from the registry. */
 	graph?: GraphToolContext;
 	jobs?: JobToolContext;
+	/** The Library (feature 009): library_list and library_read. `image` comes
+	 *  with `jobs` when its context carries the Library too. */
+	library?: LibraryToolContext;
 }
 
 /** TURN-SCOPED GATE STATE (the BKT incident, 2026-10-05): the gates used
@@ -250,6 +254,8 @@ export function practiceTools(ctx: PracticeToolContext, enabled?: EnabledTools):
 		grep: grepTool,
 		...(jobs?.research ? { research: jobs.research } : {}),
 		...(jobs ? { pdf: jobs.pdf! } : {}),
+		...(jobs?.image ? { image: jobs.image } : {}),
+		...(ctx.library ? libraryTools(ctx.library) : {}),
 		// Quick plots (feature 005): on the learner's request only (doctrine).
 		plot: plotTool(),
 			...(enabled?.ml_visuals === false ? {} : { ml_visual: mlVisualTool(), tokenize: tokenizeTool() }),

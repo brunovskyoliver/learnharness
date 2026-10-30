@@ -11,7 +11,8 @@ import { ThinkingBlock } from "@/components/thinking-block";
 import { cn } from "@/lib/utils";
 import { ToolContentResponse } from "@/components/ai-elements/message";
 import { WolframCheckedLabel } from "@/components/artifacts/math-check-card";
-import type { QuestionAnswerData } from "@/src/core";
+import { ReferencesCard } from "@/components/library/references-card";
+import type { LibraryReference, QuestionAnswerData } from "@/src/core";
 import { answerForPresentation, parseAskInput, parseQuizInput } from "@/src/core";
 
 /**
@@ -247,6 +248,8 @@ export function AnsweredCard({ answer: savedAnswer, input, checked = false }: { 
 					<ToolContentResponse className="inline [&>p:first-child]:inline [&>p:first-child]:m-0">{answer.committed}</ToolContentResponse>
 				</div>
 			)}
+			{/* Feature 009: what his answer attached. The server wrote this field. */}
+			<ReferencesCard references={(savedAnswer as { references?: LibraryReference[] }).references ?? []} />
 			{/* Feature 007: the answer was checked with Wolfram before it was posed. */}
 			{checked && <WolframCheckedLabel />}
 		</div>

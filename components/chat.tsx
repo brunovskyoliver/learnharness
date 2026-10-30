@@ -61,10 +61,11 @@ import { SessionFind } from "@/components/session-find";
 import { SessionMessageNavigation } from "@/components/session-navigation";
 import { PracticeDock } from "@/components/practice-dock";
 import { ThinkingCard, type PracticeThinkingData } from "@/components/practice-cards";
+import { ReferencesCard } from "@/components/library/references-card";
 import { GraphContextCard, type GraphContextData } from "@/components/graph-context-card";
 import { FollowupContextCard, type FollowupContextData } from "@/components/followup-context-card";
 import { TopBar } from "@/components/top-bar";
-import type { ArtifactPartProps, JobRecord, Phase3, QuestionAnswerData, QuestionFormDraft, TurnUsage, SessionPricing } from "@/src/core";
+import type { ArtifactPartProps, JobRecord, LibraryReference, Phase3, QuestionAnswerData, QuestionFormDraft, TurnUsage, SessionPricing } from "@/src/core";
 import type { LhViewMessage } from "@/src/core";
 import { PhaseChip, PhaseDivider } from "@/components/phase-divider";
 import {
@@ -1427,6 +1428,8 @@ function ChatView({
 												return <CompactionMomentDivider key={pi} data={part.data as CompactionDividerData} />;
 											case "data-compaction-cut":
 												return <CompactionCutDivider key={pi} data={part.data as CompactionDividerData} />;
+											case "data-library-references":
+												return <ReferencesCard key={pi} references={(part.data as { references: LibraryReference[] }).references} />;
 											case "data-practice-thinking":
 												return <ThinkingCard key={pi} data={part.data as PracticeThinkingData} />;
 											case "data-practice-next":
@@ -1501,6 +1504,9 @@ function ChatView({
 												    sits INSIDE the rail, same mono-xs register and same 1ch
 												    rail as the thinking rows — one quote geometry. */}
 												<div className="mb-1 font-medium text-muted-foreground">You</div>
+												{m.parts.map((part, pi) => part.type === "data-library-references" ? (
+													<ReferencesCard key={pi} references={(part.data as { references: LibraryReference[] }).references} />
+												) : null)}
 												<div className="lh-prose whitespace-pre-wrap text-foreground">
 													{m.parts.filter((p) => p.type === "text").map((p) => p.text).join("\n")}
 												</div>

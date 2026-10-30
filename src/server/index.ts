@@ -48,4 +48,5 @@ export * from "./model-catalog.ts";
 export { subscriptionControlsResponse, subscriptionBrowserResponse } from "./web-subscription-http.ts";
 export { sessionCost } from "./pricing.ts";
 export * from "./library.ts";
+export { resolveSteerReferences } from "./library-references.ts";
 export { tokenize } from "../agent/tokenizer.ts";

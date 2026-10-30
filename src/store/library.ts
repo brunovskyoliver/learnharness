@@ -291,6 +291,13 @@ export const libraryStore: LibraryStore = {
 		return items.sort((a, b) => a.name.localeCompare(b.name));
 	}),
 	get: (id) => withLock(async () => liveItems(await loadReconciled()).find((i) => i.id === id) ?? null),
+	catalog: () => withLock(async () => (await loadReconciled()).items),
+	readText: (item) => fs.readFile(
+		item.kind === "page"
+			? path.join(PATHS.library, "pages", item.id, `v${item.headVersion ?? 1}.md`)
+			: path.join(PATHS.files, item.name),
+		"utf8",
+	),
 	writeUpload,
 	rename,
 	remove,

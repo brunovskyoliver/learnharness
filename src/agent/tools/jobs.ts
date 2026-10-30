@@ -3,6 +3,8 @@ import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { serverExecute } from "../tool-execute.ts";
 import type { JobRecord } from "../../core/contracts.ts";
 import type { JobStore } from "../../core/ports.ts";
+import { isTombstone } from "../../core/library.ts";
+import { findLibraryEntry, NO_VISION_SENTENCE, type LibraryToolContext } from "./library.ts";
 
 /**
  * Async sub-agent job tools (vision §2.5; W2/W6 kinds + the pi-model
@@ -22,7 +24,9 @@ export interface JobToolContext {
 	/** Fire the background runner for a fresh job — fire-and-forget. The
 	 *  input rides along because the spawn happens MID-STREAM, before
 	 *  onFinish persists the tool part — a transcript scan would race it. */
-	spawn: (job: JobRecord, input: ResearchInput | DemoInput | VisualInput | PdfInput) => void;
+	spawn: (job: JobRecord, input: JobDispatchInput) => void;
+	/** The Library (feature 009): present, the `image` tool is registered. */
+	library?: LibraryToolContext;
 	/** Search-provider availability, retained for existing composition seams.
 	 *  Research dispatch does not depend on it: web_fetch is keyless and
 	 *  web_search reports a missing provider as a recoverable tool result. */
@@ -66,6 +70,11 @@ export const pdfInputSchema = Type.Object({
 	}),
 });
 
+export const imageInputSchema = Type.Object({
+	item: Type.String({ minLength: 1, description: "The image's Library id or exact name." }),
+	question: Type.String({ minLength: 1, description: "One specific question about the image. The vision model sees nothing else of the lesson." }),
+});
+
 /**
  * The per-call dispatch: create the job (idempotent by toolCallId), fire the
  * runner, and return the ack. Shared by all three tools — only kind differs.
@@ -75,7 +84,7 @@ function dispatch(
 	kind: JobRecord["kind"],
 	toolCallId: string,
 	ack: string,
-	input: ResearchInput | DemoInput | VisualInput | PdfInput,
+	input: JobDispatchInput,
 ): string {
 	const existing = ctx.jobStore.findJobByToolCallId(ctx.chatId, toolCallId);
 	const job = existing ?? ctx.jobStore.createJob({ kind, chatId: ctx.chatId, toolCallId, input });
@@ -95,6 +104,10 @@ const VISUAL_ACK =
 const PDF_ACK =
 	"This call is fire-and-forget: continue your turn and keep teaching — do not wait, poll, or mention waiting. " +
 	"The document brief arrives as a new message when ready; weave it into the lesson and cite its pages.";
+
+const IMAGE_ACK =
+	"This call is fire-and-forget: continue your turn and keep teaching — do not wait, poll, or mention waiting. " +
+	"The answer arrives as a new message when ready.";
 
 const RESEARCH_DESCRIPTION =
 	"Dispatch a background web-research agent: fact verification, current data, or niche specifics you are not certain about. " +
@@ -162,9 +175,35 @@ export function jobTools(ctx: JobToolContext): Record<string, AgentTool<any>> {
 			parameters: pdfInputSchema,
 			execute: serverExecute("pdf", pdfInputSchema, (input, { toolCallId }) => dispatch(ctx, "pdf", toolCallId, PDF_ACK, input)),
 		},
+		...(ctx.library ? { image: imageTool(ctx, ctx.library) } : {}),
 	};
 }
 
+/** Refuses non-images, deleted items and a missing vision model before any
+ *  job exists, so a refusal costs nothing. */
+function imageTool(ctx: JobToolContext, library: LibraryToolContext): AgentTool<any> {
+	return {
+		name: "image",
+		label: "image",
+		description: "Have the vision model look at an image in the learner's Library and answer one question. Runs in the background; the answer arrives as a later message.",
+		parameters: imageInputSchema,
+		execute: serverExecute("image", imageInputSchema, async ({ item, question }, { toolCallId }) => {
+			try {
+				const entry = findLibraryEntry(await library.store.catalog(), item);
+				if (!entry) return `Nothing in the Library is called ${item}. Use library_list to see what is there.`;
+				if (isTombstone(entry)) return "That item was deleted from the Library.";
+				if (entry.kind !== "image") return `${entry.name} is not an image. Use library_read.`;
+				if (!library.visionAvailable()) return NO_VISION_SENTENCE;
+				return dispatch(ctx, "image", toolCallId, IMAGE_ACK, { item: entry.id, name: entry.name, question });
+			} catch (err) {
+				return `${item} could not be read: ${err instanceof Error ? err.message : String(err)}`;
+			}
+		}),
+	};
+}
+
+export type ImageDispatchInput = { item: string; name: string; question: string };
+export type JobDispatchInput = ResearchInput | DemoInput | VisualInput | PdfInput | ImageDispatchInput;
 export type ResearchInput = Static<typeof researchInputSchema>;
 export type DemoInput = Static<typeof demoInputSchema>;
 export type VisualInput = Static<typeof visualInputSchema>;

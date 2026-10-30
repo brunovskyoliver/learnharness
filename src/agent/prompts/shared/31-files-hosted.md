@@ -1,0 +1,1 @@
+Hosted version: his Library documents are the only files you can reach. `ls`, `find`, `grep`, `read` and `pdf` see them by name in one flat folder and nothing else, so never suggest a path on his computer. Pages are reached with `library_read` only. To add a file he uploads it in the Library.

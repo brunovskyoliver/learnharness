@@ -2,7 +2,9 @@
  * proxy: upload, clash, rename, open and delete at 320, 390 and 1440 px, plus
  * the 50 MiB limit. Makes no model requests.
  * CHROME_PATH=/path/to/chrome node scripts/check-library-ui.mjs
- * Optional: LH_UI_SCREENSHOT_DIR saves evidence, LH_UI_PORT picks the port.
+ * Then the @ list in every field and the sent labels, with model submissions
+ * intercepted. Optional: LH_UI_SCREENSHOT_DIR saves evidence, LH_UI_PORT picks
+ * the port, LH_UI_MENTIONS_ONLY=1 runs only the @ part.
  * Set TMPDIR under the home folder for a snap Chromium, whose /tmp is private.
  */
 import assert from "node:assert/strict";
@@ -26,6 +28,7 @@ const fixtures = path.join(root, "fixtures");
 const files = path.join(data, "files");
 const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const row = (name) => `[data-testid="library-row"]:has([aria-label="Delete ${name}"])`;
+const mentionsOnly = process.env.LH_UI_MENTIONS_ONLY === "1";
 let server;
 let browser;
 
@@ -204,12 +207,242 @@ async function checkWidth(width) {
 	console.log(`PASS ${width}px upload, clash, search, rename, open, refusal, delete`);
 }
 
+const golden = async (name) => JSON.parse(await readFile(new URL(`../tests/fixtures/golden-data/chats/${name}.json`, import.meta.url), "utf8"));
+
+/** Sessions for the @ fields and the sent labels, on the golden transcripts. */
+async function seedMentionChats() {
+	const chats = path.join(data, "chats");
+	await mkdir(chats, { recursive: true });
+	const settings = { model: { provider: "openrouter", id: "openai/gpt-4o" } };
+	const write = (chat) => writeFile(path.join(chats, `${chat.id}.json`), JSON.stringify({ ...chat, settings }));
+	const lesson = await golden("chat_mv27rrra_feff23b6");
+	const plan = lesson.messages.findIndex((m) => m.role === "toolResult" && m.toolName === "plan_init" && m.details?.tree);
+	const check = lesson.messages.findIndex((m, i) => i > plan && m.role === "assistant" && m.content?.some((p) => p.type === "toolCall" && p.name === "quiz" && p.arguments.type === "check"));
+	const quiz = { ...structuredClone(lesson), id: "mention-quiz", messages: structuredClone(lesson.messages.slice(0, check + 1)) };
+	await write(quiz);
+	const explain = { ...structuredClone(quiz), id: "mention-explain" };
+	const call = explain.messages.at(-1).content.find((p) => p.type === "toolCall" && p.name === "quiz");
+	explain.messages.at(-1).content = [{ ...call, name: "explain", arguments: { type: "check", nodeId: call.arguments.nodeId, question: "Explain the step in your own words.", correctAnswer: "The committed answer." } }];
+	await write(explain);
+	const practiceSource = await golden("chat_mv293wv5_10656952");
+	const problem = practiceSource.messages.findIndex((m) => m.role === "assistant" && m.content?.some((p) => p.type === "toolCall" && p.name === "problem"));
+	await write({ ...practiceSource, id: "mention-practice", messages: practiceSource.messages.slice(0, problem + 2) });
+	const ref = (over) => ({ itemId: `lib_gone_${over.name}`, name: "a.md", kind: "markdown", size: 3, mode: "inline", ...over });
+	const references = [
+		ref({ name: "in-full.md" }),
+		ref({ name: "long.md", mode: "outline", reason: "too-long" }),
+		ref({ name: "crowded.md", mode: "outline", reason: "message-limit" }),
+		ref({ name: "roomless.md", mode: "outline", reason: "no-room" }),
+		ref({ name: "book.pdf", kind: "pdf", mode: "outline", reason: "not-ready" }),
+		ref({ name: "figure.png", kind: "image", mode: "image" }),
+		ref({ name: "photo.png", kind: "image", mode: "unreadable", reason: "no-vision" }),
+		ref({ name: "scan.pdf", kind: "pdf", mode: "unreadable", reason: "no-text" }),
+		ref({ name: "archive.xyz", kind: "other", mode: "unreadable", reason: "unsupported" }),
+		ref({ name: "ninth.md", mode: "missing", reason: "over-count" }),
+		ref({ name: "deleted.md", mode: "missing", size: undefined }),
+	];
+	await write({
+		...structuredClone(lesson),
+		id: "mention-chat",
+		messages: [
+			{ id: "m_user", role: "user", content: "Use these, with @in-full.md first.", references, timestamp: 1 },
+			{ ...lesson.messages.find((m) => m.role === "assistant" && m.stopReason === "stop"), id: "m_reply", content: [{ type: "text", text: "Read them." }] },
+		],
+	});
+}
+
+/** The keyboard path in one field, with model submissions intercepted. */
+async function checkMentionField(page, posts, width, name, selector, { sends = true, escapeDialog = false } = {}) {
+	const field = await page.waitForSelector(selector, { visible: true });
+	const value = () => page.$eval(selector, (el) => el.value);
+	const focused = () => page.$eval(selector, (el) => document.activeElement === el);
+	const clear = async () => {
+		await page.$eval(selector, (el) => { el.focus(); el.select(); });
+		await page.keyboard.press("Backspace");
+	};
+	const waitValue = async (expected) => {
+		for (let i = 0; i < 100; i++) {
+			if (await value() === expected) return;
+			await pause(50);
+		}
+		assert.equal(await value(), expected, `${name}: the field's text`);
+	};
+	const menu = '[data-testid="mention-menu"]';
+	const menuGone = () => page.waitForFunction((sel) => !document.querySelector(sel), {}, menu);
+	await field.focus();
+	await clear();
+	assert.equal(await page.$eval(selector, (el) => el.getAttribute("role")), "combobox", `${name}: combobox`);
+
+	// A list opens, filters, moves, and Escape closes only it.
+	await page.keyboard.type("@w");
+	await page.waitForFunction(() => [...document.querySelectorAll('[data-testid="mention-option"]')].some((o) => o.innerText.includes("Week 3 notes.md")));
+	const open = await page.$eval(selector, (el) => [el.getAttribute("aria-expanded"), el.getAttribute("aria-controls"), el.getAttribute("aria-activedescendant")]);
+	assert.equal(open[0], "true", `${name}: expanded`);
+	assert.ok(open[1] && open[2], `${name}: controls and active option`);
+	assert.equal(await page.$eval(menu, (el) => getComputedStyle(el).scrollbarWidth), "none", `${name}: hidden tracks`);
+	const overflow = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+	assert.ok(overflow <= 0, `${name} ${width}px: no page overflow (${overflow}px)`);
+	const inside = await page.$eval(menu, (el) => {
+		const box = el.getBoundingClientRect();
+		const shell = el.closest(".prompt-shell")?.getBoundingClientRect();
+		const area = document.querySelector(`[aria-controls="${el.id}"]`).getBoundingClientRect();
+		return { above: box.bottom <= area.top + 1, within: !shell || (box.left >= shell.left && box.right <= shell.right), onScreen: box.top >= 0 };
+	});
+	assert.deepEqual(inside, { above: true, within: true, onScreen: true }, `${name} ${width}px: above the field, inside the shell`);
+	if (width < 768) {
+		const height = await page.$eval('[data-testid="mention-option"]', (el) => el.getBoundingClientRect().height);
+		assert.ok(height >= 44, `${name}: coarse rows at least 44px (${height})`);
+	}
+	if (shots) await page.screenshot({ path: path.join(shots, `mention-${width}-${name}.png`) });
+	await page.keyboard.press("Escape");
+	await menuGone();
+	assert.equal(await value(), "@w", `${name}: Escape keeps the draft`);
+	assert.ok(await focused(), `${name}: Escape keeps focus`);
+	assert.equal(await page.$('[role="alertdialog"], [data-testid="abort-turn-dialog"], [data-testid="dismiss-dialog"]'), null, `${name}: Escape opens nothing`);
+	assert.equal(posts.length, 0, `${name}: Escape submits nothing`);
+	if (escapeDialog) {
+		// With the list closed, Escape is the field's own again.
+		await page.keyboard.press("Escape");
+		await page.waitForSelector('[role="alertdialog"], [role="dialog"]', { visible: true });
+		await page.keyboard.press("Escape");
+		await page.waitForFunction(() => !document.querySelector('[role="alertdialog"], [role="dialog"]'));
+		await field.focus();
+	}
+
+	// No match says so, and plain text stays.
+	await clear();
+	await page.keyboard.type("@zzzz");
+	await page.waitForFunction((sel) => document.querySelector(sel)?.querySelector('[role="status"]')?.textContent === "Nothing matched", {}, menu);
+	await page.keyboard.type(" ");
+	await menuGone();
+	assert.equal(await value(), "@zzzz ", `${name}: a space closes an unmatched query`);
+
+	// An email and code never open it.
+	await clear();
+	await page.keyboard.type("me@w");
+	await pause(150);
+	assert.equal(await page.$(menu), null, `${name}: an email does not open it`);
+	await clear();
+	await page.keyboard.type("`@w");
+	await pause(150);
+	assert.equal(await page.$(menu), null, `${name}: code does not open it`);
+
+	// Enter inserts and keeps focus; the pre-send line shows the name.
+	await clear();
+	await page.keyboard.type("see @no");
+	await page.waitForSelector('[data-testid="mention-option"]');
+	await page.keyboard.press("ArrowDown");
+	await page.keyboard.press("ArrowUp");
+	await page.keyboard.press("Enter");
+	await waitValue("see @notes.md ");
+	assert.ok(await focused(), `${name}: Enter keeps focus`);
+	assert.equal(posts.length, 0, `${name}: inserting submits nothing`);
+	await page.waitForFunction(() => document.querySelector('[data-testid="attaching-line"]')?.textContent === "Attaching notes.md");
+
+	// Tab inserts too, and a click keeps focus.
+	await clear();
+	await page.keyboard.type("@Week");
+	await page.waitForSelector('[data-testid="mention-option"]');
+	await page.keyboard.press("Tab");
+	await waitValue("@Week 3 notes.md ");
+	assert.ok(await focused(), `${name}: Tab keeps focus`);
+	await clear();
+	await page.keyboard.type("@no");
+	await page.click('[data-testid="mention-option"]');
+	await waitValue("@notes.md ");
+	assert.ok(await focused(), `${name}: a click keeps focus`);
+	if (shots) await page.screenshot({ path: path.join(shots, `mention-${width}-${name}-attaching.png`) });
+
+	if (sends) {
+		await page.keyboard.press("Enter");
+		for (let i = 0; i < 100 && posts.length === 0; i++) await pause(50);
+		assert.equal(posts.length, 1, `${name}: the next Enter submits`);
+		assert.ok(JSON.stringify(posts[0]).includes("@notes.md"), `${name}: the text carries the token`);
+		assert.ok(!JSON.stringify(posts[0]).includes('"references"'), `${name}: the client sends no references`);
+		posts.length = 0;
+	} else {
+		await clear();
+	}
+	console.log(`PASS ${width}px @ list in ${name}`);
+}
+
+async function checkMentions(width) {
+	const mobile = width < 768;
+	const context = await browser.createBrowserContext();
+	const page = await context.newPage();
+	page.setDefaultTimeout(30000);
+	const errors = [];
+	page.on("pageerror", (error) => errors.push(error.message));
+	const consoleErrors = new Set();
+	if (process.env.LH_UI_LOG_CONSOLE) page.on("response", (response) => { if (response.status() >= 400) consoleErrors.add(`${response.status()} ${response.url()}`); });
+	page.on("console", (message) => { if (message.type() === "error") consoleErrors.add(`${page.url()} ${message.text().slice(0, 400)}`); });
+	await page.setViewport({ width, height: mobile ? 700 : 900, isMobile: mobile, hasTouch: mobile });
+	const posts = [];
+	await page.setRequestInterception(true);
+	page.on("request", (request) => {
+		const url = new URL(request.url());
+		if (request.method() === "POST" && /^\/api\/chat(s\/[^/]+\/(steer|dismiss))?$/.test(url.pathname)) {
+			posts.push(JSON.parse(request.postData() ?? "{}"));
+			return void request.respond({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+		}
+		void request.continue();
+	});
+	const open = async (url, selector) => {
+		await page.goto(`${base}${url}`, { waitUntil: "domcontentloaded" });
+		await page.waitForFunction((sel) => {
+			const field = document.querySelector(sel);
+			const props = field && Object.keys(field).find((key) => key.startsWith("__reactProps$"));
+			return typeof field?.[props]?.onChange === "function";
+		}, {}, selector);
+		const hidden = await page.$eval(selector, (el) => !el.offsetParent);
+		if (hidden) await page.click('[data-testid="question-dock-bar"], [data-testid="practice-dock-bar"]');
+	};
+	const composer = '[data-testid="composer"] textarea';
+	await open("/", composer);
+	await checkMentionField(page, posts, width, "home", composer, { sends: false });
+	await open("/chat/mention-chat", composer);
+	await checkMentionField(page, posts, width, "chat", composer);
+	await open("/chat/mention-quiz", '[aria-label="Your thinking"]');
+	await checkMentionField(page, posts, width, "question-thinking", '[aria-label="Your thinking"]', { sends: false, escapeDialog: true });
+	await open("/chat/mention-explain", '[aria-label="Your answer"]');
+	await checkMentionField(page, posts, width, "question-answer", '[aria-label="Your answer"]');
+	await open("/chat/mention-practice", '[aria-label="Your thinking"]');
+	await checkMentionField(page, posts, width, "practice", '[aria-label="Your thinking"]');
+
+	// Every label as sent, always visible, on the sender's card.
+	await open("/chat/mention-chat", composer);
+	await page.waitForSelector('[data-testid="references-card"]', { visible: true });
+	await page.waitForFunction(() => document.querySelector('[data-testid="references-card"]').innerText.includes("Used in-full.md · in full · no longer in your Library"));
+	const labels = await page.$eval('[data-testid="references-card"]', (el) => el.innerText);
+	for (const text of [
+		"Used long.md · outline only, too long to send whole",
+		"Used crowded.md · outline only, too much attached at once",
+		"Used roomless.md · outline only, not enough room in this session",
+		"Used book.pdf · not read yet, the agent can open it",
+		"Used figure.png · image, the agent can ask the vision model about it",
+		"photo.png · no vision model set",
+		"scan.pdf · no text could be read",
+		"archive.xyz · this kind of file can't be read",
+		"ninth.md · not attached, limit is 8 per message",
+		"deleted.md · no longer in your Library",
+	]) assert.ok(labels.includes(text), `${width}px label: ${text}`);
+	assert.ok((await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)) <= 0, `${width}px labels: no page overflow`);
+	const label = await page.$('[data-testid="references-card"]');
+	await label.scrollIntoView();
+	if (shots) await page.screenshot({ path: path.join(shots, `mention-${width}-labels.png`) });
+	if (process.env.LH_UI_LOG_CONSOLE) console.log([...consoleErrors].join("\n"));
+	assert.deepEqual(errors, [], `${width}px: no browser exceptions in the @ fields`);
+	await context.close();
+	console.log(`PASS ${width}px sent labels`);
+}
+
 try {
 	await mkdir(data, { recursive: true });
 	await mkdir(fixtures, { recursive: true });
 	if (shots) await mkdir(shots, { recursive: true });
+	await seedMentionChats();
 	server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev", "--hostname", "127.0.0.1", "--port", String(port)], {
-		env: { ...process.env, LH_HOSTED: "0", LH_DATA_DIR: data, LH_AUTH_FILE: path.join(data, "auth.json"), NEXT_TELEMETRY_DISABLED: "1" },
+		env: { ...process.env, OPENROUTER_API_KEY: "test-key-never-used", LH_HOSTED: "0", LH_DATA_DIR: data, LH_AUTH_FILE: path.join(data, "auth.json"), NEXT_TELEMETRY_DISABLED: "1" },
 		stdio: ["ignore", "pipe", "pipe"],
 	});
 	let output = "";
@@ -223,6 +456,24 @@ try {
 	}
 	assert.ok(ready, "isolated server starts");
 	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true });
+	if (!mentionsOnly) await checkLibrary();
+	// A clean folder, then the @ lists over known names.
+	for (const name of await readdir(files).catch(() => [])) await rm(path.join(files, name));
+	for (const name of ["notes.md", "Week 3 notes.md", "paper-one.md", "paper-two.md", "paper-three.md", "paper-four.md", "paper-five.md", "paper-six.md", "paper-seven.md"]) {
+		const upload = await fetch(`${base}/api/library/upload?name=${encodeURIComponent(name)}`, { method: "POST", body: `# ${name}\n` });
+		assert.equal(upload.status, 201, name);
+	}
+	for (const width of process.env.LH_UI_WIDTHS?.split(",").map(Number) ?? [1440, 390, 320]) await checkMentions(width);
+} finally {
+	await browser?.close();
+	if (server && server.exitCode === null) {
+		server.kill("SIGTERM");
+		await new Promise((resolve) => server.once("exit", resolve));
+	}
+	await rm(root, { recursive: true, force: true });
+}
+
+async function checkLibrary() {
 	for (const width of [1440, 390, 320]) await checkWidth(width);
 
 	// The limit, through the real proxy. A body over the proxy's buffer would
@@ -264,11 +515,4 @@ try {
 	assert.ok(!existsSync(path.join(files, "over.pdf")));
 	await page.close();
 	console.log("PASS 50 MiB through the browser with progress; one byte over refused");
-} finally {
-	await browser?.close();
-	if (server && server.exitCode === null) {
-		server.kill("SIGTERM");
-		await new Promise((resolve) => server.once("exit", resolve));
-	}
-	await rm(root, { recursive: true, force: true });
 }

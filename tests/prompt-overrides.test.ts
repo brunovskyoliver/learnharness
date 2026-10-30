@@ -184,6 +184,7 @@ describe("the source-derived segment list", () => {
 				"shared/20-question-tools.md",
 				"shared/25-confidence.md",
 				"shared/30-learner-files.md",
+				"shared/31-files-desktop.md",
 				"shared/40-formatting.md",
 			],
 		);
@@ -256,7 +257,8 @@ describe("composeInstructions: override honoring + the byte-identical source pat
 			const fragmentsOf = (dir: string) =>
 				fs
 					.readdirSync(dir)
-					.filter((f) => /^\d+-[\w.-]+\.md$/.test(f))
+					// Each mode composes its own file-reach fragment (feature 009).
+					.filter((f) => /^\d+-[\w.-]+\.md$/.test(f) && f !== "31-files-hosted.md")
 					.sort()
 					.map((f) => fs.readFileSync(path.join(dir, f), "utf-8").trim())
 					.filter(Boolean);
@@ -428,5 +430,42 @@ describe("test isolation (the suite must never touch real user data)", () => {
 			"the write landed under the temp dir",
 		);
 		promptOverrides.deleteOverride("system-prompt.md");
+	});
+});
+
+describe("Library prompts (feature 009)", () => {
+	const paths = (agent: "prober" | "teacher" | "practice") => effectivePromptSegments(agent, {}).map((s) => s.path);
+	const withHosted = <T>(value: string | undefined, run: () => T): T => {
+		const previous = process.env.LH_HOSTED;
+		if (value === undefined) delete process.env.LH_HOSTED; else process.env.LH_HOSTED = value;
+		try { return run(); } finally {
+			if (previous === undefined) delete process.env.LH_HOSTED; else process.env.LH_HOSTED = previous;
+		}
+	};
+	it("desktop composes the desktop fragment only", () => withHosted("0", () => {
+		for (const agent of ["prober", "teacher"] as const) {
+			assert.ok(paths(agent).includes("shared/30-learner-files.md"));
+			assert.ok(paths(agent).includes("shared/31-files-desktop.md"));
+			assert.ok(!paths(agent).includes("shared/31-files-hosted.md"));
+		}
+	}));
+	it("hosted composes the hosted fragment only", () => withHosted("1", () => {
+		for (const agent of ["prober", "teacher"] as const) {
+			assert.ok(paths(agent).includes("shared/31-files-hosted.md"));
+			assert.ok(!paths(agent).includes("shared/31-files-desktop.md"));
+		}
+	}));
+	it("practice gets its own fragment and no shared file mechanics", () => {
+		for (const mode of ["0", "1"]) withHosted(mode, () => {
+			assert.ok(paths("practice").includes("practice/20-library.md"));
+			assert.ok(!paths("practice").some((p) => /shared\/3[01]-/.test(p)));
+		});
+	});
+	it("the approved wording is verbatim", () => {
+		const source = (p: string) => fs.readFileSync(path.resolve(import.meta.dirname, "../src/agent/prompts", p), "utf8");
+		const doctrine = fs.readFileSync(path.resolve(import.meta.dirname, "../specs/009-library-canvas/contracts/doctrine.md"), "utf8");
+		for (const p of ["shared/30-learner-files.md", "shared/31-files-hosted.md", "shared/31-files-desktop.md", "practice/20-library.md"]) {
+			assert.ok(doctrine.includes(source(p).trim()), p);
+		}
 	});
 });

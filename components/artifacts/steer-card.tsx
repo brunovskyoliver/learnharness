@@ -3,7 +3,7 @@
 import { SessionDetails } from "@/components/session-state";
 
 import { CheckIcon, CircleX } from "lucide-react";
-import type { PdfResult, ResearchResult, SubagentArtifactData } from "@/src/core";
+import type { ImageResult, PdfResult, ResearchResult, SubagentArtifactData } from "@/src/core";
 import type { LhViewMessage } from "@/src/core";
 import { demoPrefersInvert, isSubagentFailure, type DemoResult } from "@/src/core";
 import { DemoOutputCard } from "@/components/artifacts/demo-card";
@@ -57,6 +57,8 @@ export function SubagentSteerCard({ message }: { message: LhViewMessage }) {
 			) : (
 				<PdfCompleteBadge result={data.result as PdfResult} />
 			);
+		case "image":
+			return <ImageAnswerRow result={data.result as ImageResult} />;
 		case "demo":
 			return (
 				<DemoOutputCard
@@ -80,6 +82,21 @@ function AbortedBadge({ kind }: { kind: string }) {
 			<span className="font-medium">{kind}</span>
 			<span>aborted by the learner</span>
 		</div>
+	);
+}
+
+/** One quiet row with the answer behind it, like the PDF badge. */
+function ImageAnswerRow({ result }: { result: ImageResult }) {
+	const failed = isSubagentFailure("image", result);
+	return (
+		<SessionDetails data-testid="image-answer-row" className="group w-full text-sm text-muted-foreground">
+			<summary className="flex cursor-pointer select-none list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
+				{failed ? <CircleX className="size-3.5" /> : <CheckIcon className="size-3.5" />}
+				<span className="font-medium">Image</span>
+				<span className="min-w-0 [overflow-wrap:anywhere]">{failed ? "could not be read" : result.name}</span>
+			</summary>
+			<div className="mt-2 text-ink-2">{failed ? result.answer.replace(/^Image failed:\s*/i, "") : result.answer}</div>
+		</SessionDetails>
 	);
 }
 

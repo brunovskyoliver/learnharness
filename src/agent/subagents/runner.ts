@@ -1,4 +1,5 @@
 import type { PiEngine } from "../models.ts";
+import type { LibraryStore } from "../../core/ports.ts";
 import type { EnabledTools } from "../../core/pending.ts";
 import type { SearchProvider } from "../../core/search.ts";
 import {
@@ -11,6 +12,8 @@ import {
 	type JobKind,
 	type JobRecord,
 	type JobUsage,
+	type ImageResult,
+	type ImageToolInput,
 	type PdfResult,
 	type PdfToolInput,
 	type ResearchResult,
@@ -28,6 +31,7 @@ import type { ModelRole } from "../../../config.ts";
 import { ROLE_SLOT, modelsNotConfigured, type ModelSlotName, type ProviderKeyMissing } from "../../core/settings.ts";
 import type { ChatStore, JobStore, PaperFiles } from "../../core/ports.ts";
 import { runDemoBuilder } from "./demo-builder.ts";
+import { runImageReader } from "./image-reader.ts";
 import { runPdfReaderAgent } from "./pdf-reader.ts";
 import { runResearcherAgent } from "./researcher.ts";
 import { runVisualMaker } from "./visual-maker.ts";
@@ -63,10 +67,12 @@ export const visualModelOverride: { current?: PiEngine } = {};
 export const pdfModelOverride: { current?: PiEngine } = {};
 
 /** The dispatch-time tool input (from src/agent/tools/jobs.ts schemas). */
-type JobToolInput = ResearchToolInput | DemoToolInput | VisualToolInput | PdfToolInput;
+type JobToolInput = ResearchToolInput | DemoToolInput | VisualToolInput | PdfToolInput | ImageToolInput;
 
 export interface JobRunnerDeps {
 	createPaperFiles?: () => PaperFiles;
+	/** Where an image job finds its Library image (feature 009). */
+	library?: Pick<LibraryStore, "get" | "documentPath">;
 	toolToggles?: () => EnabledTools | undefined;
 	chatStore: ChatStore;
 	jobStore: JobStore;
@@ -126,6 +132,7 @@ const KIND_ROLE: Record<JobKind, ModelRole> = {
 	demo: "demoBuilder",
 	visual: "visualMaker",
 	pdf: "pdfReader",
+	image: "pdfReader",
 };
 
 export function createJobRunner(deps: JobRunnerDeps): JobRunner {
@@ -189,6 +196,7 @@ export function createJobRunner(deps: JobRunnerDeps): JobRunner {
 		demo: (jobId, engine, input, loop) => runDemoJob(jobId, engine, input, loop),
 		visual: (jobId, engine, input, loop) => runVisualJob(jobId, engine, input, loop),
 		pdf: (jobId, engine, input, loop) => runPdfJob(jobId, engine, input, loop),
+		image: (jobId, engine, input, loop) => runImageJob(jobId, engine, input, loop),
 	};
 
 	async function runJob(jobId: string, input?: JobToolInput): Promise<void> {
@@ -220,9 +228,10 @@ export function createJobRunner(deps: JobRunnerDeps): JobRunner {
 				| DemoToolInput
 				| VisualToolInput
 				| PdfToolInput
+				| ImageToolInput
 				| undefined;
 			const pdf = resolved as PdfToolInput | undefined;
-			const failure: ResearchResult | DemoResult | VisualResult | PdfResult =
+			const failure: ResearchResult | DemoResult | VisualResult | PdfResult | ImageResult =
 				job.kind === "research"
 					? { brief: `Research failed: ${reason}`, sources: [] }
 					: job.kind === "demo"
@@ -234,6 +243,8 @@ export function createJobRunner(deps: JobRunnerDeps): JobRunner {
 							}
 						: job.kind === "visual"
 							? { svg: "", notes: `FAILED: ${reason}` }
+							: job.kind === "image"
+								? imageFailure(resolved as ImageToolInput | undefined, reason)
 							: {
 									path: typeof pdf?.path === "string" ? pdf.path : "",
 									question: typeof pdf?.question === "string" ? pdf.question : "",
@@ -303,7 +314,7 @@ export function createJobRunner(deps: JobRunnerDeps): JobRunner {
 	 * Save the computation outcome and session delivery obligation together.
 	 * Worker liveness ends after cleanup, not after a lesson consumes the result.
 	 */
-	async function finishJob(jobId: string, result: ResearchResult | DemoResult | VisualResult | PdfResult): Promise<void> {
+	async function finishJob(jobId: string, result: ResearchResult | DemoResult | VisualResult | PdfResult | ImageResult): Promise<void> {
 		const job = jobStore.getJob(jobId);
 		if (!job) return;
 		// Aborted mid-run (abortJob flips the record before
@@ -523,7 +534,41 @@ export function createJobRunner(deps: JobRunnerDeps): JobRunner {
 		}
 	}
 
+	// ─── looking at a Library image (feature 009) ────────────────────────────
+
+	async function runImageJob(
+		jobId: string,
+		model: PiEngine | undefined,
+		passedInput: JobToolInput | undefined,
+		loop: LoopContext,
+	): Promise<void> {
+		const ctx = jobContext(jobId);
+		if (!ctx) return;
+		const input = (passedInput ?? resolveInput(ctx.job, passedInput)) as ImageToolInput | undefined;
+		const fail = async (reason: string) => {
+			if (stillRunning(jobId)) jobStore.updateJob(jobId, { error: reason });
+			await finishJob(jobId, imageFailure(input, reason));
+		};
+		try {
+			jobStore.updateJob(jobId, { activity: "looking at an image" });
+			const item = input?.item ? await deps.library?.get(input.item) : null;
+			if (!item || !input) return await fail("that image is no longer in the Library.");
+			const answer = await runImageReader(
+				{ file: deps.library!.documentPath(item), name: item.name, question: input.question },
+				{ engine: model!, abortSignal: loop.abortSignal, chatId: loop.chatId, onUsage: (usage) => loop.onUsage(piUsageToStep(usage)) },
+			);
+			await finishJob(jobId, { item: item.id, name: item.name, question: input.question, answer });
+		} catch (err) {
+			if (loop.abortSignal.aborted) return;
+			await fail(err instanceof Error ? err.message : String(err));
+		}
+	}
+
 	return { runJob };
+}
+
+function imageFailure(input: ImageToolInput | undefined, reason: string): ImageResult {
+	return { item: input?.item ?? "", name: input?.name ?? "", question: input?.question ?? "", answer: `Image failed: ${reason}` };
 }
 
 // ─── module-level pure helpers ──────────────────────────────────────────────

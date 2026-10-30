@@ -2,14 +2,16 @@ import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { Type } from "typebox";
 import type { AgentTool } from "@earendil-works/pi-agent-core";
+import { PATHS } from "../../../config.ts";
 import { serverExecute, type ImageFileResult } from "../tool-execute.ts";
 import { resolveSourcePath } from "./fs-shared.ts";
 
 /**
  * The read tool — sources v0 (2026-09): a Node port of pi's read semantics
  * for the learner's local files. The flow is learner-owned: he pastes file
- * paths into the chat, the agent reads on its own terms (nothing is
- * auto-injected). Unrestricted local reads are the user-decided v0 scope —
+ * paths into the chat, the agent reads on its own terms. Items he attaches with
+ * @ arrive with the message instead (feature 009, core/library-refs.ts), and a
+ * Library image goes through the `image` job, not this tool. Unrestricted local reads are the user-decided v0 scope —
  * this is a personal study harness, not a multi-tenant service.
  *
  * Ported behaviors (mirroring pi's dist/core/tools/read.js):
@@ -52,8 +54,13 @@ function formatSize(bytes: number): string {
 	return bytes >= 1024 ? `${(bytes / 1024).toFixed(1)}KB` : `${bytes}B`;
 }
 
+function isInLibraryFolder(absolute: string): boolean {
+	const relative = path.relative(PATHS.files, absolute);
+	return relative !== "" && !relative.startsWith("..") && !path.isAbsolute(relative);
+}
+
 /** Slice + truncate the text body, pi's continuation-notice style. */
-function readTextSlice(text: string, offset: number | undefined, limit: number | undefined): string {
+export function readTextSlice(text: string, offset: number | undefined, limit: number | undefined): string {
 	const allLines = text.split("\n");
 	const totalLines = allLines.length;
 	const startLine = offset ? Math.max(0, offset - 1) : 0;
@@ -104,6 +111,9 @@ export const readTool: AgentTool<typeof readInput> = {
 		const absolute = resolveSourcePath(rawPath);
 		const ext = path.extname(absolute).toLowerCase();
 		const mime = IMAGE_MIME[ext];
+		// A Library image goes through the vision job (research R11): returning its
+		// bytes here would hand it to the conversation model instead.
+		if (mime && isInLibraryFolder(absolute)) return "This image is in the Library. Use the image tool.";
 		const buffer = await fs.readFile(absolute); // ENOENT/EACCES → error result the model sees
 		if (mime) {
 			// NOTE v0: no resize — raw bytes as base64. Learner files are study

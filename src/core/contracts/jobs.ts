@@ -12,7 +12,7 @@ import { newHandoffMessage } from "../native-messages.ts";
 
 // ─── Async sub-agent jobs (vision §2.5) ────────────
 
-export type JobKind = "research" | "demo" | "visual" | "pdf";
+export type JobKind = "research" | "demo" | "visual" | "pdf" | "image";
 export type JobStatus = "running" | "done" | "error";
 
 export interface JobRecord {
@@ -252,6 +252,23 @@ export interface PdfResult {
 	pagesConsulted: number[];
 }
 
+/** A vision call about one Library image (feature 009). */
+export interface ImageToolInput {
+	/** The Library item's id. */
+	item: string;
+	/** The item's name at dispatch, for labels. */
+	name: string;
+	question: string;
+}
+
+export interface ImageResult {
+	item: string;
+	name: string;
+	question: string;
+	/** The vision model's answer. Failure shape: /^Image failed:/i. */
+	answer: string;
+}
+
 // ─── Sub-agent steer messages (THE ASYNC PROTOCOL §3–4) ─────────────────────
 //
 // Wave B (owner-approved 2026-09-26): steers are NATIVE record messages —
@@ -277,7 +294,7 @@ export interface SubagentResultMeta {
 /** The data-subagent-artifact part payload: what the UI renders. */
 export interface SubagentArtifactData {
 	kind: JobKind;
-	result: ResearchResult | DemoResult | VisualResult | PdfResult;
+	result: ResearchResult | DemoResult | VisualResult | PdfResult | ImageResult;
 	/** The learner's pinned UI state (invert switch) riding the record. */
 	ui?: { inverted?: boolean };
 }
@@ -285,7 +302,7 @@ export interface SubagentArtifactData {
 /** A result steer's marker details: the UI's meta + artifact in one
  *  payload (the projection splits it into metadata + data part). */
 export interface SteerDetails extends SubagentResultMeta {
-	result: ResearchResult | DemoResult | VisualResult | PdfResult;
+	result: ResearchResult | DemoResult | VisualResult | PdfResult | ImageResult;
 	/** LEARNER UI state pinned onto the artifact (owner, 2026-10-07): the
 	 *  invert switch's position, persisted so navigating away and back (or
 	 *  restarting) keeps it. A VIEW preference — never enters the teacher's
@@ -316,7 +333,7 @@ export type SteerMessage = LhMarkerMessage;
 /** Whether a result is the failure shape (html/svg empty, failure brief). */
 export function isSubagentFailure(
 	kind: JobKind,
-	result: ResearchResult | DemoResult | VisualResult | PdfResult,
+	result: ResearchResult | DemoResult | VisualResult | PdfResult | ImageResult,
 ): boolean {
 	if (kind === "research") {
 		const r = result as ResearchResult;
@@ -330,12 +347,13 @@ export function isSubagentFailure(
 		const r = result as PdfResult;
 		return /^PDF failed:/i.test(r.brief);
 	}
+	if (kind === "image") return /^Image failed:/i.test((result as ImageResult).answer);
 	const r = result as VisualResult;
 	return typeof r.svg !== "string" || r.svg.length === 0;
 }
 
 /** The model-facing text of a steer: what the result IS, what to do with it. */
-function steerText(kind: JobKind, result: ResearchResult | DemoResult | VisualResult | PdfResult): string {
+function steerText(kind: JobKind, result: ResearchResult | DemoResult | VisualResult | PdfResult | ImageResult): string {
 	if (isSubagentFailure(kind, result)) {
 		if (kind === "research")
 			return `${(result as ResearchResult).brief}\n\nContinue with what you can establish and flag the uncertainty to the learner.`;
@@ -345,12 +363,16 @@ function steerText(kind: JobKind, result: ResearchResult | DemoResult | VisualRe
 			}. Fall back to explaining in prose; if the brief was the problem, re-call demo with a tighter one.`;
 		if (kind === "pdf")
 			return `${(result as PdfResult).brief}\n\nContinue with what you can establish from the session and flag the gap to the learner.`;
+		if (kind === "image")
+			return `${(result as ImageResult).answer}\n\nContinue with what you can establish from the session and flag the gap to the learner.`;
 		return `The figure could not be made: ${(result as VisualResult).notes ?? "unknown reason"}. Fall back to prose or mermaid, or re-call visual with a tighter brief.`;
 	}
 	if (kind === "research")
 		return `Research complete — the researcher's full brief follows. Weave it into the lesson and cite its sources when you use its findings:\n\n${(result as ResearchResult).brief}`;
 	if (kind === "pdf")
 		return `PDF reading complete — the reader's brief on "${(result as PdfResult).path}" follows, with page citations. Weave it into the lesson and cite pages when you use it:\n\n${(result as PdfResult).brief}`;
+	if (kind === "image")
+		return `The vision model looked at "${(result as ImageResult).name}" and answered "${(result as ImageResult).question}":\n\n${(result as ImageResult).answer}`;
 	if (kind === "demo")
 		return `The demo "${(result as DemoResult).title}" is built, headlessly tested, and rendered in the lesson. Builder notes: ${
 			(result as DemoResult).notes ?? "(none)"
@@ -367,7 +389,7 @@ function steerText(kind: JobKind, result: ResearchResult | DemoResult | VisualRe
  */
 export function buildSubagentSteer(
 	job: Pick<JobRecord, "id" | "kind" | "toolCallId">,
-	result: ResearchResult | DemoResult | VisualResult | PdfResult,
+	result: ResearchResult | DemoResult | VisualResult | PdfResult | ImageResult,
 ): SteerMessage {
 	return {
 		id: `steer_${job.id}`,
@@ -412,6 +434,8 @@ function abortText(kind: JobKind): string {
 		return "The demo job was aborted by the learner — no demo is coming. Acknowledge it in one line and teach the topic in prose instead (a re-dispatch is fine if the learner wants it).";
 	if (kind === "pdf")
 		return "The PDF reading job was aborted by the learner — no brief is coming. Acknowledge it in one line and continue without it (a re-dispatch is fine if the learner wants it).";
+	if (kind === "image")
+		return "The image job was aborted by the learner — no answer is coming. Acknowledge it in one line and continue without it (a re-dispatch is fine if the learner wants it).";
 	return "The figure job was aborted by the learner — no figure is coming. Acknowledge it in one line and teach without it (a re-dispatch is fine if the learner wants it).";
 }
 

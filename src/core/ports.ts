@@ -27,7 +27,7 @@ import type {
 	NotesSource,
 } from "./contracts.ts";
 import type { UserSettings } from "./settings.ts";
-import type { LibraryItem, LibraryRefusal, LibraryTextState } from "./library.ts";
+import type { LibraryItem, LibraryRefusal, LibraryTextState, LibraryTombstone } from "./library.ts";
 
 // ─── ChatStore — the session record's home (data/chats) ─────────────────────
 
@@ -172,6 +172,11 @@ export interface LibraryStore {
 	list(): Promise<LibraryItem[]>;
 	/** A live item, or null for an unknown id or a tombstone. */
 	get(id: string): Promise<LibraryItem | null>;
+	/** Every entry including tombstones, after reconciling. For @ tokens, which
+	 *  must resolve old and deleted names honestly. */
+	catalog(): Promise<(LibraryItem | LibraryTombstone)[]>;
+	/** A text item's bytes as UTF-8: a document's file, a page's head version. */
+	readText(item: LibraryItem): Promise<string>;
 	/** Store a validated name's bytes. Never overwrites; refusals store nothing. */
 	writeUpload(name: string, body: AsyncIterable<Uint8Array>, declaredBytes: number): Promise<LibraryItem | LibraryRefusal>;
 	/** Rename, moving the file too. Null for an unknown id. */

@@ -44,6 +44,7 @@ import {
 } from "./contracts/chat.ts";
 import { compactAnswerForModel, type QuestionAnswerData } from "./question-core.ts";
 import { activeCompactionOf, keptIndexFor } from "./compaction.ts";
+import { referencesOf, renderReferences, type LibraryReference } from "./library-refs.ts";
 
 /** The hard-invariant wording for an aborted turn's unanswered calls —
  *  carried over verbatim from the pre-native era so the model's view
@@ -81,6 +82,8 @@ export interface LhMarkerMessage {
 	display: boolean;
 	/** The UI payload — per-customType, never model-visible. */
 	details: unknown;
+	/** Library items a thinking submission carries (feature 009). */
+	references?: LibraryReference[];
 	timestamp: number;
 }
 
@@ -91,7 +94,7 @@ declare module "@earendil-works/pi-agent-core" {
 }
 
 /** A record message: a native pi message (or our marker) plus the record id. */
-export type LhMessage = (UserMessage | AssistantMessage | ToolResultMessage | LhMarkerMessage) & { id: string };
+export type LhMessage = ((UserMessage & { references?: LibraryReference[] }) | AssistantMessage | ToolResultMessage | LhMarkerMessage) & { id: string };
 
 /** A record message list is assignable to the agent's context — that IS
  *  the replay (ui-stream/chat-handler assign it to initialState.messages). */
@@ -159,13 +162,20 @@ export function newMessageId(): string {
 //     core/input-events.ts; steers in core/contracts/jobs.ts) ─────────────────
 
 /** A learner-authored user message (text input, verdict note). */
-export function newUserMessage(text: string): LhMessage & UserMessage {
+export function newUserMessage(text: string, references?: readonly LibraryReference[]): LhMessage & UserMessage {
 	return {
 		id: newMessageId(),
 		role: "user",
 		content: text,
+		...carried(references),
 		timestamp: Date.now(),
 	};
+}
+
+/** The optional field: absent, never empty, so records without references
+ *  stay byte-identical. */
+function carried(references: readonly LibraryReference[] | undefined): { references?: LibraryReference[] } {
+	return references?.length ? { references: [...references] } : {};
 }
 
 /** A steered user message (mid-turn composer steering, owner 2026-10-03):
@@ -173,8 +183,8 @@ export function newUserMessage(text: string): LhMessage & UserMessage {
  *  rides agent.steer(), the live stream's message events, and the settled
  *  record, so the optimistic queued indicator and the transcript card
  *  upsert by one identity. */
-export function newUserSteer(text: string, id: string): LhMessage & UserMessage {
-	return { id, role: "user", content: text, timestamp: Date.now() };
+export function newUserSteer(text: string, id: string, references?: readonly LibraryReference[]): LhMessage & UserMessage {
+	return { id, role: "user", content: text, ...carried(references), timestamp: Date.now() };
 }
 
 /** The learner's answer — the question call's tool result (fork 1).
@@ -187,7 +197,12 @@ export function newAnswerResult(
 	toolCallId: string,
 	toolName: string,
 	answer: unknown,
+	references?: readonly LibraryReference[],
 ): LhMessage & ToolResultMessage {
+	// References are the server's to write: whatever a client put under this
+	// key is dropped, on answers and dismissals alike.
+	const { references: _fromClient, ...graded } = (answer ?? {}) as QuestionAnswerData & { references?: unknown };
+	const clean = references?.length || (answer && typeof answer === "object" && "references" in answer);
 	return {
 		id: newMessageId(),
 		role: "toolResult",
@@ -196,7 +211,7 @@ export function newAnswerResult(
 		content: [{ type: "text", text: JSON.stringify(compactAnswerForModel(answer as QuestionAnswerData)) }],
 		// 0.87.1 narrowed ToolResultMessage.details to JsonRepresentation —
 		// our payloads are JSON-safe answer structures, so the cast is honest.
-		details: answer as ToolResultMessage["details"],
+		details: (clean ? { ...graded, ...carried(references) } : answer) as ToolResultMessage["details"],
 		isError: false,
 		timestamp: Date.now(),
 	};
@@ -293,7 +308,7 @@ export function newGraphContextMessage(picks: readonly GraphContextPick[], chain
  *  content label is the single "Your thinking"; `details` keeps the raw
  *  payload for the transcript card. One problem may carry many
  *  submissions. */
-export function newThinkingMessage(problemCallId: string, text: string): LhMarkerMessage {
+export function newThinkingMessage(problemCallId: string, text: string, references?: readonly LibraryReference[]): LhMarkerMessage {
 	return {
 		id: newMessageId(),
 		role: "custom",
@@ -301,6 +316,7 @@ export function newThinkingMessage(problemCallId: string, text: string): LhMarke
 		content: `${THINKING_LABEL}:\n${text}`,
 		display: true,
 		details: { problemCallId, text },
+		...carried(references),
 		timestamp: Date.now(),
 	};
 }
@@ -542,6 +558,20 @@ function resultIdsFrom(messages: readonly AgentMessage[]): Set<string> {
 	return ids;
 }
 
+/** A carrier at the wire (feature 009): the field goes and its material joins
+ *  the content as one added text block, so a tool result stays adjacent to its
+ *  call and the record itself never changes. */
+function withMaterial(message: Message): Message {
+	const block = { type: "text" as const, text: renderReferences(referencesOf(message)) };
+	if (message.role === "toolResult") {
+		const { references: _references, ...details } = message.details as Record<string, unknown>;
+		return { ...message, details: details as ToolResultMessage["details"], content: [...message.content, block] };
+	}
+	const { references: _references, ...user } = message as UserMessage & { references?: unknown };
+	const own = typeof user.content === "string" ? [{ type: "text" as const, text: user.content }] : user.content;
+	return { ...user, content: [...own, block] };
+}
+
 /**
  * AgentMessage[] → the provider wire (the agent's convertToLlm — required
  * by pi-agent-core's loop config, the ONE place model-facing decisions
@@ -610,16 +640,17 @@ export function toLlmMessages(messages: readonly AgentMessage[]): Message[] {
 			// marker whose cut could not resolve has no head and renders as
 			// its user text — honest degradation.)
 			if (marker.customType === "compaction" && head !== null && marker.id === active!.id) continue;
+			const material = renderReferences(referencesOf(marker));
 			out.push({
 				role: "user",
-				content: [{ type: "text", text: marker.content }],
+				content: [{ type: "text", text: material ? `${marker.content}\n\n${material}` : marker.content }],
 			timestamp: marker.timestamp,
 			});
 			continue;
 		}
 		// Strip the record id: the wire carries the native shape only.
 		const { id: _id, ...native } = m as LhMessage;
-		out.push(native as Message);
+		out.push(referencesOf(native).length ? withMaterial(native as Message) : (native as Message));
 		// Dangling-call synthesis: an assistant message whose toolCalls have
 		// no results in the remaining tail (abort mid-question) — the
 		// provider rejects unanswered calls outright.

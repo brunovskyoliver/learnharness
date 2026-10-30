@@ -155,6 +155,9 @@ const ACTIVITY_LABELS: Record<string, string> = {
 	hub_model: "Looking up on Hugging Face…",
 	paper_search: "Searching papers…",
 	paper_read: "Reading a paper…",
+	library_list: "Checking your Library…",
+	library_read: "Reading from your Library…",
+	image: "Looking at an image…",
 };
 
 /** The activity label for ONE running tool (owner, streaming round

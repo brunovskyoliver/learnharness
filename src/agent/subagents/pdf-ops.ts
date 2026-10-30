@@ -139,6 +139,24 @@ export async function pdfInfo(filePath: string): Promise<PdfInfo> {
 	};
 }
 
+/** The PDF's bookmarks as indented lines, or none. For Library outlines. */
+export async function pdfOutline(filePath: string): Promise<string[]> {
+	const { doc, task } = await openDocument(filePath);
+	try {
+		const lines: string[] = [];
+		const walk = (items: Array<{ title?: string; items?: unknown[] }> | null, depth: number) => {
+			for (const item of items ?? []) {
+				lines.push(`${"  ".repeat(depth)}${item.title ?? ""}`);
+				walk(item.items as typeof items, depth + 1);
+			}
+		};
+		walk(await doc.getOutline(), 0);
+		return lines;
+	} finally {
+		await task.destroy();
+	}
+}
+
 /** Parse 'all' | '1-5' | '1,3,7' | '3' into a sorted 1-indexed page list. */
 export function parsePageSpec(spec: string, total: number): number[] {
 	const trimmed = spec.trim().toLowerCase();
@@ -171,6 +189,8 @@ export async function pdfExtract(filePath: string, pageSpec: string): Promise<st
 		const content = await page.getTextContent();
 		out.push(`--- Page ${i} ---`);
 		out.push(itemsToText(content.items as unknown[]));
+		// pdfjs runs on the main thread: let requests through between pages.
+		await new Promise((resolve) => setImmediate(resolve));
 	}
 	return out.join("\n");
 }

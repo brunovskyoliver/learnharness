@@ -5,6 +5,7 @@ import { useSessionState } from "@/components/session-state";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ChevronDownIcon } from "lucide-react";
 import { Teaser, teaserPlain } from "@/components/teaser";
+import { useLibraryMention } from "@/components/library/use-library-mention.ts";
 import { AnswerWell, PrimaryAction, PromptToolbar, TurnStrip } from "@/components/prompt-controls";
 import { chatUsesNativeTraversal, mlResultKeepsNativeEnter, useEnterSubmits } from "@/components/enter-submits";
 import { ToolContentResponse } from "@/components/ai-elements/message";
@@ -348,6 +349,21 @@ function QuestionDockForm({
 	const rootRef = useRef<HTMLDivElement>(null);
 	const otherInputRef = useRef<HTMLInputElement>(null);
 	const thinkingRef = useRef<HTMLTextAreaElement>(null);
+	const answerMention = useLibraryMention({
+		value: text,
+		onValueChange: (next) => {
+			answerTextRef.current = next;
+			setText(next);
+		},
+	});
+	const thinkingMention = useLibraryMention({
+		value: thinking,
+		onValueChange: (next) => {
+			thinkingTextRef.current = next;
+			setThinking(next);
+		},
+		inputRef: thinkingRef,
+	});
 	// One row past the options is the trailing row: quiz → don't-know,
 	// ask → Other (a question never has both). Text mode (ask/explain)
 	// has no rows — the composer IS the answer surface.
@@ -715,8 +731,11 @@ function QuestionDockForm({
 					className="flex flex-col"
 				>
 					<AnswerWell>
+					{qd.mode === "text" ? answerMention.menu : thinkingMention.menu}
 					{qd.mode === "text" ? (
 						<textarea
+							{...answerMention.inputProps}
+							ref={answerMention.ref}
 							id={`${toolCallId}-answer`}
 							aria-label="Your answer"
 							placeholder="Type your answer"
@@ -726,6 +745,7 @@ function QuestionDockForm({
 								setText(e.target.value);
 							}}
 							onKeyDown={(e) => {
+								if (answerMention.onKeyDown(e)) return;
 								// Chat convention: Enter submits, Shift+Enter is a newline;
 								// ⌘/Ctrl+Enter also submits (universal across the app).
 								if (!e.nativeEvent.isComposing && e.key === "Enter" && (e.metaKey || e.ctrlKey || !e.shiftKey)) {
@@ -738,7 +758,8 @@ function QuestionDockForm({
 						/>
 					) : (
 						<textarea
-							ref={thinkingRef}
+							{...thinkingMention.inputProps}
+							ref={thinkingMention.ref}
 							id={`${toolCallId}-answer`}
 							aria-label="Your thinking"
 							placeholder="Explain your reasoning, or leave blank to submit your choice"
@@ -748,6 +769,7 @@ function QuestionDockForm({
 								setThinking(e.target.value);
 							}}
 							onKeyDown={(e) => {
+								if (thinkingMention.onKeyDown(e)) return;
 								// THE STANDARD CHORD (owner round 5, 2026-10-05): Enter
 								// submits, Shift+Enter is a newline, ⌘/Ctrl+Enter works
 								// too — identical to the practice dock and the composer.
@@ -760,6 +782,7 @@ function QuestionDockForm({
 							className="prompt-input field-sizing-content lh-input max-h-48 min-h-10 w-full resize-none bg-transparent px-4 pt-3 pb-2.5 outline-none"
 						/>
 					)}
+					{qd.mode === "text" ? answerMention.line : thinkingMention.line}
 					</AnswerWell>
 					{compactionRunning && <div role="status" className="px-4 pt-2 text-sm text-muted-foreground">Compacting session…</div>}
 					<PromptToolbar controls={controls}>

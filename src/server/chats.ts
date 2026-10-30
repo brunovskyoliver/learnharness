@@ -3,6 +3,7 @@ import { isJobLive } from "../agent/subagents/aborts.ts";
 import { coverageOf } from "../core/coverage.ts";
 import { deleteChatTraces, type ChatDeleteMode, type ChatDeletionStats } from "../core/graph-deletion.ts";
 import { titleFromPrompt } from "../core/contracts.ts";
+import { withoutMaterial } from "../core/library-refs.ts";
 import type { LhMessage } from "../core/native-messages.ts";
 import { graphRevision } from "./graph.ts";
 import { stores } from "./stores.ts";
@@ -31,7 +32,9 @@ export { titleFromPrompt };
  * page props and transcript GETs; the stored record keeps them. */
 const SIGNATURE_FIELDS = ["thinkingSignature", "textSignature", "thoughtSignature"] as const;
 export function clientMessages(messages: LhMessage[]): LhMessage[] {
-	return messages.map((message) => {
+	return messages.map((stored) => {
+		// Reference material (feature 009) is model-facing the same way.
+		const message = withoutMaterial(stored);
 		if (message.role !== "assistant" || !Array.isArray(message.content)) return message;
 		if (!message.content.some((block) => SIGNATURE_FIELDS.some((field) => field in block))) return message;
 		return {

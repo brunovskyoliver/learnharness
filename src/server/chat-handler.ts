@@ -54,11 +54,14 @@ import { asAgentMessages } from "../core/native-messages.ts";
 import {
 	ChatInputError,
 	inputAppends,
+	inputReferenceTexts,
 	parseChatInput,
 	type TurnInput,
 } from "../core/input-events.ts";
 import { steerDelivered } from "../core/contracts.ts";
 import { startFollowupSession } from "./followup-sessions.ts";
+import { libraryContext } from "./library-tool-context.ts";
+import { resolveReferences, roomTokensFor } from "./library-references.ts";
 import type {CallUsage} from "../core/contracts.ts";
 
 /**
@@ -107,6 +110,7 @@ const jobRunner = createJobRunner({
 	searchProvider,
 	toolToggles: () => effectiveSettings().agent.tools,
 	createPaperFiles: () => stores.createPaperFiles(),
+	library: stores.libraryStore,
 });
 /** The app's ONE extraction pipeline instance — both front doors share it:
  *  quiz-triggered session runs (turn-service) and notes imports
@@ -272,6 +276,18 @@ export async function handleChatInput(
 	if (!compactedRecord) return Response.json({ error: "Unknown chat" }, { status: 404 });
 	record = compactedRecord;
 
+	// @ references (feature 009): the gates above have passed and compaction
+	// has settled, so the room left is real. Resolving can wait on a PDF, so
+	// the record is read again after it: the appends must land on current truth.
+	const referenceTexts = inputReferenceTexts(input);
+	let references: Awaited<ReturnType<typeof resolveReferences>> = [];
+	if (referenceTexts.some((text) => text.includes("@"))) {
+		references = await resolveReferences(referenceTexts, { roomTokens: roomTokensFor(record) });
+		const current = stores.chatStore.getChat(chatId);
+		if (!current) return Response.json({ error: "Unknown chat" }, { status: 404 });
+		record = current;
+	}
+
 	// The input's native appends (pure; the honest 400 for an answer with no
 	// pending question call). Computed BEFORE beginTurn so a refused input
 	// leaves no liveness effects; read against the CURRENT record. Wave C:
@@ -284,7 +300,7 @@ export async function handleChatInput(
 		appends =
 			input.type === "steers"
 				? input.steers.filter((s) => !steerDelivered(record.messages, s.id))
-				: inputAppends(record, input);
+				: inputAppends(record, input, references);
 	} catch (err) {
 		if (err instanceof ChatInputError) {
 			return Response.json({ error: err.message }, { status: 400 });
@@ -442,7 +458,9 @@ export async function handleChatInput(
 							jobStore: stores.jobStore,
 							spawn: (job, input) => void jobRunner.runJob(job.id, input),
 							searchAvailable,
+							library: libraryContext,
 						},
+						library: libraryContext,
 						...(graphToolsEnabled(effective) ? { graph: { chatStore: stores.chatStore, graphStore: stores.graphStore } } : {}),
 					},
 					agentOpts,
@@ -464,6 +482,7 @@ export async function handleChatInput(
 						// The registry drop's signal (2026-09-20): no live engine
 						// = no research tool in the teacher's registry.
 						searchAvailable,
+						library: libraryContext,
 					},
 					agentOpts,
 				)
@@ -478,6 +497,7 @@ export async function handleChatInput(
 						jobStore: stores.jobStore,
 						spawn: (job, input) => void jobRunner.runJob(job.id, input),
 						searchAvailable,
+						library: libraryContext,
 						// The map reader (wave 7): the prober reads the learner's
 						// knowledge graph through tools when the gate opens —
 						// graph master switch AND the agent.graphTools toggle.
