@@ -47,24 +47,24 @@ description: "Tasks for feature 009: Library and canvas pages"
 
 ### Tests
 
-- [ ] T012 [P] [US1] Route tests in tests/library-api.test.ts per contracts/library-api.md: 201; 409 with `suggestedName` and original bytes unchanged; 411; 413 before reading; 415 by extension and by content; 400 for empty and for a received length differing from the declared; concurrent same-name uploads leave one winner; symlink at target gives a conflict with the outside file untouched; `nosniff` and no HTML served as HTML; works with `LH_HOSTED` on and off
-- [ ] T013 [P] [US1] Rework tests/tenant-files.test.ts: keep all jail tests; move upload tests to the new route; assert documents uploaded through the Library are readable through `resolveSourcePath` and `read`; assert a rename is seen by `ls`
-- [ ] T014 [P] [US1] Render tests in tests/render-library.test.tsx: loading, empty, failed with Try again, failed refresh keeps the list; every row action's accessible name includes the item's name; delete dialog names the item
-- [ ] T015 [P] [US1] Render test in tests/render-settings.test.tsx: no Files section in either mode
+- [X] T012 [P] [US1] Route tests in tests/library-api.test.ts per contracts/library-api.md: 201; 409 with `suggestedName` and original bytes unchanged; 411; 413 before reading; 415 by extension and by content; 400 for empty and for a received length differing from the declared; concurrent same-name uploads leave one winner; symlink at target gives a conflict with the outside file untouched; `nosniff` and no HTML served as HTML; works with `LH_HOSTED` on and off
+- [X] T013 [P] [US1] Rework tests/tenant-files.test.ts: keep all jail tests; move upload tests to the new route; assert documents uploaded through the Library are readable through `resolveSourcePath` and `read`; assert a rename is seen by `ls`
+- [X] T014 [P] [US1] Render tests in tests/render-library.test.tsx: loading, empty, failed with Try again, failed refresh keeps the list; every row action's accessible name includes the item's name; delete dialog names the item
+- [X] T015 [P] [US1] Render test in tests/render-settings.test.tsx: no Files section in either mode
 
 ### Implementation
 
-- [ ] T016 [US1] Create src/server/library.ts with item handlers, and app/api/library/route.ts, app/api/library/upload/route.ts, app/api/library/items/[id]/route.ts, app/api/library/items/[id]/content/route.ts, all through `withTenant`; export from src/server/index.ts
-- [ ] T017 [US1] Remove src/server/files.ts and app/api/files/route.ts and its exports from src/server/index.ts
-- [ ] T018 [US1] Create src/server/library-text.ts: text info and the `library/derived/<id>.json` cache, PDF info after upload through `pdfInfo` with a yield between pages and one at a time per tenant, setting `textState`
-- [ ] T019 [US1] Create components/library/upload.ts: one XHR per file in sequence, with progress, and clash handling through 409
-- [ ] T020 [US1] Create components/library/library-view.tsx, library-row.tsx and delete-item-dialog.tsx, built with the `shadcn` skill, per contracts/ui-contract.md
-- [ ] T021 [US1] Create app/(app)/library/page.tsx with `withTenantPage`
-- [ ] T022 [US1] Add the Library entry to components/sidebar.tsx and pass the extended graph check in tests/startup-module-graph.test.ts
-- [ ] T023 [US1] Read-only opening for documents: a new-tab link for PDF and images, and a small read-only view for text kinds in components/library/library-view.tsx (moved into the pane by T059)
-- [ ] T024 [US1] Remove components/settings/files-section.tsx and the `files` entry, `FolderIcon` and hosted filter in components/settings/settings-dialog-content.tsx
-- [ ] T025 [US1] Update docs/hosting.md: storage layout at line 65 and the upload limit at line 90
-- [ ] T026 [US1] Add upload, clash and delete to scripts/check-library-ui.mjs (isolated data, own server, modeled on scripts/smoke-sidebar-ui.mjs), including a file above 51 MB through the real proxy to prove the truncation refusal, at 320, 390 and 1440 px
+- [X] T016 [US1] Create src/server/library.ts with item handlers, and app/api/library/route.ts, app/api/library/upload/route.ts, app/api/library/items/[id]/route.ts, app/api/library/items/[id]/content/route.ts, all through `withTenant`; export from src/server/index.ts
+- [X] T017 [US1] Remove src/server/files.ts and app/api/files/route.ts and its exports from src/server/index.ts
+- [X] T018 [US1] Create src/server/library-text.ts: text info and the `library/derived/<id>.json` cache, PDF info after upload through `pdfInfo` with a yield between pages and one at a time per tenant, setting `textState`
+- [X] T019 [US1] Create components/library/upload.ts: one XHR per file in sequence, with progress, and clash handling through 409
+- [X] T020 [US1] Create components/library/library-view.tsx, library-row.tsx and delete-item-dialog.tsx, built with the `shadcn` skill, per contracts/ui-contract.md
+- [X] T021 [US1] Create app/(app)/library/page.tsx with `withTenantPage`
+- [X] T022 [US1] Add the Library entry to components/sidebar.tsx and pass the extended graph check in tests/startup-module-graph.test.ts
+- [X] T023 [US1] Read-only opening for documents: a new-tab link for PDF and images, and a small read-only view for text kinds in components/library/library-view.tsx (moved into the pane by T059)
+- [X] T024 [US1] Remove components/settings/files-section.tsx and the `files` entry, `FolderIcon` and hosted filter in components/settings/settings-dialog-content.tsx
+- [X] T025 [US1] Update docs/hosting.md: storage layout at line 65 and the upload limit at line 90
+- [X] T026 [US1] Add upload, clash and delete to scripts/check-library-ui.mjs (isolated data, own server, modeled on scripts/smoke-sidebar-ui.mjs), including a file above 51 MB through the real proxy to prove the truncation refusal, at 320, 390 and 1440 px
 
 **Checkpoint**: US1 is usable alone.
 
@@ -130,7 +130,7 @@ description: "Tasks for feature 009: Library and canvas pages"
 - [ ] T056 [US3] Create components/library/page-editor.tsx, the single swappable editor component, using TipTap, loaded on demand, storing Markdown, hidden scrollbars
 - [ ] T057 [P] [US3] Create components/library/page-preview.tsx, read-only rendering for version history only (dynamic; existing Streamdown setup from components/ai-elements/message.tsx, debounced 200 ms) and page-history.tsx
 - [ ] T058 [US3] Create components/library/use-page-draft.ts (local backup, 1 s draft save, version on Save, close and leave, conflict state) and subscribe to `library-changed` through components/server-events.tsx
-- [ ] T059 [US3] Create components/library/page-pane.tsx and page-pane-context.tsx; mount in app/(app)/layout.tsx scope, components/chat.tsx and library-view.tsx; move T023's read-only view into the pane; keep the one live demo iframe; make automatic demo opening respect an open page
+- [ ] T059 [US3] Create components/library/page-pane.tsx and page-pane-context.tsx; mount in app/(app)/layout.tsx scope, components/chat.tsx and library-view.tsx; move T023's read-only view into the pane; add the "New page" action that T020 left out until pages exist; keep the one live demo iframe; make automatic demo opening respect an open page
 - [ ] T060 [US3] Add the phone full-screen layer with Back to chat and focus containment in components/library/page-pane.tsx and app/globals.css
 - [ ] T061 [US3] Make bold demo titles in the preview use `DemoPanelContext` as chat does, and render plain outside a chat
 - [ ] T062 [US3] Extend scripts/check-library-ui.mjs: reload with an unsaved draft, two real tabs, restore, phone layer, pane resize at 320, 390 and 1440 px

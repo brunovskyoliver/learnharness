@@ -61,6 +61,16 @@ describe("SettingsDialog (the designed surface, SSR)", () => {
 	});
 });
 
+describe("Settings has no Files section (feature 009)", () => {
+	it("in either mode", () => {
+		for (const hosted of [false, true]) {
+			const html = renderToStaticMarkup(<SettingsDialogProvider hosted={hosted}><SettingsDialogBody onClose={() => {}} /></SettingsDialogProvider>);
+			assert.ok(!html.includes("settings-nav-files"));
+			assert.ok(!html.includes(">Files<"));
+		}
+	});
+});
+
 describe("AgentSection (thin SSR)", () => {
 	it("renders the three model SLOT rows (slots-only, fix wave: unpicked reads —, no Default option)", () => {
 		const html = renderToStaticMarkup(<AgentSection agent={undefined} models={undefined} graph={undefined} onSectionChange={() => {}} onModelsChange={() => {}} />);

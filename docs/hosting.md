@@ -49,7 +49,7 @@ Open `https://<LH_DOMAIN>`. You land on the sign-in page; after signing in you g
    Sign-in works by paste-back, because the server can't receive OpenAI's redirect: approve in the OpenAI tab, which then ends on a page that can't load (its address starts with `http://127.0.0.1`). Copy that whole address and paste it into the box in the app.
 2. The model slots fill themselves from the ChatGPT catalog (strong, cheap and vision). Click **Save models**.
 3. Optional: API keys or other subscriptions under **Other providers**.
-4. Files for the agent to read go in **Settings → Files** (10 MB per upload). In hosted mode the agent's file tools can only see that folder.
+4. Files for the agent to read go in the **Library** in the sidebar (50 MiB per file). In hosted mode the agent's file tools can only see those documents.
 
 ## Chrome sandbox
 
@@ -62,7 +62,7 @@ If demos fail with a "No usable sandbox" error, the host is refusing unprivilege
 All state lives in the `lh-data` volume (`/data` in the container):
 
 ```
-/data/users/<user id>/   chats, graph, settings, keys, subscriptions, files/
+/data/users/<user id>/   chats, graph, settings, keys, subscriptions, files/, library/
 ```
 
 Back up by stopping the app and archiving the volume:
@@ -87,6 +87,6 @@ Caddy's certificates live in the `caddy-data` volume; keep it so you don't hit L
 
 ## Limits to know
 
-- **Uploads:** 10 MB per request. Next's proxy buffers request bodies up to `experimental.proxyClientMaxBodySize` (10 MB by default) and cuts off anything larger, so raise that and `UPLOAD_MAX_BYTES` in `src/server/files.ts` together.
+- **Uploads:** 50 MiB per file, one file per request. Next's proxy buffers request bodies up to `experimental.proxyClientMaxBodySize` (set to 51 MB) and cuts off anything larger, so raise that and `MAX_FILE_BYTES` in `src/core/library.ts` together. That buffer stays in memory for the request, before auth runs.
 - **One process.** Per-user state is kept in memory inside one Node process. Don't scale the app service to more than one replica.
 - **Removing a person:** delete them in Clerk, then remove `/data/users/<their id>/`.

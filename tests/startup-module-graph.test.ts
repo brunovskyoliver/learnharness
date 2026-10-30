@@ -30,6 +30,7 @@ for (const entry of ["components/sidebar.tsx", "components/home.tsx", "component
 				if (attribution.bytesInOutput === 0) continue;
 				assert.doesNotMatch(input, /node_modules\/(?:typebox|katex)\//, `${input} entered initial JS`);
 				assert.doesNotMatch(input, /node_modules\/(?:mdast-util-from-markdown|micromark[^/]*)\//, `${input} entered startup JS without a Markdown surface`);
+				assert.doesNotMatch(input, /components\/library\//, `${input} entered startup JS; the Library loads with its own route`);
 				if (entry === "components/graph-view.tsx") assert.doesNotMatch(input, /(?:components\/graph-canvas\.ts|src\/core\/layout\.ts|node_modules\/d3-[^/]+\/)/, `${input} entered the empty graph's static JS`);
 			}
 			for (const imported of output.imports) if (imported.kind === "import-statement" && !imported.external) walk(imported.path);

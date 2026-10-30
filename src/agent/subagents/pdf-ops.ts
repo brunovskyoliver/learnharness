@@ -128,6 +128,8 @@ export async function pdfInfo(filePath: string): Promise<PdfInfo> {
 			image_count: imageCount,
 			math_density: Math.round(mathDensity(text) * 10000) / 10000,
 		});
+		// pdfjs runs on the main thread: let requests through between pages.
+		await new Promise((resolve) => setImmediate(resolve));
 	}
 	return {
 		path: filePath,

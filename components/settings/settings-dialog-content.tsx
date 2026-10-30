@@ -7,7 +7,7 @@ import {
 	useState,
 } from "react";
 import { Dialog } from "radix-ui";
-import { BotIcon, FolderIcon, KeyboardIcon, NetworkIcon, PaletteIcon, SearchIcon, Settings2Icon, KeyRoundIcon, XIcon } from "lucide-react";
+import { BotIcon, KeyboardIcon, NetworkIcon, PaletteIcon, SearchIcon, Settings2Icon, KeyRoundIcon, XIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBackdropDismiss } from "@/components/backdrop-dismiss";
 import {
@@ -30,7 +30,6 @@ import { Hint } from "@/components/ui/hint";
 import { AppearanceSection, GraphSection } from "./appearance-section.tsx";
 import { GraphDisplaySection } from "./graph-display-section.tsx";
 import { KeyboardSection } from "./keyboard-section.tsx";
-import { FilesSection } from "./files-section.tsx";
 
 /** Owner (2026-09-20): hints earn their place — mechanics-explaining
  *  prose is out; only the keyboard note stays (storage location is a
@@ -41,8 +40,6 @@ const SECTIONS = [
 	{ id: "appearance", icon: PaletteIcon, label: "Appearance" },
 	{ id: "graph", icon: NetworkIcon, label: "Graph" },
 	{ id: "keyboard", icon: KeyboardIcon, label: "Keyboard", hint: "Stored on this device" },
-	/** Hosted only: the upload folder the agent's file tools read. */
-	{ id: "files", icon: FolderIcon, label: "Files" },
 	{ id: "general", icon: Settings2Icon, label: "General" },
 ] as const;
 export type SectionId = (typeof SECTIONS)[number]["id"];
@@ -51,14 +48,12 @@ export default function SettingsDialog({
 	onClose,
 	initialSection,
 	initialRow,
-	hosted,
 	returnFocusElement,
 }: {
 	onClose: () => void;
 	initialSection: SectionId;
 	/** The keys-section row to unfold (see DialogContext above). */
 	initialRow: string | null;
-	hosted: boolean;
 	returnFocusElement?: HTMLElement | null;
 }) {
 	const backdropDismiss = useBackdropDismiss(onClose);
@@ -95,7 +90,7 @@ export default function SettingsDialog({
 				>
 					<Dialog.Title className="sr-only">Settings</Dialog.Title>
 					<MenuPortalContext.Provider value={portalContainer}>
-						<SettingsDialogBody onClose={onClose} initialSection={initialSection} initialRow={initialRow} hosted={hosted} inModal />
+						<SettingsDialogBody onClose={onClose} initialSection={initialSection} initialRow={initialRow} inModal />
 					</MenuPortalContext.Provider>
 				</Dialog.Content>
 			</Dialog.Portal>
@@ -109,12 +104,9 @@ export function SettingsDialogBody({
 	onClose,
 	initialSection = "keys",
 	initialRow = null,
-	hosted = false,
 	inModal = false,
 }: {
 	onClose: () => void;
-	/** Shows the hosted-only sections (Files). */
-	hosted?: boolean;
 	inModal?: boolean;
 	initialSection?: SectionId;
 	/** The keys row to unfold on arrival (null = none). While-open
@@ -286,7 +278,7 @@ export function SettingsDialogBody({
 						<input type="search" aria-label="Search settings categories" placeholder="Search settings" value={search} onChange={(event) => setSearch(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground" />
 					</label>
 					<div className="flex gap-1 overflow-x-auto sm:flex-col">
-					{SECTIONS.filter((s) => (hosted || s.id !== "files") && s.label.toLowerCase().includes(search.toLowerCase())).map((s) => (
+					{SECTIONS.filter((s) => s.label.toLowerCase().includes(search.toLowerCase())).map((s) => (
 						<button
 							key={s.id}
 							type="button"
@@ -300,7 +292,7 @@ export function SettingsDialogBody({
 						</button>
 					))}
 					</div>
-					{!SECTIONS.some((s) => (hosted || s.id !== "files") && s.label.toLowerCase().includes(search.toLowerCase())) && <p role="status" className="px-2 text-sm text-muted-foreground">No categories found.</p>}
+					{!SECTIONS.some((s) => s.label.toLowerCase().includes(search.toLowerCase())) && <p role="status" className="px-2 text-sm text-muted-foreground">No categories found.</p>}
 				</nav>
 
 				{/* Content column — one section at a time, this scrolls — and
@@ -344,11 +336,6 @@ export function SettingsDialogBody({
 											void write("general", { ...record.general, autoUpdate: on })
 										}
 									/>
-								</SettingsSection>
-							)}
-							{active === "files" && hosted && (
-								<SettingsSection title="Files" testid="section-files">
-									<FilesSection />
 								</SettingsSection>
 							)}
 							{active === "keys" && (
