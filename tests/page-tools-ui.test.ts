@@ -70,3 +70,30 @@ describe("History (US4)", async () => {
 		]), [{ kind: "same", count: 2 }, { kind: "removed", markdown: "c" }, { kind: "added", markdown: "c2" }, { kind: "same", count: 1 }]);
 	});
 });
+
+describe("outline, word count and export (US5)", async () => {
+	const { getSchema } = await import("@tiptap/core");
+	const { Node: PmNode } = await import("@tiptap/pm/model");
+	const { pageExtensions, parsePageMarkdown } = await import("../components/library/page-markdown.ts");
+	const { pageStats } = await import("../components/library/page-editor-extras.ts");
+	const { countWords } = await import("../components/library/page-blocks.ts");
+	const { markdownFileName } = await import("../components/library/page-export.tsx");
+	const { wordsText } = await import("../components/library/page-pane.tsx");
+	const docOf = (md: string) => PmNode.fromJSON(getSchema(pageExtensions()), parsePageMarkdown(md));
+
+	it("counts prose words, not formulas, code or images", () => {
+		const stats = pageStats(docOf("# Eigen values\n\nOne two $x^2 + y$ three `code here`.\n\n$$\na+b\n$$\n\n```\nnot counted\n```\n\n![alt words](a.png)\n"), countWords);
+		assert.equal(stats.words, 5);
+	});
+	it("lists h1 to h3 with their positions, in order", () => {
+		const stats = pageStats(docOf("# A\n\n## B\n\ntext\n\n### C\n\n#### D\n"), countWords);
+		assert.deepEqual(stats.headings.map((h) => [h.level, h.text]), [[1, "A"], [2, "B"], [3, "C"]]);
+		assert.ok(stats.headings.every((h, i, all) => i === 0 || h.pos > all[i - 1]!.pos));
+	});
+	it("names files and words", () => {
+		assert.equal(markdownFileName("Week 3: notes/draft"), "Week 3- notes-draft.md");
+		assert.equal(markdownFileName("  "), "Page.md");
+		assert.equal(wordsText(1), "1 word");
+		assert.equal(wordsText(0), "0 words");
+	});
+});

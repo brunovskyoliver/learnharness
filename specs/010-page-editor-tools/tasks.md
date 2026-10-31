@@ -32,9 +32,9 @@ Approved plan: [plan.md](plan.md). Strings: [contracts/ui-contract.md](contracts
 - [x] T017 Browser: compare and name across reload
 
 ## Phase 5: US5 Outline, word count, export (P3)
-- [ ] T018 Word count and outline from the document (pure parts in page-blocks.ts)
-- [ ] T019 Outline column and phone menu; Export menu; print root and CSS
-- [ ] T020 Browser: outline jump, copy, download
+- [x] T018 Word count and outline from the document (pure parts in page-blocks.ts)
+- [x] T019 Outline column and phone menu; Export menu; print root and CSS
+- [x] T020 Browser: outline jump, copy, download
 
 ## Phase 6: US6 Images (P3)
 - [ ] T021 `upload.ts` returns the item; SVG refused for pages

@@ -3,7 +3,8 @@
 import { NodeSelection } from "@tiptap/pm/state";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
-import { createTutorHighlights, insertFormula, PagePlaceholder, runSlashBlock, tutorHighlightsKey, type TutorHighlights } from "./page-editor-extras.ts";
+import { createTutorHighlights, insertFormula, PagePlaceholder, pageStats, runSlashBlock, tutorHighlightsKey, type PageStats, type TutorHighlights } from "./page-editor-extras.ts";
+import { countWords } from "./page-blocks.ts";
 import { nodeJsonKey } from "./page-changes.ts";
 import { createPageCodec, pageExtensions } from "./page-markdown.ts";
 import { OPEN_MATH_SOURCE_EVENT } from "./page-math-view.ts";
@@ -16,6 +17,8 @@ export interface PageEditorHandle {
 	/** Hand over text still inside the short serialize delay. */
 	flush: () => void;
 	focus: () => void;
+	/** Puts the caret at a heading and scrolls to it (the outline). */
+	jumpTo: (pos: number) => void;
 }
 
 /** What makes the surface a named, focusable text field. */
@@ -33,8 +36,10 @@ export function pageEditorAttributes(ariaLabel: string): Record<string, string> 
  *  stored Markdown, and answers with Markdown that is byte-identical until
  *  something is really edited (components/library/page-markdown.ts). A new
  *  `value` from outside comes with a new React key. */
-export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, ariaLabel, handle, tutor, highlights = null }: {
+export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, ariaLabel, handle, tutor, highlights = null, onStats }: {
 	value: string;
+	/** Word count and headings, after each settled change. */
+	onStats?: (stats: PageStats) => void;
 	/** The tutor's changes to point at; decorations only, never stored. */
 	highlights?: TutorHighlights | null;
 	/** The tutor's actions on selected text; absent hides them. */
@@ -47,6 +52,8 @@ export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, 
 }) {
 	const onChangeRef = useRef(onChange);
 	onChangeRef.current = onChange;
+	const statsRef = useRef(onStats);
+	statsRef.current = onStats;
 	const saveRef = useRef(onSaveShortcut);
 	saveRef.current = onSaveShortcut;
 	// The stored text at load only. The parent passes each edit back in `value`,
@@ -58,7 +65,10 @@ export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, 
 	const emit = useCallback(() => {
 		if (timer.current) { clearTimeout(timer.current); timer.current = null; }
 		const editor = editorRef.current;
-		if (editor && !editor.isDestroyed) onChangeRef.current(codec.toMarkdown(editor.getJSON()));
+		if (editor && !editor.isDestroyed) {
+			onChangeRef.current(codec.toMarkdown(editor.getJSON()));
+			statsRef.current?.(pageStats(editor.state.doc, countWords));
+		}
 	}, [codec]);
 
 	const extensions = useMemo(() => [
@@ -136,7 +146,10 @@ export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, 
 				return false;
 			},
 		},
-		onCreate: ({ editor: created }) => { codec.settle(created.getJSON()); },
+		onCreate: ({ editor: created }) => {
+			codec.settle(created.getJSON());
+			statsRef.current?.(pageStats(created.state.doc, countWords));
+		},
 		onUpdate: () => {
 			if (timer.current) clearTimeout(timer.current);
 			timer.current = setTimeout(emit, CHANGE_DELAY_MS);
@@ -193,6 +206,12 @@ export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, 
 	useImperativeHandle(handle, () => ({
 		flush: () => { if (timer.current) emit(); },
 		focus: () => { editorRef.current?.commands.focus(); },
+		jumpTo: (pos: number) => {
+			const current = editorRef.current;
+			if (!current) return;
+			current.chain().focus().setTextSelection(pos + 1).run();
+			(current.view.nodeDOM(pos) as HTMLElement | null)?.scrollIntoView({ block: "start" });
+		},
 	}), [emit]);
 
 	return (

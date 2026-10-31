@@ -168,3 +168,22 @@ export function createTutorHighlights(toKey: (json: unknown) => string) {
 		},
 	});
 }
+
+export interface PageHeading { level: 1 | 2 | 3; text: string; pos: number }
+export interface PageStats { words: number; headings: PageHeading[] }
+
+const UNCOUNTED = new Set(["inlineMath", "blockMath", "codeBlock", "rawBlock", "rawInline", "pageImage"]);
+
+/** Words in prose (not formulas, code or raw source) and the h1–h3 outline. */
+export function pageStats(doc: import("@tiptap/pm/model").Node, count: (text: string) => number): PageStats {
+	const parts: string[] = [];
+	const headings: PageHeading[] = [];
+	doc.descendants((node, pos) => {
+		if (UNCOUNTED.has(node.type.name)) return false;
+		if (node.type.name === "heading" && node.attrs.level <= 3) headings.push({ level: node.attrs.level as 1 | 2 | 3, text: node.textContent, pos });
+		if (node.isText && !node.marks.some((m) => m.type.name === "code")) parts.push(node.text ?? "");
+		if (node.isBlock) parts.push(" ");
+		return true;
+	});
+	return { words: count(parts.join("")), headings };
+}

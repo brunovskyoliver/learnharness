@@ -671,7 +671,8 @@ try {
 	if (toolsOnly) {
 		if (!process.env.LH_UI_SKIP_FORMAT) for (const width of [1440, 390, 320]) await checkEditorTools(width);
 		if (!process.env.LH_UI_SKIP_ACTIONS) for (const width of [1440, 390]) await checkTutorActions(width);
-		for (const width of [1440, 390]) await checkTutorChanges(width);
+		if (!process.env.LH_UI_SKIP_CHANGES) for (const width of [1440, 390]) await checkTutorChanges(width);
+		for (const width of [1440, 390]) await checkOutlineExport(width);
 	} else if (fixesOnly) {
 		await checkPageFixes();
 	} else if (settingsOnly) {
@@ -1384,6 +1385,75 @@ async function checkTutorChanges(width) {
 	await page.close();
 }
 function base_url(id) { return `${base}/api/library/pages/${id}`; }
+
+/** Feature 010 US5: outline jump, word count, copy, download and print. */
+async function checkOutlineExport(width) {
+	const context = await browser.createBrowserContext();
+	await context.overridePermissions(base, ["clipboard-read", "clipboard-write", "clipboard-sanitized-write"]);
+	const page = await context.newPage();
+	page.setDefaultTimeout(30000);
+	const errors = [];
+	page.on("pageerror", (error) => errors.push(error.message));
+	await page.setViewport({ width, height: width < 768 ? 800 : 900 });
+	// Print: record what is on screen when the dialog would open, then close it.
+	await page.evaluateOnNewDocument(() => {
+		window.__printed = [];
+		window.print = () => {
+			const root = document.getElementById("lh-print-root");
+			window.__printed.push({ text: root?.innerText ?? "", shown: root ? getComputedStyle(root).display : "none", title: document.title });
+			setTimeout(() => window.dispatchEvent(new Event("afterprint")), 0);
+		};
+	});
+	const downloads = path.join(root, `downloads-${width}`);
+	await mkdir(downloads, { recursive: true });
+	const cdp = await page.createCDPSession();
+	await cdp.send("Page.setDownloadBehavior", { behavior: "allow", downloadPath: downloads });
+	const name = `Outline ${width}`;
+	const text = "# First\n\nOne two three.\n\n## Second part\n\nFour five $x$.\n\n### Third\n\nSix.\n";
+	await pageApi.create(name, text);
+	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
+	for (let i = 0; i < 40 && !(await page.$('[data-testid="page-pane"]')); i++) {
+		await page.click(`[aria-label="Open ${name}"]`).catch(() => {});
+		await pause(500);
+	}
+	await page.waitForSelector(editor, { timeout: 60000 });
+	await page.waitForFunction(() => document.querySelector('[data-testid="page-word-count"]')?.textContent === "· 10 words");
+	await page.click('[data-testid="page-outline-toggle"]');
+	await page.waitForSelector('[data-testid="page-outline"]');
+	assert.deepEqual(await page.$$eval('[data-testid="page-outline"] button', (els) => els.map((el) => el.textContent)), ["First", "Second part", "Third"]);
+	if (shots) await page.screenshot({ path: path.join(shots, `outline-${width}.png`) });
+	const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+	assert.ok(over <= 0, `${width}px overflow ${over}`);
+	const jumped = await page.evaluateHandle(() => [...document.querySelectorAll('[data-testid="page-outline"] button')].find((b) => b.textContent === "Third"));
+	await jumped.click();
+	await page.waitForFunction(() => window.getSelection()?.anchorNode?.parentElement?.closest("h3")?.textContent === "Third");
+	console.log(`PASS ${width}px outline lists h1-h3 and jumps the caret, word count leaves out formulas`);
+
+	await page.click('[data-testid="page-export"]');
+	await page.waitForSelector('[data-testid="page-export-menu"]');
+	await page.click('[data-testid="page-export-copy"]');
+	await page.waitForFunction(() => document.querySelector('[data-testid="page-export-copy"]')?.textContent === "Copied");
+	assert.equal(await page.evaluate(() => navigator.clipboard.readText()), text);
+	await page.click('[data-testid="page-export-download"]');
+	let file = null;
+	for (let i = 0; i < 40 && !file; i++) {
+		file = (await readdir(downloads)).find((f) => f.endsWith(".md"));
+		if (!file) await pause(250);
+	}
+	assert.equal(file, `${name}.md`);
+	assert.equal(await readFile(path.join(downloads, file), "utf8"), text);
+	await page.click('[data-testid="page-export"]');
+	await page.waitForSelector('[data-testid="page-export-print"]');
+	await page.click('[data-testid="page-export-print"]');
+	await page.waitForFunction(() => window.__printed.length === 1);
+	const printed = await page.evaluate(() => window.__printed[0]);
+	assert.equal(printed.title, name);
+	assert.ok(printed.text.includes("Second part") && printed.text.includes("Six."), printed.text);
+	await page.waitForFunction(() => !document.getElementById("lh-print-root"));
+	console.log(`PASS ${width}px export: copy is the stored Markdown, download is "${name}.md", print shows only the page`);
+	assert.deepEqual(errors, [], `${width}px: no browser exceptions`);
+	await context.close();
+}
 
 /** The transcript rows, from a seeded tool result, since no model runs here. */
 async function checkPageRows() {

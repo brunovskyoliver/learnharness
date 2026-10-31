@@ -1258,6 +1258,16 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 /* The tutor's changes: a raised step behind what it wrote, removed text struck
    through in muted ink. Decorations only; never stored. */
 .lh-page-editor .lh-tutor-added { border-radius: 6px; background: var(--accent); box-decoration-break: clone; }
+/* Print (feature 010): only the page, in Study ink's paper theme. */
+#lh-print-root { display: none; }
+@media print {
+	html[data-lh-printing] body > :not(#lh-print-root) { display: none !important; }
+	html[data-lh-printing], html[data-lh-printing] body { background: #fff; }
+	html[data-lh-printing] #lh-print-root {
+		--background: #faf9f6; --foreground: #1a1917; --ink-2: #4a4843; --muted-foreground: #64625c; --card: #f2f0eb; --accent: #e8e5de; --border: rgba(26, 25, 23, 0.08); --input: rgba(26, 25, 23, 0.18);
+		display: block; padding: 0; background: #fff; color: #1a1917;
+	}
+}
 .lh-page-editor .lh-tutor-removed { white-space: pre-wrap; color: var(--muted-foreground); text-decoration: line-through; user-select: none; }
 @media (pointer: coarse) {
 	[data-testid="page-toolbar"] select, [data-testid="page-table-controls"] button { min-height: 44px; }

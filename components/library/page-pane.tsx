@@ -3,9 +3,11 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowLeftIcon, HistoryIcon, XIcon } from "lucide-react";
+import { ArrowLeftIcon, DownloadIcon, HistoryIcon, ListTreeIcon, XIcon } from "lucide-react";
 import { ChatActionsContext } from "@/components/chat-actions-context.ts";
 import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspacePane } from "@/components/workspace-pane";
 import { isUnsent, SAVE_STATE_LABEL, type PageDraftState } from "./page-draft.ts";
@@ -17,6 +19,8 @@ import type { PageTutor } from "./page-toolbar.tsx";
 import { TUTOR_BLOCKED_TEXT, tutorMessage, type TutorAction } from "./page-tutor-actions.ts";
 import { revertTutorChanges } from "./page-blocks.ts";
 import { changeBarText, highlightsOf, skippedText, UNDO_FAILED_TEXT, useTutorChanges } from "./page-changes.ts";
+import type { PageHeading, PageStats } from "./page-editor-extras.ts";
+import { downloadMarkdown, PrintRoot } from "./page-export.tsx";
 import { usePageDraft } from "./use-page-draft.ts";
 
 const PageEditor = dynamic(() => import("./page-editor.tsx").then((m) => m.PageEditor), {
@@ -86,10 +90,13 @@ function focusTranscript() {
 	target.focus();
 }
 
-export function SaveState({ state, onRetry, canRetry = true }: { state: Pick<PageDraftState, "status">; onRetry: () => void; canRetry?: boolean }) {
+export const wordsText = (n: number) => `${n} ${n === 1 ? "word" : "words"}`;
+
+export function SaveState({ state, onRetry, canRetry = true, words }: { state: Pick<PageDraftState, "status">; onRetry: () => void; canRetry?: boolean; words?: number }) {
 	return (
 		<span className="flex min-w-0 flex-wrap items-center gap-x-2 text-sm text-muted-foreground" data-testid="page-save-state">
 			{SAVE_STATE_LABEL[state.status]}
+			{words !== undefined && <span data-testid="page-word-count">· {wordsText(words)}</span>}
 			{state.status === "failed" && canRetry && <button type="button" className="prompt-secondary" onClick={onRetry} data-testid="page-retry">Try again</button>}
 		</span>
 	);
@@ -133,6 +140,48 @@ export function DeletedLine({ name, text }: { name: string; text: string | null 
 				>{copied ? "Copied" : "Copy text"}</button>
 			)}
 		</div>
+	);
+}
+
+/** h1–h3, indented by level; choosing one moves the caret there. */
+export function PageOutline({ headings, onPick, className }: { headings: PageHeading[]; onPick: (pos: number) => void; className?: string }) {
+	return (
+		<nav aria-label="Outline" data-testid="page-outline" className={cn("flex flex-col gap-0.5 text-sm", className)}>
+			<span className="px-2 pb-1 text-sm font-medium text-muted-foreground">On this page</span>
+			{headings.length === 0 && <span className="px-2 text-sm text-ink-2">Headings appear here.</span>}
+			{headings.map((heading) => (
+				<button
+					key={heading.pos}
+					type="button"
+					onClick={() => onPick(heading.pos)}
+					style={{ paddingInlineStart: `${0.5 + (heading.level - 1) * 0.75}rem` }}
+					className="min-h-8 truncate rounded-[6px] pe-2 text-left text-ink-2 hover:bg-accent hover:text-foreground pointer-coarse:min-h-11"
+				>{heading.text || "Untitled heading"}</button>
+			))}
+		</nav>
+	);
+}
+
+function ExportMenu({ name, text, container, onPrint }: { name: string; text: () => string; container: HTMLElement | null; onPrint: () => void }) {
+	const [open, setOpen] = useState(false);
+	const [copied, setCopied] = useState(false);
+	const item = "flex min-h-9 w-full items-center rounded-[6px] px-2 text-left text-sm text-foreground hover:bg-card pointer-coarse:min-h-11";
+	return (
+		<Popover open={open} onOpenChange={(next) => { setOpen(next); if (!next) setCopied(false); }}>
+			<PopoverTrigger asChild>
+				<Button type="button" variant="ghost" className="shrink-0 pointer-coarse:h-11" data-testid="page-export">
+					<DownloadIcon className="ui-icon" aria-hidden="true" />
+					<span className="max-md:sr-only">Export</span>
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent container={container} align="end" className="flex w-56 flex-col gap-0.5 rounded-[10px] border-0 p-1" data-testid="page-export-menu">
+				<button type="button" className={item} data-testid="page-export-copy" onClick={() => {
+					void navigator.clipboard.writeText(text()).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 2000); }, () => {});
+				}}>{copied ? "Copied" : "Copy as Markdown"}</button>
+				<button type="button" className={item} data-testid="page-export-download" onClick={() => { downloadMarkdown(name, text()); setOpen(false); }}>Download .md</button>
+				<button type="button" className={item} data-testid="page-export-print" onClick={() => { setOpen(false); onPrint(); }}>Print</button>
+			</PopoverContent>
+		</Popover>
 	);
 }
 
@@ -225,6 +274,24 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 		editor.current?.flush();
 		void controller.commit("save");
 	};
+	// Outline, word count and export (feature 010, US5).
+	const [stats, setStats] = useState<PageStats | null>(null);
+	const [outline, setOutline] = useState(false);
+	const [printing, setPrinting] = useState(false);
+	const [wide, setWide] = useState(false);
+	useEffect(() => {
+		const el = root.current;
+		if (!el || typeof ResizeObserver === "undefined") return;
+		const observer = new ResizeObserver(([entry]) => setWide((entry?.contentRect.width ?? 0) >= 720));
+		observer.observe(el);
+		return () => observer.disconnect();
+	}, []);
+	const currentText = () => { editor.current?.flush(); return controller.state.text; };
+	const jump = (pos: number) => {
+		if (!wide) setOutline(false);
+		editor.current?.jumpTo(pos);
+	};
+
 	// The tutor's changes (feature 010, US3), cleared on Done and on close.
 	const { changes, done } = useTutorChanges(item.id, state.loaded && !state.deleted, state.base);
 	const [changeLine, setChangeLine] = useState<string | null>(null);
@@ -317,12 +384,19 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 						closeLabel={`Close ${item.name}`}
 						onClose={close}
 						name={<PageName item={item} pane={pane} />}
-						status={state.loaded && !state.deleted ? <SaveState state={state} canRetry={!state.conflict} onRetry={() => void controller.retry()} /> : undefined}
+						status={state.loaded && !state.deleted ? <SaveState state={state} canRetry={!state.conflict} onRetry={() => void controller.retry()} words={stats?.words} /> : undefined}
 						actions={state.deleted ? undefined : (
-							<Button type="button" variant="ghost" aria-pressed={history} className="shrink-0 pointer-coarse:h-11" onClick={() => setHistory((open) => !open)} data-testid="page-history-toggle">
-								<HistoryIcon className="ui-icon" aria-hidden="true" />
-								History
+							<>
+							<Button type="button" variant="ghost" aria-pressed={outline} className="shrink-0 aria-pressed:bg-accent aria-pressed:text-foreground pointer-coarse:h-11" onClick={() => setOutline((open) => !open)} data-testid="page-outline-toggle">
+								<ListTreeIcon className="ui-icon" aria-hidden="true" />
+								<span className="max-md:sr-only">Outline</span>
 							</Button>
+							<ExportMenu name={item.name} text={currentText} container={root.current} onPrint={() => setPrinting(true)} />
+							<Button type="button" variant="ghost" aria-pressed={history} className="shrink-0 aria-pressed:bg-accent aria-pressed:text-foreground pointer-coarse:h-11" onClick={() => setHistory((open) => !open)} data-testid="page-history-toggle">
+								<HistoryIcon className="ui-icon" aria-hidden="true" />
+								<span className="max-md:sr-only">History</span>
+							</Button>
+							</>
 						)}
 					/>
 					{state.deleted && <DeletedLine name={item.name} text={isUnsent(state) ? state.text : null} />}
@@ -334,7 +408,11 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 					<p role="status" aria-live="polite" className="px-3 text-sm text-ink-2 empty:hidden" data-testid="page-agent-update">
 						{state.agentUpdate !== null && !changes ? `Updated by the agent · version ${state.agentUpdate}` : ""}
 					</p>
-					<div className={`flex min-h-0 flex-1 flex-col ${dragging ? "pointer-events-none" : ""}`}>
+					{printing && <PrintRoot name={item.name} text={controller.state.text} onDone={() => setPrinting(false)} />}
+					{outline && !wide && stats && !history && <PageOutline headings={stats.headings} onPick={jump} className="mx-3 mb-2 max-h-[40dvh] overflow-y-auto rounded-[10px] bg-popover p-1" />}
+					<div className={`flex min-h-0 flex-1 ${outline && wide && !history ? "flex-row gap-4" : "flex-col"} ${dragging ? "pointer-events-none" : ""}`}>
+						{outline && wide && stats && !history && <PageOutline headings={stats.headings} onPick={jump} className="w-44 shrink-0 overflow-y-auto pl-3" />}
+						<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 						{loadFailed ? (
 							<div role="status" className="flex flex-wrap items-center gap-2 px-3 text-sm text-ink-2">
 								<p>{item.name} could not be loaded.</p>
@@ -355,8 +433,10 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 								onSaveShortcut={save}
 								tutor={state.deleted ? undefined : tutor}
 								highlights={state.conflict ? null : highlights}
+								onStats={setStats}
 							/>
 						)}
+						</div>
 					</div>
 				</>
 			)}
