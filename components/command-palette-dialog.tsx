@@ -3,7 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState, type RefObject } from "react";
 import { BookOpenIcon, DumbbellIcon, FileTextIcon, FolderIcon, SearchIcon, ZapIcon } from "lucide-react";
-import { createBlankPage, usePagePane } from "@/components/library/page-pane-api";
+import { createBlankPage, createStudyNotes, SAVE_PASSAGE_EVENT, usePagePane } from "@/components/library/page-pane-api";
 import { useSessionList, useSessionListDemand } from "@/components/session-list";
 import { useSettingsDialog } from "@/components/settings/settings-dialog.tsx";
 import { useSidebar } from "@/components/sidebar";
@@ -108,7 +108,9 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 	}, [open]);
 
 	const inSession = chatIdOfPath(pathname) !== null;
-	const entries = useMemo(() => buildPaletteEntries({ inSession, chats: chats ?? [], items: library.items ?? [], folders: library.folders }), [inSession, chats, library.items, library.folders]);
+	const sessionId = chatIdOfPath(pathname);
+	const inLesson = sessionId !== null && chats?.find((chat) => chat.id === sessionId)?.kind !== "practice";
+	const entries = useMemo(() => buildPaletteEntries({ inSession, inLesson, chats: chats ?? [], items: library.items ?? [], folders: library.folders }), [inSession, inLesson, chats, library.items, library.folders]);
 	const groups = useMemo(() => rankPalette(entries, query), [entries, query]);
 	const flat = useMemo(() => groups.flatMap((group) => group.entries), [groups]);
 	const active = flat.find((entry) => entry.id === activeId) ?? flat[0] ?? null;
@@ -154,6 +156,21 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 				skipReturn.current = true;
 				close();
 				window.dispatchEvent(new CustomEvent(kbdEventForAction("open-model-picker")));
+				return;
+			case "study-notes": {
+				if (!sessionId) return;
+				const result = await createStudyNotes(sessionId);
+				if ("error" in result) { setFailure(`Study notes · ${result.error}`); return; }
+				skipReturn.current = true;
+				close();
+				if (workspace) workspace.openItem(result.item);
+				else pane?.open({ id: result.item.id, name: result.item.name, kind: result.item.kind, size: result.item.size });
+				return;
+			}
+			case "save-passage":
+				skipReturn.current = true;
+				close();
+				window.dispatchEvent(new CustomEvent(SAVE_PASSAGE_EVENT));
 				return;
 			case "show-shortcuts":
 				close();

@@ -7,6 +7,21 @@ export type { PagePaneApi, PaneItem } from "@/components/workspace/pane-context"
 
 const NEW_PAGE_NAME = "Untitled page";
 
+/** The palette asks the transcript for what is selected (feature 017). */
+export const SAVE_PASSAGE_EVENT = "lh:save-passage";
+
+/** "Turn this lesson into study notes": a new page, by an explicit click, with no model call. */
+export async function createStudyNotes(chatId: string): Promise<{ item: LibraryItem } | { error: string }> {
+	try {
+		const response = await fetch(`/api/chats/${encodeURIComponent(chatId)}/study-notes`, { method: "POST" });
+		const body = await response.json().catch(() => ({})) as { item?: LibraryItem; error?: string };
+		if (!response.ok || !body.item) return { error: body.error ?? "The study notes could not be made." };
+		return { item: body.item };
+	} catch {
+		return { error: "The study notes could not be made. Check your connection and try again." };
+	}
+}
+
 /** A new empty page, stepping past a taken name. Null with the reason on failure. */
 export async function createBlankPage(folderId?: string | null): Promise<{ item: LibraryItem } | { error: string }> {
 	const send = (name: string) => fetch("/api/library/pages", {

@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode, type RefObject } from "react";
+import { createStudyNotes } from "@/components/library/page-pane-api";
+import { useServerEvent, useServerResync } from "@/components/server-events";
 import { XIcon } from "lucide-react";
 import { requestFullTranscript } from "@/components/transcript-window";
 import { scrollSessionTarget, type SessionScrollContext } from "@/components/session-navigation";
@@ -44,14 +46,17 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 export const outlineLabel = (entry: Pick<SessionTurnEntry, "prompt" | "answer">) => entry.prompt.trim() || entry.answer.trim();
 
 /** The session's context, pure for render tests: its turns, then its demos. */
-export function SessionContextBody({ entries, demos, onJump, onOpenDemo }: {
+export function SessionContextBody({ entries, demos, onJump, onOpenDemo, notes }: {
 	entries: readonly SessionTurnEntry[];
 	demos: readonly { id: string; title: string }[];
 	onJump: (entry: SessionTurnEntry) => void;
 	onOpenDemo: (id: string) => void;
+	/** The session's pages and study notes (feature 017). */
+	notes?: ReactNode;
 }) {
 	return (
 		<>
+			{notes}
 			<Section title="Outline">
 				{entries.length === 0
 					? <p className="px-2 text-sm text-ink-2">The outline fills in as the session goes.</p>
@@ -68,9 +73,81 @@ export function SessionContextBody({ entries, demos, onJump, onOpenDemo }: {
 	);
 }
 
+export interface SessionPageRow { id: string; name: string; kind: LibraryItem["kind"]; size: number; passages: number }
+
+/** Pages tied to this session, and the one action that makes more. Pure for render tests. */
+export function SessionNotesBody({ pages, failed, canMakeNotes, busy, error, onOpen, onStudyNotes, onRetry }: {
+	pages: readonly SessionPageRow[] | null;
+	failed: boolean;
+	canMakeNotes: boolean;
+	busy: boolean;
+	error: string | null;
+	onOpen: (row: SessionPageRow) => void;
+	onStudyNotes: () => void;
+	onRetry: () => void;
+}) {
+	const count = (n: number) => `${n} saved ${n === 1 ? "passage" : "passages"}`;
+	return (
+		<Section title="Notes">
+			{pages === null && !failed && <div role="status" aria-label="Loading notes" className="flex flex-col gap-2 px-2"><Skeleton className="h-5 w-2/3" /></div>}
+			{pages === null && failed && <div role="status" className="flex flex-wrap items-center gap-2 px-2 text-sm text-ink-2"><p>Notes could not be loaded.</p><button type="button" className="prompt-secondary" onClick={onRetry}>Try again</button></div>}
+			{pages?.length === 0 && <p className="px-2 text-sm text-ink-2">No page is tied to this session yet.</p>}
+			{pages?.map((row) => (
+				<button key={row.id} type="button" data-testid="session-note" onClick={() => onOpen(row)} className={ROW}>
+					<span className="block text-foreground [overflow-wrap:anywhere]">{row.name}</span>
+					{row.passages > 0 && <span className="block text-muted-foreground">{count(row.passages)}</span>}
+				</button>
+			))}
+			{canMakeNotes && <button type="button" className={ROW} disabled={busy} data-testid="session-study-notes" onClick={onStudyNotes}>{busy ? "Making study notes…" : "Turn this lesson into study notes"}</button>}
+			{error && <p role="alert" className="px-2 text-sm text-destructive">{error}</p>}
+		</Section>
+	);
+}
+
+function SessionNotes({ chatId, practice }: { chatId: string; practice: boolean }) {
+	const workspace = useWorkspace();
+	const [pages, setPages] = useState<SessionPageRow[] | null>(null);
+	const [failed, setFailed] = useState(false);
+	const [busy, setBusy] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	const refresh = useCallback(async () => {
+		try {
+			const response = await fetch(`/api/chats/${encodeURIComponent(chatId)}/pages`, { cache: "no-store" });
+			if (!response.ok) throw new Error(String(response.status));
+			setPages(((await response.json()) as { pages: SessionPageRow[] }).pages);
+			setFailed(false);
+		} catch { setFailed(true); }
+	}, [chatId]);
+	useEffect(() => { void refresh(); }, [refresh]);
+	useServerEvent("library-changed", () => { void refresh(); });
+	useServerResync(() => { void refresh(); });
+	return (
+		<SessionNotesBody
+			pages={pages}
+			failed={failed}
+			canMakeNotes={!practice}
+			busy={busy}
+			error={error}
+			onRetry={() => void refresh()}
+			onOpen={(row) => workspace?.openItem(row)}
+			onStudyNotes={() => {
+				setBusy(true);
+				setError(null);
+				void createStudyNotes(chatId).then((result) => {
+					setBusy(false);
+					if ("error" in result) setError(result.error);
+					else workspace?.openItem(result.item);
+				});
+			}}
+		/>
+	);
+}
+
 /** Beside a session when no page or demo holds the pane. It moves the session's
  *  own scroller, so there is still one scroll owner. */
-export function SessionContextPane({ messages, nativeMessages, turns, demos, onOpenDemo, scopeRef, scrollContextRef }: {
+export function SessionContextPane({ chatId, practice, messages, nativeMessages, turns, demos, onOpenDemo, scopeRef, scrollContextRef }: {
+	chatId: string;
+	practice: boolean;
 	messages: readonly LhViewMessage[];
 	nativeMessages: readonly LhMessage[];
 	turns: readonly TurnUsage[];
@@ -88,7 +165,7 @@ export function SessionContextPane({ messages, nativeMessages, turns, demos, onO
 			if (scope && target) scrollSessionTarget(target, scope, scrollContextRef.current);
 		});
 	};
-	return <Shell title="This session"><SessionContextBody entries={entries} demos={demos} onJump={jump} onOpenDemo={onOpenDemo} /></Shell>;
+	return <Shell title="This session"><SessionContextBody entries={entries} demos={demos} onJump={jump} onOpenDemo={onOpenDemo} notes={<SessionNotes chatId={chatId} practice={practice} />} /></Shell>;
 }
 
 /** The Library place's context, pure for render tests. */

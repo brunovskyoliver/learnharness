@@ -56,6 +56,7 @@ import { ArrowRightIcon, DumbbellIcon, PanelRightIcon, PencilIcon, WaypointsIcon
 import { DemoPanel } from "@/components/artifacts/demo-panel";
 import { PagePaneSlot, usePagePane } from "@/components/library/page-pane-context";
 import { SessionContextSlot } from "@/components/workspace/context-slot";
+import { TranscriptPassages } from "@/components/transcript-passages";
 import { useWorkspace } from "@/components/workspace/workspace-context";
 import { isShownPageFailure } from "@/components/library/page-row";
 import { DemoPanelContext, sessionDemos, type DemoPanelApi } from "@/components/artifacts/demo-panel-context";
@@ -1747,7 +1748,8 @@ function ChatView({
 				<TranscriptArrivalScript storageKey={sessionStateStore?.storageKey} gradientHeight={GRADIENT_H} />
 				<DemoPanel />
 				<PagePaneSlot />
-				<SessionContextSlot messages={messages} nativeMessages={nativeMessages} turns={turns} demos={demos} onOpenDemo={demoPanel.open} scopeRef={sessionFindScopeRef} scrollContextRef={scrollContextRef} />
+				<TranscriptPassages chatId={chatId} scopeRef={sessionFindScopeRef} />
+				<SessionContextSlot chatId={chatId} practice={kind === "practice"} messages={messages} nativeMessages={nativeMessages} turns={turns} demos={demos} onOpenDemo={demoPanel.open} scopeRef={sessionFindScopeRef} scrollContextRef={scrollContextRef} />
 
 				{/* The session-scoped focuses (chrome-melt wave, 2026-09-19): mounted
 				    INSIDE the session area — absolute inset-0 siblings of the scroller,
