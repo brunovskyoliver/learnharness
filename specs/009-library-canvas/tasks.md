@@ -207,6 +207,7 @@ description: "Tasks for feature 009: Library and canvas pages"
 - [X] T093 Run the gates: `npm test`, `npm run lint`, `npm run typecheck`, `npm run build`, scripts/check-library-ui.mjs and the existing browser regressions; record existing failures separately from new ones
 - [ ] T094 Check a standalone build: 50 MiB upload through `node .next/standalone/server.js`, and a live Electron check that the Library and opening a PDF in a new window work — **Not done, left unchecked**: the standalone 50 MiB part passed (progress.md Log), but this machine has no display, so the live Electron check did not run
 - [X] T095 Walk spec.md's acceptance scenarios and success criteria, and audit findings 1, 2, 4 and 5-14, and write the final Report in specs/009-library-canvas/progress.md, noting that finding 3 (backups) stays with the owner
+- [X] T096 [US3] Add a "New page" row at the bottom of the @ list in every field (owner ruling 2026-10-31): it creates a blank page named by the existing default, opens it in the page pane, inserts `@name ` at the token, sends nothing and calls no model; a failed create refuses in plain words and keeps the draft. Files: components/library/use-library-mention.ts, mention-menu.tsx, page-pane-context.tsx; tests/mention-keys.test.ts, tests/render-references.test.tsx; scripts/check-library-ui.mjs at 320, 390 and 1440 px
 
 ---
 

@@ -3,7 +3,7 @@
  * the 50 MiB limit. Makes no model requests.
  * CHROME_PATH=/path/to/chrome node scripts/check-library-ui.mjs
  * Then the @ list in every field and the sent labels, with model submissions
- * intercepted. Optional: LH_UI_SCREENSHOT_DIR saves evidence, LH_UI_PORT picks
+ * intercepted, and "New page" in every @ field (T096). Optional: LH_UI_SCREENSHOT_DIR saves evidence, LH_UI_PORT picks
  * the port, LH_UI_MENTIONS_ONLY=1 runs only the @ part, LH_UI_PAGES_ONLY=1 only
  * the page pane (real editor corpus, reload, two tabs, restore, phone layer).
  * LH_UI_SETTINGS_ONLY=1 runs only Settings: search, row jump, Escape layers,
@@ -289,7 +289,7 @@ async function seedMentionChats() {
 }
 
 /** The keyboard path in one field, with model submissions intercepted. */
-async function checkMentionField(page, posts, width, name, selector, { sends = true, escapeDialog = false } = {}) {
+async function checkMentionField(page, posts, width, name, selector, { sends = true, escapeDialog = false, hasPane = true } = {}) {
 	const field = await page.waitForSelector(selector, { visible: true });
 	const value = () => page.$eval(selector, (el) => el.value);
 	const focused = () => page.$eval(selector, (el) => document.activeElement === el);
@@ -354,6 +354,63 @@ async function checkMentionField(page, posts, width, name, selector, { sends = t
 	await menuGone();
 	assert.equal(await value(), "@zzzz ", `${name}: a space closes an unmatched query`);
 
+	// "New page" is the last option with or without a match, and needs an arrow
+	// when nothing matched. It creates, opens, inserts, and sends nothing.
+	const newRow = '[data-testid="mention-new-page"]';
+	const isActive = () => page.$eval(selector, (el) => {
+		const active = el.getAttribute("aria-activedescendant");
+		return !!active && document.getElementById(active)?.dataset.testid === "mention-new-page";
+	});
+	const closePane = async () => {
+		await page.click(width < 768 ? '[data-testid="page-back"]' : '[data-testid="page-close"]');
+		await page.waitForFunction(() => !document.querySelector('[data-testid="page-pane"]'));
+	};
+	const newItem = async (before) => {
+		for (let i = 0; i < 100; i++) {
+			const added = (await (await fetch(`${base}/api/library`)).json()).items.filter((item) => !before.includes(item.id));
+			if (added.length === 1) return added[0];
+			await pause(50);
+		}
+		assert.fail(`${name}: one page created`);
+	};
+	const libraryIds = async () => (await (await fetch(`${base}/api/library`)).json()).items.map((item) => item.id);
+	await clear();
+	await page.keyboard.type("keep this @zzzz");
+	await page.waitForFunction((row, sel) => document.querySelector(row) && document.querySelector(sel)?.querySelector('[role="status"]')?.textContent === "Nothing matched", {}, newRow, menu);
+	assert.equal(await isActive(), false, `${name}: no match activates nothing`);
+	if (width < 768) {
+		const height = await page.$eval(newRow, (el) => el.getBoundingClientRect().height);
+		assert.ok(height >= 44, `${name}: the row is at least 44px (${height})`);
+	}
+	assert.equal((await page.$eval(menu, (el) => el.lastElementChild.dataset.testid)), "mention-new-page", `${name}: last in the list`);
+	await page.keyboard.press("ArrowDown");
+	assert.equal(await isActive(), true, `${name}: an arrow reaches it`);
+	if (shots) await page.screenshot({ path: path.join(shots, `mention-${width}-${name}-new-page.png`) });
+	const before = await libraryIds();
+	await page.keyboard.press("Enter");
+	const created = await newItem(before);
+	assert.equal(created.kind, "page", `${name}: a page`);
+	assert.match(created.name, /^Untitled page( \(\d+\))?$/, `${name}: the default name, stepping past a clash`);
+	await waitValue(`keep this @${created.name} `);
+	assert.equal(posts.length, 0, `${name}: New page sends nothing`);
+	assert.equal((await pageApi.read(created.id)).head.content, "", `${name}: blank`);
+	await page.waitForFunction((label) => document.querySelector('[data-testid="attaching-line"]')?.textContent === label, {}, `Attaching ${created.name}`);
+	if (hasPane) {
+		await page.waitForSelector('[data-testid="page-pane"]', { visible: true });
+		await page.waitForFunction((text) => document.querySelector('[data-testid="page-name"]')?.textContent === text, {}, created.name);
+		if (shots) await page.screenshot({ path: path.join(shots, `mention-${width}-${name}-new-page-open.png`) });
+		const overflowPane = await page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
+		assert.ok(overflowPane <= 0, `${name} ${width}px: no overflow with the pane (${overflowPane}px)`);
+		if (width >= 768) assert.ok(await focused(), `${name}: focus stays in the field beside the pane`);
+		await closePane();
+		await waitValue(`keep this @${created.name} `);
+		// The phone layer hands focus back; desktop's close keeps its own rule.
+		if (width < 768) assert.ok(await focused(), `${name}: focus returns to the field`);
+	} else {
+		assert.equal(await page.$('[data-testid="page-pane"]'), null, `${name}: no pane on this screen`);
+		assert.ok(await focused(), `${name}: focus stays in the field`);
+	}
+
 	// An email and code never open it.
 	await clear();
 	await page.keyboard.type("me@w");
@@ -416,8 +473,12 @@ async function checkMentions(width) {
 	await page.setViewport({ width, height: mobile ? 700 : 900, isMobile: mobile, hasTouch: mobile });
 	const posts = [];
 	await page.setRequestInterception(true);
+	let failPageCreate = false;
 	page.on("request", (request) => {
 		const url = new URL(request.url());
+		if (failPageCreate && request.method() === "POST" && url.pathname === "/api/library/pages") {
+			return void request.respond({ status: 500, contentType: "application/json", body: "{}" });
+		}
 		if (request.method() === "POST" && /^\/api\/chat(s\/[^/]+\/(steer|dismiss))?$/.test(url.pathname)) {
 			posts.push(JSON.parse(request.postData() ?? "{}"));
 			return void request.respond({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
@@ -436,7 +497,19 @@ async function checkMentions(width) {
 	};
 	const composer = '[data-testid="composer"] textarea';
 	await open("/", composer);
-	await checkMentionField(page, posts, width, "home", composer, { sends: false });
+	await checkMentionField(page, posts, width, "home", composer, { sends: false, hasPane: false });
+	// No pane on Home: the page waits, and opens beside the next session.
+	await open("/chat/mention-chat", composer);
+	await page.waitForSelector('[data-testid="page-pane"]', { visible: true });
+	if (shots) await page.screenshot({ path: path.join(shots, `mention-${width}-home-then-chat.png`) });
+	await page.click(mobile ? '[data-testid="page-back"]' : '[data-testid="page-close"]');
+	await page.waitForFunction(() => !document.querySelector('[data-testid="page-pane"]'));
+	await open("/chat/new", composer);
+	await checkMentionField(page, posts, width, "new-session", composer, { sends: false, hasPane: false });
+	await open("/chat/mention-chat", composer);
+	await page.waitForSelector('[data-testid="page-pane"]', { visible: true });
+	await page.click(mobile ? '[data-testid="page-back"]' : '[data-testid="page-close"]');
+	await page.waitForFunction(() => !document.querySelector('[data-testid="page-pane"]'));
 	await open("/chat/mention-chat", composer);
 	await checkMentionField(page, posts, width, "chat", composer);
 	await open("/chat/mention-quiz", '[aria-label="Your thinking"]');
@@ -445,6 +518,104 @@ async function checkMentions(width) {
 	await checkMentionField(page, posts, width, "question-answer", '[aria-label="Your answer"]');
 	await open("/chat/mention-practice", '[aria-label="Your thinking"]');
 	await checkMentionField(page, posts, width, "practice", '[aria-label="Your thinking"]');
+
+	// New page: the other ways in, and a failed create.
+	await open("/chat/mention-chat", composer);
+	const field = await page.waitForSelector(composer, { visible: true });
+	await field.focus();
+	const fieldValue = () => page.$eval(composer, (el) => el.value);
+	const wipe = async () => {
+		await page.$eval(composer, (el) => { el.focus(); el.select(); });
+		await page.keyboard.press("Backspace");
+	};
+	const row = '[data-testid="mention-new-page"]';
+	const activeRow = () => page.$eval(composer, (el) => document.getElementById(el.getAttribute("aria-activedescendant"))?.dataset.testid);
+	const paneClosed = async () => {
+		await page.click(mobile ? '[data-testid="page-back"]' : '[data-testid="page-close"]');
+		await page.waitForFunction(() => !document.querySelector('[data-testid="page-pane"]'));
+	};
+	// The long list: Up wraps to the row, which scrolls into view.
+	await page.keyboard.type("@");
+	await page.waitForFunction((sel) => document.querySelectorAll('[data-testid="mention-option"]').length >= 6 && document.querySelector(sel), {}, row);
+	await page.keyboard.press("ArrowUp");
+	assert.equal(await activeRow(), "mention-new-page", `${width}px: Up wraps to New page`);
+	await page.waitForFunction((sel) => {
+		const box = document.querySelector(sel).getBoundingClientRect();
+		const list = document.querySelector('[data-testid="mention-menu"]').getBoundingClientRect();
+		return box.top >= list.top - 1 && box.bottom <= list.bottom + 1;
+	}, {}, row);
+	if (shots) await page.screenshot({ path: path.join(shots, `mention-${width}-new-page-long-list.png`) });
+	// Styled as the rows beside it: only the active treatment differs, and it isn't amber at rest.
+	const compare = await page.evaluate((sel) => {
+		const pick = (el) => { const c = getComputedStyle(el); return { height: Math.round(el.getBoundingClientRect().height) >= 44, radius: c.borderRadius, padding: c.paddingLeft, cursor: c.cursor }; };
+		const text = (el) => { const c = getComputedStyle(el.firstElementChild); return { color: c.color, size: c.fontSize }; };
+		const other = document.querySelector('[data-testid="mention-option"]');
+		const own = document.querySelector(sel);
+		return { own: pick(own), other: pick(other), ownText: text(own), otherText: text(other), restingBg: getComputedStyle(other).backgroundColor };
+	}, row);
+	assert.deepEqual(compare.own, compare.other, `${width}px: same row box`);
+	assert.deepEqual(compare.ownText, compare.otherText, `${width}px: same row ink`);
+	await page.keyboard.press("ArrowDown");
+	const resting = await page.$eval(row, (el) => [getComputedStyle(el).backgroundColor, getComputedStyle(el).outlineStyle]);
+	assert.deepEqual(resting, [compare.restingBg, "none"], `${width}px: at rest, no fill or outline`);
+	// Tab takes it as Enter does.
+	await page.keyboard.press("ArrowUp");
+	const keys = async (key) => {
+		const before = (await (await fetch(`${base}/api/library`)).json()).items.length;
+		await page.keyboard.press(key);
+		for (let i = 0; i < 100 && (await (await fetch(`${base}/api/library`)).json()).items.length === before; i++) await pause(50);
+	};
+	await keys("Tab");
+	await page.waitForFunction((sel) => document.querySelector(sel).value.startsWith("@Untitled page"), {}, composer);
+	assert.equal(posts.length, 0, `${width}px: Tab sends nothing`);
+	await page.waitForSelector('[data-testid="page-pane"]', { visible: true });
+	await paneClosed();
+	// A tap or click keeps focus and takes the same path.
+	await wipe();
+	await page.keyboard.type("draft @zzzz");
+	await page.waitForSelector(row);
+	await page.click(row);
+	await page.waitForFunction((sel) => /^draft @Untitled page/.test(document.querySelector(sel).value), {}, composer);
+	await page.waitForSelector('[data-testid="page-pane"]', { visible: true });
+	await paneClosed();
+	assert.equal(posts.length, 0, `${width}px: a click sends nothing`);
+	// A failed create refuses in words and leaves the draft and the pane alone.
+	failPageCreate = true;
+	await wipe();
+	await page.keyboard.type("my long draft @zzzz");
+	await page.waitForSelector(row);
+	const countBefore = (await (await fetch(`${base}/api/library`)).json()).items.length;
+	await page.keyboard.press("ArrowDown");
+	await page.keyboard.press("Enter");
+	await page.waitForSelector('[data-testid="mention-new-page-refusal"]', { visible: true });
+	assert.equal(await page.$eval('[data-testid="mention-new-page-refusal"]', (el) => el.textContent), "New page · The page could not be created.");
+	assert.equal(await fieldValue(), "my long draft @zzzz", `${width}px: the draft is kept`);
+	assert.equal(await page.$('[data-testid="page-pane"]'), null, `${width}px: nothing opened`);
+	assert.equal((await (await fetch(`${base}/api/library`)).json()).items.length, countBefore, `${width}px: nothing created`);
+	assert.equal(await page.$eval(composer, (el) => document.activeElement === el), true, `${width}px: focus kept`);
+	assert.equal(posts.length, 0, `${width}px: a refusal sends nothing`);
+	if (shots) await page.screenshot({ path: path.join(shots, `mention-${width}-new-page-refused.png`) });
+	failPageCreate = false;
+	// The list came back, so trying again needs only the arrow and Enter.
+	await page.waitForSelector(row);
+	await page.keyboard.press("ArrowDown");
+	await page.keyboard.press("Enter");
+	await page.waitForSelector('[data-testid="page-pane"]', { visible: true });
+	await page.waitForFunction((sel) => /^my long draft @Untitled page/.test(document.querySelector(sel).value), {}, composer);
+	assert.equal(await page.$('[data-testid="mention-new-page-refusal"]'), null, `${width}px: the refusal clears`);
+	await paneClosed();
+	// With no match, Enter is still the field's: it sends, and no page is made.
+	await wipe();
+	await page.keyboard.type("@zzzz");
+	await page.waitForSelector(row);
+	const countSend = (await (await fetch(`${base}/api/library`)).json()).items.length;
+	await page.keyboard.press("Enter");
+	for (let i = 0; i < 100 && posts.length === 0; i++) await pause(50);
+	assert.equal(posts.length, 1, `${width}px: unarmed Enter is the field's normal action`);
+	await pause(150);
+	assert.equal((await (await fetch(`${base}/api/library`)).json()).items.length, countSend, `${width}px: unarmed Enter makes no page`);
+	posts.length = 0;
+	console.log(`PASS ${width}px New page: click, Tab, wrap, refusal, retry`);
 
 	// Every label as sent, always visible, on the sender's card.
 	await open("/chat/mention-chat", composer);

@@ -23,6 +23,10 @@
 - Q: Dimmed Settings rows? → A: Follow DESIGN.md: muted ink token and locked control, no opacity. Replaces the 2026-09-20 ruling for Settings and the graph display panel.
 - Q: Settings search? → A: Searches setting names and hints, lists results under their category and jumps to the row, reusing deep links.
 
+### Session 2026-10-31
+
+- Q: How does a session start a page? → A: The @ list has a "New page" row at its bottom, in every @ field. Choosing it creates a blank page, opens it in the page pane and inserts a reference in the message. It sends nothing and calls no model, and the draft stays intact. Where no pane is on screen (Home, new session), the page opens with the next screen that has one. A failed create shows a plain-word refusal and keeps the draft.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Keep class documents in one library (Priority: P1)
