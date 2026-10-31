@@ -29,6 +29,12 @@ Plan and strings were approved on 2026-10-31.
 
 ## Verification
 
+Final gates, 2026-10-31:
+- `npm test`: 3408 tests, 3380 pass, 5 fail, 23 skipped. The 5 failures are tests/tokens-headless (4) and tests/subscription-auth (1), which fail the same way on af12eac.
+- eslint and tsc are clean; `npm run build` passes.
+- `LH_UI_PAGES_ONLY=1 node scripts/check-library-ui.mjs`: 31 PASS lines. These cover the feature 009 page checks at three widths, the 009 fix checks and every 010 check. The 009 History step now picks Full text, since History opens on Changes.
+
+
 - Unit tests:
   - `tests/page-tools-ui.test.ts`: slash, links, names, History, outline, word count, export, images.
   - `tests/page-tutor-messages.test.ts`

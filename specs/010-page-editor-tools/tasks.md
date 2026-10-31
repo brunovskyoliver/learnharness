@@ -43,4 +43,4 @@ Approved plan: [plan.md](plan.md). Strings: [contracts/ui-contract.md](contracts
 
 ## Phase 7: Polish
 - [x] T024 DESIGN.md "Page editor tools" section
-- [ ] T025 Gates: npm test, lint, typecheck, build; check-library-ui; impeccable and web-design-guidelines; startup budget
+- [x] T025 Gates: npm test, lint, typecheck, build; check-library-ui; impeccable and web-design-guidelines; startup budget

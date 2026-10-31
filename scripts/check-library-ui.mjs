@@ -917,6 +917,9 @@ async function checkPages(width) {
 	await page.waitForFunction(() => /Version 2 · You/.test(document.querySelector('[data-testid="page-history"]').innerText));
 	const row1 = await page.evaluateHandle(() => [...document.querySelectorAll('[data-testid="page-history"] li button')].find((b) => b.textContent.startsWith("Version 1")));
 	await row1.click();
+	// History opens on Changes (feature 010); the rendered version is Full text.
+	await page.waitForSelector('[data-testid="page-view-full"]');
+	await page.click('[data-testid="page-view-full"]');
 	await page.waitForFunction(() => document.querySelector('[data-testid="page-preview"] .katex'));
 	await shot(page, "history");
 	await noOverflow("history");
