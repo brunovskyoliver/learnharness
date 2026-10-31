@@ -6,17 +6,20 @@
  *  has no model for (raw HTML, footnotes) is kept verbatim. A block the learner
  *  did not touch writes back the bytes it came from, and a page with no edit at
  *  all writes back what was stored. */
-import { Extension, getSchema, Node as TiptapNode, type AnyExtension, type JSONContent } from "@tiptap/core";
+import { Extension, getSchema, InputRule, nodePasteRule, Node as TiptapNode, type AnyExtension, type JSONContent } from "@tiptap/core";
 import { BlockMath, InlineMath } from "@tiptap/extension-mathematics";
 import { mathNodeView } from "./page-math-view.ts";
+import { calloutNodeView, collapsibleNodeView, wikiLinkNodeView, type WikiBridge } from "./page-note-views.ts";
+import { WIKI_TARGET, wikiLinkAt } from "@/src/core";
 import { TaskItem, TaskList } from "@tiptap/extension-list";
 import { TableKit } from "@tiptap/extension-table";
 import { MarkdownManager } from "@tiptap/markdown";
 import { Node as PmNode, type Schema } from "@tiptap/pm/model";
+import { TextSelection } from "@tiptap/pm/state";
 import StarterKit from "@tiptap/starter-kit";
 import { decodeNamedCharacterReference } from "decode-named-character-reference";
 
-type Token = { raw?: string; type?: string; block?: boolean; text?: string; latex?: string; open?: string; close?: string; source?: string; [k: string]: unknown };
+type Token = { raw?: string; type?: string; block?: boolean; text?: string; latex?: string; open?: string; close?: string; source?: string; tokens?: Token[]; [k: string]: unknown };
 
 /** First line-start position of a display opener, for marked's paragraph cut. */
 function blockMathStart(src: string): number | undefined {
@@ -229,6 +232,238 @@ const EntityText = Extension.create({
 	},
 });
 
+/** `[[Page name]]` (feature 016): one atom whose only stored fact is the target
+ *  as written, so the Markdown comes back byte for byte. What it points at is
+ *  worked out at read time (src/core/note-links.ts), never stored. */
+const WikiLink = TiptapNode.create<{ bridge?: WikiBridge }>({
+	name: "wikiLink",
+	group: "inline",
+	inline: true,
+	atom: true,
+	addOptions: () => ({ bridge: undefined }),
+	addAttributes: () => ({ target: { default: "" } }),
+	parseHTML: () => [{ tag: "a[data-wiki-link]", priority: 60, getAttrs: (el) => ({ target: el.getAttribute("data-wiki-target") ?? el.textContent ?? "" }) }],
+	renderHTML: ({ node }) => ["a", { "data-wiki-link": "", "data-wiki-target": String(node.attrs.target), class: "lh-wiki-link" }, String(node.attrs.target)],
+	renderText: ({ node }) => `[[${String(node.attrs.target)}]]`,
+	addNodeView() {
+		return ({ node }) => wikiLinkNodeView(node, this.options.bridge);
+	},
+	addInputRules() {
+		// Not nodeInputRule: with a capture group it replaces only the group, leaving the brackets as text.
+		return [new InputRule({
+			find: new RegExp(`\\[\\[(${WIKI_TARGET})\\]\\]$`),
+			handler: ({ state, range, match }) => {
+				// A section's title is plain text: the brackets stay text there.
+				const $from = state.doc.resolve(range.from);
+				if (!$from.parent.canReplaceWith($from.index(), $from.indexAfter(), this.type)) return null;
+				state.tr.replaceWith(range.from, range.to, this.type.create({ target: match[1] }));
+			},
+		})];
+	},
+	addPasteRules() {
+		return [nodePasteRule({ find: new RegExp(`\\[\\[(${WIKI_TARGET})\\]\\]`, "g"), type: this.type, getAttributes: (match) => ({ target: match[1] }) })];
+	},
+	markdownTokenName: "wikiLink",
+	parseMarkdown: (token: Token) => ({ type: "wikiLink", attrs: { target: token.target } }),
+	renderMarkdown: (node: JSONContent) => `[[${String(node.attrs?.target ?? "")}]]`,
+	markdownTokenizer: {
+		name: "wikiLink",
+		level: "inline" as const,
+		start: (src: string) => src.indexOf("[["),
+		tokenize: (src: string) => {
+			const link = wikiLinkAt(src);
+			return link ? ({ type: "wikiLink", raw: link.raw, target: link.target } as never) : undefined;
+		},
+	},
+});
+
+export const CALLOUT_KINDS = ["NOTE", "TIP", "IMPORTANT", "WARNING", "CAUTION"] as const;
+const CALLOUT_OPEN = new RegExp(`^ {0,3}> ?\\[!(${CALLOUT_KINDS.join("|")})\\][ \\t]*([^\\n]*)(?:\\n|$)`, "i");
+
+const quoted = (block: string) => block.split("\n").map((line) => (line.trim() ? `> ${line}` : ">")).join("\n");
+
+/** `> [!NOTE] Title` over quoted lines (feature 016): GitHub's alert form, which
+ *  any Markdown viewer still reads as a quote. The kind keeps its spelling. */
+const Callout = TiptapNode.create({
+	name: "callout",
+	group: "block",
+	content: "block+",
+	defining: true,
+	addAttributes: () => ({ kind: { default: "NOTE" }, title: { default: "" } }),
+	parseHTML: () => [{ tag: "aside[data-callout]", getAttrs: (el) => ({ kind: el.getAttribute("data-callout") || "NOTE", title: el.getAttribute("data-callout-title") ?? "" }) }],
+	renderHTML: ({ node }) => ["aside", { "data-callout": String(node.attrs.kind), "data-callout-title": String(node.attrs.title), class: "lh-callout" }, 0],
+	addNodeView() {
+		return ({ node, view, getPos }) => calloutNodeView(node, view, getPos);
+	},
+	markdownTokenName: "callout",
+	parseMarkdown: (token: Token, h) => ({
+		type: "callout",
+		attrs: { kind: token.kind, title: token.title },
+		content: (() => {
+			const children = h.parseChildren((token.tokens ?? []) as never);
+			return children.length ? children : [{ type: "paragraph" }];
+		})(),
+	}),
+	renderMarkdown: (node: JSONContent, h) => {
+		const head = `> [!${String(node.attrs?.kind ?? "NOTE")}]${node.attrs?.title ? ` ${String(node.attrs.title)}` : ""}`;
+		const body = (node.content ?? []).map((child) => h.renderChildren([child])).filter((block) => block.trim());
+		return body.length ? `${head}\n${quoted(body.join("\n\n"))}` : head;
+	},
+	markdownTokenizer: {
+		name: "callout",
+		level: "block" as const,
+		start: (src: string) => {
+			const m = /(?:^|\n) {0,3}> ?\[!/.exec(src);
+			return m ? m.index + (m[0].startsWith("\n") ? 1 : 0) : -1;
+		},
+		tokenize: (src, _tokens, lexer) => {
+			const open = CALLOUT_OPEN.exec(src);
+			if (!open) return undefined;
+			let end = open[0].length;
+			const lines: string[] = [];
+			while (end < src.length) {
+				const stop = src.indexOf("\n", end);
+				const line = src.slice(end, stop < 0 ? src.length : stop);
+				const inner = /^ {0,3}> ?(.*)$/.exec(line);
+				if (!inner) break;
+				lines.push(inner[1]!);
+				end = stop < 0 ? src.length : stop + 1;
+			}
+			return { type: "callout", raw: src.slice(0, end), kind: open[1]!, title: open[2]!.trimEnd(), tokens: lexer.blockTokens(lines.join("\n")) } as never;
+		},
+	},
+});
+
+const htmlText = (text: string) => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const plainText = (html: string) => html.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+
+/** The title line of a collapsible section: one line of plain text. */
+const CollapsibleSummary = TiptapNode.create({
+	name: "collapsibleSummary",
+	content: "text*",
+	marks: "",
+	defining: true,
+	selectable: false,
+	parseHTML: () => [{ tag: "div[data-collapsible-summary]", preserveWhitespace: "full" as const }],
+	renderHTML: () => ["div", { "data-collapsible-summary": "", class: "lh-collapsible-summary" }, 0],
+	markdownTokenName: "collapsibleSummary",
+	renderMarkdown: (node: JSONContent) => htmlText((node.content ?? []).map((child) => child.text ?? "").join("")),
+});
+
+const DETAILS_OPEN = /^ {0,3}<details( open)?>[ \t]*\n<summary>([^<\n]*)<\/summary>[ \t]*\n(?:[ \t]*\n)?/;
+
+/** Where the `</details>` closing the section starting in `src` ends. Nesting
+ *  counts; a fence's text doesn't. Null: not the form this editor writes, so it
+ *  stays raw source as it always did. */
+function closeOfDetails(src: string, from: number): { bodyEnd: number; end: number } | null {
+	let depth = 1, offset = from, fence: string | null = null;
+	while (offset <= src.length) {
+		const stop = src.indexOf("\n", offset);
+		const line = src.slice(offset, stop < 0 ? src.length : stop);
+		const marker = /^ {0,3}(`{3,}|~{3,})/.exec(line)?.[1];
+		if (fence) {
+			if (marker && marker[0] === fence[0] && marker.length >= fence.length && line.trim() === marker) fence = null;
+		} else if (marker) fence = marker;
+		else if (/^ {0,3}<details( open)?>[ \t]*$/.test(line)) depth++;
+		else if (/^ {0,3}<\/details>[ \t]*$/.test(line) && --depth === 0) return { bodyEnd: offset, end: stop < 0 ? src.length : stop + 1 };
+		if (stop < 0) return null;
+		offset = stop + 1;
+	}
+	return null;
+}
+
+/** `<details><summary>` on their own lines (feature 016). Open or closed is the
+ *  `open` attribute, as in HTML, so a plain viewer folds it the same way and
+ *  still shows the text. */
+const Collapsible = TiptapNode.create({
+	name: "collapsible",
+	group: "block",
+	content: "collapsibleSummary block+",
+	defining: true,
+	isolating: true,
+	addAttributes: () => ({ open: { default: true } }),
+	parseHTML: () => [{ tag: "div[data-collapsible]", getAttrs: (el) => ({ open: el.getAttribute("data-open") !== "false" }) }],
+	renderHTML: ({ node }) => ["div", { "data-collapsible": "", "data-open": String(Boolean(node.attrs.open)), class: "lh-collapsible" }, 0],
+	addNodeView() {
+		return ({ node, view, getPos }) => collapsibleNodeView(node, view, getPos);
+	},
+	addKeyboardShortcuts() {
+		const inside = () => {
+			const { $from } = this.editor.state.selection;
+			for (let depth = $from.depth; depth > 0; depth--) if ($from.node(depth).type === this.type) return { depth, pos: $from.before(depth), node: $from.node(depth) };
+			return null;
+		};
+		const setOpen = (pos: number, open: boolean, caret?: "summary" | "body") => this.editor.commands.command(({ tr }) => {
+			tr.setNodeAttribute(pos, "open", open);
+			const node = tr.doc.nodeAt(pos);
+			if (caret && node) tr.setSelection(TextSelection.near(tr.doc.resolve(caret === "summary" ? pos + 1 + node.child(0).nodeSize - 1 : pos + 1 + node.child(0).nodeSize + 1)));
+			return true;
+		});
+		return {
+			// Enter on the title opens the section and goes into it.
+			Enter: () => {
+				const found = inside();
+				const { $from, empty } = this.editor.state.selection;
+				if (!found || !empty || $from.parent.type.name !== "collapsibleSummary") return false;
+				return setOpen(found.pos, true, "body");
+			},
+			// Open or close from anywhere inside it.
+			"Mod-Enter": () => {
+				const found = inside();
+				if (!found) return false;
+				return setOpen(found.pos, !found.node.attrs.open, found.node.attrs.open ? "summary" : undefined);
+			},
+			// An empty title and Backspace: the section goes, its text stays.
+			Backspace: () => {
+				const found = inside();
+				const { $from, empty } = this.editor.state.selection;
+				if (!found || !empty || $from.parent.type.name !== "collapsibleSummary" || $from.parent.content.size > 0) return false;
+				return this.editor.commands.command(({ tr }) => {
+					const blocks: PmNode[] = [];
+					found.node.forEach((child, _offset, index) => { if (index > 0) blocks.push(child); });
+					tr.replaceWith(found.pos, found.pos + found.node.nodeSize, blocks);
+					return true;
+				});
+			},
+		};
+	},
+	markdownTokenName: "collapsible",
+	parseMarkdown: (token: Token, h) => {
+		const summary = String(token.summary ?? "");
+		const children = h.parseChildren((token.tokens ?? []) as never);
+		return {
+			type: "collapsible",
+			attrs: { open: Boolean(token.open) },
+			content: [
+				{ type: "collapsibleSummary", content: summary ? [{ type: "text", text: plainText(summary) }] : [] },
+				...(children.length ? children : [{ type: "paragraph" }]),
+			],
+		};
+	},
+	renderMarkdown: (node: JSONContent, h) => {
+		const [summary, ...rest] = node.content ?? [];
+		const title = htmlText((summary?.content ?? []).map((child) => child.text ?? "").join(""));
+		const body = rest.map((child) => h.renderChildren([child])).filter((block) => block.trim());
+		return `<details${node.attrs?.open ? " open" : ""}>\n<summary>${title}</summary>\n\n${body.length ? `${body.join("\n\n")}\n\n` : ""}</details>`;
+	},
+	markdownTokenizer: {
+		name: "collapsible",
+		level: "block" as const,
+		start: (src: string) => {
+			const m = /(?:^|\n) {0,3}<details( open)?>/.exec(src);
+			return m ? m.index + (m[0].startsWith("\n") ? 1 : 0) : -1;
+		},
+		tokenize: (src, _tokens, lexer) => {
+			const open = DETAILS_OPEN.exec(src);
+			if (!open) return undefined;
+			const close = closeOfDetails(src, open[0].length);
+			if (!close) return undefined;
+			const body = src.slice(open[0].length, close.bodyEnd).replace(/\s+$/, "");
+			return { type: "collapsible", raw: src.slice(0, close.end), open: Boolean(open[1]), summary: open[2]!, tokens: lexer.blockTokens(body) } as never;
+		},
+	},
+});
+
 /** A link or image address, bracketed when the bare form would not parse. */
 function destination(href: string): string {
 	return /[\s<>]/.test(href) ? `<${href.replace(/[<>]/g, "\\$&")}>` : href;
@@ -242,7 +477,7 @@ function fenceFor(text: string): string {
 }
 
 /** Shared by Node (tests) and the browser editor, so they can't disagree. */
-export function pageExtensions(mathOptions?: { onSave?: () => void }): AnyExtension[] {
+export function pageExtensions(mathOptions?: { onSave?: () => void; wiki?: WikiBridge }): AnyExtension[] {
 	return [
 		StarterKit.configure({
 			underline: false,
@@ -281,6 +516,10 @@ export function pageExtensions(mathOptions?: { onSave?: () => void }): AnyExtens
 		RawInline,
 		PageImage,
 		EntityText,
+		WikiLink.configure({ bridge: mathOptions?.wiki }),
+		Callout,
+		Collapsible,
+		CollapsibleSummary,
 	];
 }
 
@@ -291,7 +530,7 @@ const LINE_START = /^(#{1,6}(?=[ \t]|$)|[-+](?=[ \t]|$)|>|(\d{1,9})([.)])(?=[ \t
  *  A bracket that could open a link or task is written as a character reference,
  *  because `\\[` reads as display math in this app. A lone bracket stays bare. */
 function escapeText(text: string): string {
-	const linky = /\]\s*[([:]|\[\^|(^|\n)\[[ xX]\]/.test(text);
+	const linky = /\]\s*[([:]|\[\^|(^|\n)\[[ xX]\]|\[\[|(^|\n)\[!/.test(text);
 	const inline = text.replace(/([\\`*_~$])/g, "\\$1").replace(/[[\]]/g, (b) => (linky ? (b === "[" ? "&#91;" : "&#93;") : b));
 	return inline.split("\n").map((line) => line.replace(LINE_START, (m, _a, digits?: string, mark?: string) => (digits ? `${digits}\\${mark}` : `\\${m}`))).join("\n");
 }
@@ -335,7 +574,7 @@ function shared() {
 function wrapStrayInlines(node: JSONContent): JSONContent {
 	if (!node.content) return node;
 	const content = node.content.map(wrapStrayInlines);
-	const holdsBlocks = node.type === "doc" || node.type === "blockquote" || node.type === "listItem" || node.type === "taskItem";
+	const holdsBlocks = node.type === "doc" || node.type === "blockquote" || node.type === "listItem" || node.type === "taskItem" || node.type === "callout" || node.type === "collapsible";
 	return { ...node, content: holdsBlocks ? content.map((c) => (c.type === "pageImage" ? { type: "paragraph", content: [c] } : c)) : content };
 }
 

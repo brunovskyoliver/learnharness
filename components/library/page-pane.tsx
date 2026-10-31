@@ -3,7 +3,12 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowLeftIcon, DownloadIcon, HistoryIcon, ListTreeIcon, XIcon } from "lucide-react";
+import { ArrowLeftIcon, DownloadIcon, HistoryIcon, Link2Icon, ListTreeIcon, XIcon } from "lucide-react";
+import { NoteConnectionsPanel } from "@/components/workspace/note-connections";
+import { useWorkspace } from "@/components/workspace/workspace-context";
+import type { LibraryKind } from "@/src/core";
+import type { WikiResolution } from "@/src/core";
+import { jumpToSource, useNoteLinks } from "./use-note-links.ts";
 import { ChatActionsContext } from "@/components/chat-actions-context.ts";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -163,7 +168,7 @@ export function PageOutline({ headings, onPick, className }: { headings: PageHea
 	);
 }
 
-function ExportMenu({ name, text, container, onPrint }: { name: string; text: () => string; container: HTMLElement | null; onPrint: () => void }) {
+function ExportMenu({ name, text, container, onPrint, labelClass }: { name: string; text: () => string; container: HTMLElement | null; onPrint: () => void; labelClass: string }) {
 	const [open, setOpen] = useState(false);
 	const [copied, setCopied] = useState(false);
 	const item = "flex min-h-9 w-full items-center rounded-[6px] px-2 text-left text-sm text-foreground hover:bg-card pointer-coarse:min-h-11";
@@ -172,7 +177,7 @@ function ExportMenu({ name, text, container, onPrint }: { name: string; text: ()
 			<PopoverTrigger asChild>
 				<Button type="button" variant="ghost" className="shrink-0 pointer-coarse:h-11" data-testid="page-export">
 					<DownloadIcon className="ui-icon" aria-hidden="true" />
-					<span className="max-md:sr-only">Export</span>
+					<span className={labelClass}>Export</span>
 				</Button>
 			</PopoverTrigger>
 			<PopoverContent container={container} align="end" className="flex w-56 flex-col gap-0.5 rounded-[10px] border-0 p-1" data-testid="page-export-menu">
@@ -242,7 +247,7 @@ export function PaneHeader({ phone, name, status, actions, onClose, closeLabel }
 					Back to chat
 				</Button>
 			)}
-			<div className="flex min-w-0 flex-1 flex-col">
+			<div className="flex min-w-0 flex-[1_1_7rem] flex-col">
 				{name}
 				{status}
 			</div>
@@ -370,6 +375,56 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 	};
 	const tutor: PageTutor = chat?.sendBlock ? { blocked: TUTOR_BLOCKED_TEXT[chat.sendBlock] } : { blocked: null, run: (action, text) => void runTutor(action, text) };
 
+	// Note links (feature 016). A follow goes where the Library's own open goes;
+	// a dangling link says what it is and offers the page.
+	const workspace = useWorkspace();
+	const [links, setLinks] = useState(false);
+	const [dangling, setDangling] = useState<{ target: string; state: "missing" | "deleted" | "unknown" } | null>(null);
+	const [creating, setCreating] = useState<string | null>(null);
+	const openItem = (next: { id: string; name: string; kind: LibraryKind; size: number }) => {
+		setDangling(null);
+		editor.current?.flush();
+		if (workspace) workspace.openItem(next);
+		else pane.open(next);
+	};
+	const followLink = (target: string, resolution: WikiResolution | null) => {
+		if (resolution?.state === "live" && resolution.id && resolution.name && resolution.kind) {
+			openItem({ id: resolution.id, name: resolution.name, kind: resolution.kind, size: resolution.size ?? 0 });
+			return;
+		}
+		setCreating(null);
+		setDangling({ target, state: resolution?.state === "deleted" ? "deleted" : resolution ? "missing" : "unknown" });
+	};
+	const { bridge, wikiMenu, goneSessions } = useNoteLinks(item.id, followLink);
+	const createLinked = async (name: string) => {
+		setCreating(null);
+		try {
+			const response = await fetch("/api/library/pages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name.trim(), content: "" }) });
+			const body = await response.json().catch(() => ({})) as { item?: { id: string; name: string; kind: LibraryKind; size: number }; error?: string };
+			if (!response.ok || !body.item) { setCreating(body.error ?? `${name} could not be created.`); return; }
+			openItem(body.item);
+		} catch {
+			setCreating(`${name} could not be created. Check your connection and try again.`);
+		}
+	};
+	const followSource = (href: string) => {
+		editor.current?.flush();
+		// The phone layer covers the transcript the jump lands in.
+		if (phone) close();
+		jumpToSource(href, router.push);
+	};
+	// In a narrow pane the header's tools are named icons, so the page's name keeps its room.
+	const paneLabel = wide ? "max-md:sr-only" : "sr-only";
+	const connections = links && !history && !state.deleted ? (
+		<NoteConnectionsPanel
+			pageId={item.id}
+			onOpenPage={(id, name) => openItem({ id, name, kind: "page", size: 0 })}
+			onFollowLink={(row) => followLink(row.target, row.resolution)}
+			onSource={followSource}
+			className={wide ? "w-64 shrink-0 overflow-y-auto pr-3 pb-6" : "mx-3 mb-2 max-h-[40dvh] shrink-0 overflow-y-auto rounded-[10px] bg-popover p-2"}
+		/>
+	) : null;
+
 	const restore = async (n: number): Promise<string | null> => {
 		editor.current?.flush();
 		const outcome = await controller.restore(n);
@@ -413,16 +468,28 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 							<>
 							<Button type="button" variant="ghost" aria-pressed={outline} className="shrink-0 aria-pressed:bg-accent aria-pressed:text-foreground pointer-coarse:h-11" onClick={() => setOutline((open) => !open)} data-testid="page-outline-toggle">
 								<ListTreeIcon className="ui-icon" aria-hidden="true" />
-								<span className="max-md:sr-only">Outline</span>
+								<span className={paneLabel}>Outline</span>
 							</Button>
-							<ExportMenu name={item.name} text={currentText} container={root.current} onPrint={() => setPrinting(true)} />
+							<Button type="button" variant="ghost" aria-pressed={links} className="shrink-0 aria-pressed:bg-accent aria-pressed:text-foreground pointer-coarse:h-11" onClick={() => setLinks((open) => !open)} data-testid="page-links-toggle">
+									<Link2Icon className="ui-icon" aria-hidden="true" />
+									<span className={paneLabel}>Links</span>
+								</Button>
+								<ExportMenu name={item.name} text={currentText} container={root.current} onPrint={() => setPrinting(true)} labelClass={paneLabel} />
 							<Button type="button" variant="ghost" aria-pressed={history} className="shrink-0 aria-pressed:bg-accent aria-pressed:text-foreground pointer-coarse:h-11" onClick={() => setHistory((open) => !open)} data-testid="page-history-toggle">
 								<HistoryIcon className="ui-icon" aria-hidden="true" />
-								<span className="max-md:sr-only">History</span>
+								<span className={paneLabel}>History</span>
 							</Button>
 							</>
 						)}
 					/>
+					{dangling && (
+						<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-ink-2" data-testid="page-wiki-dangling">
+							<p className="min-w-0 flex-[1_1_12rem] [overflow-wrap:anywhere]">{dangling.state === "deleted" ? `${dangling.target} was deleted from your Library. The link is kept.` : dangling.state === "unknown" ? "Your Library could not be checked for that link." : `Nothing in your Library is called ${dangling.target} yet.`}</p>
+							{dangling.state === "missing" && <button type="button" className="prompt-secondary" data-testid="page-wiki-create" onClick={() => void createLinked(dangling.target)}>Create page</button>}
+							<button type="button" className="prompt-secondary" onClick={() => setDangling(null)}>Dismiss</button>
+							{creating && <p role="alert" className="w-full text-sm text-destructive">{creating}</p>}
+						</div>
+					)}
 					{state.deleted && <DeletedLine name={item.name} text={isUnsent(state) ? state.text : null} />}
 					{changes && !state.conflict && !history && (
 						<ChangeBar text={changeBarText(changes)} busy={undoing} onPrevious={() => step(-1)} onNext={() => step(1)} onUndo={() => void undoTutor()} onDone={() => void done()} />
@@ -449,7 +516,8 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 					{imageRefusal && <p role="alert" className="px-3 pb-2 text-sm text-destructive" data-testid="page-image-refused">{imageRefusal}</p>}
 					{printing && <PrintRoot name={item.name} text={controller.state.text} onDone={() => setPrinting(false)} />}
 					{outline && !wide && stats && !history && <PageOutline headings={stats.headings} onPick={jump} className="mx-3 mb-2 max-h-[40dvh] overflow-y-auto rounded-[10px] bg-popover p-1" />}
-					<div className={`flex min-h-0 flex-1 ${outline && wide && !history ? "flex-row gap-4" : "flex-col"} ${dragging ? "pointer-events-none" : ""}`}>
+					{!wide && connections}
+						<div className={`flex min-h-0 flex-1 ${(outline || links) && wide && !history ? "flex-row gap-4" : "flex-col"} ${dragging ? "pointer-events-none" : ""}`}>
 						{outline && wide && stats && !history && <PageOutline headings={stats.headings} onPick={jump} className="w-44 shrink-0 overflow-y-auto pl-3" />}
 						<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 						{loadFailed ? (
@@ -475,9 +543,14 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 								onStats={setStats}
 								onImageFiles={(files, at) => void addImages(files, at)}
 								onChooseImage={chooseImage}
+								wiki={bridge}
+								wikiMenu={wikiMenu}
+								goneSessions={goneSessions}
+								onSourceLink={followSource}
 							/>
 						)}
 						</div>
+							{wide && connections}
 					</div>
 				</>
 			)}

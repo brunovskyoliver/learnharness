@@ -5,7 +5,8 @@
 export type SlashBlock =
 	| "heading1" | "heading2" | "heading3"
 	| "bulletList" | "orderedList" | "taskList"
-	| "blockquote" | "codeBlock" | "blockMath" | "table" | "image" | "divider";
+	| "blockquote" | "codeBlock" | "blockMath" | "table" | "image" | "divider"
+	| "callout" | "collapsible";
 
 export interface SlashItem { id: SlashBlock; label: string }
 
@@ -18,6 +19,8 @@ export const SLASH_ITEMS: readonly SlashItem[] = [
 	{ id: "orderedList", label: "Numbered list" },
 	{ id: "taskList", label: "Checklist" },
 	{ id: "blockquote", label: "Quote" },
+	{ id: "callout", label: "Callout" },
+	{ id: "collapsible", label: "Collapsible section" },
 	{ id: "codeBlock", label: "Code block" },
 	{ id: "blockMath", label: "Formula block" },
 	{ id: "table", label: "Table" },

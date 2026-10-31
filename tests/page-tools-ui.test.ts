@@ -23,7 +23,7 @@ describe("the slash trigger", () => {
 
 describe("the slash filter", () => {
 	it("keeps the contract's order and names", () => {
-		assert.deepEqual(SLASH_ITEMS.map((i) => i.label), ["Heading 1", "Heading 2", "Heading 3", "Bulleted list", "Numbered list", "Checklist", "Quote", "Code block", "Formula block", "Table", "Image", "Divider"]);
+		assert.deepEqual(SLASH_ITEMS.map((i) => i.label), ["Heading 1", "Heading 2", "Heading 3", "Bulleted list", "Numbered list", "Checklist", "Quote", "Callout", "Collapsible section", "Code block", "Formula block", "Table", "Image", "Divider"]);
 	});
 	it("matches a word start, case-insensitively", () => {
 		assert.deepEqual(filterSlashItems("ta").map((i) => i.id), ["table"]);

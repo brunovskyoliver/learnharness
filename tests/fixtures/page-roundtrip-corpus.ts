@@ -49,4 +49,15 @@ export const PAGE_CORPUS: readonly { name: string; md: string }[] = [
 	{ name: "no trailing newline", md: "Just text" },
 	{ name: "extra blank lines and trailing", md: "\n\nOne\n\n\n\nTwo\n\n\n" },
 	{ name: "empty page", md: "" },
+	// Feature 016: note links, callouts, collapsible sections.
+	{ name: "wiki links", md: "See [[Waves]] and [[Week 3 notes.md]], then **[[bold target]]** and *[[em target]]*.\n\n- [[In a list]]\n\n> [[In a quote]]\n\n| Note |\n| --- |\n| [[In a table]] |\n" },
+	{ name: "wiki link lookalikes stay what they are", md: "Code `[[not a link]]`, math $[[1,2],[3,4]]$, a real [[link]], and [[target]](https://example.org) stays a link.\n\n```\n[[fenced]]\n```\n\n    [[indented]]\n\nEscaped \\[\\[no\\]\\], [[a|b]], [[unclosed and [[].\n" },
+	{ name: "wiki link with odd spacing and unicode", md: "[[ spaced ]] and [[Čeština 日本語 🧮]] and [[a-b_c.d]].\n" },
+	{ name: "callout", md: "> [!NOTE]\n> A plain note.\n\nAfter.\n" },
+	{ name: "callout with title and blocks", md: "> [!WARNING] Mind the sign\n> First with $x^2$ and [[Waves]].\n>\n> - a list\n> - inside\n>\n> $$\n> y = 1\n> $$\n\nAfter.\n" },
+	{ name: "callout lowercase, empty, and an unknown kind stays a quote", md: "> [!tip]\n> lower\n\n> [!CAUTION]\n\n> [!FOO] not a callout\n> still a quote\n" },
+	{ name: "collapsible", md: "<details>\n<summary>Proof</summary>\n\nInside with $x$ and [[Waves]].\n\n</details>\n\nAfter.\n" },
+	{ name: "collapsible open, nested, with a fence", md: "<details open>\n<summary>Outer &amp; more</summary>\n\n<details>\n<summary>Inner</summary>\n\n```\n</details>\n```\n\n</details>\n\n> [!TIP]\n> A tip inside.\n\n</details>\n" },
+	{ name: "details not in the written form stays raw", md: "<details><summary>One line</summary>Body</details>\n\n<details>\nno summary\n</details>\n" },
+	{ name: "a saved passage", md: "> The eigenvector keeps its direction, $Av = \\lambda v$.\n>\n> [Lesson: Linear maps](/chat/abc123#message-m_1)\n\nMy own note.\n" },
 ];

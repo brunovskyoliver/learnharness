@@ -6,6 +6,7 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { OPEN_MATH_SOURCE_EVENT } from "./page-math-view.ts";
 import type { SlashBlock } from "./page-slash.ts";
+import { sourceHrefChat } from "@/src/core";
 
 export const PAGE_PLACEHOLDER = "Start writing, or type / for headings, lists, tables and formulas.";
 
@@ -55,6 +56,19 @@ export function runSlashBlock(editor: Editor, block: SlashBlock, range: { from: 
 		case "blockquote": return chain.setBlockquote().run();
 		case "codeBlock": return chain.setCodeBlock().run();
 		case "divider": return chain.setHorizontalRule().run();
+		case "callout": return chain.insertContent({ type: "callout", attrs: { kind: "NOTE", title: "" }, content: [{ type: "paragraph" }] }).run();
+		case "collapsible": {
+			const at = range.from;
+			const ok = chain.insertContent({ type: "collapsible", attrs: { open: true }, content: [{ type: "collapsibleSummary" }, { type: "paragraph" }] }).run();
+			// The caret starts on the title, the first thing to write.
+			let found = -1;
+			if (ok) editor.state.doc.descendants((node, pos) => {
+				if (found < 0 && pos >= at - 1 && node.type.name === "collapsibleSummary") found = pos;
+				return found < 0;
+			});
+			if (found >= 0) editor.commands.setTextSelection(found + 1);
+			return ok;
+		}
 		case "table": return chain.insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
 		case "image": {
 			const ok = chain.run();
@@ -169,6 +183,66 @@ export function createTutorHighlights(toKey: (json: unknown) => string) {
 	});
 }
 
+export const sourceLinksKey = new PluginKey<{ gone: ReadonlySet<string>; set: DecorationSet }>("sourceLinks");
+
+/** A lesson link says when its session is gone, as a decoration only: the text
+ *  and the link stay stored as they were (feature 017). */
+export function createSourceLinks() {
+	const build = (doc: import("@tiptap/pm/model").Node, gone: ReadonlySet<string>): DecorationSet => {
+		const decorations: Decoration[] = [];
+		doc.descendants((node, pos) => {
+			if (!node.isText) return true;
+			const href = node.marks.find((mark) => mark.type.name === "link")?.attrs.href;
+			const source = typeof href === "string" ? sourceHrefChat(href) : null;
+			if (!source) return false;
+			const missing = gone.has(source.chatId);
+			decorations.push(Decoration.inline(pos, pos + node.nodeSize, { class: missing ? "lh-source-link lh-source-gone" : "lh-source-link", "data-testid": "page-source-link", ...(missing ? { "data-source-gone": "" } : {}) }));
+			if (missing) decorations.push(Decoration.widget(pos + node.nodeSize, () => {
+				const note = document.createElement("span");
+				note.className = "lh-source-gone-note";
+				note.dataset.testid = "page-source-gone";
+				note.textContent = " · this session was deleted, so the source is gone";
+				return note;
+			}, { side: 1, key: `gone-${source.chatId}-${pos}` }));
+			return false;
+		});
+		return DecorationSet.create(doc, decorations);
+	};
+	return Extension.create({
+		name: "sourceLinks",
+		addProseMirrorPlugins() {
+			return [new Plugin({
+				key: sourceLinksKey,
+				state: {
+					init: (_config, state) => ({ gone: new Set<string>() as ReadonlySet<string>, set: build(state.doc, new Set()) }),
+					apply: (tr, value, _old, state) => {
+						const next = tr.getMeta(sourceLinksKey) as ReadonlySet<string> | undefined;
+						if (next) return { gone: next, set: build(state.doc, next) };
+						return tr.docChanged ? { gone: value.gone, set: build(state.doc, value.gone) } : value;
+					},
+				},
+				props: { decorations: (state) => sourceLinksKey.getState(state)?.set ?? null },
+			})];
+		},
+	});
+}
+
+/** The session link under a click or the caret, if any. */
+export function sourceLinkAt(doc: import("@tiptap/pm/model").Node, pos: number): string | null {
+	const at = Math.min(pos, doc.content.size);
+	const marks = [...(doc.nodeAt(at)?.marks ?? []), ...doc.resolve(at).marks()];
+	const href = marks.find((mark) => mark.type.name === "link" && typeof mark.attrs.href === "string" && sourceHrefChat(mark.attrs.href))?.attrs.href;
+	return typeof href === "string" ? href : null;
+}
+
+/** The wiki link the caret touches, if any. */
+export function wikiLinkBeside(selection: import("@tiptap/pm/state").Selection): string | null {
+	if (!selection.empty) return null;
+	const { $from } = selection;
+	const node = $from.nodeAfter?.type.name === "wikiLink" ? $from.nodeAfter : $from.nodeBefore?.type.name === "wikiLink" ? $from.nodeBefore : null;
+	return node ? String(node.attrs.target) : null;
+}
+
 export interface PageHeading { level: 1 | 2 | 3; text: string; pos: number }
 export interface PageStats { words: number; headings: PageHeading[] }
 
@@ -182,6 +256,7 @@ export function pageStats(doc: import("@tiptap/pm/model").Node, count: (text: st
 		if (UNCOUNTED.has(node.type.name)) return false;
 		if (node.type.name === "heading" && node.attrs.level <= 3) headings.push({ level: node.attrs.level as 1 | 2 | 3, text: node.textContent, pos });
 		if (node.isText && !node.marks.some((m) => m.type.name === "code")) parts.push(node.text ?? "");
+		if (node.type.name === "wikiLink") parts.push(String(node.attrs.target));
 		if (node.isBlock) parts.push(" ");
 		return true;
 	});

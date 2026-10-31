@@ -13,7 +13,7 @@ const PagePreview = dynamic(() => import("./page-preview.tsx").then((m) => m.Pag
 /** `Version {n} · {You | Agent} · {time}`, then the tutor-undo note and the learner's name for it. */
 export function versionLabel(version: Pick<PageVersion, "n" | "author" | "at"> & Partial<Pick<PageVersion, "cause" | "name">>): string {
 	const time = new Date(version.at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-	const undo = version.cause === "undo-agent" ? " · Undid the tutor's edit" : "";
+	const undo = version.cause === "undo-agent" ? " · Undid the tutor's edit" : version.cause === "passage" ? " · Saved a passage" : "";
 	const name = version.name ? ` · ${version.name}` : "";
 	return `Version ${version.n} · ${version.author === "agent" ? "Agent" : "You"} · ${time}${undo}${name}`;
 }

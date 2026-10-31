@@ -4,6 +4,7 @@ import { posToDOMRect, type Editor } from "@tiptap/core";
 import { NodeSelection, TextSelection } from "@tiptap/pm/state";
 import { useEditorState } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
+import { KIND_LABEL, type LibraryItem } from "@/src/core";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
 	BoldIcon, CodeIcon, ImageIcon, ItalicIcon, LinkIcon, ListChecksIcon, ListIcon, ListOrderedIcon,
@@ -12,7 +13,7 @@ import {
 import { cn } from "@/lib/utils";
 import { insertFormula, normalizeLinkAddress } from "./page-editor-extras.ts";
 import { filterSlashItems, slashEmptyText, type SlashItem } from "./page-slash.ts";
-import { TUTOR_ACTION_LABEL, type TutorAction } from "./page-tutor-actions.ts";
+import { TUTOR_ACTION_LABEL, TUTOR_ACTIONS, type TutorAction } from "./page-tutor-actions.ts";
 
 /** What the page offers the tutor: unavailable with a sentence, or a handler. */
 export type PageTutor = { blocked: string } | { blocked: null; run: (action: TutorAction, text: string) => void };
@@ -20,7 +21,7 @@ export type PageTutor = { blocked: string } | { blocked: null; run: (action: Tut
 /** The selected text, or with none the text of the block the caret is in. */
 export function tutorText(editor: Editor): string {
 	const { from, to, empty, $from } = editor.state.selection;
-	return empty ? $from.parent.textContent : editor.state.doc.textBetween(from, to, "\n", " ");
+	return empty ? $from.parent.textContent : editor.state.doc.textBetween(from, to, "\n", (leaf) => (leaf.type.name === "wikiLink" ? `[[${String(leaf.attrs.target)}]]` : " "));
 }
 
 /** "Ctrl" or "⌘" in names, matching the key the learner presses. */
@@ -172,13 +173,13 @@ export function PageBubble({ editor, tutor, onLink, scrollHost }: { editor: Edit
 			getReferencedVirtualElement={() => selectedTextReference(editor)}
 			options={{ placement: "top", offset: 8, scrollTarget: scrollHost, flip: { boundary: workspace }, shift: { boundary: workspace, padding: 8 }, hide: { boundary: scrollHost } }}
 		>
-			<div role="toolbar" aria-label="Selection" data-testid="page-bubble" className="flex max-w-[calc(100vw-2rem)] flex-wrap items-center gap-1 rounded-[10px] bg-popover p-1">
+			<div role="toolbar" aria-label="Selection" data-testid="page-bubble" className="flex w-max max-w-[min(calc(100vw-2rem),22rem)] flex-wrap items-center gap-1 rounded-[10px] bg-popover p-1">
 				<ToolButton label="Bold" pressed={state.bold} onClick={() => chain().toggleBold().run()}><BoldIcon className="ui-icon" aria-hidden="true" /></ToolButton>
 				<ToolButton label="Italic" pressed={state.italic} onClick={() => chain().toggleItalic().run()}><ItalicIcon className="ui-icon" aria-hidden="true" /></ToolButton>
 				<ToolButton label="Link" pressed={state.link} onClick={onLink}><LinkIcon className="ui-icon" aria-hidden="true" /></ToolButton>
 				{tutor && <Divider />}
 				{tutor && tutor.blocked !== null && <span role="status" className="px-2 text-sm text-ink-2" data-testid="page-bubble-blocked">{tutor.blocked}</span>}
-				{tutor && tutor.blocked === null && (["explain", "simpler", "quiz", "ask"] as const).map((action) => (
+				{tutor && tutor.blocked === null && TUTOR_ACTIONS.map((action) => (
 					<button
 						key={action}
 						type="button"
@@ -287,6 +288,49 @@ export function SlashMenu({ items, query, active, at, onPick }: { items: SlashIt
 }
 
 export { filterSlashItems };
+
+export type WikiMenuRow = { kind: "item"; item: LibraryItem } | { kind: "new"; target: string };
+
+/** The `[[` list. Focus stays in the editor, as in the slash menu. */
+export function WikiMenu({ rows, status, active, at, onPick }: { rows: WikiMenuRow[]; status: string | null; active: number; at: { left: number; top: number }; onPick: (row: WikiMenuRow) => void }) {
+	const list = useRef<HTMLDivElement>(null);
+	useEffect(() => { list.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" }); }, [active]);
+	return (
+		<div
+			ref={list}
+			role="listbox"
+			aria-label="Link to a page"
+			data-testid="page-wiki-menu"
+			style={{ left: at.left, top: at.top }}
+			className="absolute z-20 flex max-h-[min(18rem,50dvh)] w-[min(20rem,calc(100%-1rem))] flex-col gap-0.5 overflow-y-auto overscroll-contain rounded-[10px] bg-popover p-1"
+		>
+			{status && <div role="status" className="px-2 py-2 text-sm text-ink-2">{status}</div>}
+			{rows.map((row, index) => (
+				<div
+					key={row.kind === "item" ? row.item.id : "new"}
+					role="option"
+					aria-selected={index === active}
+					data-testid="page-wiki-option"
+					onMouseDown={(event) => event.preventDefault()}
+					onClick={() => onPick(row)}
+					className={cn("flex min-h-9 cursor-pointer flex-col justify-center rounded-[6px] px-2 py-1 text-base text-foreground pointer-coarse:min-h-11", index === active && "bg-card outline-1 outline-ring outline-solid")}
+				>
+					{row.kind === "item" ? (
+						<>
+							<span className="[overflow-wrap:anywhere]">{row.item.name}</span>
+							<span className="text-sm text-muted-foreground">{KIND_LABEL[row.item.kind]}</span>
+						</>
+					) : (
+						<>
+							<span className="[overflow-wrap:anywhere]">{row.target}</span>
+							<span className="text-sm text-muted-foreground">Link it now, make the page later</span>
+						</>
+					)}
+				</div>
+			))}
+		</div>
+	);
+}
 
 /** With an image selected: its alt text, editable (feature 010, US6). */
 export function ImageAltPopover({ editor, host }: { editor: Editor; host: HTMLElement | null }) {
