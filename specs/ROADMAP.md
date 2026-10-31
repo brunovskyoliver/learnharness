@@ -29,3 +29,12 @@ The constitution requires owner approval and a measured startup cost for each ne
 | ts-fsrs | 021 | Likely worthwhile: the scheduler is easy to get subtly wrong |
 | Excalidraw | 022 | Compare with installed React Flow; Excalidraw is heavy |
 | Playwright | 023 | Browser regressions already run on puppeteer-core in `scripts/`; a second driver needs a reason |
+
+## Standing rules for the remaining features
+
+The owner approved every recommended option ("i approve it all", 2026-10-31) and asked for no questions during this goal. Record each decision in the feature's spec under Clarifications instead of asking.
+
+- Decided dependencies: `ts-fsrs` adopted for 021, server-only. No `cmdk` (Radix dialog plus `src/core/fuzzy.ts`). No Playwright (`puppeteer-core` already drives `scripts/check-*-ui.mjs`). React Flow for 022, no Excalidraw; `@xyflow/react` is installed and loads on demand. Anything else new needs a recorded reason and a measured cost, and goes in the feature's Report for the owner.
+- Catalog and other stores stay additive and rollback-safe: optional fields, separate files, the version unchanged. Learner text is never changed by AI without review.
+- Each feature keeps `specs/<NNN-name>/spec.md`, `plan.md` with the Constitution Check I-VIII, `tasks.md` and `progress.md` with a Report, and updates DESIGN.md, PRODUCT.md and this table.
+- Stacked branches, one per feature, each branched from the previous. No pushing, merging or deploying.
