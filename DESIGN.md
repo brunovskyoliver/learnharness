@@ -38,6 +38,7 @@ One scrolling column (`max-w-[52rem]`, hidden scrollbar), in this order. Section
 - Header: the Search field (raised) with the session filter at its right end (visibly on, raised-2 and foreground ink, while not "All sessions"), then one labelled "New" (raised-2, plus icon) opening a menu with Lesson and Practice. Menus are raised-2, 10px, no border.
 - Rows: type icon, the whole title (15px/20px, wrapping, never truncated), then a 7px amber dot named "Waiting for you" when the session waits on the learner, or the running indicator while a turn runs, then the time.
 - Date shelves (Today, Yesterday, Earlier) are set in the title serif at 17px; their counts stay sans meta.
+- A labelled "Library" row sits under the header, above the date shelves.
 - Settings opens only from the gear in the sidebar footer (and its shortcut). The graph's display controls live in Settings → Graph → Display.
 
 ## Lessons and controls
@@ -78,7 +79,10 @@ Queued steers sit above the shell as right-aligned rows; each has a × ("Remove 
 
 ## Settings and secondary views
 
-- Settings uses searchable icon categories, a Settings / section header, grouped fields and a live reading preview. Category navigation scrolls horizontally on narrow screens; field controls stack below labels.
+- Settings uses searchable icon categories, a Settings / section header, grouped fields and a live reading preview. Category navigation scrolls horizontally on narrow screens; field controls stack below labels and take the row's width.
+- Section titles are the title serif at 22px and group titles at 17px. Rows sit in a raised 10px group with no separators. Inputs and choices use the 14% edge; menus are raised-2, 10px, no border. Sliders use ink, not amber.
+- "Search settings" matches every row's name and hint. Results list under their category headings in the navigation column ("Nothing matches {query}" otherwise). Choosing one or pressing Enter clears the search, opens the section, scrolls to the row, focuses its first control and shows a raised-2 highlight for 160ms. Escape clears a non-empty search before it closes the dialog.
+- While loading, a section shows its title over row skeletons. A failed load reads "Settings could not be loaded." with Try again. A failed save stays pinned at the top of the column: "Your {section} settings could not be saved.", Show details for the raw reason, and Try again repeating that save. The row keeps showing what is stored. Providers, models, prompts and graph display each state their own failure with Try again.
 - Settings, setup and connection dialogs contain focus. Menus portal into the active modal boundary. Closing returns focus to the opening control; settings retain immediate persistence and existing section/row deep links.
 - Home, chains and activity share the same surface and control tokens. Loading, empty and failed requests remain distinct; refresh failures retain the last successful data. Home's layout is described under Home above.
 - Unavailable rows in Settings and the graph display panel use the muted ink token on label and hint with a locked control, never opacity. This replaces the 2026-09-20 ruling (owner, 2026-10-30).

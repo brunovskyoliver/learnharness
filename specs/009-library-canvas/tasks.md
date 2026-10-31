@@ -196,17 +196,17 @@ description: "Tasks for feature 009: Library and canvas pages"
 
 ## Phase 8: Polish and gates
 
-- [ ] T086 [P] Update PRODUCT.md: add the Library and pages paragraph, primary surfaces and "Settings retain searchable categories"
-- [ ] T087 [P] Finish the DESIGN.md section from what was built, update "Settings and secondary views" and the sidebar section, and update design-system/ if it mirrors a changed token
-- [ ] T088 [P] Update docs/ui-review.md with Library review routes; add a Library sample to scripts/seed-review.mjs if the owner wants it in review data
-- [ ] T089 Extend tests/startup-module-graph.test.ts per research R14 and confirm no `components/library/page-*` in sidebar, home or graph entries
-- [ ] T090 Check all new UI with the `impeccable` and `web-design-guidelines` skills; fix findings; DESIGN.md wins any disagreement
-- [ ] T091 Run all quickstart.md scenarios at 320, 390 and 1440 px and save evidence under `~/agent-runs/2026-10-30-feature-009/`
-- [ ] T092 Measure startup against T003 with the same browser, and record against the 5% budget (SC-004)
-- [ ] T092a Amend .specify/memory/constitution.md principle III with the owner-approved exception (agent-made pages survive session deletion and lose their chat link), bumping the version to 1.1.1 or as the governance rule requires, with a Sync Impact entry.
-- [ ] T093 Run the gates: `npm test`, `npm run lint`, `npm run typecheck`, `npm run build`, scripts/check-library-ui.mjs and the existing browser regressions; record existing failures separately from new ones
-- [ ] T094 Check a standalone build: 50 MiB upload through `node .next/standalone/server.js`, and a live Electron check that the Library and opening a PDF in a new window work
-- [ ] T095 Walk spec.md's acceptance scenarios and success criteria, and audit findings 1, 2, 4 and 5-14, and write the final Report in specs/009-library-canvas/progress.md, noting that finding 3 (backups) stays with the owner
+- [X] T086 [P] Update PRODUCT.md: add the Library and pages paragraph, primary surfaces and "Settings retain searchable categories"
+- [X] T087 [P] Finish the DESIGN.md section from what was built, update "Settings and secondary views" and the sidebar section, and update design-system/ if it mirrors a changed token
+- [X] T088 [P] Update docs/ui-review.md with Library review routes; add a Library sample to scripts/seed-review.mjs if the owner wants it in review data
+- [X] T089 Extend tests/startup-module-graph.test.ts per research R14 and confirm no `components/library/page-*` in sidebar, home or graph entries
+- [X] T090 Check all new UI with the `impeccable` and `web-design-guidelines` skills; fix findings; DESIGN.md wins any disagreement
+- [X] T091 Run all quickstart.md scenarios at 320, 390 and 1440 px and save evidence under `~/agent-runs/2026-10-30-feature-009/`
+- [X] T092 Measure startup against T003 with the same browser, and record against the 5% budget (SC-004)
+- [X] T092a Amend .specify/memory/constitution.md principle III with the owner-approved exception (agent-made pages survive session deletion and lose their chat link), bumping the version to 1.1.1 or as the governance rule requires, with a Sync Impact entry.
+- [X] T093 Run the gates: `npm test`, `npm run lint`, `npm run typecheck`, `npm run build`, scripts/check-library-ui.mjs and the existing browser regressions; record existing failures separately from new ones
+- [ ] T094 Check a standalone build: 50 MiB upload through `node .next/standalone/server.js`, and a live Electron check that the Library and opening a PDF in a new window work — **Not done, left unchecked**: the standalone 50 MiB part passed (progress.md Log), but this machine has no display, so the live Electron check did not run
+- [X] T095 Walk spec.md's acceptance scenarios and success criteria, and audit findings 1, 2, 4 and 5-14, and write the final Report in specs/009-library-canvas/progress.md, noting that finding 3 (backups) stays with the owner
 
 ---
 

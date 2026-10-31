@@ -221,6 +221,30 @@ describe("Settings integration", () => {
 		assert.equal(q(host, "toggle-auto-update")!.getAttribute("aria-checked"), "false");
 	});
 
+	it("a deep link unfolds its key row once the keys arrive", async () => {
+		bridge();
+		const globals = globalThis as Record<string, unknown>;
+		const savedCss = globals.CSS, savedMedia = (window as unknown as { matchMedia?: unknown }).matchMedia;
+		globals.CSS = { escape: (value: string) => value };
+		(window as unknown as { matchMedia: unknown }).matchMedia = () => ({ matches: true });
+		const proto = dom.window.HTMLElement.prototype as unknown as { scrollIntoView?: () => void };
+		const scrolled: unknown[] = [];
+		proto.scrollIntoView = function (this: unknown) { scrolled.push(this); };
+		globalThis.fetch = async (input) => String(input) === "/api/settings"
+			? Response.json({ settings: { version: 1 } })
+			: Response.json({ keys: [], providers: [] });
+		try {
+			const host = await mount(<SettingsDialogBody initialSection="keys" initialRow="TAVILY_API_KEY" onClose={() => {}} />);
+			await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+			assert.ok(q(host, "key-tavily_api_key-input"), "the row unfolded");
+			assert.equal(scrolled.length, 1, "the jump ran once");
+		} finally {
+			globals.CSS = savedCss;
+			(window as unknown as { matchMedia?: unknown }).matchMedia = savedMedia;
+			delete proto.scrollIntoView;
+		}
+	});
+
 	it("a failed load has Try again; a failed save reads in words, with details and Try again", async () => {
 		bridge();
 		let loads = 0, puts = 0;

@@ -226,7 +226,8 @@ useEffect(() => {
 			return true;
 		};
 		if (land()) return () => clearTimeout(clear);
-		const observer = new MutationObserver(() => { if (land()) stop(); });
+		let landed = false;
+		const observer = new MutationObserver(() => { if (!landed && land()) { landed = true; stop(); } });
 		const timeout = setTimeout(() => stop(), ROW_WAIT_MS);
 		const stop = () => { observer.disconnect(); clearTimeout(timeout); };
 		observer.observe(root, { childList: true, subtree: true });

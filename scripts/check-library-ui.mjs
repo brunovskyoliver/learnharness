@@ -611,7 +611,7 @@ async function checkSettings(width) {
 		await page.evaluate(() => document.activeElement?.blur());
 		await page.keyboard.press("Escape");
 		await page.waitForSelector(id("settings-dialog"), { hidden: true });
-		// Deep link (the provider row unfolds through the shared open path).
+		// A failed load, then a provider row that unfolds through the row jump.
 		failures.load = true;
 		await openSettings();
 		await page.waitForSelector(id("settings-load-error"), { visible: true });
@@ -653,7 +653,11 @@ async function checkPages(width) {
 	// New page: it opens beside the list, and the first load of the editor is on demand.
 	await page.waitForSelector('[data-testid="library-new-page"]');
 	assert.equal(await page.evaluate(() => performance.getEntriesByType("resource").some((r) => /tiptap|prosemirror/i.test(r.name))), false);
-	await page.click('[data-testid="library-new-page"]');
+	// A click before hydration does nothing on a cold dev server, so retry it.
+	for (let i = 0; i < 40 && !(await page.$('[data-testid="page-pane"]')); i++) {
+		await page.click('[data-testid="library-new-page"]');
+		await pause(500);
+	}
 	await page.waitForSelector(editor, { timeout: 60000 });
 	const created = await page.$eval('[data-testid="page-name"]', (el) => el.textContent);
 	assert.ok(created.startsWith("Untitled page"), created);
@@ -849,7 +853,7 @@ async function checkPageRows() {
 		assert.deepEqual(headlines, ["Page · created Row page", "Page · revised Row page · version 3", "Page · couldn't revise, it changed", "Page · failed", "Library · read Row page", "Library · failed"]);
 		assert.ok(!(await page.$eval("[data-chat-id]", (el) => el.innerText)).includes("SECRET"), "inputs never show");
 		// Its open state is saved per session, so an earlier width may have left it open.
-		if (!(await page.$eval('[data-testid="page-row"][data-tool="page_revise"]', (el) => el.open))) await (await page.$$('[data-testid="page-row"] summary'))[1].click();
+		if (!(await page.$eval('[data-testid="page-row"][data-tool="page_revise"]', (el) => el.open))) await page.click('[data-testid="page-row"][data-tool="page_revise"] summary');
 		await page.waitForFunction(() => document.querySelector('[data-tool="page_revise"]')?.innerText.includes("Saved your edits first as version 2"));
 		if (shots) await page.screenshot({ path: path.join(shots, `page-${width}-rows.png`) });
 		// The row opens the pane beside the chat.
@@ -913,6 +917,8 @@ async function checkPageAndDemo() {
 	await page.setViewport({ width: 1440, height: 900 });
 	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
 	await openPage(page, "Beside demo");
+	// The open page is written after a short coalescing delay; a reload that fast is not what this step checks.
+	await page.waitForFunction(() => Object.entries(localStorage).some(([key, value]) => key.includes("__page-pane") && value.includes("Beside demo")));
 	await page.goto(`${base}/chat/page-demo`, { waitUntil: "domcontentloaded" });
 	await page.waitForSelector('[data-testid="page-pane"]', { timeout: 60000 });
 	await page.waitForSelector(".question-demo-reference button", { timeout: 60000 });

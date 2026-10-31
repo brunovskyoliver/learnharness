@@ -1,6 +1,6 @@
 # Feature 009: Library and canvas pages
 Stage: implement
-Updated: 2026-10-30
+Updated: 2026-10-31
 
 ## Decisions
 - 2026-10-30 Canvas page = editable Markdown and math doc beside the chat; learner and agent edit; versions kept (owner).
@@ -24,6 +24,10 @@ Updated: 2026-10-30
 
 - 2026-10-30 Phase 7 choices (reversible, logged per constitution I): choosing a search result clears the search, Enter picks the first result, and Escape clears a non-empty search before the dialog. A stored provider key has no search entry because the index is static; it stays a deep-link target. Slot rows are indexed as "{Slot} model and thinking", so "thinking" finds them. The dialog itself takes focus on open, so Close's tooltip no longer opens by itself. Graph's and General's ungrouped rows sit in an unlabelled raised group. Save failures use the words "Model" for the models section and "Context" for compaction. Keys, prompts, models, search and graph display gained honest failed states, since a failed fetch used to read as empty or as loading forever. For owner review, new strings: "Your provider keys could not be loaded.", "Your provider keys could not be refreshed. This list may be out of date.", "This key could not be saved. Try again.", "This key could not be deleted. Try again.", "Your models could not be loaded.", "The system prompts could not be loaded.", "The search engines could not be checked.", "Your version could not be saved.", "Your version could not be deleted.", "Could not save the display settings.", "Nothing matches {query}", and "Get a {label} key (opens in a new tab)". Removed for owner review: the Keyboard footer "Stored on this device (lh:keymap) — overrides only.", which named an internal key and repeated the section's hint. Colors beyond the audit's list, from DESIGN.md: inputs and choices use the 14% edge, menus are raised-2 with no border, and sliders use ink rather than amber.
 
+- 2026-10-30 Audit finding on `src/agent/prompts/teacher/40-jobs.md` (FR-008), for owner review: "home-anchored" now reads "scoped as below", so the line is right when hosted and on desktop, since the shared learner-files fragments that state each mode follow it. Only that phrase changed. contracts/doctrine.md did not word this line.
+- 2026-10-30 T092a: 1.1.1 under the task's own wording. An owner who reads an exception as a redefinition of principle III would make it a larger bump.
+- 2026-10-30 T088: no Library sample was added to scripts/seed-review.mjs, because the task leaves that to the owner.
+
 ## Log
 - 2026-10-30 audit: ~/agent-runs/2026-10-30-app-audit/audit.md
 - 2026-10-30 specify: spec.md written on branch feat/009-library-canvas.
@@ -44,5 +48,36 @@ Updated: 2026-10-30
 - 2026-10-30 T049-T062: store, routes, WorkspacePane, editor, History, pane in the Library and chat, phone layer, "New page". SC-002 is tested through a controller on the real store (tests/page-draft.test.ts: reload, navigation, agent revision with unsaved text, two tabs) and in real browser tabs (scripts/check-library-ui.mjs, LH_UI_PAGES_ONLY=1) at 1440, 390 and 320 px. `npm test` 3301 pass, 0 fail, 2 skipped; lint, typecheck and build pass. Found by those runs and fixed: a second load overwriting text typed after the first, a close before the first load clearing a backup, the pane taking the whole width. `impeccable` detector: nothing new (its one finding, globals.css line 42, predates this). `web-design-guidelines`: added safe-area padding, `overscroll-behavior: contain`, lazy images. scripts/smoke-demo-workspace.mjs fails at its `stats-model` step (line 53) on d0b0ff1 too, with or without a placeholder key; with only that stale step removed in a temporary copy it passes in full, including continuity, close, select and auto-open. Screenshots: screens/page-*.png.
 - 2026-10-30 T063-T073: page_create, page_revise, Pages toggle, rows, teacher/47-pages.md verbatim from doctrine.md, unlink on session deletion. `npm test` 3336 pass, 0 fail, 2 skipped; lint, typecheck, build pass. scripts/check-library-ui.mjs passes in full (41 PASS lines, 1440, 390 and 320 px), scripts/smoke-sidebar-ui.mjs passes. Page and demo share the column in a real browser: automatic open respected, explicit open wins, same iframe document. tests/settings-pure, question-tools, tool-toggles-bridge and render-settings follow the longer toggle list. Found by the row test and fixed: the generic tool card would have shown a page's text while running. Not checked in a browser: the agent's own revision through the live tool, since no model runs here. "Updated by the agent · version {n}" is covered by tests/page-draft.test.ts on the real store; the browser check drives the same conflict and follow paths with an outside version.
 - 2026-10-30 T074-T085: Settings search with a drift test, row jump, type, radii, separators, 44 px coarse targets, muted ink, plain failures, skeletons, comments. Finding 13 is closed by T020 and T024: Files is gone and the Library has named buttons, progress and a per-file limit. Checks: tests/settings-index, render-settings, render-update-settings and render-graph-display-settings pass; scripts/check-library-ui.mjs with LH_UI_SETTINGS_ONLY=1 passes at 1440, 390 and 320 px (log: phase7-settings-ui.log). Screenshots: screens/settings-round1, settings-round1b, settings-confirm. Keyboard has no server save, so it has no failed-save state. `impeccable`: detector clean before and after; visual findings fixed in one batch, confirmed once. `web-design-guidelines`: nested link in the key row, unnamed fields, vague "key" link name and overscroll fixed.
+- 2026-10-30 T086-T089: PRODUCT.md, DESIGN.md, docs/ui-review.md; startup graph test also bars TipTap and ProseMirror. T092a: constitution 1.1.1.
+- 2026-10-30 T090: `impeccable` detector clean on components/settings, components/library and workspace-pane. `web-design-guidelines` pass on Settings as in T074-T085; on the Library only a pattern search this round, no new findings. Destructive actions with no confirmation in Settings go to the owner (Report).
+- 2026-10-30 Main comparison, temporary worktree of 01008f3 outside the repo, removed after, same browser, TMPDIR and placeholder key; the demo kit had to be built in it first. scripts/smoke-dock-ui.mjs fails on main and on this branch at the same place: `checkStreamingUi`, check-streaming-ui.mjs:102 "completed answer starts below the top row" (-145.7 on main, -138.7 here), called from line 551, after 20 PASS on both. Without the key both stop earlier at `setup-cta`, line 133. scripts/smoke-demo-workspace.mjs fails on both at `stats-model`, line 53, with and without the key. With only that stale step removed, it passes in full on this branch. So both failures predate this feature, and neither is a regression.
+- 2026-10-30 T092, perf.sh final on a production build, same harness and browser, ten runs each, medians against T003: desktop startup 4884.7 to 4903.8 ms (+0.4%), sidebar 4938 to 4957.6 ms (+0.4%), FCP 980 to 1010 ms (+3.1%); mobile startup 4864.5 to 4871.3 ms (+0.1%), sidebar 5050.2 to 5058.7 ms (+0.2%), FCP 978 to 1006 ms (+2.9%); initial JS 615,373 to 623,879 bytes (+1.4%). Within the 5% budget (SC-004). Evidence: final-summary.json, final-perf.json, final-repo-script.jsonl.
+- 2026-10-30 T093: lint, typecheck and build pass. `npm test` 3353 pass, 0 fail, 2 skipped (final-test2.log). One earlier full run had one failure, tests/scatter-panels-headless, "Session closed" from the browser under load; it passes alone and on the next full run, so it looks flaky. scripts/check-library-ui.mjs 44 PASS at 1440, 390 and 320 px (final-check-library4.log), after fixing three races in the script itself: a click before hydration, a stale element handle, and a reload before the open page was written. scripts/smoke-sidebar-ui, smoke-md-tables-ui, smoke-demo-runtime, smoke-provider-runtime, smoke-server and smoke-web-subscriptions pass. Existing failures, not new: smoke-dock-ui and smoke-demo-workspace, as above.
+- 2026-10-30 T094 standalone part passed through `node .next/standalone/server.js`: exactly 52,428,800 bytes gets 201 with a matching checksum, one byte more gets 413 and stores nothing (t094.log). The live Electron check did not run; there is no display here. T094 stays unchecked.
+- 2026-10-30 T091: scenarios 1-3, 5, 7, 9, 11, 13-16 and 20 through scripts/check-library-ui.mjs at three widths; 4 live on the standalone server (files listed, checksums match); 6, 10, 12, 17-19 and part of 21 through tests and the script, as quickstart.md allows for stubbed models; 8 (email, code span, IME) through unit tests only, not in a browser. No scenario was walked by hand.
 
 ## Report
+
+### What changed
+
+Phases 1-8: Library, @ references, pages beside the chat, agent page tools, and Settings against DESIGN.md. Commits are on feat/009-library-canvas; not pushed, not deployed.
+
+### Audit findings
+
+1. Closed: prompts correct in both modes (T044, and the 40-jobs phrase).
+2. Closed: uploads never overwrite, and deletes confirm (Phase 3).
+3. Open, owner: no backup of live data.
+4. Closed: Library and @ references replace Settings → Files, in both modes, up to 50 MB per file.
+5-12, 14. Closed in Phase 7. 10 follows the 2026-10-30 owner ruling.
+13. Closed by T020 and T024.
+15. Partly: browser failures were environment only (T002). Flaky failures seen, each passing on rerun: "one app-wide background preference", tests/chatgpt-connection-ui and tests/scatter-panels-headless. Causes not established.
+16. Open: "Failed to find Server Action" lines; not investigated.
+17. Open: `next dev` warning about auth checks in `proxy.ts`; not audited route by route.
+
+### Verified and not verified
+
+See the T090-T095 Log lines. Not verified: live Electron (T094), the agent's own revision through a live model, SC-001's 30 seconds as a timing, a real phone or the owner's browser, screenshots of the connection dialogs, and Settings at 320 px by eye (checked by script only).
+
+### Left for the owner
+
+Backups (finding 3); new and removed strings listed under Decisions; key Delete, prompt-version Delete and "Reset all to defaults" have no confirmation; US3.1's "or a session" has no control; T070's native-focus list; bold demo titles linking only in History; the T092a version bump.
