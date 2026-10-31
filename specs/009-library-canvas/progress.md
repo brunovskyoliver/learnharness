@@ -1,5 +1,5 @@
 # Feature 009: Library and canvas pages
-Stage: implement
+Stage: done
 Updated: 2026-10-31
 
 ## Decisions
@@ -60,26 +60,14 @@ Updated: 2026-10-31
 
 ## Report
 
-### What changed
+Changed: Library replaces Settings -> Files (phases 1-3, b98c463, 4ebb678, 06273ea); @ references (d0b0ff1); TipTap pages (fe1a8c9); agent page tools (e1afe69); Settings polish and search (9e8148f); gates (b2039a3); New page in the @ list (24a767e).
 
-Phases 1-8: Library, @ references, pages beside the chat, agent page tools, and Settings against DESIGN.md. Commits are on feat/009-library-canvas; not pushed, not deployed.
+Verified: npm test, lint, typecheck, build; check-library-ui.mjs at 320/390/1440; 47-page Markdown round-trip corpus; standalone 50 MiB upload; startup within budget (initial JS +1.4%, startup under +0.5%).
 
-### Audit findings
-
-1. Closed: prompts correct in both modes (T044, and the 40-jobs phrase).
-2. Closed: uploads never overwrite, and deletes confirm (Phase 3).
-3. Open, owner: no backup of live data.
-4. Closed: Library and @ references replace Settings → Files, in both modes, up to 50 MB per file.
-5-12, 14. Closed in Phase 7. 10 follows the 2026-10-30 owner ruling.
-13. Closed by T020 and T024.
-15. Partly: browser failures were environment only (T002). Flaky failures seen, each passing on rerun: "one app-wide background preference", tests/chatgpt-connection-ui and tests/scatter-panels-headless. Causes not established.
-16. Open: "Failed to find Server Action" lines; not investigated.
-17. Open: `next dev` warning about auth checks in `proxy.ts`; not audited route by route.
-
-### Verified and not verified
-
-See the T090-T095 Log lines. Not verified: live Electron (T094), the agent's own revision through a live model, SC-001's 30 seconds as a timing, a real phone or the owner's browser, screenshots of the connection dialogs, and Settings at 320 px by eye (checked by script only).
-
-### Left for the owner
-
-Backups (finding 3); new and removed strings listed under Decisions; key Delete, prompt-version Delete and "Reset all to defaults" have no confirmation; US3.1's "or a session" has no control; T070's native-focus list; bold demo titles linking only in History; the T092a version bump.
+Left:
+- T094 live Electron check: no display on this machine.
+- Not exercised: a live model using the tools, real vision and real-text PDF paths, real phones, Safari, hosted mode in a browser.
+- smoke-dock-ui and smoke-demo-workspace fail, the same on main.
+- Flaky, cause unknown: background preference, chatgpt-connection-ui, scatter-panels-headless tests; page-and-demo step in check-library-ui (suspected auto-demo race that can close a page).
+- Audit: backups (3), server action errors (16) and proxy auth audit (17) open.
+- Owner review items are listed under Decisions.
