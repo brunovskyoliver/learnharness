@@ -44,6 +44,8 @@ describe("the page pane", () => {
 		assert.equal(attrs.role, "textbox");
 		assert.equal(attrs["aria-multiline"], "true");
 		const css = fs.readFileSync("app/globals.css", "utf8");
-		assert.match(css, /\.lh-page-editor:focus-visible \{ outline: 1px solid var\(--ring\)/);
+		// No border around the text area (owner, 2026-10-31): the caret shows focus.
+		assert.doesNotMatch(css, /\.lh-page-editor:focus-visible/);
+		assert.match(css, /\.lh-page-editor \{[^}]*outline: none/);
 	});
 });

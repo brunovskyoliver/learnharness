@@ -125,6 +125,7 @@ Feature 009; the binding reference is its [UI contract](specs/009-library-canvas
 
 These come from feature 010. Every string is in specs/010-page-editor-tools/contracts/ui-contract.md.
 
+- **Text area**: no border or outline when focused (owner, 2026-10-31). The caret shows focus.
 - **Header**: the save state is followed by "· {n} words". Formulas, code and images are not counted. Outline, Export and History sit beside it. Below 768 px these three show as named icons.
 - **Toolbar**: a `surface-raised` row above the text, wrapping as it narrows. It holds:
   - undo and redo;
