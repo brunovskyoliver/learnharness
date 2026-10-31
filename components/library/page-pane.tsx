@@ -3,12 +3,12 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowLeftIcon, DownloadIcon, HistoryIcon, Link2Icon, ListTreeIcon, XIcon } from "lucide-react";
+import { ArrowLeftIcon, DownloadIcon, ExternalLinkIcon, HistoryIcon, Link2Icon, ListTreeIcon, XIcon } from "lucide-react";
 import { NoteConnectionsPanel } from "@/components/workspace/note-connections";
 import { useWorkspace } from "@/components/workspace/workspace-context";
-import type { LibraryKind } from "@/src/core";
+import { parseCitationHref, type LibraryKind } from "@/src/core";
 import type { WikiResolution } from "@/src/core";
-import { jumpToSource, useNoteLinks } from "./use-note-links.ts";
+import { jumpToSource, openCitation, useNoteLinks } from "./use-note-links.ts";
 import { ChatActionsContext } from "@/components/chat-actions-context.ts";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -30,6 +30,12 @@ import { pageImageAlt, pageImageSrc, uploadPageImage } from "./upload.ts";
 import { usePageDraft } from "./use-page-draft.ts";
 
 const PageEditor = dynamic(() => import("./page-editor.tsx").then((m) => m.PageEditor), {
+	ssr: false,
+	loading: () => <EditorLoading />,
+});
+
+/** pdf.js arrives with the first PDF, not with the pane. */
+const PdfReader = dynamic(() => import("./pdf-reader.tsx").then((m) => m.PdfReader), {
 	ssr: false,
 	loading: () => <EditorLoading />,
 });
@@ -407,8 +413,19 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 			setCreating(`${name} could not be created. Check your connection and try again.`);
 		}
 	};
+	const [citeFailed, setCiteFailed] = useState(false);
 	const followSource = (href: string) => {
 		editor.current?.flush();
+		// A PDF citation opens the viewer there; it checks the quote itself.
+		const citation = parseCitationHref(href);
+		if (citation) {
+			setCiteFailed(false);
+			void openCitation(citation).then((target) => {
+				if (target) workspace?.openItem(target.item, target.jump);
+				else setCiteFailed(true);
+			});
+			return;
+		}
 		// The phone layer covers the transcript the jump lands in.
 		if (phone) close();
 		jumpToSource(href, router.push);
@@ -424,6 +441,23 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 			className={wide ? "w-64 shrink-0 overflow-y-auto pr-3 pb-6" : "mx-3 mb-2 max-h-[40dvh] shrink-0 overflow-y-auto rounded-[10px] bg-popover p-2"}
 		/>
 	) : null;
+
+	// A search hit lands on its block (feature 019), once the editor is there.
+	const [jumpMissed, setJumpMissed] = useState(false);
+	const jumpTarget = item.jump;
+	const jumpNonce = jumpTarget?.nonce;
+	useEffect(() => {
+		if (!jumpTarget || !state.loaded || history) return;
+		setJumpMissed(false);
+		let tries = 0;
+		const timer = window.setInterval(() => {
+			const handle = editor.current;
+			if (!handle && ++tries < 60) return;
+			window.clearInterval(timer);
+			if (handle && !handle.jumpToText(jumpTarget.quote, jumpTarget.terms)) setJumpMissed(true);
+		}, 100);
+		return () => window.clearInterval(timer);
+	}, [jumpNonce, state.loaded, history]);
 
 	const restore = async (n: number): Promise<string | null> => {
 		editor.current?.flush();
@@ -585,10 +619,61 @@ function ReadOnlySurface({ item, pane, phone }: { item: PaneItem; pane: PagePane
 	);
 }
 
-/** A page or a read-only original, beside the chat or the Library list. */
+const contentUrl = (id: string, download = false) => `/api/library/items/${encodeURIComponent(id)}/content${download ? "?download=1" : ""}`;
+
+/** The right pane's reader for a PDF (feature 020). The header keeps the two ways
+ *  out that opening in a new tab used to give: the browser's own viewer, and the file. */
+function PdfSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi; phone: boolean }) {
+	const root = useRef<HTMLElement | null>(null);
+	usePhoneLayer(phone, root);
+	const link = "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-2 text-sm text-foreground hover:bg-accent focus-visible:outline-1 focus-visible:outline-ring pointer-coarse:h-11 pointer-coarse:min-w-11 pointer-coarse:justify-center";
+	return (
+		<WorkspacePane
+			label={item.name}
+			resizeLabel="Resize page panel"
+			testId="page-pane"
+			className="page-workspace"
+			rootRef={root}
+			onKeyDown={(event) => {
+				if (event.key !== "Escape") return;
+				event.preventDefault();
+				if (phone) pane.close();
+				else focusTranscript();
+			}}
+		>
+			{(dragging) => (
+				<>
+					<PaneHeader
+						phone={phone}
+						closeLabel={`Close ${item.name}`}
+						onClose={pane.close}
+						name={<span className="min-w-0 truncate text-base font-medium">{item.name}</span>}
+						actions={(
+							<>
+								<a href={contentUrl(item.id)} target="_blank" rel="noreferrer" className={link} data-testid="pdf-open-new-tab" aria-label={`Open ${item.name} in a new tab`}>
+									<ExternalLinkIcon className="ui-icon" aria-hidden="true" />
+									<span className="sr-only">Open in a new tab</span>
+								</a>
+								<a href={contentUrl(item.id, true)} className={link} data-testid="pdf-download" aria-label={`Download ${item.name}`}>
+									<DownloadIcon className="ui-icon" aria-hidden="true" />
+									<span className="sr-only">Download</span>
+								</a>
+							</>
+						)}
+					/>
+					<div className={`flex min-h-0 flex-1 flex-col ${dragging ? "pointer-events-none" : ""}`}>
+						<PdfReader item={item} phone={phone} onClosePane={pane.close} />
+					</div>
+				</>
+			)}
+		</WorkspacePane>
+	);
+}
+
+/** A page, a PDF or a read-only original, beside the chat or the Library list. */
 export function PagePane({ item, pane }: { item: PaneItem; pane: PagePaneApi }) {
 	const phone = usePhone();
-	return item.kind === "page"
-		? <PageSurface item={item} pane={pane} phone={phone} />
-		: <ReadOnlySurface item={item} pane={pane} phone={phone} />;
+	if (item.kind === "page") return <PageSurface item={item} pane={pane} phone={phone} />;
+	if (item.kind === "pdf") return <PdfSurface item={item} pane={pane} phone={phone} />;
+	return <ReadOnlySurface item={item} pane={pane} phone={phone} />;
 }

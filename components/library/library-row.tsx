@@ -77,6 +77,10 @@ export function LibraryRow({ item, location, onRenamed, actions = [], grid = fal
 	const menuActions: LibraryMenuAction[] = actions.length === 0 ? [] : [
 		{ label: "Rename", onSelect: () => { discard.current = false; setRenaming(true); } },
 		...actions,
+		...(item.kind === "pdf" ? [
+			{ label: "Open in a new tab", onSelect: () => { window.open(contentUrl(item.id), "_blank", "noreferrer"); opened(); } },
+			{ label: "Download", onSelect: () => { window.location.assign(contentUrl(item.id, true)); } },
+		] : []),
 		{ label: "Move to the trash", destructive: true, onSelect: () => onDelete(item, document.body) },
 	];
 	const body = (
@@ -89,7 +93,7 @@ export function LibraryRow({ item, location, onRenamed, actions = [], grid = fal
 			<span className="text-sm text-muted-foreground" suppressHydrationWarning>{metaLine(item)}{location ? ` · ${location}` : ""}</span>
 		</>
 	);
-	const newTab = item.kind === "pdf" || item.kind === "image";
+	const newTab = item.kind === "image";
 	const readable = opensInPane(item.kind);
 
 	return (

@@ -2,6 +2,7 @@
  *  why one is unavailable. Pure; the pane does the sending. Wording is
  *  contracts/ui-contract.md, approved 2026-10-31. */
 import type { ChatSendBlock } from "@/components/chat-actions-context.ts";
+import { renderLibraryPassage } from "@/src/core";
 
 export type TutorAction = "explain" | "simpler" | "summarize" | "rewrite" | "expand" | "challenge" | "quiz" | "questions" | "ask";
 
@@ -66,5 +67,25 @@ const LEAD: Record<TutorAction, string> = {
 export function tutorMessage(action: TutorAction, pageName: string, selection: string): string {
 	const head = `${LEAD[action]} @${pageName}${TAIL[action] ?? ":"}`;
 	const body = `${head}\n\n${quoteSelection(selection)}`;
+	return action === "ask" ? `${body}\n\n` : body;
+}
+
+// ─── from a PDF (feature 020): the file can't change, so no edits ────────────
+
+export type DocumentTutorAction = "explain" | "summarize" | "challenge" | "questions" | "ask";
+
+export const DOCUMENT_TUTOR_ACTIONS: readonly DocumentTutorAction[] = ["explain", "summarize", "challenge", "questions", "ask"];
+
+const DOCUMENT_TAIL: Record<DocumentTutorAction, string> = {
+	explain: ":",
+	summarize: ":",
+	challenge: ", with a graded check on whether it holds:",
+	questions: ", one at a time, keeping the answers until I have answered:",
+	ask: ":",
+};
+
+/** The passage goes as marked material, so nothing in it can act as an instruction. */
+export function documentTutorMessage(action: DocumentTutorAction, source: { itemId: string; name: string; page: number }, text: string): string {
+	const body = `${LEAD[action]} @${source.name}, page ${source.page}${DOCUMENT_TAIL[action]}\n\n${renderLibraryPassage({ itemId: source.itemId, page: source.page }, text)}`;
 	return action === "ask" ? `${body}\n\n` : body;
 }

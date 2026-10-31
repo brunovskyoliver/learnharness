@@ -25,6 +25,8 @@ const STALE_UPLOAD_MS = 24 * 60 * 60 * 1000;
 
 const catalogFile = () => path.join(PATHS.library, "catalog.json");
 const derivedFile = (id: string) => path.join(PATHS.library, "derived", `${id}.json`);
+/** Feature 020's file: it goes when the item goes for good, and stays through the trash. */
+const annotationsFile = (id: string) => path.join(PATHS.library, "annotations", `${id}.json`);
 const tmpDir = () => path.join(PATHS.data, "tmp");
 const isCode = (err: unknown, code: string) => (err as NodeJS.ErrnoException)?.code === code;
 
@@ -283,6 +285,7 @@ async function remove(id: string): Promise<boolean> {
 		if (item.kind === "page") await fs.rm(path.join(PATHS.library, "pages", id), { recursive: true, force: true });
 		else await fs.rm(path.join(PATHS.files, item.name), { force: true });
 		await fs.rm(derivedFile(id), { force: true });
+		await fs.rm(annotationsFile(id), { force: true });
 		replace(catalog, id, tombstone(item, new Date().toISOString()));
 		await writeCatalog(catalog);
 		emit("library-changed", { itemId: id });
@@ -514,6 +517,7 @@ async function purgeTrash(entryId: string): Promise<boolean> {
 		for (const item of entry.items) {
 			if (item.kind === "page") await fs.rm(path.join(PATHS.library, "pages", item.id), { recursive: true, force: true });
 			await fs.rm(derivedFile(item.id), { force: true });
+			await fs.rm(annotationsFile(item.id), { force: true });
 		}
 		emit("library-changed", { itemId: entryId });
 		return true;

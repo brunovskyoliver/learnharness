@@ -3,6 +3,7 @@
  * supplies the lists and acts on the chosen entry. Matching is `fuzzyScore`,
  * the same ranking the sidebar search and model menu use.
  */
+import type { DocSearchResult } from "./document-search.ts";
 import { fuzzyScore } from "./fuzzy.ts";
 import { folderPathLabel, KIND_LABEL, type LibraryFolder, type LibraryItem } from "./library.ts";
 
@@ -12,7 +13,8 @@ export type PaletteEntry =
 	| { kind: "action"; id: string; action: PaletteActionId; label: string; meta?: string; keywords: string[] }
 	| { kind: "session"; id: string; chatId: string; practice: boolean; label: string; meta: string; keywords: string[] }
 	| { kind: "item"; id: string; item: LibraryItem; label: string; meta: string; keywords: string[] }
-	| { kind: "folder"; id: string; folderId: string; label: string; meta: string; keywords: string[] };
+	| { kind: "folder"; id: string; folderId: string; label: string; meta: string; keywords: string[] }
+	| { kind: "passage"; id: string; hit: DocSearchResult; label: string; meta: string; keywords: string[] };
 
 export interface PaletteGroup {
 	label: string;
@@ -92,4 +94,19 @@ export function rankPalette(entries: readonly PaletteEntry[], query: string): Pa
 		.slice(0, RESULT_LIMIT)
 		.map((row) => row.entry);
 	return ranked.length > 0 ? [{ label: "Results", entries: ranked }] : [];
+}
+
+/** Full-text hits as a group of their own, after the name matches (feature 019).
+ *  They come from the server, ranked, so nothing here re-ranks them. */
+export function passageGroup(hits: readonly DocSearchResult[]): PaletteGroup | null {
+	const textHits = hits.filter((hit) => hit.snippet);
+	if (textHits.length === 0) return null;
+	return {
+		label: "Inside your documents",
+		entries: textHits.map((hit) => ({
+			kind: "passage", id: `passage:${hit.id}`, hit, label: hit.name,
+			meta: [KIND_LABEL[hit.kind], hit.jump?.page !== undefined ? `Page ${hit.jump.page}` : hit.jump?.line !== undefined ? `Line ${hit.jump.line}` : "", hit.location].filter(Boolean).join(" · "),
+			keywords: [],
+		})),
+	};
 }

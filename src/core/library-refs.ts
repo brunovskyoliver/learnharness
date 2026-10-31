@@ -117,7 +117,8 @@ function nameTable<T extends CatalogEntry>(entries: readonly T[]): Array<{ key: 
 export function parseReferences<T extends CatalogEntry>(rawText: string, entries: readonly T[]): T[] {
 	if (!rawText.includes("@") || entries.length === 0) return [];
 	const text = rawText.normalize("NFC");
-	const code = codeRanges(text);
+	// A passage from a PDF is material: an @name inside it attaches nothing (feature 020).
+	const code = [...codeRanges(text), ...[...text.matchAll(/<library_passage [^>]*>[\s\S]*?<\/library_passage>/g)].map((match): [number, number] => [match.index, match.index + match[0].length])];
 	const table = nameTable(entries);
 	const found = new Map<string, T>();
 	for (let at = text.indexOf("@"); at !== -1; at = text.indexOf("@", at + 1)) {

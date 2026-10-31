@@ -6,6 +6,8 @@ import dynamic from "next/dynamic";
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { BookmarkPlusIcon } from "lucide-react";
 import { SAVE_PASSAGE_EVENT } from "@/components/library/page-pane-api";
+import { useWorkspace } from "@/components/workspace/workspace-context";
+import { parseCitationHref } from "@/src/core";
 import { readPassageSelection, type PassageSelection } from "./passage-selection";
 
 const SavePassageDialog = dynamic(() => import("@/components/library/save-passage-dialog.tsx").then((m) => m.SavePassageDialog), { ssr: false });
@@ -44,6 +46,33 @@ export function TranscriptPassages({ chatId, scopeRef }: { chatId: string; scope
 		const timer = window.setTimeout(() => setNothing(false), 4000);
 		return () => window.clearTimeout(timer);
 	}, [nothing]);
+	// A PDF citation in the transcript opens the viewer beside it (feature 020).
+	const workspace = useWorkspace();
+	const [citeFailed, setCiteFailed] = useState(false);
+	useEffect(() => {
+		const scope = scopeRef.current;
+		if (!scope) return;
+		const onClick = (event: MouseEvent) => {
+			if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+			const anchor = (event.target as Element | null)?.closest?.("a[href]");
+			const citation = anchor ? parseCitationHref(anchor.getAttribute("href") ?? "") : null;
+			if (!citation) return;
+			event.preventDefault();
+			event.stopPropagation();
+			setCiteFailed(false);
+			void import("@/components/library/use-note-links").then(({ openCitation }) => openCitation(citation)).then((target) => {
+				if (target) workspace?.openItem(target.item, target.jump);
+				else setCiteFailed(true);
+			});
+		};
+		scope.addEventListener("click", onClick, true);
+		return () => scope.removeEventListener("click", onClick, true);
+	}, [scopeRef, workspace]);
+	useEffect(() => {
+		if (!citeFailed) return;
+		const timer = window.setTimeout(() => setCiteFailed(false), 6000);
+		return () => window.clearTimeout(timer);
+	}, [citeFailed]);
 	const coarse = typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches;
 	return (
 		<>
@@ -66,6 +95,7 @@ export function TranscriptPassages({ chatId, scopeRef }: { chatId: string; scope
 				</button>
 			)}
 			{nothing && <p role="status" className="lh-passage-trigger" style={{ left: "0.5rem", bottom: "0.5rem" }}>Select some lesson text first.</p>}
+			{citeFailed && <p role="status" className="lh-passage-trigger" data-testid="citation-missing" style={{ left: "0.5rem", bottom: "0.5rem" }}>That document is no longer in your Library.</p>}
 			{saving && <SavePassageDialog chatId={chatId} passage={saving} onClose={() => setSaving(null)} />}
 		</>
 	);

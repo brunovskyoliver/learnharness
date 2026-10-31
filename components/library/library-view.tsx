@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { CheckSquareIcon, FilePlusIcon, FolderPlusIcon, LayoutGridIcon, ListIcon, SearchIcon, UploadIcon, XIcon } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import { LibraryContextSlot } from "@/components/workspace/context-slot";
@@ -10,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useServerEvent, useServerResync } from "@/components/server-events";
-import { folderPathLabel, folderTrail, KIND_LABEL, liveFolderId, MAX_FILE_BYTES, type LibraryFolder, type LibraryItem, type LibraryKind, type LibraryMarks, type LibraryTrashEntry } from "@/src/core";
+import { useWorkspace } from "@/components/workspace/workspace-context";
+import { folderPathLabel, folderTrail, KIND_LABEL, liveFolderId, MAX_FILE_BYTES, parseCitationHref, type LibraryFolder, type LibraryItem, type LibraryKind, type LibraryMarks, type LibraryTrashEntry } from "@/src/core";
 import { DeleteItemDialog, DESTRUCTIVE_BUTTON } from "./delete-item-dialog.tsx";
 import { FolderNameDialog, MoveDialog, sendLibraryChange } from "./folder-dialogs.tsx";
 import { FolderBreadcrumbs, folderHref, FolderRow } from "./folder-row.tsx";
@@ -20,6 +22,12 @@ import { LibraryRow } from "./library-row.tsx";
 import { LibraryTrash } from "./library-trash.tsx";
 import { createBlankPage, PagePaneSlot, usePagePane } from "./page-pane-context.tsx";
 import { runUploadQueue, sendFile } from "./upload.ts";
+
+/** Only loads once "Full text" is chosen: the search field itself stays small. */
+const DocumentSearchPanel = dynamic(() => import("./document-search.tsx").then((m) => m.DocumentSearchPanel), {
+	ssr: false,
+	loading: () => <p role="status" className="text-sm text-muted-foreground">Loading search…</p>,
+});
 
 const RAISED_2 = "bg-accent text-foreground hover:bg-[color-mix(in_srgb,var(--accent)_80%,var(--foreground))] pointer-coarse:h-11";
 const LOAD_FAILED = "Your Library could not be loaded.";
@@ -133,8 +141,9 @@ export function LibraryBody({ items, folders = [], folderId = null, view = "all"
 }
 
 const PREFS_KEY = "lh-library-view";
-type LibraryPrefs = { layout: LibraryLayout; sort: LibrarySort; descending: boolean };
-const DEFAULT_PREFS: LibraryPrefs = { layout: "list", sort: "name", descending: false };
+type LibrarySearchMode = "names" | "text";
+type LibraryPrefs = { layout: LibraryLayout; sort: LibrarySort; descending: boolean; searchMode: LibrarySearchMode };
+const DEFAULT_PREFS: LibraryPrefs = { layout: "list", sort: "name", descending: false, searchMode: "names" };
 const CONTROL = "h-9 rounded-md border border-input bg-transparent px-2 text-sm text-foreground pointer-coarse:h-11";
 const PILL = "inline-flex min-h-9 items-center rounded-md px-2.5 text-sm transition-colors hover:bg-accent pointer-coarse:min-h-11";
 
@@ -151,6 +160,8 @@ interface Clash { name: string; suggestedName: string; answer: (keepBoth: boolea
 /** The full Library view: upload, list, search, rename, open and delete. */
 export function LibraryView() {
 	const pane = usePagePane();
+	const workspace = useWorkspace();
+	const router = useRouter();
 	const [creating, setCreating] = useState(false);
 	const [items, setItems] = useState<LibraryItem[] | null>(null);
 	const [folders, setFolders] = useState<LibraryFolder[]>([]);
@@ -405,6 +416,23 @@ export function LibraryView() {
 	useEffect(() => {
 		if (openItem && listed && (listed.name !== openItem.name || listed.size !== openItem.size)) pane?.update({ id: listed.id, name: listed.name, kind: listed.kind, size: listed.size });
 	}, [listed, openItem, pane]);
+	// A citation's address (feature 020): opens the viewer there, then steps out of
+	// the URL, so a reload doesn't jump again. A missing document says so.
+	const citeHref = params.get("item") ? `/library?${params.toString()}` : null;
+	const [citeMissing, setCiteMissing] = useState(false);
+	useEffect(() => {
+		if (!citeHref || items === null) return;
+		const citation = parseCitationHref(citeHref);
+		if (!citation) return;
+		const item = items.find((entry) => entry.id === citation.itemId);
+		setCiteMissing(!item);
+		if (item) {
+			const jump = { page: citation.page, quote: citation.quote, citation: true };
+			if (workspace) workspace.openItem(item, jump);
+			else pane?.open({ id: item.id, name: item.name, kind: item.kind, size: item.size, jump: { ...jump, nonce: Date.now() } });
+		}
+		router.replace("/library");
+	}, [citeHref, items, workspace, pane, router]);
 	const hasFiles = (event: DragEvent) => event.dataTransfer.types.includes("Files");
 
 	return (
@@ -465,13 +493,14 @@ export function LibraryView() {
 							}}
 						/>
 					</div>
-					<label className="flex h-9 items-center gap-2 rounded-md bg-card px-2.5 text-muted-foreground transition-colors focus-within:bg-accent pointer-coarse:h-11">
+					<div className="flex flex-wrap items-center gap-2">
+					<label className="flex h-9 min-w-[11rem] flex-[1_1_16rem] items-center gap-2 rounded-md bg-card px-2.5 text-muted-foreground transition-colors focus-within:bg-accent pointer-coarse:h-11">
 						<SearchIcon className="ui-icon shrink-0" aria-hidden="true" />
 						<input
 							type="search"
 							value={query}
-							placeholder="Search your Library"
-							aria-label="Search your Library"
+							placeholder={prefs.searchMode === "text" ? "Search inside your notes and files" : "Search your Library"}
+							aria-label={prefs.searchMode === "text" ? "Search inside your notes and files" : "Search your Library"}
 							data-testid="library-search"
 							onChange={(event) => setQuery(event.target.value)}
 							autoComplete="off"
@@ -479,6 +508,12 @@ export function LibraryView() {
 							className="min-w-0 flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground"
 						/>
 					</label>
+					<div role="radiogroup" aria-label="What to search" className="flex gap-1" data-testid="library-search-mode">
+						{([["names", "Names"], ["text", "Full text"]] as const).map(([mode, label]) => (
+							<button key={mode} type="button" role="radio" aria-checked={prefs.searchMode === mode} onClick={() => updatePrefs({ searchMode: mode })} data-testid={`library-search-mode-${mode}`} className={`${PILL} ${prefs.searchMode === mode ? "bg-accent text-foreground" : "text-ink-2"}`}>{label}</button>
+						))}
+					</div>
+					</div>
 					<nav aria-label="Library views" className="flex flex-wrap gap-1" data-testid="library-views">
 						{(Object.keys(VIEW_LABELS) as LibraryViewName[]).map((name) => (
 							<Link key={name} href={viewHref(name)} aria-current={view === name ? "page" : undefined} className={`${PILL} ${view === name ? "bg-accent text-foreground" : "text-ink-2"}`}>{VIEW_LABELS[name]}</Link>
@@ -560,7 +595,10 @@ export function LibraryView() {
 							<Link href={folderHref(null)} className="prompt-secondary">Back to Library</Link>
 						</div>
 					)}
-					{view === "trash" ? (
+					{citeMissing && <p role="status" className="text-ink-2" data-testid="library-citation-missing">That document is no longer in your Library, so the citation can't be checked.</p>}
+					{prefs.searchMode === "text" && view !== "trash" ? (
+						<DocumentSearchPanel query={query} kind={kind} tag={tag} folders={folders} />
+					) : view === "trash" ? (
 						<LibraryTrash entries={trash} failed={trashFailed} failure={trashFailure} onRetry={() => void refreshTrash()} onRestore={(entry) => void restoreEntry(entry)} onPurge={setPurging} />
 					) : (
 						<LibraryBody

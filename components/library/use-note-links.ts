@@ -5,7 +5,7 @@
  *  keeps the last good catalog. */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useServerEvent, useServerResync } from "@/components/server-events";
-import type { LibraryItem, LibraryTombstone } from "@/src/core";
+import type { DocJump, DocumentCitation, LibraryItem, LibraryTombstone } from "@/src/core";
 import { isTombstone } from "@/src/core";
 import { resolveWikiTarget, wikiTable, type WikiResolution, type WikiTable } from "@/src/core";
 import type { WikiBridge } from "./page-note-views.ts";
@@ -66,4 +66,17 @@ export function jumpToSource(href: string, push: (href: string) => void) {
 		return;
 	}
 	push(href);
+}
+
+/** Where a citation points, or null when its document is gone (feature 020). */
+export async function openCitation(citation: DocumentCitation): Promise<{ item: LibraryItem; jump: DocJump } | null> {
+	try {
+		const response = await fetch("/api/library", { cache: "no-store" });
+		if (!response.ok) return null;
+		const { items } = await response.json() as { items: LibraryItem[] };
+		const item = items.find((entry) => entry.id === citation.itemId);
+		return item ? { item, jump: { page: citation.page, quote: citation.quote, citation: true } } : null;
+	} catch {
+		return null;
+	}
 }

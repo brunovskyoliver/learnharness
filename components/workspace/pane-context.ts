@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import type { LibraryKind } from "@/src/core";
+import type { DocJump, LibraryKind } from "@/src/core";
 
 /** What the pane has open. Small and free of the editor, so it can sit in the
  *  layout; the pane itself loads on the first open (research R14). The @ menu
@@ -13,6 +13,8 @@ export interface PaneItem {
 	size: number;
 	/** Open on its version list, from a transcript row. */
 	history?: boolean;
+	/** Where to land: a search hit or a citation (features 019-020). Not saved. */
+	jump?: DocJump;
 }
 
 export interface PagePaneApi {

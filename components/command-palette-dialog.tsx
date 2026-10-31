@@ -3,6 +3,8 @@
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState, type RefObject } from "react";
 import { BookOpenIcon, DumbbellIcon, FileTextIcon, FolderIcon, SearchIcon, ZapIcon } from "lucide-react";
+import { DocSnippetText } from "@/components/library/doc-snippet";
+import { useDocumentSearch } from "@/components/library/use-document-search";
 import { createBlankPage, createStudyNotes, SAVE_PASSAGE_EVENT, usePagePane } from "@/components/library/page-pane-api";
 import { useSessionList, useSessionListDemand } from "@/components/session-list";
 import { useSettingsDialog } from "@/components/settings/settings-dialog.tsx";
@@ -11,7 +13,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { useLibrarySnapshot } from "@/components/workspace/library-snapshot";
 import { useWorkspace } from "@/components/workspace/workspace-context";
 import { cn } from "@/lib/utils";
-import { buildPaletteEntries, chatIdOfPath, kbdEventForAction, rankPalette, type PaletteActionId, type PaletteEntry, type PaletteGroup } from "@/src/core";
+import { buildPaletteEntries, chatIdOfPath, docCountText, kbdEventForAction, passageGroup, rankPalette, type PaletteActionId, type PaletteEntry, type PaletteGroup } from "@/src/core";
 
 export interface CommandPaletteProps {
 	open: boolean;
@@ -68,7 +70,10 @@ export function PaletteList({ groups, activeId, listId, optionId, onHover, onPic
 							className={cn("flex min-h-9 cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1 text-base text-foreground pointer-coarse:min-h-11", entry.id === activeId && "bg-card")}
 						>
 							<EntryIcon entry={entry} />
-							<span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{entry.label}</span>
+							<span className="flex min-w-0 flex-1 flex-col [overflow-wrap:anywhere]">
+							{entry.label}
+							{entry.kind === "passage" && entry.hit.snippet && <DocSnippetText snippet={entry.hit.snippet} className="text-sm text-ink-2" />}
+						</span>
 							{entry.meta && <span className="min-w-0 shrink-[2] truncate text-sm text-muted-foreground">{entry.meta}</span>}
 						</div>
 					))}
@@ -111,7 +116,12 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 	const sessionId = chatIdOfPath(pathname);
 	const inLesson = sessionId !== null && chats?.find((chat) => chat.id === sessionId)?.kind !== "practice";
 	const entries = useMemo(() => buildPaletteEntries({ inSession, inLesson, chats: chats ?? [], items: library.items ?? [], folders: library.folders }), [inSession, inLesson, chats, library.items, library.folders]);
-	const groups = useMemo(() => rankPalette(entries, query), [entries, query]);
+	const documents = useDocumentSearch({ query, limit: 8 }, open);
+	const groups = useMemo(() => {
+		const ranked = rankPalette(entries, query);
+		const found = query.trim() ? passageGroup(documents.response?.results ?? []) : null;
+		return found ? [...ranked, found] : ranked;
+	}, [entries, query, documents.response]);
 	const flat = useMemo(() => groups.flatMap((group) => group.entries), [groups]);
 	const active = flat.find((entry) => entry.id === activeId) ?? flat[0] ?? null;
 	const optionId = (entry: PaletteEntry) => `${baseId}-${entry.id.replace(/[^a-zA-Z0-9_-]/g, "_")}`;
@@ -186,6 +196,10 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 		skipReturn.current = true;
 		close();
 		if (sidebar.overlay) sidebar.close();
+		if (entry.kind === "passage") {
+			workspace?.openItem({ id: entry.hit.itemId, name: entry.hit.name, kind: entry.hit.kind, size: entry.hit.size }, entry.hit.jump ?? undefined);
+			return;
+		}
 		workspace?.openItem(entry.item);
 	};
 
@@ -246,7 +260,15 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 				</label>
 				{failure && <p role="alert" data-testid="command-palette-failure" className="px-3 pb-1 text-sm text-destructive">{failure}</p>}
 				<PaletteList groups={groups} activeId={active?.id ?? null} listId={listId} optionId={optionId} onHover={setActiveId} onPick={pick} />
-				{flat.length === 0 && query.trim() !== "" && <p role="status" data-testid="command-palette-empty" className="px-3 pb-3 text-sm text-ink-2">Nothing matched</p>}
+				{flat.length === 0 && query.trim() !== "" && documents.phase !== "searching" && <p role="status" data-testid="command-palette-empty" className="px-3 pb-3 text-sm text-ink-2">Nothing matched</p>}
+				{documents.phase === "searching" && <p role="status" className="px-3 pb-2 text-sm text-muted-foreground">Searching inside your documents…</p>}
+				{documents.phase === "failed" && (
+					<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-ink-2">
+						<p>Your documents could not be searched.</p>
+						<button type="button" className="prompt-secondary" onClick={documents.retry}>Try again</button>
+					</div>
+				)}
+				{documents.response && documents.phase === "done" && <p role="status" aria-live="polite" className="sr-only" data-testid="command-palette-doc-count">{docCountText(documents.response.results.length, documents.response.total)} inside your documents</p>}
 				{/* Each source reports for itself: the others stay usable. */}
 				{librarySettling && library.items === null && !library.failed && <p role="status" className="px-3 pb-2 text-sm text-muted-foreground">Loading your Library…</p>}
 				{library.failed && (

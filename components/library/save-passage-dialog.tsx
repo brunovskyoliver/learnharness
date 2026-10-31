@@ -26,7 +26,25 @@ async function postPassage(pageId: string, chatId: string, passage: PassageSelec
 	}
 }
 
-export function SavePassageDialog({ chatId, passage, onClose }: { chatId: string; passage: PassageSelection; onClose: () => void }) {
+async function postDocumentPassage(pageId: string, source: DocumentPassage): Promise<string | null> {
+	try {
+		const response = await fetch(`/api/library/pages/${encodeURIComponent(pageId)}/document-passages`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(source),
+		});
+		if (response.ok) return null;
+		return ((await response.json().catch(() => ({}))) as { error?: string }).error ?? "The passage could not be saved.";
+	} catch {
+		return "The passage could not be saved. Check your connection and try again.";
+	}
+}
+
+/** A passage from a PDF (feature 020): the page travels with it as a citation. */
+export interface DocumentPassage { itemId: string; page: number; text: string }
+
+/** `chatId` and `passage` for a lesson's words; `document` for a PDF's. */
+export function SavePassageDialog({ chatId, passage, document: fromDocument, onClose }: { chatId?: string; passage?: PassageSelection; document?: DocumentPassage; onClose: () => void }) {
 	const library = useLibrarySnapshot(true);
 	const workspace = useWorkspace();
 	const [query, setQuery] = useState("");
@@ -38,7 +56,7 @@ export function SavePassageDialog({ chatId, passage, onClose }: { chatId: string
 	const saveTo = async (page: LibraryItem) => {
 		setBusy(true);
 		setError(null);
-		const refusal = await postPassage(page.id, chatId, passage);
+		const refusal = fromDocument ? await postDocumentPassage(page.id, fromDocument) : await postPassage(page.id, chatId!, passage!);
 		setBusy(false);
 		if (refusal) setError(refusal);
 		else setSaved(page);
@@ -65,7 +83,7 @@ export function SavePassageDialog({ chatId, passage, onClose }: { chatId: string
 				<DialogTitle className="title-serif text-[17px] font-medium">{saved ? "Saved" : "Save to a page"}</DialogTitle>
 				{saved ? (
 					<>
-						<p role="status" className="text-sm text-ink-2" data-testid="save-passage-saved">Saved to {saved.name}, with a link back to this lesson.</p>
+						<p role="status" className="text-sm text-ink-2" data-testid="save-passage-saved">Saved to {saved.name}, {fromDocument ? `with a citation to page ${fromDocument.page}` : "with a link back to this lesson"}.</p>
 						<div className="flex flex-wrap gap-2">
 							<button type="button" className="prompt-secondary" data-testid="save-passage-open" onClick={() => { workspace?.openItem(saved); onClose(); }}>Open page</button>
 							<button type="button" className="prompt-primary" onClick={onClose}>Done</button>
@@ -73,7 +91,7 @@ export function SavePassageDialog({ chatId, passage, onClose }: { chatId: string
 					</>
 				) : (
 					<>
-						<p className="max-h-24 overflow-y-auto rounded-[6px] bg-background px-2 py-1 text-sm text-ink-2 [overflow-wrap:anywhere] [scrollbar-width:none]" data-testid="save-passage-preview">{passage.markdown}</p>
+						<p className="max-h-24 overflow-y-auto rounded-[6px] bg-background px-2 py-1 text-sm text-ink-2 [overflow-wrap:anywhere] [scrollbar-width:none]" data-testid="save-passage-preview">{fromDocument?.text ?? passage?.markdown}</p>
 						<label className="flex flex-col gap-1 text-sm font-medium text-ink-2">
 							Find a page, or name a new one
 							<input

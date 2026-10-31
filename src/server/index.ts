@@ -49,5 +49,6 @@ export { subscriptionControlsResponse, subscriptionBrowserResponse } from "./web
 export { sessionCost } from "./pricing.ts";
 export * from "./library.ts";
 export * from "./notes.ts";
+export * from "./documents.ts";
 export { resolveSteerReferences } from "./library-references.ts";
 export { tokenize } from "../agent/tokenizer.ts";

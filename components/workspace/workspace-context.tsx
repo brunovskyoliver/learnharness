@@ -7,7 +7,7 @@ import { SessionAccountContext } from "@/components/session-state";
 import { SessionStateStore, WORKSPACE_STATE_ID } from "@/components/session-state-store";
 import { useSessionList, useSessionListDemand } from "@/components/session-list";
 import { useServerEvent, useServerResync } from "@/components/server-events";
-import { chatIdOfPath, closeTab, itemTab, itemTabId, kbdEventForAction, openTab, parseTabs, reconcileItemTabs, reconcileSessionTabs, selectedTabId, sessionTab, sessionTabId, tabRef, UNTITLED_SESSION, type LibraryItem, type LibraryKind, type WorkspaceTab } from "@/src/core";
+import { chatIdOfPath, closeTab, itemTab, itemTabId, kbdEventForAction, openTab, parseTabs, reconcileItemTabs, reconcileSessionTabs, selectedTabId, sessionTab, sessionTabId, tabRef, UNTITLED_SESSION, type DocJump, type LibraryItem, type LibraryKind, type WorkspaceTab } from "@/src/core";
 
 const DESKTOP_QUERY = "(min-width: 768px)";
 
@@ -24,7 +24,8 @@ export interface WorkspaceApi {
 	pendingId: string | null;
 	activate: (tab: WorkspaceTab) => void;
 	close: (id: string) => void;
-	openItem: (item: OpenableItem) => void;
+	/** `jump` lands on a search hit or a citation. */
+	openItem: (item: OpenableItem, jump?: DocJump) => void;
 	/** This route can show the right pane. */
 	paneRoute: boolean;
 	/** Something is in the pane, rather than nothing or the context view. */
@@ -50,9 +51,9 @@ export function useWorkspace() {
 	return useContext(WorkspaceContext);
 }
 
-export const NEW_TAB_ITEM_KINDS: readonly LibraryKind[] = ["pdf", "image"];
+export const NEW_TAB_ITEM_KINDS: readonly LibraryKind[] = ["image"];
 
-/** PDF and images open in a browser tab, and anything else the pane can't show
+/** Images open in a browser tab, and anything else the pane can't show
  *  downloads: the Library row's three doors, for callers without an anchor. */
 function openOutsidePane(item: OpenableItem) {
 	const newTab = NEW_TAB_ITEM_KINDS.includes(item.kind);
@@ -175,11 +176,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 		store.set("paneCollapsed", false);
 	}, [store]);
 
-	const openItem = useCallback((item: OpenableItem) => {
-		const readable = item.kind !== "pdf" && item.kind !== "image" && item.kind !== "other";
+	const openItem = useCallback((item: OpenableItem, jump?: DocJump) => {
+		const readable = item.kind !== "image" && item.kind !== "other";
 		if (!readable) { openOutsidePane(item); return; }
-		if (paneItemId === item.id) { setLast(itemTabId(item.id)); expandPane(); }
-		else pane?.open({ id: item.id, name: item.name, kind: item.kind, size: item.size });
+		const target = jump ? { jump: { ...jump, nonce: Date.now() } } : {};
+		if (paneItemId === item.id) {
+			setLast(itemTabId(item.id));
+			expandPane();
+			if (jump) pane?.update({ id: item.id, name: item.name, kind: item.kind, size: pane.item?.size ?? item.size, ...target });
+		} else pane?.open({ id: item.id, name: item.name, kind: item.kind, size: item.size, ...target });
 		// The pane follows the learner; Home and new drafts have no room for it.
 		if (!paneRoute) navigate("/library", itemTabId(item.id));
 	}, [pane, paneItemId, paneRoute, navigate, expandPane]);

@@ -52,6 +52,8 @@ export interface ServerEvents {
 	"compaction-changed": { chatId: string; running: boolean };
 	/** A Library item changed (feature 009). Open views refetch. */
 	"library-changed": { itemId?: string; version?: number; author?: "learner" | "agent" };
+	/** The search index moved on (feature 019). Open search views refetch. */
+	"library-index-changed": { building: boolean };
 }
 
 export type ServerEventType = keyof ServerEvents;
@@ -69,6 +71,7 @@ export const SERVER_EVENT_TYPES = [
 	"record-changed",
 	"compaction-changed",
 	"library-changed",
+	"library-index-changed",
 ] as const satisfies readonly ServerEventType[];
 
 /** One notification: the type discriminates the payload. */

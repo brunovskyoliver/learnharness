@@ -57,6 +57,7 @@ import { DemoPanel } from "@/components/artifacts/demo-panel";
 import { PagePaneSlot, usePagePane } from "@/components/library/page-pane-context";
 import { SessionContextSlot } from "@/components/workspace/context-slot";
 import { TranscriptPassages } from "@/components/transcript-passages";
+import { UserTurnText } from "@/components/user-turn-text";
 import { useWorkspace } from "@/components/workspace/workspace-context";
 import { isShownPageFailure } from "@/components/library/page-row";
 import { DemoPanelContext, sessionDemos, type DemoPanelApi } from "@/components/artifacts/demo-panel-context";
@@ -1520,7 +1521,7 @@ function ChatView({
 													<ReferencesCard key={pi} references={(part.data as { references: LibraryReference[] }).references} />
 												) : null)}
 												<div className="lh-prose whitespace-pre-wrap text-foreground">
-													{m.parts.filter((p) => p.type === "text").map((p) => p.text).join("\n")}
+													<UserTurnText text={m.parts.filter((p) => p.type === "text").map((p) => p.text).join("\n")} />
 												</div>
 											</div>
 									) : (

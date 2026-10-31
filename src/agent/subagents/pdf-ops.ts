@@ -157,6 +157,30 @@ export async function pdfOutline(filePath: string): Promise<string[]> {
 	}
 }
 
+/** Each page's text with its line breaks, for the search index and quote checks.
+ *  Yields between pages so requests get through. */
+export async function pdfPageTexts(filePath: string): Promise<string[]> {
+	const { doc, task } = await openDocument(filePath);
+	try {
+		const pages: string[] = [];
+		for (let i = 1; i <= doc.numPages; i++) {
+			const page = await doc.getPage(i);
+			const content = await page.getTextContent();
+			let text = "";
+			for (const item of content.items as { str?: unknown; hasEOL?: unknown }[]) {
+				if (typeof item.str === "string") text += item.str;
+				if (item.hasEOL) text += "\n";
+			}
+			pages.push(text);
+			page.cleanup();
+			await new Promise((resolve) => setImmediate(resolve));
+		}
+		return pages;
+	} finally {
+		await task.destroy();
+	}
+}
+
 /** Parse 'all' | '1-5' | '1,3,7' | '3' into a sorted 1-indexed page list. */
 export function parsePageSpec(spec: string, total: number): number[] {
 	const trimmed = spec.trim().toLowerCase();

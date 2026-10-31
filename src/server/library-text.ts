@@ -92,6 +92,15 @@ function enqueue(item: LibraryItem): Promise<unknown> {
 	return slot.tail;
 }
 
+/** Runs on this tenant's PDF queue: pdfjs parses on the main thread, so only one
+ *  piece of PDF work runs at a time, and never inside a request. */
+export function enqueuePdfWork<T>(work: () => Promise<T>): Promise<T> {
+	const slot = queue();
+	const run = slot.tail.then(work, work);
+	slot.tail = run.catch(() => {});
+	return run;
+}
+
 /** After an upload, in the background. Images have no text to index. */
 export function indexAfterUpload(item: LibraryItem): void {
 	if (item.kind === "image" || item.kind === "other" || item.kind === "page") return;

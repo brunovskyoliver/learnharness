@@ -4,7 +4,7 @@ import { NodeSelection } from "@tiptap/pm/state";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import type { LibraryItem } from "@/src/core";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
-import { createSourceLinks, createTutorHighlights, insertFormula, PagePlaceholder, pageStats, runSlashBlock, sourceLinkAt, sourceLinksKey, tutorHighlightsKey, wikiLinkBeside, type PageStats, type TutorHighlights } from "./page-editor-extras.ts";
+import { createSourceLinks, findBlockHolding, createTutorHighlights, insertFormula, PagePlaceholder, pageStats, runSlashBlock, sourceLinkAt, sourceLinksKey, tutorHighlightsKey, wikiLinkBeside, type PageStats, type TutorHighlights } from "./page-editor-extras.ts";
 import { isWikiTarget, wikiQuery } from "@/src/core";
 import { matchMentions } from "@/src/core";
 import type { WikiBridge } from "./page-note-views.ts";
@@ -29,6 +29,9 @@ export interface PageEditorHandle {
 	focus: () => void;
 	/** Puts the caret at a heading and scrolls to it (the outline). */
 	jumpTo: (pos: number) => void;
+	/** Scrolls to the first block holding `quote`, or else a term, and marks it for
+	 *  a moment (feature 019). The text stays as it is. False when none is there. */
+	jumpToText: (quote: string | undefined, terms: readonly string[] | undefined) => boolean;
 	/** Where an image chosen now would go: after the block holding the caret. */
 	imagePosition: () => number;
 	/** Inserts an uploaded image, in a paragraph of its own, at `at`. */
@@ -349,6 +352,18 @@ export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, 
 			const pos = Math.min(at, current.state.doc.content.size);
 			// The caret follows the image, so a next one goes after it.
 			current.chain().insertContentAt(pos, { type: "paragraph", content: [{ type: "pageImage", attrs: { ...attrs, title: null } }] }).setTextSelection(pos + 2).run();
+		},
+		jumpToText: (quote, terms) => {
+			const current = editorRef.current;
+			if (!current || current.isDestroyed) return false;
+			const pos = findBlockHolding(current.state.doc, quote, terms);
+			if (pos === null) return false;
+			const dom = current.view.nodeDOM(pos) as HTMLElement | null;
+			dom?.scrollIntoView({ block: "center" });
+			dom?.classList.add("lh-jump-flash");
+			dom?.setAttribute("data-page-jump", "");
+			window.setTimeout(() => { dom?.classList.remove("lh-jump-flash"); dom?.removeAttribute("data-page-jump"); }, 2400);
+			return true;
 		},
 		jumpTo: (pos: number) => {
 			const current = editorRef.current;

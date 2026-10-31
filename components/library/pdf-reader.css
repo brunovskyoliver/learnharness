@@ -1,0 +1,27 @@
+/* The reader's text layer, the parts of pdf.js's own stylesheet it needs, and its
+   marks. Loaded with the reader, so it costs nothing until a PDF opens. */
+.lh-pdf-page { position: relative; margin-inline: auto; background: #fff; }
+.lh-pdf-page canvas { display: block; width: 100%; height: 100%; }
+.lh-pdf-text { position: absolute; inset: 0; overflow: clip; opacity: 1; line-height: 1; text-align: initial; letter-spacing: normal; word-spacing: normal; text-size-adjust: none; forced-color-adjust: none; transform-origin: 0 0; caret-color: CanvasText; z-index: 2;
+	--min-font-size: 1;
+	--text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+	--min-font-size-inv: calc(1 / var(--min-font-size));
+}
+.lh-pdf-text :is(span, br) { color: transparent; position: absolute; white-space: pre; cursor: text; transform-origin: 0% 0%; user-select: text; }
+.lh-pdf-text > :not(.markedContent), .lh-pdf-text .markedContent span:not(.markedContent) { z-index: 1; --font-height: 0; font-size: calc(var(--text-scale-factor) * var(--font-height)); --scale-x: 1; --rotate: 0deg; transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv)); }
+.lh-pdf-text .markedContent { display: contents; }
+.lh-pdf-text ::selection { background: rgb(40 110 220 / 35%); }
+.lh-pdf-text br::selection { background: transparent; }
+
+/* Marks sit between the paper and the text. Colour on paper is data, like a chart's,
+   so the accent stays reserved. A note also underlines: never colour alone. */
+.lh-pdf-marks { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.lh-pdf-mark { position: absolute; background: rgb(255 214 64 / 45%); mix-blend-mode: multiply; }
+.lh-pdf-mark[data-noted] { border-bottom: 2px solid rgb(90 60 0); }
+.lh-pdf-cite { position: absolute; background: rgb(60 140 255 / 30%); outline: 2px solid rgb(20 80 190); outline-offset: 0; mix-blend-mode: multiply; }
+
+.lh-pdf-bubble { position: fixed; z-index: 40; display: flex; max-width: min(22rem, calc(100vw - 1rem)); flex-wrap: wrap; align-items: center; gap: 0.25rem; border-radius: 10px; background: var(--popover); padding: 0.25rem; }
+.lh-pdf-bubble button { display: inline-flex; min-height: 2rem; align-items: center; border-radius: 6px; padding-inline: 0.5rem; color: var(--foreground); font-size: 0.8125rem; }
+.lh-pdf-bubble button:hover { background: var(--card); }
+.lh-pdf-bubble button:focus-visible { outline: 1px solid var(--ring); outline-offset: 1px; }
+@media (pointer: coarse) { .lh-pdf-bubble button { min-height: 2.75rem; min-width: 2.75rem; padding-inline: 0.75rem; } }

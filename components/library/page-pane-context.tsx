@@ -27,7 +27,10 @@ export function PagePaneProvider({ children }: { children: ReactNode }) {
 	}, [store]);
 	const remember = useCallback((next: PaneItem | null) => {
 		setItem(next);
-		store.set(STATE_KEY, next);
+		if (next) {
+			const { jump: _jump, ...kept } = next;
+			store.set(STATE_KEY, kept);
+		} else store.set(STATE_KEY, null);
 	}, [store]);
 	const open = useCallback((next: PaneItem) => {
 		remember(next);
@@ -49,5 +52,5 @@ export function PagePaneSlot() {
 	return <PagePane key={pane.item.id} item={pane.item} pane={pane} />;
 }
 
-/** The kinds the pane shows. PDF and images open in a new tab; `other` downloads. */
-export const opensInPane = (kind: LibraryKind) => kind !== "pdf" && kind !== "image" && kind !== "other";
+/** The kinds the pane shows. Images open in a new tab; `other` downloads. */
+export const opensInPane = (kind: LibraryKind) => kind !== "image" && kind !== "other";

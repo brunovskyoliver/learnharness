@@ -6,7 +6,7 @@ import { Plugin, PluginKey } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { OPEN_MATH_SOURCE_EVENT } from "./page-math-view.ts";
 import type { SlashBlock } from "./page-slash.ts";
-import { sourceHrefChat } from "@/src/core";
+import { foldText, parseCitationHref, sourceHrefChat } from "@/src/core";
 
 export const PAGE_PLACEHOLDER = "Start writing, or type / for headings, lists, tables and formulas.";
 
@@ -194,7 +194,11 @@ export function createSourceLinks() {
 			if (!node.isText) return true;
 			const href = node.marks.find((mark) => mark.type.name === "link")?.attrs.href;
 			const source = typeof href === "string" ? sourceHrefChat(href) : null;
-			if (!source) return false;
+			if (!source) {
+				// A PDF citation (feature 020) follows the same way; the viewer checks it.
+				if (typeof href === "string" && parseCitationHref(href)) decorations.push(Decoration.inline(pos, pos + node.nodeSize, { class: "lh-source-link", "data-testid": "page-citation-link" }));
+				return false;
+			}
 			const missing = gone.has(source.chatId);
 			decorations.push(Decoration.inline(pos, pos + node.nodeSize, { class: missing ? "lh-source-link lh-source-gone" : "lh-source-link", "data-testid": "page-source-link", ...(missing ? { "data-source-gone": "" } : {}) }));
 			if (missing) decorations.push(Decoration.widget(pos + node.nodeSize, () => {
@@ -227,11 +231,28 @@ export function createSourceLinks() {
 	});
 }
 
+/** The first text block holding the quote, or failing that the first term. Compares
+ *  folded, so case, accents and spacing don't matter. Null when neither is there. */
+export function findBlockHolding(doc: import("@tiptap/pm/model").Node, quote: string | undefined, terms: readonly string[] | undefined): number | null {
+	const needles = [quote ? foldText(quote) : "", ...(terms ?? []).map((term) => foldText(term))].filter(Boolean);
+	for (const needle of needles) {
+		let found: number | null = null;
+		doc.descendants((node, pos) => {
+			if (found !== null) return false;
+			if (!node.isTextblock) return true;
+			if (foldText(node.textContent).includes(needle)) found = pos;
+			return false;
+		});
+		if (found !== null) return found;
+	}
+	return null;
+}
+
 /** The session link under a click or the caret, if any. */
 export function sourceLinkAt(doc: import("@tiptap/pm/model").Node, pos: number): string | null {
 	const at = Math.min(pos, doc.content.size);
 	const marks = [...(doc.nodeAt(at)?.marks ?? []), ...doc.resolve(at).marks()];
-	const href = marks.find((mark) => mark.type.name === "link" && typeof mark.attrs.href === "string" && sourceHrefChat(mark.attrs.href))?.attrs.href;
+	const href = marks.find((mark) => mark.type.name === "link" && typeof mark.attrs.href === "string" && (sourceHrefChat(mark.attrs.href) || parseCitationHref(mark.attrs.href)))?.attrs.href;
 	return typeof href === "string" ? href : null;
 }
 

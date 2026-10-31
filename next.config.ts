@@ -83,6 +83,11 @@ const nextConfig: NextConfig = {
 			"node_modules/@puppeteer/browsers/lib/browser-data/**/*.js",
 			"node_modules/pdfjs-dist/legacy/**/*",
 			"node_modules/pdfjs-dist/standard_fonts/**/*",
+			// The in-app reader's own assets, served by app/pdfjs (feature 020):
+			// no CDN, so hosted and desktop builds carry them.
+			"node_modules/pdfjs-dist/cmaps/**/*",
+			"node_modules/pdfjs-dist/wasm/**/*",
+			"node_modules/pdfjs-dist/iccs/**/*",
 			// Wave E (2026-10-10): pdf_render paints via @napi-rs/canvas — its
 			// platform binary (@napi-rs/canvas-<platform>-<arch>) is a dynamic
 			// optional-dep require the tracer cannot see. Builds run per-OS and

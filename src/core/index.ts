@@ -21,6 +21,8 @@ export * from "./library.ts";
 export * from "./library-refs.ts";
 export * from "./note-links.ts";
 export * from "./note-sources.ts";
+export * from "./document-search.ts";
+export * from "./document-anchors.ts";
 export * from "./chains.ts";
 export * from "./render-settings.ts";
 
