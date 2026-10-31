@@ -10,6 +10,7 @@
  */
 
 import type { LhMessage } from "./native-messages.ts";
+import type { WikiPins } from "./note-links.ts";
 import type {
 	ChatRecord,
 	ChatSettings,
@@ -241,7 +242,15 @@ export interface LibraryStore {
 	revisePageAsAgent(id: string, revision: AgentRevision): Promise<AgentRevisionResult>;
 	/** Clear origin.chatId from pages made in a deleted session. */
 	unlinkChat(chatId: string): Promise<void>;
+	/** Every live page's latest text, draft included, and the chats its versions name (feature 016). */
+	pageTexts(): Promise<PageText[]>;
+	/** What each page's wiki links meant when their target was renamed (feature 016). */
+	wikiPins(): Promise<WikiPins>;
+	/** Adds a block to the end as a new learner version, the draft committed first (feature 017). */
+	appendToPage(id: string, block: string, options: { chatId?: string }): Promise<{ item: LibraryItem; version: PageVersion } | "missing" | "too-large">;
 }
+
+export interface PageText { item: LibraryItem; text: string; chatIds: string[] }
 
 export interface PageCreateOptions { author: PageAuthor; chatId?: string; toolCallId?: string; folderId?: string | null }
 

@@ -6,7 +6,7 @@
 import { fuzzyScore } from "./fuzzy.ts";
 import { folderPathLabel, KIND_LABEL, type LibraryFolder, type LibraryItem } from "./library.ts";
 
-export type PaletteActionId = "new-lesson" | "new-practice" | "new-page" | "open-settings" | "open-home" | "toggle-sidebar" | "toggle-right-pane" | "choose-model" | "show-shortcuts" | "library-all" | "library-favorites" | "library-recent" | "library-archive" | "library-trash";
+export type PaletteActionId = "new-lesson" | "new-practice" | "new-page" | "open-settings" | "open-home" | "toggle-sidebar" | "toggle-right-pane" | "choose-model" | "show-shortcuts" | "library-all" | "library-favorites" | "library-recent" | "library-archive" | "library-trash" | "study-notes" | "save-passage";
 
 export type PaletteEntry =
 	| { kind: "action"; id: string; action: PaletteActionId; label: string; meta?: string; keywords: string[] }
@@ -23,7 +23,7 @@ const action = (id: PaletteActionId, label: string, keywords: string[], meta?: s
 
 /** Actions in the order they list with no query. `inSession` adds what only a
  *  session's composer can answer. */
-export function paletteActions(inSession: boolean): PaletteEntry[] {
+export function paletteActions(inSession: boolean, inLesson = false): PaletteEntry[] {
 	return [
 		action("new-lesson", "New lesson", ["session", "teach", "start"]),
 		action("new-practice", "New practice", ["session", "problem", "start"]),
@@ -38,6 +38,8 @@ export function paletteActions(inSession: boolean): PaletteEntry[] {
 		action("toggle-sidebar", "Toggle sidebar", ["left", "pane", "panel", "navigation", "collapse"]),
 		action("toggle-right-pane", "Toggle right pane", ["context", "outline", "panel", "collapse", "demo", "page"]),
 		...(inSession ? [action("choose-model", "Choose a model", ["model", "selector", "composer"])] : []),
+		...(inLesson ? [action("study-notes", "Turn this lesson into study notes", ["page", "note", "summary", "extract"])] : []),
+		...(inSession ? [action("save-passage", "Save the selected text to a page", ["passage", "highlight", "note", "quote"])] : []),
 		action("show-shortcuts", "Show keyboard shortcuts", ["keys", "help", "cheat sheet"]),
 	];
 }
@@ -46,6 +48,7 @@ export function paletteActions(inSession: boolean): PaletteEntry[] {
  *  as they do in the @ list and the Library's own list. */
 export function buildPaletteEntries(input: {
 	inSession: boolean;
+	inLesson?: boolean;
 	chats: readonly { id: string; title: string; kind?: string }[];
 	items: readonly LibraryItem[];
 	folders: readonly LibraryFolder[];
@@ -63,7 +66,7 @@ export function buildPaletteEntries(input: {
 		const where = folderPathLabel(folder.parentId, folders);
 		return { kind: "folder", id: `folder:${folder.id}`, folderId: folder.id, label: folder.name, meta: where ? `Folder · ${where}` : "Folder", keywords: ["folder", where] };
 	});
-	return [...paletteActions(input.inSession), ...sessions, ...library, ...places];
+	return [...paletteActions(input.inSession, input.inLesson), ...sessions, ...library, ...places];
 }
 
 const RESULT_LIMIT = 50;

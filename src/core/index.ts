@@ -19,6 +19,8 @@ export * from "./contracts.ts";
 export * from "./ports.ts";
 export * from "./library.ts";
 export * from "./library-refs.ts";
+export * from "./note-links.ts";
+export * from "./note-sources.ts";
 export * from "./chains.ts";
 export * from "./render-settings.ts";
 

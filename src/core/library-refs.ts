@@ -40,7 +40,7 @@ function boundaryBefore(text: string, at: number): boolean {
 
 /** Half-open ranges of fenced blocks and closed inline code spans. An unclosed
  *  fence runs to the end; an unclosed backtick is plain text, as in Markdown. */
-function codeRanges(text: string): Array<[number, number]> {
+export function codeRanges(text: string): Array<[number, number]> {
 	const ranges: Array<[number, number]> = [];
 	let offset = 0;
 	let fence: { marker: string; start: number } | null = null;

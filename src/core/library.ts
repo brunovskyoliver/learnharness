@@ -230,7 +230,7 @@ export function formatBytes(bytes: number): string {
 /** Why a write was refused. Nothing is stored or changed on any of these. */
 // ── Pages (data-model.md) ──
 export type PageAuthor = "learner" | "agent";
-export type PageVersionCause = "save" | "autosave-close" | "before-agent" | "conflict" | "restore" | "agent-create" | "agent-revise" | "undo-agent";
+export type PageVersionCause = "save" | "autosave-close" | "before-agent" | "conflict" | "restore" | "agent-create" | "agent-revise" | "undo-agent" | "passage";
 export interface PageVersion {
 	n: number;
 	author: PageAuthor;

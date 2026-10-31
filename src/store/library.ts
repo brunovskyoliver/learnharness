@@ -17,7 +17,9 @@ import {
 	type LibraryCatalog, type LibraryFolder, type LibraryItem, type LibraryMarks, type LibraryTrashEntry, type LibraryKind, type LibraryOrigin, type LibraryRefusal, type LibraryTextState, type LibraryTombstone,
 	type PageDraft, type PageHead, type PageState, type PageStale, type PageVersion, type PageVersionCause, type PageWriteResult,
 } from "../core/library.ts";
-import type { AgentRevision, AgentRevisionResult, LibraryStore, PageCreateOptions } from "../core/ports.ts";
+import { scanWikiLinks, type WikiPins } from "../core/note-links.ts";
+import { appendBlock } from "../core/note-sources.ts";
+import type { AgentRevision, AgentRevisionResult, LibraryStore, PageCreateOptions, PageText } from "../core/ports.ts";
 
 const STALE_UPLOAD_MS = 24 * 60 * 60 * 1000;
 
@@ -267,6 +269,7 @@ async function rename(id: string, raw: string): Promise<LibraryItem | LibraryRef
 		const renamed: LibraryItem = { ...item, name, kind, ...(previous ? { previousNames: previous } : {}) };
 		replace(catalog, id, renamed);
 		await writeCatalog(catalog);
+		if (nameKey(name) !== nameKey(item.name)) await pinLinksTo(catalog, id, item.name);
 		emit("library-changed", { itemId: id });
 		return renamed;
 	});
@@ -516,6 +519,45 @@ async function purgeTrash(entryId: string): Promise<boolean> {
 		return true;
 	});
 }
+
+// ── Note links (feature 016) ──
+
+const pinsFile = () => path.join(PATHS.library, "wiki-pins.json");
+
+/** After a rename, pages linking to the old name keep meaning this item even if
+ *  another page later takes that name. A separate file, so an older app ignores
+ *  it. A failure here costs that protection, never the rename. */
+async function pinLinksTo(catalog: LibraryCatalog, id: string, oldName: string): Promise<void> {
+	try {
+		const key = nameKey(oldName.trim());
+		const pins = (await readJsonFile<WikiPins>(pinsFile())) ?? {};
+		let touched = false;
+		for (const page of liveItems(catalog).filter((i) => i.kind === "page")) {
+			const loaded = await loadPage(catalog, page.id);
+			if (!loaded || pins[page.id]?.[key]) continue;
+			const texts = [loaded.head.content, ...(loaded.draft ? [loaded.draft.content] : [])];
+			if (!texts.some((text) => scanWikiLinks(text).some(({ target }) => nameKey(target.trim()) === key))) continue;
+			pins[page.id] = { ...pins[page.id], [key]: id };
+			touched = true;
+		}
+		if (touched) await writeJsonFile(pinsFile(), pins);
+	} catch (err) {
+		console.error("[library] wiki links not pinned:", err);
+	}
+}
+
+const pageTexts = () => withLock(async (): Promise<PageText[]> => {
+	const catalog = await loadReconciled();
+	const out: PageText[] = [];
+	for (const item of liveItems(catalog)) {
+		if (item.kind !== "page") continue;
+		const page = await loadPage(catalog, item.id);
+		if (!page) continue;
+		const chatIds = [...new Set(page.versions.flatMap((v) => (v.chatId ? [v.chatId] : [])))];
+		out.push({ item, text: page.draft?.content ?? page.head.content, chatIds });
+	}
+	return out;
+});
 
 const recentFile = () => path.join(PATHS.library, "recent.json");
 const RECENT_KEPT = 50;
@@ -851,6 +893,36 @@ async function revisePageAsAgent(id: string, revision: AgentRevision): Promise<A
 	});
 }
 
+/** The learner's own action (a saved passage), so it is his version. His draft
+ *  goes in first, as his version too, so the new block lands after all of it. */
+async function appendToPage(id: string, block: string, options: { chatId?: string }): Promise<{ item: LibraryItem; version: PageVersion } | "missing" | "too-large"> {
+	return withLock(async () => {
+		const catalog = await readCatalog();
+		const page = await loadPage(catalog, id);
+		if (!page) return "missing";
+		const { head, draft } = page;
+		let { item, versions } = page;
+		let current = head.content;
+		if (tooLarge(appendBlock(draft?.content ?? current, block))) return "too-large";
+		if (draft && draft.content !== head.content) {
+			const saved = await appendVersion(catalog, item, versions, draft.content, { author: "learner", base: draft.base, cause: "save" });
+			item = saved.item;
+			versions = [...versions, saved.version];
+			current = draft.content;
+			changed(id, saved.version);
+		}
+		if (draft) await clearDraft(id);
+		const written = await appendVersion(catalog, item, versions, appendBlock(current, block), {
+			author: "learner",
+			base: versions.at(-1)!.n,
+			cause: "passage",
+			...(options.chatId ? { chatId: options.chatId } : {}),
+		});
+		changed(id, written.version);
+		return written;
+	});
+}
+
 /** A deleted session's agent-made pages stay, without their link (owner, 2026-10-30). */
 async function unlinkChat(chatId: string): Promise<void> {
 	await withLock(async () => {
@@ -942,6 +1014,9 @@ export const libraryStore: LibraryStore = {
 	restorePageVersion,
 	revisePageAsAgent,
 	unlinkChat,
+	pageTexts,
+	wikiPins: () => withLock(async () => (await readJsonFile<WikiPins>(pinsFile())) ?? {}),
+	appendToPage,
 	writeUpload,
 	folders: () => withLock(async () => [...foldersOf(await readCatalog())].sort((a, b) => a.name.localeCompare(b.name))),
 	createFolder,
