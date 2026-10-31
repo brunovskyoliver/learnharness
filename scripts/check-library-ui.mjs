@@ -690,6 +690,8 @@ try {
 		for (const width of [1440, 390, 320]) await checkEditorTools(width);
 		for (const width of [1440, 390]) await checkTutorActions(width);
 		for (const width of [1440, 390]) await checkTutorChanges(width);
+		for (const width of [1440, 390]) await checkOutlineExport(width);
+		for (const width of [1440, 390]) await checkPageImages(width);
 	}
 	if (!mentionsOnly && !pagesOnly) {
 		await checkLibrary();
@@ -699,6 +701,8 @@ try {
 		for (const width of [1440, 390, 320]) await checkEditorTools(width);
 		for (const width of [1440, 390]) await checkTutorActions(width);
 		for (const width of [1440, 390]) await checkTutorChanges(width);
+		for (const width of [1440, 390]) await checkOutlineExport(width);
+		for (const width of [1440, 390]) await checkPageImages(width);
 		await checkPageRows();
 		await checkPageAndDemo();
 	}
