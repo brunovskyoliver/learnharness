@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain
+- [x] No [NEEDS CLARIFICATION] markers remain
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -32,5 +32,5 @@
 ## Notes
 
 - The three scope questions (tutor actions, images, undo) were answered by the owner on 2026-10-31.
-- Open for /speckit-clarify: User Story 2, scenario 4 (tutor actions with no session beside the page); the out-of-scope slash-menu practice question; the exact new strings.
+- /speckit-clarify 2026-10-31 resolved the Library-view tutor actions, highlights on a later open and when they clear, and the slash-menu practice question. Exact new strings are settled in the plan.
 - "Markdown", "Ctrl/Cmd+K" and "Print" name what the learner sees, not the implementation.

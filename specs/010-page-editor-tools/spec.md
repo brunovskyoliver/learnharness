@@ -6,6 +6,8 @@
 
 **Status**: Draft
 
+**Out of scope**: a "Practice question" entry in the slash menu (owner, 2026-10-31); version names set by the tutor; per-character comparison.
+
 **Input**: Owner: make the canvas page editor work like ChatGPT Canvas or Notion pages. Scope comes from the approved review on the design canvas (https://claude.ai/artifact/NMvgNxmvrg2vHQ6bYwdn6z, boards "Proposed page editor" and "Tutor edits and history"):
 - a formatting toolbar, plus links with Ctrl+K and a link popover;
 - table controls, a slash menu and an empty-page placeholder;
@@ -28,6 +30,10 @@ Pages stay stored as Markdown with math; nothing may change stored bytes that we
   - Ask… opens the composer with the quote filled in, for the learner to finish.
 - Q: Where does a pasted, dropped or inserted image live? → A: It becomes a Library image item, under the existing 50 MB and image rules. The page stores a Markdown image link to that item. If the item is deleted, the page shows the image's alt text.
 - Q: What does "Undo the tutor's edit" do after the learner has typed since? → A: It reverts only the blocks the tutor changed, and the learner's later typing stays. A block both changed is left as it is, and a line says so. The undo is a new version in History.
+- Q: What do tutor actions do in the Library view, where no chat is beside the page? → A: They start a new session with the page beside it and send the message there, the same path "New page" uses when no pane is on screen.
+- Q: Are tutor edits made while the page was closed highlighted on the next open? → A: Yes. Every tutor version since the page was last open is highlighted together, with the same bar, step-through and Undo.
+- Q: When do the highlights clear? → A: On Done, or when the page is closed. They stay while the learner types, and a newer tutor edit adds its changes to those shown. Undo reverts every highlighted tutor change.
+- Q: Is the slash menu's "Practice question" in scope? → A: No. Quiz me on this covers it, and a question written into a page would carry its answer there (constitution II).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -63,7 +69,7 @@ The learner selects text on a page and asks the tutor to explain it, simplify it
 1. **Given** a selection, **Then** a bubble shows the formatting actions and Explain, Simpler, Quiz me on this and Ask….
 2. **Given** Explain, Simpler or Quiz me on this, **When** chosen, **Then** a message is sent at once in the session beside the page, with the page referenced and the selection quoted. The transcript labels it like any other referenced message.
 3. **Given** Ask…, **When** chosen, **Then** the composer gets focus with the quote filled in, and nothing is sent until the learner sends it.
-4. **Given** no session is beside the page (the Library view), **When** a tutor action is chosen, **Then** [behavior decided in /speckit-clarify].
+4. **Given** no session is beside the page (the Library view), **When** Explain, Simpler or Quiz me on this is chosen, **Then** a new session opens with the page beside it, and the message is sent there.
 5. **Given** a question is waiting for the learner's answer or a problem is active, **Then** tutor actions are unavailable, and a line says why.
 
 ---
@@ -78,10 +84,11 @@ When the tutor edits an open page, the learner sees exactly what changed, steps 
 
 **Acceptance Scenarios**:
 
-1. **Given** a tutor version arrives on a clean open page, **Then** its changed blocks are highlighted and a bar names the count ("The tutor changed 2 places · version 8"), with Previous, Next, "Undo the tutor's edit" and Done.
+1. **Given** a tutor version arrives on an open page, or arrived since the page was last open, **Then** its changed blocks are highlighted and a bar names the count ("The tutor changed 2 places · version 8"), with Previous, Next, "Undo the tutor's edit" and Done.
 2. **Given** removed text, **Then** it is shown struck through in muted ink until Done, and is never stored.
 3. **Given** the learner typed since, **When** they choose Undo, **Then** only the blocks the tutor changed revert. A block both changed stays, and a line names how many.
-4. **Given** Done, or leaving the page, **Then** the highlights clear and nothing in the stored text changes.
+4. **Given** Done, or closing the page, **Then** the highlights clear and nothing in the stored text changes. Typing does not clear them.
+5. **Given** highlights still shown, **When** another tutor version arrives, **Then** its changes join those shown, and Undo reverts all of them.
 
 ---
 
@@ -152,9 +159,9 @@ The learner pastes, drops or inserts an image, and it appears in the page.
 - **FR-005**: Tables MUST offer add or remove row, add or remove column, and delete table.
 - **FR-006**: An empty page MUST show a placeholder that is not stored.
 - **FR-007**: A selection MUST show a bubble with bold, italic, link, Explain, Simpler, Quiz me on this and Ask….
-- **FR-008**: Explain, Simpler and Quiz me on this MUST send a message at once in the beside-the-page session, referencing the page and quoting the selection. Ask… MUST only fill the composer.
+- **FR-008**: Explain, Simpler and Quiz me on this MUST send a message at once, referencing the page and quoting the selection. It goes to the beside-the-page session, or, in the Library view, to a new session opened with the page beside it. Ask… MUST only fill the composer.
 - **FR-009**: Tutor actions MUST follow constitution II. Quiz me on this produces a graded check, and the answer never reaches the client before the learner answers. Pages are never written while a question waits.
-- **FR-010**: A tutor version arriving on an open page MUST show its changed blocks highlighted, with step-through, Undo and Done.
+- **FR-010**: Tutor versions MUST show their changed blocks highlighted, with step-through, Undo and Done. This covers versions that arrive while the page is open and those since it was last open. The highlights stay until Done or close.
 - **FR-011**: Undo of a tutor edit MUST revert only the tutor's changed blocks, MUST keep the learner's later edits, and MUST be stored as a new version.
 - **FR-012**: History MUST show a block-level comparison with the previous version, and offer naming, renaming or clearing a version's name, and copying a version's Markdown.
 - **FR-013**: The pane MUST offer an outline of h1–h3 and a word count.
@@ -172,7 +179,7 @@ The learner pastes, drops or inserts an image, and it appears in the page.
 ### Key Entities
 
 - **Page version** (feature 009): gains an optional learner-given name.
-- **Tutor change set**: the blocks a tutor version changed relative to its base, used for highlighting and undo. Derived, never stored.
+- **Tutor change set**: the blocks the tutor versions changed since the learner last closed the page or pressed Done, used for highlighting and undo. Derived from versions; only the "last seen" version per page is stored.
 - **Library image item** (feature 009): the target of an image link in a page.
 
 ## Success Criteria *(mandatory)*
@@ -191,5 +198,4 @@ The learner pastes, drops or inserts an image, and it appears in the page.
 - The comparison is per block (paragraph, heading, list item, table, formula), not per character.
 - Version names are learner-only; the tutor cannot name versions.
 - Print uses the browser's own print dialog; no PDF library is added.
-- A "practice question" entry in the slash menu (shown on the canvas) is out of scope; Quiz me on this covers it. This is confirmed in /speckit-clarify.
 - Feature 009 bug fixes (.specify/bugs/page-editing-fixes) are in place.
