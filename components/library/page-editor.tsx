@@ -9,9 +9,15 @@ import { nodeJsonKey } from "./page-changes.ts";
 import { createPageCodec, pageExtensions } from "./page-markdown.ts";
 import { OPEN_MATH_SOURCE_EVENT } from "./page-math-view.ts";
 import { slashQuery, type SlashItem } from "./page-slash.ts";
-import { anchorBelowSelection, filterSlashItems, LinkPopover, PageBubble, PageToolbar, SlashMenu, type PageTutor } from "./page-toolbar.tsx";
+import { anchorBelowSelection, filterSlashItems, ImageAltPopover, LinkPopover, PageBubble, PageToolbar, SlashMenu, type PageTutor } from "./page-toolbar.tsx";
 
 const CHANGE_DELAY_MS = 120;
+
+/** The end of the top-level block holding `pos`: where a new image paragraph goes. */
+function afterBlock(doc: import("@tiptap/pm/model").Node, pos: number): number {
+	const $pos = doc.resolve(Math.min(pos, doc.content.size));
+	return $pos.depth === 0 ? $pos.pos : $pos.after(1);
+}
 
 export interface PageEditorHandle {
 	/** Hand over text still inside the short serialize delay. */
@@ -19,6 +25,10 @@ export interface PageEditorHandle {
 	focus: () => void;
 	/** Puts the caret at a heading and scrolls to it (the outline). */
 	jumpTo: (pos: number) => void;
+	/** Where an image chosen now would go: after the block holding the caret. */
+	imagePosition: () => number;
+	/** Inserts an uploaded image, in a paragraph of its own, at `at`. */
+	insertImage: (at: number, attrs: { src: string; alt: string }) => void;
 }
 
 /** What makes the surface a named, focusable text field. */
@@ -36,8 +46,12 @@ export function pageEditorAttributes(ariaLabel: string): Record<string, string> 
  *  stored Markdown, and answers with Markdown that is byte-identical until
  *  something is really edited (components/library/page-markdown.ts). A new
  *  `value` from outside comes with a new React key. */
-export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, ariaLabel, handle, tutor, highlights = null, onStats }: {
+export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, ariaLabel, handle, tutor, highlights = null, onStats, onImageFiles, onChooseImage }: {
 	value: string;
+	/** Image files pasted or dropped, and where they go. */
+	onImageFiles?: (files: File[], at: number) => void;
+	/** The Image button and slash row: open the file chooser. */
+	onChooseImage?: () => void;
 	/** Word count and headings, after each settled change. */
 	onStats?: (stats: PageStats) => void;
 	/** The tutor's changes to point at; decorations only, never stored. */
@@ -54,6 +68,8 @@ export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, 
 	onChangeRef.current = onChange;
 	const statsRef = useRef(onStats);
 	statsRef.current = onStats;
+	const imagesRef = useRef(onImageFiles);
+	imagesRef.current = onImageFiles;
 	const saveRef = useRef(onSaveShortcut);
 	saveRef.current = onSaveShortcut;
 	// The stored text at load only. The parent passes each edit back in `value`,
@@ -92,6 +108,21 @@ export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, 
 		immediatelyRender: false,
 		editorProps: {
 			attributes: pageEditorAttributes(ariaLabel),
+			handlePaste: (view, event) => {
+				const files = [...(event.clipboardData?.files ?? [])].filter((f) => f.type.startsWith("image/"));
+				if (files.length === 0 || !imagesRef.current) return false;
+				event.preventDefault();
+				imagesRef.current(files, afterBlock(view.state.doc, view.state.selection.from));
+				return true;
+			},
+			handleDrop: (view, event) => {
+				const files = [...(event.dataTransfer?.files ?? [])];
+				if (files.length === 0 || !imagesRef.current) return false;
+				event.preventDefault();
+				const at = view.posAtCoords({ left: event.clientX, top: event.clientY })?.pos ?? view.state.selection.from;
+				imagesRef.current(files, afterBlock(view.state.doc, at));
+				return true;
+			},
 			// A selected formula is not overwritten by a stray key; Backspace still removes it.
 			handleTextInput: (view) => {
 				const selection = view.state.selection;
@@ -177,7 +208,7 @@ export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, 
 	const slashText = slashState ? `/${slashState.query}` : null;
 	if (slashText === null || (slashDismissed.current !== null && slashDismissed.current !== slashText)) slashDismissed.current = null;
 	const slashOpen = !!slashState && slashDismissed.current === null;
-	const slashItems = useMemo(() => (slashState ? filterSlashItems(slashState.query).filter((item) => item.id !== "image") : []), [slashState]);
+	const slashItems = useMemo(() => (slashState ? filterSlashItems(slashState.query).filter((item) => item.id !== "image" || !!onChooseImage) : []), [slashState, onChooseImage]);
 	slashRef.current = slashOpen && slashState ? { items: slashItems, range: { from: slashState.from, to: slashState.to } } : null;
 	const slashActiveRef = useRef(0);
 	slashActiveRef.current = slashActive;
@@ -185,7 +216,7 @@ export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, 
 	const pickSlash = (item: SlashItem) => {
 		const range = slashRef.current?.range;
 		if (!editor || !range) return;
-		runSlashBlock(editor, item.id, range);
+		runSlashBlock(editor, item.id, range, () => onChooseImage?.());
 	};
 	const pickSlashRef = useRef(pickSlash);
 	pickSlashRef.current = pickSlash;
@@ -206,6 +237,17 @@ export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, 
 	useImperativeHandle(handle, () => ({
 		flush: () => { if (timer.current) emit(); },
 		focus: () => { editorRef.current?.commands.focus(); },
+		imagePosition: () => {
+			const current = editorRef.current;
+			return current ? afterBlock(current.state.doc, current.state.selection.from) : 0;
+		},
+		insertImage: (at, attrs) => {
+			const current = editorRef.current;
+			if (!current || current.isDestroyed) return;
+			const pos = Math.min(at, current.state.doc.content.size);
+			// The caret follows the image, so a next one goes after it.
+			current.chain().insertContentAt(pos, { type: "paragraph", content: [{ type: "pageImage", attrs: { ...attrs, title: null } }] }).setTextSelection(pos + 2).run();
+		},
 		jumpTo: (pos: number) => {
 			const current = editorRef.current;
 			if (!current) return;
@@ -216,7 +258,8 @@ export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, 
 
 	return (
 		<>
-			{editor && !readOnly && <PageToolbar editor={editor} onLink={() => openLinkRef.current()} tutor={tutor} />}
+			{editor && !readOnly && <PageToolbar editor={editor} onLink={() => openLinkRef.current()} tutor={tutor} onImage={onChooseImage} />}
+			{editor && !readOnly && <ImageAltPopover editor={editor} host={host.current} />}
 			{editor && !readOnly && <PageBubble editor={editor} tutor={tutor} onLink={() => openLinkRef.current()} />}
 			<div ref={host} className="lh-page-editor-host relative min-h-0 flex-1 overflow-y-auto">
 				<EditorContent editor={editor} className="min-h-full" />

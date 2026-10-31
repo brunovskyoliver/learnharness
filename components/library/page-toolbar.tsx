@@ -272,3 +272,50 @@ export function SlashMenu({ items, query, active, at, onPick }: { items: SlashIt
 }
 
 export { filterSlashItems };
+
+/** With an image selected: its alt text, editable (feature 010, US6). */
+export function ImageAltPopover({ editor, host }: { editor: Editor; host: HTMLElement | null }) {
+	const id = useId();
+	const image = useEditorState({
+		editor,
+		selector: ({ editor: e }) => {
+			const { selection } = e.state;
+			return selection instanceof NodeSelection && selection.node.type.name === "pageImage"
+				? { pos: selection.from, alt: String(selection.node.attrs.alt ?? "") }
+				: null;
+		},
+		equalityFn: (a, b) => a?.pos === b?.pos && a?.alt === b?.alt,
+	});
+	const [value, setValue] = useState("");
+	useEffect(() => { setValue(image?.alt ?? ""); }, [image?.pos, image?.alt]);
+	if (!image) return null;
+	const save = () => {
+		editor.chain().focus().command(({ tr }) => {
+			const node = tr.doc.nodeAt(image.pos);
+			if (!node || node.type.name !== "pageImage") return false;
+			tr.setNodeMarkup(image.pos, undefined, { ...node.attrs, alt: value.trim() });
+			return true;
+		}).run();
+	};
+	const at = anchorBelowSelection(editor, host);
+	return (
+		<div style={{ left: at.left, top: at.top }} className="absolute z-20 flex w-[min(18.5rem,calc(100%-1rem))] items-end gap-2 rounded-[10px] bg-popover p-3" data-testid="page-image-alt">
+			<span className="flex min-w-0 flex-1 flex-col gap-1">
+				<label htmlFor={id} className="text-sm font-medium text-ink-2">Alt text</label>
+				<input
+					id={id}
+					value={value}
+					onChange={(event) => setValue(event.currentTarget.value)}
+					onKeyDown={(event) => {
+						if (event.key === "Enter") { event.preventDefault(); save(); }
+						if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); editor.commands.focus(); }
+					}}
+					autoComplete="off"
+					data-testid="page-image-alt-input"
+					className="h-8 w-full rounded-[6px] border border-input bg-transparent px-2 text-base text-foreground pointer-coarse:h-11"
+				/>
+			</span>
+			<button type="button" className="prompt-secondary" onClick={save}>Save</button>
+		</div>
+	);
+}

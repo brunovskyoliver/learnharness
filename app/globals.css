@@ -1288,6 +1288,8 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 .lh-page-editor ul[data-type="taskList"] input[type="checkbox"] { width: 1rem; height: 1rem; accent-color: var(--primary); }
 .lh-page-raw, .lh-page-raw-inline { color: var(--ink-2); font-size: 13px; }
 .lh-page-image { display: inline-block; max-width: 100%; border-radius: 6px; }
+.lh-page-image-missing { display: inline-block; border-radius: 6px; background: var(--card); padding: 0.25rem 0.5rem; color: var(--ink-2); font-size: 0.875em; }
+.lh-page-editor .ProseMirror-selectednode .lh-page-image, .lh-page-editor .lh-page-image-host.ProseMirror-selectednode { outline: 1px solid var(--ring); outline-offset: 2px; }
 .demo-live button:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
 
 /* Small chrome actions share geometry; data/chart icons keep their own sizes. */

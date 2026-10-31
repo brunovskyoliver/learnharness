@@ -672,7 +672,8 @@ try {
 		if (!process.env.LH_UI_SKIP_FORMAT) for (const width of [1440, 390, 320]) await checkEditorTools(width);
 		if (!process.env.LH_UI_SKIP_ACTIONS) for (const width of [1440, 390]) await checkTutorActions(width);
 		if (!process.env.LH_UI_SKIP_CHANGES) for (const width of [1440, 390]) await checkTutorChanges(width);
-		for (const width of [1440, 390]) await checkOutlineExport(width);
+		if (!process.env.LH_UI_SKIP_EXPORT) for (const width of [1440, 390]) await checkOutlineExport(width);
+		for (const width of [1440, 390]) await checkPageImages(width);
 	} else if (fixesOnly) {
 		await checkPageFixes();
 	} else if (settingsOnly) {
@@ -1453,6 +1454,67 @@ async function checkOutlineExport(width) {
 	console.log(`PASS ${width}px export: copy is the stored Markdown, download is "${name}.md", print shows only the page`);
 	assert.deepEqual(errors, [], `${width}px: no browser exceptions`);
 	await context.close();
+}
+
+/** A 1x1 PNG, real enough for the upload's content check. */
+function png1x1() { return Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64"); }
+
+/** Feature 010 US6: an image chosen and one pasted become Library images linked
+ *  from the page; a deleted one shows its alt text. */
+async function checkPageImages(width) {
+	const page = await browser.newPage();
+	page.setDefaultTimeout(30000);
+	const errors = [];
+	page.on("pageerror", (error) => errors.push(error.message));
+	await page.setViewport({ width, height: width < 768 ? 800 : 900 });
+	const name = `Pictures ${width}`;
+	const made = await pageApi.create(name, "Before.\n");
+	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
+	for (let i = 0; i < 40 && !(await page.$('[data-testid="page-pane"]')); i++) {
+		await page.click(`[aria-label="Open ${name}"]`).catch(() => {});
+		await pause(500);
+	}
+	await page.waitForSelector(editor, { timeout: 60000 });
+	await page.click(`${editor} p`);
+	await pause(150);
+	// Chosen through the Image button's file input.
+	const chosen = await fixture(`whiteboard-${width}.png`, png1x1());
+	const [chooser] = await Promise.all([page.waitForFileChooser(), page.click('[data-testid="page-toolbar"] [aria-label="Image"]')]);
+	await chooser.accept([chosen]);
+	await page.waitForFunction(() => document.querySelectorAll('[data-testid="page-editor"] img.lh-page-image').length === 1, { timeout: 30000 });
+	await pause(150);
+	// Pasted from the clipboard.
+	await page.evaluate((b64) => {
+		const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+		const data = new DataTransfer();
+		data.items.add(new File([bytes], "pasted.png", { type: "image/png" }));
+		document.querySelector('[data-testid="page-editor"]').dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
+	}, png1x1().toString("base64"));
+	await page.waitForFunction(() => document.querySelectorAll('[data-testid="page-editor"] img.lh-page-image').length === 2, { timeout: 30000 });
+	// A refused kind says so and inserts nothing.
+	const svg = await fixture(`drawing-${width}.svg`, "<svg xmlns=\"http://www.w3.org/2000/svg\"/>");
+	await (await page.$('[data-testid="page-image-input"]')).uploadFile(svg);
+	await page.waitForFunction((n) => document.querySelector('[data-testid="page-image-refused"]')?.textContent === `${n} is a kind of file that can't be added to a page.`, {}, `drawing-${width}.svg`);
+	await saveKeys(page);
+	await page.waitForFunction(async (id) => (await (await fetch(`/api/library/pages/${id}`)).json()).head.content.split("![").length === 3, { timeout: 15000 }, made.id);
+	const stored = (await pageApi.read(made.id)).head.content;
+	assert.ok(/^Before\.\n\n!\[whiteboard-\d+\]\(\/api\/library\/items\/[^)]+\/content\)\n\n!\[pasted\]/.test(stored), stored);
+	assert.ok(/!\[pasted\]\(\/api\/library\/items\/[^)]+\/content\)/.test(stored), stored);
+	const library = await (await fetch(`${base}/api/library`)).json();
+	const images = (library.items ?? library).filter((item) => item.kind === "image" && (item.name.startsWith("pasted") || item.name.startsWith(`whiteboard-${width}`)));
+	assert.ok(images.length >= 2, "both are Library images");
+	if (shots) await page.screenshot({ path: path.join(shots, `images-${width}.png`) });
+	// Deleting the chosen image's item: after a reload the page shows its alt text.
+	const gone = images.find((item) => item.name.startsWith(`whiteboard-${width}`));
+	assert.ok((await fetch(`${base}/api/library/items/${gone.id}`, { method: "DELETE" })).ok);
+	await page.reload({ waitUntil: "domcontentloaded" });
+	await page.waitForSelector('[data-testid="page-image-missing"]', { timeout: 60000 });
+	assert.equal(await page.$eval('[data-testid="page-image-missing"]', (el) => el.textContent), `whiteboard-${width}`);
+	console.log(`PASS ${width}px images chosen and pasted are Library images linked from the page; SVG refused; a deleted one shows its alt text`);
+	await page.click(width < 768 ? '[data-testid="page-back"]' : '[data-testid="page-close"]');
+	await page.waitForFunction(() => !document.querySelector('[data-testid="page-pane"]'));
+	assert.deepEqual(errors, [], `${width}px: no browser exceptions`);
+	await page.close();
 }
 
 /** The transcript rows, from a seeded tool result, since no model runs here. */

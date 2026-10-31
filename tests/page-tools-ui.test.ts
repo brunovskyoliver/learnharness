@@ -97,3 +97,32 @@ describe("outline, word count and export (US5)", async () => {
 		assert.equal(wordsText(0), "0 words");
 	});
 });
+
+describe("page images (US6)", async () => {
+	const { pageImageAlt, pageImageProblem, pageImageSrc, uploadPageImage } = await import("../components/library/upload.ts");
+	const file = (name: string, size = 10) => ({ name, size }) as File;
+	it("take raster images only, under the limit", () => {
+		assert.equal(pageImageProblem(file("board.png")), null);
+		assert.equal(pageImageProblem(file("diagram.svg")), "diagram.svg is a kind of file that can't be added to a page.");
+		assert.equal(pageImageProblem(file("notes.pdf")), "notes.pdf is a kind of file that can't be added to a page.");
+		assert.equal(pageImageProblem(file("huge.jpg", 52_428_801)), "This file is over the 50 MB limit.");
+	});
+	it("a taken name takes the free one offered", async () => {
+		const names: string[] = [];
+		const item = { id: "lib_img", name: "image (2).png" };
+		const send = async (_f: File, name: string) => {
+			names.push(name);
+			return names.length === 1 ? { status: "clash" as const, name, suggestedName: "image (2).png" } : { status: "done" as const, item: item as never };
+		};
+		assert.deepEqual(await uploadPageImage(file("image.png"), () => {}, send), { item });
+		assert.deepEqual(names, ["image.png", "image (2).png"]);
+	});
+	it("a refusal is passed on", async () => {
+		const send = async () => ({ status: "refused" as const, message: "This kind of file isn't accepted." });
+		assert.deepEqual(await uploadPageImage(file("x.png"), () => {}, send), { refused: "This kind of file isn't accepted." });
+	});
+	it("link to the item's content, with the file name as alt text", () => {
+		assert.equal(pageImageSrc({ id: "lib_1" }), "/api/library/items/lib_1/content");
+		assert.equal(pageImageAlt("Whiteboard photo.jpeg"), "Whiteboard photo");
+	});
+});

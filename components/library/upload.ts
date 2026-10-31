@@ -1,9 +1,9 @@
 /** Library uploads (feature 009): one XHR per file, in sequence, because fetch
  *  has no upload progress. A clash waits for the learner's answer. */
-import { LIBRARY_REFUSALS } from "@/src/core";
+import { kindForName, LIBRARY_REFUSALS, MAX_FILE_BYTES, type LibraryItem } from "@/src/core";
 
 export type UploadOutcome =
-	| { status: "done" }
+	| { status: "done"; item?: LibraryItem }
 	| { status: "clash"; name: string; suggestedName: string }
 	| { status: "refused"; message: string };
 
@@ -20,15 +20,42 @@ export function sendFile(file: File, name: string, onProgress: (percent: number)
 		xhr.onerror = () => resolve({ status: "refused", message: FAILED });
 		xhr.onabort = xhr.onerror;
 		xhr.onload = () => {
-			let body: { error?: string; code?: string; name?: string; suggestedName?: string } = {};
+			let body: { error?: string; code?: string; name?: string; suggestedName?: string; item?: LibraryItem } = {};
 			try { body = JSON.parse(xhr.responseText) as typeof body; } catch { /* a proxy's own error page */ }
-			if (xhr.status === 201) resolve({ status: "done" });
+			if (xhr.status === 201) resolve({ status: "done", ...(body.item ? { item: body.item } : {}) });
 			else if (xhr.status === 409 && body.suggestedName) resolve({ status: "clash", name: body.name ?? name, suggestedName: body.suggestedName });
 			else resolve({ status: "refused", message: body.error ?? FAILED });
 		};
 		xhr.send(file);
 	});
 }
+
+/** A page's image (feature 010, US6): the image kinds the content route serves inline. */
+export const pageImageRefusal = (name: string) => `${name} is a kind of file that can't be added to a page.`;
+
+export function pageImageProblem(file: Pick<File, "name" | "size">): string | null {
+	if (kindForName(file.name) !== "image" || /\.svg$/i.test(file.name)) return pageImageRefusal(file.name);
+	if (file.size > MAX_FILE_BYTES) return LIBRARY_REFUSALS.tooLarge.message;
+	return null;
+}
+
+/** Uploads an image for a page as its own Library item. A name already taken
+ *  takes the free one offered: the learner chose a picture, not a name. */
+export async function uploadPageImage(file: File, onProgress: (percent: number) => void, send = sendFile): Promise<{ item: LibraryItem } | { refused: string }> {
+	const problem = pageImageProblem(file);
+	if (problem) return { refused: problem };
+	let name = file.name;
+	for (let attempt = 0; attempt < 3; attempt++) {
+		const outcome = await send(file, name, onProgress);
+		if (outcome.status === "done") return outcome.item ? { item: outcome.item } : { refused: "The upload failed. Check your connection and try again." };
+		if (outcome.status === "refused") return { refused: outcome.message };
+		name = outcome.suggestedName;
+	}
+	return { refused: "The upload failed. Check your connection and try again." };
+}
+
+export const pageImageSrc = (item: Pick<LibraryItem, "id">) => `/api/library/items/${encodeURIComponent(item.id)}/content`;
+export const pageImageAlt = (fileName: string) => fileName.replace(/\.[^.]+$/, "").trim() || "Image";
 
 export interface UploadQueueDeps {
 	maxFileBytes: number;

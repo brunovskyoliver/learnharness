@@ -180,6 +180,27 @@ const PageImage = TiptapNode.create({
 	addAttributes: () => ({ src: { default: "" }, alt: { default: "" }, title: { default: null } }),
 	parseHTML: () => [{ tag: "img[src]" }],
 	renderHTML: ({ HTMLAttributes }) => ["img", { ...HTMLAttributes, class: "lh-page-image", referrerpolicy: "no-referrer", loading: "lazy" }],
+	// In the browser: an image that can't load (its Library item deleted) shows its alt text instead.
+	addNodeView: () => ({ node }) => {
+		const img = document.createElement("img");
+		img.className = "lh-page-image";
+		img.referrerPolicy = "no-referrer";
+		img.loading = "lazy";
+		img.alt = String(node.attrs.alt ?? "");
+		if (node.attrs.title) img.title = String(node.attrs.title);
+		const dom = document.createElement("span");
+		dom.className = "lh-page-image-host";
+		dom.append(img);
+		img.addEventListener("error", () => {
+			const missing = document.createElement("span");
+			missing.className = "lh-page-image-missing";
+			missing.dataset.testid = "page-image-missing";
+			missing.textContent = img.alt || "Image";
+			dom.replaceChildren(missing);
+		}, { once: true });
+		img.src = String(node.attrs.src ?? "");
+		return { dom };
+	},
 	markdownTokenName: "image",
 	parseMarkdown: (token: Token) => ({ type: "pageImage", attrs: { src: token.href, alt: token.text ?? "", title: token.title ?? null } }),
 	renderMarkdown: (node: JSONContent) => {

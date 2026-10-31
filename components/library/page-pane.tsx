@@ -21,6 +21,7 @@ import { revertTutorChanges } from "./page-blocks.ts";
 import { changeBarText, highlightsOf, skippedText, UNDO_FAILED_TEXT, useTutorChanges } from "./page-changes.ts";
 import type { PageHeading, PageStats } from "./page-editor-extras.ts";
 import { downloadMarkdown, PrintRoot } from "./page-export.tsx";
+import { pageImageAlt, pageImageSrc, uploadPageImage } from "./upload.ts";
 import { usePageDraft } from "./use-page-draft.ts";
 
 const PageEditor = dynamic(() => import("./page-editor.tsx").then((m) => m.PageEditor), {
@@ -292,6 +293,29 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 		editor.current?.jumpTo(pos);
 	};
 
+	// Images (feature 010, US6): each becomes a Library image, linked from the page.
+	const [uploading, setUploading] = useState<{ name: string; percent: number } | null>(null);
+	const [imageRefusal, setImageRefusal] = useState<string | null>(null);
+	const imageInput = useRef<HTMLInputElement>(null);
+	const imageAt = useRef(0);
+	const addImages = async (files: File[], at: number) => {
+		setImageRefusal(null);
+		let pos = at;
+		for (const file of files) {
+			setUploading({ name: file.name, percent: 0 });
+			const result = await uploadPageImage(file, (percent) => setUploading({ name: file.name, percent }));
+			setUploading(null);
+			if ("refused" in result) { setImageRefusal(result.refused); continue; }
+			editor.current?.insertImage(pos, { src: pageImageSrc(result.item), alt: pageImageAlt(file.name) });
+			// The next one follows this one's paragraph.
+			pos = editor.current?.imagePosition() ?? pos;
+		}
+	};
+	const chooseImage = () => {
+		imageAt.current = editor.current?.imagePosition() ?? 0;
+		imageInput.current?.click();
+	};
+
 	// The tutor's changes (feature 010, US3), cleared on Done and on close.
 	const { changes, done } = useTutorChanges(item.id, state.loaded && !state.deleted, state.base);
 	const [changeLine, setChangeLine] = useState<string | null>(null);
@@ -408,6 +432,21 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 					<p role="status" aria-live="polite" className="px-3 text-sm text-ink-2 empty:hidden" data-testid="page-agent-update">
 						{state.agentUpdate !== null && !changes ? `Updated by the agent · version ${state.agentUpdate}` : ""}
 					</p>
+					<input
+						ref={imageInput}
+						type="file"
+						accept="image/png,image/jpeg,image/gif,image/webp,image/bmp"
+						multiple
+						hidden
+						data-testid="page-image-input"
+						onChange={(event) => {
+							const files = [...(event.currentTarget.files ?? [])];
+							event.currentTarget.value = "";
+							if (files.length) void addImages(files, imageAt.current);
+						}}
+					/>
+					{uploading && <p role="status" className="px-3 pb-2 text-sm text-ink-2" data-testid="page-image-uploading">Uploading {uploading.name} · {uploading.percent}%</p>}
+					{imageRefusal && <p role="alert" className="px-3 pb-2 text-sm text-destructive" data-testid="page-image-refused">{imageRefusal}</p>}
 					{printing && <PrintRoot name={item.name} text={controller.state.text} onDone={() => setPrinting(false)} />}
 					{outline && !wide && stats && !history && <PageOutline headings={stats.headings} onPick={jump} className="mx-3 mb-2 max-h-[40dvh] overflow-y-auto rounded-[10px] bg-popover p-1" />}
 					<div className={`flex min-h-0 flex-1 ${outline && wide && !history ? "flex-row gap-4" : "flex-col"} ${dragging ? "pointer-events-none" : ""}`}>
@@ -434,6 +473,8 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 								tutor={state.deleted ? undefined : tutor}
 								highlights={state.conflict ? null : highlights}
 								onStats={setStats}
+								onImageFiles={(files, at) => void addImages(files, at)}
+								onChooseImage={chooseImage}
 							/>
 						)}
 						</div>

@@ -37,9 +37,9 @@ Approved plan: [plan.md](plan.md). Strings: [contracts/ui-contract.md](contracts
 - [x] T020 Browser: outline jump, copy, download
 
 ## Phase 6: US6 Images (P3)
-- [ ] T021 `upload.ts` returns the item; SVG refused for pages
-- [ ] T022 Paste, drop and Image button with progress line; link insert
-- [ ] T023 Browser: paste a PNG, reload, delete the item, alt text shows
+- [x] T021 `upload.ts` returns the item; SVG refused for pages
+- [x] T022 Paste, drop and Image button with progress line; link insert
+- [x] T023 Browser: paste a PNG, reload, delete the item, alt text shows
 
 ## Phase 7: Polish
 - [ ] T024 DESIGN.md "Page editor tools" section
