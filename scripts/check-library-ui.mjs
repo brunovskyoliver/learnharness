@@ -669,7 +669,8 @@ try {
 	assert.ok(ready, "isolated server starts");
 	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true });
 	if (toolsOnly) {
-		for (const width of [1440, 390, 320]) await checkEditorTools(width);
+		if (!process.env.LH_UI_SKIP_FORMAT) for (const width of [1440, 390, 320]) await checkEditorTools(width);
+		for (const width of [1440, 390]) await checkTutorActions(width);
 	} else if (fixesOnly) {
 		await checkPageFixes();
 	} else if (settingsOnly) {
@@ -684,6 +685,7 @@ try {
 		await checkPageCorpus();
 		await checkPageFixes();
 		for (const width of [1440, 390, 320]) await checkEditorTools(width);
+		for (const width of [1440, 390]) await checkTutorActions(width);
 	}
 	if (!mentionsOnly && !pagesOnly) {
 		await checkLibrary();
@@ -691,6 +693,7 @@ try {
 		await checkPageCorpus();
 		await checkPageFixes();
 		for (const width of [1440, 390, 320]) await checkEditorTools(width);
+		for (const width of [1440, 390]) await checkTutorActions(width);
 		await checkPageRows();
 		await checkPageAndDemo();
 	}
@@ -1203,6 +1206,101 @@ async function checkEditorTools(width) {
 	await page.click(width < 768 ? '[data-testid="page-back"]' : '[data-testid="page-close"]');
 	assert.deepEqual(errors, [], `${width}px: no browser exceptions`);
 	await page.close();
+}
+
+/** Feature 010 US2: tutor actions from a page beside a chat, a blocked chat
+ *  and the Library. Sends are intercepted; no model runs. */
+async function checkTutorActions(width) {
+	const mobile = width < 768;
+	const context = await browser.createBrowserContext();
+	const page = await context.newPage();
+	page.setDefaultTimeout(30000);
+	const errors = [];
+	page.on("pageerror", (error) => errors.push(error.message));
+	await page.setViewport({ width, height: mobile ? 800 : 900, isMobile: mobile, hasTouch: mobile });
+	const posts = [];
+	await page.setRequestInterception(true);
+	page.on("request", (request) => {
+		const url = new URL(request.url());
+		if (request.method() === "POST" && url.pathname === "/api/chat") {
+			posts.push(JSON.parse(request.postData() ?? "{}"));
+			return void request.respond({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true }) });
+		}
+		if (request.method() === "POST" && url.pathname === "/api/chats") {
+			return void request.respond({ status: 200, contentType: "application/json", body: JSON.stringify({ id: "mention-chat" }) });
+		}
+		void request.continue();
+	});
+	const name = `Tutor page ${width}`;
+	await pageApi.create(name, "An eigenvector keeps its direction.\n\nSecond paragraph.\n");
+	const expected = (lead) => `${lead} @${name}:\n\n> An eigenvector keeps its direction.`;
+	const openInLibrary = async () => {
+		await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
+		for (let i = 0; i < 40 && !(await page.$('[data-testid="page-pane"]')); i++) {
+			await page.click(`[aria-label="Open ${name}"]`).catch(() => {});
+			await pause(500);
+		}
+		await page.waitForSelector(editor, { timeout: 60000 });
+	};
+	const selectFirst = async () => {
+		await page.click(`${editor} p`);
+		await page.keyboard.press("Home");
+		await page.keyboard.down("Shift");
+		await page.keyboard.press("End");
+		await page.keyboard.up("Shift");
+		await page.waitForSelector('[data-testid="page-bubble"]', { visible: true });
+	};
+
+	// Beside a chat: Explain sends at once; Ask… only fills the composer.
+	await openInLibrary();
+	await page.goto(`${base}/chat/mention-chat`, { waitUntil: "domcontentloaded" });
+	await page.waitForSelector(editor, { timeout: 60000 });
+	await selectFirst();
+	if (shots) await page.screenshot({ path: path.join(shots, `tutor-bubble-${width}.png`) });
+	await page.click('[data-testid="page-tutor-explain"]');
+	await page.waitForFunction(() => true);
+	for (let i = 0; i < 40 && posts.length === 0; i++) await pause(250);
+	assert.equal(posts.length, 1, "Explain sent once");
+	assert.equal(posts[0].input?.text, expected("Explain this part of"));
+	if (mobile) {
+		await page.waitForFunction(() => !document.querySelector('[data-testid="page-pane"]'));
+		await openInLibrary();
+	} else {
+		// The sent message starts a turn: until it ends, the actions say so.
+		await selectFirst();
+		assert.equal(await page.$eval('[data-testid="page-bubble-blocked"]', (el) => el.textContent), "The tutor is still answering.");
+	}
+	await page.goto(`${base}/chat/mention-chat`, { waitUntil: "domcontentloaded" });
+	await page.waitForSelector(editor, { timeout: 60000 });
+	await selectFirst();
+	await page.click('[data-testid="page-tutor-ask"]');
+	await page.waitForFunction((text) => document.querySelector('[aria-label="Your message"], textarea')?.value === text, {}, `${expected("About this part of")}\n\n`);
+	await pause(300);
+	assert.equal(posts.length, 1, "Ask… sends nothing");
+	console.log(`PASS ${width}px a page beside a chat: Explain sends the quote and reference, Ask… fills the composer`);
+
+	// A waiting question: the tutor's actions say why they're unavailable.
+	if (mobile) await openInLibrary();
+	await page.goto(`${base}/chat/mention-quiz`, { waitUntil: "domcontentloaded" });
+	await page.waitForSelector(editor, { timeout: 60000 });
+	await selectFirst();
+	assert.equal(await page.$eval('[data-testid="page-bubble-blocked"]', (el) => el.textContent), "Answer the question in the chat first.");
+	assert.equal(await page.$('[data-testid="page-tutor-explain"]'), null);
+	console.log(`PASS ${width}px a waiting question keeps the tutor's actions unavailable, with the reason`);
+
+	// The Library: a new session sends it.
+	posts.length = 0;
+	await openInLibrary();
+	await selectFirst();
+	await page.click('[data-testid="page-tutor-quiz"]');
+	await page.waitForFunction(() => location.pathname.startsWith("/chat/"), { timeout: 60000 });
+	for (let i = 0; i < 80 && posts.length === 0 && !(await page.$('[role="dialog"]')); i++) await pause(250);
+	if (posts.length) assert.equal(posts[0].input?.text, expected("Quiz me on this part of"));
+	else assert.equal(await page.$eval("textarea", (el) => el.value), expected("Quiz me on this part of"), "setup opened with the message kept");
+	console.log(`PASS ${width}px from the Library, Quiz me starts a new session with the message (${posts.length ? "sent" : "kept for setup"})`);
+
+	assert.deepEqual(errors, [], `${width}px: no browser exceptions`);
+	await context.close();
 }
 
 /** The transcript rows, from a seeded tool result, since no model runs here. */

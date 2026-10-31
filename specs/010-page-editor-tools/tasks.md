@@ -15,10 +15,10 @@ Approved plan: [plan.md](plan.md). Strings: [contracts/ui-contract.md](contracts
 - [x] T006 Browser: `checkEditorTools` part 1, at 1440, 390 and 320 px
 
 ## Phase 2: US2 Tutor actions (P1)
-- [ ] T007 `components/chat.tsx` ChatActionsContext: `fillComposer`, `blockedReason`, `busy`
-- [ ] T008 `page-tutor-actions.ts`: message texts, quoting and blocked reasons (tests/page-tutor-messages.test.ts)
-- [ ] T009 Selection bubble with formatting and tutor actions; commit before sending; Library-view new session through Home's checks
-- [ ] T010 Browser: bubble, Ask… fills the composer, sends intercepted
+- [x] T007 `components/chat.tsx` ChatActionsContext: `fillComposer`, `blockedReason`, `busy`
+- [x] T008 `page-tutor-actions.ts`: message texts, quoting and blocked reasons (tests/page-tutor-messages.test.ts)
+- [x] T009 Selection bubble with formatting and tutor actions; commit before sending; Library-view new session through Home's checks
+- [x] T010 Browser: bubble, Ask… fills the composer, sends intercepted
 
 ## Phase 3: US3 Tutor changes (P2)
 - [ ] T011 Store and routes: `seen.json`, GET and PUT seen; cause `undo-agent` (tests/page-names-seen.test.ts)

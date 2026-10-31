@@ -33,6 +33,7 @@ Pages stay stored as Markdown with math; nothing may change stored bytes that we
 - Q: What do tutor actions do in the Library view, where no chat is beside the page? → A: They start a new session with the page beside it and send the message there, the same path "New page" uses when no pane is on screen.
 - Q: Are tutor edits made while the page was closed highlighted on the next open? → A: Yes. Every tutor version since the page was last open is highlighted together, with the same bar, step-through and Undo.
 - Q: When do the highlights clear? → A: On Done, or when the page is closed. They stay while the learner types, and a newer tutor edit adds its changes to those shown. Undo reverts every highlighted tutor change.
+- Q: What does the toolbar's Ask the tutor do with nothing selected? → A: It quotes the paragraph, heading or list item the caret is in, then fills the composer like Ask…. With a selection it is Ask….
 - Q: Is the slash menu's "Practice question" in scope? → A: No. Quiz me on this covers it, and a question written into a page would carry its answer there (constitution II).
 
 ## User Scenarios & Testing *(mandatory)*

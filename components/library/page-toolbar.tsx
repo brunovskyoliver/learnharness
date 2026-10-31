@@ -1,7 +1,9 @@
 "use client";
 
 import type { Editor } from "@tiptap/core";
+import { NodeSelection } from "@tiptap/pm/state";
 import { useEditorState } from "@tiptap/react";
+import { BubbleMenu } from "@tiptap/react/menus";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import {
 	BoldIcon, CodeIcon, ImageIcon, ItalicIcon, LinkIcon, ListChecksIcon, ListIcon, ListOrderedIcon,
@@ -10,6 +12,16 @@ import {
 import { cn } from "@/lib/utils";
 import { insertFormula, normalizeLinkAddress } from "./page-editor-extras.ts";
 import { filterSlashItems, slashEmptyText, type SlashItem } from "./page-slash.ts";
+import { TUTOR_ACTION_LABEL, type TutorAction } from "./page-tutor-actions.ts";
+
+/** What the page offers the tutor: unavailable with a sentence, or a handler. */
+export type PageTutor = { blocked: string } | { blocked: null; run: (action: TutorAction, text: string) => void };
+
+/** The selected text, or with none the text of the block the caret is in. */
+export function tutorText(editor: Editor): string {
+	const { from, to, empty, $from } = editor.state.selection;
+	return empty ? $from.parent.textContent : editor.state.doc.textBetween(from, to, "\n", " ");
+}
 
 /** "Ctrl" or "⌘" in names, matching the key the learner presses. */
 export function shortcutLabel(keys: string, mac: boolean): string {
@@ -45,7 +57,7 @@ function ToolButton({ label, keys, pressed, disabled, onClick, children }: { lab
 type TextStyle = "paragraph" | "1" | "2" | "3";
 
 /** The formatting toolbar (contracts/ui-contract.md, Toolbar). */
-export function PageToolbar({ editor, onLink, onAskTutor, onImage }: { editor: Editor; onLink: () => void; onAskTutor?: () => void; onImage?: () => void }) {
+export function PageToolbar({ editor, onLink, tutor, onImage }: { editor: Editor; onLink: () => void; tutor?: PageTutor; onImage?: () => void }) {
 	const state = useEditorState({
 		editor,
 		selector: ({ editor: e }) => ({
@@ -103,10 +115,18 @@ export function PageToolbar({ editor, onLink, onAskTutor, onImage }: { editor: E
 				<ToolButton label="Formula" keys="Ctrl Shift M" onClick={() => insertFormula(editor)}><SigmaIcon className="ui-icon" aria-hidden="true" /></ToolButton>
 				<ToolButton label="Table" pressed={state.table} onClick={() => { if (!state.table) chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(); }}><TableIcon className="ui-icon" aria-hidden="true" /></ToolButton>
 				{onImage && <ToolButton label="Image" onClick={onImage}><ImageIcon className="ui-icon" aria-hidden="true" /></ToolButton>}
-				{onAskTutor && (
+				{tutor && (
 					<>
 						<span className="min-w-0 flex-1" />
-						<button type="button" className={cn(TEXT_BUTTON, "bg-accent text-foreground")} onMouseDown={(event) => event.preventDefault()} onClick={onAskTutor} data-testid="page-ask-tutor">
+						<button
+							type="button"
+							className={cn(TEXT_BUTTON, "bg-accent text-foreground disabled:bg-transparent disabled:text-muted-foreground")}
+							disabled={tutor.blocked !== null}
+							title={tutor.blocked ?? undefined}
+							onMouseDown={(event) => event.preventDefault()}
+							onClick={() => { if (tutor.blocked === null) tutor.run("ask", tutorText(editor)); }}
+							data-testid="page-ask-tutor"
+						>
 							<MessageSquareIcon className="ui-icon" aria-hidden="true" />
 							Ask the tutor
 						</button>
@@ -123,6 +143,38 @@ export function PageToolbar({ editor, onLink, onAskTutor, onImage }: { editor: E
 				</div>
 			)}
 		</div>
+	);
+}
+
+/** Over selected text: formatting, and the tutor's actions or why they're unavailable. */
+export function PageBubble({ editor, tutor, onLink }: { editor: Editor; tutor?: PageTutor; onLink: () => void }) {
+	const state = useEditorState({ editor, selector: ({ editor: e }) => ({ bold: e.isActive("bold"), italic: e.isActive("italic"), link: e.isActive("link") }) });
+	const chain = () => editor.chain().focus();
+	const button = "inline-flex h-8 shrink-0 items-center rounded-[6px] px-2 text-sm text-foreground hover:bg-card pointer-coarse:min-h-11";
+	return (
+		<BubbleMenu
+			editor={editor}
+			shouldShow={({ editor: e, state: s, from, to }) => e.isEditable && from !== to && !(s.selection instanceof NodeSelection) && !e.isActive("codeBlock") && !e.isActive("rawBlock")}
+			options={{ placement: "top", offset: 8 }}
+		>
+			<div role="toolbar" aria-label="Selection" data-testid="page-bubble" className="flex max-w-[calc(100vw-2rem)] flex-wrap items-center gap-1 rounded-[10px] bg-popover p-1">
+				<ToolButton label="Bold" pressed={state.bold} onClick={() => chain().toggleBold().run()}><BoldIcon className="ui-icon" aria-hidden="true" /></ToolButton>
+				<ToolButton label="Italic" pressed={state.italic} onClick={() => chain().toggleItalic().run()}><ItalicIcon className="ui-icon" aria-hidden="true" /></ToolButton>
+				<ToolButton label="Link" pressed={state.link} onClick={onLink}><LinkIcon className="ui-icon" aria-hidden="true" /></ToolButton>
+				{tutor && <Divider />}
+				{tutor && tutor.blocked !== null && <span role="status" className="px-2 text-sm text-ink-2" data-testid="page-bubble-blocked">{tutor.blocked}</span>}
+				{tutor && tutor.blocked === null && (["explain", "simpler", "quiz", "ask"] as const).map((action) => (
+					<button
+						key={action}
+						type="button"
+						className={button}
+						data-testid={`page-tutor-${action}`}
+						onMouseDown={(event) => event.preventDefault()}
+						onClick={() => tutor.run(action, tutorText(editor))}
+					>{TUTOR_ACTION_LABEL[action]}</button>
+				))}
+			</div>
+		</BubbleMenu>
 	);
 }
 

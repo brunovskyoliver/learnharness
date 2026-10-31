@@ -1,8 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { ArrowLeftIcon, HistoryIcon, XIcon } from "lucide-react";
+import { ChatActionsContext } from "@/components/chat-actions-context.ts";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspacePane } from "@/components/workspace-pane";
@@ -11,6 +13,8 @@ import type { PageEditorHandle } from "./page-editor.tsx";
 import { PageHistory } from "./page-history.tsx";
 import type { PagePaneApi, PaneItem } from "./page-pane-context.tsx";
 import { ReadOnlyView } from "./read-only-view.tsx";
+import type { PageTutor } from "./page-toolbar.tsx";
+import { TUTOR_BLOCKED_TEXT, tutorMessage, type TutorAction } from "./page-tutor-actions.ts";
 import { usePageDraft } from "./use-page-draft.ts";
 
 const PageEditor = dynamic(() => import("./page-editor.tsx").then((m) => m.PageEditor), {
@@ -210,6 +214,27 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 		editor.current?.flush();
 		pane.close();
 	};
+	// Tutor actions (feature 010, US2): to the chat beside the page, or from
+	// the Library a new session that sends it (Explain, Simpler, Quiz me) or
+	// holds it as a draft (Ask…). The text on screen is saved first, so the
+	// reference resolves to it.
+	const chat = useContext(ChatActionsContext);
+	const router = useRouter();
+	const runTutor = async (action: TutorAction, text: string) => {
+		editor.current?.flush();
+		await controller.commit("save");
+		const message = tutorMessage(action, item.name, text);
+		if (chat) {
+			if (action === "ask") chat.fillComposer(message);
+			else chat.sendText(message);
+			// The phone layer covers the chat the answer arrives in.
+			if (phone) pane.close();
+			return;
+		}
+		router.push(`/chat/new?${action === "ask" ? "draft" : "send"}=${encodeURIComponent(message)}`);
+	};
+	const tutor: PageTutor = chat?.sendBlock ? { blocked: TUTOR_BLOCKED_TEXT[chat.sendBlock] } : { blocked: null, run: (action, text) => void runTutor(action, text) };
+
 	const restore = async (n: number): Promise<string | null> => {
 		editor.current?.flush();
 		const outcome = await controller.restore(n);
@@ -280,6 +305,7 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 								ariaLabel={`Page ${item.name}`}
 								onChange={(text) => controller.edit(text)}
 								onSaveShortcut={save}
+								tutor={state.deleted ? undefined : tutor}
 							/>
 						)}
 					</div>

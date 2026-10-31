@@ -7,7 +7,7 @@ import { insertFormula, PagePlaceholder, runSlashBlock } from "./page-editor-ext
 import { createPageCodec, pageExtensions } from "./page-markdown.ts";
 import { OPEN_MATH_SOURCE_EVENT } from "./page-math-view.ts";
 import { slashQuery, type SlashItem } from "./page-slash.ts";
-import { anchorBelowSelection, filterSlashItems, LinkPopover, PageToolbar, SlashMenu } from "./page-toolbar.tsx";
+import { anchorBelowSelection, filterSlashItems, LinkPopover, PageBubble, PageToolbar, SlashMenu, type PageTutor } from "./page-toolbar.tsx";
 
 const CHANGE_DELAY_MS = 120;
 
@@ -32,8 +32,10 @@ export function pageEditorAttributes(ariaLabel: string): Record<string, string> 
  *  stored Markdown, and answers with Markdown that is byte-identical until
  *  something is really edited (components/library/page-markdown.ts). A new
  *  `value` from outside comes with a new React key. */
-export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, ariaLabel, handle }: {
+export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, ariaLabel, handle, tutor }: {
 	value: string;
+	/** The tutor's actions on selected text; absent hides them. */
+	tutor?: PageTutor;
 	onChange: (markdown: string) => void;
 	onSaveShortcut?: () => void;
 	readOnly?: boolean;
@@ -186,7 +188,8 @@ export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, 
 
 	return (
 		<>
-			{editor && !readOnly && <PageToolbar editor={editor} onLink={() => openLinkRef.current()} />}
+			{editor && !readOnly && <PageToolbar editor={editor} onLink={() => openLinkRef.current()} tutor={tutor} />}
+			{editor && !readOnly && <PageBubble editor={editor} tutor={tutor} onLink={() => openLinkRef.current()} />}
 			<div ref={host} className="lh-page-editor-host relative min-h-0 flex-1 overflow-y-auto">
 				<EditorContent editor={editor} className="min-h-full" />
 				{editor && linkAt && <LinkPopover editor={editor} at={linkAt} onClose={() => setLinkAt(null)} />}
