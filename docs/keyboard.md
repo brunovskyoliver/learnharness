@@ -45,7 +45,10 @@ second pillar of input).
 | Action | Binding | Seam |
 |---|---|---|
 | Toggle dictation | ⌘D | `lh:kbd-toggle-dictation` (dictation.tsx) |
-| Model selector | ⌘K | `lh:kbd-open-model-picker` (model-picker.tsx) |
+| Command palette | ⌘K | `lh:kbd-command-palette` (command-palette.tsx). The page editor keeps ⌘K for its link popover; the palette also stands down in the editor's toolbar and fields, dialogs and menus (features 014-015) |
+| Model selector | ⌘⇧K (was ⌘K until feature 015) | `lh:kbd-open-model-picker` (model-picker.tsx); also "Choose a model" in the palette |
+| Focus the open tabs | ⌘⇧E | `lh:kbd-focus-tabs` (workspace/tab-strip.tsx) |
+| Toggle right pane | ⌘\\ | `lh:kbd-toggle-right-pane` (workspace/workspace-context.tsx): collapses a page or demo, or shows the context view |
 | Cycle thinking level | Shift+Tab | `lh:kbd-cycle-thinking` (model-picker.tsx) |
 | Toggle sidebar | ⌘B | `lh:toggle-sidebar` (sidebar.tsx) |
 | Sessions search | ⌘⇧F | `lh:kbd-sessions-search` (sidebar.tsx) |
@@ -58,6 +61,12 @@ second pillar of input).
 | Rename session | F2 | `lh:kbd-rename-session` (chat.tsx) |
 | Cheat sheet | ? | keyboard-shortcuts.tsx |
 | Find (graph: node search) | ⌘F | `lh:kbd-find` (graph-view.tsx; chat transcript search rides the same event when that feature lands) |
+
+## Tab strip and sidebar block (features 014-015)
+
+- **Tab strip**: one tab stop. ←/→/Home/End walk without activating, Enter or Space activates, Delete closes, Esc returns to where focus was. The handlers claim their keys in the capture phase, so lesson handlers never see them.
+- **Sidebar block**: ⌘⇧F, Tab (resize rail), Tab reaches it. ↑/↓/Home/End walk Lessons, Practice, Library and the folders. → and ← open and close the Library row and folders, and ← goes to the parent. Enter activates.
+- **Palette**: a combobox over a listbox. ↑/↓ wrap, Enter takes the active row, Esc or ⌘K closes, and focus returns to the opener.
 
 ## Model menu keyboard machine (owner polish, 2026-09-17)
 

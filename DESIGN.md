@@ -38,8 +38,31 @@ One scrolling column (`max-w-[52rem]`, hidden scrollbar), in this order. Section
 - Header: the Search field (raised) with the session filter at its right end (visibly on, raised-2 and foreground ink, while not "All sessions"), then one labelled "New" (raised-2, plus icon) opening a menu with Lesson and Practice. Menus are raised-2, 10px, no border.
 - Rows: type icon, the whole title (15px/20px, wrapping, never truncated), then a 7px amber dot named "Waiting for you" when the session waits on the learner, or the running indicator while a turn runs, then the time.
 - Date shelves (Today, Yesterday, Earlier) are set in the title serif at 17px; their counts stay sans meta.
-- A labelled "Library" row sits under the header, above the date shelves.
+- Under the header, above the date shelves: "Lessons" and "Practice" with their counts, which narrow the list below (raised-2 while on, a second press clears), then "Library" with a chevron for its folder tree (features 012-014). The tree lists folders by name, 13px `ink-2`, indented by depth; it fetches only while open and keeps the current folder visible. Loading uses skeletons, empty reads "No folders yet.", failed reads "Folders could not be loaded." with Try again.
+- The footer holds Settings and the command palette's icon, which is the touch path to it.
 - Settings opens only from the gear in the sidebar footer (and its shortcut). The graph's display controls live in Settings → Graph → Display.
+
+## Workspace tabs and command palette
+
+Features 014 and 015; decisions in [their spec](specs/014-workspace-navigation/spec.md). No amber except keyboard focus.
+
+### Tabs
+
+- A row directly under the 52px band on sessions and the Library, and on Home and new sessions once tabs exist. It is never in the band, so drag regions and native gutters don't change. 36px tall, 48px on coarse pointers.
+- A tab is a type icon, the title (13px, truncating at 13rem, whole in its tooltip) and a × named "Close {title}". Selected is raised-2, also on screen is raised, the rest are `ink-2`. A loading tab swaps its icon for the running indicator.
+- Visiting a session or opening an item in the pane opens its tab, up to 12. PDF, images and other files open as in the Library, without a tab.
+- The strip ends in "Hide right pane" or "Show right pane" from 768px.
+
+### Right pane
+
+- One column, one saved width. A page or demo holds it as described below. With neither, the toggle shows the context view: 52px header, then for a session "Outline" and "Demos", for a Library place "Location", "Tags here" and "Recently opened". It has no iframe.
+- Collapsing takes the column to no width with everything mounted. Any explicit open expands it. Below 768px the page layer and demo sheet are unchanged and there is no toggle or context view.
+
+### Command palette
+
+- Cmd/Ctrl+K, or the sidebar's footer icon. A raised-2 10px dialog near the top: the field reads "Search or run an action…", then the list. Rows are an icon, the label and meta, 36px, 44px on coarse pointers; the active row is on `card`.
+- With no query: Actions, Sessions, Library and Folders. With one: a single ranked list. No match reads "Nothing matched". Each source reports for itself: "Loading your Library…", "Your Library could not be loaded." with Try again, and the same for sessions, with the rest still usable.
+- A view that fails to render reads "This view could not be shown." with Try again and Show details, inside the shell.
 
 ## Lessons and controls
 
@@ -93,7 +116,7 @@ Feature 009; the binding reference is its [UI contract](specs/009-library-canvas
 
 ### Library view
 
-- The sidebar has one labelled row, "Library" (`LibraryIcon`, 15px), under Search and New and above the date shelves. It links to `/library` and carries `aria-current="page"` there.
+- The sidebar's "Library" row (`LibraryIcon`, 15px) sits under Lessons and Practice, above the date shelves. It links to `/library` and carries `aria-current="page"` there.
 - `/library` is one column, `max-w-[52rem]` like Home, under the shared top bar: the title "Library" (title serif, 30px), "Upload" and "New page" (raised-2, neither primary), then the "Search your Library" field, which filters names on the client.
 - Folders (feature 011): "New folder" sits beside Upload and New page (raised-2). Inside a folder the title is the folder's name, under breadcrumbs ("Library / Physics / Waves", 13px `ink-2`, the current one in foreground with `aria-current="page"`). Folder rows come before items: folder icon, name, `Folder · {n} items`, then "Open folder", "Rename folder", "Move folder" and "Delete folder" with the name. "Move {name} to" is a dialog listing every allowed folder by its path. Searching covers the whole Library and appends each match's location to the meta line. An empty folder reads "This folder is empty."; a missing one "That folder is no longer in your Library." with Back to Library.
 - Views (feature 012): a "Library views" row of links under Search: All, Favorites, Recent, Archive, Trash, the current one on raised-2 with `aria-current`. Tags appear as a second row of links once any exist. Favorites and pins show as small `ink-2` star and pin icons before the name; pinned entries sort first at every level.

@@ -62,6 +62,8 @@ The persistent composer owns its form, textarea ref and input mechanics. Model a
 
 Shared semantic tokens map sidebar, lesson, composer, menus, settings, authentication and app-owned demo chrome to the T3 Code black theme pinned in DESIGN.md. User appearance settings resolve through the existing appearance provider. Settings writes immediately through section APIs; navigation and layout do not introduce a separate Save transaction.
 
+The workspace provider (`components/workspace/workspace-context.tsx`, feature 014) owns open tabs, right-pane collapse, the context view and the sidebar tree's state, per account through `SessionStateStore`. It owns no draft, reading position, width or demo state: those keep their owners. `WorkspacePane` remains the single right column, and the command palette loads on first use.
+
 Radix dialogs contain focus for Settings, setup and connection overlays. Menus portal into the active modal boundary. Composer menus anchor to their toolbar controls; Escape closes the innermost menu first. Global lesson shortcuts defer inside modal/menu controls. Closing resolves the live opening control even when a tooltip wrapper has replaced its DOM node.
 
 A demo keeps one live sandboxed iframe while its inline, workspace and focused presentations change. Parameter, simulation, path and camera state belong to that live document. Parent messages validate the source and allowed payload. Theme messages update app-owned neutral styles and renderer colors without replacing the document; authored demo styles may override injected defaults. Individual graph focus uses demo-kit panels; arbitrary legacy HTML expands as a whole.
