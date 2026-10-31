@@ -395,7 +395,8 @@ export function createPageCodec(stored: string): PageCodec {
 			const left = new Map([...originals].map(([k, v]) => [k, [...v]]));
 			const blocks = (withoutTrailingEmpties(current).content ?? []).map((block) => {
 				const key = serializePageJson({ type: "doc", content: [block] });
-				return left.get(key)?.shift() ?? key;
+				// An edited table serializes wrapped in newlines; blocks join with one blank line.
+				return left.get(key)?.shift() ?? key.replace(/^\n+|\n+$/g, "");
 			});
 			const body = blocks.join("\n\n");
 			return endsWithNewline && body ? `${body}\n` : body;

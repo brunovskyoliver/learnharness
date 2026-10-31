@@ -84,3 +84,38 @@ describe("source preservation", () => {
 		assert.deepEqual(parsePageMarkdown(out).content![0]!.content, doc.content[0]!.content);
 	});
 });
+
+describe("feature 010 edits change only their blocks", () => {
+	const md = "# Notes\n\nSee [the docs](https://a.example) here.\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\nEnd with $x$.\n";
+	const blocks = (text: string) => text.trimEnd().split("\n\n");
+	it("a link's address edited: only that paragraph changes", () => {
+		const codec = createPageCodec(md);
+		const edited = structuredClone(codec.doc);
+		const para = edited.content![1]!;
+		for (const node of para.content!) for (const mark of node.marks ?? []) if (mark.type === "link") mark.attrs = { ...mark.attrs, href: "https://b.example" };
+		const out = blocks(codec.toMarkdown(edited));
+		const before = blocks(md);
+		assert.equal(out[1], "See [the docs](https://b.example) here.");
+		assert.deepEqual([out[0], out[2], out[3]], [before[0], before[2], before[3]]);
+	});
+	it("a table row added: only the table changes, and it keeps every cell", () => {
+		const codec = createPageCodec(md);
+		const edited = structuredClone(codec.doc);
+		const table = edited.content![2]!;
+		const row = structuredClone(table.content!.at(-1)!);
+		table.content!.push(row);
+		const out = blocks(codec.toMarkdown(edited));
+		const before = blocks(md);
+		assert.deepEqual([out[0], out[1], out[3]], [before[0], before[1], before[3]]);
+		assert.equal(out[2]!.split("\n").length, 4);
+		assert.deepEqual(contentOf(out[2]!.split("\n").slice(0, 3).join("\n")), contentOf(before[2]!));
+	});
+	it("an image inserted between blocks keeps the others", () => {
+		const codec = createPageCodec(md);
+		const edited = structuredClone(codec.doc);
+		edited.content!.splice(2, 0, { type: "paragraph", content: [{ type: "pageImage", attrs: { src: "/api/library/items/lib_1/content", alt: "board photo", title: null } }] });
+		const out = blocks(codec.toMarkdown(edited));
+		assert.equal(out[2], "![board photo](/api/library/items/lib_1/content)");
+		assert.deepEqual([out[0], out[1], out[3], out[4]], blocks(md));
+	});
+});

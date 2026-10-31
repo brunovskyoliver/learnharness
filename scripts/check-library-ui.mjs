@@ -6,7 +6,8 @@
  * intercepted, and "New page" in every @ field (T096). Optional: LH_UI_SCREENSHOT_DIR saves evidence, LH_UI_PORT picks
  * the port, LH_UI_MENTIONS_ONLY=1 runs only the @ part, LH_UI_PAGES_ONLY=1 only
  * the page pane (real editor corpus, reload, two tabs, restore, phone layer).
- * LH_UI_FIXES_ONLY=1 only the page-editing-fixes checks.
+ * LH_UI_FIXES_ONLY=1 only the page-editing-fixes checks; LH_UI_TOOLS_ONLY=1 only
+ * the feature 010 editor tools.
  * LH_UI_SETTINGS_ONLY=1 runs only Settings: search, row jump, Escape layers,
  * deep link, persistence after reload, failed load and failed save.
  * Set TMPDIR under the home folder for a snap Chromium, whose /tmp is private.
@@ -66,6 +67,7 @@ const MATH_PAGE = "# Title with $x^2$\n\nLet $f(x) = x^2$ and **Gradient descent
 const mentionsOnly = process.env.LH_UI_MENTIONS_ONLY === "1";
 const pagesOnly = process.env.LH_UI_PAGES_ONLY === "1";
 const fixesOnly = process.env.LH_UI_FIXES_ONLY === "1";
+const toolsOnly = process.env.LH_UI_TOOLS_ONLY === "1";
 const settingsOnly = process.env.LH_UI_SETTINGS_ONLY === "1";
 let server;
 let browser;
@@ -666,7 +668,9 @@ try {
 	}
 	assert.ok(ready, "isolated server starts");
 	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true });
-	if (fixesOnly) {
+	if (toolsOnly) {
+		for (const width of [1440, 390, 320]) await checkEditorTools(width);
+	} else if (fixesOnly) {
 		await checkPageFixes();
 	} else if (settingsOnly) {
 		for (const width of [1440, 390, 320]) await checkSettings(width);
@@ -679,12 +683,14 @@ try {
 	else if (pagesOnly) {
 		await checkPageCorpus();
 		await checkPageFixes();
+		for (const width of [1440, 390, 320]) await checkEditorTools(width);
 	}
 	if (!mentionsOnly && !pagesOnly) {
 		await checkLibrary();
 		for (const width of [1440, 390, 320]) await checkPages(width);
 		await checkPageCorpus();
 		await checkPageFixes();
+		for (const width of [1440, 390, 320]) await checkEditorTools(width);
 		await checkPageRows();
 		await checkPageAndDemo();
 	}
@@ -1090,6 +1096,112 @@ async function checkPageFixes() {
 
 	await page.click('[data-testid="page-close"]');
 	assert.deepEqual(errors, [], "no browser exceptions");
+	await page.close();
+}
+
+/** Feature 010 US1 in a real editor: a page built only from the toolbar, the
+ *  slash menu and shortcuts, then stored as Markdown. */
+async function checkEditorTools(width) {
+	const page = await browser.newPage();
+	page.setDefaultTimeout(30000);
+	const errors = [];
+	page.on("pageerror", (error) => errors.push(error.message));
+	await page.setViewport({ width, height: width < 768 ? 800 : 900 });
+	const made = await pageApi.create(`Tools ${width}`, "");
+	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
+	for (let i = 0; i < 40 && !(await page.$('[data-testid="page-pane"]')); i++) {
+		await page.click(`[aria-label="Open Tools ${width}"]`).catch(() => {});
+		await pause(500);
+	}
+	await page.waitForSelector(editor, { timeout: 60000 });
+	await page.waitForSelector('[data-testid="page-toolbar"]');
+	assert.equal(await page.$eval(`${editor} .lh-page-placeholder`, (el) => el.dataset.placeholder), "Start writing, or type / for headings, lists, tables and formulas.");
+	const mod = SAVE;
+	const chord = async (...keys) => {
+		for (const key of keys) await page.keyboard.down(key);
+		for (const key of [...keys].reverse()) await page.keyboard.up(key);
+	};
+	// The editor reads keyboard selection changes on selectionchange; a key
+	// pressed before that acts on the old selection, which no person types fast enough to hit.
+	const key = async (name) => {
+		await page.keyboard.press(name);
+		await pause(60);
+	};
+	const selectLineStart = async () => {
+		await page.keyboard.down("Shift");
+		await page.keyboard.press("Home");
+		await page.keyboard.up("Shift");
+		// The editor reads a keyboard selection on the next selectionchange.
+		await pause(100);
+	};
+	await page.click(editor);
+	// Heading through the slash menu.
+	await page.keyboard.type("/head");
+	await page.waitForSelector('[data-testid="page-slash-menu"]');
+	assert.deepEqual(await page.$$eval('[data-testid="page-slash-option"]', (els) => els.map((el) => el.textContent)), ["Heading 1", "Heading 2", "Heading 3"]);
+	await key("Enter");
+	await page.keyboard.type("Title");
+	await key("Enter");
+	// Bold by shortcut, then the toolbar shows it pressed.
+	await page.keyboard.type("bold");
+	await selectLineStart();
+	await chord(mod, "b");
+	await page.waitForFunction(() => document.querySelector('[data-testid="page-toolbar"] [aria-label^="Bold"]')?.getAttribute("aria-pressed") === "true", { timeout: 5000 });
+	await key("End");
+	await chord(mod, "b");
+	await key("Enter");
+	// A link through Ctrl/Cmd+K.
+	await page.keyboard.type("link");
+	await selectLineStart();
+	await chord(mod, "k");
+	await page.waitForFunction(() => document.activeElement?.dataset?.testid === "page-link-input");
+	await page.keyboard.type("not a link");
+	await key("Enter");
+	await page.waitForSelector('[data-testid="page-link-popover"] [role="alert"]');
+	await page.$eval('[data-testid="page-link-input"]', (el) => el.select());
+	await page.keyboard.type("example.com");
+	await key("Enter");
+	await page.waitForFunction(() => !document.querySelector('[data-testid="page-link-popover"]'));
+	await key("End");
+	await key("Enter");
+	// A formula from the toolbar shortcut.
+	await page.keyboard.type("area ");
+	await chord(mod, "Shift", "m");
+	await page.waitForSelector('[data-testid="page-math-source"]');
+	await page.keyboard.type("r^2");
+	await key("Enter");
+	await page.waitForFunction(() => !document.querySelector('[data-testid="page-math-source"]'));
+	await key("End");
+	await key("Enter");
+	// A checklist, then a table with an added row.
+	await page.keyboard.type("/check");
+	await key("Enter");
+	await page.keyboard.type("task");
+	await key("Enter");
+	await key("Enter");
+	await page.keyboard.type("/zzz");
+	assert.equal(await page.$eval('[data-testid="page-slash-menu"] [role="status"]', (el) => el.textContent), 'No block matches "zzz"');
+	await key("Escape");
+	await page.waitForFunction(() => !document.querySelector('[data-testid="page-slash-menu"]'));
+	assert.ok(await page.$('[data-testid="page-pane"]'), "Escape closed the menu, not the pane");
+	for (let i = 0; i < 4; i++) await key("Backspace");
+	await page.keyboard.type("/tab");
+	await key("Enter");
+	await page.waitForSelector('[data-testid="page-table-controls"]');
+	await page.click('[data-testid="page-table-controls"] button');
+	assert.equal(await page.$$eval(`${editor} table tr`, (rows) => rows.length), 4);
+	await saveKeys(page);
+	await page.waitForFunction(async (id) => (await (await fetch(`/api/library/pages/${id}`)).json()).head.n >= 2, {}, made.id);
+	const stored = (await pageApi.read(made.id)).head.content;
+	for (const part of ["# Title", "**bold**", "[link](https://example.com)", "area $r^2$", "- [ ] task"]) assert.ok(stored.includes(part), `stored ${part}: ${stored}`);
+	assert.equal(stored.split("\n").filter((line) => line.startsWith("|")).length, 5, "a header, a rule and three rows");
+	assert.ok(!stored.includes("Start writing"), "the placeholder is never stored");
+	const over = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+	assert.ok(over <= 0, `${width}px overflow ${over}`);
+	if (shots) await page.screenshot({ path: path.join(shots, `editor-tools-${width}.png`) });
+	console.log(`PASS ${width}px editor tools: slash heading, bold, Ctrl K link, formula, checklist, table and row, stored as Markdown`);
+	await page.click(width < 768 ? '[data-testid="page-back"]' : '[data-testid="page-close"]');
+	assert.deepEqual(errors, [], `${width}px: no browser exceptions`);
 	await page.close();
 }
 
