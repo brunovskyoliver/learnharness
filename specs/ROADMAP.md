@@ -38,3 +38,8 @@ The owner approved every recommended option ("i approve it all", 2026-10-31) and
 - Catalog and other stores stay additive and rollback-safe: optional fields, separate files, the version unchanged. Learner text is never changed by AI without review.
 - Each feature keeps `specs/<NNN-name>/spec.md`, `plan.md` with the Constitution Check I-VIII, `tasks.md` and `progress.md` with a Report, and updates DESIGN.md, PRODUCT.md and this table.
 - Stacked branches, one per feature, each branched from the previous. No pushing, merging or deploying.
+
+## Open gaps carried to 023
+
+- Feature 018: AI edits to learner text are reviewed after the version lands (the 010 review bar and Undo). The owner's goal asks for review before. 023 adds a held proposal for learner-triggered AI edits.
+- Constitution VI UI skill checks (`impeccable`, `web-design-guidelines`) to run across 011-022.
