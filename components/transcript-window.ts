@@ -100,3 +100,33 @@ export function unitOfAnchor(messages: readonly LhViewMessage[], anchorId: strin
 	}
 	return -1;
 }
+
+/** Binary search over ordered items: the last index where `atOrBefore` holds, or -1. */
+export function lastIndexAtOrBefore(count: number, atOrBefore: (index: number) => boolean): number {
+	let low = 0, high = count;
+	while (low < high) {
+		const mid = (low + high) >>> 1;
+		if (atOrBefore(mid)) low = mid + 1; else high = mid;
+	}
+	return low - 1;
+}
+
+/** The last anchor whose top is at or above viewport y `line`, or the first
+ * anchor when none is. Reads only top-level row boxes and the anchors of the
+ * row at the line: reading a box inside a skipped content-visibility row forces
+ * its layout, so this must not walk the whole session on every scroll frame. */
+export function transcriptAnchorAt(main: HTMLElement, line: number, selector: string): HTMLElement | null {
+	const rows = main.querySelector('[data-testid="lesson-content"]')?.children;
+	if (!rows) return null;
+	const at = lastIndexAtOrBefore(rows.length, (index) => rows[index]!.getBoundingClientRect().top <= line);
+	for (let index = at; index >= 0; index--) {
+		const anchors = rows[index]!.querySelectorAll<HTMLElement>(selector);
+		if (index !== at) {
+			if (anchors.length) return anchors[anchors.length - 1]!;
+			continue;
+		}
+		const found = lastIndexAtOrBefore(anchors.length, (i) => anchors[i]!.getBoundingClientRect().top <= line);
+		if (found >= 0) return anchors[found]!;
+	}
+	return main.querySelector<HTMLElement>(selector);
+}

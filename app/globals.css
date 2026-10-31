@@ -1367,3 +1367,18 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 .lh-pane-divider:hover::before, .lh-pane-divider[data-dragging]::before { background: var(--muted-foreground); }
 .lh-pane-divider:focus-visible::before { background: var(--ring); width: 2px; }
 @media (prefers-reduced-motion: reduce) { .lh-pane-divider::before, .lh-pane-divider::after { transition: none; } }
+
+/* Long sessions (transcript-scroll-jank): the browser skips rendering rows and
+   answer parts away from the viewport; they stay in the DOM for find and anchors.
+   Grouped assistant turns are one giant row, so answer parts skip on their own.
+   Each renders once first (TranscriptRenderSkip marks it) so its remembered size is
+   real; a guessed height makes the reader jump when the row resolves. The clip
+   margin keeps focus rings at a row's edge visible through paint containment. */
+[data-testid="lesson-content"] > :not([data-question-target]),
+[data-testid="lesson-content"] [data-answer-part-id] {
+	contain-intrinsic-block-size: auto 300px;
+}
+[data-transcript-measured] {
+	content-visibility: auto;
+	overflow-clip-margin: 8px;
+}

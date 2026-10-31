@@ -2,10 +2,13 @@
 
 import { Component, startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode, type RefObject } from "react";
 import { flushSync } from "react-dom";
-import type { StickToBottomContext } from "use-stick-to-bottom";
+import { useStickToBottomContext, type StickToBottomContext } from "use-stick-to-bottom";
 import { messageAnchorId, messageIdFromHash, type LhViewMessage } from "@/src/core";
 import { useSessionStateStore } from "@/components/session-state";
 import { FULL_TRANSCRIPT_EVENT, unitOffsets, unitOfAnchor, windowStart } from "@/components/transcript-window";
+
+const BACKFILL_GESTURE_QUIET_MS = 150;
+const GESTURE_EVENTS = ["wheel", "touchmove", "keydown"] as const;
 
 function whenIdle(run: () => void): () => void {
 	if (typeof window.requestIdleCallback === "function") {
@@ -52,13 +55,57 @@ export function useTranscriptWindow(messages: readonly LhViewMessage[]) {
 		startTransition(() => setFrom((current) => windowStart(messagesRef.current, current)));
 	}, []);
 
-	// Backfill: one chunk per idle period until the session is whole.
+	// Backfill: one chunk per idle period until the session is whole. A reader
+	// mid-scroll goes first; the sentinel still mounts what they are about to reach.
 	useEffect(() => {
 		if (from <= 0) return;
-		return whenIdle(extend);
+		// Input, not scroll events: the keeper's own correction after each chunk
+		// emits a scroll that must not hold back the next chunk.
+		let gestureAt = 0;
+		const stamp = () => { gestureAt = performance.now(); };
+		let cancel = () => {};
+		const run = () => {
+			if (performance.now() - gestureAt < BACKFILL_GESTURE_QUIET_MS) cancel = whenIdle(run);
+			else extend();
+		};
+		cancel = whenIdle(run);
+		for (const type of GESTURE_EVENTS) window.addEventListener(type, stamp, { capture: true, passive: true });
+		return () => {
+			cancel();
+			for (const type of GESTURE_EVENTS) window.removeEventListener(type, stamp, { capture: true });
+		};
 	}, [from, extend]);
 
 	return { from, offsets, extend };
+}
+
+/** The dock reserve as the scroller's own scroll-padding. An inherited custom
+ * property here would restyle every message each time the dock folds. */
+export function TranscriptScrollPadding({ reserve }: { reserve: number }) {
+	const { scrollRef } = useStickToBottomContext();
+	useLayoutEffect(() => {
+		const main = scrollRef.current;
+		if (main) main.style.scrollPaddingBottom = `${reserve}px`;
+	}, [scrollRef, reserve]);
+	return null;
+}
+
+const SKIPPABLE = '[data-testid="lesson-content"] > :not([data-question-target], [data-transcript-measured]), [data-testid="lesson-content"] [data-answer-part-id]:not([data-transcript-measured])';
+
+/** Lets the browser skip offscreen rows, once each has rendered and its real
+ * size is remembered (app/globals.css). Two frames: the browser records the
+ * size at the ResizeObserver step of the frame that laid the row out. */
+export function TranscriptRenderSkip({ from, messages }: { from: number; messages: readonly LhViewMessage[] }) {
+	const { scrollRef } = useStickToBottomContext();
+	useEffect(() => {
+		let frame = requestAnimationFrame(() => {
+			frame = requestAnimationFrame(() => {
+				for (const row of scrollRef.current?.querySelectorAll(SKIPPABLE) ?? []) row.setAttribute("data-transcript-measured", "");
+			});
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [scrollRef, from, messages]);
+	return null;
 }
 
 /** Sits above the first rendered message; scrolling near it mounts the next

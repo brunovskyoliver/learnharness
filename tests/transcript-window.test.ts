@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { unitOffsets, unitOfAnchor, windowStart, WINDOW_BUDGET } from "../components/transcript-window.ts";
+import { lastIndexAtOrBefore, unitOffsets, unitOfAnchor, windowStart, WINDOW_BUDGET } from "../components/transcript-window.ts";
 import type { LhViewMessage } from "../src/core/index.ts";
 
 function user(id: string, text: string): LhViewMessage {
@@ -58,5 +58,19 @@ describe("transcript window (load-speed round, 2026-10-27)", () => {
 		assert.equal(unitOfAnchor(view, "msg_abc-t0"), 2);
 		assert.equal(unitOfAnchor(view, "message-msg_abc"), 2);
 		assert.equal(unitOfAnchor(view, "message-gone"), -1);
+	});
+});
+
+describe("lastIndexAtOrBefore", () => {
+	const tops = [0, 100, 100, 250];
+	it("finds the last item at or above the line, reading few items", () => {
+		let reads = 0;
+		assert.equal(lastIndexAtOrBefore(tops.length, (i) => { reads++; return tops[i]! <= 120; }), 2);
+		assert.ok(reads <= 3);
+		assert.equal(lastIndexAtOrBefore(tops.length, (i) => tops[i]! <= 900), 3);
+	});
+	it("is -1 above the first item and on an empty list", () => {
+		assert.equal(lastIndexAtOrBefore(tops.length, (i) => tops[i]! <= -1), -1);
+		assert.equal(lastIndexAtOrBefore(0, () => true), -1);
 	});
 });

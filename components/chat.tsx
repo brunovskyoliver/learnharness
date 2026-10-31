@@ -99,7 +99,7 @@ import { readSessionMetadata } from "@/components/session-metadata";
 import { SessionStateProvider, SessionPartState, useSessionState, useSessionStateStore } from "@/components/session-state";
 import { SessionReadingState } from "@/components/session-reading-state";
 import { SessionTurnRail } from "@/components/session-turn-rail";
-import { TranscriptArrivalScript, TranscriptBackfillSentinel, TranscriptScrollKeeper, useTranscriptWindow } from "@/components/transcript-window-view";
+import { TranscriptArrivalScript, TranscriptBackfillSentinel, TranscriptRenderSkip, TranscriptScrollKeeper, TranscriptScrollPadding, useTranscriptWindow } from "@/components/transcript-window-view";
 
 const MermaidOverlay = dynamic(() => import("@/components/session-overlay").then((module) => module.MermaidOverlay), { ssr: false });
 
@@ -1380,11 +1380,11 @@ function ChatView({
 
 				<SessionFind scopeRef={sessionFindScopeRef} scrollContextRef={scrollContextRef} />
 				<div ref={sessionFindScopeRef} className="lh-session-scale session-workspace-layout relative flex min-h-0 flex-1 flex-col md:flex-row">
-				<Conversation className="@container/session flex h-full min-h-0 min-w-0 flex-1 flex-col" style={{ "--lh-composer-height": `${dockReserve}px` } as React.CSSProperties} initial={false} resize={transcriptSettled ? "smooth" : "instant"} contextRef={scrollContextRef}>
+				<Conversation className="@container/session flex h-full min-h-0 min-w-0 flex-1 flex-col" initial={false} resize={transcriptSettled ? "smooth" : "instant"} contextRef={scrollContextRef}>
 					<SessionMessageNavigation />
 					<TurnReadingPosition busy={busy} messages={messages} onReserve={setReadingReserve} />
 					<SessionTurnRail messages={messages} nativeMessages={nativeMessages} turns={turns} onReserve={setReadingReserve} />
-					<ConversationContent scrollClassName="min-h-0 flex-1 [scroll-padding-bottom:var(--lh-composer-height)]" className="@container min-h-full gap-0 p-0">
+					<ConversationContent scrollClassName="min-h-0 flex-1 [scroll-padding-bottom:160px]" className="@container min-h-full gap-0 p-0">
 						<div data-testid="lesson-content" data-session-find-root="" className={`${COLUMN} flex flex-1 flex-col gap-6 pt-4`}>
 							{messages.length === 0 && !busy && (
 								<ConversationEmptyState
@@ -1680,6 +1680,8 @@ function ChatView({
 						<div aria-hidden data-testid="dock-spacer" suppressHydrationWarning style={{ height: Math.max(dockReserve, readingReserve) }} />
 				</ConversationContent>
 				<SessionReadingState />
+				<TranscriptScrollPadding reserve={dockReserve} />
+				<TranscriptRenderSkip from={transcript.from} messages={messages} />
 				{/* The active summary and answer float over the scrollable lesson. */}
 
 				<DockFooter

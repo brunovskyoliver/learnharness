@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef } from "react";
 import { useStickToBottomContext } from "use-stick-to-bottom";
 import { useSessionStateStore } from "./session-state";
+import { transcriptAnchorAt } from "./transcript-window";
 
 interface ReadingAnchor { id: string; offset: number; top: number; bottom: boolean }
 function readingAnchor(value: unknown): ReadingAnchor | null {
@@ -10,6 +11,8 @@ function readingAnchor(value: unknown): ReadingAnchor | null {
 	const anchor = value as ReadingAnchor;
 	return typeof anchor.id === "string" && Number.isFinite(anchor.offset) && Number.isFinite(anchor.top) && typeof anchor.bottom === "boolean" ? anchor : null;
 }
+
+const ANCHORS = "[data-answer-part-id], [id^='message-']";
 
 /** One mount owner for scroll arrival. Stable anchors survive reflow and new
  * messages; resize correction ends immediately on a reader's own gesture. */
@@ -27,41 +30,28 @@ export function SessionReadingState() {
 		let ready = Boolean(window.location.hash);
 		let disposed = false;
 		let frame = 0;
-		let dirty = false;
-		let positions: Array<{ id: string; top: number }> = [];
 		const visible = () => main.isConnected && main.clientHeight > 0 && main.getClientRects().length > 0;
-		const measure = () => {
-			if (!visible()) return;
-			const edge = main.getBoundingClientRect().top;
-			positions = [...main.querySelectorAll<HTMLElement>("[data-answer-part-id], [id^='message-']")].map((element) => ({ id: element.dataset.answerPartId ?? element.id, top: main.scrollTop + element.getBoundingClientRect().top - edge }));
-		};
 		const capture = () => {
 			if (!ready || restoring || !visible()) return;
-			if (dirty) { measure(); dirty = false; }
-			let low = 0, high = positions.length;
-			while (low < high) {
-				const mid = (low + high) >>> 1;
-				if (positions[mid]!.top <= main.scrollTop + 16) low = mid + 1; else high = mid;
-			}
-			const anchor = positions[Math.max(0, low - 1)];
-			store.set("reading", { id: anchor?.id ?? "", offset: (anchor?.top ?? 0) - main.scrollTop, top: main.scrollTop, bottom: main.scrollHeight - main.clientHeight - main.scrollTop <= 2 } satisfies ReadingAnchor);
+			const edge = main.getBoundingClientRect().top;
+			const anchor = transcriptAnchorAt(main, edge + 16, ANCHORS);
+			store.set("reading", { id: anchor ? anchor.dataset.answerPartId ?? anchor.id : "", offset: anchor ? anchor.getBoundingClientRect().top - edge : -main.scrollTop, top: main.scrollTop, bottom: main.scrollHeight - main.clientHeight - main.scrollTop <= 2 } satisfies ReadingAnchor);
 		};
 		const restore = () => {
 			if (!restoring || !saved || !visible()) return;
 			if (window.location.hash) { restoring = false; ready = true; return; }
 			current.current.stopScroll();
-			const anchor = positions.find((position) => position.id === saved.id);
-			const target = saved.bottom ? main.scrollHeight - main.clientHeight : anchor ? anchor.top - saved.offset : saved.top;
+			const anchor = saved.id ? main.querySelector(`[data-answer-part-id="${CSS.escape(saved.id)}"], [id="${CSS.escape(saved.id)}"]`) : null;
+			const target = saved.bottom ? main.scrollHeight - main.clientHeight : anchor ? main.scrollTop + anchor.getBoundingClientRect().top - main.getBoundingClientRect().top - saved.offset : saved.top;
 			main.scrollTop = Math.max(0, target);
 			current.current.state.scrollTop = main.scrollTop;
 			ready = true;
 			main.dataset.sessionRestored = "true";
 		};
 		const update = () => {
-			if (disposed) return;
-			dirty = true;
+			if (disposed || !restoring) return;
 			cancelAnimationFrame(frame);
-			frame = requestAnimationFrame(() => { measure(); dirty = false; if (restoring) restore(); });
+			frame = requestAnimationFrame(restore);
 		};
 		const interrupt = (event?: Event) => {
 			if (!restoring) return;
@@ -81,13 +71,12 @@ export function SessionReadingState() {
 			// Hidden/detached scrollers report zero; retain the last visible sample.
 			// StrictMode can also reset geometry between restoration and cleanup.
 			// Never replace a saved anchor until the reader takes control.
-			if (!restoring && visible()) { measure(); capture(); }
+			if (!restoring && visible()) capture();
 			store.flush();
 		};
 		const beforeNavigation = (event: PointerEvent) => {
 			if (!main.parentElement?.contains(event.target as Node)) flush();
 		};
-		measure();
 		if (restoring) restore();
 		else if (!window.location.hash) void Promise.resolve(current.current.scrollToBottom({ animation: "instant" })).then(() => { if (!disposed) ready = true; });
 		const observer = new ResizeObserver(update);
@@ -99,7 +88,7 @@ export function SessionReadingState() {
 		void document.fonts.ready.then(update);
 		const settle = setTimeout(() => {
 			if (restoring) {
-				measure(); restore();
+				restore();
 				// Keep an anchored reader steady through late fonts/diagrams
 				// until their first gesture. Bottom readers resume live follow.
 				if (saved?.bottom) restoring = false;

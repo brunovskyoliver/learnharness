@@ -1,6 +1,6 @@
 "use client";
 
-import { requestFullTranscript } from "@/components/transcript-window";
+import { lastIndexAtOrBefore, requestFullTranscript, transcriptAnchorAt } from "@/components/transcript-window";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStickToBottomContext } from "use-stick-to-bottom";
 import { sessionTurnEntries, type LhMessage, type LhViewMessage, type TurnUsage, type SessionTurnEntry } from "@/src/core";
@@ -72,24 +72,23 @@ export function SessionTurnRail({ messages, nativeMessages, turns, onReserve }: 
 		if (!main || !content) return;
 		let frame = 0;
 		let dirty = true;
-		let positions: Array<{ id: string; top: number }> = [];
+		let anchors: Array<{ id: string; element: HTMLElement }> = [];
 		const update = () => {
 			frame = 0;
 			if (dirty) {
-				const anchors = new Map([...main.querySelectorAll<HTMLElement>("[data-answer-part-id]")].map((element) => [element.dataset.answerPartId, element]));
-				const edge = main.getBoundingClientRect().top;
-				positions = entries.flatMap((entry) => {
-					const anchor = anchors.get(entry.partId);
-					return anchor ? [{ id: entry.id, top: main.scrollTop + anchor.getBoundingClientRect().top - edge }] : [];
+				const elements = new Map([...main.querySelectorAll<HTMLElement>("[data-answer-part-id]")].map((element) => [element.dataset.answerPartId, element]));
+				anchors = entries.flatMap((entry) => {
+					const element = elements.get(entry.partId);
+					return element ? [{ id: entry.id, element }] : [];
 				});
 				dirty = false;
 			}
-			let low = 0, high = positions.length;
-			while (low < high) {
-				const mid = (low + high) >>> 1;
-				if (positions[mid]!.top <= main.scrollTop + 32) low = mid + 1; else high = mid;
-			}
-			setVisible(positions[Math.max(0, low - 1)]?.id ?? "");
+			const line = transcriptAnchorAt(main, main.getBoundingClientRect().top + 32, "[data-answer-part-id]");
+			const last = line ? lastIndexAtOrBefore(anchors.length, (index) => {
+				const element = anchors[index]!.element;
+				return element === line || !!(element.compareDocumentPosition(line) & Node.DOCUMENT_POSITION_FOLLOWING);
+			}) : -1;
+			setVisible(anchors[Math.max(0, last)]?.id ?? "");
 		};
 		const schedule = () => { if (!frame) frame = requestAnimationFrame(update); };
 		const invalidate = () => { dirty = true; schedule(); };
