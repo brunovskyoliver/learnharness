@@ -1,7 +1,7 @@
 "use client";
 
-import type { Editor } from "@tiptap/core";
-import { NodeSelection } from "@tiptap/pm/state";
+import { posToDOMRect, type Editor } from "@tiptap/core";
+import { NodeSelection, TextSelection } from "@tiptap/pm/state";
 import { useEditorState } from "@tiptap/react";
 import { BubbleMenu } from "@tiptap/react/menus";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
@@ -146,8 +146,21 @@ export function PageToolbar({ editor, onLink, tutor, onImage }: { editor: Editor
 	);
 }
 
+/** The box of the selected text. Select-all ends on block boundaries, whose box
+ * is the whole block's width, so it measures from the first and last text inside. */
+function selectedTextReference(editor: Editor) {
+	const { doc, selection } = editor.state;
+	const from = TextSelection.findFrom(doc.resolve(selection.from), 1, true)?.from ?? selection.from;
+	const to = TextSelection.findFrom(doc.resolve(selection.to), -1, true)?.to ?? selection.to;
+	const rect = () => posToDOMRect(editor.view, from, Math.max(from, to));
+	return { getBoundingClientRect: rect, getClientRects: () => [rect()] };
+}
+
 /** Over selected text: formatting, and the tutor's actions or why they're unavailable. */
-export function PageBubble({ editor, tutor, onLink }: { editor: Editor; tutor?: PageTutor; onLink: () => void }) {
+export function PageBubble({ editor, tutor, onLink, scrollHost }: { editor: Editor; tutor?: PageTutor; onLink: () => void; scrollHost: HTMLElement }) {
+	// In the workspace, not the scrolling editor: inside it the first lines have
+	// no room above them, so the bubble flipped below the selection.
+	const workspace = scrollHost.closest<HTMLElement>(".page-workspace") ?? undefined;
 	const state = useEditorState({ editor, selector: ({ editor: e }) => ({ bold: e.isActive("bold"), italic: e.isActive("italic"), link: e.isActive("link") }) });
 	const chain = () => editor.chain().focus();
 	const button = "inline-flex h-8 shrink-0 items-center rounded-[6px] px-2 text-sm text-foreground hover:bg-card pointer-coarse:min-h-11";
@@ -155,7 +168,9 @@ export function PageBubble({ editor, tutor, onLink }: { editor: Editor; tutor?: 
 		<BubbleMenu
 			editor={editor}
 			shouldShow={({ editor: e, state: s, from, to }) => e.isEditable && from !== to && !(s.selection instanceof NodeSelection) && !e.isActive("codeBlock") && !e.isActive("rawBlock")}
-			options={{ placement: "top", offset: 8 }}
+			appendTo={workspace}
+			getReferencedVirtualElement={() => selectedTextReference(editor)}
+			options={{ placement: "top", offset: 8, scrollTarget: scrollHost, flip: { boundary: workspace }, shift: { boundary: workspace, padding: 8 }, hide: { boundary: scrollHost } }}
 		>
 			<div role="toolbar" aria-label="Selection" data-testid="page-bubble" className="flex max-w-[calc(100vw-2rem)] flex-wrap items-center gap-1 rounded-[10px] bg-popover p-1">
 				<ToolButton label="Bold" pressed={state.bold} onClick={() => chain().toggleBold().run()}><BoldIcon className="ui-icon" aria-hidden="true" /></ToolButton>

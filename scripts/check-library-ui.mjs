@@ -1264,6 +1264,15 @@ async function checkTutorActions(width) {
 		await page.keyboard.press("End");
 		await page.keyboard.up("Shift");
 		await page.waitForSelector('[data-testid="page-bubble"]', { visible: true });
+		await pause(400);
+		// Above the text it selects, even on the first line, and inside the page pane.
+		const bubble = await page.evaluate(() => {
+			const text = getSelection().getRangeAt(0).getBoundingClientRect();
+			const box = document.querySelector('[data-testid="page-bubble"]').getBoundingClientRect();
+			const pane = document.querySelector(".page-workspace").getBoundingClientRect();
+			return { above: box.bottom <= text.top, inPane: box.left >= pane.left && box.right <= pane.right };
+		});
+		assert.deepEqual(bubble, { above: true, inPane: true }, `selection bubble at ${width}px`);
 	};
 
 	// Beside a chat: Explain sends at once; Ask… only fills the composer.

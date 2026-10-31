@@ -93,6 +93,8 @@ export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, 
 		createTutorHighlights(nodeJsonKey),
 	], [emit]);
 	const host = useRef<HTMLDivElement>(null);
+	const [scrollHost, setScrollHost] = useState<HTMLDivElement | null>(null);
+	const setHost = useCallback((node: HTMLDivElement | null) => { host.current = node; setScrollHost(node); }, []);
 	const [linkAt, setLinkAt] = useState<{ left: number; top: number } | null>(null);
 	const openLinkRef = useRef<() => void>(() => {});
 	// The slash menu: open while the caret ends a paragraph that holds "/query".
@@ -260,8 +262,8 @@ export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, 
 		<>
 			{editor && !readOnly && <PageToolbar editor={editor} onLink={() => openLinkRef.current()} tutor={tutor} onImage={onChooseImage} />}
 			{editor && !readOnly && <ImageAltPopover editor={editor} host={host.current} />}
-			{editor && !readOnly && <PageBubble editor={editor} tutor={tutor} onLink={() => openLinkRef.current()} />}
-			<div ref={host} className="lh-page-editor-host relative min-h-0 flex-1 overflow-y-auto">
+			{editor && !readOnly && scrollHost && <PageBubble editor={editor} tutor={tutor} onLink={() => openLinkRef.current()} scrollHost={scrollHost} />}
+			<div ref={setHost} className="lh-page-editor-host relative min-h-0 flex-1 overflow-y-auto">
 				<EditorContent editor={editor} className="min-h-full" />
 				{editor && linkAt && <LinkPopover editor={editor} at={linkAt} onClose={() => setLinkAt(null)} />}
 				{editor && slashOpen && <SlashMenu items={slashItems} query={slashState!.query} active={Math.min(slashActive, Math.max(0, slashItems.length - 1))} at={anchorBelowSelection(editor, host.current)} onPick={pickSlash} />}
