@@ -219,7 +219,7 @@ async function checkWidth(width) {
 	// Delete: the dialog names the item; Escape keeps it and returns focus.
 	await page.click(`[aria-label="Delete renamed.md"]`);
 	await page.waitForSelector('[data-testid="library-delete-dialog"]', { visible: true });
-	assert.ok((await page.$eval('[data-testid="library-delete-dialog"]', (el) => el.innerText)).includes("Delete renamed.md?"));
+	assert.ok((await page.$eval('[data-testid="library-delete-dialog"]', (el) => el.innerText)).includes("Move renamed.md to the trash?"));
 	await assertLayout("delete");
 	await shot(page, "delete");
 	await page.keyboard.press("Escape");

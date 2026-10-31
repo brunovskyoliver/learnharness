@@ -5,8 +5,8 @@ Owner goal, 2026-10-31: evolve the app into one workspace connecting learning, d
 | # | Feature | Depends on | Status |
 | --- | --- | --- | --- |
 | 011 | Library folders: nested folders, breadcrumbs, move, pages and uploads together | 009 | Implemented on `feat/011-library-folders`, not merged or deployed |
-| 012 | Library organization: tags, favorites, pins, recent, archive, recoverable trash | 011 | Not started |
-| 013 | Library views: sorting, filters, list/grid, bulk actions, context menus, drag and drop | 011, 012 | Not started |
+| 012 | Library organization: tags, favorites, pins, recent, archive, recoverable trash | 011 | Implemented on `feat/012-library-organization`, not merged or deployed |
+| 013 | Library views: sorting, filters, list/grid, bulk actions, context menus, drag and drop | 011, 012 | Implemented on `feat/012-library-organization`, not merged or deployed |
 | 014 | Workspace navigation: unified sidebar, tabs, contextual right pane, resizable panels | 013 | Not started |
 | 015 | Command palette and keyboard shortcuts | 014 | Not started |
 | 016 | Note links: wiki links, backlinks, related notes, callouts, collapsible sections | 014 | Not started |
@@ -24,7 +24,7 @@ The constitution requires owner approval and a measured startup cost for each ne
 
 | Candidate | Decide in | Starting position |
 | --- | --- | --- |
-| dnd-kit | 013 | Compare with native drag and a keyboard "Move to" dialog |
+| dnd-kit | 013 | Decided, not adopted: native drag events plus the "Move to…" dialog cover mouse, keyboard and touch with no new dependency |
 | cmdk | 015 | Compare with the existing Radix dialog and `src/core/fuzzy.ts` |
 | ts-fsrs | 021 | Likely worthwhile: the scheduler is easy to get subtly wrong |
 | Excalidraw | 022 | Compare with installed React Flow; Excalidraw is heavy |

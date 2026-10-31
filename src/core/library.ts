@@ -38,6 +38,10 @@ export interface LibraryItem {
 	headVersion?: number;
 	/** Absent, or a folder that no longer exists, reads as the top level (feature 011). */
 	folderId?: string;
+	tags?: string[];
+	favorite?: boolean;
+	pinned?: boolean;
+	archivedAt?: string;
 }
 
 /** A Library folder (feature 011). Catalog only: bytes stay flat in files/. */
@@ -47,6 +51,57 @@ export interface LibraryFolder {
 	parentId: string | null;
 	createdAt: string;
 	updatedAt: string;
+	favorite?: boolean;
+	pinned?: boolean;
+	archivedAt?: string;
+}
+
+/** What one "move to trash" took (feature 012). Kept outside `items`, so an
+ *  older app can neither list these nor tombstone them, and rewrites them as is. */
+export interface LibraryTrashEntry {
+	id: string;
+	name: string;
+	kind: LibraryKind | "folder";
+	trashedAt: string;
+	/** The folder it was in, for restoring. */
+	folderId: string | null;
+	items: LibraryItem[];
+	/** A trashed folder's whole subtree, root first. */
+	folders: LibraryFolder[];
+}
+
+/** The marks a learner can change without touching content. */
+export interface LibraryMarks {
+	tags?: string[];
+	favorite?: boolean;
+	pinned?: boolean;
+	archived?: boolean;
+}
+
+export const TAG_MAX_CHARS = 40;
+export const TAGS_MAX_PER_ITEM = 20;
+
+/** Tags trimmed, de-duplicated by case, or null when any can't be used. */
+export function cleanTags(raw: unknown): string[] | null {
+	if (!Array.isArray(raw) || raw.length > TAGS_MAX_PER_ITEM) return null;
+	const tags = new Map<string, string>();
+	for (const entry of raw) {
+		if (typeof entry !== "string") return null;
+		const tag = entry.normalize("NFC").trim();
+		if (!tag || tag.length > TAG_MAX_CHARS || /[\x00-\x1f\x7f]/.test(tag)) return null;
+		if (!tags.has(nameKey(tag))) tags.set(nameKey(tag), tag);
+	}
+	return [...tags.values()];
+}
+
+/** Applies marks, leaving absent fields out so old catalogs stay the same shape. */
+export function withMarks<T extends { favorite?: boolean; pinned?: boolean; archivedAt?: string; tags?: string[] }>(target: T, marks: LibraryMarks, now: string): T {
+	const next = { ...target };
+	if (marks.favorite !== undefined) { if (marks.favorite) next.favorite = true; else delete next.favorite; }
+	if (marks.pinned !== undefined) { if (marks.pinned) next.pinned = true; else delete next.pinned; }
+	if (marks.archived !== undefined) { if (marks.archived) next.archivedAt = target.archivedAt ?? now; else delete next.archivedAt; }
+	if (marks.tags !== undefined) { if (marks.tags.length > 0) next.tags = marks.tags; else delete next.tags; }
+	return next;
 }
 
 /** A deleted item. Keeps the name so old references stay honest. */
@@ -63,6 +118,7 @@ export interface LibraryCatalog {
 	items: (LibraryItem | LibraryTombstone)[];
 	/** Additive, so the version stays and an older app keeps these on rewrite. */
 	folders?: LibraryFolder[];
+	trash?: LibraryTrashEntry[];
 }
 
 export const isTombstone = (item: LibraryItem | LibraryTombstone): item is LibraryTombstone => "deletedAt" in item;

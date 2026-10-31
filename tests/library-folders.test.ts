@@ -179,7 +179,7 @@ describe("move targets", () => {
 		const b = await folder("b", a.id);
 		const c = await folder("c");
 		const folders = await libraryStore.folders();
-		assert.deepEqual(moveTargets(folders, { folderId: a.id }).map((t) => t.id), [null, c.id]);
+		assert.deepEqual(moveTargets(folders, { folderIds: [a.id] }).map((t) => t.id), [null, c.id]);
 		assert.deepEqual(moveTargets(folders, null).map((t) => t.label), ["Library", "a", "a / b", "c"]);
 		assert.ok(b);
 	});

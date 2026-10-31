@@ -17,13 +17,13 @@ export function DeleteItemBody({ item, busy, failure, onClose, onConfirm }: {
 }) {
 	return (
 		<>
-			<DialogTitle className="text-base font-semibold [overflow-wrap:anywhere]">Delete {item.name}?</DialogTitle>
-			{item.kind === "page" && <DialogDescription className="text-sm text-muted-foreground">Its whole version history goes too.</DialogDescription>}
+			<DialogTitle className="text-base font-semibold [overflow-wrap:anywhere]">Move {item.name} to the trash?</DialogTitle>
+			<DialogDescription className="text-sm text-muted-foreground">{item.kind === "page" ? "You can restore it, with its whole version history, from Trash." : "You can restore it from Trash."}</DialogDescription>
 			{failure && <p role="alert" className="text-sm text-destructive">{failure}</p>}
 			<div className="flex justify-end gap-2">
 				<Button type="button" variant="ghost" className="pointer-coarse:h-11" disabled={busy} onClick={onClose} data-testid="library-delete-cancel">Cancel</Button>
 				<Button type="button" variant="ghost" className={`${DESTRUCTIVE_BUTTON} pointer-coarse:h-11`} disabled={busy} onClick={onConfirm} data-testid="library-delete-confirm">
-					{busy ? "Deleting…" : failure ? "Try again" : "Delete"}
+					{busy ? "Moving…" : failure ? "Try again" : "Move to the trash"}
 				</Button>
 			</div>
 		</>
@@ -50,13 +50,13 @@ export function DeleteItemDialog({ item, onClose, onDeleted, returnFocus }: {
 		setBusy(true);
 		setFailure(null);
 		try {
-			const response = await fetch(`/api/library/items/${item.id}`, { method: "DELETE" });
+			const response = await fetch("/api/library/trash", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ itemId: item.id }) });
 			// Already gone is what the learner asked for.
 			if (response.ok || response.status === 404) return onDeleted();
 			const body = await response.json().catch(() => ({})) as { error?: string };
-			setFailure(body.error ?? `${item.name} could not be deleted.`);
+			setFailure(body.error ?? `${item.name} could not be moved to the trash.`);
 		} catch {
-			setFailure(`${item.name} could not be deleted. Check your connection and try again.`);
+			setFailure(`${item.name} could not be moved to the trash. Check your connection and try again.`);
 		}
 		setBusy(false);
 	};

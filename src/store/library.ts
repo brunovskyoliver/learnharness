@@ -12,9 +12,9 @@ import { nanoid } from "nanoid";
 import { PATHS, tenantScoped } from "../../config.ts";
 import { emit } from "../core/events.ts";
 import {
-	CATALOG_VERSION, CONTENT_CHECK_BYTES, contentMatches, isTombstone, liveFolderId, wouldCycle, isUnseenTutorVersion, kindForName, LIBRARY_REFUSALS, LibraryCatalogError,
+	CATALOG_VERSION, CONTENT_CHECK_BYTES, contentMatches, folderSubtree, isTombstone, liveFolderId, withMarks, wouldCycle, isUnseenTutorVersion, kindForName, LIBRARY_REFUSALS, LibraryCatalogError,
 	nameKey, PAGE_MAX_BYTES, suggestName, uploadName,
-	type LibraryCatalog, type LibraryFolder, type LibraryItem, type LibraryKind, type LibraryOrigin, type LibraryRefusal, type LibraryTextState, type LibraryTombstone,
+	type LibraryCatalog, type LibraryFolder, type LibraryItem, type LibraryMarks, type LibraryTrashEntry, type LibraryKind, type LibraryOrigin, type LibraryRefusal, type LibraryTextState, type LibraryTombstone,
 	type PageDraft, type PageHead, type PageState, type PageStale, type PageVersion, type PageVersionCause, type PageWriteResult,
 } from "../core/library.ts";
 import type { AgentRevision, AgentRevisionResult, LibraryStore, PageCreateOptions } from "../core/ports.ts";
@@ -381,6 +381,161 @@ async function moveItem(id: string, folderId: string | null): Promise<LibraryIte
 	});
 }
 
+// ── Marks, recent and trash (feature 012) ──
+
+const putFolderMarks = (id: string, marks: Omit<LibraryMarks, "tags">) => withLock(async () => {
+	const catalog = await readCatalog();
+	const folder = foldersOf(catalog).find((f) => f.id === id);
+	if (!folder) return null;
+	const next = withMarks(folder, marks, new Date().toISOString());
+	putFolder(catalog, next);
+	await writeCatalog(catalog);
+	emit("library-changed", { itemId: id });
+	return next;
+});
+
+const putItemMarks = (id: string, marks: LibraryMarks) => withLock(async () => {
+	const catalog = await loadReconciled();
+	const item = liveItems(catalog).find((i) => i.id === id);
+	if (!item) return null;
+	const next = withMarks(item, marks, new Date().toISOString());
+	replace(catalog, id, next);
+	await writeCatalog(catalog);
+	emit("library-changed", { itemId: id });
+	return next;
+});
+
+const trashOf = (catalog: LibraryCatalog) => catalog.trash ?? [];
+const trashDir = (entryId: string) => path.join(PATHS.library, "trash", entryId);
+const trashedBytes = (entryId: string, itemId: string) => path.join(trashDir(entryId), itemId);
+
+/** Documents leave files/, so the agent's jailed file tools can't read them. The
+ *  catalog is written first: a crash here leaves the file in files/, where
+ *  reconcile adopts it as an item. Nothing is lost either way. */
+async function moveBytesToTrash(entry: LibraryTrashEntry): Promise<void> {
+	await fs.mkdir(trashDir(entry.id), { recursive: true });
+	for (const item of entry.items) {
+		if (item.kind !== "page") await fs.rename(path.join(PATHS.files, item.name), trashedBytes(entry.id, item.id)).catch((err) => { if (!isCode(err, "ENOENT")) throw err; });
+	}
+}
+
+async function trashItem(id: string): Promise<LibraryTrashEntry | null> {
+	return withLock(async () => {
+		const catalog = await loadReconciled();
+		const item = liveItems(catalog).find((i) => i.id === id);
+		if (!item) return null;
+		const entry: LibraryTrashEntry = {
+			id: `trs_${nanoid()}`, name: item.name, kind: item.kind, trashedAt: new Date().toISOString(),
+			folderId: liveFolderId(item.folderId, foldersOf(catalog)), items: [item], folders: [],
+		};
+		catalog.items = catalog.items.filter((i) => i.id !== id);
+		catalog.trash = [...trashOf(catalog), entry];
+		await writeCatalog(catalog);
+		await moveBytesToTrash(entry);
+		emit("library-changed", { itemId: id });
+		return entry;
+	});
+}
+
+async function trashFolder(id: string): Promise<LibraryTrashEntry | null> {
+	return withLock(async () => {
+		const catalog = await loadReconciled();
+		const folders = foldersOf(catalog);
+		const root = folders.find((f) => f.id === id);
+		if (!root) return null;
+		const subtree = folderSubtree(id, folders);
+		const items = liveItems(catalog).filter((i) => i.folderId && subtree.has(i.folderId));
+		const entry: LibraryTrashEntry = {
+			id: `trs_${nanoid()}`, name: root.name, kind: "folder", trashedAt: new Date().toISOString(),
+			folderId: liveFolderId(root.parentId, folders), items, folders: [root, ...folders.filter((f) => f.id !== id && subtree.has(f.id))],
+		};
+		const gone = new Set(items.map((i) => i.id));
+		catalog.items = catalog.items.filter((i) => !gone.has(i.id));
+		catalog.folders = folders.filter((f) => !subtree.has(f.id));
+		catalog.trash = [...trashOf(catalog), entry];
+		await writeCatalog(catalog);
+		await moveBytesToTrash(entry);
+		emit("library-changed", { itemId: id });
+		return entry;
+	});
+}
+
+async function restoreTrash(entryId: string): Promise<{ items: LibraryItem[]; folders: LibraryFolder[] } | null> {
+	return withLock(async () => {
+		const catalog = await loadReconciled();
+		const entry = trashOf(catalog).find((e) => e.id === entryId);
+		if (!entry) return null;
+		const parent = liveFolderId(entry.folderId, foldersOf(catalog));
+		const restoredFolders = entry.folders.map((folder, index) => {
+			if (index !== 0) return folder;
+			const taken = siblingKeys(catalog, parent);
+			return { ...folder, parentId: parent, name: taken.has(nameKey(folder.name)) ? suggestName(folder.name, (c) => taken.has(nameKey(c))) : folder.name };
+		});
+		const taken = await takenKeys(catalog);
+		const restoredItems: LibraryItem[] = [];
+		for (const item of entry.items) {
+			const name = taken.has(nameKey(item.name)) ? suggestName(item.name, (c) => taken.has(nameKey(c))) : item.name;
+			taken.add(nameKey(name));
+			const { folderId: _old, ...rest } = item;
+			const home = entry.folders.length > 0 ? item.folderId : (parent ?? undefined);
+			if (item.kind !== "page") {
+				await fs.mkdir(PATHS.files, { recursive: true });
+				// link() never overwrites. The bytes stay in the trash until the catalog is written.
+				await fs.link(trashedBytes(entry.id, item.id), path.join(PATHS.files, name));
+			}
+			restoredItems.push({
+				...rest, name, ...(home ? { folderId: home } : {}),
+				...(name !== item.name ? { previousNames: [...(item.previousNames ?? []), item.name] } : {}),
+			});
+		}
+		catalog.items = [...catalog.items.filter((i) => !restoredItems.some((r) => r.id === i.id)), ...restoredItems];
+		catalog.folders = [...foldersOf(catalog), ...restoredFolders];
+		catalog.trash = trashOf(catalog).filter((e) => e.id !== entryId);
+		await writeCatalog(catalog);
+		await fs.rm(trashDir(entry.id), { recursive: true, force: true });
+		emit("library-changed", { itemId: entryId });
+		return { items: restoredItems, folders: restoredFolders };
+	});
+}
+
+async function purgeTrash(entryId: string): Promise<boolean> {
+	return withLock(async () => {
+		const catalog = await readCatalog();
+		const entry = trashOf(catalog).find((e) => e.id === entryId);
+		if (!entry) return false;
+		const now = new Date().toISOString();
+		catalog.items = [...catalog.items, ...entry.items.map((item) => tombstone(item, now))];
+		catalog.trash = trashOf(catalog).filter((e) => e.id !== entryId);
+		await writeCatalog(catalog);
+		await fs.rm(trashDir(entry.id), { recursive: true, force: true });
+		for (const item of entry.items) {
+			if (item.kind === "page") await fs.rm(path.join(PATHS.library, "pages", item.id), { recursive: true, force: true });
+			await fs.rm(derivedFile(item.id), { force: true });
+		}
+		emit("library-changed", { itemId: entryId });
+		return true;
+	});
+}
+
+const recentFile = () => path.join(PATHS.library, "recent.json");
+const RECENT_KEPT = 50;
+type RecentEntry = { id: string; at: string };
+
+const markOpened = (id: string) => withLock(async () => {
+	if (!liveItems(await readCatalog()).some((i) => i.id === id)) return false;
+	const recent = (await readJsonFile<RecentEntry[]>(recentFile())) ?? [];
+	await fs.mkdir(PATHS.library, { recursive: true });
+	await writeJsonFile(recentFile(), [{ id, at: new Date().toISOString() }, ...recent.filter((r) => r.id !== id)].slice(0, RECENT_KEPT));
+	emit("library-changed", { itemId: id });
+	return true;
+});
+
+const recentItems = (limit = 20) => withLock(async () => {
+	const live = liveItems(await loadReconciled());
+	const recent = (await readJsonFile<RecentEntry[]>(recentFile())) ?? [];
+	return recent.flatMap((r) => live.find((i) => i.id === r.id) ?? []).slice(0, limit);
+});
+
 // ── Pages (data-model.md): append-only versions and one learner draft ──────
 
 const pageDir = (id: string) => path.join(PATHS.library, "pages", id);
@@ -707,6 +862,14 @@ async function unlinkChat(chatId: string): Promise<void> {
 				touched = true;
 			}
 		}
+		for (const entry of trashOf(catalog)) {
+			for (const item of entry.items) {
+				if (item.origin.type === "agent" && item.origin.chatId === chatId) {
+					item.origin = { type: "agent" };
+					touched = true;
+				}
+			}
+		}
 		if (touched) await writeCatalog(catalog);
 	});
 }
@@ -718,7 +881,11 @@ export const libraryStore: LibraryStore = {
 		return items.sort((a, b) => a.name.localeCompare(b.name));
 	}),
 	get: (id) => withLock(async () => liveItems(await loadReconciled()).find((i) => i.id === id) ?? null),
-	catalog: () => withLock(async () => (await loadReconciled()).items),
+	// A trashed item reads as deleted to @ tokens, until it is restored.
+	catalog: () => withLock(async () => {
+		const catalog = await loadReconciled();
+		return [...catalog.items, ...trashOf(catalog).flatMap((entry) => entry.items.map((item) => tombstone(item, entry.trashedAt)))];
+	}),
 	readText: async (item) => {
 		if (item.kind !== "page") return fs.readFile(path.join(PATHS.files, item.name), "utf8");
 		const last = (await readVersions(item.id)).at(-1);
@@ -782,6 +949,15 @@ export const libraryStore: LibraryStore = {
 	moveFolder,
 	removeFolder,
 	moveItem,
+	markItem: putItemMarks,
+	markFolder: putFolderMarks,
+	trashItem,
+	trashFolder,
+	listTrash: () => withLock(async () => [...trashOf(await readCatalog())].sort((a, b) => b.trashedAt.localeCompare(a.trashedAt))),
+	restoreTrash,
+	purgeTrash,
+	recent: recentItems,
+	markOpened,
 	rename,
 	remove,
 	setTextState: (id, state: LibraryTextState) => withLock(async () => {

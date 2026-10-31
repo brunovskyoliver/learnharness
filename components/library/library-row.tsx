@@ -1,9 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { FolderInputIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { PencilIcon, PinIcon, StarIcon, Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatBytes, KIND_LABEL, type LibraryItem } from "@/src/core";
+import type { EntryKey } from "./library-filter.ts";
+import { LibraryEntryMenu, LibraryMoreButton, type LibraryMenuAction } from "./library-menu.tsx";
 import { opensInPane, usePagePane } from "./page-pane-context.tsx";
 
 const ACTION = "size-9 text-muted-foreground pointer-coarse:size-11";
@@ -15,16 +17,23 @@ function metaLine(item: LibraryItem): string {
 	const parts = [KIND_LABEL[item.kind], formatBytes(item.size), date];
 	if (item.origin.type === "agent") parts.push("Made by the agent");
 	if (item.textState === "none" || item.textState === "failed") parts.push("No text could be read");
+	if (item.archivedAt) parts.push("Archived");
+	if (item.tags?.length) parts.push(item.tags.join(", "));
 	return parts.join(" · ");
 }
 
 /** One Library item. Every action's accessible name includes the item's name. */
-export function LibraryRow({ item, location, onRenamed, onMove, onDelete }: {
+export function LibraryRow({ item, location, onRenamed, actions = [], grid = false, selection, onDragStartEntry, onDelete }: {
 	item: LibraryItem;
 	/** The item's folder path, shown while searching the whole Library. */
 	location?: string;
 	onRenamed: () => void;
-	onMove?: (item: LibraryItem, opener: HTMLElement) => void;
+	/** Everything else this row can do, for its ⋯ and right-click menus. */
+	actions?: readonly LibraryMenuAction[];
+	grid?: boolean;
+	/** Present while selecting. */
+	selection?: { selected: boolean; toggle: () => void };
+	onDragStartEntry?: (key: EntryKey, event: React.DragEvent) => void;
 	onDelete: (item: LibraryItem, opener: HTMLElement) => void;
 }) {
 	const [renaming, setRenaming] = useState(false);
@@ -63,9 +72,20 @@ export function LibraryRow({ item, location, onRenamed, onMove, onDelete }: {
 		saving.current = false;
 	};
 
+	const opened = () => { void fetch(`/api/library/items/${item.id}/opened`, { method: "POST" }).catch(() => {}); };
+	// The right-click and phone paths: the Rename icon hides on narrow screens.
+	const menuActions: LibraryMenuAction[] = actions.length === 0 ? [] : [
+		{ label: "Rename", onSelect: () => { discard.current = false; setRenaming(true); } },
+		...actions,
+		{ label: "Move to the trash", destructive: true, onSelect: () => onDelete(item, document.body) },
+	];
 	const body = (
 		<>
-			<span className="text-base font-medium text-foreground [overflow-wrap:anywhere]">{item.name}</span>
+			<span className="flex items-start gap-1.5 text-base font-medium text-foreground [overflow-wrap:anywhere]">
+				{item.pinned && <PinIcon className="ui-icon mt-1 size-3.5 shrink-0 text-ink-2" role="img" aria-label="Pinned" />}
+				{item.favorite && <StarIcon className="ui-icon mt-1 size-3.5 shrink-0 text-ink-2" role="img" aria-label="Favorite" />}
+				<span className="min-w-0">{item.name}</span>
+			</span>
 			<span className="text-sm text-muted-foreground" suppressHydrationWarning>{metaLine(item)}{location ? ` · ${location}` : ""}</span>
 		</>
 	);
@@ -73,8 +93,15 @@ export function LibraryRow({ item, location, onRenamed, onMove, onDelete }: {
 	const readable = opensInPane(item.kind);
 
 	return (
-		<li className="rounded-[10px] bg-card" data-testid="library-row">
-			<div className="flex items-center gap-1 pr-1.5">
+		<LibraryEntryMenu actions={menuActions}>
+		<li
+			className={`rounded-[10px] ${selection?.selected ? "bg-accent" : "bg-card"}`}
+			data-testid="library-row"
+			draggable={Boolean(onDragStartEntry) && !renaming}
+			onDragStart={(event) => onDragStartEntry?.(`item:${item.id}`, event)}
+		>
+			<div className={`flex items-center gap-1 pr-1.5 ${grid ? "h-full" : ""}`}>
+				{selection && <input type="checkbox" checked={selection.selected} onChange={selection.toggle} aria-label={`Select ${item.name}`} data-testid="library-select" className="ml-3 size-4 shrink-0 accent-foreground pointer-coarse:size-6" />}
 				{renaming ? (
 					<div className="flex min-w-0 flex-1 flex-col gap-1 px-3 py-2">
 						<input
@@ -103,13 +130,13 @@ export function LibraryRow({ item, location, onRenamed, onMove, onDelete }: {
 						{renameError && <p role="alert" className="text-sm text-destructive">{renameError}</p>}
 					</div>
 				) : newTab ? (
-					<a href={contentUrl(item.id)} target="_blank" rel="noreferrer" aria-label={`Open ${item.name}`} className={OPEN}>{body}</a>
+					<a href={contentUrl(item.id)} target="_blank" rel="noreferrer" aria-label={`Open ${item.name}`} className={OPEN} onClick={opened}>{body}</a>
 				) : readable ? (
-					<button type="button" aria-label={`Open ${item.name}`} className={OPEN} onClick={() => pane?.open({ id: item.id, name: item.name, kind: item.kind, size: item.size })}>{body}</button>
+					<button type="button" aria-label={`Open ${item.name}`} className={OPEN} onClick={() => { pane?.open({ id: item.id, name: item.name, kind: item.kind, size: item.size }); }}>{body}</button>
 				) : (
-					<a href={contentUrl(item.id, true)} aria-label={`Open ${item.name}`} className={OPEN}>{body}</a>
+					<a href={contentUrl(item.id, true)} aria-label={`Open ${item.name}`} className={OPEN} onClick={opened}>{body}</a>
 				)}
-				{!renaming && (
+				{!renaming && !grid && (
 					<>
 						<Button
 							ref={renameButton}
@@ -117,7 +144,7 @@ export function LibraryRow({ item, location, onRenamed, onMove, onDelete }: {
 							variant="ghost"
 							size="icon"
 							aria-label={`Rename ${item.name}`}
-							className={ACTION}
+							className={`${ACTION} max-sm:hidden`}
 							onClick={() => {
 								discard.current = false;
 								setRenaming(true);
@@ -125,11 +152,6 @@ export function LibraryRow({ item, location, onRenamed, onMove, onDelete }: {
 						>
 							<PencilIcon className="ui-icon" aria-hidden="true" />
 						</Button>
-						{onMove && (
-							<Button type="button" variant="ghost" size="icon" aria-label={`Move ${item.name}`} className={ACTION} onClick={(event) => onMove(item, event.currentTarget)}>
-								<FolderInputIcon className="ui-icon" aria-hidden="true" />
-							</Button>
-						)}
 						<Button
 							type="button"
 							variant="ghost"
@@ -142,7 +164,9 @@ export function LibraryRow({ item, location, onRenamed, onMove, onDelete }: {
 						</Button>
 					</>
 				)}
+				{!renaming && menuActions.length > 0 && <LibraryMoreButton name={item.name} actions={menuActions} />}
 			</div>
 		</li>
+		</LibraryEntryMenu>
 	);
 }

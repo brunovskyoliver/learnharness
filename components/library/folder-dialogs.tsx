@@ -25,8 +25,11 @@ export async function sendLibraryChange(url: string, method: "POST" | "PATCH" | 
 }
 
 /** New folder and Rename folder. The server's refusal stays in the dialog. */
-export function FolderNameDialog({ title, action, initial, open, onClose, onSubmit, returnFocus }: {
+export function FolderNameDialog({ title, label = "Folder name", action, initial, allowEmpty = false, open, onClose, onSubmit, returnFocus }: {
 	title: string;
+	label?: string;
+	/** Tags can be cleared. */
+	allowEmpty?: boolean;
 	action: string;
 	initial: string;
 	open: boolean;
@@ -46,7 +49,7 @@ export function FolderNameDialog({ title, action, initial, open, onClose, onSubm
 	}, [open, initial]);
 	const submit = async (event: FormEvent) => {
 		event.preventDefault();
-		if (!name.trim() || busy) return;
+		if ((!allowEmpty && !name.trim()) || busy) return;
 		setBusy(true);
 		const refused = await onSubmit(name.trim());
 		setBusy(false);
@@ -60,7 +63,7 @@ export function FolderNameDialog({ title, action, initial, open, onClose, onSubm
 					<input
 						autoFocus
 						value={name}
-						aria-label="Folder name"
+						aria-label={label}
 						autoComplete="off"
 						spellCheck={false}
 						aria-invalid={failure ? true : undefined}
@@ -72,7 +75,7 @@ export function FolderNameDialog({ title, action, initial, open, onClose, onSubm
 					{failure && <p role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{failure}</p>}
 					<div className="flex justify-end gap-2">
 						<Button type="button" variant="ghost" className="pointer-coarse:h-11" disabled={busy} onClick={onClose}>Cancel</Button>
-						<Button type="submit" className={RAISED_2} disabled={busy || !name.trim()} data-testid="library-folder-submit">{action}</Button>
+						<Button type="submit" className={RAISED_2} disabled={busy || (!allowEmpty && !name.trim())} data-testid="library-folder-submit">{action}</Button>
 					</div>
 				</form>
 			</DialogContent>
@@ -81,8 +84,8 @@ export function FolderNameDialog({ title, action, initial, open, onClose, onSubm
 }
 
 /** The folders a thing can move to, top level first. A folder can't go inside itself. */
-export function moveTargets(folders: readonly LibraryFolder[], moving: { folderId?: string } | null): { id: string | null; label: string; depth: number }[] {
-	const blocked = moving?.folderId ? folderSubtree(moving.folderId, folders) : new Set<string>();
+export function moveTargets(folders: readonly LibraryFolder[], moving: { folderIds?: readonly string[] } | null): { id: string | null; label: string; depth: number }[] {
+	const blocked = new Set((moving?.folderIds ?? []).flatMap((id) => [...folderSubtree(id, folders)]));
 	const rows = folders
 		.filter((folder) => !blocked.has(folder.id) && !folderTrail(folder.id, folders).some((f) => blocked.has(f.id)))
 		.map((folder) => {
@@ -98,7 +101,7 @@ export function MoveDialog({ name, folders, moving, current, onClose, onMove, re
 	name: string | null;
 	folders: readonly LibraryFolder[];
 	/** Set when the thing moving is a folder. */
-	moving: { folderId?: string } | null;
+	moving: { folderIds?: readonly string[] } | null;
 	current: string | null;
 	onClose: () => void;
 	onMove: (target: string | null) => Promise<string | null>;

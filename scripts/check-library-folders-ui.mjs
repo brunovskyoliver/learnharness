@@ -23,6 +23,13 @@ const api = async (url, method, body) => {
 let server;
 let browser;
 
+async function chooseMenu(page, name, label) {
+	await page.click(`[aria-label="More actions for ${name}"]`);
+	await page.waitForSelector("[data-lh-menu] [role=menuitem]");
+	await page.evaluate((text) => [...document.querySelectorAll("[data-lh-menu] [role=menuitem]")].find((el) => el.textContent === text).click(), label);
+	await page.waitForFunction(() => !document.querySelector("[data-lh-menu] [role=menuitem]"));
+}
+
 async function checkWidth(width) {
 	const prefix = `w${width}`;
 	const page = await browser.newPage();
@@ -50,7 +57,7 @@ async function checkWidth(width) {
 	await page.keyboard.press("Escape");
 
 	// Move the page into the folder through the dialog; its row leaves this level.
-	await page.click(`[aria-label="Move ${prefix} note"]`);
+	await chooseMenu(page, `${prefix} note`, "Move to…");
 	await page.waitForSelector('[data-testid="library-move-dialog"]');
 	await page.evaluate((label) => {
 		[...document.querySelectorAll('[data-testid="library-move-target"]')].find((el) => el.textContent.includes(label)).click();
@@ -78,19 +85,92 @@ async function checkWidth(width) {
 	const up = await page.$eval('[data-testid="library-breadcrumbs"] a', (a) => a.getAttribute("href"));
 	assert.equal(up, "/library");
 	await page.click('[data-testid="library-breadcrumbs"] a');
-	await page.waitForSelector(`[aria-label="Move folder ${prefix} Physics"]`);
-	await page.click(`[aria-label="Move folder ${prefix} Physics"]`);
+	await page.waitForSelector(`[aria-label="More actions for ${prefix} Physics"]`);
+	await chooseMenu(page, `${prefix} Physics`, "Move to…");
 	await page.waitForSelector('[data-testid="library-move-dialog"]');
 	const targets = await page.$$eval('[data-testid="library-move-target"]', (els) => els.map((el) => el.textContent));
 	assert.ok(!targets.some((t) => t.includes(`${prefix} Physics`)), `targets: ${targets}`);
 	await page.keyboard.press("Escape");
 
-	// A folder with something in it refuses, in the dialog.
+	// Favorite and tag, then the views and tag filter find it (feature 012).
+	const item = await api("/api/library/pages", "POST", { name: `${prefix} mark`, content: "x" });
+	await page.waitForSelector(`[aria-label="More actions for ${prefix} mark"]`);
+	await chooseMenu(page, `${prefix} mark`, "Add to favorites");
+	await page.waitForSelector(`[data-testid="library-row"]:has([aria-label="Open ${prefix} mark"]) [aria-label="Favorite"]`);
+	await chooseMenu(page, `${prefix} mark`, "Tags…");
+	await page.waitForSelector('[data-testid="library-folder-name"]');
+	await page.keyboard.type(`${prefix}exam, waves`);
+	await page.keyboard.press("Enter");
+	await page.waitForSelector('[data-testid="library-tags"]');
+	await page.goto(`${base}/library?view=favorites`, { waitUntil: "domcontentloaded" });
+	await page.waitForSelector(`[aria-label="Open ${prefix} mark"]`);
+	await page.goto(`${base}/library?tag=${prefix}exam`, { waitUntil: "domcontentloaded" });
+	await page.waitForSelector(`[aria-label="Open ${prefix} mark"]`);
+	assert.equal(await page.$(`[aria-label="Open folder ${prefix} Physics"]`), null, "a tag narrows the list");
+
+	// Archive hides it from All and shows it in Archive.
+	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
+	await page.waitForSelector(`[aria-label="More actions for ${prefix} mark"]`);
+	await chooseMenu(page, `${prefix} mark`, "Archive");
+	await page.waitForFunction((name) => !document.querySelector(`[aria-label="Open ${name}"]`), {}, `${prefix} mark`);
+	await page.goto(`${base}/library?view=archive`, { waitUntil: "domcontentloaded" });
+	await page.waitForSelector(`[aria-label="Open ${prefix} mark"]`);
+	await chooseMenu(page, `${prefix} mark`, "Unarchive");
+	await page.waitForFunction((name) => !document.querySelector(`[aria-label="Open ${name}"]`), {}, `${prefix} mark`);
+
+	// Drag the row onto a folder, with real drag events (feature 013).
+	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
+	await page.waitForSelector(`[aria-label="Open ${prefix} mark"]`);
+	await page.evaluate((itemName, folderName) => {
+		const data = new DataTransfer();
+		const from = document.querySelector(`[aria-label="Open ${itemName}"]`).closest("li");
+		const to = document.querySelector(`[aria-label="Open folder ${folderName}"]`).closest("li");
+		from.dispatchEvent(new DragEvent("dragstart", { bubbles: true, dataTransfer: data }));
+		to.dispatchEvent(new DragEvent("dragover", { bubbles: true, cancelable: true, dataTransfer: data }));
+		to.dispatchEvent(new DragEvent("drop", { bubbles: true, cancelable: true, dataTransfer: data }));
+	}, `${prefix} mark`, `${prefix} Physics`);
+	await page.waitForFunction((name) => !document.querySelector(`[aria-label="Open ${name}"]`), {}, `${prefix} mark`);
+	const dragged = (await (await fetch(`${base}/api/library`)).json()).items.find((i) => i.id === item.body.item.id);
+	assert.ok(dragged.folderId?.startsWith("fld_"), "the drop moved it");
+
+	// Select, then bulk trash; Grid view; restore (features 012-013).
+	const a = `${prefix} bulk one`, b = `${prefix} bulk two`;
+	await api("/api/library/pages", "POST", { name: a, content: "x" });
+	await api("/api/library/pages", "POST", { name: b, content: "x" });
+	await page.waitForSelector(`[aria-label="Open ${b}"]`);
+	await page.click('[data-testid="library-grid"]');
+	await page.click('[data-testid="library-select-mode"]');
+	await page.click(`[aria-label="Select ${a}"]`);
+	await page.click(`[aria-label="Select ${b}"]`);
+	assert.ok((await page.$eval('[data-testid="library-bulk"]', (el) => el.innerText)).includes("2 selected"));
+	await page.click('[data-testid="library-bulk-trash"]');
+	await page.waitForFunction((name) => !document.querySelector(`[aria-label="Open ${name}"]`), {}, a);
+	await page.goto(`${base}/library?view=trash`, { waitUntil: "domcontentloaded" });
+	await page.waitForSelector(`[aria-label="Restore ${a}"]`);
+	await page.click(`[aria-label="Restore ${a}"]`);
+	await page.waitForFunction((name) => !document.querySelector(`[aria-label="Restore ${name}"]`), {}, a);
+	await page.click(`[aria-label="Delete ${b} for good"]`);
+	await page.waitForSelector('[data-testid="library-purge-confirm"]');
+	await page.click('[data-testid="library-purge-confirm"]');
+	await page.waitForFunction((name) => !document.querySelector(`[aria-label="Delete ${name} for good"]`), {}, b);
+	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
+	await page.waitForSelector(`[aria-label="Open ${a}"]`);
+	const gridOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+	assert.ok(gridOverflow <= 0, `no overflow in grid at ${width}: ${gridOverflow}`);
+	if (process.env.LH_UI_SCREENSHOT_DIR) await page.screenshot({ path: path.join(process.env.LH_UI_SCREENSHOT_DIR, `grid-${width}.png`) });
+	await page.evaluate(() => window.localStorage.removeItem("lh-library-view"));
+
+	// A folder goes to the trash with what's in it (replaces the 011 refusal).
+	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
+	await page.waitForSelector(`[aria-label="Delete folder ${prefix} Physics"]`);
 	await page.click(`[aria-label="Delete folder ${prefix} Physics"]`);
 	await page.waitForSelector('[data-testid="library-folder-delete-confirm"]');
 	await page.click('[data-testid="library-folder-delete-confirm"]');
-	await page.waitForSelector('[data-testid="library-folder-delete-dialog"] [role="alert"]');
-	await page.keyboard.press("Escape");
+	await page.waitForFunction((name) => !document.querySelector(`[aria-label="Open folder ${name}"]`), {}, `${prefix} Physics`);
+	await page.goto(`${base}/library?view=trash`, { waitUntil: "domcontentloaded" });
+	await page.waitForSelector(`[aria-label="Restore ${prefix} Physics"]`);
+	await page.click(`[aria-label="Restore ${prefix} Physics"]`);
+	await page.waitForFunction((name) => !document.querySelector(`[aria-label="Restore ${name}"]`), {}, `${prefix} Physics`);
 
 	// A missing folder says so.
 	await page.goto(`${base}/library?folder=fld_missing`, { waitUntil: "domcontentloaded" });

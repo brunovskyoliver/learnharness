@@ -32,6 +32,7 @@ export function PagePaneProvider({ children }: { children: ReactNode }) {
 	const open = useCallback((next: PaneItem) => {
 		remember(next);
 		setOpenCount((n) => n + 1);
+		void fetch(`/api/library/items/${next.id}/opened`, { method: "POST" }).catch(() => {});
 	}, [remember]);
 	const close = useCallback(() => remember(null), [remember]);
 	const value = useMemo(() => ({ item, openCount, open, close, update: remember }), [item, openCount, open, close, remember]);

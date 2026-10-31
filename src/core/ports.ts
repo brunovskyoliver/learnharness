@@ -27,7 +27,7 @@ import type {
 	NotesSource,
 } from "./contracts.ts";
 import type { UserSettings } from "./settings.ts";
-import type { LibraryFolder, LibraryItem, LibraryRefusal, LibraryTextState, LibraryTombstone, PageAuthor, PageHead, PageState, PageVersion, PageVersionCause, PageWriteResult } from "./library.ts";
+import type { LibraryFolder, LibraryItem, LibraryMarks, LibraryTrashEntry, LibraryRefusal, LibraryTextState, LibraryTombstone, PageAuthor, PageHead, PageState, PageVersion, PageVersionCause, PageWriteResult } from "./library.ts";
 
 // ─── ChatStore — the session record's home (data/chats) ─────────────────────
 
@@ -188,6 +188,22 @@ export interface LibraryStore {
 	moveFolder(id: string, parentId: string | null): Promise<LibraryFolder | LibraryRefusal | null>;
 	/** False for an unknown id. Refuses a folder with anything in it. */
 	removeFolder(id: string): Promise<boolean | LibraryRefusal>;
+	/** Null for an unknown id. Marks never touch content or `updatedAt`. */
+	markItem(id: string, marks: LibraryMarks): Promise<LibraryItem | null>;
+	markFolder(id: string, marks: Omit<LibraryMarks, "tags">): Promise<LibraryFolder | null>;
+	/** Recoverable: bytes and versions are kept, and references read as deleted. */
+	trashItem(id: string): Promise<LibraryTrashEntry | null>;
+	/** A folder and everything under it, as one entry. */
+	trashFolder(id: string): Promise<LibraryTrashEntry | null>;
+	listTrash(): Promise<LibraryTrashEntry[]>;
+	/** Puts everything back; a name now taken steps to a free one. Null when unknown. */
+	restoreTrash(entryId: string): Promise<{ items: LibraryItem[]; folders: LibraryFolder[] } | null>;
+	/** Deletes for good, leaving tombstones. False when unknown. */
+	purgeTrash(entryId: string): Promise<boolean>;
+	/** Newest first, live items only. */
+	recent(limit?: number): Promise<LibraryItem[]>;
+	/** Remembered apart from the catalog, so opening never rewrites it. */
+	markOpened(id: string): Promise<boolean>;
 	/** Changes only the catalog entry: bytes, versions and references stay. */
 	moveItem(id: string, folderId: string | null): Promise<LibraryItem | LibraryRefusal | null>;
 	/** Rename, moving the file too. Null for an unknown id. */

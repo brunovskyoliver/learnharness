@@ -98,13 +98,13 @@ describe("DeleteItemBody", () => {
 	const dialog = (over = {}) => renderToStaticMarkup(<Dialog open><DeleteItemBody item={item()} busy={false} failure={null} onClose={noop} onConfirm={noop} {...over} /></Dialog>);
 	it("names the item, in the interface font", () => {
 		const html = dialog();
-		assert.ok(html.includes("Delete week 3 notes.md?"));
+		assert.ok(html.includes("Move week 3 notes.md to the trash?"));
 		assert.ok(!html.includes("font-mono"));
 		assert.ok(!html.includes("<code"));
-		assert.ok(!html.includes("version history"));
+		assert.ok(html.includes("You can restore it from Trash."));
 	});
-	it("warns about versions only for a page", () => {
-		assert.ok(dialog({ item: item({ kind: "page", name: "Notes" }) }).includes("Its whole version history goes too."));
+	it("says a page keeps its versions", () => {
+		assert.ok(dialog({ item: item({ kind: "page", name: "Notes" }) }).includes("with its whole version history"));
 	});
 	it("keeps a failure in view with Try again", () => {
 		const html = dialog({ failure: "It could not be deleted." });

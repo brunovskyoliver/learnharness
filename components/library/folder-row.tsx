@@ -1,38 +1,73 @@
 "use client";
 
 import Link from "next/link";
-import { FolderIcon, FolderInputIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { FolderIcon, PencilIcon, PinIcon, StarIcon, Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { LibraryFolder } from "@/src/core";
+import { DRAG_TYPE, type EntryKey } from "./library-filter.ts";
+import { LibraryEntryMenu, LibraryMoreButton, type LibraryMenuAction } from "./library-menu.tsx";
 
 const ACTION = "size-9 text-muted-foreground pointer-coarse:size-11";
 export const folderHref = (id: string | null) => (id ? `/library?folder=${encodeURIComponent(id)}` : "/library");
 
-export function FolderRow({ folder, count, location, onRename, onMove, onDelete }: {
+export function FolderRow({ folder, count, location, actions = [], selection, dropTarget, onDragStartEntry, onRename, onDelete }: {
 	folder: LibraryFolder;
 	count: number;
 	/** The folder's path, shown while searching the whole Library. */
 	location?: string;
 	onRename: (folder: LibraryFolder, opener: HTMLElement) => void;
-	onMove: (folder: LibraryFolder, opener: HTMLElement) => void;
+	actions?: readonly LibraryMenuAction[];
+	selection?: { selected: boolean; toggle: () => void };
+	/** Receives dragged Library entries. */
+	dropTarget?: { over: boolean; onOver: (over: boolean) => void; onDrop: (event: React.DragEvent) => void };
+	onDragStartEntry?: (key: EntryKey, event: React.DragEvent) => void;
 	onDelete: (folder: LibraryFolder, opener: HTMLElement) => void;
 }) {
-	const meta = [`Folder · ${count} ${count === 1 ? "item" : "items"}`, location].filter(Boolean).join(" · ");
+	const menuActions: LibraryMenuAction[] = actions.length === 0 ? [] : [
+		{ label: "Rename", onSelect: () => onRename(folder, document.body) },
+		...actions,
+		{ label: "Move to the trash", destructive: true, onSelect: () => onDelete(folder, document.body) },
+	];
+	const meta = [`Folder · ${count} ${count === 1 ? "item" : "items"}`, folder.archivedAt ? "Archived" : "", location].filter(Boolean).join(" · ");
 	return (
-		<li className="rounded-[10px] bg-card" data-testid="library-folder-row">
+		<LibraryEntryMenu actions={menuActions}>
+		<li
+			className={`rounded-[10px] ${selection?.selected || dropTarget?.over ? "bg-accent" : "bg-card"}`}
+			data-testid="library-folder-row"
+			draggable={Boolean(onDragStartEntry)}
+			onDragStart={(event) => onDragStartEntry?.(`folder:${folder.id}`, event)}
+			onDragOver={(event) => {
+				if (!dropTarget || !event.dataTransfer.types.includes(DRAG_TYPE)) return;
+				event.preventDefault();
+				dropTarget.onOver(true);
+			}}
+			onDragLeave={() => dropTarget?.onOver(false)}
+			onDrop={(event) => {
+				if (!dropTarget || !event.dataTransfer.types.includes(DRAG_TYPE)) return;
+				event.preventDefault();
+				dropTarget.onOver(false);
+				dropTarget.onDrop(event);
+			}}
+		>
 			<div className="flex items-center gap-1 pr-1.5">
+				{selection && <input type="checkbox" checked={selection.selected} onChange={selection.toggle} aria-label={`Select folder ${folder.name}`} data-testid="library-select" className="ml-3 size-4 shrink-0 accent-foreground pointer-coarse:size-6" />}
 				<Link href={folderHref(folder.id)} aria-label={`Open folder ${folder.name}`} className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[10px] px-3 py-2.5 transition-colors hover:bg-accent">
 					<FolderIcon className="ui-icon shrink-0 text-muted-foreground" aria-hidden="true" />
 					<span className="flex min-w-0 flex-col gap-0.5">
-						<span className="text-base font-medium text-foreground [overflow-wrap:anywhere]">{folder.name}</span>
+						<span className="flex items-start gap-1.5 text-base font-medium text-foreground [overflow-wrap:anywhere]">
+							{folder.pinned && <PinIcon className="ui-icon mt-1 size-3.5 shrink-0 text-ink-2" role="img" aria-label="Pinned" />}
+							{folder.favorite && <StarIcon className="ui-icon mt-1 size-3.5 shrink-0 text-ink-2" role="img" aria-label="Favorite" />}
+							<span className="min-w-0">{folder.name}</span>
+						</span>
 						<span className="text-sm text-muted-foreground">{meta}</span>
 					</span>
 				</Link>
-				<Button type="button" variant="ghost" size="icon" aria-label={`Rename folder ${folder.name}`} className={ACTION} onClick={(event) => onRename(folder, event.currentTarget)}><PencilIcon className="ui-icon" aria-hidden="true" /></Button>
-				<Button type="button" variant="ghost" size="icon" aria-label={`Move folder ${folder.name}`} className={ACTION} onClick={(event) => onMove(folder, event.currentTarget)}><FolderInputIcon className="ui-icon" aria-hidden="true" /></Button>
+				<Button type="button" variant="ghost" size="icon" aria-label={`Rename folder ${folder.name}`} className={`${ACTION} max-sm:hidden`} onClick={(event) => onRename(folder, event.currentTarget)}><PencilIcon className="ui-icon" aria-hidden="true" /></Button>
 				<Button type="button" variant="ghost" size="icon" aria-label={`Delete folder ${folder.name}`} className={ACTION} onClick={(event) => onDelete(folder, event.currentTarget)}><Trash2Icon className="ui-icon" aria-hidden="true" /></Button>
+				{menuActions.length > 0 && <LibraryMoreButton name={folder.name} actions={menuActions} />}
 			</div>
 		</li>
+		</LibraryEntryMenu>
 	);
 }
 
