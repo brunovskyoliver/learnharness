@@ -42,5 +42,5 @@ Approved plan: [plan.md](plan.md). Strings: [contracts/ui-contract.md](contracts
 - [x] T023 Browser: paste a PNG, reload, delete the item, alt text shows
 
 ## Phase 7: Polish
-- [ ] T024 DESIGN.md "Page editor tools" section
+- [x] T024 DESIGN.md "Page editor tools" section
 - [ ] T025 Gates: npm test, lint, typecheck, build; check-library-ui; impeccable and web-design-guidelines; startup budget

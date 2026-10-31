@@ -121,6 +121,35 @@ Feature 009; the binding reference is its [UI contract](specs/009-library-canvas
 - Below 768px the pane is a full-screen layer with contained focus and "Back to chat". The composer's draft stays mounted underneath.
 - Transcript rows follow the math-check skeleton with no amber: "Page · created {name}", "Page · revised {name} · version {n}", "Page · couldn't revise, it changed", "Page · failed", "Library · read {name}" and "Library · failed". Running rows show only the spinner and activity label.
 
+### Page editor tools
+
+These come from feature 010. Every string is in specs/010-page-editor-tools/contracts/ui-contract.md.
+
+- **Header**: the save state is followed by "· {n} words". Formulas, code and images are not counted. Outline, Export and History sit beside it. Below 768 px these three show as named icons.
+- **Toolbar**: a `surface-raised` row above the text, wrapping as it narrows. It holds:
+  - undo and redo;
+  - a text style select;
+  - bold, italic, strikethrough, inline code and link;
+  - lists, checklist and quote;
+  - formula, table and image;
+  - "Ask the tutor" at the end.
+  Each button's name carries its shortcut, and unavailable buttons use muted ink, never opacity.
+- **Table controls**: while the caret is in a table, a row of text buttons sits under the toolbar.
+- **Slash menu and link popover**: both are `surface-raised-2` panels inside the editor.
+  - The slash menu opens on "/" at the start of an empty line. Escape closes only the menu.
+  - The link popover (Ctrl/Cmd+K) has a labelled field.
+- **Placeholder**: an empty page shows one muted sentence. It is a decoration and never stored.
+- **Selection bubble**: a `surface-raised-2` toolbar over selected text with Bold, Italic, Link, then Explain, Simpler, "Quiz me on this" and Ask….
+  - While a question waits, a problem is active or the tutor is answering, the tutor's actions are replaced by one sentence saying why.
+  - Explain, Simpler and Quiz me send at once; Ask… only fills the composer. From the Library they open a new session.
+- **Tutor changes**: a `surface-raised` bar ("The tutor changed {n} places · version {v}") with Previous, Next, "Undo the tutor's edit" and Done. Done is the one amber action.
+  - The tutor's blocks sit on the `accent` step. Removed text is struck through in muted ink.
+  - Done or closing the page clears them, and typing does not.
+- **History**: opens on Changes, which shows added and removed blocks against the version before, each labelled in mono with its word and colour. Full text shows the rendered version. Versions can be named and copied.
+- **Outline**: a column beside the text when the pane is at least 720 px wide, otherwise a list above it.
+- **Export**: Copy as Markdown, Download .md, and Print. Print shows only the page, in Study ink's paper colours.
+- **Images**: pasted, dropped or chosen images become Library images. An upload shows one progress line. A missing image shows its alt text on the `card` step.
+
 ## Demos
 
 - A question's exact demo reference opens the workspace automatically once for that question. Closing or switching it is respected.
