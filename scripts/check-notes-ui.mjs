@@ -335,9 +335,30 @@ async function checkPassages(width) {
 	assert.deepEqual(pages.map((row) => [row.id, row.passages]), [[note.id, 1]]);
 
 	// Study notes: an explicit click, no model, a new page holding the lesson's text.
-	const made = (await api(`/api/chats/${chatId}/study-notes`, "POST")).body.item;
-	assert.equal(made.name, `Study notes: ${p} Linear maps`);
-	assert.ok((await stored(made.id)).includes("The last paragraph of the lesson."));
+	// Wide screens use the session's context view; phones reach it by the palette.
+	const namedNotes = `Study notes: ${p} Linear maps`;
+	if (mobile) {
+		await page.keyboard.down("Control");
+		await page.keyboard.press("k");
+		await page.keyboard.up("Control");
+		await page.waitForSelector('input[placeholder="Search or run an action…"]');
+		await page.keyboard.type("Turn this lesson");
+		await pause(300);
+		await page.keyboard.press("Enter");
+	} else {
+		await page.click(id("page-close"));
+		await page.waitForFunction(() => !document.querySelector('[data-testid="page-pane"]'));
+		await page.click(id("right-pane-toggle"));
+		await page.waitForSelector(id("session-note"));
+		assert.ok((await page.$eval(id("session-note"), (el) => el.textContent)).includes("1 saved passage"));
+		if (shots) await page.screenshot({ path: path.join(shots, `session-notes-${width}.png`) });
+		await page.click(id("session-study-notes"));
+	}
+	await page.waitForFunction((name) => document.querySelector('[data-testid="page-name"]')?.textContent === name, { timeout: 60000 }, namedNotes);
+	await page.waitForFunction(() => document.querySelector('[data-testid="page-editor"]')?.textContent.includes("The last paragraph of the lesson."), { timeout: 60000 });
+	assert.equal(await page.$eval(id("page-name"), (el) => el.textContent), namedNotes);
+	await page.click(id(mobile ? "page-back" : "page-close"));
+	await page.waitForFunction(() => !document.querySelector('[data-testid="page-pane"]'));
 
 	// The session goes: the text stays, and the page says the source is gone.
 	const deleted = await fetch(`${base}/api/chats/${chatId}?mode=preserve-graph`, { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ mode: "preserve-graph" }) });
@@ -415,6 +436,32 @@ async function checkAiEdit(width) {
 	console.log(`ok ${width} AI edit review`);
 }
 
+/** A pane wide enough for columns: the panel sits beside the text, not above it. */
+async function checkWideColumn() {
+	const { page, errors, close } = await newPage(2560);
+	await createPage("Wide note", "Text.\n");
+	await openInLibrary(page, "Wide note");
+	// The pane's own divider, dragged wide.
+	const handle = await page.$eval('[aria-label="Resize page panel"]', (el) => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; });
+	await page.mouse.move(handle.x, handle.y);
+	await page.mouse.down();
+	await page.mouse.move(handle.x - 500, handle.y, { steps: 8 });
+	await page.mouse.up();
+	await pause(300);
+	await page.click(id("page-links-toggle"));
+	await page.waitForSelector(id("note-connections"));
+	await page.waitForSelector('[data-testid="note-connections"] h3');
+	const boxes = await page.evaluate(() => {
+		const box = (el) => { const r = el.getBoundingClientRect(); return { left: r.left, right: r.right }; };
+		return { pane: box(document.querySelector('[data-testid="page-pane"]')), text: box(document.querySelector('[data-testid="page-editor"]')), panel: box(document.querySelector('[data-testid="note-connections"]')) };
+	});
+	assert.ok(boxes.panel.left >= boxes.text.right - 1 && boxes.panel.right <= boxes.pane.right + 1, JSON.stringify(boxes));
+	if (shots) await page.screenshot({ path: path.join(shots, "links-column-2560.png") });
+	assert.deepEqual(errors, [], "no page errors");
+	await close();
+	console.log("ok 2560 links column");
+}
+
 try {
 	await mkdir(data, { recursive: true });
 	if (shots) await mkdir(shots, { recursive: true });
@@ -435,6 +482,7 @@ try {
 		await checkPassages(width);
 		await checkAiEdit(width);
 	}
+	await checkWideColumn();
 	console.log("Notes browser checks passed.");
 } finally {
 	await browser?.close();

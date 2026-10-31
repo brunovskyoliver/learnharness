@@ -170,6 +170,7 @@ These come from feature 010. Every string is in specs/010-page-editor-tools/cont
 - **Selection bubble**: a `surface-raised-2` toolbar over selected text with Bold, Italic, Link, then Explain, Simpler, "Quiz me on this" and Ask….
   - While a question waits, a problem is active or the tutor is answering, the tutor's actions are replaced by one sentence saying why.
   - Explain, Simpler and Quiz me send at once; Ask… only fills the composer. From the Library they open a new session.
+  - Feature 018 adds Summarize, Rewrite, Expand, Challenge and "Generate questions", in the order Explain, Simpler, Summarize, Rewrite, Expand, Challenge, Quiz me on this, Generate questions, Ask…. All but Ask… send at once. Simpler, Rewrite and Expand change the page, through Tutor changes below. The rest answer in chat, and questions are graded checks that stay out of the page. The bubble wraps at 22rem.
 - **Tutor changes**: a `surface-raised` bar ("The tutor changed {n} places · version {v}") with Previous, Next, "Undo the tutor's edit" and Done. Done is the one amber action.
   - The tutor's blocks sit on the `accent` step. Removed text is struck through in muted ink.
   - Done or closing the page clears them, and typing does not.
@@ -177,6 +178,20 @@ These come from feature 010. Every string is in specs/010-page-editor-tools/cont
 - **Outline**: a column beside the text when the pane is at least 720 px wide, otherwise a list above it.
 - **Export**: Copy as Markdown, Download .md, and Print. Print shows only the page, in Study ink's paper colours.
 - **Images**: pasted, dropped or chosen images become Library images. An upload shows one progress line. A missing image shows its alt text on the `card` step.
+
+### Notes
+
+Features 016-018. Every string is in [their plan](specs/016-intelligent-notes/plan.md). No amber except keyboard focus and a dialog's Done.
+
+- **Wiki links**: `[[Page name]]` in the text, an underlined inline atom showing the item's current name. A dangling or deleted one is muted with a dotted underline (deleted also struck through), and its accessible name says which. Clicking, or Ctrl/Cmd+Enter beside it, follows it. A dangling link's line reads "Nothing in your Library is called {name} yet." with Create page and Dismiss.
+- **`[[` list**: a `surface-raised-2` panel inside the editor, built like the slash menu, up to 8 rows with kind in meta. A typed name with no page gets a row "Link it now, make the page later". Escape closes only the list.
+- **Header**: Links sits between Outline and Export. In a pane under 720 px wide all four show as named icons, so the page's name keeps its room.
+- **Links panel**: a column beside the text when the pane is at least 720 px wide, otherwise a `surface-raised-2` block above it, 40dvh at most. Sections: Links to this page, Links from this page, Related notes, Lessons, Ideas in your graph. Each row is a 13px name with muted meta beneath, and each section has its own empty sentence.
+- **Callout**: a `card` block, 10px, no side rule and no colour by kind. A head row holds the type select and a title field.
+- **Collapsible section**: a chevron button, then the title (500 weight), then the body indented to the title. Closed hides the body. The state is stored.
+- **Saved passage**: a quote ending in a link, "Lesson: {title}". Following it jumps to the message, which flashes as a graph link's does. If the session is gone the link is muted and followed by "· this session was deleted, so the source is gone".
+- **Save to a page**: a small `surface-raised-2` button over selected teacher prose, under it on coarse pointers. It opens a `card` dialog: the passage, one field that filters pages or names a new one, then the rows.
+- **This session**: the context view starts with Notes: the session's pages, then "Turn this lesson into study notes" on lessons.
 
 ## Demos
 

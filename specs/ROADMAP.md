@@ -9,9 +9,9 @@ Owner goal, 2026-10-31: evolve the app into one workspace connecting learning, d
 | 013 | Library views: sorting, filters, list/grid, bulk actions, context menus, drag and drop | 011, 012 | Implemented on `feat/012-library-organization`, not merged or deployed |
 | 014 | Workspace navigation: unified sidebar, tabs, contextual right pane, resizable panels | 013 | Implemented on `feat/014-workspace-navigation`, not merged or deployed |
 | 015 | Command palette and keyboard shortcuts | 014 | Implemented on `feat/014-workspace-navigation`, not merged or deployed |
-| 016 | Note links: wiki links, backlinks, related notes, callouts, collapsible sections | 014 | Not started |
-| 017 | Study notes from lessons: saved passages with source references, lesson to notes | 016 | Not started |
-| 018 | Contextual AI note actions with review before any edit lands | 016 | Not started |
+| 016 | Note links: wiki links, backlinks, related notes, callouts, collapsible sections | 014 | Implemented on `feat/016-intelligent-notes`, not merged or deployed |
+| 017 | Study notes from lessons: saved passages with source references, lesson to notes | 016 | Implemented on `feat/016-intelligent-notes`, not merged or deployed |
+| 018 | Contextual AI note actions with review before any edit lands | 016 | Implemented on `feat/016-intelligent-notes`, not merged or deployed |
 | 019 | Full-text search: deterministic index, snippets, filters, jump to passage | 016 | Not started |
 | 020 | PDF reader: selections, highlights, annotations, page citations, extract to notes | 019 | Not started |
 | 021 | Flashcards and FSRS review queue, separate from graph evidence | 017, 020 | Not started |
