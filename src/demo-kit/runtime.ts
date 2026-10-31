@@ -704,14 +704,15 @@ class Kit {
 		}
 		input.oninput = () => change(true);
 		window.addEventListener("message", event => {
-			if (closed || event.source !== parent || event.data?.type !== "lh-demo-tokens") return;
+			if (event.source !== parent || event.data?.type !== "lh-demo-tokens") return;
 			const data = event.data;
 			const job = pending.get(data.requestId);
 			if (!job) return;
 			const validTokens = data.encoding === job.encoding && Array.isArray(data.tokens) && data.tokens.every((token: Token) => token && Number.isInteger(token.id) && token.id >= 0 && (typeof token.text === "string" || (token.text === null && Array.isArray(token.bytes) && token.bytes.length > 0 && token.bytes.every(byte => Number.isInteger(byte) && byte >= 0 && byte <= 255))));
 			if (typeof data.error !== "string" && !validTokens) return;
-			answered = true; input.readOnly = false; pending.delete(data.requestId);
-			if (job.revision !== revision || job.text !== input.value || job.encoding !== encoding) return;
+			const recovering = closed;
+			answered = true; closed = false; input.readOnly = false; offline.hidden = true; pending.delete(data.requestId);
+			if (job.revision !== revision || job.text !== input.value || job.encoding !== encoding) { if (recovering) change(false); return; }
 			if (typeof data.error === "string") { updating(false); error.textContent = `Couldn't tokenize this text: ${data.error}. The last split stays shown.`; error.hidden = false; return; }
 			if (cacheText !== job.text) { cache = {}; cacheText = job.text; }
 			cache[job.encoding] = data.tokens; current = data.tokens; splitText = job.text; error.hidden = true; render();
@@ -719,7 +720,7 @@ class Kit {
 		render(); request();
 		window.setTimeout(() => {
 			if (answered) return;
-			closed = true; pending.clear(); window.clearTimeout(timer); input.readOnly = true; offline.hidden = false; updating(false);
+			closed = true; window.clearTimeout(timer); input.readOnly = true; offline.hidden = false; updating(false);
 		}, 2000);
 		return { update() {}, focus: focused => { box.classList.toggle("k-tokens-focus", focused); fields.classList.toggle("k-controls", focused); } };
 	}

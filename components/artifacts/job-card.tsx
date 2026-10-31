@@ -29,6 +29,12 @@ export function PdfJobCard({ part }: ArtifactPartProps) {
 	return <DispatchCard toolCallId={part.toolCallId} kind="pdf" />;
 }
 
+/** The image dispatch box (feature 009): the answer rides the steer message. */
+export function ImageJobCard({ part }: ArtifactPartProps) {
+	if (part.state !== "output-available") return null;
+	return <DispatchCard toolCallId={part.toolCallId} kind="image" />;
+}
+
 /**
  * The PDF reading brief (sources v0) — markdown body + the consulted-pages
  * line. Exported: the steer card renders it under the PDF-complete badge,

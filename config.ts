@@ -88,8 +88,11 @@ export const PATHS = {
 	/** Chat sessions (AI SDK UIMessage transcripts, one JSON file per chat). */
 	get chats() { return path.join(dataRoot(), "chats"); },
 	get graph() { return path.join(dataRoot(), "graph"); },
-	/** Hosted: the user's uploads, the only files the agent's fs tools can see. */
+	/** Library documents, flat, in both modes. In hosted mode this is also the
+	 *  only folder the agent's fs tools can see. */
 	get files() { return path.join(dataRoot(), "files"); },
+	/** Library catalog, page versions and cached text (feature 009). */
+	get library() { return path.join(dataRoot(), "library"); },
 	/** Debug artifacts (env-gated): data/debug/provider-events/<chatId>.jsonl
 	 * raw provider stream recordings (src/agent/provider-events.ts). */
 	get debug() { return path.join(dataRoot(), "debug"); },

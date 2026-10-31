@@ -33,6 +33,7 @@
  * model can continue mid-thought.
  */
 
+import { referenceMaterialChars, referencesOf } from "./library-refs.ts";
 import type { PlanTree } from "./contracts/plan.ts";
 import { derivePlanStatusesLh, derivedNodeStatus } from "./contracts/plan.ts";
 import { COMPACTED_HISTORY_HEADER } from "./contracts/chat.ts";
@@ -100,6 +101,7 @@ export function estimateMessageTokens(message: LhMessage | AgentMessage): number
 		}
 	} else {
 		chars += textCharsOfContent(content);
+		chars += referenceMaterialChars(message);
 		if (message.role === "system") {
 			const system = message as SystemMessage;
 			for (const section of Object.values(system.sections ?? {})) chars += section?.length ?? 0;
@@ -303,6 +305,12 @@ export function keptIndexFor(messages: readonly LhMessage[], marker: LhMarkerMes
 
 // ─── the summarizer input (pi's mirror: labeled text, truncated results) ─────
 
+/** A summary keeps names and modes, never the documents themselves. */
+function attachedNote(message: LhMessage): string {
+	const references = referencesOf(message);
+	return references.length ? `\n[Attached: ${references.map((ref) => `${ref.name} (${ref.mode})`).join(", ")}]` : "";
+}
+
 /** Serialize a message span as labeled text for the summarizer. Tool
  * results truncate at ~2k chars (the kept tail carries them verbatim for
  * the model; the SUMMARY only needs their gist). */
@@ -311,7 +319,7 @@ export function serializeForSummary(messages: readonly LhMessage[]): string {
 	for (const m of messages) {
 		const role = (m as { role?: string }).role;
 		if (role === "user") {
-			lines.push(`[LEARNER] ${(m as { content: string }).content}`);
+			lines.push(`[LEARNER] ${(m as { content: string }).content}${attachedNote(m)}`);
 		} else if (role === "assistant") {
 			const assistant = m as AssistantMessage;
 			const blocks: string[] = [];
@@ -330,12 +338,12 @@ export function serializeForSummary(messages: readonly LhMessage[]): string {
 			lines.push(
 				`[RESULT for ${result.toolName}${result.isError ? " (error)" : ""}] ${
 					text.length > SUMMARY_TOOL_RESULT_TRUNCATE ? `${text.slice(0, SUMMARY_TOOL_RESULT_TRUNCATE)}…[truncated]` : text
-				}`,
+				}${attachedNote(m)}`,
 			);
 		} else if (role === "custom") {
 			const marker = m as LhMarkerMessage;
 			if (marker.customType === "plan-block") continue; // UI-only
-			lines.push(`[SYSTEM NOTE] ${marker.content}`);
+			lines.push(`[SYSTEM NOTE] ${marker.content}${attachedNote(m)}`);
 		}
 	}
 	return lines.join("\n\n");

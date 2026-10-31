@@ -1,0 +1,1 @@
+Desktop version: you can also read his home folder. Paths resolve against his home directory. If he names a file that is not in the Library and does not say where: find it with `find`, narrow with `ls`, `grep` for the passage, `read` to inspect. All read-only.

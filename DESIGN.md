@@ -19,7 +19,7 @@ Run `npm run dev:review` for persistent example threads. See [the UI review guid
 - Type scale: 12 (monospace metadata only), 13 (UI floor), 15, 17 (reading), 22, 30, 40. No hard-coded sizes outside the scale.
 - Reserve monospace for code and numeric metadata. Retain the 17px/27px reading baseline and existing reading-size settings.
 - Below 640px, oversized Markdown tables shrink proportionally to fit their container, stopping at 13px effective text. Wider tables remain horizontally swipeable with hidden scrollbars and visible keyboard focus. Tables that already fit keep their reading size; Copy controls stay unscaled (owner, 2026-10-28).
-- Use spacing and headings for grouping. Remove structural separator lines between panes, headers, footers and settings/chain rows. Retain input, choice, selection and focus boundaries. Resize handles remain available on hover and keyboard focus.
+- Use spacing and headings for grouping. Remove structural separator lines between headers, footers and settings/chain rows. The exception is the left and right sidebars: each has a full-height 1px edge-colored divider with a small grip at its middle (owner, 2026-10-31). Retain input, choice, selection and focus boundaries. The dividers are the resize handles: they brighten on hover and take the focus color on keyboard focus.
 - Raised surfaces, selection, borders and muted text use the shared Study ink tokens. Chart data keeps its own colors. Preserve explicit custom background and reading preferences.
 - Scrollbar tracks and thumbs stay hidden across app-owned content and rendered demos. Preserve wheel, touch, keyboard and programmatic scrolling, visible focus and access to overflow content. The project scrolling rule lives in AGENTS.md.
 - Session icons retain their lesson/practice meaning with a shared size and stroke. Running and waiting status occupy a separate trailing slot. App and demo headers share a 52px alignment; native window gutters and drag regions remain.
@@ -38,6 +38,7 @@ One scrolling column (`max-w-[52rem]`, hidden scrollbar), in this order. Section
 - Header: the Search field (raised) with the session filter at its right end (visibly on, raised-2 and foreground ink, while not "All sessions"), then one labelled "New" (raised-2, plus icon) opening a menu with Lesson and Practice. Menus are raised-2, 10px, no border.
 - Rows: type icon, the whole title (15px/20px, wrapping, never truncated), then a 7px amber dot named "Waiting for you" when the session waits on the learner, or the running indicator while a turn runs, then the time.
 - Date shelves (Today, Yesterday, Earlier) are set in the title serif at 17px; their counts stay sans meta.
+- A labelled "Library" row sits under the header, above the date shelves.
 - Settings opens only from the gear in the sidebar footer (and its shortcut). The graph's display controls live in Settings → Graph → Display.
 
 ## Lessons and controls
@@ -78,9 +79,76 @@ Queued steers sit above the shell as right-aligned rows; each has a × ("Remove 
 
 ## Settings and secondary views
 
-- Settings uses searchable icon categories, a Settings / section header, grouped fields and a live reading preview. Category navigation scrolls horizontally on narrow screens; field controls stack below labels.
+- Settings uses searchable icon categories, a Settings / section header, grouped fields and a live reading preview. Category navigation scrolls horizontally on narrow screens; field controls stack below labels and take the row's width.
+- Section titles are the title serif at 22px and group titles at 17px. Rows sit in a raised 10px group with no separators. Inputs and choices use the 14% edge; menus are raised-2, 10px, no border. Sliders use ink, not amber.
+- "Search settings" matches every row's name and hint. Results list under their category headings in the navigation column ("Nothing matches {query}" otherwise). Choosing one or pressing Enter clears the search, opens the section, scrolls to the row, focuses its first control and shows a raised-2 highlight for 160ms. Escape clears a non-empty search before it closes the dialog.
+- While loading, a section shows its title over row skeletons. A failed load reads "Settings could not be loaded." with Try again. A failed save stays pinned at the top of the column: "Your {section} settings could not be saved.", Show details for the raw reason, and Try again repeating that save. The row keeps showing what is stored. Providers, models, prompts and graph display each state their own failure with Try again.
 - Settings, setup and connection dialogs contain focus. Menus portal into the active modal boundary. Closing returns focus to the opening control; settings retain immediate persistence and existing section/row deep links.
 - Home, chains and activity share the same surface and control tokens. Loading, empty and failed requests remain distinct; refresh failures retain the last successful data. Home's layout is described under Home above.
+- Unavailable rows in Settings and the graph display panel use the muted ink token on label and hint with a locked control, never opacity. This replaces the 2026-09-20 ruling (owner, 2026-10-30).
+
+## Library, @ list and page pane
+
+Feature 009; the binding reference is its [UI contract](specs/009-library-canvas/contracts/ui-contract.md). All surfaces use Study ink tokens, with no amber except keyboard focus and the primary action.
+
+### Library view
+
+- The sidebar has one labelled row, "Library" (`LibraryIcon`, 15px), under Search and New and above the date shelves. It links to `/library` and carries `aria-current="page"` there.
+- `/library` is one column, `max-w-[52rem]` like Home, under the shared top bar: the title "Library" (title serif, 30px), "Upload" and "New page" (raised-2, neither primary), then the "Search your Library" field, which filters names on the client.
+- Rows are raised, 10px. The name is 15px and wraps. The meta line is `{Kind} · {size} · {date}`, plus "Made by the agent" or "No text could be read" when true. Clicking the row opens the item ("Open {name}"); "Rename {name}" and "Delete {name}" are named buttons.
+- Upload is a file picker and a drop on the page, with a row and a percent per upload in flight. Refusals name the file and the reason and stay until dismissed.
+- A name clash asks "{name} is already in your Library." with "Keep both as {suggested}" and "Cancel". Originals are never replaced.
+- The delete dialog follows the session one: "Delete {name}?" and, for a page, "Its whole version history goes too." The name is in the interface font.
+- Empty: "Nothing here yet. Upload a document or start a page." Loading uses row skeletons. Failed: "Your Library could not be loaded." with Try again. A failed refresh keeps the list.
+- Pages open in the pane. Markdown, text, code and CSV open read-only with "This is your original; it can't be edited here." PDF and images open in a new tab. Over 1 MiB of text shows "Too long to preview" and Download.
+
+### @ list
+
+- It opens above the field, inside the prompt shell's width: raised-2, 10px, no border, up to 6 rows scrolling with hidden tracks. A row is the name, then `{Kind} · {size}` in meta, at least 44px on coarse pointers.
+- The textarea is a `combobox` over a `listbox`. Up and Down move, Enter or Tab insert `@name ` at the token and keep focus, and Escape closes only the list. Clicking keeps focus in the field.
+- No match shows "Nothing matched" as a status: Enter does the field's normal action, Tab inserts nothing and the text stays. A space after an unmatched query closes the list. "Your Library is empty.", "Loading your Library…" and "Your Library could not be loaded." leave the draft untouched.
+- The last option in every field is "New page", styled like any row, under any status line. Choosing it creates a blank page ("Untitled page", a clash stepping as in the Library), opens it in the pane and inserts `@name `; it sends nothing and calls no model. With no match, Enter stays the field's own until an arrow reaches the row. With no pane on screen, the page opens on the next screen that has one. A failed create shows "New page · {reason}" under the field and keeps the draft (owner, 2026-10-31).
+- It serves the chat, Home and new-session composer, both question fields and the practice field. When the text has references, one muted 13px line in the answer well reads "Attaching {name}, {name}".
+- Sent messages show one quiet, always visible row per reference on the reading edge (13px, `ink-2`, the name in foreground), with the mode and reason worded as in the contract.
+
+### Page pane
+
+- A resizable pane shared with the demo workspace shows a demo or a page; the most recent explicit open wins and the one live iframe stays mounted. A question's automatic demo open does not replace an open page.
+- The 52px header holds the page name (click to rename), a muted save state ("Saved", "Saving…", "Draft saved", "Not saved. Your text is kept in this browser." with Try again), History and close. The body is one rich-text surface at reading size, with no separate preview pane.
+- Cmd/Ctrl+S saves a version. Escape returns focus to the transcript on desktop and closes the layer on phones.
+- A conflict shows "This page changed elsewhere. Your text is safe here." with "Keep mine" and "Use latest". An agent update on a clean page shows "Updated by the agent · version {n}" for 4s and announces it in a live region.
+- History lists `Version {n} · {You | Agent} · {time}`, with a read-only preview and "Restore this version".
+- Below 768px the pane is a full-screen layer with contained focus and "Back to chat". The composer's draft stays mounted underneath.
+- Transcript rows follow the math-check skeleton with no amber: "Page · created {name}", "Page · revised {name} · version {n}", "Page · couldn't revise, it changed", "Page · failed", "Library · read {name}" and "Library · failed". Running rows show only the spinner and activity label.
+
+### Page editor tools
+
+These come from feature 010. Every string is in specs/010-page-editor-tools/contracts/ui-contract.md.
+
+- **Header**: the save state is followed by "· {n} words". Formulas, code and images are not counted. Outline, Export and History sit beside it. Below 768 px these three show as named icons.
+- **Toolbar**: a `surface-raised` row above the text, wrapping as it narrows. It holds:
+  - undo and redo;
+  - a text style select;
+  - bold, italic, strikethrough, inline code and link;
+  - lists, checklist and quote;
+  - formula, table and image;
+  - "Ask the tutor" at the end.
+  Each button's name carries its shortcut, and unavailable buttons use muted ink, never opacity.
+- **Table controls**: while the caret is in a table, a row of text buttons sits under the toolbar.
+- **Slash menu and link popover**: both are `surface-raised-2` panels inside the editor.
+  - The slash menu opens on "/" at the start of an empty line. Escape closes only the menu.
+  - The link popover (Ctrl/Cmd+K) has a labelled field.
+- **Placeholder**: an empty page shows one muted sentence. It is a decoration and never stored.
+- **Selection bubble**: a `surface-raised-2` toolbar over selected text with Bold, Italic, Link, then Explain, Simpler, "Quiz me on this" and Ask….
+  - While a question waits, a problem is active or the tutor is answering, the tutor's actions are replaced by one sentence saying why.
+  - Explain, Simpler and Quiz me send at once; Ask… only fills the composer. From the Library they open a new session.
+- **Tutor changes**: a `surface-raised` bar ("The tutor changed {n} places · version {v}") with Previous, Next, "Undo the tutor's edit" and Done. Done is the one amber action.
+  - The tutor's blocks sit on the `accent` step. Removed text is struck through in muted ink.
+  - Done or closing the page clears them, and typing does not.
+- **History**: opens on Changes, which shows added and removed blocks against the version before, each labelled in mono with its word and colour. Full text shows the rendered version. Versions can be named and copied.
+- **Outline**: a column beside the text when the pane is at least 720 px wide, otherwise a list above it.
+- **Export**: Copy as Markdown, Download .md, and Print. Print shows only the page, in Study ink's paper colours.
+- **Images**: pasted, dropped or chosen images become Library images. An upload shows one progress line. A missing image shows its alt text on the `card` step.
 
 ## Demos
 

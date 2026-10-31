@@ -1,5 +1,13 @@
 <!--
 Sync Impact Report
+- Version change: 1.1.1 → 1.1.2 (PATCH, 2026-10-31, feature 009): sidebar dividers are allowed, at the owner's direct request.
+- Version change: 1.1.0 → 1.1.1 (PATCH, 2026-10-30, feature 009)
+- Modified: III Learner data is never lost, an exception to "Deleting a session removes its traces":
+  agent-made pages survive session deletion and lose their chat link (owner approval: specs/009-library-canvas/spec.md,
+  Clarifications and progress.md Decisions, 2026-10-30).
+- Templates: none changed.
+
+Previous report (1.1.0):
 - Version change: 1.0.0 → 1.1.0 (MINOR, 2026-10-27, feature 001)
 - Modified: Technology and interface constraints, theme line. "T3 Code's default web dark theme"
   becomes "Study ink, as defined in DESIGN.md" (owner approval: numbered question, 2026-10-27).
@@ -75,7 +83,8 @@ bypass the theory erode that.
   changes. A reload that would lose a draft does not happen silently.
 - The learner's own files are never edited. Write-back goes to a separate folder
   (`learning_summary` for notes summaries).
-- Deleting a session removes its traces; shared graph nodes keep their identity. Golden fixtures in
+- Deleting a session removes its traces; shared graph nodes keep their identity. Exception (owner,
+  2026-10-30, feature 009): agent-made pages stay in the Library and lose their chat link. Golden fixtures in
   `tests/fixtures/golden-data/` change only in deliberate format updates.
 
 ### IV. Honest states
@@ -109,7 +118,7 @@ bypass the theory erode that.
 - Build with the existing shadcn/Radix primitives and shared components (`TopBar`, `MenuShell`,
   shared tokens). No parallel custom components and no decorative libraries.
 - No visible scrollbars anywhere, with every scroll method still working (see AGENTS.md). No
-  structural separator lines; input, choice, selection, focus and resize boundaries remain.
+  structural separator lines, except the sidebar dividers in DESIGN.md (owner, 2026-10-31); input, choice, selection, focus and resize boundaries remain.
 - Keyboard focus is always visible. The whole app is usable by keyboard; Escape closes the
   innermost layer first; dialogs trap focus and return it to the opener. Pointer clicks do not
   leave focus on transcript controls.
@@ -183,4 +192,4 @@ bypass the theory erode that.
   owner approved. `speckit-analyze` treats a constitution conflict as CRITICAL.
 - When a rule here turns out wrong in practice, stop and ask; do not work around it.
 
-**Version**: 1.1.0 | **Ratified**: 2026-10-27 | **Last Amended**: 2026-10-27
+**Version**: 1.1.2 | **Ratified**: 2026-10-27 | **Last Amended**: 2026-10-31

@@ -50,3 +50,20 @@ export function lookupHeadline(details: LookupDetails): string {
 	if (details.source === "arxiv" && details.results.length === 1) return `arXiv · ${details.results[0]!.title}`;
 	return `${details.source === "arxiv" ? "arXiv" : "Semantic Scholar"} · ${counted(details.results.length, "papers")} for '${details.query}'`;
 }
+
+// ── Page and Library rows (feature 009, contracts/ui-contract.md) ──
+export type PageRowDetails =
+	| { outcome: "created" | "revised"; itemId: string; name: string; version: number; savedLearnerVersion?: number }
+	| { outcome: "stale"; reason: string; itemId?: string; savedLearnerVersion?: number }
+	| { outcome: "failed"; reason: string }
+	| { outcome: "read"; itemId: string; name: string; kind: string; size: number };
+
+export function pageRowHeadline(tool: string, details: PageRowDetails | null): string {
+	if (tool === "library_read") return details?.outcome === "read" ? `Library · read ${details.name}` : "Library · failed";
+	switch (details?.outcome) {
+		case "created": return `Page · created ${details.name}`;
+		case "revised": return `Page · revised ${details.name} · version ${details.version}`;
+		case "stale": return "Page · couldn't revise, it changed";
+		default: return "Page · failed";
+	}
+}

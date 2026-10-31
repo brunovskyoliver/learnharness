@@ -274,7 +274,7 @@ export function ProviderMenuList({
 					}
 				}}
 				placeholder="Search providers…"
-				className="lh-input mb-1.5 w-full rounded-lg border bg-background px-2 py-1.5 text-foreground outline-none focus:ring-1 focus:ring-ring"
+				className="lh-input mb-1.5 w-full rounded-md border border-input bg-background pointer-coarse:min-h-11 px-2 py-1.5 text-foreground outline-none focus:ring-1 focus:ring-ring"
 			/>
 			{results.length === 0 && (
 				<div className="px-2 py-3 text-center text-muted-foreground">No providers match.</div>
@@ -287,8 +287,8 @@ export function ProviderMenuList({
 							data-testid={`provider-option-${p.id.replace(/[^a-z0-9-]/gi, "_")}`}
 							data-idx={i}
 							onClick={() => onPick(p)}
-							className={`flex w-full items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left outline-none transition-colors hover:bg-muted ${
-								i === menuIdx ? "bg-accent/40 ring-1 ring-inset ring-border" : ""
+							className={`flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left outline-none transition-colors hover:bg-muted pointer-coarse:min-h-11 ${
+								i === menuIdx ? "bg-muted ring-1 ring-inset ring-border" : ""
 							}`}
 						>
 							<span className="truncate text-card-foreground">{p.label}</span>
@@ -404,7 +404,7 @@ export function FontMenuList({
 					}
 				}}
 				placeholder="Search fonts…"
-				className="lh-input mb-1.5 w-full rounded-lg border bg-background px-2 py-1.5 text-foreground outline-none focus:ring-1 focus:ring-ring"
+				className="lh-input mb-1.5 w-full rounded-md border border-input bg-background pointer-coarse:min-h-11 px-2 py-1.5 text-foreground outline-none focus:ring-1 focus:ring-ring"
 			/>
 			{!families && <div className="px-2 py-3 text-center text-muted-foreground">Loading fonts…</div>}
 			<ul ref={listRef} data-testid="font-list" className="flex max-h-72 flex-col overflow-y-auto px-1">
@@ -419,9 +419,9 @@ export function FontMenuList({
 									data-testid={isDefault ? "font-option-default" : `font-option-${family.replace(/[^a-z0-9-]/gi, "_")}`}
 									data-idx={i}
 									onClick={() => onPick(family)}
-									className={`flex w-full items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left outline-none transition-colors hover:bg-muted ${
-										i === menuIdx ? "bg-accent/40 ring-1 ring-inset ring-border" : ""
-									}${effective && i !== menuIdx ? " bg-muted/60" : ""}`}
+									className={`flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left outline-none transition-colors hover:bg-muted pointer-coarse:min-h-11 ${
+										i === menuIdx ? "bg-muted ring-1 ring-inset ring-border" : ""
+									}${effective && i !== menuIdx ? " bg-muted" : ""}`}
 								>
 									<span className="truncate text-card-foreground">{family ?? "Source Sans 3"}</span>
 									<span className="shrink-0 text-muted-foreground">{isDefault ? "default" : effective && <span aria-hidden>✓</span>}</span>
@@ -436,8 +436,8 @@ export function FontMenuList({
 							data-testid="font-option-custom"
 							data-idx={0}
 							onClick={() => onPick(customFamily)}
-							className={`flex w-full items-center justify-between gap-3 rounded-lg px-2 py-1.5 text-left outline-none transition-colors hover:bg-muted ${
-								menuIdx === 0 ? "bg-accent/40 ring-1 ring-inset ring-border" : ""
+							className={`flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left outline-none transition-colors hover:bg-muted pointer-coarse:min-h-11 ${
+								menuIdx === 0 ? "bg-muted ring-1 ring-inset ring-border" : ""
 							}`}
 						>
 							<span className="truncate text-card-foreground">Use “{customFamily}”</span>

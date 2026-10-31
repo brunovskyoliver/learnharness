@@ -12,10 +12,13 @@ import {
 	quizInputObject,
 	quizInputProblems,
 } from "../core/question-core.ts";
+import { activeProblemOf, danglingQuestionOf } from "../core/native-messages.ts";
 import { filterEnabledTools, type EnabledTools } from "../core/pending.ts";
 import type { JobRecord } from "../core/contracts.ts";
 import type { PaperFiles, JobStore } from "../core/ports.ts";
-import { jobTools, type DemoInput, type PdfInput, type ResearchInput, type VisualInput } from "./tools/jobs.ts";
+import { jobTools, type JobDispatchInput } from "./tools/jobs.ts";
+import { libraryTools, type LibraryToolContext } from "./tools/library.ts";
+import { PAGE_BLOCKED_PROBLEM, PAGE_BLOCKED_QUESTION, pageTools } from "./tools/pages.ts";
 import { mlVisualTool } from "./tools/ml-visual.ts";
 import { tokenizeTool } from "./tools/tokenize.ts";
 import { plotTool } from "./tools/plot.ts";
@@ -276,9 +279,12 @@ export interface ProberToolContext extends ProbeDoneContext {
 	/** Creates the job record (deduped by toolCallId). */
 	jobStore: JobStore;
 	/** Fire the background runner for a freshly created job. */
-	spawn: (job: JobRecord, input: ResearchInput | DemoInput | VisualInput | PdfInput) => void;
+	spawn: (job: JobRecord, input: JobDispatchInput) => void;
 	/** Retained search-status seam; research dispatch is available keylessly. */
 	searchAvailable?: () => boolean;
+	/** The Library (feature 009): present, library_list, library_read and image
+	 *  are registered. The composition root always passes it. */
+	library?: LibraryToolContext;
 	/** The prober's graph-map reader (wave 7): present = the two map tools
 	 *  (list_sessions / list_propositions) are registered. The composition
 	 *  root passes it only when graphToolsEnabled(effective) — the graph
@@ -307,6 +313,7 @@ export function createProberTools(
 		jobStore: ctx.jobStore,
 		spawn: ctx.spawn,
 		searchAvailable: ctx.searchAvailable,
+		library: ctx.library,
 	});
 	// Quizzing mechanics (owner 2026-09-27): free-recall swaps the probe
 	// quiz for the probe explain — one quizzing tool at a time, whichever
@@ -343,6 +350,8 @@ export function createProberTools(
 				// remains available without a search-provider key.
 				...(jobs.research ? { research: jobs.research } : {}),
 				pdf: jobs.pdf!,
+				...(jobs.image ? { image: jobs.image } : {}),
+				...(ctx.library ? libraryTools(ctx.library) : {}),
 				// The map reader (wave 7): present only when the settings gate
 				// opened.
 				...(ctx.graphStore
@@ -411,9 +420,11 @@ export interface TeacherToolContext extends PlanToolContext {
 	/** Fire the background runner for a freshly created job. The tool input
 	 *  rides along — the spawn fires mid-stream, before the tool part is
 	 *  persisted to the transcript (a transcript scan would race it). */
-	spawn: (job: JobRecord, input: ResearchInput | DemoInput | VisualInput | PdfInput) => void;
+	spawn: (job: JobRecord, input: JobDispatchInput) => void;
 	/** Retained search-status seam; research dispatch is available keylessly. */
 	searchAvailable?: () => boolean;
+	/** The Library (feature 009), as on the prober. */
+	library?: LibraryToolContext;
 }
 
 /**
@@ -465,7 +476,8 @@ export function createTeacherTools(
 			ask_user_question: askUserQuestionTool,
 			// The learner-filesystem set is always-on (user-decided 2026-09,
 			// sources v1): the teacher locates and reads learner-referenced
-			// files on its own terms — nothing auto-injects. Read-only by
+			// files on its own terms; the only context added for it is what he
+			// attaches with @ (feature 009, core/library-refs.ts). Read-only by
 			// construction (fs-shared.ts).
 			read: readTool,
 			ls: lsTool,
@@ -474,7 +486,8 @@ export function createTeacherTools(
 			...planTools(ctx),
 			...(ctx.startFollowup ? { start_followup_session: followupTool(ctx.startFollowup) } : {}),
 			...(ctx.graphStore ? teacherGraphTools({ chatStore: ctx.chatStore, graphStore: ctx.graphStore, startFollowup: ctx.startFollowup }) : {}),
-			...jobTools({ chatId: ctx.chatId, jobStore: ctx.jobStore, spawn: ctx.spawn, searchAvailable: ctx.searchAvailable }),
+			...jobTools({ chatId: ctx.chatId, jobStore: ctx.jobStore, spawn: ctx.spawn, searchAvailable: ctx.searchAvailable, library: ctx.library }),
+			...(ctx.library ? libraryTools(ctx.library) : {}),
 			// Quick plots (feature 005): instant, checked, no builder agent.
 			plot: plotTool(),
 			...(enabled?.ml_visuals === false ? {} : { ml_visual: mlVisualTool(), tokenize: tokenizeTool() }),
@@ -484,6 +497,16 @@ export function createTeacherTools(
 			math_check: mathCheckTool(),
 			...(enabled?.model_hub === false ? {} : createHubTools()),
 			...(enabled?.papers === false ? {} : createPaperTools(ctx.paperFiles)),
+			// Pages (feature 009): not for the prober, which assesses and doesn't teach.
+			...(enabled?.pages === false || !ctx.library ? {} : pageTools({
+				store: ctx.library.store,
+				chatId: ctx.chatId,
+				blocked: () => {
+					const messages = ctx.chatStore.getChat(ctx.chatId)?.messages ?? [];
+					if (danglingQuestionOf(messages)) return PAGE_BLOCKED_QUESTION;
+					return activeProblemOf(messages) ? PAGE_BLOCKED_PROBLEM : null;
+				},
+			})),
 		},
 		withoutMechanics(enabled),
 		),

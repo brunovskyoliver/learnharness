@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIcon, BotIcon, FileTextIcon, PenToolIcon, PlayIcon, SearchIcon, SquareIcon, WaypointsIcon } from "lucide-react";
+import { ActivityIcon, BotIcon, FileTextIcon, ImageIcon, PenToolIcon, PlayIcon, SearchIcon, SquareIcon, WaypointsIcon } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Item, ItemGroup } from "@/components/ui/item";
 import { Button } from "@/components/ui/button";
@@ -280,6 +280,7 @@ const KIND_ICON: Record<JobKind, typeof SearchIcon> = {
 	demo: PlayIcon,
 	visual: PenToolIcon,
 	pdf: FileTextIcon, // sources v0 — type-forced entry (JobKind grew "pdf")
+	image: ImageIcon,
 };
 
 /** Abort states per blob id: pending (fired) / failed (backend absent). */
@@ -400,6 +401,8 @@ function ActivityBlobRow({
 						? "Figure maker"
 						: blob.jobKind === "pdf"
 							? "PDF reader"
+							: blob.jobKind === "image"
+								? "Image reader"
 							: "Sub-agent";
 	const activity = activityText(blob.activity);
 	const elapsed = formatElapsed(now - blob.startedAt);

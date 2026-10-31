@@ -50,6 +50,8 @@ export interface ServerEvents {
 	 *  the chat; the client mirrors it by disabling the composer/dock
 	 *  submit. */
 	"compaction-changed": { chatId: string; running: boolean };
+	/** A Library item changed (feature 009). Open views refetch. */
+	"library-changed": { itemId?: string; version?: number; author?: "learner" | "agent" };
 }
 
 export type ServerEventType = keyof ServerEvents;
@@ -66,6 +68,7 @@ export const SERVER_EVENT_TYPES = [
 	"subscriptions-changed",
 	"record-changed",
 	"compaction-changed",
+	"library-changed",
 ] as const satisfies readonly ServerEventType[];
 
 /** One notification: the type discriminates the payload. */

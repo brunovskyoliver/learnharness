@@ -221,6 +221,67 @@ describe("Settings integration", () => {
 		assert.equal(q(host, "toggle-auto-update")!.getAttribute("aria-checked"), "false");
 	});
 
+	it("a deep link unfolds its key row once the keys arrive", async () => {
+		bridge();
+		const globals = globalThis as Record<string, unknown>;
+		const savedCss = globals.CSS, savedMedia = (window as unknown as { matchMedia?: unknown }).matchMedia;
+		globals.CSS = { escape: (value: string) => value };
+		(window as unknown as { matchMedia: unknown }).matchMedia = () => ({ matches: true });
+		const proto = dom.window.HTMLElement.prototype as unknown as { scrollIntoView?: () => void };
+		const scrolled: unknown[] = [];
+		proto.scrollIntoView = function (this: unknown) { scrolled.push(this); };
+		globalThis.fetch = async (input) => String(input) === "/api/settings"
+			? Response.json({ settings: { version: 1 } })
+			: Response.json({ keys: [], providers: [] });
+		try {
+			const host = await mount(<SettingsDialogBody initialSection="keys" initialRow="TAVILY_API_KEY" onClose={() => {}} />);
+			await act(async () => { await new Promise((resolve) => setTimeout(resolve, 20)); });
+			assert.ok(q(host, "key-tavily_api_key-input"), "the row unfolded");
+			assert.equal(scrolled.length, 1, "the jump ran once");
+		} finally {
+			globals.CSS = savedCss;
+			(window as unknown as { matchMedia?: unknown }).matchMedia = savedMedia;
+			delete proto.scrollIntoView;
+		}
+	});
+
+	it("a failed load has Try again; a failed save reads in words, with details and Try again", async () => {
+		bridge();
+		let loads = 0, puts = 0;
+		globalThis.fetch = async (input, init) => {
+			if (init?.method === "PUT") {
+				puts++;
+				if (puts === 1) return Response.json({ error: "raw internal" }, { status: 500 });
+				return Response.json({ settings: { version: 1, general: JSON.parse(String(init.body)) } });
+			}
+			assert.equal(String(input), "/api/settings");
+			loads++;
+			return loads === 1 ? new Response("{}", { status: 500 }) : Response.json({ settings: { version: 1, general: { autoUpdate: true } } });
+		};
+		const host = await mount(<SettingsDialogBody initialSection="general" onClose={() => {}} />);
+		const settle = () => act(async () => { await new Promise((resolve) => setTimeout(resolve, 5)); });
+		await settle();
+		assert.ok(q(host, "settings-load-error")!.textContent!.includes("Settings could not be loaded."));
+		await click(q(host, "settings-load-retry"));
+		await settle();
+		assert.equal(loads, 2, "Try again refetches");
+		assert.equal(q(host, "settings-load-error"), null);
+		await click(q(host, "toggle-auto-update"));
+		await settle();
+		const text = () => q(host, "settings-error")!.textContent!;
+		assert.ok(text().includes("Your General settings could not be saved."));
+		assert.ok(!text().includes("general:"), "no internal section name");
+		assert.ok(!text().includes("raw internal"), "the detail waits for Show details");
+		await click(q(host, "settings-error-details"));
+		assert.ok(text().includes("500: raw internal"));
+		assert.equal(q(host, "toggle-auto-update")!.getAttribute("aria-checked"), "true", "the row still shows what is stored");
+		await click(q(host, "settings-error-retry"));
+		await settle();
+		assert.equal(puts, 2, "Try again re-runs the save");
+		assert.equal(q(host, "settings-error"), null);
+		assert.equal(q(host, "toggle-auto-update")!.getAttribute("aria-checked"), "false");
+	});
+
 	it("the shell's navigation request opens General, but opening alone never checks", async () => {
 		const b = bridge();
 		globalThis.fetch = async () => Response.json({ settings: { version: 1 } });

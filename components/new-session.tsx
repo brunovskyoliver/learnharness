@@ -193,7 +193,10 @@ export function DraftShell({
 	);
 }
 
-export function NewSession({ initialConfigured, mode = "teach" }: { initialConfigured: boolean; mode?: "teach" | "practice" }) {
+/** `initialSend` and `initialDraft` come from a page's tutor actions in the
+ *  Library (feature 010): the first is sent once through the same guards as
+ *  Send, the second only fills the field. */
+export function NewSession({ initialConfigured, mode = "teach", initialSend, initialDraft }: { initialConfigured: boolean; mode?: "teach" | "practice"; initialSend?: string; initialDraft?: string }) {
 	const router = useRouter();
 	const [text, setText] = useState("");
 	/* The draft MIRROR ("nothing gets lost" round, 2026-10-01): the shell's
@@ -278,6 +281,18 @@ export function NewSession({ initialConfigured, mode = "teach" }: { initialConfi
 			})
 			.catch(() => setBusy(false));
 	}, [busy, router, configured, zeroKeys, strongKeyless]);
+
+	const handedOver = useRef(false);
+	useEffect(() => {
+		if (handedOver.current) return;
+		handedOver.current = true;
+		const given = initialSend ?? initialDraft;
+		if (!given) return;
+		applyText(given);
+		// Off the address, so a reload doesn't send it again; the draft is kept.
+		router.replace(mode === "practice" ? "/chat/new?mode=practice" : "/chat/new");
+		if (initialSend) send();
+	}, [initialSend, initialDraft, mode, router, send]);
 
 	return (
 		<>

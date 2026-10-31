@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { MenuShell } from "@/components/menu-shell";
 import { DeleteSessionDialog } from "@/components/delete-session-dialog";
 import type { ChatDeleteMode } from "@/src/core";
-import { BookOpenIcon, CheckIcon, DumbbellIcon, ListFilterIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, PlusIcon, SearchIcon, SettingsIcon } from "lucide-react";
+import { BookOpenIcon, CheckIcon, DumbbellIcon, LibraryIcon, ListFilterIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, PlusIcon, SearchIcon, SettingsIcon } from "lucide-react";
 import { ActivitySection } from "@/components/activity-dock";
 import { CoverageMenuBlock } from "@/components/extraction-coverage";
 import { LhMark } from "@/components/lh-mark";
@@ -739,6 +739,23 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 						<PlusIcon className="ui-icon" aria-hidden="true" />
 						New
 					</button>
+				</div>
+
+				{/* The Library (feature 009): one labelled row above the date shelves. */}
+				<div className="px-2 pb-1">
+					<Link
+						href="/library"
+						data-testid="sidebar-library"
+						aria-current={pathname === "/library" ? "page" : undefined}
+						onClick={() => { if (overlay) close(); }}
+						className={cn(
+							"flex h-9 items-center gap-2 rounded-md px-2.5 text-base transition-colors hover:bg-accent pointer-coarse:h-11",
+							pathname === "/library" ? "bg-accent text-foreground" : "text-ink-2",
+						)}
+					>
+						<LibraryIcon className="size-[15px] shrink-0" aria-hidden="true" />
+						Library
+					</Link>
 				</div>
 
 				<div ref={listRef} className="flex flex-1 flex-col gap-px overflow-y-auto px-2 pb-2">

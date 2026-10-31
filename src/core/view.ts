@@ -40,6 +40,7 @@ import { QUESTION_TOOLS } from "./pending.ts";
 import type { SubagentArtifactData, SubagentResultMeta } from "./contracts/jobs.ts";
 import type { PlanBlockData } from "./contracts/chat.ts";
 import { MATH_CHECK_TOOL, mathCheckBindings, type MathCheckVisibility } from "./math-check.ts";
+import { referencesOf, withoutMaterial } from "./library-refs.ts";
 
 /** A view part — the loose part vocabulary the renderers consume (the same
  *  shape names the pre-Wave-D UIMessage dialect used, so the renderer
@@ -101,6 +102,12 @@ export interface LiveTurnState {
 	/** The one provider message whose text is still arriving. Tool execution
 	 * keeps streamingIds alive after its text has completed. */
 	streamingTextId?: string | null;
+}
+
+/** The label part (feature 009). Material never reaches the view. */
+function referencesPart(message: LhMessage): LhViewPart[] {
+	const references = referencesOf(withoutMaterial(message));
+	return references.length ? [{ type: "data-library-references", id: `lr_${message.id}`, data: { references } }] : [];
 }
 
 function textPart(text: string): LhViewPart {
@@ -199,7 +206,7 @@ export function projectView(messages: readonly LhMessage[], live?: LiveTurnState
 				typeof content === "string"
 					? [content]
 					: content.filter((c) => c.type === "text").map((c) => (c as { text: string }).text);
-			out.push({ id: m.id, role: "user", parts: texts.map(textPart) });
+			out.push({ id: m.id, role: "user", parts: [...referencesPart(m), ...texts.map(textPart)] });
 			continue;
 		}
 
@@ -454,7 +461,7 @@ function projectMarker(marker: LhMarkerMessage, out: LhViewMessage[]): void {
 			out.push({
 				id: marker.id,
 				role: "user",
-				parts: [{ type: "data-practice-thinking", id: `pt_${marker.id}`, data: marker.details }],
+				parts: [...referencesPart(marker), { type: "data-practice-thinking", id: `pt_${marker.id}`, data: marker.details }],
 			});
 			return;
 		}

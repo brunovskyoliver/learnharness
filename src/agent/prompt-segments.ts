@@ -29,7 +29,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { PATHS, promptsOverrideDir } from "../../config.ts";
+import { hostedMode, PATHS, promptsOverrideDir } from "../../config.ts";
 import { FRAGMENT_RE, isValidSegmentPath, type PromptAgent, type PromptSegmentInfo } from "../core/prompt-segments.ts";
 
 const PROMPTS_DIR = path.join(PATHS.root, "src", "agent", "prompts");
@@ -41,6 +41,10 @@ const PROMPTS_DIR = path.join(PATHS.root, "src", "agent", "prompts");
  *  every agent. The question/confidence/file mechanics stay out
  *  (practice has no such tools). */
 const PRACTICE_SHARED_FRAGMENTS = ["10-voice.md", "15-accuracy.md", "16-mental-model.md", "40-formatting.md"];
+
+/** Feature 009: each mode composes its own file-reach fragment, so Settings →
+ *  Agent → System prompts lists only the one that applies. */
+const MODE_FRAGMENT_NOT_COMPOSED = () => (hostedMode() ? "31-files-desktop.md" : "31-files-hosted.md");
 
 /** Absolute path for an override file (unchecked — validate first). */
 function overrideFileFor(segmentPath: string): string {
@@ -87,7 +91,7 @@ export function listSourceSegments(agent: PromptAgent): Array<{ path: string; sh
 		const allow = agent === "practice" ? PRACTICE_SHARED_FRAGMENTS : null;
 		const sharedFragments = fs
 			.readdirSync(sharedDir)
-			.filter((f) => FRAGMENT_RE.test(f) && (allow === null || allow.includes(f)))
+			.filter((f) => FRAGMENT_RE.test(f) && (allow === null || allow.includes(f)) && f !== MODE_FRAGMENT_NOT_COMPOSED())
 			.sort();
 		for (const f of sharedFragments) {
 			segments.push({ path: `shared/${f}`, shared: true, file: path.join(sharedDir, f) });

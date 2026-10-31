@@ -18,13 +18,15 @@ export const dynamic = "force-dynamic";
 async function NewSessionPage({
 	searchParams,
 }: {
-	searchParams: Promise<{ mode?: string }>;
+	searchParams: Promise<{ mode?: string; send?: string; draft?: string }>;
 }) {
-	const { mode } = await searchParams;
+	const { mode, send, draft } = await searchParams;
 	return (
 		<NewSession
 			initialConfigured={slotsConfigured(readSettingsRecord()?.models)}
 			mode={mode === "practice" ? "practice" : "teach"}
+			initialSend={typeof send === "string" ? send : undefined}
+			initialDraft={typeof draft === "string" ? draft : undefined}
 		/>
 	);
 }

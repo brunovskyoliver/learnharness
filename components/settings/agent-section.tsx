@@ -71,9 +71,11 @@ import {
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import { prettyModel } from "@/components/usage-format";
 import { cn } from "@/lib/utils";
-import { SettingsGroup, SettingsRow, Toggle, CommitInput } from "./controls.tsx";
+import { Skeleton } from "@/components/ui/skeleton";
+import { CommitInput, SettingsFailure, SettingsGroup, SettingsRow, Toggle } from "./controls.tsx";
 import { ModelMenuList, ThinkingMenuList } from "./model-menu";
 import { composeSlotModel } from "./slot-model";
+import { TOGGLE_TOOLS, TOOL_COPY } from "./settings-index";
 import { ChatGPTBackgroundAccess } from "./chatgpt-connection";
 import { NativeSubscriptionBackgroundAccess } from "./subscription-connections";
 
@@ -88,21 +90,7 @@ const SLOT_META: Record<ModelSlotName, { label: string; roster: string }> = {
 /** The search engines this wave ships (src/core/search.ts) + their labels. */
 const SEARCH_ENGINES = ["tavily", "brave"] as const;
 
-/** The owner's final toggleable-tool list (confirm with the user before
- *  changing — the Teacher stream settled this 2026-09-19). */
-export const TOGGLE_TOOLS = ["research", "demo", "visual", "pdf", "math_check", "ml_visuals", "model_hub", "papers"] as const;
-
-/** Row copy for the tool toggles (ui-v2: every tool row gets a description). */
-const TOOL_COPY: Record<(typeof TOGGLE_TOOLS)[number], { label: string; hint: string }> = {
-	research: { label: "Research", hint: "Checks facts and current data on the web in the background" },
-	demo: { label: "Demos", hint: "Builds interactive demos you can play with in the lesson" },
-	visual: { label: "Figures", hint: "Draws precise figures: plots, geometry, number lines" },
-	pdf: { label: "PDF reading", hint: "Reads PDFs you share and cites the pages it used" },
-	math_check: { label: "Math check", hint: "Checks computed answers and equivalent forms with Wolfram" },
-	ml_visuals: { label: "ML visuals", hint: "Shows tokens, attention, sampling, networks and shapes as interactive panels" },
-	model_hub: { label: "Model hub", hint: "Looks up model configs, datasets and papers on Hugging Face" },
-	papers: { label: "Papers", hint: "Finds papers on arXiv and Semantic Scholar and cites their pages" },
-};
+export { TOGGLE_TOOLS } from "./settings-index";
 
 const THINKING_LEVELS: readonly ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
 
@@ -251,8 +239,9 @@ function MenuTrigger({
 			onClick={() => {
 				if (!disabled) onClick();
 			}}
-			className={`flex h-9 min-w-0 items-center gap-2 rounded-md border border-border bg-background px-2.5 font-ui text-sm text-foreground transition-colors ${
-				disabled ? "cursor-not-allowed" : "hover:border-muted-foreground/50"
+			disabled={disabled}
+			className={`flex h-9 min-w-0 items-center gap-2 rounded-md border border-input bg-background px-2.5 text-left font-ui text-sm transition-colors pointer-coarse:h-11 ${
+				disabled ? "cursor-not-allowed text-muted-foreground" : "text-foreground hover:bg-accent"
 			} ${widthClass}`}
 		>
 			<span className="min-w-0 flex-1 truncate">{value || emptyLabel}</span>
@@ -294,7 +283,10 @@ export function AgentSection({
 	onCompactionChange: (next: CompactionSettings) => void;
 }) {
 	const [catalog, setCatalog] = useState<ModelCatalogEntry[] | null>(null);
-	/** The three tiers' resolved pins — GET /api/models `slots`. The rows'
+	const [catalogFailed, setCatalogFailed] = useState(false);
+	const [promptsFailed, setPromptsFailed] = useState(false);
+	const [searchFailed, setSearchFailed] = useState(false);
+/** The three tiers' resolved pins — GET /api/models `slots`. The rows'
 	 *  Default hints and thinking lists resolve from it. */
 	const [slots, setSlots] = useState<ModelsBody["slots"] | null>(null);
 	/** The live search state (/api/search) — the row's reason line. */
@@ -306,16 +298,17 @@ export function AgentSection({
 	const [openSegment, setOpenSegment] = useState<string | null>(null);
 	const [segmentDraft, setSegmentDraft] = useState<Record<string, string>>({});
 	const [segmentStatus, setSegmentStatus] = useState<string | null>(null);
-	/** One open dropdown for the whole section: which slot (or the search
+	const [segmentFailure, setSegmentFailure] = useState<{ message: string; detail: string; retry: () => void } | null>(null);
+/** One open dropdown for the whole section: which slot (or the search
 	 *  row), which kind. */
 	const [openMenu, setOpenMenu] = useState<{ target: ModelSlotName | "search"; kind: "model" | "thinking" | "engine" } | null>(null);
 	const menuAnchorRef = useRef<HTMLSpanElement>(null);
 
 	const refreshSearch = () =>
 		fetch("/api/search")
-			.then((r) => r.json())
-			.then((body: { available: boolean; engine: string | null; reason: string }) => setSearch(body))
-			.catch(() => setSearch(null));
+			.then((r) => (r.ok ? r.json() : Promise.reject(new Error(`status ${r.status}`))))
+			.then((body: { available: boolean; engine: string | null; reason: string }) => { setSearch(body); setSearchFailed(false); })
+			.catch(() => { setSearch(null); setSearchFailed(true); });
 
 	/** Re-read the prompt-segment view — the signal seam for the
 	 *  2026-09-26 state-echo fix: the view's `enabled` flags DERIVE from
@@ -325,10 +318,11 @@ export function AgentSection({
 	 *  a remount. Keeps the last-good view on a failed re-read (the
 	 *  initial mount fetch below owns the loading/null state). */
 	const readPrompts = useCallback(() => {
+		setPromptsFailed(false);
 		fetch("/api/settings/prompts")
-			.then((r) => r.json())
+			.then((r) => (r.ok ? r.json() : Promise.reject(new Error(`status ${r.status}`))))
 			.then((body: { prober: SegmentInfo[]; teacher: SegmentInfo[] }) => setPrompts(body))
-			.catch(() => {});
+			.catch(() => setPromptsFailed(true));
 	}, []);
 
 	// The catalog (federated: keyed providers only), the resolved slots,
@@ -341,14 +335,19 @@ export function AgentSection({
 	const readModels = useCallback((connectionChanged = false) => {
 		const request = ++modelsRequest.current;
 		if (connectionChanged) setCatalog(null);
-		fetch("/api/models")
+		setCatalogFailed(false);
+fetch("/api/models")
 			.then((r) => { if (!r.ok) throw new Error("Catalog unavailable"); return r.json(); })
 			.then((body: ModelsBody) => {
 				if (!modelsMounted.current || request !== modelsRequest.current) return;
 				setCatalog(body.models);
 				setSlots(body.slots);
 			})
-			.catch(() => { if (modelsMounted.current && request === modelsRequest.current) setCatalog(null); });
+			.catch(() => {
+				if (!modelsMounted.current || request !== modelsRequest.current) return;
+				setCatalog(null);
+				setCatalogFailed(true);
+			});
 	}, []);
 
 	useSettingsSaved((section) => {
@@ -363,12 +362,9 @@ export function AgentSection({
 	useEffect(() => {
 		modelsMounted.current = true;
 		readModels();
-		fetch("/api/settings/prompts")
-			.then((r) => r.json())
-			.then((body: { prober: SegmentInfo[]; teacher: SegmentInfo[] }) => setPrompts(body))
-			.catch(() => setPrompts(null));
+		readPrompts();
 		fetch("/api/keys")
-			.then((r) => r.json())
+			.then((r) => (r.ok ? r.json() : Promise.reject(new Error(`status ${r.status}`))))
 			.then((body: { keys: { id: string; present: boolean }[] }) => {
 				const present: Partial<Record<(typeof SEARCH_ENGINES)[number], boolean>> = {};
 				for (const id of SEARCH_ENGINES) {
@@ -379,7 +375,7 @@ export function AgentSection({
 			})
 			.catch(() => {});
 		return () => { modelsMounted.current = false; modelsRequest.current++; };
-	}, []);
+	}, [readModels, readPrompts]);
 
 	// The reason line re-reads /api/search AFTER an engine write lands —
 	// the write updates the `agent` prop (the dialog's record mirror), so
@@ -421,13 +417,19 @@ export function AgentSection({
 
 	async function saveSegment(path: string, text: string) {
 		setSegmentStatus(null);
+		setSegmentFailure(null);
 		const res = await fetch(`/api/settings/prompts/${path}`, {
 			method: "PUT",
 			headers: { "content-type": "application/json" },
 			body: JSON.stringify({ text }),
-		});
+		}).catch(() => null);
+		if (!res) {
+			setSegmentFailure({ message: "Your version could not be saved.", detail: "The server could not be reached.", retry: () => void saveSegment(path, text) });
+			return;
+		}
 		if (!res.ok) {
-			setSegmentStatus(`Save failed: ${(await res.json().catch(() => ({}))).error ?? res.status}`);
+			const error = ((await res.json().catch(() => ({}))) as { error?: string }).error;
+			setSegmentFailure({ message: "Your version could not be saved.", detail: `${res.status}${error ? `: ${error}` : ""}`, retry: () => void saveSegment(path, text) });
 			return;
 		}
 		readPrompts();
@@ -446,9 +448,10 @@ export function AgentSection({
 
 	async function deleteSegment(path: string) {
 		setSegmentStatus(null);
-		const res = await fetch(`/api/settings/prompts/${path}`, { method: "DELETE" });
-		if (!res.ok) {
-			setSegmentStatus(`Delete failed: ${res.status}`);
+		setSegmentFailure(null);
+		const res = await fetch(`/api/settings/prompts/${path}`, { method: "DELETE" }).catch(() => null);
+		if (!res?.ok) {
+			setSegmentFailure({ message: "Your version could not be deleted.", detail: res ? String(res.status) : "The server could not be reached.", retry: () => void deleteSegment(path) });
 			return;
 		}
 		// Auto-off — the mirror of save's auto-on: deleting the file while
@@ -476,12 +479,10 @@ export function AgentSection({
 			type="button"
 			data-testid={`engine-option-${id}`}
 			onClick={onPick}
-			className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-muted ${
-				active ? "bg-muted/60 text-card-foreground" : "text-card-foreground"
-			}`}
+			className={cn("flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-foreground transition-colors hover:bg-muted pointer-coarse:min-h-11", active && "bg-muted")}
 		>
 			<span>{label}</span>
-			<span className="text-muted-foreground">
+			<span className="text-ink-2">
 				{live === null ? (active && <span aria-hidden>✓</span>) : live ? <span aria-hidden>✓ key</span> : <span aria-hidden>· no key</span>}
 			</span>
 		</button>
@@ -510,25 +511,25 @@ export function AgentSection({
 					hint={info.enabled ? PROMPT_IN_USE_HINT : undefined}
 					testid={`prompt-row-${info.path}`}
 				>
-					{/* Graying ruling: ONLY the toggle dims without an
-					    override file — the file name above stays
-					    full-contrast (the whole-row dim is dead). */}
-					<span className={fileExists ? undefined : "opacity-40"}>
-						<Toggle
-							checked={info.enabled}
-							disabled={!fileExists}
-							label={`prompt ${info.path}`}
-							onChange={(on) => onSectionChange(composePromptSwitch(agent, info.path, on))}
-						/>
-					</span>
+					{/* Graying ruling: ONLY the toggle locks without an
+					    override file; the file name above stays full-contrast. */}
+					<Toggle
+						checked={info.enabled}
+						disabled={!fileExists}
+						label={`prompt ${info.path}`}
+						onChange={(on) => onSectionChange(composePromptSwitch(agent, info.path, on))}
+					/>
 				</SettingsRow>
 				<button
 					type="button"
 					onClick={() => {
 						setOpenSegment(open ? null : info.path);
 						setSegmentStatus(null);
+						setSegmentFailure(null);
 					}}
-					className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+					aria-expanded={open}
+					aria-label={`${open ? "Hide" : "Show"} text of ${info.path}`}
+					className="text-sm text-ink-2 underline-offset-2 hover:text-foreground hover:underline pointer-coarse:min-h-11"
 				>
 					{open ? "Hide text" : "Show text"}
 				</button>
@@ -540,7 +541,7 @@ export function AgentSection({
 								readOnly
 								value={info.sourceText}
 								aria-label="The original instructions"
-								className="h-24 w-full resize-y rounded-sm border border-border bg-muted p-2 font-ui text-sm text-muted-foreground"
+								className="h-24 w-full resize-y rounded-md border border-input bg-card p-2 font-ui text-sm text-ink-2"
 							/>
 						</div>
 						<div>
@@ -550,7 +551,7 @@ export function AgentSection({
 								onChange={(e) => setSegmentDraft({ ...segmentDraft, [info.path]: e.target.value })}
 								aria-label="Your version of the instructions"
 								placeholder="Add your own instructions…"
-								className="h-24 w-full resize-y rounded-sm border border-border bg-background p-2 font-ui text-sm text-foreground outline-none"
+								className="h-24 w-full resize-y rounded-md border border-input bg-background p-2 font-ui text-sm text-foreground placeholder:text-muted-foreground"
 							/>
 						</div>
 						<div className="flex items-center gap-3">
@@ -560,8 +561,8 @@ export function AgentSection({
 								onClick={() => void saveSegment(info.path, segmentDraft[info.path] ?? "")}
 								className={
 									dirty
-										? "text-sm text-foreground underline-offset-2 hover:underline"
-										: "cursor-not-allowed text-sm text-muted-foreground underline-offset-2"
+										? "text-sm text-foreground underline-offset-2 hover:underline pointer-coarse:min-h-11"
+										: "cursor-not-allowed text-sm text-muted-foreground underline-offset-2 pointer-coarse:min-h-11"
 								}
 							>
 								Save
@@ -570,7 +571,8 @@ export function AgentSection({
 								<button
 									type="button"
 									onClick={() => void deleteSegment(info.path)}
-									className="text-sm text-muted-foreground underline-offset-2 hover:text-destructive hover:underline"
+									aria-label={`Delete your version of ${info.path}`}
+									className="text-sm text-muted-foreground underline-offset-2 hover:text-destructive hover:underline pointer-coarse:min-h-11"
 								>
 									Delete
 								</button>
@@ -582,11 +584,14 @@ export function AgentSection({
 							    open at a time (openSegment), so one shared
 							    status reads unambiguously. */}
 							{segmentStatus && (
-								<p className="text-sm text-muted-foreground" data-testid="segment-status">
+								<p role="status" className="text-sm text-muted-foreground" data-testid="segment-status">
 									{segmentStatus}
 								</p>
 							)}
 						</div>
+						{segmentFailure && (
+							<SettingsFailure testid="segment-error" message={segmentFailure.message} detail={segmentFailure.detail} onRetry={segmentFailure.retry} />
+						)}
 					</div>
 				)}
 			</div>
@@ -632,12 +637,13 @@ export function AgentSection({
 							label={SLOT_META[slot].label}
 							hint={SLOT_META[slot].roster}
 							testid={`slot-row-${slot}`}
-						>
+							rowId={`slot-${slot}`}
+>
 							{/* The anchor for the outside-click contract is the
 							    span holding BOTH triggers of the open menu. */}
 							<span
 								ref={thisMenuOpen ? menuAnchorRef : undefined}
-								className="relative flex items-center gap-2"
+								className="relative flex min-w-0 flex-wrap items-center gap-2"
 							>
 								{slot !== "strong" && <><ChatGPTBackgroundAccess provider={coord?.provider} /><NativeSubscriptionBackgroundAccess provider={coord?.provider} /></>}
 								<MenuTrigger
@@ -668,7 +674,7 @@ export function AgentSection({
 										testid={`slot-model-menu-${slot}`}
 										menuClass="model-picker-panel w-96"
 									>
-										<ModelMenuList
+										{catalogFailed ? <SettingsFailure testid="models-load-error" message="Your models could not be loaded." onRetry={() => readModels()} /> : <ModelMenuList
 											models={slotCatalog ?? undefined}
 											effectiveId={modelId}
 											effectiveProvider={provider}
@@ -684,8 +690,8 @@ export function AgentSection({
 												catalog && catalog.length === 0
 													? "No models — add a provider key in Keys"
 													: "Runs every agent of this tier"
-											}
-										/>
+												}
+											/>}
 									</MenuShell>
 								)}
 								{thisMenuOpen === "thinking" && (
@@ -728,7 +734,8 @@ export function AgentSection({
 							label="Graph tools"
 							hint={graphOn ? "Lets the tutor consult your knowledge map between sessions" : "Graph is disabled"}
 							testid="graph-tools-row"
-							dimmed={!graphOn}
+							rowId="graph-tools"
+dimmed={!graphOn}
 						>
 							<Toggle
 								checked={agent?.graphTools?.enabled ?? true}
@@ -750,11 +757,12 @@ export function AgentSection({
 							label="Quizzing"
 							hint="How both tutors check your understanding"
 							testid="quiz-mechanics-row"
-						>
+							rowId="quiz-mechanics"
+>
 							<div
 								role="radiogroup"
 								aria-label="Quizzing mechanics"
-								className="flex rounded-lg border border-border/60 bg-muted/30 p-0.5"
+								className="flex rounded-md border border-input bg-background p-0.5"
 								>
 								{(["choice", "free"] as const).map((m) => {
 									const active = m === "free" ? free : !free;
@@ -767,8 +775,8 @@ export function AgentSection({
 											data-testid={`quiz-mechanics-${m}`}
 											onClick={() => onSectionChange(composeQuizMechanics(agent, m))}
 											className={cn(
-												"h-8 rounded-md px-3 text-sm font-medium transition-colors",
-												active ? "bg-background text-foreground " : "text-muted-foreground hover:text-foreground",
+												"h-8 rounded-md px-3 text-sm font-medium transition-colors pointer-coarse:h-11",
+												active ? "bg-accent text-foreground" : "text-ink-2 hover:text-foreground",
 											)}
 										>
 											{m === "choice" ? "Multiple choice" : "Free recall"}
@@ -785,7 +793,8 @@ export function AgentSection({
 						label={TOOL_COPY[id].label}
 						hint={TOOL_COPY[id].hint}
 						testid={`tool-row-${id}`}
-					>
+						rowId={`tool-${id}`}
+>
 						<Toggle
 							checked={agent?.tools?.[id] ?? true}
 							label={`tool ${id.replaceAll("_", " ")}`}
@@ -800,9 +809,10 @@ export function AgentSection({
 					return (
 						<SettingsRow
 							label="Search engine"
-							hint={search?.reason ?? undefined}
+							hint={search?.reason ?? (searchFailed ? "The search engines could not be checked." : undefined)}
 							testid="search-engine-row"
-							dimmed={!anyKey}
+							rowId="search-engine"
+dimmed={!anyKey}
 						>
 							<span ref={open ? menuAnchorRef : undefined} className="relative flex items-center gap-2">
 								<MenuTrigger
@@ -820,7 +830,7 @@ export function AgentSection({
 										preferredSide="down"
 											anchorTestid="search-engine-trigger"
 										testid="search-engine-menu"
-										menuClass="flex w-44 flex-col gap-0.5 rounded-xl border border-border bg-card p-2 text-sm "
+										menuClass="flex w-44 flex-col gap-0.5 rounded-lg bg-popover p-2 text-sm"
 									>
 										{engineOption("auto", "Automatic", engine === null, null, () => {
 											onSectionChange(composeSearchEngine(agent, null));
@@ -845,7 +855,8 @@ export function AgentSection({
 					label="Compaction threshold"
 					hint={`${resolvedCompaction.thresholdTokens} tok`}
 					testid="compaction-row-threshold"
-				>
+					rowId="compaction-threshold"
+>
 					<CommitInput
 						type="number"
 						value={String(compaction?.thresholdTokens ?? "")}
@@ -873,20 +884,24 @@ export function AgentSection({
 				</SettingsRow>
 			</SettingsGroup>
 
-			<SettingsGroup label="System prompts" testid="group-prompts">
+			<SettingsGroup label="System prompts" testid="group-prompts" rowId="system-prompts">
 				{prompts === null ? (
-					<p className="text-sm text-muted-foreground">Loading prompt segments…</p>
+					promptsFailed ? (
+						<div className="py-4"><SettingsFailure testid="prompts-load-error" retryTestid="prompts-load-retry" message="The system prompts could not be loaded." onRetry={readPrompts} /></div>
+					) : (
+						<div className="py-4"><span role="status" className="sr-only">Loading prompt segments…</span><div aria-hidden="true" className="flex flex-col gap-3"><Skeleton className="h-4 w-1/2 motion-reduce:animate-none" /><Skeleton className="h-4 w-2/5 motion-reduce:animate-none" /><Skeleton className="h-4 w-1/2 motion-reduce:animate-none" /></div></div>
+					)
 				) : (
-					<div className="flex flex-col gap-4">
+					<div className="flex flex-col gap-5 py-4">
 						{/* The owner's ruled order (2026-09-26): Teacher first,
 						    then Prober, then Shared LAST — shared chunks once
 						    (deduplicated), each section in prompt-assembly
 						    order. */}
 						{sectionedSegments(prompts).map((section) => (
 							<div key={section.id} data-testid={`prompt-section-${section.id}`}>
-								<p className="mb-1 text-sm text-muted-foreground">
+								<h4 className="mb-1 text-sm font-medium text-foreground">
 									{section.label}
-								</p>
+								</h4>
 								{section.hint && (
 									<p className="mb-1 text-sm text-muted-foreground">{section.hint}</p>
 								)}

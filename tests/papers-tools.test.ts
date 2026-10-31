@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import * as fs from "node:fs/promises";
 import * as os from "node:os";
 import * as path from "node:path";
-import { after, afterEach, describe, it } from "node:test";
+import { after, afterEach, beforeEach, describe, it, mock } from "node:test";
+import { mockPdfHttps } from "./helpers/mock-pdf-https.ts";
 
 const root = await fs.mkdtemp(path.join(os.tmpdir(), "lh-paper-tests-"));
 process.env.LH_DATA_DIR = root;
@@ -31,7 +32,9 @@ function sourceStub(urls: string[] = []) {
 		return new Response(fixture, { headers: { "content-type": "application/pdf" } });
 	};
 }
+beforeEach(() => mockPdfHttps());
 afterEach(async () => {
+	mock.restoreAll();
 	globalThis.fetch = originalFetch;
 	delete process.env.LH_HOSTED;
 	for (const cleanup of cleanups.splice(0)) await cleanup();

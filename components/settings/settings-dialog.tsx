@@ -25,7 +25,7 @@ export function SettingsDialogProvider({ children, hosted = false }: { children:
 	return (
 		<ChatGPTUIProvider><NativeSubscriptionUIProvider><DialogContext.Provider value={{ open, hosted }}>
 			{children}
-			{show && <Suspense fallback={null}><SettingsDialog onClose={() => setShow(false)} initialSection={landOn} initialRow={landOnRow} hosted={hosted} returnFocusElement={opener.current} /></Suspense>}
+			{show && <Suspense fallback={null}><SettingsDialog onClose={() => setShow(false)} initialSection={landOn} initialRow={landOnRow} returnFocusElement={opener.current} /></Suspense>}
 		</DialogContext.Provider></NativeSubscriptionUIProvider></ChatGPTUIProvider>
 	);
 }

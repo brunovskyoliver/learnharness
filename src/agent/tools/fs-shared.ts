@@ -7,8 +7,10 @@ import { hostedMode, PATHS } from "../../../config.ts";
 /**
  * Shared plumbing for the learner-filesystem tools (ls / find / grep) —
  * sources v1 (2026-09-19): the agent locates and reads the learner's files
- * itself, so paths need no UI affordance (user decision: no attachments —
- * the learner references files in messages; the agent finds them).
+ * itself. Feature 009 (2026-10-30, owner) reverses the 2026-09-19 "no
+ * attachments" decision: the learner can attach Library items with @ and
+ * the agent receives them (core/library-refs.ts). These tools still read
+ * documents by path.
  *
  * Safety posture (user-locked): READ-ONLY by construction — no shell-out,
  * no user-controlled process args, no mutation APIs anywhere here. The one

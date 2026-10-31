@@ -1,3 +1,4 @@
+import { withoutMaterial } from "../../core/library-refs.ts";
 import type { Agent, AgentEvent, AgentMessage } from "@earendil-works/pi-agent-core";
 import { ToolCallIdUniquifier } from "./call-ids.ts";
 import type { ChatGPTRequestCycle } from "../../agent/chatgpt-request-cycle.ts";
@@ -61,6 +62,17 @@ import type { ChatGPTRequestCycle } from "../../agent/chatgpt-request-cycle.ts";
  * final message, so dropped intermediates are lossless). Replay therefore
  * costs the content once, never the chunk count.
  */
+
+/** Reference material (feature 009) is model-facing: a steer's message events,
+ *  and agent_end's whole list, reach views without it. */
+export function withoutWireMaterial(event: TurnWireEvent): TurnWireEvent {
+	const shaped = event as { message?: unknown; messages?: unknown[]; toolResults?: unknown[] };
+	const copy: Record<string, unknown> = {};
+	if (shaped.message !== undefined) copy.message = withoutMaterial(shaped.message);
+	if (Array.isArray(shaped.messages)) copy.messages = shaped.messages.map(withoutMaterial);
+	if (Array.isArray(shaped.toolResults)) copy.toolResults = shaped.toolResults.map(withoutMaterial);
+	return Object.keys(copy).length ? ({ ...event, ...copy } as TurnWireEvent) : event;
+}
 
 /** The wire event: a pi AgentEvent (with our slim message_update — see the
  * WIRE DIET note above), or one of the two app events. */
@@ -249,7 +261,7 @@ export function runPiTurn(spec: PiTurnSpec): PiTurnHandle {
 			uniqued.type === "message_update"
 				? { type: "message_update", message: uniqued.message }
 				: uniqued;
-		send(wire);
+		send(withoutWireMaterial(wire));
 		if (event.type === "message_end") {
 			const m = event.message as { role?: string; stopReason?: string } | undefined;
 			if (m?.role === "assistant" && m.stopReason === "aborted") sawAbort = true;

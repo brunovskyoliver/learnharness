@@ -6,6 +6,51 @@ import { withTokenizedPanels } from "../src/agent/tokenizer.ts";
 import { kitDemoHtml } from "../src/core/demo-kit.ts";
 import { injectDemoTheme } from "../src/core/demo-theme.ts";
 const chrome = process.env.CHROME_PATH;
+it("recovery tokenizes an edit whose debounce was interrupted by the standalone hint", { skip: !chrome || !existsSync(chrome), timeout: 30000 }, async () => {
+	const browser = await puppeteer.launch({ executablePath: chrome, args: ["--no-sandbox"], headless: true });
+	try {
+		const page = await browser.newPage();
+		await page.setContent(injectDemoTheme(kitDemoHtml(await withTokenizedPanels({ panels: [{ type: "tokens", title: "Tokens", text: "hello" }] })), true).replace('<script src="/demo-kit/runtime.js"></script>', ""));
+		await page.evaluate(() => {
+			let requests = 0;
+			window.addEventListener("message", event => {
+				if (event.data?.type !== "demo-tokenize") return;
+				const { requestId, encoding, text } = event.data;
+				const initial = ++requests === 1;
+				if (initial) setTimeout(() => {
+					const input = document.querySelector("textarea")!;
+					input.value = "changed text"; input.dispatchEvent(new Event("input"));
+				}, 1900);
+				setTimeout(() => window.postMessage({ type: "lh-demo-tokens", requestId, encoding, tokens: [{ id: initial ? 1 : 2, text }] }, "*"), initial ? 2300 : 0);
+			});
+		});
+		await page.addScriptTag({ content: readFileSync("public/demo-kit/runtime.js", "utf8") });
+		await page.waitForFunction(() => document.querySelector(".k-token-id")?.textContent === "2");
+		assert.equal(await page.$eval("textarea", el => el.value), "changed text");
+		assert.equal(await page.$eval("textarea", el => el.readOnly), false);
+		assert.match(await page.$eval(".k-token-count", el => el.textContent), /12 characters/);
+	} finally { await browser.close(); }
+});
+it("a valid delayed parent reply recovers editing after the standalone hint", { skip: !chrome || !existsSync(chrome), timeout: 30000 }, async () => {
+	const browser = await puppeteer.launch({ executablePath: chrome, args: ["--no-sandbox"], headless: true });
+	try {
+		const page = await browser.newPage();
+		await page.setContent(injectDemoTheme(kitDemoHtml(await withTokenizedPanels({ panels: [{ type: "tokens", title: "Tokens", text: "hello" }] })), true).replace('<script src="/demo-kit/runtime.js"></script>', ""));
+		await page.evaluate(() => {
+			window.addEventListener("message", event => {
+				if (event.data?.type !== "demo-tokenize") return;
+				const { requestId, encoding } = event.data;
+				setTimeout(() => window.postMessage({ type: "lh-demo-tokens", requestId, encoding, tokens: [{ id: 1, text: "hello" }] }, "*"), 2300);
+			});
+		});
+		await page.addScriptTag({ content: readFileSync("public/demo-kit/runtime.js", "utf8") });
+		await page.waitForFunction(() => !document.querySelector<HTMLElement>(".k-token-offline")!.hidden);
+		assert.equal(await page.$eval("textarea", el => el.readOnly), true);
+		await page.waitForFunction(() => !document.querySelector<HTMLTextAreaElement>("textarea")!.readOnly);
+		assert.equal(await page.$eval(".k-token-offline", el => (el as HTMLElement).hidden), true);
+		assert.equal(await page.$eval(".k-token-id", el => el.textContent), "1");
+	} finally { await browser.close(); }
+});
 it("token panel renders real pieces, roving focus, encodings and downloaded read-only state", { skip: !chrome || !existsSync(chrome), timeout: 30000 }, async () => {
 	const browser = await puppeteer.launch({ executablePath: chrome, args: ["--no-sandbox"], headless: true });
 	try {

@@ -12,7 +12,7 @@ Rules for adding a fragment:
 - `shared/` fragments compose into BOTH agents (after the base and their own
   fragments — a trailing appendix): cross-agent doctrine only, phase-neutral by
   construction: `20-question-tools.md` (tool MECHANICS only; what to ask is each
-  phase's own doctrine), `30-learner-files.md`, `40-formatting.md`. The voice lives
+  phase's own doctrine), `30-learner-files.md`, `31-files-hosted.md` or `31-files-desktop.md` (each composed only in its mode, by `listSourceSegments`), `40-formatting.md`. Practice takes none of the file fragments; `practice/20-library.md` is its own. The voice lives
   in the base (moved out of shared/ 2026-09-27). The "never reference the other
   agent's tools" rule below still applies, so shared fragments may only cover tools
   both agents actually hold.

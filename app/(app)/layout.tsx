@@ -5,6 +5,7 @@ import "../globals.css";
 import { fontClasses } from "../fonts";
 import { AppShell, SidebarProvider } from "@/components/sidebar";
 import { ActivityProvider } from "@/components/activity-dock";
+import { PagePaneProvider } from "@/components/library/page-pane-context";
 import { ServerEventsProvider } from "@/components/server-events";
 import { AppearanceProvider } from "@/components/settings/appearance";
 import UpdateBanner from "@/components/update-banner";
@@ -51,7 +52,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 			<AppearanceProvider initialAppearance={appearance} initialLoaded={loaded}>
 				<SidebarProvider>
 					<ActivityProvider>
-						<AppShell initialChats={initialChats} hosted={hosted} account={hostedShell ? <hostedShell.AccountRow /> : undefined}><Suspense>{children}</Suspense></AppShell>
+						<PagePaneProvider><AppShell initialChats={initialChats} hosted={hosted} account={hostedShell ? <hostedShell.AccountRow /> : undefined}><Suspense>{children}</Suspense></AppShell></PagePaneProvider>
 					</ActivityProvider>
 				</SidebarProvider>
 			</AppearanceProvider>

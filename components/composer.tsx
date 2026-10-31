@@ -5,6 +5,7 @@ import { ArrowRightIcon, SquareIcon } from "lucide-react";
 import { InputGroup, InputGroupTextarea } from "@/components/ui/input-group";
 import { AnswerWell, PrimaryAction, PromptSubmit, PromptToolbar } from "@/components/prompt-controls";
 import { focusSurfaceInput } from "@/components/input-surface";
+import { useLibraryMention } from "@/components/library/use-library-mention.ts";
 
 /**
  * Composer content and toolbar. The persistent shell belongs to the caller
@@ -82,6 +83,7 @@ export function Composer({
 	setup?: ReactNode;
 	sendLabel?: string;
 }) {
+	const mention = useLibraryMention({ value, onValueChange: onChange, inputRef });
 	const act = () => {
 		const action = enterAction({ busy, canSend, nextProblem });
 		if (action === "stop") onStop();
@@ -100,11 +102,14 @@ export function Composer({
 		>
 			<InputGroup className="h-auto flex-col border-0 bg-transparent shadow-none ring-0 has-[[data-slot=input-group-control]:focus-visible]:ring-0">
 			<AnswerWell>
+			{mention.menu}
 			<InputGroupTextarea
-				ref={inputRef}
+				{...mention.inputProps}
+				ref={mention.ref}
 				value={value}
 				onChange={(e) => onChange(e.target.value)}
 				onKeyDown={(e) => {
+					if (mention.onKeyDown(e)) return;
 					// Esc ends dictation before anything else Esc might someday mean
 					// here (the dictate decisions: click-again or Esc to stop).
 					// stopPropagation claims the Esc (keyboard wave A): the
@@ -129,6 +134,7 @@ export function Composer({
 				rows={1}
 				className="prompt-input field-sizing-content lh-input max-h-48 min-h-11 w-full resize-none bg-transparent px-4 pt-3 pb-1 outline-none"
 			/>
+			{mention.line}
 			</AnswerWell>
 			<PromptToolbar controls={controls} setup={setup}>
 				{nextProblem && !busy && !canSend ? (

@@ -1222,6 +1222,74 @@ body {
 .session-workspace-layout > .demo-workspace { order: -1; }
 @media (min-width:768px) { .session-workspace-layout > .demo-workspace { order: 0; } }
 .question-demo-reference { flex-shrink: 0; }
+
+/* The page pane (feature 009): a column from 768px, a full-screen layer below,
+   sized to the visual viewport so the keyboard never covers the caret. */
+.page-workspace { position: fixed; inset: 0 auto auto 0; z-index: 40; width: 100%; height: var(--lh-page-vh, 100dvh); padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); overscroll-behavior: contain; }
+@media (min-width: 768px) { .page-workspace { position: relative; inset: auto; z-index: auto; width: var(--lh-demo-w); height: 100%; padding: 0; } }
+.lh-page-editor { min-height: 100%; padding: 0.5rem 0.75rem 3rem; white-space: pre-wrap; overflow-wrap: anywhere; outline: none; border-radius: 6px; }
+.lh-page-editor:focus-visible { outline: 1px solid var(--ring); outline-offset: -1px; }
+.lh-page-editor > * + *, .lh-page-editor li > * + *, .lh-page-editor blockquote > * + * { margin-top: 0.75em; }
+.lh-page-editor ul { list-style: disc; padding-left: 1.5em; }
+.lh-page-editor ol { list-style: decimal; padding-left: 1.5em; }
+.lh-page-editor li > p { margin: 0; }
+.lh-page-editor blockquote { color: var(--ink-2); padding-left: 1em; }
+.lh-page-editor a { text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--foreground) 40%, transparent); text-underline-offset: 3px; }
+.lh-page-editor-host > div { display: flex; min-height: 100%; flex-direction: column; }
+.lh-page-editor-host > div > .lh-page-editor { flex: 1; }
+.lh-page-editor .tiptap-mathematics-render--editable { cursor: pointer; border-radius: 6px; }
+.lh-page-editor .tiptap-mathematics-render--editable:hover, .lh-page-editor .ProseMirror-selectednode.tiptap-mathematics-render { background: var(--accent); }
+.lh-page-editor .ProseMirror-selectednode { outline: 1px solid var(--ring); outline-offset: 1px; }
+.lh-page-editor .lh-math-source { border-radius: 6px; background: var(--card); font-family: var(--font-mono, monospace); font-size: 0.8125rem; line-height: 1.5; outline: 1px solid var(--ring); }
+.lh-page-editor div.lh-math-source { display: flex; flex-direction: column; padding: 0.5rem 0.75rem; }
+.lh-page-editor span.lh-math-source { display: inline-flex; max-width: 100%; padding: 0 0.25rem; vertical-align: baseline; }
+.lh-math-delimiter { color: var(--muted-foreground); user-select: none; }
+.lh-math-input { field-sizing: content; min-width: 2ch; max-width: 100%; resize: none; overflow: hidden; border: 0; background: transparent; color: var(--foreground); font: inherit; outline: none; }
+div.lh-math-source > .lh-math-input { width: 100%; }
+@media (pointer: coarse) { .lh-page-editor .lh-math-source { font-size: 1rem; } }
+
+/* Page editor tools (feature 010): placeholder, toolbar, menus. Unavailable
+   controls use muted ink, never opacity. */
+.lh-page-editor .lh-page-placeholder::before { content: attr(data-placeholder); float: left; height: 0; color: var(--muted-foreground); pointer-events: none; }
+[data-testid="page-toolbar"] .ui-icon-button:disabled { opacity: 1; color: var(--muted-foreground); }
+[data-testid="page-toolbar"] :is(button, select):focus-visible,
+[data-testid="page-table-controls"] button:focus-visible { outline: 1px solid var(--ring); outline-offset: -1px; }
+[data-testid="page-slash-menu"], [data-testid="page-link-popover"] { scrollbar-width: none; }
+/* The tutor's changes: a raised step behind what it wrote, removed text struck
+   through in muted ink. Decorations only; never stored. */
+.lh-page-editor .lh-tutor-added { border-radius: 6px; background: var(--accent); box-decoration-break: clone; }
+/* Print (feature 010): only the page, in Study ink's paper theme. */
+#lh-print-root { display: none; }
+@media print {
+	html[data-lh-printing] body > :not(#lh-print-root) { display: none !important; }
+	html[data-lh-printing], html[data-lh-printing] body { background: #fff; }
+	html[data-lh-printing] #lh-print-root {
+		--background: #faf9f6; --foreground: #1a1917; --ink-2: #4a4843; --muted-foreground: #64625c; --card: #f2f0eb; --accent: #e8e5de; --border: rgba(26, 25, 23, 0.08); --input: rgba(26, 25, 23, 0.18);
+		display: block; padding: 0; background: #fff; color: #1a1917;
+	}
+}
+.lh-page-editor .lh-tutor-removed { white-space: pre-wrap; color: var(--muted-foreground); text-decoration: line-through; user-select: none; }
+@media (pointer: coarse) {
+	[data-testid="page-toolbar"] select, [data-testid="page-table-controls"] button { min-height: 44px; }
+}
+.lh-page-editor .inline-math-error, .lh-page-editor .block-math-error { color: var(--destructive); font-family: var(--font-mono, monospace); }
+.lh-page-editor [data-type="block-math"] { overflow-x: auto; padding: 0.25rem 0; }
+.lh-page-editor table { border-collapse: collapse; }
+.lh-page-editor th, .lh-page-editor td { min-width: 5em; border: 1px solid var(--input); padding: 0.25rem 0.5rem; vertical-align: top; }
+.lh-page-editor .selectedCell { background: var(--accent); }
+.lh-page-editor th p, .lh-page-editor td p { margin: 0; }
+.lh-page-editor .tableWrapper { overflow-x: auto; }
+.lh-page-editor pre { overflow-x: auto; border-radius: 6px; background: var(--card); padding: 0.5rem 0.75rem; font-family: var(--font-mono, monospace); font-size: 13px; }
+.lh-page-editor ul[data-type="taskList"] { list-style: none; padding-left: 0; }
+.lh-page-editor ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 0.5rem; }
+.lh-page-editor ul[data-type="taskList"] li > * + * { margin-top: 0; }
+.lh-page-editor ul[data-type="taskList"] li > label { flex-shrink: 0; margin-top: calc((var(--lh-prose-leading) * 1em - 1rem) / 2); }
+.lh-page-editor ul[data-type="taskList"] li > div { flex: 1; min-width: 0; }
+.lh-page-editor ul[data-type="taskList"] input[type="checkbox"] { width: 1rem; height: 1rem; accent-color: var(--primary); }
+.lh-page-raw, .lh-page-raw-inline { color: var(--ink-2); font-size: 13px; }
+.lh-page-image { display: inline-block; max-width: 100%; border-radius: 6px; }
+.lh-page-image-missing { display: inline-block; border-radius: 6px; background: var(--card); padding: 0.25rem 0.5rem; color: var(--ink-2); font-size: 0.875em; }
+.lh-page-editor .ProseMirror-selectednode .lh-page-image, .lh-page-editor .lh-page-image-host.ProseMirror-selectednode { outline: 1px solid var(--ring); outline-offset: 2px; }
 .demo-live button:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
 
 /* Small chrome actions share geometry; data/chart icons keep their own sizes. */
@@ -1234,6 +1302,13 @@ body {
 @media (pointer: coarse) {
 	.ui-icon-button, .prompt-submit { min-width: 44px; min-height: 44px; }
 }
+
+/* Settings: unavailable controls use the muted ink token, never opacity
+   (owner, 2026-10-30). The row jump's highlight is a raised-2 step. */
+[data-settings-surface] [data-slot="button"]:disabled { opacity: 1; color: var(--muted-foreground); }
+[data-settings-jump] { background: var(--accent); }
+[data-testid="settings-search-results"] button:focus-visible,
+[data-testid="settings-nav"] button:focus-visible { outline-offset: -1px; }
 
 /* Secondary view controls keep their touch targets while visual grouping uses space. */
 @media (pointer: coarse) {
@@ -1285,3 +1360,10 @@ body {
 	color: var(--foreground);
 	--ring: var(--foreground);
 }
+
+/* The divider between a sidebar and the content, with its grip (owner, 2026-10-31). */
+.lh-pane-divider::before { content: ""; position: absolute; inset-block: 0; inset-inline-start: var(--lh-divider-at, 50%); width: 1px; background: var(--input); transition: background-color 160ms; }
+.lh-pane-divider::after { content: ""; position: absolute; top: 50%; inset-inline-start: var(--lh-divider-at, 50%); width: 9px; height: 16px; transform: translate(-4px, -50%); background: var(--background) repeating-linear-gradient(to bottom, var(--muted-foreground) 0 1px, transparent 1px 5px) center / 7px 16px no-repeat; transition: background-color 160ms; }
+.lh-pane-divider:hover::before, .lh-pane-divider[data-dragging]::before { background: var(--muted-foreground); }
+.lh-pane-divider:focus-visible::before { background: var(--ring); width: 2px; }
+@media (prefers-reduced-motion: reduce) { .lh-pane-divider::before, .lh-pane-divider::after { transition: none; } }

@@ -27,6 +27,7 @@
 
 import type { QuestionAnswerData } from "./question-core.ts";
 import type { LhMessage } from "./native-messages.ts";
+import type { LibraryReference } from "./library-refs.ts";
 import {
 	activeProblemOf,
 	concludedByDismissalPair,
@@ -197,16 +198,17 @@ export function parseChatInput(input: unknown): ChatInput {
 export function inputAppends(
 	record: { messages: LhMessage[]; kind?: string },
 	input: ChatInput,
+	references?: readonly LibraryReference[],
 ): LhMessage[] {
 	switch (input.type) {
 		case "text":
-			return [...dismissalConclusion(record), newUserMessage(input.text)];
+			return [...dismissalConclusion(record), newUserMessage(input.text, references)];
 		case "answer": {
 			const pending = danglingQuestionOf(record.messages);
 			if (!pending || pending.toolCallId !== input.toolCallId) {
 				throw new ChatInputError("answer input targets no pending question call");
 			}
-			return [newAnswerResult(input.toolCallId, pending.tool, input.answer)];
+			return [newAnswerResult(input.toolCallId, pending.tool, input.answer, references)];
 		}
 		case "continue":
 			return dismissalConclusion(record);
@@ -215,7 +217,7 @@ export function inputAppends(
 			if (!active || active.toolCallId !== input.problemCallId) {
 				throw new ChatInputError("thinking input targets no active problem");
 			}
-			return [...dismissalConclusion(record), newThinkingMessage(input.problemCallId, input.text)];
+			return [...dismissalConclusion(record), newThinkingMessage(input.problemCallId, input.text, references)];
 		}
 		case "next": {
 			// Honest 400s, the thinking gate's discipline: the signal is a
@@ -241,6 +243,24 @@ export function inputAppends(
 function dismissalConclusion(record: { messages: LhMessage[] }): LhMessage[] {
 	const problemCallId = pendingProblemDismissalOf(record.messages);
 	return problemCallId ? concludedByDismissalPair(problemCallId) : [];
+}
+
+/** The learner text an input carries, parsed for @ references
+ *  (contracts/references.md). Dismissals never reach here; an answer's other
+ *  fields are the grading's, and only its free text can name an item. */
+export function inputReferenceTexts(input: TurnInput): string[] {
+	switch (input.type) {
+		case "text":
+		case "thinking":
+			return [input.text];
+		case "answer": {
+			if (input.answer.dismissed) return [];
+			const { text, other, thinking } = input.answer;
+			return [text, other, thinking].filter((value): value is string => typeof value === "string" && value.length > 0);
+		}
+		default:
+			return [];
+	}
 }
 
 /** Is this tool name a question tool (dock-owned, answer-gated)? */

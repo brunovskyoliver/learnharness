@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
 		optimizePackageImports: ["@/src/core", "typebox", "typebox/value", "radix-ui"],
 		// Fewer cold-load requests; component chunks retain reuse on navigation.
 		turbopackChunking: { maxChunkCountPerGroup: 8, minChunkSize: 100000, generateComponentChunks: true },
+		// Library uploads reach 50 MiB; past this limit the proxy silently cuts the
+		// body, so it sits above the cap (specs/009-library-canvas/research.md R4).
+		proxyClientMaxBodySize: "51mb",
 	},
 	// Keep the development badge from covering the sidebar's Settings control.
 	devIndicators: false,

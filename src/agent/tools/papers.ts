@@ -5,8 +5,9 @@ import { tenantScoped } from "../../../config.ts";
 import type { PaperFiles } from "../../core/ports.ts";
 import type { PaperRead, PaperResult, PaperSearch } from "../../core/lookups.ts";
 import { invalidInputResult, serverExecute } from "../tool-execute.ts";
+import { fetchPublicPdf } from "../papers/public-pdf.ts";
 import { semanticScholarSearch } from "../papers/semantic-scholar.ts";
-import { arxivFetch, arxivPaper, arxivSearch } from "../papers/arxiv.ts";
+import { arxivPaper, arxivSearch } from "../papers/arxiv.ts";
 
 const SearchInput = Type.Object({ query: Type.String({ minLength: 1, maxLength: 200 }), limit: Type.Optional(Type.Integer({ minimum: 1, maximum: 10 })) }, { additionalProperties: false });
 const ReadInput = Type.Object({ paper: Type.String({ minLength: 1 }), pages: Type.String({ minLength: 1 }) }, { additionalProperties: false });
@@ -28,30 +29,8 @@ function pageNumbers(spec: string, remaining: number): number[] {
 	}
 	return [...pages].sort((a, b) => a - b);
 }
-/** Open-access links come from a third party: https to a named public host only. */
-function publicHttpsUrl(raw: string): URL {
-	const url = new URL(raw);
-	const host = url.hostname.replace(/^\[|\]$/g, "");
-	if (url.protocol !== "https:") throw new Error("The PDF link is not https.");
-	if (/^[\d.]+$/.test(host) || host.includes(":") || host === "localhost" || /\.(local|internal|localhost)$/.test(host)) throw new Error("The PDF link points to a private address.");
-	return url;
-}
-
-/** Follow at most 3 redirects, re-checking each hop. */
-async function fetchPublicPdf(raw: string, signal?: AbortSignal): Promise<Response> {
-	let url = publicHttpsUrl(raw);
-	for (let hop = 0; hop <= 3; hop++) {
-		const response = await fetch(url, { redirect: "manual", signal: AbortSignal.any([AbortSignal.timeout(20_000), ...(signal ? [signal] : [])]) });
-		const location = response.headers.get("location");
-		if (response.status < 300 || response.status >= 400 || !location) return response;
-		await response.body?.cancel();
-		url = publicHttpsUrl(new URL(location, url).href);
-	}
-	throw new Error("The PDF link redirected too many times.");
-}
-
 async function download(url: string, signal?: AbortSignal): Promise<Uint8Array> {
-	const response = new URL(url).hostname === "arxiv.org" ? await arxivFetch(url, signal) : await fetchPublicPdf(url, signal);
+	const response = await fetchPublicPdf(url, signal);
 	if (!response.ok) throw new Error(`The PDF server returned HTTP ${response.status}.`);
 	if (Number(response.headers.get("content-length")) > MAX_BYTES) { await response.body?.cancel(); throw new Error("The PDF is larger than 25 MB."); }
 	const reader = response.body?.getReader();

@@ -3,6 +3,7 @@ import { isJobLive } from "../agent/subagents/aborts.ts";
 import { coverageOf } from "../core/coverage.ts";
 import { deleteChatTraces, type ChatDeleteMode, type ChatDeletionStats } from "../core/graph-deletion.ts";
 import { titleFromPrompt } from "../core/contracts.ts";
+import { withoutMaterial } from "../core/library-refs.ts";
 import type { LhMessage } from "../core/native-messages.ts";
 import { graphRevision } from "./graph.ts";
 import { stores } from "./stores.ts";
@@ -31,7 +32,9 @@ export { titleFromPrompt };
  * page props and transcript GETs; the stored record keeps them. */
 const SIGNATURE_FIELDS = ["thinkingSignature", "textSignature", "thoughtSignature"] as const;
 export function clientMessages(messages: LhMessage[]): LhMessage[] {
-	return messages.map((message) => {
+	return messages.map((stored) => {
+		// Reference material (feature 009) is model-facing the same way.
+		const message = withoutMaterial(stored);
 		if (message.role !== "assistant" || !Array.isArray(message.content)) return message;
 		if (!message.content.some((block) => SIGNATURE_FIELDS.some((field) => field in block))) return message;
 		return {
@@ -152,6 +155,9 @@ export async function deleteChatSession(chatId: string, mode: ChatDeleteMode): P
 		discardChatDeliveries(chatId);
 		clearTurnFailure(chatId);
 	}
+	// After the sync block. Agent-made pages stay and lose their link (owner,
+	// 2026-10-30). The session is already gone, so a failure here only logs.
+	await stores.libraryStore.unlinkChat(chatId).catch((err) => console.error("[library] page link not cleared:", err));
 	return { ok: true, mode, stats, jobsRemoved, graphRevision: graphRevision() };
 }
 

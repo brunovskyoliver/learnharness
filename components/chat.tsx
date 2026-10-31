@@ -54,6 +54,8 @@ import { SessionMermaidContext } from "@/components/session-overlay-context";
 import { AbortTurnDialog, type AbortMode } from "@/components/abort-turn-dialog";
 import { ArrowRightIcon, DumbbellIcon, PanelRightIcon, PencilIcon, WaypointsIcon } from "lucide-react";
 import { DemoPanel } from "@/components/artifacts/demo-panel";
+import { PagePaneSlot, usePagePane } from "@/components/library/page-pane-context";
+import { isShownPageFailure } from "@/components/library/page-row";
 import { DemoPanelContext, sessionDemos, type DemoPanelApi } from "@/components/artifacts/demo-panel-context";
 import type { PlanBlockData } from "@/src/core";
 import { QuestionDock } from "@/components/question-dock";
@@ -61,10 +63,11 @@ import { SessionFind } from "@/components/session-find";
 import { SessionMessageNavigation } from "@/components/session-navigation";
 import { PracticeDock } from "@/components/practice-dock";
 import { ThinkingCard, type PracticeThinkingData } from "@/components/practice-cards";
+import { ReferencesCard } from "@/components/library/references-card";
 import { GraphContextCard, type GraphContextData } from "@/components/graph-context-card";
 import { FollowupContextCard, type FollowupContextData } from "@/components/followup-context-card";
 import { TopBar } from "@/components/top-bar";
-import type { ArtifactPartProps, JobRecord, Phase3, QuestionAnswerData, QuestionFormDraft, TurnUsage, SessionPricing } from "@/src/core";
+import type { ArtifactPartProps, JobRecord, LibraryReference, Phase3, QuestionAnswerData, QuestionFormDraft, TurnUsage, SessionPricing } from "@/src/core";
 import type { LhViewMessage } from "@/src/core";
 import { PhaseChip, PhaseDivider } from "@/components/phase-divider";
 import {
@@ -118,22 +121,8 @@ const GRADIENT_H = 0;
 // vs EXPAND_DIST absorbs trackpad drift.
 const EXPAND_DIST = 16;
 
-/**
- * Server-sync channel for artifact renderers: the CENTRAL jobs poll in Chat
- * calls syncFromServer() when a background job settles — the wake turn's
- * steer + response are already persisted by then, so fresh messages replace
- * local state in one pull. sendText feeds the demo error-fix loop.
- * (contracts.ts "THE ASYNC PROTOCOL" §4.)
- */
-export const ChatActionsContext = createContext<{
-	chatId: string;
-	syncFromServer: () => Promise<void>;
-	/** Send a user message into the session (demo error-fix loop, W6). */
-	sendText: (text: string) => void;
-	/** Opens the model setup dialog (BYOK, 2026-09-22): refused job cards
-	 *  deep-link into the same SetupDialog the send interception uses. */
-	openSetup: () => void;
-} | null>(null);
+export { ChatActionsContext } from "./chat-actions-context.ts";
+import { ChatActionsContext } from "./chat-actions-context.ts";
 
 /** The BYOK refusal envelope from the transport's error text: the
  *  DefaultChatTransport throws the 503 body VERBATIM as the error message,
@@ -873,15 +862,23 @@ function ChatView({
 		["tool-ml_visual", "tool-tokenize", "tool-hub_model", "tool-hub_search", "tool-paper_search", "tool-paper_read"].includes(part.type) &&
 		["output-available", "output-error"].includes(String((part as { state?: string }).state)))) ||
 		demos.some(demo => kitSpecOf(demo.html)?.panels?.some(panel => ["tokens", "next_token", "heatmap", "network", "scatter", "shapes"].includes(panel.type))), [messages, demos]);
+	// A demo or a page shares the column; the most recent explicit open wins.
+	const pagePane = usePagePane();
+	const closePage = pagePane?.close;
 	const demoPanel = useMemo<DemoPanelApi>(
-		() => ({ demos, openId: demoOpenId, panelIndex: demoPanelIndex, open: (id: string, index?: number) => { requestFullTranscript(); setDemoOpenId(id); setDemoPanelIndex(index); }, close: () => setDemoOpenId(null) }),
-		[demos, demoOpenId, demoPanelIndex],
+		() => ({ demos, openId: demoOpenId, panelIndex: demoPanelIndex, open: (id: string, index?: number) => { requestFullTranscript(); closePage?.(); setDemoOpenId(id); setDemoPanelIndex(index); }, close: () => setDemoOpenId(null) }),
+		[demos, demoOpenId, demoPanelIndex, closePage],
 	);
+	const pageOpens = pagePane?.openCount ?? 0;
+	useEffect(() => { if (pageOpens > 0) setDemoOpenId(null); }, [pageOpens]);
+	const pageIsOpen = !!pagePane?.item;
 
 	const questionDemo = useMemo(() => resolveQuestionDemo(demos, pending?.input), [demos, pending?.input]);
 	const autoOpenedQuestion = useRef<string | null>(null);
 	useEffect(() => {
 		if (!pending || autoOpenedQuestion.current === pending.toolCallId || !questionDemo.demo) return;
+		// A question's automatic open doesn't replace an open page; its "Using" link stays.
+		if (pageIsOpen) { autoOpenedQuestion.current = pending.toolCallId; return; }
 		// Backfill runs outside React's effect to avoid flushSync during commit.
 		const timer = window.setTimeout(() => { autoOpenedQuestion.current = pending.toolCallId; demoPanel.open(questionDemo.demo!.id, questionDemo.panel); }, 0);
 		return () => window.clearTimeout(timer);
@@ -1218,6 +1215,16 @@ function ChatView({
 					void send({ type: "text", text: t });
 				},
 				openSetup: () => setSetupOpen(true),
+				fillComposer: (t: string) => {
+					applyText(t);
+					requestAnimationFrame(() => {
+						const field = composerInputRef.current;
+						if (!field) return;
+						field.focus();
+						field.setSelectionRange(t.length, t.length);
+					});
+				},
+				sendBlock: pending ? "question" : activeProblem ? "problem" : busy || compacting ? "busy" : null,
 			}}
 		>
 		<SessionMermaidContext.Provider
@@ -1427,6 +1434,8 @@ function ChatView({
 												return <CompactionMomentDivider key={pi} data={part.data as CompactionDividerData} />;
 											case "data-compaction-cut":
 												return <CompactionCutDivider key={pi} data={part.data as CompactionDividerData} />;
+											case "data-library-references":
+												return <ReferencesCard key={pi} references={(part.data as { references: LibraryReference[] }).references} />;
 											case "data-practice-thinking":
 												return <ThinkingCard key={pi} data={part.data as PracticeThinkingData} />;
 											case "data-practice-next":
@@ -1501,6 +1510,9 @@ function ChatView({
 												    sits INSIDE the rail, same mono-xs register and same 1ch
 												    rail as the thinking rows — one quote geometry. */}
 												<div className="mb-1 font-medium text-muted-foreground">You</div>
+												{m.parts.map((part, pi) => part.type === "data-library-references" ? (
+													<ReferencesCard key={pi} references={(part.data as { references: LibraryReference[] }).references} />
+												) : null)}
 												<div className="lh-prose whitespace-pre-wrap text-foreground">
 													{m.parts.filter((p) => p.type === "text").map((p) => p.text).join("\n")}
 												</div>
@@ -1532,7 +1544,7 @@ function ChatView({
 													part.type.startsWith("tool-") &&
 													part.errorText !== "Operation aborted" &&
 													// Feature 007: a failed math check says so in its own row.
-													!isShownMathCheckFailure(part) && !isShownLookupFailure(part) &&
+													!isShownMathCheckFailure(part) && !isShownLookupFailure(part) && !isShownPageFailure(part) &&
 													(part.type !== "tool-ml_visual" || String(part.errorText ?? "").startsWith("Invalid tool input"))
 												) {
 													return (
@@ -1727,6 +1739,7 @@ function ChatView({
 				</Conversation>
 				<TranscriptArrivalScript storageKey={sessionStateStore?.storageKey} gradientHeight={GRADIENT_H} />
 				<DemoPanel />
+				<PagePaneSlot />
 
 				{/* The session-scoped focuses (chrome-melt wave, 2026-09-19): mounted
 				    INSIDE the session area — absolute inset-0 siblings of the scroller,

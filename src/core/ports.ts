@@ -27,6 +27,7 @@ import type {
 	NotesSource,
 } from "./contracts.ts";
 import type { UserSettings } from "./settings.ts";
+import type { LibraryItem, LibraryRefusal, LibraryTextState, LibraryTombstone, PageAuthor, PageHead, PageState, PageVersion, PageVersionCause, PageWriteResult } from "./library.ts";
 
 // ─── ChatStore — the session record's home (data/chats) ─────────────────────
 
@@ -163,6 +164,74 @@ export interface JobStore {
 }
 
 // ─── SettingsStore — THE user settings record (settings-storage wave, 2026-09-19) ──
+
+/** The learner's documents and pages (feature 009). */
+export interface LibraryStore {
+	/** Live items after reconciling with the folder, by name. Throws
+	 *  LibraryCatalogError when the catalog can't be used. */
+	list(): Promise<LibraryItem[]>;
+	/** A live item, or null for an unknown id or a tombstone. */
+	get(id: string): Promise<LibraryItem | null>;
+	/** Every entry including tombstones, after reconciling. For @ tokens, which
+	 *  must resolve old and deleted names honestly. */
+	catalog(): Promise<(LibraryItem | LibraryTombstone)[]>;
+	/** A text item's bytes as UTF-8: a document's file, a page's head version. */
+	readText(item: LibraryItem): Promise<string>;
+	/** Store a validated name's bytes. Never overwrites; refusals store nothing. */
+	writeUpload(name: string, body: AsyncIterable<Uint8Array>, declaredBytes: number): Promise<LibraryItem | LibraryRefusal>;
+	/** Rename, moving the file too. Null for an unknown id. */
+	rename(id: string, name: string): Promise<LibraryItem | LibraryRefusal | null>;
+	/** Delete the bytes and leave a tombstone. False for an unknown id. */
+	remove(id: string): Promise<boolean>;
+	setTextState(id: string, state: LibraryTextState): Promise<void>;
+	/** Cached text info: rebuildable, null when absent or damaged. */
+	readDerived(id: string): Promise<unknown>;
+	writeDerived(id: string, value: unknown): Promise<void>;
+	documentPath(item: Pick<LibraryItem, "name">): string;
+	/** A new page with its first version. */
+	createPage(name: string, content: string, options: PageCreateOptions): Promise<{ item: LibraryItem; head: PageHead } | LibraryRefusal>;
+	/** Head and draft, or null for an unknown id, a document or a tombstone. */
+	readPage(id: string): Promise<PageState | null>;
+	/** Compare-and-swap on base and rev; a mismatch changes nothing. */
+	savePageDraft(id: string, input: { base: number; rev: number; content: string }): Promise<PageWriteResult<{ rev: number }>>;
+	/** Text exactly equal to the newest version makes no version (`created: false`).
+	 *  `cause: "conflict"` passes the compare and commits the other side's draft
+	 *  first, reported as `otherVersion`. */
+	commitPageVersion(id: string, input: { base: number; rev: number; content: string; cause?: PageVersionCause }): Promise<PageWriteResult<{ version: PageVersion; created: boolean; otherVersion?: number }>>;
+	/** Newest first, metadata only. */
+	listPageVersions(id: string): Promise<PageVersion[] | null>;
+	readPageVersion(id: string, n: number): Promise<{ version: PageVersion; content: string } | null>;
+	/** Names a version, or clears its name with null (feature 010). */
+	namePageVersion(id: string, n: number, name: string | null): Promise<PageVersion | "missing">;
+	/** The last version the learner has seen, and the tutor versions since. A
+	 *  page never seen counts as seen up to its head, which is written. */
+	readPageSeen(id: string): Promise<{ version: number; unseen: PageVersion[] } | "missing">;
+	/** Moves the seen version forward, never past the head. */
+	markPageSeen(id: string, version: number): Promise<{ version: number } | "missing">;
+	/** Commits a dirty draft, then adds one version with the old text. */
+	restorePageVersion(id: string, n: number): Promise<{ version: PageVersion } | "missing">;
+	/** Agent revision under the page lock, per contracts/agent-tools.md. */
+	revisePageAsAgent(id: string, revision: AgentRevision): Promise<AgentRevisionResult>;
+	/** Clear origin.chatId from pages made in a deleted session. */
+	unlinkChat(chatId: string): Promise<void>;
+}
+
+export interface PageCreateOptions { author: PageAuthor; chatId?: string; toolCallId?: string }
+
+export interface AgentRevision {
+	baseVersion: number;
+	chatId?: string;
+	toolCallId?: string;
+	/** The new text from the head's, or why it can't apply. Runs under the lock. */
+	apply: (head: string) => string | { refused: string };
+}
+
+export type AgentRevisionResult =
+	| { outcome: "revised"; item: LibraryItem; version: PageVersion; savedLearnerVersion?: number; repeated?: boolean }
+	| { outcome: "stale"; head: number; savedLearnerVersion?: number }
+	| { outcome: "refused"; reason: string; savedLearnerVersion?: number }
+	| { outcome: "too-large"; savedLearnerVersion?: number }
+	| { outcome: "missing" };
 
 /**
  * The one record for every non-secret product preference (core/settings.ts

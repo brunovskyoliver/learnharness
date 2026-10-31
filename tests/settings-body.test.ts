@@ -55,6 +55,13 @@ describe("parseAgentSettingsBody", () => {
 		assert.equal(malformed.ok, false);
 	});
 
+	it("pages is an accepted tool switch", () => {
+		const r = parseAgentSettingsBody({ tools: { pages: false } });
+		assert.ok(r.ok);
+		assert.deepEqual(r.settings.tools, { pages: false });
+		assert.equal(parseAgentSettingsBody({ tools: { pages: "off" } }).ok, false);
+	});
+
 	it("tools and prompts: boolean maps; non-boolean values are 400s", () => {
 		const r = parseAgentSettingsBody({ tools: { research: false }, prompts: { "system-prompt.md": true } });
 		assert.ok(r.ok);

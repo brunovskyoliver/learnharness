@@ -1,8 +1,8 @@
 /**
- * Hosted file jail and uploads (2026-10-26): in hosted mode the agent's fs
- * tools resolve only inside the tenant's files/ folder — `..`, absolute
- * paths, symlinks and another tenant's paths cannot leave it — and the
- * upload route is the one way in, with a size cap and plain names only.
+ * Hosted file jail (2026-10-26): in hosted mode the agent's fs tools resolve
+ * only inside the tenant's files/ folder — `..`, absolute paths, symlinks and
+ * another tenant's paths cannot leave it. The Library (feature 009) is the
+ * one way in; its route rules live in library-api.test.ts.
  */
 import assert from "node:assert/strict";
 import * as fs from "node:fs";
@@ -15,21 +15,15 @@ process.env.LH_DATA_DIR = dir;
 process.env.LH_HOSTED = "1";
 const { runAsTenant, PATHS } = await import("../config.ts");
 const { resolveSourcePath } = await import("../src/agent/tools/fs-shared.ts");
-const { filesResponse, uploadName, UPLOAD_MAX_BYTES } = await import("../src/server/files.ts");
+const { libraryPatchResponse, libraryUploadResponse } = await import("../src/server/library.ts");
+const { readTool } = await import("../src/agent/tools/read.ts");
+const { lsTool } = await import("../src/agent/tools/ls.ts");
 after(() => {
 	delete process.env.LH_HOSTED;
 	fs.rmSync(dir, { recursive: true, force: true });
 });
 
 const root = (user: string) => path.join(dir, "users", user, "files");
-function upload(files: File[], length?: number) {
-	const form = new FormData();
-	for (const file of files) form.append("files", file);
-	const request = new Request("http://localhost/api/files", { method: "POST", body: form });
-	const headers = new Headers(request.headers);
-	headers.set("content-length", String(length ?? 1000));
-	return new Request(request, { headers });
-}
 
 describe("hosted file jail", () => {
 	it("anchors every path in the tenant's files folder", () => {
@@ -55,39 +49,54 @@ describe("hosted file jail", () => {
 	});
 });
 
-describe("hosted uploads", () => {
-	it("saves, lists and deletes plain files per tenant", async () => {
-		const saved = await runAsTenant("user_c", () => filesResponse(upload([new File(["# hi"], "notes.md")])));
-		assert.equal(saved.status, 200);
-		assert.deepEqual((await saved.json()).files.map((f: { name: string }) => f.name), ["notes.md"]);
-		assert.equal(fs.readFileSync(path.join(root("user_c"), "notes.md"), "utf8"), "# hi");
-		const listedB = await runAsTenant("user_d", () => filesResponse(new Request("http://localhost/api/files")));
-		assert.deepEqual((await listedB.json()).files, []);
-		const removed = await runAsTenant("user_c", () => filesResponse(new Request("http://localhost/api/files?name=notes.md", { method: "DELETE" })));
-		assert.deepEqual((await removed.json()).files, []);
+describe("Library documents reach the jailed fs tools", () => {
+	const send = (name: string, text: string) => libraryUploadResponse(new Request(
+		`http://localhost/api/library/upload?name=${encodeURIComponent(name)}`,
+		{ method: "POST", body: text, headers: { "content-length": String(Buffer.byteLength(text)) } },
+	));
+	const textOf = (result: { content: { type: string; text?: string }[] }) => result.content.map((part) => part.text ?? "").join("");
+
+	it("a document uploaded through the Library resolves and reads", async () => {
+		await runAsTenant("user_c", async () => {
+			assert.equal((await send("notes.md", "# hi")).status, 201);
+			assert.equal(resolveSourcePath("notes.md"), path.join(root("user_c"), "notes.md"));
+			assert.equal(fs.readFileSync(resolveSourcePath("notes.md"), "utf8"), "# hi");
+			assert.match(textOf(await readTool.execute("r", { path: "notes.md" })), /# hi/);
+		});
 	});
 
-	it("refuses unsafe names and oversize uploads", async () => {
-		for (const name of ["../x.md", ".env", "a/b.md", ""]) assert.equal(uploadName(name), null, name);
-		const bad = await runAsTenant("user_c", () => filesResponse(upload([new File(["x"], "..")])));
-		assert.equal(bad.status, 400);
-		const big = await runAsTenant("user_c", () => filesResponse(upload([new File(["x"], "a.md")], UPLOAD_MAX_BYTES + 1)));
-		assert.equal(big.status, 413);
+	it("ls sees a rename", async () => {
+		await runAsTenant("user_e", async () => {
+			const { item } = await (await send("before.md", "x")).json();
+			const patch = new Request("http://localhost/x", { method: "PATCH", body: JSON.stringify({ name: "after.md" }) });
+			assert.equal((await libraryPatchResponse(patch, item.id)).status, 200);
+			const listing = textOf(await lsTool.execute("l", {}));
+			assert.match(listing, /after\.md/);
+			assert.doesNotMatch(listing, /before\.md/);
+		});
 	});
 
-	it("replaces a planted symlink instead of writing through it", async () => {
+	it("another tenant's fs tools do not see it", async () => {
+		await runAsTenant("user_f", async () => {
+			await send("private.md", "x");
+		});
+		await runAsTenant("user_g", async () => {
+			await assert.rejects(Promise.resolve().then(() => readTool.execute("r", { path: "private.md" })));
+		});
+	});
+
+	it("a planted symlink stays a conflict and the outside file is kept", async () => {
 		const outside = path.join(dir, "outside.txt");
 		fs.writeFileSync(outside, "keep");
 		runAsTenant("user_c", () => fs.mkdirSync(PATHS.files, { recursive: true }));
 		fs.symlinkSync(outside, path.join(root("user_c"), "link.md"));
-		await runAsTenant("user_c", () => filesResponse(upload([new File(["new"], "link.md")])));
+		const response = await runAsTenant("user_c", () => send("link.md", "new"));
+		assert.equal(response.status, 409);
 		assert.equal(fs.readFileSync(outside, "utf8"), "keep");
-		assert.equal(fs.lstatSync(path.join(root("user_c"), "link.md")).isSymbolicLink(), false);
 	});
 
-	it("is not there outside hosted mode", async () => {
-		delete process.env.LH_HOSTED;
-		try { assert.equal((await filesResponse(new Request("http://localhost/api/files"))).status, 404); }
-		finally { process.env.LH_HOSTED = "1"; }
+	it("the old upload route is gone", () => {
+		assert.equal(fs.existsSync(path.join(import.meta.dirname, "..", "app", "api", "files")), false);
+		assert.equal(fs.existsSync(path.join(import.meta.dirname, "..", "src", "server", "files.ts")), false);
 	});
 });

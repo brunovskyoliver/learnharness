@@ -11,7 +11,7 @@
  *
  * Owner rulings carried in:
  *  - Env-owned rows (a real environment variable owns the name — dev
- *    .env.local or launch env) render READ-ONLY + dimmed, no paste field:
+ *    .env.local or launch env) render READ-ONLY, no paste field:
  *    a paste box on a key the UI cannot make live would mislead.
  *  - OpenRouter is NOT special: one provider among 33, a row only when
  *    stored, otherwise it lives in the Add dropdown like everyone else.
@@ -25,7 +25,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { type AuthKeyStatus } from "@/src/core";
-import { SettingsGroup } from "./controls.tsx";
+import { SettingsFailure, SettingsGroup, SettingsRowsSkeleton } from "./controls.tsx";
 import { SubscriptionConnections } from "./subscription-connections.tsx";
 import { ProviderMenuList } from "./model-menu.tsx";
 import { MenuShell } from "@/components/menu-shell";
@@ -33,6 +33,8 @@ import { notifySettingsSaved } from "@/components/settings-signal";
 
 import { classifyKeys, type ProviderKeyInfo } from "./key-classification";
 export { classifyKeys, type ProviderKeyInfo } from "./key-classification";
+
+const KEY_SAVE_FAILED = "This key could not be saved. Try again.";
 
 interface KeysResponse {
 	keys: AuthKeyStatus[];
@@ -50,7 +52,7 @@ export function keyStatusLine(status: AuthKeyStatus): string {
 
 /** One table row: label left, tiny docs link + status right. Writable
  *  rows click-unfold an editor beneath (owner interaction); env-owned
- *  rows are dimmed and read-only (a paste box there would mislead). */
+ *  rows are read-only (a paste box there would mislead). */
 function KeyTableRow({
 	label,
 	docsUrl,
@@ -61,6 +63,7 @@ function KeyTableRow({
 	onDelete,
 	onCancel,
 	testid,
+	settingsRow,
 }: {
 	label: string;
 	/** The "Get a key ↗" target — curated keys carry one. */
@@ -69,11 +72,13 @@ function KeyTableRow({
 	expanded: boolean;
 	onToggle: () => void;
 	onSave: (value: string) => Promise<string | null>;
-	onDelete?: () => Promise<void>;
+	onDelete?: () => Promise<string | null>;
 	/** Folds the editor (owner, fix wave: the way OUT of a paste prompt
 	 *  must be visible — Cancel beside Save/Delete, not only Esc). */
 	onCancel: () => void;
 	testid: string;
+	/** The `data-settings-row` target: the key's id. */
+	settingsRow: string;
 }) {
 	const envOwned = status.source === "env";
 	const [value, setValue] = useState("");
@@ -90,14 +95,22 @@ function KeyTableRow({
 		setBusy(false);
 	}
 
-	// INLINE editing (owner, fix wave: "type the keys in line — more
+	async function remove() {
+		if (!onDelete || busy) return;
+		setBusy(true);
+		setError(null);
+		const err = await onDelete();
+		if (err) setError(err);
+		setBusy(false);
+	}
+// INLINE editing (owner, fix wave: "type the keys in line — more
 	// table-like"): the expanded row becomes the editor itself — label
 	// left, the paste field filling the middle, Save | Cancel (| Delete)
 	// right — instead of a second line beneath the row.
 	if (expanded && !envOwned) {
 		return (
-			<div data-testid={testid}>
-				<div className="flex items-center gap-2 rounded-sm px-1 py-1.5" data-testid={`${testid}-editor`}>
+			<div data-testid={testid} data-settings-row={settingsRow} className="scroll-mt-4 rounded-md">
+				<div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md py-2" data-testid={`${testid}-editor`}>
 					<span className="shrink-0 font-ui text-sm text-foreground">{label}</span>
 					<input
 						type="text"
@@ -111,14 +124,16 @@ function KeyTableRow({
 						data-testid={`${testid}-input`}
 						disabled={busy}
 						autoFocus
-						className="h-7 min-w-0 flex-1 rounded-sm border border-border bg-background px-1.5 font-mono text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-muted-foreground/50"
+						autoComplete="off"
+						spellCheck={false}
+						className="h-7 min-w-40 flex-1 basis-40 rounded-md border border-input bg-background px-1.5 font-mono text-xs text-foreground placeholder:text-muted-foreground pointer-coarse:h-11"
 					/>
 					<button
 						type="button"
 						onClick={() => void save()}
 						disabled={busy || !value.trim()}
 						data-testid={`${testid}-save`}
-						className="shrink-0 text-sm text-foreground underline-offset-2 hover:underline disabled:text-muted-foreground disabled:no-underline"
+						className="shrink-0 text-sm text-foreground underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline pointer-coarse:min-h-11"
 					>
 						Save
 					</button>
@@ -127,24 +142,25 @@ function KeyTableRow({
 						onClick={onCancel}
 						disabled={busy}
 						data-testid={`${testid}-cancel`}
-						className="shrink-0 text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+						className="shrink-0 text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline pointer-coarse:min-h-11"
 					>
 						Cancel
 					</button>
 					{status.present && status.source === "file" && onDelete && (
 						<button
 							type="button"
-							onClick={() => void onDelete()}
+							onClick={() => void remove()}
 							disabled={busy}
+							aria-label={`Delete ${label} key`}
 							data-testid={`${testid}-delete`}
-							className="shrink-0 text-sm text-muted-foreground underline-offset-2 hover:text-destructive hover:underline"
+							className="shrink-0 text-sm text-muted-foreground underline-offset-2 hover:text-destructive hover:underline pointer-coarse:min-h-11"
 						>
 							Delete
 						</button>
 					)}
 				</div>
 				{error && (
-					<p role="alert" data-testid={`${testid}-error`} className="px-1 text-sm text-destructive">
+					<p role="alert" data-testid={`${testid}-error`} className="pb-2 text-sm text-destructive">
 						{error}
 					</p>
 				)}
@@ -153,39 +169,39 @@ function KeyTableRow({
 	}
 
 	return (
-		<div data-testid={testid}>
+		<div data-testid={testid} data-settings-row={settingsRow} className="scroll-mt-4 rounded-md">
 			{/* Env-owned rows are read-only but WORKING keys (polish pass
 			    2026-10-26): full opacity; the status line's "· env" says why
 			    the row doesn't open. */}
-			<button
-				type="button"
-				aria-expanded={expanded}
-				data-testid={`${testid}-row`}
-				onClick={() => !envOwned && onToggle()}
-				className={`-mx-1 flex min-h-10 w-[calc(100%+0.5rem)] items-center justify-between gap-3 rounded-sm px-1 py-1.5 text-left ${
-					envOwned ? "cursor-default" : "cursor-pointer transition-colors hover:bg-accent/50"
-				}`}
-			>
-				<span className="text-sm text-foreground">{label}</span>
-				<span className="flex items-center gap-2">
-					{docsUrl && (
-						<a
-							href={docsUrl}
-							target="_blank"
-							rel="noreferrer"
-							onClick={(e) => e.stopPropagation()}
-							className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-						>
-							key ↗
-						</a>
-					)}
+			<div className="-mx-2 flex items-center gap-3">
+				<button
+					type="button"
+					aria-expanded={expanded}
+					data-testid={`${testid}-row`}
+					onClick={() => !envOwned && onToggle()}
+					className={`flex min-h-14 min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-md px-2 py-2 text-left ${
+						envOwned ? "cursor-default" : "cursor-pointer transition-colors hover:bg-accent"
+					}`}
+				>
+					<span className="text-sm text-foreground">{label}</span>
 					<span data-testid={`${testid}-status`} className="text-sm text-muted-foreground">
 						{keyStatusLine(status)}
 					</span>
-				</span>
-			</button>
+				</button>
+				{docsUrl && (
+					<a
+						href={docsUrl}
+						target="_blank"
+						rel="noreferrer"
+						aria-label={`Get a ${label} key (opens in a new tab)`}
+						className="mr-2 shrink-0 rounded-md text-sm text-ink-2 underline-offset-2 hover:text-foreground hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center"
+					>
+						key ↗
+					</a>
+				)}
+			</div>
 			{error && (
-				<p role="alert" data-testid={`${testid}-error`} className="pl-6 text-sm text-destructive">
+				<p role="alert" data-testid={`${testid}-error`} className="pb-2 text-sm text-destructive">
 					{error}
 				</p>
 			)}
@@ -228,13 +244,13 @@ function AddProviderRow({
 	}, [open]);
 
 	return (
-		<div ref={anchorRef} className="relative">
+		<div ref={anchorRef} data-settings-row="add-provider" className="relative scroll-mt-4 rounded-md">
 			<button
 				type="button"
 				aria-expanded={open}
 				data-testid="add-provider"
 				onClick={() => setOpen((v) => !v)}
-				className="-mx-1 flex w-[calc(100%+0.5rem)] items-center justify-between gap-3 rounded-sm px-1 py-1.5 text-left font-ui text-sm text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground"
+				className="-mx-2 flex min-h-14 w-[calc(100%+1rem)] items-center justify-between gap-3 rounded-md px-2 py-2 text-left font-ui text-sm text-ink-2 transition-colors hover:bg-accent hover:text-foreground"
 			>
 				<span>+ Add provider key</span>
 				{addable.length > 0 && <span className="text-sm">{addable.length} available</span>}
@@ -244,7 +260,7 @@ function AddProviderRow({
 					anchorRef={anchorRef}
 					testid="add-provider-menu"
 					preferredSide="down"
-					menuClass="flex w-72 flex-col rounded-xl border border-border bg-card p-2 text-sm "
+					menuClass="flex w-72 max-w-[calc(100vw-2rem)] flex-col rounded-lg bg-popover p-2 text-sm"
 				>
 					{/* Close on pick (owner, fix wave): a chosen provider ends
 					    the dropdown — the paste row is the next step. */}
@@ -267,13 +283,17 @@ export function KeysSection({
 	 *  while mounted too — the settings dialog's while-open retarget
 	 *  pattern. undefined = nothing seeded. */
 	initialRow,
+	rowRequest,
 }: {
 	initialRow?: string;
+	/** Changes with each jump, so repeating one unfolds its row again. */
+	rowRequest?: number;
 }) {
 	const [statuses, setStatuses] = useState<AuthKeyStatus[] | null>(null);
 	const [providers, setProviders] = useState<ProviderKeyInfo[] | undefined>(undefined);
 	const [loading, setLoading] = useState(true);
-	/** The unfolded row (its id), null = all folded. Seeded by the
+	const [loadFailed, setLoadFailed] = useState(false);
+/** The unfolded row (its id), null = all folded. Seeded by the
 	 *  deep-link (initialRow) and re-followed when it retargets. */
 	const [openRow, setOpenRow] = useState<string | null>(initialRow ?? null);
 	/** The paste editor for a freshly chosen Add-provider target. */
@@ -299,13 +319,15 @@ export function KeysSection({
 
 	const reload = () =>
 		fetch("/api/keys")
-			.then((r) => r.json())
+			.then((r) => (r.ok ? r.json() : Promise.reject(new Error(`status ${r.status}`))))
 			.then((body: KeysResponse) => {
 				setStatuses(body.keys ?? []);
 				if (body.providers) setProviders(body.providers);
+				setLoadFailed(false);
 			})
-			.catch(() => setStatuses([]))
-			.finally(() => setLoading(false));
+			// A failed refresh keeps the last good rows.
+			.catch(() => setLoadFailed(true))
+.finally(() => setLoading(false));
 
 	useEffect(() => {
 		void reload();
@@ -316,19 +338,21 @@ export function KeysSection({
 	// named row; a fresh mount seeds it via the useState initializer.
 	useEffect(() => {
 		if (initialRow !== undefined) setOpenRow(initialRow);
-	}, [initialRow]);
+	}, [initialRow, rowRequest]);
 
 	async function saveKey(id: string, value: string): Promise<string | null> {
 		const res = await fetch(`/api/keys/${id}`, {
 			method: "PUT",
 			headers: { "content-type": "application/json" },
 			body: JSON.stringify({ value }),
-		});
+		}).catch(() => null);
+		if (!res) return KEY_SAVE_FAILED;
 		if (!res.ok) {
 			const body = (await res.json().catch(() => ({}))) as { error?: string };
-			return body.error ?? `Save failed (${res.status})`;
+			// A 400 explains what is wrong with the key; anything else is ours.
+			return res.status === 400 && body.error ? body.error : KEY_SAVE_FAILED;
 		}
-		await reload();
+await reload();
 		// The cross-surface keys signal (zero-keys wave): the zero-keys pill,
 		// the setup dialog's stage advance, and any other keys reader hear
 		// that a key landed — deletions included (see deleteKey below).
@@ -336,17 +360,26 @@ export function KeysSection({
 		return null;
 	}
 
-	async function deleteKey(id: string): Promise<void> {
-		await fetch(`/api/keys/${id}`, { method: "DELETE" }).catch(() => undefined);
+	async function deleteKey(id: string): Promise<string | null> {
+		const res = await fetch(`/api/keys/${id}`, { method: "DELETE" }).catch(() => null);
+		if (!res?.ok) return "This key could not be deleted. Try again.";
 		await reload();
 		notifySettingsSaved("keys");
+		return null;
 	}
 
-	if (loading || statuses === null) {
-		return <p className="px-6 py-5 text-sm text-muted-foreground">Loading keys…</p>;
+	if (loading) return <SettingsRowsSkeleton label="Loading keys…" />;
+	if (statuses === null) {
+		return (
+			<SettingsFailure
+				testid="keys-load-error"
+				retryTestid="keys-load-retry"
+				message="Your provider keys could not be loaded."
+				onRetry={() => { setLoading(true); void reload(); }}
+			/>
+		);
 	}
-
-	const { providerRows, toolRows, unknownRows, addable } = classifyKeys(statuses, providers);
+const { providerRows, toolRows, unknownRows, addable } = classifyKeys(statuses, providers);
 
 	async function saveNewProvider(p: ProviderKeyInfo, value: string) {
 		const err = await saveKey(p.envVar, value);
@@ -359,6 +392,7 @@ export function KeysSection({
 
 	return (
 		<>
+			{loadFailed && <SettingsFailure testid="keys-refresh-error" message="Your provider keys could not be refreshed. This list may be out of date." onRetry={() => void reload()} />}
 			<SettingsGroup label="Model API keys" testid="group-provider-keys">
 				{providerRows.map((status) => (
 					<KeyTableRow
@@ -376,7 +410,8 @@ export function KeysSection({
 						onCancel={() => setOpenRow(null)}
 						onDelete={() => deleteKey(status.id)}
 						testid={`key-${status.id.toLowerCase()}`}
-					/>
+						settingsRow={status.id}
+/>
 				))}
 				{providers !== undefined && (
 					<AddProviderRow
@@ -388,14 +423,14 @@ export function KeysSection({
 					/>
 				)}
 				{adding && (
-					<div className="flex items-center gap-2 rounded-sm px-1 py-1.5" data-testid={`key-${adding.id}-editor`}>
+					<div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md py-2" data-testid={`key-${adding.id}-editor`}>
 						<span className="shrink-0 font-ui text-sm text-foreground">{adding.label}</span>
 						<AddProviderEditor provider={adding} onSave={(v) => void saveNewProvider(adding, v)} onCancel={() => setAdding(null)} error={addError} />
 					</div>
 				)}
 				{unknownRows.length > 0 && <div data-testid="group-unknown-keys">
-					{unknownRows.map((status) => <div key={status.id} data-testid={`unknown-${status.id}`} className="flex items-center justify-between gap-3 px-1 py-1.5 opacity-40">
-						<span className="font-mono text-xs text-foreground">{status.id}</span>
+					{unknownRows.map((status) => <div key={status.id} data-testid={`unknown-${status.id}`} className="flex flex-wrap items-center justify-between gap-3 py-2">
+						<span className="font-mono text-xs text-muted-foreground">{status.id}</span>
 						<span className="font-mono text-xs text-muted-foreground">{status.masked}</span>
 					</div>)}
 				</div>}
@@ -422,7 +457,8 @@ export function KeysSection({
 						onCancel={() => setOpenRow(null)}
 						onDelete={() => deleteKey(status.id)}
 						testid={`key-${status.id.toLowerCase()}`}
-					/>
+						settingsRow={status.id}
+/>
 				))}
 			</SettingsGroup>)}
 
@@ -457,14 +493,16 @@ function AddProviderEditor({
 				aria-label={`${provider.label} key`}
 				data-testid={`key-${provider.id}-input`}
 				autoFocus
-				className="h-7 min-w-0 flex-1 rounded-sm border border-border bg-background px-1.5 font-mono text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-muted-foreground/50"
+						autoComplete="off"
+						spellCheck={false}
+						className="h-7 min-w-40 flex-1 basis-40 rounded-md border border-input bg-background px-1.5 font-mono text-xs text-foreground placeholder:text-muted-foreground pointer-coarse:h-11"
 			/>
 			<button
 				type="button"
 				onClick={() => value.trim() && onSave(value)}
 				disabled={!value.trim()}
 				data-testid={`key-${provider.id}-save`}
-				className="shrink-0 text-sm text-foreground underline-offset-2 hover:underline disabled:text-muted-foreground disabled:no-underline"
+				className="shrink-0 text-sm text-foreground underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline pointer-coarse:min-h-11"
 			>
 				Save
 			</button>
@@ -472,7 +510,7 @@ function AddProviderEditor({
 				type="button"
 				onClick={onCancel}
 				data-testid={`key-${provider.id}-cancel`}
-				className="shrink-0 text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+				className="shrink-0 text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline pointer-coarse:min-h-11"
 			>
 				Cancel
 			</button>

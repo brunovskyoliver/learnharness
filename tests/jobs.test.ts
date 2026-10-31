@@ -286,7 +286,7 @@ describe("job store", () => {
 	it("every mutation emits jobs-changed {chatId}; reads emit nothing", () => {
 		const got: { chatId?: string }[] = [];
 		const off = subscribe((e) => {
-			if (e.type === "jobs-changed") got.push({ chatId: e.chatId });
+			if (e.type === "jobs-changed") got.push({ chatId: (e as { chatId?: string }).chatId });
 		});
 		const job = jobStore.createJob({ kind: "research", chatId: "chat_storeemit", toolCallId: "call-emit" });
 		trackJob(job.id);
@@ -1492,7 +1492,7 @@ describe("prompt composition", () => {
 		for (const kind of ["teacher", "prober"] as const) {
 			const instructions = composeInstructions(kind);
 			assert.ok(instructions.includes("## Learner files"), `${kind} carries the shared learner-files fragment`);
-			assert.ok(instructions.includes("find it yourself with `find`"), `${kind} knows to locate files itself`);
+			assert.ok(instructions.includes("find it with `find`"), `${kind} knows to locate files itself`);
 			assert.ok(instructions.includes("home directory"), `${kind} knows the home-anchored path rule`);
 		}
 		// the agent's OWN fragments compose before the shared appendix

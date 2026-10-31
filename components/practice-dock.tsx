@@ -8,6 +8,7 @@ import { Teaser, teaserText } from "@/components/question-dock";
 import { useEnterSubmits } from "@/components/enter-submits";
 import { focusSurfaceInput } from "@/components/input-surface";
 import { ToolContentResponse } from "@/components/ai-elements/message";
+import { useLibraryMention } from "@/components/library/use-library-mention.ts";
 
 /** One mounted trace input beneath an expandable public problem statement.
  * The committed solution stays out of this component. */
@@ -41,7 +42,13 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, statemen
 	// the tail, never a stale closure.
 	const thinkingRef = useRef(thinking);
 	thinkingRef.current = thinking;
-
+	const mention = useLibraryMention({
+		value: thinking,
+		onValueChange: (next) => {
+			thinkingRef.current = next;
+			setThinking(next);
+		},
+	});
 
 	const submit = () => {
 		if (compactionRunning) return;
@@ -101,7 +108,10 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, statemen
 				className="input-surface shrink-0"
 			>
 				<AnswerWell>
+				{mention.menu}
 				<textarea
+					{...mention.inputProps}
+					ref={mention.ref}
 					id={`${problemCallId}-thinking`}
 					aria-label="Your thinking"
 					placeholder="Work through the problem here"
@@ -111,6 +121,7 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, statemen
 						setThinking(e.target.value);
 					}}
 					onKeyDown={(e) => {
+						if (mention.onKeyDown(e)) return;
 						// Enter SENDS — the single lane (owner round 2, 2026-10-05);
 						// Shift+Enter is the newline, ⌘/Ctrl+Enter the chord too.
 						if (!e.nativeEvent.isComposing && e.key === "Enter" && (!e.shiftKey || e.metaKey || e.ctrlKey)) {
@@ -121,6 +132,7 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, statemen
 					rows={1}
 					className="prompt-input field-sizing-content lh-input max-h-64 min-h-10 w-full resize-none bg-transparent px-4 pt-3 pb-2.5 outline-none"
 				/>
+				{mention.line}
 				</AnswerWell>
 				{compactionRunning && <div role="status" className="px-4 pt-2 text-sm text-muted-foreground">Compacting session…</div>}
 				<PromptToolbar controls={controls}>

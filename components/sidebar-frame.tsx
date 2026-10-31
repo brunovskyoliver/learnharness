@@ -117,10 +117,9 @@ export function SidebarFrame({ bootstrap = false, open, overlay, onClose, hasMen
 						setPreferredWidth(clamped);
 						localStorage.setItem(WIDTH_KEY, String(clamped));
 					}}
-					className={cn(
-						"lh-no-drag absolute inset-y-0 right-0 z-10 w-3 touch-none select-none cursor-col-resize outline-none after:absolute after:inset-y-0 after:right-0 after:w-0.5 after:transition-colors hover:after:bg-ring focus-visible:after:bg-ring",
-						dragging && "after:bg-ring",
-					)}
+					data-dragging={dragging || undefined}
+					style={{ "--lh-divider-at": "calc(100% - 1px)" } as CSSProperties}
+					className="lh-pane-divider lh-no-drag absolute inset-y-0 right-0 z-10 w-3 touch-none select-none cursor-col-resize outline-none"
 				/>
 			)}
 		</aside>
