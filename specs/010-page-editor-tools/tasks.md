@@ -27,9 +27,9 @@ Approved plan: [plan.md](plan.md). Strings: [contracts/ui-contract.md](contracts
 - [x] T014 Browser: two-place seeded revision, typing, undo
 
 ## Phase 4: US4 History (P2)
-- [ ] T015 `names.json`, PATCH route, names in the list
-- [ ] T016 History: Changes and Full text, name field, Copy this version
-- [ ] T017 Browser: compare and name across reload
+- [x] T015 `names.json`, PATCH route, names in the list
+- [x] T016 History: Changes and Full text, name field, Copy this version
+- [x] T017 Browser: compare and name across reload
 
 ## Phase 5: US5 Outline, word count, export (P3)
 - [ ] T018 Word count and outline from the document (pure parts in page-blocks.ts)

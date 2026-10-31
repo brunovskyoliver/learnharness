@@ -55,3 +55,18 @@ describe("names", () => {
 		assert.equal(PAGE_PLACEHOLDER, "Start writing, or type / for headings, lists, tables and formulas.");
 	});
 });
+
+describe("History (US4)", async () => {
+	const { changeViewRows, versionLabel } = await import("../components/library/page-history.tsx");
+	it("labels a named version and a tutor undo", () => {
+		assert.match(versionLabel({ n: 5, author: "learner", at: "2026-10-30T10:00:00Z", name: "Before exam" }), /^Version 5 · You · .* · Before exam$/);
+		assert.match(versionLabel({ n: 6, author: "learner", at: "2026-10-30T10:00:00Z", cause: "undo-agent" }), /^Version 6 · You · .* · Undid the tutor's edit$/);
+	});
+	it("folds unchanged runs into one count", () => {
+		assert.deepEqual(changeViewRows([
+			{ kind: "same", markdown: "a" }, { kind: "same", markdown: "b" },
+			{ kind: "removed", markdown: "c" }, { kind: "added", markdown: "c2" },
+			{ kind: "same", markdown: "d" },
+		]), [{ kind: "same", count: 2 }, { kind: "removed", markdown: "c" }, { kind: "added", markdown: "c2" }, { kind: "same", count: 1 }]);
+	});
+});

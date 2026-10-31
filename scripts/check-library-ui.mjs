@@ -1358,6 +1358,27 @@ async function checkTutorChanges(width) {
 	assert.equal((await (await fetch(`${base_url(made.id)}/seen`)).json()).unseen.length, 0, "seen after undo");
 	assert.equal(await page.$(`${editor} [data-tutor-change]`), null, "no highlight left");
 	console.log(`PASS ${width}px a tutor edit made while closed is highlighted on open and undone around later typing`);
+
+	// History (US4): the undo compared with the tutor's version, then a name that survives reload.
+	await page.click('[data-testid="page-history-toggle"]');
+	await page.waitForSelector('[data-testid="page-version-changes"]');
+	const changesText = await page.$eval('[data-testid="page-version-changes"]', (el) => el.innerText);
+	assert.ok(/compared with version/.test(changesText), changesText);
+	assert.deepEqual(await page.$$eval('[data-testid="page-version-changes"] [data-change]', (els) => els.map((el) => `${el.dataset.change}:${el.lastChild.textContent}`)), ["removed:One, simpler.", "removed:Two.", "added:One.", "added:Two. Mine.", "removed:A new check."]);
+	await page.click('[data-testid="page-name-version"]');
+	await page.waitForSelector('[data-testid="page-version-name-input"]');
+	await page.keyboard.type("Before exam");
+	await page.keyboard.press("Enter");
+	await page.waitForFunction(() => document.querySelector('[data-testid="page-history"] li button[aria-current="true"]')?.textContent.endsWith("Before exam"));
+	await page.reload({ waitUntil: "domcontentloaded" });
+	await page.waitForSelector('[data-testid="page-history-toggle"]', { timeout: 60000 });
+	if (!(await page.$('[data-testid="page-history"]'))) await page.click('[data-testid="page-history-toggle"]');
+	await page.waitForFunction(() => [...document.querySelectorAll('[data-testid="page-history"] li button')].some((b) => b.textContent.endsWith("· Before exam")));
+	assert.ok((await pageApi.versions(made.id))[0].name === "Before exam");
+	if (shots) await page.screenshot({ path: path.join(shots, `history-${width}.png`) });
+	await page.click('[data-testid="page-history-toggle"]');
+	await page.waitForSelector(editor);
+	console.log(`PASS ${width}px History compares a version with the one before it, and a name survives reload`);
 	await page.click(width < 768 ? '[data-testid="page-back"]' : '[data-testid="page-close"]');
 	assert.deepEqual(errors, [], `${width}px: no browser exceptions`);
 	await page.close();
