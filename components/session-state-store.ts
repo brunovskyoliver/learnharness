@@ -4,6 +4,9 @@ export interface UiStorage {
 	setItem(key: string, value: string): void;
 }
 
+/** The workspace's own state (feature 014), next to the per-session ones. */
+export const WORKSPACE_STATE_ID = "__workspace";
+
 export class SessionStateStore {
 	readonly storageKey: string;
 	private values: Record<string, unknown> | undefined;

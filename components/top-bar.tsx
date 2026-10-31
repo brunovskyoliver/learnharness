@@ -40,20 +40,25 @@
 
 import type { ReactNode } from "react";
 import { SidebarToggle } from "@/components/sidebar";
+import { WorkspaceTabStrip } from "@/components/workspace/tab-strip";
 
 export function TopBar({
 	drag = true,
 	onMouseDown,
 	shellMobileNavigation = false,
+	tabs = false,
 	children,
 }: {
 	drag?: boolean;
 	onMouseDown?: React.MouseEventHandler<HTMLElement>;
 	/** Conversation navigation hydrates with the shared shell on mobile. */
 	shellMobileNavigation?: boolean;
+	/** The open-items strip, a row under the band: the band keeps the drag region. */
+	tabs?: boolean;
 	children?: ReactNode;
 }) {
 	return (
+		<>
 		<header
 			onMouseDown={onMouseDown}
 			className={`${drag ? "lh-drag " : ""}lh-wco-gutter flex h-13 shrink-0 select-none items-center gap-3 bg-background px-3`}
@@ -61,5 +66,7 @@ export function TopBar({
 			<SidebarToggle shellMobile={shellMobileNavigation} />
 			{children}
 		</header>
+		{tabs && <WorkspaceTabStrip />}
+		</>
 	);
 }

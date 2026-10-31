@@ -105,6 +105,13 @@ export function SidebarFrame({ bootstrap = false, open, overlay, onClose, hasMen
 					onDoubleClick={reset}
 					onKeyDownCapture={(event) => {
 						// Claim before document-level lesson handlers.
+						// Search, then Tab, then Tab: the keyboard path into the navigation.
+						if (event.key === "Tab" && !event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey) {
+							const entries = event.currentTarget.closest("aside")?.querySelectorAll<HTMLElement>("[data-sidebar-nav] [data-nav-entry]");
+							const target = [...(entries ?? [])].find((entry) => entry.getAttribute("aria-current") === "page" || entry.getAttribute("aria-pressed") === "true") ?? entries?.[0];
+							if (target) { event.preventDefault(); event.stopPropagation(); target.focus(); }
+							return;
+						}
 						if (event.key === "Enter") { event.preventDefault(); event.stopPropagation(); reset(); return; }
 						const next = event.key === "ArrowLeft" ? width - 16
 							: event.key === "ArrowRight" ? width + 16

@@ -10,6 +10,7 @@ import { ServerEventsProvider } from "@/components/server-events";
 import { AppearanceProvider } from "@/components/settings/appearance";
 import UpdateBanner from "@/components/update-banner";
 import { SessionAccountProvider } from "@/components/session-state";
+import { SessionStateStore, WORKSPACE_STATE_ID } from "@/components/session-state-store";
 import { appearanceVars, resolveAppearance } from "@/components/settings/appearance-vars";
 import { compactionInFlight, hostedMode, isTurnRunning, listChats, readSettingsRecord, runAsTenant, signedInUserId } from "@/src/server";
 import type { AppearanceSettings } from "@/src/core";
@@ -61,6 +62,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 	return (
 		<html lang="en" className={fontClasses} style={htmlStyle}>
 			<body className="min-h-dvh antialiased">
+				{/* Reserve the tab strip on surfaces that show it only with tabs, so a reload doesn't shift them (feature 014). */}
+				{account && <script dangerouslySetInnerHTML={{ __html: `try{var t=JSON.parse(localStorage.getItem(${JSON.stringify(new SessionStateStore(account, WORKSPACE_STATE_ID, () => undefined).storageKey).replace(/</g, "\\u003c")})||'{}').values;if(t&&t.tabs&&t.tabs.length){var b=document.createElement('style');b.id='lh-tabs-bootstrap';b.textContent='[data-tab-reserve]{display:block!important}';document.head.appendChild(b)}}catch{}` }} />}
 				{/* Apply local navigation preferences before the seeded pane paints. */}
 				<script dangerouslySetInnerHTML={{ __html: `try{var s=localStorage.getItem('lh:sidebar-open'),w=Number(localStorage.getItem('lh:sidebar-width'));var css=s==='0'?'width:0!important;visibility:hidden':Number.isFinite(w)&&w>0?'width:'+Math.round(Math.max(208,Math.min(w,innerWidth-640)))+'px!important':'';if(css){var e=document.createElement('style');e.textContent='@media(min-width:928px){[data-sidebar-bootstrap]{'+css+'}}';document.head.appendChild(e)}}catch{}` }} />
 				{hostedShell ? <hostedShell.HostedProvider publishableKey={process.env.CLERK_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>{app}</hostedShell.HostedProvider> : app}

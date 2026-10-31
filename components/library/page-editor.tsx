@@ -259,7 +259,7 @@ export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, 
 	}), [emit]);
 
 	return (
-		<>
+		<div data-page-editor="" className="contents">
 			{editor && !readOnly && <PageToolbar editor={editor} onLink={() => openLinkRef.current()} tutor={tutor} onImage={onChooseImage} />}
 			{editor && !readOnly && <ImageAltPopover editor={editor} host={host.current} />}
 			{editor && !readOnly && scrollHost && <PageBubble editor={editor} tutor={tutor} onLink={() => openLinkRef.current()} scrollHost={scrollHost} />}
@@ -268,6 +268,6 @@ export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, 
 				{editor && linkAt && <LinkPopover editor={editor} at={linkAt} onClose={() => setLinkAt(null)} />}
 				{editor && slashOpen && <SlashMenu items={slashItems} query={slashState!.query} active={Math.min(slashActive, Math.max(0, slashItems.length - 1))} at={anchorBelowSelection(editor, host.current)} onPick={pickSlash} />}
 			</div>
-		</>
+		</div>
 	);
 }

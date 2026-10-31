@@ -6,6 +6,7 @@ import { Conversation, ConversationContent, ConversationEmptyState } from "@/com
 import { Composer } from "@/components/composer";
 import { useFieldCycle } from "@/components/field-cycle";
 import { SidebarToggle } from "@/components/sidebar";
+import { WorkspaceTabStrip } from "@/components/workspace/tab-strip";
 import { useReloadDraft } from "@/components/reload-recovery";
 import { LazySetupDialog as SetupDialog } from "@/components/lazy-setup-dialog";
 import { SetupModelsButton, useStrongKeyless, useZeroKeys, ZeroKeysPill } from "@/components/setup-cta";
@@ -189,6 +190,8 @@ export function DraftShell({
 					<SidebarToggle />
 				</div>
 			</header>
+			{/* Under the drag band, over the empty state. */}
+			<div className="absolute inset-x-0 top-13 z-10"><WorkspaceTabStrip /></div>
 		</div>
 	);
 }

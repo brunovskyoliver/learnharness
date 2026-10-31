@@ -1227,6 +1227,13 @@ body {
    sized to the visual viewport so the keyboard never covers the caret. */
 .page-workspace { position: fixed; inset: 0 auto auto 0; z-index: 40; width: 100%; height: var(--lh-page-vh, 100dvh); padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); overscroll-behavior: contain; }
 @media (min-width: 768px) { .page-workspace { position: relative; inset: auto; z-index: auto; width: var(--lh-demo-w); height: 100%; padding: 0; } }
+/* Collapse keeps the pane mounted (feature 014): no width, no focus, nothing for
+   assistive tech. The inner column keeps its width, so a live demo keeps its size
+   off screen instead of relaying out. Phones use the layer and ignore this. */
+@media (min-width: 768px) {
+	[data-pane-collapsed] { width: 0 !important; overflow: hidden; visibility: hidden; }
+	[data-pane-collapsed] > .lh-pane-inner { width: var(--lh-demo-w); flex: none; height: 100%; }
+}
 .lh-page-editor { min-height: 100%; padding: 0.5rem 0.75rem 3rem; white-space: pre-wrap; overflow-wrap: anywhere; outline: none; border-radius: 6px; }
 .lh-page-editor > * + *, .lh-page-editor li > * + *, .lh-page-editor blockquote > * + * { margin-top: 0.75em; }
 .lh-page-editor ul { list-style: disc; padding-left: 1.5em; }
@@ -1380,4 +1387,9 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 [data-transcript-measured] {
 	content-visibility: auto;
 	overflow-clip-margin: 8px;
+}
+/* A row's containment would become the live demo's containing block and throw it
+   off its workspace slot. Found by feature 014; it dates from the render skip. */
+[data-transcript-measured]:has(.demo-live-workspace) {
+	content-visibility: visible;
 }

@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { MenuShell } from "@/components/menu-shell";
 import { DeleteSessionDialog } from "@/components/delete-session-dialog";
 import type { ChatDeleteMode } from "@/src/core";
-import { BookOpenIcon, CheckIcon, DumbbellIcon, LibraryIcon, ListFilterIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, PlusIcon, SearchIcon, SettingsIcon } from "lucide-react";
+import { BookOpenIcon, CheckIcon, CommandIcon, DumbbellIcon, ListFilterIcon, PanelLeftCloseIcon, PanelLeftOpenIcon, PlusIcon, SearchIcon, SettingsIcon } from "lucide-react";
 import { ActivitySection } from "@/components/activity-dock";
 import { CoverageMenuBlock } from "@/components/extraction-coverage";
 import { LhMark } from "@/components/lh-mark";
@@ -25,6 +25,9 @@ import { kbdEventForAction } from "@/src/core";
 import { notifySettingsSaved } from "@/components/settings-signal";
 import { SessionListProvider, useSessionList, useSessionListDemand } from "@/components/session-list";
 import { SidebarFrame } from "@/components/sidebar-frame";
+import { CommandPaletteHost } from "@/components/command-palette";
+import { SidebarNav } from "@/components/workspace/sidebar-nav";
+import { WorkspaceProvider } from "@/components/workspace/workspace-context";
 export { clampSidebarWidth } from "@/components/sidebar-frame";
 
 /**
@@ -741,22 +744,16 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 					</button>
 				</div>
 
-				{/* The Library (feature 009): one labelled row above the date shelves. */}
-				<div className="px-2 pb-1">
-					<Link
-						href="/library"
-						data-testid="sidebar-library"
-						aria-current={pathname === "/library" ? "page" : undefined}
-						onClick={() => { if (overlay) close(); }}
-						className={cn(
-							"flex h-9 items-center gap-2 rounded-md px-2.5 text-base transition-colors hover:bg-accent pointer-coarse:h-11",
-							pathname === "/library" ? "bg-accent text-foreground" : "text-ink-2",
-						)}
-					>
-						<LibraryIcon className="size-[15px] shrink-0" aria-hidden="true" />
-						Library
-					</Link>
-				</div>
+				{/* Unified navigation (feature 014): Lessons, Practice, and the Library
+				    with its folder tree, above the date shelves. */}
+				<SidebarNav
+					pathname={pathname}
+					kindFilter={kindFilter}
+					onKindFilter={setFilter}
+					lessonCount={chats ? chats.filter((c) => (c.kind ?? "teach") === "teach").length : null}
+					practiceCount={chats ? chats.filter((c) => c.kind === "practice").length : null}
+					onNavigate={() => { if (overlay) close(); }}
+				/>
 
 				<div ref={listRef} className="flex flex-1 flex-col gap-px overflow-y-auto px-2 pb-2">
 					{shown === null ? (
@@ -817,7 +814,22 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 							<SettingsIcon className="ui-icon" />
 						</button>
 					</Hint>
-					<div className="ml-auto">{account}</div>
+					<Hint label="Command palette" action="command-palette" side="top">
+							<button
+								type="button"
+								onClick={() => {
+									// The phone overlay is a native modal; it leaves first.
+									if (overlay) close();
+									requestAnimationFrame(() => window.dispatchEvent(new CustomEvent(kbdEventForAction("command-palette"))));
+								}}
+								data-testid="command-palette-entry"
+								aria-label="Command palette"
+								className="flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground pointer-coarse:size-11"
+							>
+								<CommandIcon className="ui-icon" />
+							</button>
+						</Hint>
+						<div className="ml-auto">{account}</div>
 				</div>
 			</div>
 
@@ -980,6 +992,7 @@ export function AppShell({ children, account, hosted = false, initialChats }: { 
 	return (
 		<SettingsDialogProvider hosted={hosted}>
 			<SessionListProvider initialChats={initialChats}>
+				<WorkspaceProvider>
 				<SessionsSidebar account={account} />
 				{conversation && <div data-mobile-chat-navigation="" className="fixed left-0 top-0 z-40 flex h-13 items-center px-3 min-[928px]:hidden"><SidebarToggle /></div>}
 				<main className="min-w-0 flex-1">{children}</main>
@@ -987,6 +1000,8 @@ export function AppShell({ children, account, hosted = false, initialChats }: { 
 				    after the content in the tree, but it's window-level so order only
 				    matters for the events it dispatches, never for DOM priority. */}
 				<KeyboardShortcuts />
+				<CommandPaletteHost />
+				</WorkspaceProvider>
 			</SessionListProvider>
 		</SettingsDialogProvider>
 	);

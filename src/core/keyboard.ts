@@ -35,7 +35,10 @@ export type KeyAction =
 	| "question-pick-row"
 	| "question-submit"
 	| "open-settings"
-	| "toggle-user-thinking";
+	| "toggle-user-thinking"
+	| "command-palette"
+	| "focus-tabs"
+	| "toggle-right-pane";
 
 /** Where the cheat sheet groups an action (display only — dispatch is
  *  global; a seam that isn't mounted simply no-ops). */
@@ -55,7 +58,13 @@ export interface KeyActionDef {
 
 export const KEYBOARD_ACTIONS: readonly KeyActionDef[] = [
 	{ id: "open-settings", label: "Open settings", scope: "global", binding: "mod+," },
-	{ id: "open-model-picker", label: "Model selector", scope: "global", binding: "mod+k" },
+	// Mod+K moved to the command palette (features 014-015); the palette also lists the model selector.
+	{ id: "open-model-picker", label: "Model selector", scope: "global", binding: "mod+shift+k" },
+	// After the model selector on purpose: a saved override still pointing that
+	// action at mod+k must not take the palette's key (the last entry wins the map).
+	{ id: "command-palette", label: "Command palette", scope: "global", binding: "mod+k" },
+	{ id: "focus-tabs", label: "Focus the open tabs", scope: "global", binding: "mod+shift+e" },
+	{ id: "toggle-right-pane", label: "Toggle right pane", scope: "global", binding: "mod+\\" },
 	{ id: "cycle-thinking", label: "Cycle thinking level", scope: "global", binding: "shift+tab" },
 	{ id: "toggle-sidebar", label: "Toggle sessions sidebar", scope: "global", binding: "mod+b" },
 	{ id: "sessions-search", label: "Search sessions", scope: "global", binding: "mod+shift+f" },
@@ -181,6 +190,13 @@ export function isTypingSurface(e: KeyboardEvent): boolean {
 	const tag = target.tagName;
 	if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
 	return target.isContentEditable;
+}
+
+/** Where Mod+K stays with what the learner is in: the page editor's link popover
+ *  (it claims the key in the text, and here in its toolbar and fields), a dialog
+ *  or a menu, which own their keys. */
+export function commandPaletteDefers(target: { closest?: (selector: string) => unknown } | null): boolean {
+	return Boolean(target?.closest?.('[data-page-editor], [role="dialog"], dialog:modal, [data-lh-menu], [role="menu"]'));
 }
 
 /** macOS styling for binding display ("⌘D", "⇧⇥", "⌥↑"). */

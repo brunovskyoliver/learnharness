@@ -13,6 +13,7 @@ import { ComposerActions, NodePickerControl } from "@/components/composer-action
 import { SetupModelsButton, useStrongKeyless, useZeroKeys, ZeroKeysPill } from "@/components/setup-cta";
 import { useFieldCycle } from "@/components/field-cycle";
 import { SidebarToggle } from "@/components/sidebar";
+import { WorkspaceTabStrip } from "@/components/workspace/tab-strip";
 import { StatsBar } from "@/components/stats-bar";
 import { Composer } from "@/components/composer";
 import { useReloadDraft } from "@/components/reload-recovery";
@@ -153,6 +154,7 @@ export function Home({
 			<header className="relative z-30 flex h-13 shrink-0 items-center gap-3 px-3 max-sm:group-has-[[data-mobile-graph-search=true]]/home:invisible">
 				<SidebarToggle />
 			</header>
+			<WorkspaceTabStrip />
 
 			{/* One page, one scroll (hidden tracks, globals.css). */}
 			<div data-testid="home-scroll" className="min-h-0 flex-1 overflow-y-auto">

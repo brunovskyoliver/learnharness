@@ -1,7 +1,9 @@
 "use client";
 
 import { XIcon } from "lucide-react";
+import { useEffect } from "react";
 import { useDemoPanel } from "@/components/artifacts/demo-panel-context";
+import { useWorkspace } from "@/components/workspace/workspace-context";
 import { WorkspacePane } from "@/components/workspace-pane";
 
 /** The session's demo beside the lesson: a resizable column right of the
@@ -9,9 +11,16 @@ import { WorkspacePane } from "@/components/workspace-pane";
  *  composer stays reachable below it). The transcript iframe is positioned over the slot without remounting. */
 export function DemoPanel() {
 	const panel = useDemoPanel();
-	if (!panel || panel.openId === null) return null;
-	const demo = panel.demos.find((d) => d.id === panel.openId);
-	if (!demo) return null;
+	const demo = panel?.demos.find((d) => d.id === panel.openId) ?? null;
+	// The workspace counts a demo as holding the right pane.
+	const setDemoOpen = useWorkspace()?.setDemoOpen;
+	const holding = demo !== null;
+	useEffect(() => {
+		if (!holding || !setDemoOpen) return;
+		setDemoOpen(true);
+		return () => setDemoOpen(false);
+	}, [holding, setDemoOpen]);
+	if (!panel || !demo) return null;
 
 	return (
 		<WorkspacePane label="Demo" resizeLabel="Resize demo panel" testId="demo-panel" className="demo-workspace">

@@ -29,6 +29,7 @@ import { useRouter } from "next/navigation";
 import {
 	actionForBinding,
 	bindingForAction,
+	commandPaletteDefers,
 	eventBinding,
 	formatBinding,
 	isTypingSurface,
@@ -129,6 +130,20 @@ export function KeyboardShortcuts() {
 				case "cheat-sheet":
 					handlersRef.current.setCheatOpen(true);
 					break;
+				case "command-palette":
+					// The editor's link popover claims the key first (defaultPrevented
+					// above); its toolbar, dialogs and menus keep it here. An open cheat
+					// sheet is the top layer, so Esc comes first.
+					if (cheatOpen || commandPaletteDefers(e.target as Element | null)) return;
+					e.preventDefault();
+					window.dispatchEvent(new CustomEvent(kbdEventForAction(action)));
+					break;
+				case "focus-tabs":
+				case "toggle-right-pane":
+					if (commandPaletteDefers(e.target as Element | null)) return;
+					e.preventDefault();
+					window.dispatchEvent(new CustomEvent(kbdEventForAction(action)));
+					break;
 				case "find":
 					// The mounted surface owns Find (session text / graph nodes).
 					// Claim Mod+F so Chromium's whole-window finder cannot open too.
@@ -142,6 +157,14 @@ export function KeyboardShortcuts() {
 		window.addEventListener("keydown", onKeyDown);
 		return () => window.removeEventListener("keydown", onKeyDown);
 	}, [cheatOpen]);
+
+	// The palette's "Show keyboard shortcuts".
+	useEffect(() => {
+		const event = kbdEventForAction("cheat-sheet");
+		const onShow = () => setCheatOpen(true);
+		window.addEventListener(event, onShow);
+		return () => window.removeEventListener(event, onShow);
+	}, []);
 
 	return <CheatSheet open={cheatOpen} onClose={() => setCheatOpen(false)} />;
 }

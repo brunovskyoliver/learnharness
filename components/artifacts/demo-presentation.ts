@@ -19,6 +19,9 @@ export function useDemoPresentation(dialog: RefObject<HTMLDialogElement | null>,
 		measure();
 		const observer = new ResizeObserver(measure);
 		observer.observe(slot);
+		// Collapsing the pane moves the slot without resizing it (feature 014).
+		const pane = slot.closest("[data-workspace-pane]");
+		if (pane) observer.observe(pane);
 		window.addEventListener("resize", measure);
 		window.addEventListener("scroll", measure, true);
 		return () => { observer.disconnect(); window.removeEventListener("resize", measure); window.removeEventListener("scroll", measure, true); };

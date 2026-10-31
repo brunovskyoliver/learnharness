@@ -55,6 +55,8 @@ import { AbortTurnDialog, type AbortMode } from "@/components/abort-turn-dialog"
 import { ArrowRightIcon, DumbbellIcon, PanelRightIcon, PencilIcon, WaypointsIcon } from "lucide-react";
 import { DemoPanel } from "@/components/artifacts/demo-panel";
 import { PagePaneSlot, usePagePane } from "@/components/library/page-pane-context";
+import { SessionContextSlot } from "@/components/workspace/context-slot";
+import { useWorkspace } from "@/components/workspace/workspace-context";
 import { isShownPageFailure } from "@/components/library/page-row";
 import { DemoPanelContext, sessionDemos, type DemoPanelApi } from "@/components/artifacts/demo-panel-context";
 import type { PlanBlockData } from "@/src/core";
@@ -865,9 +867,11 @@ function ChatView({
 	// A demo or a page shares the column; the most recent explicit open wins.
 	const pagePane = usePagePane();
 	const closePage = pagePane?.close;
+	// A collapsed pane opens again for a demo: the demo is what was asked for.
+	const expandPane = useWorkspace()?.expandPane;
 	const demoPanel = useMemo<DemoPanelApi>(
-		() => ({ demos, openId: demoOpenId, panelIndex: demoPanelIndex, open: (id: string, index?: number) => { requestFullTranscript(); closePage?.(); setDemoOpenId(id); setDemoPanelIndex(index); }, close: () => setDemoOpenId(null) }),
-		[demos, demoOpenId, demoPanelIndex, closePage],
+		() => ({ demos, openId: demoOpenId, panelIndex: demoPanelIndex, open: (id: string, index?: number) => { requestFullTranscript(); closePage?.(); expandPane?.(); setDemoOpenId(id); setDemoPanelIndex(index); }, close: () => setDemoOpenId(null) }),
+		[demos, demoOpenId, demoPanelIndex, closePage, expandPane],
 	);
 	const pageOpens = pagePane?.openCount ?? 0;
 	useEffect(() => { if (pageOpens > 0) setDemoOpenId(null); }, [pageOpens]);
@@ -1253,6 +1257,7 @@ function ChatView({
 				    LH wordmark band, so the header's border-b continues that
 				    band's bottom edge as one line across the app (owner, round 6). */}
 				<TopBar
+					tabs
 					shellMobileNavigation
 					// While renaming the bar is NOT a drag surface: app-region:drag
 					// would eat the mousedown, so click-to-escape (below) could
@@ -1742,6 +1747,7 @@ function ChatView({
 				<TranscriptArrivalScript storageKey={sessionStateStore?.storageKey} gradientHeight={GRADIENT_H} />
 				<DemoPanel />
 				<PagePaneSlot />
+				<SessionContextSlot messages={messages} nativeMessages={nativeMessages} turns={turns} demos={demos} onOpenDemo={demoPanel.open} scopeRef={sessionFindScopeRef} scrollContextRef={scrollContextRef} />
 
 				{/* The session-scoped focuses (chrome-melt wave, 2026-09-19): mounted
 				    INSIDE the session area — absolute inset-0 siblings of the scroller,

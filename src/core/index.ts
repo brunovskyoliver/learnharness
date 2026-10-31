@@ -64,6 +64,8 @@ export { NATIVE_SUBSCRIPTIONS } from "./contracts/subscriptions.ts";
 export type { NativeSubscriptionProviderId, NativeSubscriptionLogicalId, NativeSubscriptionStatus, NativeSubscriptionSnapshot, NativeSubscriptionScope, NativeSubscriptionControlBridge, SubscriptionInteraction, SubscriptionPrompt } from "./contracts/subscriptions.ts";
 export * from "./cost-summary.ts";
 export * from "./fuzzy.ts";
+export * from "./workspace-tabs.ts";
+export * from "./command-palette.ts";
 export * from "./demo-theme.ts";
 export type { DemoKitSpec, DemoKitPanel } from "./demo-kit.ts";
 export { DemoKitSpecSchema, validateDemoKitSpec } from "./demo-kit.ts";

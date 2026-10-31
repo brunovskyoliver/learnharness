@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode, type Ref } from "react";
 import { cn } from "@/lib/utils";
+import { useWorkspace } from "@/components/workspace/workspace-context";
 
 const WIDTH_KEY = "lh-demo-panel-width";
 const DEFAULT_WIDTH = 480;
@@ -27,6 +28,9 @@ export function WorkspacePane({ label, resizeLabel, testId, className, rootRef, 
 	onKeyDown?: React.KeyboardEventHandler<HTMLElement>;
 	children: (dragging: boolean) => ReactNode;
 }) {
+	const workspace = useWorkspace();
+	// Collapse keeps everything mounted: a page's editor, a demo's live iframe.
+	const collapsed = Boolean(workspace?.paneCollapsed) && testId !== "context-pane";
 	const own = useRef<HTMLElement | null>(null);
 	const [width, setWidth] = useState(DEFAULT_WIDTH);
 	const [dragging, setDragging] = useState(false);
@@ -85,6 +89,8 @@ export function WorkspacePane({ label, resizeLabel, testId, className, rootRef, 
 			}}
 			aria-label={label}
 			data-testid={testId}
+			data-workspace-pane=""
+			data-pane-collapsed={collapsed || undefined}
 			onKeyDownCapture={onKeyDownCapture}
 			onKeyDown={onKeyDown}
 			style={{ "--lh-demo-w": `${clampWidth(width, typeof window === "undefined" ? 1440 : area())}px` } as React.CSSProperties}
@@ -102,7 +108,8 @@ export function WorkspacePane({ label, resizeLabel, testId, className, rootRef, 
 				data-dragging={dragging || undefined}
 				className="lh-pane-divider absolute -left-1.5 top-0 z-10 hidden h-full w-3 cursor-col-resize outline-none md:block"
 			/>
-			{children(dragging)}
+			{/* Its width is the pane's own even while collapsed, so a demo keeps its size off screen. */}
+			<div className="lh-pane-inner flex min-h-0 w-full flex-1 flex-col">{children(dragging)}</div>
 		</aside>
 	);
 }

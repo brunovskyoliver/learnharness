@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { CheckSquareIcon, FilePlusIcon, FolderPlusIcon, LayoutGridIcon, ListIcon, SearchIcon, UploadIcon, XIcon } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
+import { LibraryContextSlot } from "@/components/workspace/context-slot";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -426,7 +427,7 @@ export function LibraryView() {
 				enqueue([...event.dataTransfer.files]);
 			}}
 		>
-			<TopBar />
+			<TopBar tabs />
 			<div data-testid="library-scroll" className="min-h-0 flex-1 overflow-y-auto">
 				<div className="mx-auto flex w-full max-w-[52rem] flex-col gap-4 px-4 pb-12 pt-3 sm:pt-11">
 					<div onDragOver={(event) => { if (trail.length > 0 && event.dataTransfer.types.includes(DRAG_TYPE)) { event.preventDefault(); setOverTop(true); } }} onDragLeave={() => setOverTop(false)} onDrop={(event) => { setOverTop(false); if (event.dataTransfer.types.includes(DRAG_TYPE)) { event.preventDefault(); void dropOn(trail.at(-2)?.id ?? null, event); } }} className={overTop ? "rounded-md bg-accent" : undefined}>
@@ -679,6 +680,7 @@ export function LibraryView() {
 			</Dialog>
 		</div>
 		<PagePaneSlot />
+		<LibraryContextSlot items={items} folders={folders} folderId={folderId} recentIds={recentIds} failed={loadFailed} />
 		</div>
 	);
 }
