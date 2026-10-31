@@ -140,7 +140,8 @@ async function checkWidth(width) {
 	await assertLayout("list");
 	await shot(page, "list");
 	if (mobile) {
-		for (const label of ["Rename notes.md", "Delete notes.md"]) {
+		// Rename is in the More menu below 640px (feature 013).
+		for (const label of ["More actions for notes.md", "Delete notes.md"]) {
 			const box = await page.$eval(`[aria-label="${label}"]`, (el) => el.getBoundingClientRect().toJSON());
 			assert.ok(box.width >= 44 && box.height >= 44, `${width}px ${label} is at least 44px: ${JSON.stringify(box)}`);
 		}
@@ -179,7 +180,13 @@ async function checkWidth(width) {
 	await page.waitForFunction(() => document.querySelectorAll('[data-testid="library-row"]').length === 3);
 
 	// Rename moves the file; a taken name is refused in place.
-	await page.click('[aria-label="Rename notes (2).md"]');
+	if (width < 640) {
+		await page.click('[aria-label="More actions for notes (2).md"]');
+		await page.waitForSelector("[data-lh-menu] [role=menuitem]");
+		await page.evaluate(() => [...document.querySelectorAll("[data-lh-menu] [role=menuitem]")].find((el) => el.textContent === "Rename").click());
+	} else {
+		await page.click('[aria-label="Rename notes (2).md"]');
+	}
 	await page.waitForSelector('[data-testid="library-rename-input"]', { visible: true });
 	await page.keyboard.type("notes.md");
 	await page.keyboard.press("Enter");
