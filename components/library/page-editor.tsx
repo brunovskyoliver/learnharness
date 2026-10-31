@@ -4,7 +4,7 @@ import { NodeSelection } from "@tiptap/pm/state";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import type { LibraryItem } from "@/src/core";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
-import { createSourceLinks, findBlockHolding, createTutorHighlights, insertFormula, PagePlaceholder, pageStats, runSlashBlock, sourceLinkAt, sourceLinksKey, tutorHighlightsKey, wikiLinkBeside, type PageStats, type TutorHighlights } from "./page-editor-extras.ts";
+import { createJumpMark, createSourceLinks, findBlockHolding, jumpMarkKey, createTutorHighlights, insertFormula, PagePlaceholder, pageStats, runSlashBlock, sourceLinkAt, sourceLinksKey, tutorHighlightsKey, wikiLinkBeside, type PageStats, type TutorHighlights } from "./page-editor-extras.ts";
 import { isWikiTarget, wikiQuery } from "@/src/core";
 import { matchMentions } from "@/src/core";
 import type { WikiBridge } from "./page-note-views.ts";
@@ -110,7 +110,7 @@ export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, 
 		...pageExtensions({ onSave: () => { emit(); saveRef.current?.(); }, wiki: wikiRef.current }),
 		PagePlaceholder,
 		createTutorHighlights(nodeJsonKey),
-		createSourceLinks(),
+		createSourceLinks(), createJumpMark(),
 	], [emit]);
 	const host = useRef<HTMLDivElement>(null);
 	const [scrollHost, setScrollHost] = useState<HTMLDivElement | null>(null);
@@ -358,11 +358,11 @@ export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, 
 			if (!current || current.isDestroyed) return false;
 			const pos = findBlockHolding(current.state.doc, quote, terms);
 			if (pos === null) return false;
-			const dom = current.view.nodeDOM(pos) as HTMLElement | null;
-			dom?.scrollIntoView({ block: "center" });
-			dom?.classList.add("lh-jump-flash");
-			dom?.setAttribute("data-page-jump", "");
-			window.setTimeout(() => { dom?.classList.remove("lh-jump-flash"); dom?.removeAttribute("data-page-jump"); }, 2400);
+			current.view.dispatch(current.state.tr.setMeta(jumpMarkKey, pos).setMeta("addToHistory", false));
+			(current.view.nodeDOM(pos) as HTMLElement | null)?.scrollIntoView({ block: "center" });
+			window.setTimeout(() => {
+				if (!current.isDestroyed) current.view.dispatch(current.state.tr.setMeta(jumpMarkKey, null).setMeta("addToHistory", false));
+			}, 2400);
 			return true;
 		},
 		jumpTo: (pos: number) => {

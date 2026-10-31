@@ -420,8 +420,12 @@ export function LibraryView() {
 	// the URL, so a reload doesn't jump again. A missing document says so.
 	const citeHref = params.get("item") ? `/library?${params.toString()}` : null;
 	const [citeMissing, setCiteMissing] = useState(false);
+	const citeHandled = useRef<string | null>(null);
 	useEffect(() => {
-		if (!citeHref || items === null) return;
+		if (!citeHref) { citeHandled.current = null; return; }
+		// Once per address: opening changes the pane, which is a dependency here.
+		if (items === null || citeHandled.current === citeHref) return;
+		citeHandled.current = citeHref;
 		const citation = parseCitationHref(citeHref);
 		if (!citation) return;
 		const item = items.find((entry) => entry.id === citation.itemId);

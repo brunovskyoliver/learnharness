@@ -231,6 +231,34 @@ export function createSourceLinks() {
 	});
 }
 
+export const jumpMarkKey = new PluginKey<DecorationSet>("jumpMark");
+
+/** The block a search hit landed on, marked for a moment (feature 019). A
+ *  decoration, so it is never text and never an edit. */
+export function createJumpMark() {
+	return Extension.create({
+		name: "jumpMark",
+		addProseMirrorPlugins() {
+			return [new Plugin({
+				key: jumpMarkKey,
+				state: {
+					init: () => DecorationSet.empty,
+					apply: (tr, value, _old, state) => {
+						const pos = tr.getMeta(jumpMarkKey) as number | null | undefined;
+						if (pos === null) return DecorationSet.empty;
+						if (typeof pos === "number") {
+							const node = state.doc.nodeAt(pos);
+							return node ? DecorationSet.create(state.doc, [Decoration.node(pos, pos + node.nodeSize, { class: "lh-jump-flash", "data-page-jump": "" })]) : value;
+						}
+						return value.map(tr.mapping, tr.doc);
+					},
+				},
+				props: { decorations: (state) => jumpMarkKey.getState(state) ?? null },
+			})];
+		},
+	});
+}
+
 /** The first text block holding the quote, or failing that the first term. Compares
  *  folded, so case, accents and spacing don't matter. Null when neither is there. */
 export function findBlockHolding(doc: import("@tiptap/pm/model").Node, quote: string | undefined, terms: readonly string[] | undefined): number | null {

@@ -422,6 +422,7 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 		return () => { cancelAnimationFrame(frame); document.removeEventListener("selectionchange", read); };
 	}, []);
 	const clearSelection = () => {
+		pressingBubble.current = false;
 		setSelected(null);
 		window.getSelection()?.removeAllRanges();
 	};
@@ -519,7 +520,17 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 		);
 	}
 	const blocked = chat?.sendBlock ? TUTOR_BLOCKED_TEXT[chat.sendBlock] : null;
-	const bubbleTop = selected ? (window.matchMedia("(pointer: coarse)").matches ? selected.rect.bottom + 8 : selected.rect.top - 8) : 0;
+	// Above the selection, or below on touch, where the system's own menu sits above;
+	// on the other side when there is no room, and always on screen.
+	const bubbleHeight = bubble.current?.offsetHeight ?? 150;
+	const bubbleTop = (() => {
+		if (!selected) return 0;
+		const above = selected.rect.top - bubbleHeight - 8;
+		const below = selected.rect.bottom + 8;
+		const coarse = window.matchMedia("(pointer: coarse)").matches;
+		const preferred = coarse ? (below + bubbleHeight > window.innerHeight ? above : below) : (above < 8 ? below : above);
+		return Math.max(8, Math.min(window.innerHeight - bubbleHeight - 8, preferred));
+	})();
 	return (
 		<div
 			className="flex min-h-0 flex-1 flex-col"
@@ -625,10 +636,16 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 					data-testid="pdf-bubble"
 					style={{
 						left: `clamp(0.5rem, ${selected.rect.left}px, calc(100vw - min(22rem, 100vw - 1rem) - 0.5rem))`,
-						top: Math.max(8, Math.min(window.innerHeight - 180, bubbleTop)),
-						transform: window.matchMedia("(pointer: coarse)").matches ? undefined : "translateY(-100%)",
+						top: bubbleTop,
 					}}
-					onPointerDownCapture={() => { pressingBubble.current = true; window.setTimeout(() => { pressingBubble.current = false; }, 600); }}
+					onPointerDownCapture={() => {
+						// A tap can drop the selection before its click lands. Look again afterwards.
+						pressingBubble.current = true;
+						window.setTimeout(() => {
+							pressingBubble.current = false;
+							if (scroller.current) setSelected(readSelection(scroller.current));
+						}, 500);
+					}}
 					onMouseDown={(event) => event.preventDefault()}
 				>
 					<button type="button" data-testid="pdf-highlight" onClick={() => void saveHighlight(selected.anchor).then((ok) => { if (ok) clearSelection(); })}>Highlight</button>
