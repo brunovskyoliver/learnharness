@@ -871,15 +871,17 @@ async function checkPages(width) {
 		return el.getAttribute("aria-label");
 	}), `Page Maths ${tag}`);
 
-	// A math edit through its dialog changes that TeX and leaves every other byte.
+	// A math edit in place, between its delimiters, changes that TeX and leaves every other byte.
 	// Dispatched on the formula: at 320 px it can wrap, and its box's centre is then outside the glyphs.
 	await page.$eval(`${editor} p .tiptap-mathematics-render`, (el) => el.click());
 	await page.waitForSelector('[data-testid="page-math-source"]');
 	assert.equal(await page.$eval('[data-testid="page-math-source"]', (el) => el.value), "f(x) = x^2");
-	await shot(page, "math-dialog");
+	assert.equal(await page.$eval('[data-testid="page-math-source"]', (el) => el.parentElement.firstChild.textContent), "$");
+	assert.ok(!(await page.$('[role="dialog"]')), "no pop-up");
+	await shot(page, "math-source");
 	await page.$eval('[data-testid="page-math-source"]', (el) => el.select());
 	await page.keyboard.type("g(y)");
-	await page.click('[data-testid="page-math-save"]');
+	await page.keyboard.press("Enter");
 	await page.waitForFunction(() => !document.querySelector('[data-testid="page-math-source"]'));
 	await pause(300);
 	await saveKeys(page);

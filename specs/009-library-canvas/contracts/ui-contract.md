@@ -96,3 +96,8 @@ Math-check skeleton on the reading edge, no amber:
 | 14 | Stale comment | Rewritten: scrollbars are hidden globally, the lock still stops scrolling | `settings-dialog-content.tsx:132,306` |
 
 Also removed: the `files` section, `FolderIcon`, the `hosted` gating in `SECTIONS.filter` where only Files used it. `SettingsDialogProvider` keeps `hosted` only if something else reads it.
+
+## Owner changes after review (2026-10-31)
+
+- Formulas edit in place as source between their delimiters (`$$`, `$`), with no dialog. Click or Enter opens. Leaving the field applies; inline Enter or Ctrl/Cmd+Enter applies; Escape restores; clearing the source and leaving removes the formula.
+- Left and right sidebars have a full-height divider with a grip.

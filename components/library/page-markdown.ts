@@ -8,6 +8,7 @@
  *  all writes back what was stored. */
 import { Extension, getSchema, Node as TiptapNode, type AnyExtension, type JSONContent } from "@tiptap/core";
 import { BlockMath, InlineMath } from "@tiptap/extension-mathematics";
+import { mathNodeView } from "./page-math-view.ts";
 import { TaskItem, TaskList } from "@tiptap/extension-list";
 import { TableKit } from "@tiptap/extension-table";
 import { MarkdownManager } from "@tiptap/markdown";
@@ -75,12 +76,17 @@ function tokenizeInlineMath(src: string): Token | undefined {
 	return undefined;
 }
 
+interface PageMathOptions { onSave?: () => void; onClick?: undefined; katexOptions?: undefined }
+
 const mathAttrs = (open: string, close: string) => ({
 	open: { default: open, rendered: false },
 	close: { default: close, rendered: false },
 });
 
-const PageInlineMath = InlineMath.extend({
+const PageInlineMath = InlineMath.extend<PageMathOptions>({
+	addNodeView() {
+		return ({ node, view, getPos }) => mathNodeView({ node, view, getPos, kind: "inline", katexOptions: { throwOnError: false }, onSave: () => this.options.onSave?.() });
+	},
 	addAttributes() {
 		return { ...this.parent?.(), ...mathAttrs("$", "$") };
 	},
@@ -97,7 +103,10 @@ const PageInlineMath = InlineMath.extend({
 	},
 });
 
-const PageBlockMath = BlockMath.extend({
+const PageBlockMath = BlockMath.extend<PageMathOptions>({
+	addNodeView() {
+		return ({ node, view, getPos }) => mathNodeView({ node, view, getPos, kind: "block", katexOptions: { throwOnError: false, displayMode: true }, onSave: () => this.options.onSave?.() });
+	},
 	addAttributes() {
 		return { ...this.parent?.(), ...mathAttrs("$$\n", "\n$$") };
 	},
@@ -212,7 +221,7 @@ function fenceFor(text: string): string {
 }
 
 /** Shared by Node (tests) and the browser editor, so they can't disagree. */
-export function pageExtensions(mathOptions?: { onInline?: (pos: number) => void; onBlock?: (pos: number) => void }): AnyExtension[] {
+export function pageExtensions(mathOptions?: { onSave?: () => void }): AnyExtension[] {
 	return [
 		StarterKit.configure({
 			underline: false,
@@ -245,8 +254,8 @@ export function pageExtensions(mathOptions?: { onInline?: (pos: number) => void;
 		TableKit,
 		TaskList,
 		TaskItem.configure({ nested: true }),
-		PageInlineMath.configure({ onClick: mathOptions?.onInline ? (_n, pos) => mathOptions.onInline!(pos) : undefined, katexOptions: { throwOnError: false } }),
-		PageBlockMath.configure({ onClick: mathOptions?.onBlock ? (_n, pos) => mathOptions.onBlock!(pos) : undefined, katexOptions: { throwOnError: false, displayMode: true } }),
+		PageInlineMath.configure({ onSave: mathOptions?.onSave }),
+		PageBlockMath.configure({ onSave: mathOptions?.onSave }),
 		RawBlock,
 		RawInline,
 		PageImage,

@@ -29,6 +29,8 @@ Updated: 2026-10-31
 - 2026-10-30 T088: no Library sample was added to scripts/seed-review.mjs, because the task leaves that to the owner.
 - 2026-10-31 T096 choices (reversible, logged per constitution I), for owner review: with no match no row is active, so Enter still does the field's normal action and an arrow must reach "New page"; otherwise `@something` + Enter would make a page instead of sending. The row also shows beside "Loading your Library…" and the failed line. A refusal reads "New page · {reason}" under the field and clears on the next edit; the list reopens so Enter retries. If the draft changed so the token is gone while creating, the reference goes at the end of the text. Where no pane exists, the page opens on the next screen with one (plan default 4). `components/library/page-pane-api.ts` is new: the menu needs the pane's context without pulling the pane into its chunk.
 
+- 2026-10-31 Owner review: math edits in place as $$ source, no pop-up; sidebars get a divider and grip like T3 Code. Constitution 1.1.2 and DESIGN.md updated to allow the dividers.
+
 ## Log
 - 2026-10-30 audit: ~/agent-runs/2026-10-30-app-audit/audit.md
 - 2026-10-30 specify: spec.md written on branch feat/009-library-canvas.

@@ -99,7 +99,8 @@ export function WorkspacePane({ label, resizeLabel, testId, className, rootRef, 
 				onPointerDown={onPointerDown}
 				onKeyDown={onHandleKeyDown}
 				onDoubleClick={() => commit(DEFAULT_WIDTH)}
-				className={`absolute -left-1.5 top-0 z-10 hidden h-full w-3 cursor-col-resize outline-none md:block ${dragging ? "bg-accent" : "hover:bg-accent focus-visible:bg-accent"}`}
+				data-dragging={dragging || undefined}
+				className="lh-pane-divider absolute -left-1.5 top-0 z-10 hidden h-full w-3 cursor-col-resize outline-none md:block"
 			/>
 			{children(dragging)}
 		</aside>

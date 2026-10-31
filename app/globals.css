@@ -1239,6 +1239,13 @@ body {
 .lh-page-editor .tiptap-mathematics-render--editable { cursor: pointer; border-radius: 6px; }
 .lh-page-editor .tiptap-mathematics-render--editable:hover, .lh-page-editor .ProseMirror-selectednode.tiptap-mathematics-render { background: var(--accent); }
 .lh-page-editor .ProseMirror-selectednode { outline: 1px solid var(--ring); outline-offset: 1px; }
+.lh-page-editor .lh-math-source { border-radius: 6px; background: var(--card); font-family: var(--font-mono, monospace); font-size: 0.8125rem; line-height: 1.5; outline: 1px solid var(--ring); }
+.lh-page-editor div.lh-math-source { display: flex; flex-direction: column; padding: 0.5rem 0.75rem; }
+.lh-page-editor span.lh-math-source { display: inline-flex; max-width: 100%; padding: 0 0.25rem; vertical-align: baseline; }
+.lh-math-delimiter { color: var(--muted-foreground); user-select: none; }
+.lh-math-input { field-sizing: content; min-width: 2ch; max-width: 100%; resize: none; overflow: hidden; border: 0; background: transparent; color: var(--foreground); font: inherit; outline: none; }
+div.lh-math-source > .lh-math-input { width: 100%; }
+@media (pointer: coarse) { .lh-page-editor .lh-math-source { font-size: 1rem; } }
 .lh-page-editor .inline-math-error, .lh-page-editor .block-math-error { color: var(--destructive); font-family: var(--font-mono, monospace); }
 .lh-page-editor [data-type="block-math"] { overflow-x: auto; padding: 0.25rem 0; }
 .lh-page-editor table { border-collapse: collapse; }
@@ -1320,3 +1327,10 @@ body {
 	color: var(--foreground);
 	--ring: var(--foreground);
 }
+
+/* The divider between a sidebar and the content, with its grip (owner, 2026-10-31). */
+.lh-pane-divider::before { content: ""; position: absolute; inset-block: 0; inset-inline-start: var(--lh-divider-at, 50%); width: 1px; background: rgb(255 252 240 / 14%); transition: background-color 160ms; }
+.lh-pane-divider::after { content: ""; position: absolute; top: 50%; inset-inline-start: var(--lh-divider-at, 50%); width: 9px; height: 16px; transform: translate(-4px, -50%); background: var(--background) repeating-linear-gradient(to bottom, var(--muted-foreground) 0 1px, transparent 1px 5px) center / 7px 16px no-repeat; transition: background-color 160ms; }
+.lh-pane-divider:hover::before, .lh-pane-divider[data-dragging]::before { background: var(--muted-foreground); }
+.lh-pane-divider:focus-visible::before { background: var(--ring); width: 2px; }
+@media (prefers-reduced-motion: reduce) { .lh-pane-divider::before, .lh-pane-divider::after { transition: none; } }
