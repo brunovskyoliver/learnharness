@@ -95,7 +95,9 @@ export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, 
 	}, [extensions]);
 	editorRef.current = editor;
 
-	useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+	// Unmounting (History, a reload from outside) hands over what is still waiting;
+	// TipTap destroys the editor a tick later, so it can still be read here.
+	useEffect(() => () => { if (timer.current) emit(); }, [emit]);
 	useImperativeHandle(handle, () => ({
 		flush: () => { if (timer.current) emit(); },
 		focus: () => { editorRef.current?.commands.focus(); },

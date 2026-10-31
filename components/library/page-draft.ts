@@ -30,6 +30,8 @@ export interface PageDraftState {
 	agentUpdate: number | null;
 	/** Bumps whenever the text was replaced from outside, so the editor reloads. */
 	loadKey: number;
+	/** The page left the Library while open. */
+	deleted: boolean;
 }
 
 export interface PageBackup { text: string; base: number; rev: number; at: number }
@@ -44,15 +46,23 @@ export type PageDraftAction =
 	| { type: "stale"; head: PageHead; draft: PageDraftView | null }
 	| { type: "remote"; page: PageState; author?: "learner" | "agent"; version?: number }
 	| { type: "resolved"; page: PageState; replaceText: boolean }
-	| { type: "agent-update-seen" };
+	| { type: "agent-update-seen" }
+	| { type: "deleted" };
 
 export const initialPageDraft: PageDraftState = {
-	loaded: false, text: "", base: 0, baseText: "", rev: 0, acked: "", status: "saved", conflict: null, agentUpdate: null, loadKey: 0,
+	loaded: false, text: "", base: 0, baseText: "", rev: 0, acked: "", status: "saved", conflict: null, agentUpdate: null, loadKey: 0, deleted: false,
 };
 
 export const isDirty = (state: PageDraftState) => state.loaded && state.text !== state.baseText;
 /** Text the server does not hold yet. */
 export const isUnsent = (state: PageDraftState) => state.loaded && state.text !== state.acked;
+
+/** The server moved on to exactly the text this tab last sent (the agent's
+ *  pre-save made it a version): follow it and keep this tab's newer typing. */
+function rebase(state: PageDraftState, head: PageHead, draft: PageDraftView | null): PageDraftState {
+	const acked = draft?.content ?? head.content;
+	return { ...state, base: head.n, baseText: head.content, rev: draft?.rev ?? 0, acked, status: state.text === acked ? (state.text === head.content ? "saved" : "draft-saved") : "saving", conflict: null };
+}
 
 function fromServer(state: PageDraftState, page: PageState): PageDraftState {
 	const text = page.draft?.content ?? page.head.content;
@@ -111,6 +121,7 @@ export function pageDraftReducer(state: PageDraftState, action: PageDraftAction)
 		case "stale":
 			// Identical text is no conflict: another tab or the agent's pre-save got it there.
 			if (action.head.content === state.text) return { ...state, base: action.head.n, baseText: state.text, rev: action.draft?.rev ?? 0, acked: action.draft?.content ?? state.text, status: "saved", conflict: null };
+			if (action.head.content === state.acked && !action.draft) return rebase(state, action.head, null);
 			return { ...state, conflict: { head: action.head, draft: action.draft }, status: "failed" };
 		case "remote": {
 			const { page } = action;
@@ -119,6 +130,7 @@ export function pageDraftReducer(state: PageDraftState, action: PageDraftAction)
 			if (page.head.content === state.text) {
 				return { ...state, base: page.head.n, baseText: state.text, rev: page.draft?.rev ?? 0, acked: page.draft?.content ?? state.text, status: "saved", conflict: null };
 			}
+			if (!sameBase && page.head.content === state.acked && !page.draft) return rebase(state, page.head, null);
 			if (isDirty(state)) {
 				// The server's draft moving under a head we agree on only matters at the next save.
 				return sameBase ? state : { ...state, conflict: { head: page.head, draft: page.draft }, status: state.status };
@@ -136,14 +148,19 @@ export function pageDraftReducer(state: PageDraftState, action: PageDraftAction)
 		}
 		case "agent-update-seen":
 			return { ...state, agentUpdate: null };
+		case "deleted":
+			return { ...state, deleted: true, conflict: null, agentUpdate: null };
 	}
 }
+
+/** A write answered 404: the page is no longer in the Library. */
+export const PAGE_MISSING = "missing" as const;
 
 /** What the controller needs from the page routes. */
 export interface PageApi {
 	read(id: string): Promise<PageState | null>;
-	putDraft(id: string, input: { base: number; rev: number; content: string }): Promise<{ rev: number } | { stale: { head: PageHead; draft: PageDraftView | null } } | null>;
-	commit(id: string, input: { base: number; rev: number; content: string; cause?: string }): Promise<{ version: PageVersion; created: boolean; otherVersion?: number } | { stale: { head: PageHead; draft: PageDraftView | null } } | null>;
+	putDraft(id: string, input: { base: number; rev: number; content: string }): Promise<{ rev: number } | { stale: { head: PageHead; draft: PageDraftView | null } } | typeof PAGE_MISSING | null>;
+	commit(id: string, input: { base: number; rev: number; content: string; cause?: string }): Promise<{ version: PageVersion; created: boolean; otherVersion?: number } | { stale: { head: PageHead; draft: PageDraftView | null } } | typeof PAGE_MISSING | null>;
 	restore(id: string, n: number): Promise<{ version: PageVersion } | null>;
 }
 
@@ -163,7 +180,7 @@ export interface PageDraftOptions {
 	onLoadFailed?: () => void;
 }
 
-const isStale = <T extends object>(r: T | { stale: unknown } | null): r is { stale: { head: PageHead; draft: PageDraftView | null } } => !!r && "stale" in r;
+const isStale = <T extends object>(r: T | { stale: unknown } | typeof PAGE_MISSING | null): r is { stale: { head: PageHead; draft: PageDraftView | null } } => !!r && typeof r === "object" && "stale" in r;
 
 /** One open page in one tab. */
 export class PageDraftController {
@@ -218,7 +235,11 @@ export class PageDraftController {
 	private async loadOnce(): Promise<boolean> {
 		try {
 			const page = await this.options.api.read(this.options.id);
-			if (!page) { this.options.onLoadFailed?.(); return false; }
+			if (!page) {
+				if (this.state.loaded) this.dispatch({ type: "deleted" });
+				else this.options.onLoadFailed?.();
+				return false;
+			}
 			this.dispatch({ type: "loaded", page, backup: this.options.backup.read() });
 			this.syncBackup();
 			if (isUnsent(this.state) && !this.state.conflict) this.scheduleDraft();
@@ -230,7 +251,7 @@ export class PageDraftController {
 	}
 
 	edit(text: string) {
-		if (!this.state.loaded || text === this.state.text) return;
+		if (!this.state.loaded || this.state.deleted || text === this.state.text) return;
 		this.dispatch({ type: "edited", text });
 		this.scheduleBackup();
 		if (!this.state.conflict) this.scheduleDraft();
@@ -251,6 +272,8 @@ export class PageDraftController {
 	syncBackup() {
 		// Before the first load this tab knows nothing, and a backup from before a reload is still needed.
 		if (!this.state.loaded) return;
+		// A deleted page's text stays on screen to copy; a backup for it could never load.
+		if (this.state.deleted) { this.options.backup.clear(); return; }
 		if (isUnsent(this.state) || this.state.conflict) {
 			const { text, base, rev } = this.state;
 			this.options.backup.write({ text, base, rev, at: Date.now() });
@@ -261,19 +284,20 @@ export class PageDraftController {
 
 	saveDraft(): Promise<void> {
 		return this.enqueue(async () => {
-			const { text, base, rev, conflict } = this.state;
-			if (conflict || text === this.state.acked) return;
+			const { text, base, rev, conflict, deleted } = this.state;
+			if (conflict || deleted || text === this.state.acked) return;
 			this.syncBackup();
 			try {
 				const result = await this.options.api.putDraft(this.options.id, { base, rev, content: text });
-				if (isStale(result)) this.dispatch({ type: "stale", ...result.stale });
+				if (result === PAGE_MISSING) this.dispatch({ type: "deleted" });
+				else if (isStale(result)) this.dispatch({ type: "stale", ...result.stale });
 				else if (!result) this.dispatch({ type: "failed" });
 				else this.dispatch({ type: "draft-acked", text, rev: result.rev });
 			} catch {
 				this.dispatch({ type: "failed" });
 			}
 			this.syncBackup();
-			if (!this.closed && isUnsent(this.state) && this.state.status !== "failed" && !this.state.conflict) this.scheduleDraft();
+			if (!this.closed && isUnsent(this.state) && this.state.status !== "failed" && !this.state.conflict && !this.state.deleted) this.scheduleDraft();
 		});
 	}
 
@@ -282,20 +306,27 @@ export class PageDraftController {
 		if (this.draftTimer) { clearTimeout(this.draftTimer); this.draftTimer = null; }
 		return this.enqueue(async () => {
 			const { text, base, rev, conflict, baseText } = this.state;
-			if (!this.state.loaded || conflict) { this.syncBackup(); return; }
+			if (!this.state.loaded || this.state.deleted) { this.syncBackup(); return; }
+			if (conflict) {
+				// Leaving in a conflict: keep both the way Use latest does (owner, 2026-10-31).
+				if (cause === "autosave-close") await this.takeLatest();
+				else this.syncBackup();
+				return;
+			}
 			if (text === baseText && rev === 0) { this.syncBackup(); return; }
 			this.dispatch({ type: "saving" });
 			this.syncBackup();
 			try {
 				const result = await this.options.api.commit(this.options.id, { base, rev, content: text, cause });
-				if (isStale(result)) this.dispatch({ type: "stale", ...result.stale });
+				if (result === PAGE_MISSING) this.dispatch({ type: "deleted" });
+				else if (isStale(result)) this.dispatch({ type: "stale", ...result.stale });
 				else if (!result) this.dispatch({ type: "failed" });
 				else this.dispatch({ type: "version-acked", text, version: result.version.n });
 			} catch {
 				this.dispatch({ type: "failed" });
 			}
 			this.syncBackup();
-			if (!this.closed && isUnsent(this.state) && !this.state.conflict && this.state.status !== "failed") this.scheduleDraft();
+			if (!this.closed && isUnsent(this.state) && !this.state.conflict && !this.state.deleted && this.state.status !== "failed") this.scheduleDraft();
 		});
 	}
 
@@ -310,6 +341,7 @@ export class PageDraftController {
 			const { text, base } = this.state;
 			try {
 				const result = await this.options.api.commit(this.options.id, { base, rev: 0, content: text, cause: "conflict" });
+				if (result === PAGE_MISSING) return this.dispatch({ type: "deleted" });
 				const page = await this.options.api.read(this.options.id);
 				if (!result || isStale(result) || !page) return this.dispatch({ type: "failed" });
 				this.dispatch({ type: "resolved", page, replaceText: false });
@@ -323,22 +355,51 @@ export class PageDraftController {
 	/** Use latest: this text goes in as its own version first, then the newest is
 	 *  brought back on top. It is in History either way. */
 	useLatest(): Promise<void> {
+		return this.enqueue(() => this.takeLatest());
+	}
+
+	/** Use latest's work, also run by a close during a conflict. The newest is
+	 *  whatever the server holds now, not the head the conflict first showed. */
+	private async takeLatest(): Promise<void> {
+		const { text, base, conflict } = this.state;
+		if (!conflict) return;
+		try {
+			const before = await this.options.api.read(this.options.id);
+			if (!before) return this.dispatch({ type: "deleted" });
+			const result = await this.options.api.commit(this.options.id, { base, rev: 0, content: text, cause: "conflict" });
+			if (result === PAGE_MISSING) return this.dispatch({ type: "deleted" });
+			if (!result || isStale(result)) return this.dispatch({ type: "failed" });
+			if (result.created) {
+				const restored = await this.options.api.restore(this.options.id, result.otherVersion ?? before.head.n);
+				if (!restored) return this.dispatch({ type: "failed" });
+			}
+			const page = await this.options.api.read(this.options.id);
+			if (!page) return this.dispatch({ type: "deleted" });
+			this.dispatch({ type: "resolved", page, replaceText: true });
+			this.syncBackup();
+		} catch {
+			this.dispatch({ type: "failed" });
+		}
+	}
+
+	/** Bring back version `n`. The learner's text must be on the server first:
+	 *  if it isn't, nothing is restored, so a reload can't replace it. */
+	async restore(n: number): Promise<"restored" | "not-saved" | "conflict" | "failed"> {
+		await this.commit("save");
+		if (this.state.conflict) return "conflict";
+		if (this.state.deleted) return "failed";
+		if (isUnsent(this.state) || this.state.status === "failed") return "not-saved";
 		return this.enqueue(async () => {
-			const { text, base, conflict } = this.state;
-			if (!conflict) return;
 			try {
-				const result = await this.options.api.commit(this.options.id, { base, rev: 0, content: text, cause: "conflict" });
-				if (!result || isStale(result)) return this.dispatch({ type: "failed" });
-				if (result.created) {
-					const restored = await this.options.api.restore(this.options.id, result.otherVersion ?? conflict.head.n);
-					if (!restored) return this.dispatch({ type: "failed" });
-				}
+				const restored = await this.options.api.restore(this.options.id, n);
+				if (!restored) return "failed";
 				const page = await this.options.api.read(this.options.id);
-				if (!page) return this.dispatch({ type: "failed" });
+				if (!page) { this.dispatch({ type: "deleted" }); return "failed"; }
 				this.dispatch({ type: "resolved", page, replaceText: true });
 				this.syncBackup();
+				return "restored";
 			} catch {
-				this.dispatch({ type: "failed" });
+				return "failed";
 			}
 		});
 	}
@@ -353,6 +414,7 @@ export class PageDraftController {
 		try {
 			const page = await this.options.api.read(this.options.id);
 			if (page) this.dispatch({ type: "remote", page, author, version });
+			else if (this.state.loaded) this.dispatch({ type: "deleted" });
 			this.syncBackup();
 		} catch { /* the next event or resync heals it */ }
 	}
@@ -402,11 +464,13 @@ export function fetchPageApi(fetcher: typeof fetch = fetch): PageApi {
 		putDraft: async (id, input) => {
 			const r = await send(`${base(id)}/draft`, "PUT", input);
 			if (r.status === 409) return stale(r);
+			if (r.status === 404) return PAGE_MISSING;
 			return r.ok ? await r.json() as { rev: number } : null;
 		},
 		commit: async (id, input) => {
 			const r = await send(`${base(id)}/versions`, "POST", input);
 			if (r.status === 409) return stale(r);
+			if (r.status === 404) return PAGE_MISSING;
 			return r.ok ? await r.json() as { version: PageVersion; created: boolean; otherVersion?: number } : null;
 		},
 		restore: async (id, n) => {

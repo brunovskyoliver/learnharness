@@ -45,5 +45,10 @@ export function usePageDraft(id: string) {
 		void controller.remoteChanged();
 	});
 
-	return { controller, state, loadFailed, flush };
+	const retryLoad = () => {
+		setLoadFailed(false);
+		void controller.load();
+	};
+
+	return { controller, state, loadFailed, retryLoad, flush };
 }

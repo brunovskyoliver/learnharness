@@ -6,7 +6,7 @@ import { ArrowLeftIcon, HistoryIcon, XIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspacePane } from "@/components/workspace-pane";
-import { SAVE_STATE_LABEL, type PageDraftState } from "./page-draft.ts";
+import { isUnsent, SAVE_STATE_LABEL, type PageDraftState } from "./page-draft.ts";
 import type { PageEditorHandle } from "./page-editor.tsx";
 import { PageHistory } from "./page-history.tsx";
 import type { PagePaneApi, PaneItem } from "./page-pane-context.tsx";
@@ -99,6 +99,24 @@ export function ConflictLine({ onKeepMine, onUseLatest }: { onKeepMine: () => vo
 	);
 }
 
+/** The page left the Library while open: say so, and let unsaved text be copied out. */
+export function DeletedLine({ name, text }: { name: string; text: string | null }) {
+	const [copied, setCopied] = useState(false);
+	return (
+		<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-ink-2" data-testid="page-deleted">
+			<p>{name} was deleted.</p>
+			{text !== null && (
+				<button
+					type="button"
+					className="prompt-secondary"
+					data-testid="page-copy-text"
+					onClick={() => void navigator.clipboard.writeText(text).then(() => setCopied(true), () => {})}
+				>{copied ? "Copied" : "Copy text"}</button>
+			)}
+		</div>
+	);
+}
+
 function PageName({ item, pane }: { item: PaneItem; pane: PagePaneApi }) {
 	const [renaming, setRenaming] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -170,7 +188,7 @@ export function PaneHeader({ phone, name, status, actions, onClose, closeLabel }
 }
 
 function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi; phone: boolean }) {
-	const { controller, state, loadFailed, flush } = usePageDraft(item.id);
+	const { controller, state, loadFailed, retryLoad, flush } = usePageDraft(item.id);
 	const [history, setHistory] = useState(!!item.history);
 	useEffect(() => { if (item.history) setHistory(true); }, [item.history, pane.openCount]);
 	const editor = useRef<PageEditorHandle>(null);
@@ -192,13 +210,13 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 		editor.current?.flush();
 		pane.close();
 	};
-	const restore = async (n: number) => {
+	const restore = async (n: number): Promise<string | null> => {
 		editor.current?.flush();
-		await controller.commit("save");
-		if (controller.state.conflict) return;
-		await fetch(`/api/library/pages/${encodeURIComponent(item.id)}/restore`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ n }) });
-		await controller.reloadClean();
-		setHistory(false);
+		const outcome = await controller.restore(n);
+		if (outcome === "restored") { setHistory(false); return null; }
+		if (outcome === "not-saved") return `Your text could not be saved, so version ${n} was not restored.`;
+		if (outcome === "failed") return `Version ${n} could not be restored. Your text is kept.`;
+		return null;
 	};
 
 	return (
@@ -230,14 +248,15 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 						closeLabel={`Close ${item.name}`}
 						onClose={close}
 						name={<PageName item={item} pane={pane} />}
-						status={state.loaded ? <SaveState state={state} canRetry={!state.conflict} onRetry={() => void controller.retry()} /> : undefined}
-						actions={(
+						status={state.loaded && !state.deleted ? <SaveState state={state} canRetry={!state.conflict} onRetry={() => void controller.retry()} /> : undefined}
+						actions={state.deleted ? undefined : (
 							<Button type="button" variant="ghost" aria-pressed={history} className="shrink-0 pointer-coarse:h-11" onClick={() => setHistory((open) => !open)} data-testid="page-history-toggle">
 								<HistoryIcon className="ui-icon" aria-hidden="true" />
 								History
 							</Button>
 						)}
 					/>
+					{state.deleted && <DeletedLine name={item.name} text={isUnsent(state) ? state.text : null} />}
 					{state.conflict && <ConflictLine onKeepMine={() => void controller.keepMine()} onUseLatest={() => void controller.useLatest()} />}
 					<p role="status" aria-live="polite" className="px-3 text-sm text-ink-2 empty:hidden" data-testid="page-agent-update">
 						{state.agentUpdate !== null ? `Updated by the agent · version ${state.agentUpdate}` : ""}
@@ -246,16 +265,17 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 						{loadFailed ? (
 							<div role="status" className="flex flex-wrap items-center gap-2 px-3 text-sm text-ink-2">
 								<p>{item.name} could not be loaded.</p>
-								<button type="button" className="prompt-secondary" onClick={() => void controller.load()}>Try again</button>
+								<button type="button" className="prompt-secondary" onClick={retryLoad}>Try again</button>
 							</div>
 						) : !state.loaded ? (
 							<EditorLoading />
-						) : history ? (
+						) : history && !state.deleted ? (
 							<PageHistory id={item.id} onRestore={restore} canRestore={!state.conflict} />
 						) : (
 							<PageEditor
-								key={state.loadKey}
+								key={`${state.loadKey}${state.deleted ? "-deleted" : ""}`}
 								handle={editor}
+								readOnly={state.deleted}
 								value={state.text}
 								ariaLabel={`Page ${item.name}`}
 								onChange={(text) => controller.edit(text)}

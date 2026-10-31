@@ -515,7 +515,14 @@ async function restorePageVersion(id: string, n: number): Promise<{ version: Pag
 			versions = [...versions, saved.version];
 		}
 		await clearDraft(id);
-		const { version } = await appendVersion(catalog, item, versions, await readVersionText(id, n), {
+		const text = await readVersionText(id, n);
+		const latest = versions.at(-1)!;
+		// Restoring the text that is already newest adds nothing (owner, 2026-10-31).
+		if (latest.n === n || text === await readVersionText(id, latest.n)) {
+			if (latest.n !== head.n) changed(id, latest);
+			return { version: latest };
+		}
+		const { version } = await appendVersion(catalog, item, versions, text, {
 			author: "learner", base: versions.at(-1)!.n, cause: "restore", restoredFrom: n,
 		});
 		changed(id, version);

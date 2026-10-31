@@ -1,0 +1,27 @@
+# Fix: page-editing-fixes
+
+- components/library/page-draft.ts:
+  - `rebase()`: a 409 or event whose head equals the text this tab last sent is followed quietly, and the tab keeps saving its newer typing.
+  - `restore(n)` returns restored, not-saved, conflict or failed.
+  - `takeLatest()` restores the version the server reports, or the head read just before the conflict commit. Use latest and a close during a conflict both use it.
+  - A `deleted` state set by a 404 on read, draft or commit. It stops writes, clears the backup and keeps the text for copying.
+- components/library/page-pane.tsx:
+  - Restore through the controller, with the approved messages.
+  - `DeletedLine` with Copy text.
+  - Read-only editor once deleted; Try again clears the load error.
+- components/library/use-page-draft.ts: `retryLoad`.
+- components/library/page-editor.tsx: unmount hands over pending text (guard).
+- components/library/page-history.tsx:
+  - Paged list with "Show earlier versions".
+  - Preview failure inline, with the list kept.
+  - Restore error shown under the button.
+- components/library/page-math-view.ts: `fitMathSource` sets rows, and the inline width, from the text.
+- src/server/library.ts: `pageVersionsResponse` takes `?before=`, returns 50 and `more`. The route passes the request.
+- src/store/library.ts: restoring the newest text adds no version.
+- src/agent/tools/read.ts: `fitsOneRead`.
+- src/agent/tools/pages.ts: refuses whole `content` on a page longer than one read.
+- src/agent/prompts/teacher/47-pages.md: one line.
+- app/globals.css: divider uses `var(--input)`.
+- Tests:
+  - tests/page-editing-fixes.test.ts (15).
+  - scripts/check-library-ui.mjs `checkPageFixes` (`LH_UI_FIXES_ONLY=1`; also runs with the pages run and the full run).

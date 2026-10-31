@@ -1329,7 +1329,7 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 }
 
 /* The divider between a sidebar and the content, with its grip (owner, 2026-10-31). */
-.lh-pane-divider::before { content: ""; position: absolute; inset-block: 0; inset-inline-start: var(--lh-divider-at, 50%); width: 1px; background: rgb(255 252 240 / 14%); transition: background-color 160ms; }
+.lh-pane-divider::before { content: ""; position: absolute; inset-block: 0; inset-inline-start: var(--lh-divider-at, 50%); width: 1px; background: var(--input); transition: background-color 160ms; }
 .lh-pane-divider::after { content: ""; position: absolute; top: 50%; inset-inline-start: var(--lh-divider-at, 50%); width: 9px; height: 16px; transform: translate(-4px, -50%); background: var(--background) repeating-linear-gradient(to bottom, var(--muted-foreground) 0 1px, transparent 1px 5px) center / 7px 16px no-repeat; transition: background-color 160ms; }
 .lh-pane-divider:hover::before, .lh-pane-divider[data-dragging]::before { background: var(--muted-foreground); }
 .lh-pane-divider:focus-visible::before { background: var(--ring); width: 2px; }

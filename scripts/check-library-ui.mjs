@@ -6,6 +6,7 @@
  * intercepted, and "New page" in every @ field (T096). Optional: LH_UI_SCREENSHOT_DIR saves evidence, LH_UI_PORT picks
  * the port, LH_UI_MENTIONS_ONLY=1 runs only the @ part, LH_UI_PAGES_ONLY=1 only
  * the page pane (real editor corpus, reload, two tabs, restore, phone layer).
+ * LH_UI_FIXES_ONLY=1 only the page-editing-fixes checks.
  * LH_UI_SETTINGS_ONLY=1 runs only Settings: search, row jump, Escape layers,
  * deep link, persistence after reload, failed load and failed save.
  * Set TMPDIR under the home folder for a snap Chromium, whose /tmp is private.
@@ -64,6 +65,7 @@ const MATH_PAGE = "# Title with $x^2$\n\nLet $f(x) = x^2$ and **Gradient descent
 
 const mentionsOnly = process.env.LH_UI_MENTIONS_ONLY === "1";
 const pagesOnly = process.env.LH_UI_PAGES_ONLY === "1";
+const fixesOnly = process.env.LH_UI_FIXES_ONLY === "1";
 const settingsOnly = process.env.LH_UI_SETTINGS_ONLY === "1";
 let server;
 let browser;
@@ -664,7 +666,9 @@ try {
 	}
 	assert.ok(ready, "isolated server starts");
 	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true });
-	if (settingsOnly) {
+	if (fixesOnly) {
+		await checkPageFixes();
+	} else if (settingsOnly) {
 		for (const width of [1440, 390, 320]) await checkSettings(width);
 	} else {
 	for (const width of pagesOnly ? (process.env.LH_UI_PAGE_WIDTHS ?? "1440,390,320").split(",").filter(Boolean).map(Number) : []) await checkPages(width);
@@ -672,11 +676,15 @@ try {
 		await checkPageRows();
 		await checkPageAndDemo();
 	}
-	else if (pagesOnly) await checkPageCorpus();
+	else if (pagesOnly) {
+		await checkPageCorpus();
+		await checkPageFixes();
+	}
 	if (!mentionsOnly && !pagesOnly) {
 		await checkLibrary();
 		for (const width of [1440, 390, 320]) await checkPages(width);
 		await checkPageCorpus();
+		await checkPageFixes();
 		await checkPageRows();
 		await checkPageAndDemo();
 	}
@@ -987,6 +995,101 @@ async function checkPages(width) {
 
 	await closePane();
 	assert.deepEqual(errors, [], `${width}px: no browser exceptions`);
+	await page.close();
+}
+
+/** .specify/bugs/page-editing-fixes, in a real editor at 1440 px: a version
+ *  that fails to preview, a multi-line formula and a page deleted while open,
+ *  plus two guards that already held before the fixes (keystrokes just before
+ *  History, rename Escape and Enter). */
+async function checkPageFixes() {
+	const page = await browser.newPage();
+	page.setDefaultTimeout(30000);
+	const errors = [];
+	page.on("pageerror", (error) => errors.push(error.message));
+	await page.setViewport({ width: 1440, height: 900 });
+	const made = await pageApi.create("Fixes page", "# Fixes\n\nstart\n\n$$\na\n$$\n");
+	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
+	for (let i = 0; i < 40 && !(await page.$('[data-testid="page-pane"]')); i++) {
+		await page.click('[aria-label="Open Fixes page"]').catch(() => {});
+		await pause(500);
+	}
+	await page.waitForSelector(editor, { timeout: 60000 });
+
+	// Guard: typing, then History at once; the keystrokes still in the 120 ms wait arrive.
+	await page.click(`${editor} p`);
+	await page.keyboard.press("End");
+	await page.keyboard.type("Z");
+	await page.click('[data-testid="page-history-toggle"]');
+	await page.waitForSelector('[data-testid="page-history"]');
+	await page.click('[data-testid="page-history-toggle"]');
+	await page.waitForSelector(editor);
+	assert.ok((await page.$eval(editor, (el) => el.textContent)).includes("startZ"), "the last keystroke survives History");
+	await page.waitForFunction(async (id) => (await (await fetch(`/api/library/pages/${id}`)).json()).draft?.content.includes("startZ"), { timeout: 15000 }, made.id);
+	console.log("PASS keystrokes typed just before History are kept and saved");
+
+	// Guard: rename Escape sends nothing; Enter sends once.
+	const patches = [];
+	page.on("request", (request) => { if (request.method() === "PATCH") patches.push(request.url()); });
+	await page.click('[data-testid="page-name"]');
+	await page.keyboard.type("Not this");
+	await page.keyboard.press("Escape");
+	await pause(500);
+	assert.equal(patches.length, 0, "Escape renames nothing");
+	assert.equal(await page.$eval('[data-testid="page-name"]', (el) => el.textContent), "Fixes page");
+	await page.click('[data-testid="page-name"]');
+	await page.keyboard.type("Fixes renamed");
+	await page.keyboard.press("Enter");
+	await page.waitForFunction(() => document.querySelector('[data-testid="page-name"]')?.textContent === "Fixes renamed");
+	await pause(500);
+	assert.equal(patches.length, 1, "Enter renames once");
+	console.log("PASS rename: Escape sends nothing, Enter sends once");
+
+	// A multi-line formula shows every line of its source.
+	await page.$eval(`${editor} [data-type="block-math"]`, (el) => el.click());
+	await page.waitForSelector('[data-testid="page-math-source"]');
+	await page.keyboard.press("Enter");
+	await page.keyboard.type("b");
+	await page.keyboard.press("Enter");
+	await page.keyboard.type("c");
+	const fit = await page.$eval('[data-testid="page-math-source"]', (el) => [el.rows, el.scrollHeight <= el.clientHeight + 1]);
+	assert.deepEqual(fit, [3, true], "three lines, none hidden");
+	await page.keyboard.press("Escape");
+	console.log("PASS a multi-line formula's source shows every line");
+
+	// A version whose preview fails: the line says so and the list stays.
+	await page.setRequestInterception(true);
+	const failVersion = (request) => {
+		if (/\/versions\/\d+$/.test(request.url())) void request.respond({ status: 500, contentType: "application/json", body: "{}" });
+		else void request.continue();
+	};
+	page.on("request", failVersion);
+	await page.click('[data-testid="page-history-toggle"]');
+	await page.waitForSelector('[data-testid="page-version-failed"]');
+	assert.match(await page.$eval('[data-testid="page-version-failed"]', (el) => el.innerText), /^Version \d+ could not be loaded\./);
+	assert.ok(await page.$('[data-testid="page-history"] li button'), "the list stays");
+	page.off("request", failVersion);
+	await page.setRequestInterception(false);
+	await page.click('[data-testid="page-history-toggle"]');
+	await page.waitForSelector(editor);
+	console.log("PASS a failed version preview leaves the list in place");
+
+	// Deleted while open with unsaved text: it says so and offers the text.
+	await page.click(`${editor} p`);
+	await page.keyboard.press("End");
+	await page.keyboard.type(" kept");
+	await pause(300);
+	const gone = await fetch(`${base}/api/library/items/${made.id}`, { method: "DELETE" });
+	assert.ok(gone.ok, `delete: ${gone.status}`);
+	await page.waitForSelector('[data-testid="page-deleted"]', { timeout: 15000 });
+	assert.ok((await page.$eval('[data-testid="page-deleted"]', (el) => el.innerText)).startsWith("Fixes renamed was deleted."));
+	assert.ok(await page.$('[data-testid="page-copy-text"]'), "unsaved text can be copied");
+	assert.equal(await page.$eval(editor, (el) => el.getAttribute("contenteditable")), "false");
+	if (shots) await page.screenshot({ path: path.join(shots, "page-1440-deleted.png") });
+	console.log("PASS a page deleted while open says so and offers its unsaved text");
+
+	await page.click('[data-testid="page-close"]');
+	assert.deepEqual(errors, [], "no browser exceptions");
 	await page.close();
 }
 

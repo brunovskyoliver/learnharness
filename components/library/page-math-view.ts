@@ -5,6 +5,14 @@ import type { EditorView } from "@tiptap/pm/view";
 /** Asks a formula's node view to open its source. */
 export const OPEN_MATH_SOURCE_EVENT = "lh-open-math-source";
 
+/** Rows and, inline, width that fit the source. `field-sizing` alone is
+ *  Chromium-only; elsewhere lines past the first were hidden. */
+export function fitMathSource(field: Pick<HTMLTextAreaElement, "value" | "rows" | "style">, kind: "inline" | "block") {
+	const lines = field.value.split("\n");
+	field.rows = Math.max(1, lines.length);
+	if (kind === "inline") field.style.width = `${Math.max(2, ...lines.map((line) => line.length)) + 1}ch`;
+}
+
 const isModS = (event: KeyboardEvent) => (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s";
 
 /** A formula edited in place as source, between its own delimiters (owner,
@@ -73,7 +81,10 @@ export function mathNodeView({ node: initial, view, getPos, kind, katexOptions, 
 		field.spellcheck = false;
 		field.setAttribute("aria-label", "TeX source");
 		field.dataset.testid = "page-math-source";
-		field.addEventListener("input", () => { if (field.value.trim()) setLatex(field.value); });
+		field.addEventListener("input", () => {
+			fitMathSource(field, kind);
+			if (field.value.trim()) setLatex(field.value);
+		});
 		field.addEventListener("blur", () => { if (source === field) close(false); });
 		field.addEventListener("keydown", (event) => {
 			// Claimed here so document-level lesson and pane keys don't also act.
@@ -94,6 +105,7 @@ export function mathNodeView({ node: initial, view, getPos, kind, katexOptions, 
 		source = field;
 		dom.className = "lh-math-source";
 		dom.replaceChildren(delimiter(String(node.attrs.open)), field, delimiter(String(node.attrs.close)));
+		fitMathSource(field, kind);
 		field.focus();
 		field.setSelectionRange(field.value.length, field.value.length);
 	}

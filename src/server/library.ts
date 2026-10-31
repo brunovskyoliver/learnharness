@@ -183,10 +183,18 @@ export function pageCommitResponse(request: Request, id: string): Promise<Respon
 	});
 }
 
-export function pageVersionsResponse(id: string): Promise<Response> {
+/** Versions are listed newest first, a page at a time. */
+export const PAGE_VERSIONS_LIMIT = 50;
+
+export function pageVersionsResponse(id: string, request?: Request): Promise<Response> {
 	return guarded(async () => {
-		const versions = await libraryStore.listPageVersions(id);
-		return versions ? json({ versions }) : pageGone();
+		const all = await libraryStore.listPageVersions(id);
+		if (!all) return pageGone();
+		const raw = request ? new URL(request.url).searchParams.get("before") : null;
+		const before = raw && /^\d+$/.test(raw) ? Number(raw) : null;
+		const from = before === null ? all : all.filter((v) => v.n < before);
+		const versions = from.slice(0, PAGE_VERSIONS_LIMIT);
+		return json({ versions, more: from.length > versions.length });
 	});
 }
 

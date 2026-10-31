@@ -5,6 +5,7 @@ import { applyPageEdits } from "../../core/page-edits.ts";
 import type { LibraryStore } from "../../core/ports.ts";
 import { serverExecute } from "../tool-execute.ts";
 import { findLibraryEntry } from "./library.ts";
+import { fitsOneRead } from "./read.ts";
 
 /**
  * The page tools (feature 009, contracts/agent-tools.md). They return sentences
@@ -22,6 +23,8 @@ export interface PageToolContext {
 
 export const PAGE_BLOCKED_QUESTION = "Pages can't be written while a question is waiting for his answer.";
 export const PAGE_BLOCKED_PROBLEM = "Pages can't be written while a problem is active.";
+/** Whole content would drop text the agent never saw (owner, 2026-10-31). */
+export const pageTooLongForContent = (name: string) => `${name} is longer than one read. Revise it with edits, so text you did not read is not replaced.`;
 
 /** The row's data: success, a stale base, or a failure with its sentence. */
 export type PageToolDetails =
@@ -88,7 +91,10 @@ export function pageTools(ctx: PageToolContext): Record<string, AgentTool<any>> 
 						baseVersion: input.baseVersion,
 						chatId: ctx.chatId,
 						toolCallId,
-						apply: (head) => (input.content !== undefined ? input.content : applyPageEdits(head, input.edits!)),
+						apply: (head) => {
+							if (input.edits !== undefined) return applyPageEdits(head, input.edits);
+							return fitsOneRead(head) ? input.content! : { refused: pageTooLongForContent(entry.name) };
+						},
 					});
 					switch (result.outcome) {
 						case "missing":

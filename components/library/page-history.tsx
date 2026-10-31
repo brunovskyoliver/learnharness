@@ -15,36 +15,65 @@ export function versionLabel(version: Pick<PageVersion, "n" | "author" | "at">):
 	return `Version ${version.n} · ${version.author === "agent" ? "Agent" : "You"} · ${time}`;
 }
 
-/** The version list and a read-only preview. Restoring adds a version. */
-export function PageHistory({ id, onRestore, canRestore }: { id: string; onRestore: (n: number) => Promise<void>; canRestore: boolean }) {
+/** The version list and a read-only preview. Restoring adds a version. The
+ *  list arrives newest first, a page at a time. */
+export function PageHistory({ id, onRestore, canRestore }: { id: string; onRestore: (n: number) => Promise<string | null>; canRestore: boolean }) {
 	const [versions, setVersions] = useState<PageVersion[] | null>(null);
+	const [more, setMore] = useState(false);
 	const [failed, setFailed] = useState(false);
+	const [earlierFailed, setEarlierFailed] = useState(false);
+	const [loadingEarlier, setLoadingEarlier] = useState(false);
 	const [selected, setSelected] = useState<number | null>(null);
 	const [content, setContent] = useState<string | null>(null);
+	const [previewFailed, setPreviewFailed] = useState(false);
+	const [previewTry, setPreviewTry] = useState(0);
 	const [restoring, setRestoring] = useState(false);
+	const [restoreError, setRestoreError] = useState<string | null>(null);
+	const fetchPage = useCallback(async (before: number | null) => {
+		const query = before === null ? "" : `?before=${before}`;
+		const response = await fetch(`/api/library/pages/${encodeURIComponent(id)}/versions${query}`, { cache: "no-store" });
+		if (!response.ok) throw new Error(String(response.status));
+		return await response.json() as { versions: PageVersion[]; more?: boolean };
+	}, [id]);
 	const load = useCallback(async () => {
 		setFailed(false);
 		try {
-			const response = await fetch(`/api/library/pages/${encodeURIComponent(id)}/versions`, { cache: "no-store" });
-			if (!response.ok) throw new Error(String(response.status));
-			const body = await response.json() as { versions: PageVersion[] };
+			const body = await fetchPage(null);
 			setVersions(body.versions);
+			setMore(!!body.more);
 			setSelected((current) => current ?? body.versions[0]?.n ?? null);
 		} catch {
 			setFailed(true);
 		}
-	}, [id]);
+	}, [fetchPage]);
+	const loadEarlier = async () => {
+		const oldest = versions?.at(-1)?.n;
+		if (oldest === undefined) return;
+		setEarlierFailed(false);
+		setLoadingEarlier(true);
+		try {
+			const body = await fetchPage(oldest);
+			setVersions((current) => [...(current ?? []), ...body.versions.filter((v) => v.n < oldest)]);
+			setMore(!!body.more);
+		} catch {
+			setEarlierFailed(true);
+		} finally {
+			setLoadingEarlier(false);
+		}
+	};
 	useEffect(() => { void load(); }, [load]);
 	useEffect(() => {
 		if (selected === null) return;
 		let live = true;
 		setContent(null);
+		setPreviewFailed(false);
+		setRestoreError(null);
 		void fetch(`/api/library/pages/${encodeURIComponent(id)}/versions/${selected}`, { cache: "no-store" })
 			.then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
 			.then((body: { content: string }) => { if (live) setContent(body.content); })
-			.catch(() => { if (live) setFailed(true); });
+			.catch(() => { if (live) setPreviewFailed(true); });
 		return () => { live = false; };
-	}, [id, selected]);
+	}, [id, selected, previewTry]);
 
 	if (failed) {
 		return (
@@ -77,20 +106,38 @@ export function PageHistory({ id, onRestore, canRestore }: { id: string; onResto
 					</li>
 				))}
 			</ul>
+			{more && (
+				<button type="button" className="prompt-secondary w-fit" disabled={loadingEarlier} onClick={() => void loadEarlier()} data-testid="page-history-earlier">Show earlier versions</button>
+			)}
+			{earlierFailed && (
+				<div role="status" className="flex flex-wrap items-center gap-2 text-sm text-ink-2">
+					<p>The history could not be loaded.</p>
+					<button type="button" className="prompt-secondary" onClick={() => void loadEarlier()}>Try again</button>
+				</div>
+			)}
 			{selected !== null && (
-				<>
-					<Button
-						type="button"
-						disabled={!canRestore || restoring || content === null}
-						className="w-fit bg-accent text-foreground hover:bg-[color-mix(in_srgb,var(--accent)_80%,var(--foreground))] pointer-coarse:h-11"
-						data-testid="page-restore"
-						onClick={() => {
-							setRestoring(true);
-							void onRestore(selected).finally(() => setRestoring(false));
-						}}
-					>Restore this version</Button>
-					{content === null ? <Skeleton className="h-24 w-full rounded-[10px]" /> : <PagePreview content={content} />}
-				</>
+				previewFailed ? (
+					<div role="status" className="flex flex-wrap items-center gap-2 text-sm text-ink-2" data-testid="page-version-failed">
+						<p>Version {selected} could not be loaded.</p>
+						<button type="button" className="prompt-secondary" onClick={() => setPreviewTry((n) => n + 1)}>Try again</button>
+					</div>
+				) : (
+					<>
+						<Button
+							type="button"
+							disabled={!canRestore || restoring || content === null}
+							className="w-fit bg-accent text-foreground hover:bg-[color-mix(in_srgb,var(--accent)_80%,var(--foreground))] pointer-coarse:h-11"
+							data-testid="page-restore"
+							onClick={() => {
+								setRestoring(true);
+								setRestoreError(null);
+								void onRestore(selected).then(setRestoreError, () => setRestoreError(`Version ${selected} could not be restored. Your text is kept.`)).finally(() => setRestoring(false));
+							}}
+						>Restore this version</Button>
+						{restoreError && <p role="alert" className="text-sm text-destructive" data-testid="page-restore-error">{restoreError}</p>}
+						{content === null ? <Skeleton className="h-24 w-full rounded-[10px]" /> : <PagePreview content={content} />}
+					</>
+				)
 			)}
 		</div>
 	);

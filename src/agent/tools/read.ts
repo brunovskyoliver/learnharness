@@ -60,6 +60,11 @@ function isInLibraryFolder(absolute: string): boolean {
 }
 
 /** Slice + truncate the text body, pi's continuation-notice style. */
+/** Whether one unpaged read returns all of `text`. */
+export function fitsOneRead(text: string): boolean {
+	return text.split("\n").length <= MAX_LINES && Buffer.byteLength(text, "utf-8") <= MAX_BYTES;
+}
+
 export function readTextSlice(text: string, offset: number | undefined, limit: number | undefined): string {
 	const allLines = text.split("\n");
 	const totalLines = allLines.length;
