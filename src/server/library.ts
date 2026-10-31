@@ -23,6 +23,9 @@ const REFUSAL_STATUS: Record<LibraryRefusalCode, number> = {
 	unsupported_type: 415,
 	content_mismatch: 415,
 	name_taken: 409,
+	folder_missing: 404,
+	folder_cycle: 409,
+	folder_not_empty: 409,
 };
 
 function refusal(r: LibraryRefusal, status = REFUSAL_STATUS[r.refused]): Response {
@@ -43,6 +46,7 @@ async function guarded(run: () => Promise<Response>): Promise<Response> {
 export function libraryListResponse(): Promise<Response> {
 	return guarded(async () => json({
 		items: await libraryStore.list(),
+		folders: await libraryStore.folders(),
 		limits: { maxFileBytes: MAX_FILE_BYTES, inlineItemBytes: REFERENCE_INLINE_MAX_BYTES, accepted: ACCEPTED_EXTENSIONS },
 	}));
 }
@@ -58,16 +62,62 @@ export function libraryUploadResponse(request: Request): Promise<Response> {
 		if (declared > MAX_FILE_BYTES) return refusal(LIBRARY_REFUSALS.tooLarge);
 		if (!kindForName(name)) return refusal(LIBRARY_REFUSALS.unsupportedType);
 		const body = request.body ?? new ReadableStream<Uint8Array>({ start: (c) => c.close() });
-		const result = await libraryStore.writeUpload(name, body as unknown as AsyncIterable<Uint8Array>, declared);
+		const result = await libraryStore.writeUpload(name, body as unknown as AsyncIterable<Uint8Array>, declared, new URL(request.url).searchParams.get("folder"));
 		if (isRefusal(result)) return refusal(result);
 		indexAfterUpload(result);
 		return json({ item: result }, 201);
 	});
 }
 
+/** A folder id or null for the top level; undefined when it is neither. */
+const parentField = (value: unknown): string | null | undefined => (value === null || (typeof value === "string" && value) ? value : undefined);
+const folderGone = () => json({ error: "That folder is no longer in your Library." }, 404);
+
+export function folderCreateResponse(request: Request): Promise<Response> {
+	return guarded(async () => {
+		const body = await request.json().catch(() => null) as { name?: unknown; parentId?: unknown } | null;
+		if (typeof body?.name !== "string") return refusal(LIBRARY_REFUSALS.invalidName);
+		const parentId = parentField(body.parentId ?? null);
+		if (parentId === undefined) return refusal(LIBRARY_REFUSALS.folderMissing, 400);
+		const result = await libraryStore.createFolder(body.name, parentId);
+		return isRefusal(result) ? refusal(result) : json({ folder: result }, 201);
+	});
+}
+
+/** One change per request: a name, or a parent. */
+export function folderPatchResponse(request: Request, id: string): Promise<Response> {
+	return guarded(async () => {
+		const body = await request.json().catch(() => null) as { name?: unknown; parentId?: unknown } | null;
+		let result;
+		if (typeof body?.name === "string") result = await libraryStore.renameFolder(id, body.name);
+		else if (body && "parentId" in body) {
+			const parentId = parentField(body.parentId);
+			if (parentId === undefined) return refusal(LIBRARY_REFUSALS.folderMissing, 400);
+			result = await libraryStore.moveFolder(id, parentId);
+		} else return refusal(LIBRARY_REFUSALS.invalidName);
+		if (!result) return folderGone();
+		return isRefusal(result) ? refusal(result) : json({ folder: result });
+	});
+}
+
+export function folderDeleteResponse(id: string): Promise<Response> {
+	return guarded(async () => {
+		const result = await libraryStore.removeFolder(id);
+		if (result === false) return folderGone();
+		return result === true ? json({ ok: true }) : refusal(result);
+	});
+}
+
 export function libraryPatchResponse(request: Request, id: string): Promise<Response> {
 	return guarded(async () => {
-		const body = await request.json().catch(() => null) as { name?: unknown } | null;
+		const body = await request.json().catch(() => null) as { name?: unknown; folderId?: unknown } | null;
+		if (body && "folderId" in body && body.name === undefined) {
+			const folderId = parentField(body.folderId);
+			if (folderId === undefined) return refusal(LIBRARY_REFUSALS.folderMissing, 400);
+			const moved = await libraryStore.moveItem(id, folderId);
+			if (!moved) return json({ error: "That item is no longer in your Library." }, 404);
+			return isRefusal(moved) ? refusal(moved) : json({ item: moved });
+		}
 		if (typeof body?.name !== "string") return refusal(LIBRARY_REFUSALS.invalidName);
 		const result = await libraryStore.rename(id, body.name);
 		if (!result) return json({ error: "That item is no longer in your Library." }, 404);
@@ -151,7 +201,9 @@ export function pageCreateResponse(request: Request): Promise<Response> {
 	return guarded(async () => {
 		const body = await jsonBody(request);
 		if (typeof body?.name !== "string" || (body.content !== undefined && typeof body.content !== "string")) return refusal(LIBRARY_REFUSALS.invalidName);
-		const result = await libraryStore.createPage(body.name, (body.content as string | undefined) ?? "", { author: "learner" });
+		const folderId = parentField(body.folderId ?? null);
+		if (folderId === undefined) return refusal(LIBRARY_REFUSALS.folderMissing, 400);
+		const result = await libraryStore.createPage(body.name, (body.content as string | undefined) ?? "", { author: "learner", folderId });
 		if (isRefusal(result)) return refusal(result);
 		return json(result, 201);
 	});

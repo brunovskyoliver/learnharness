@@ -27,7 +27,7 @@ import type {
 	NotesSource,
 } from "./contracts.ts";
 import type { UserSettings } from "./settings.ts";
-import type { LibraryItem, LibraryRefusal, LibraryTextState, LibraryTombstone, PageAuthor, PageHead, PageState, PageVersion, PageVersionCause, PageWriteResult } from "./library.ts";
+import type { LibraryFolder, LibraryItem, LibraryRefusal, LibraryTextState, LibraryTombstone, PageAuthor, PageHead, PageState, PageVersion, PageVersionCause, PageWriteResult } from "./library.ts";
 
 // ─── ChatStore — the session record's home (data/chats) ─────────────────────
 
@@ -178,7 +178,18 @@ export interface LibraryStore {
 	/** A text item's bytes as UTF-8: a document's file, a page's head version. */
 	readText(item: LibraryItem): Promise<string>;
 	/** Store a validated name's bytes. Never overwrites; refusals store nothing. */
-	writeUpload(name: string, body: AsyncIterable<Uint8Array>, declaredBytes: number): Promise<LibraryItem | LibraryRefusal>;
+	writeUpload(name: string, body: AsyncIterable<Uint8Array>, declaredBytes: number, folderId?: string | null): Promise<LibraryItem | LibraryRefusal>;
+	/** Every folder, by name (feature 011). */
+	folders(): Promise<LibraryFolder[]>;
+	createFolder(name: string, parentId: string | null): Promise<LibraryFolder | LibraryRefusal>;
+	/** Null for an unknown id. Sibling names never collide. */
+	renameFolder(id: string, name: string): Promise<LibraryFolder | LibraryRefusal | null>;
+	/** Null for an unknown id. Refuses a cycle and a sibling name clash. */
+	moveFolder(id: string, parentId: string | null): Promise<LibraryFolder | LibraryRefusal | null>;
+	/** False for an unknown id. Refuses a folder with anything in it. */
+	removeFolder(id: string): Promise<boolean | LibraryRefusal>;
+	/** Changes only the catalog entry: bytes, versions and references stay. */
+	moveItem(id: string, folderId: string | null): Promise<LibraryItem | LibraryRefusal | null>;
 	/** Rename, moving the file too. Null for an unknown id. */
 	rename(id: string, name: string): Promise<LibraryItem | LibraryRefusal | null>;
 	/** Delete the bytes and leave a tombstone. False for an unknown id. */
@@ -216,7 +227,7 @@ export interface LibraryStore {
 	unlinkChat(chatId: string): Promise<void>;
 }
 
-export interface PageCreateOptions { author: PageAuthor; chatId?: string; toolCallId?: string }
+export interface PageCreateOptions { author: PageAuthor; chatId?: string; toolCallId?: string; folderId?: string | null }
 
 export interface AgentRevision {
 	baseVersion: number;

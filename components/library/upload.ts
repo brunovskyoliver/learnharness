@@ -9,10 +9,10 @@ export type UploadOutcome =
 
 const FAILED = "The upload failed. Check your connection and try again.";
 
-export function sendFile(file: File, name: string, onProgress: (percent: number) => void): Promise<UploadOutcome> {
+export function sendFile(file: File, name: string, onProgress: (percent: number) => void, folderId?: string | null): Promise<UploadOutcome> {
 	return new Promise((resolve) => {
 		const xhr = new XMLHttpRequest();
-		xhr.open("POST", `/api/library/upload?name=${encodeURIComponent(name)}`);
+		xhr.open("POST", `/api/library/upload?name=${encodeURIComponent(name)}${folderId ? `&folder=${encodeURIComponent(folderId)}` : ""}`);
 		xhr.setRequestHeader("Content-Type", "application/octet-stream");
 		xhr.upload.onprogress = (event) => {
 			if (event.lengthComputable) onProgress(Math.min(100, Math.round((event.loaded / event.total) * 100)));

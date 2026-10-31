@@ -1,14 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
-import { FilePlusIcon, SearchIcon, UploadIcon, XIcon } from "lucide-react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { FilePlusIcon, FolderPlusIcon, SearchIcon, UploadIcon, XIcon } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useServerEvent, useServerResync } from "@/components/server-events";
-import { MAX_FILE_BYTES, nameKey, type LibraryItem } from "@/src/core";
-import { DeleteItemDialog } from "./delete-item-dialog.tsx";
+import { folderPathLabel, folderTrail, liveFolderId, MAX_FILE_BYTES, nameKey, type LibraryFolder, type LibraryItem } from "@/src/core";
+import { DeleteItemDialog, DESTRUCTIVE_BUTTON } from "./delete-item-dialog.tsx";
+import { FolderNameDialog, MoveDialog, sendLibraryChange } from "./folder-dialogs.tsx";
+import { FolderBreadcrumbs, folderHref, FolderRow } from "./folder-row.tsx";
 import { LibraryRow } from "./library-row.tsx";
 import { createBlankPage, PagePaneSlot, usePagePane } from "./page-pane-context.tsx";
 import { runUploadQueue, sendFile } from "./upload.ts";
@@ -16,9 +20,19 @@ import { runUploadQueue, sendFile } from "./upload.ts";
 const RAISED_2 = "bg-accent text-foreground hover:bg-[color-mix(in_srgb,var(--accent)_80%,var(--foreground))] pointer-coarse:h-11";
 const LOAD_FAILED = "Your Library could not be loaded.";
 
+const noop = () => {};
+
 export interface LibraryBodyProps {
 	/** null until the first successful load. */
 	items: LibraryItem[] | null;
+	/** Absent reads as none, so every item is at the top level. */
+	folders?: LibraryFolder[];
+	/** The open folder; null or absent is the top level. */
+	folderId?: string | null;
+	onRenameFolder?: (folder: LibraryFolder, opener: HTMLElement) => void;
+	onMoveFolder?: (folder: LibraryFolder, opener: HTMLElement) => void;
+	onDeleteFolder?: (folder: LibraryFolder, opener: HTMLElement) => void;
+	onMoveItem?: (item: LibraryItem, opener: HTMLElement) => void;
 	loadFailed: boolean;
 	refreshFailed: boolean;
 	query: string;
@@ -29,7 +43,7 @@ export interface LibraryBodyProps {
 
 /** The list's states, pure for SSR tests. Loading, empty and failed stay
  *  distinct, and a failed refresh keeps the list. */
-export function LibraryBody({ items, loadFailed, refreshFailed, query, onRetry, onChanged, onDelete }: LibraryBodyProps) {
+export function LibraryBody({ items, folders = [], folderId = null, onRenameFolder = noop, onMoveFolder = noop, onDeleteFolder = noop, onMoveItem, loadFailed, refreshFailed, query, onRetry, onChanged, onDelete }: LibraryBodyProps) {
 	const failedLine = (
 		<div role="status" className="flex flex-wrap items-center gap-2 text-ink-2">
 			<p>{LOAD_FAILED}</p>
@@ -45,18 +59,25 @@ export function LibraryBody({ items, loadFailed, refreshFailed, query, onRetry, 
 			</div>
 		);
 	}
+	// A search covers the whole Library, and says where each match lives.
 	const key = nameKey(query.trim());
-	const shown = key ? items.filter((item) => nameKey(item.name).includes(key)) : items;
+	const inFolder = (id: string | null | undefined) => liveFolderId(id, folders) === folderId;
+	const shown = key ? items.filter((item) => nameKey(item.name).includes(key)) : items.filter((item) => inFolder(item.folderId));
+	const shownFolders = key ? folders.filter((folder) => nameKey(folder.name).includes(key)) : folders.filter((folder) => inFolder(folder.parentId));
+	const countIn = (id: string) => folders.filter((f) => f.parentId === id).length + items.filter((i) => i.folderId === id).length;
+	const whereIs = (id: string | null | undefined) => (key ? folderPathLabel(id, folders) || "Library" : undefined);
+	const nothing = shown.length === 0 && shownFolders.length === 0;
 	return (
 		<>
 			{refreshFailed && failedLine}
-			{items.length === 0 ? (
-				<p className="text-ink-2">Nothing here yet. Upload a document or start a page.</p>
-			) : shown.length === 0 ? (
+			{key && nothing ? (
 				<p role="status" className="text-ink-2">Nothing matched</p>
+			) : nothing ? (
+				<p className="text-ink-2">{folderId ? "This folder is empty." : "Nothing here yet. Upload a document or start a page."}</p>
 			) : (
 				<ul className="flex flex-col gap-1" data-testid="library-list">
-					{shown.map((item) => <LibraryRow key={item.id} item={item} onRenamed={onChanged} onDelete={onDelete} />)}
+					{shownFolders.map((folder) => <FolderRow key={folder.id} folder={folder} count={countIn(folder.id)} location={whereIs(folder.parentId)} onRename={onRenameFolder} onMove={onMoveFolder} onDelete={onDeleteFolder} />)}
+					{shown.map((item) => <LibraryRow key={item.id} item={item} location={whereIs(item.folderId)} onRenamed={onChanged} onMove={onMoveItem} onDelete={onDelete} />)}
 				</ul>
 			)}
 		</>
@@ -70,6 +91,13 @@ export function LibraryView() {
 	const pane = usePagePane();
 	const [creating, setCreating] = useState(false);
 	const [items, setItems] = useState<LibraryItem[] | null>(null);
+	const [folders, setFolders] = useState<LibraryFolder[]>([]);
+	const [naming, setNaming] = useState<{ folder: LibraryFolder | null } | null>(null);
+	const [moving, setMoving] = useState<{ item?: LibraryItem; folder?: LibraryFolder } | null>(null);
+	const [deletingFolder, setDeletingFolder] = useState<LibraryFolder | null>(null);
+	const [folderFailure, setFolderFailure] = useState<string | null>(null);
+	const newFolderButton = useRef<HTMLButtonElement>(null);
+	const openFolderId = useSearchParams().get("folder");
 	const [loadFailed, setLoadFailed] = useState(false);
 	const [refreshFailed, setRefreshFailed] = useState(false);
 	const [query, setQuery] = useState("");
@@ -92,11 +120,12 @@ export function LibraryView() {
 		try {
 			const response = await fetch("/api/library", { cache: "no-store" });
 			if (!response.ok) throw new Error(String(response.status));
-			const body = await response.json() as { items: LibraryItem[]; limits: { maxFileBytes: number } };
+			const body = await response.json() as { items: LibraryItem[]; folders: LibraryFolder[]; limits: { maxFileBytes: number } };
 			if (id !== request.current) return;
 			maxFileBytes.current = body.limits.maxFileBytes;
 			loaded.current = true;
 			setItems(body.items);
+			setFolders(body.folders);
 			setLoadFailed(false);
 			setRefreshFailed(false);
 		} catch {
@@ -112,12 +141,45 @@ export function LibraryView() {
 	useEffect(() => { void refresh(); }, [refresh]);
 	useServerEvent("library-changed", () => void refresh());
 	useServerResync(() => void refresh());
+	// Known only once loaded: a missing folder says so instead of showing the top level.
+	const folderMissing = openFolderId !== null && items !== null && !folders.some((folder) => folder.id === openFolderId);
+	const folderId = openFolderId !== null && !folderMissing ? openFolderId : null;
+	const trail = folderTrail(folderId, folders);
+	const returnFolderFocus = () => (opener.current?.isConnected ? opener.current : newFolderButton.current)?.focus();
+	const finishChange = (refused: string | null, close: () => void) => {
+		if (!refused) {
+			close();
+			void refresh();
+		}
+		return refused;
+	};
+	const submitName = async (name: string) => finishChange(
+		naming?.folder
+			? await sendLibraryChange(`/api/library/folders/${naming.folder.id}`, "PATCH", { name })
+			: await sendLibraryChange("/api/library/folders", "POST", { name, parentId: folderId }),
+		() => setNaming(null),
+	);
+	const submitMove = async (target: string | null) => finishChange(
+		moving?.folder
+			? await sendLibraryChange(`/api/library/folders/${moving.folder.id}`, "PATCH", { parentId: target })
+			: await sendLibraryChange(`/api/library/items/${moving?.item?.id}`, "PATCH", { folderId: target }),
+		() => setMoving(null),
+	);
+	const confirmFolderDelete = async () => {
+		if (!deletingFolder) return;
+		const refused = await sendLibraryChange(`/api/library/folders/${deletingFolder.id}`, "DELETE");
+		setFolderFailure(refused);
+		if (!refused) {
+			setDeletingFolder(null);
+			void refresh();
+		}
+	};
 
 	const enqueue = (files: File[]) => {
 		if (files.length === 0) return;
 		queue.current = queue.current.then(() => runUploadQueue(files, {
 			maxFileBytes: maxFileBytes.current,
-			send: sendFile,
+			send: (file, name, onProgress) => sendFile(file, name, onProgress, folderId),
 			askClash: (name, suggestedName) => new Promise((answer) => setClash({ name, suggestedName, answer })),
 			onProgress: (name, percent) => setInFlight({ name, percent }),
 			onRefused: (name, message) => setRefusals((list) => [...list, { id: nextRefusal.current++, name, message }]),
@@ -133,7 +195,7 @@ export function LibraryView() {
 	};
 	const newPage = async () => {
 		setCreating(true);
-		const result = await createBlankPage();
+		const result = await createBlankPage(folderId);
 		setCreating(false);
 		if ("error" in result) {
 			setRefusals((list) => [...list, { id: nextRefusal.current++, name: "New page", message: result.error }]);
@@ -173,9 +235,14 @@ export function LibraryView() {
 			<TopBar />
 			<div data-testid="library-scroll" className="min-h-0 flex-1 overflow-y-auto">
 				<div className="mx-auto flex w-full max-w-[52rem] flex-col gap-4 px-4 pb-12 pt-3 sm:pt-11">
+					<FolderBreadcrumbs trail={trail} />
 					<div className="flex flex-wrap items-center justify-between gap-3">
-						<h1 className="font-title text-2xl font-medium leading-[1.2] tracking-[-0.3px]">Library</h1>
+						<h1 className="font-title text-2xl font-medium leading-[1.2] tracking-[-0.3px] [overflow-wrap:anywhere]">{trail.at(-1)?.name ?? "Library"}</h1>
 						<div className="flex flex-wrap gap-2">
+							<Button ref={newFolderButton} type="button" className={RAISED_2} onClick={() => setNaming({ folder: null })} data-testid="library-new-folder">
+								<FolderPlusIcon className="ui-icon" aria-hidden="true" />
+								New folder
+							</Button>
 							<Button ref={uploadButton} type="button" className={RAISED_2} onClick={() => picker.current?.click()} data-testid="library-upload">
 								<UploadIcon className="ui-icon" aria-hidden="true" />
 								Upload
@@ -244,8 +311,20 @@ export function LibraryView() {
 							</Button>
 						</div>
 					))}
+					{folderMissing && (
+						<div role="status" className="flex flex-wrap items-center gap-2 text-ink-2" data-testid="library-folder-missing">
+							<p>That folder is no longer in your Library.</p>
+							<Link href={folderHref(null)} className="prompt-secondary">Back to Library</Link>
+						</div>
+					)}
 					<LibraryBody
 						items={items}
+						folders={folders}
+						folderId={folderId}
+						onRenameFolder={(folder, button) => { opener.current = button; setNaming({ folder }); }}
+						onMoveFolder={(folder, button) => { opener.current = button; setMoving({ folder }); }}
+						onDeleteFolder={(folder, button) => { opener.current = button; setFolderFailure(null); setDeletingFolder(folder); }}
+						onMoveItem={(item, button) => { opener.current = button; setMoving({ item }); }}
 						loadFailed={loadFailed}
 						refreshFailed={refreshFailed}
 						query={query}
@@ -268,6 +347,34 @@ export function LibraryView() {
 				}}
 				returnFocus={() => (opener.current?.isConnected ? opener.current : uploadButton.current)?.focus()}
 			/>
+			<FolderNameDialog
+				title={naming?.folder ? `Rename ${naming.folder.name}` : "New folder"}
+				action={naming?.folder ? "Rename" : "Create"}
+				initial={naming?.folder?.name ?? ""}
+				open={naming !== null}
+				onClose={() => setNaming(null)}
+				onSubmit={submitName}
+				returnFocus={returnFolderFocus}
+			/>
+			<MoveDialog
+				name={moving ? (moving.folder?.name ?? moving.item?.name ?? "") : null}
+				folders={folders}
+				moving={moving?.folder ? { folderId: moving.folder.id } : null}
+				current={moving?.folder ? liveFolderId(moving.folder.parentId, folders) : liveFolderId(moving?.item?.folderId, folders)}
+				onClose={() => setMoving(null)}
+				onMove={submitMove}
+				returnFocus={returnFolderFocus}
+			/>
+			<Dialog open={deletingFolder !== null} onOpenChange={(open) => { if (!open) setDeletingFolder(null); }}>
+				<DialogContent showCloseButton={false} aria-describedby={undefined} data-testid="library-folder-delete-dialog" className="gap-3 rounded-[10px] border-0 bg-card sm:max-w-md" onCloseAutoFocus={(event) => { event.preventDefault(); returnFolderFocus(); }}>
+					<DialogTitle className="text-base font-semibold [overflow-wrap:anywhere]">Delete {deletingFolder?.name}?</DialogTitle>
+					{folderFailure && <p role="alert" className="text-sm text-destructive">{folderFailure}</p>}
+					<div className="flex justify-end gap-2">
+						<Button type="button" variant="ghost" className="pointer-coarse:h-11" onClick={() => setDeletingFolder(null)}>Cancel</Button>
+						<Button type="button" variant="ghost" className={`${DESTRUCTIVE_BUTTON} pointer-coarse:h-11`} onClick={() => void confirmFolderDelete()} data-testid="library-folder-delete-confirm">Delete</Button>
+					</div>
+				</DialogContent>
+			</Dialog>
 			<Dialog open={clash !== null} onOpenChange={(open) => { if (!open) answerClash(false); }}>
 				<DialogContent showCloseButton={false} aria-describedby={undefined} data-testid="library-clash-dialog" className="gap-4 rounded-[10px] border-0 bg-card sm:max-w-md" onCloseAutoFocus={(event) => { event.preventDefault(); uploadButton.current?.focus(); }}>
 					<DialogTitle className="text-base font-semibold [overflow-wrap:anywhere]">{clash?.name} is already in your Library.</DialogTitle>

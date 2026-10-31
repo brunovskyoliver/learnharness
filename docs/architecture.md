@@ -24,6 +24,7 @@ Core has no dependency on server or store. Agents receive effects through depend
 | --- | --- |
 | Lessons and practice | `chats/<id>.json`, `ChatRecord`, native `LhMessage[]` |
 | Knowledge graph | JSONL evidence ledgers, sources and coverage under `graph/` |
+| Library | `library/catalog.json` for items and folders, flat bytes in `files/`, page versions under `library/pages/<id>/`. Folders are catalog-only and additive: the catalog version stays 1 |
 | Background jobs | Job records under `jobs/` |
 | Product preferences | Versioned settings JSON |
 | Credentials | Dedicated auth/subscription storage through local or hosted boundaries |

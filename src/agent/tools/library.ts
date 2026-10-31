@@ -1,7 +1,7 @@
 import { Type } from "typebox";
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { renderLibraryItem } from "../../core/library-refs.ts";
-import { formatBytes, isTombstone, nameKey, type LibraryItem, type LibraryTombstone } from "../../core/library.ts";
+import { folderPathLabel, formatBytes, isTombstone, nameKey, type LibraryItem, type LibraryTombstone } from "../../core/library.ts";
 import type { LibraryStore } from "../../core/ports.ts";
 import { pdfExtract, pdfSearch } from "../subagents/pdf-ops.ts";
 import { serverExecute } from "../tool-execute.ts";
@@ -97,8 +97,9 @@ export function libraryTools(ctx: LibraryToolContext): Record<string, AgentTool<
 					const key = query ? nameKey(query.trim()) : "";
 					const items = (await ctx.store.list()).filter((item) => nameKey(item.name).includes(key));
 					if (items.length === 0) return key ? `Nothing in the Library matches "${query}".` : "The Library is empty.";
-					return JSON.stringify(items.slice(0, LIST_LIMIT).map(({ id, name, kind, size, updatedAt, headVersion, textState }) => ({
-						id, name, kind, size: formatBytes(size), updatedAt, ...(headVersion !== undefined ? { headVersion } : {}), ...(textState ? { textState } : {}),
+					const folders = await ctx.store.folders();
+					return JSON.stringify(items.slice(0, LIST_LIMIT).map(({ id, name, kind, size, updatedAt, headVersion, textState, folderId }) => ({
+						id, name, kind, size: formatBytes(size), updatedAt, ...(folderPathLabel(folderId, folders) ? { folder: folderPathLabel(folderId, folders) } : {}), ...(headVersion !== undefined ? { headVersion } : {}), ...(textState ? { textState } : {}),
 					})));
 				} catch (err) {
 					return `The Library could not be read: ${err instanceof Error ? err.message : String(err)}`;

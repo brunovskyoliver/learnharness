@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { PencilIcon, Trash2Icon } from "lucide-react";
+import { FolderInputIcon, PencilIcon, Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatBytes, KIND_LABEL, type LibraryItem } from "@/src/core";
 import { opensInPane, usePagePane } from "./page-pane-context.tsx";
@@ -19,9 +19,12 @@ function metaLine(item: LibraryItem): string {
 }
 
 /** One Library item. Every action's accessible name includes the item's name. */
-export function LibraryRow({ item, onRenamed, onDelete }: {
+export function LibraryRow({ item, location, onRenamed, onMove, onDelete }: {
 	item: LibraryItem;
+	/** The item's folder path, shown while searching the whole Library. */
+	location?: string;
 	onRenamed: () => void;
+	onMove?: (item: LibraryItem, opener: HTMLElement) => void;
 	onDelete: (item: LibraryItem, opener: HTMLElement) => void;
 }) {
 	const [renaming, setRenaming] = useState(false);
@@ -63,7 +66,7 @@ export function LibraryRow({ item, onRenamed, onDelete }: {
 	const body = (
 		<>
 			<span className="text-base font-medium text-foreground [overflow-wrap:anywhere]">{item.name}</span>
-			<span className="text-sm text-muted-foreground" suppressHydrationWarning>{metaLine(item)}</span>
+			<span className="text-sm text-muted-foreground" suppressHydrationWarning>{metaLine(item)}{location ? ` · ${location}` : ""}</span>
 		</>
 	);
 	const newTab = item.kind === "pdf" || item.kind === "image";
@@ -122,6 +125,11 @@ export function LibraryRow({ item, onRenamed, onDelete }: {
 						>
 							<PencilIcon className="ui-icon" aria-hidden="true" />
 						</Button>
+						{onMove && (
+							<Button type="button" variant="ghost" size="icon" aria-label={`Move ${item.name}`} className={ACTION} onClick={(event) => onMove(item, event.currentTarget)}>
+								<FolderInputIcon className="ui-icon" aria-hidden="true" />
+							</Button>
+						)}
 						<Button
 							type="button"
 							variant="ghost"

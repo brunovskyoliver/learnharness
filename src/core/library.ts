@@ -36,6 +36,17 @@ export interface LibraryItem {
 	origin: LibraryOrigin;
 	textState?: LibraryTextState;
 	headVersion?: number;
+	/** Absent, or a folder that no longer exists, reads as the top level (feature 011). */
+	folderId?: string;
+}
+
+/** A Library folder (feature 011). Catalog only: bytes stay flat in files/. */
+export interface LibraryFolder {
+	id: string;
+	name: string;
+	parentId: string | null;
+	createdAt: string;
+	updatedAt: string;
 }
 
 /** A deleted item. Keeps the name so old references stay honest. */
@@ -50,6 +61,8 @@ export const CATALOG_VERSION = 1;
 export interface LibraryCatalog {
 	version: number;
 	items: (LibraryItem | LibraryTombstone)[];
+	/** Additive, so the version stays and an older app keeps these on rewrite. */
+	folders?: LibraryFolder[];
 }
 
 export const isTombstone = (item: LibraryItem | LibraryTombstone): item is LibraryTombstone => "deletedAt" in item;
@@ -197,7 +210,7 @@ export interface PageStale { stale: true; head: PageHead; draft: PageDraftView |
 export type PageWriteResult<T> = T | PageStale | "missing" | "too-large";
 export const isPageStale = (value: unknown): value is PageStale => typeof value === "object" && value !== null && "stale" in value;
 
-export type LibraryRefusalCode = "invalid_name" | "empty" | "length_mismatch" | "too_large" | "unsupported_type" | "content_mismatch" | "name_taken";
+export type LibraryRefusalCode = "invalid_name" | "empty" | "length_mismatch" | "too_large" | "unsupported_type" | "content_mismatch" | "name_taken" | "folder_missing" | "folder_cycle" | "folder_not_empty";
 export interface LibraryRefusal {
 	refused: LibraryRefusalCode;
 	message: string;
@@ -214,4 +227,51 @@ export const LIBRARY_REFUSALS = {
 	pageTooLarge: { refused: "too_large", message: "A page can be at most 1 MB." },
 	unsupportedType: { refused: "unsupported_type", message: "This kind of file isn't accepted." },
 	contentMismatch: { refused: "content_mismatch", message: "This file's contents don't match its type." },
+	folderMissing: { refused: "folder_missing", message: "That folder is no longer in your Library." },
+	folderCycle: { refused: "folder_cycle", message: "A folder can't move into itself or a folder inside it." },
+	folderNotEmpty: { refused: "folder_not_empty", message: "This folder isn't empty. Move or delete what's in it first." },
 } as const satisfies Record<string, LibraryRefusal>;
+
+// ── Folders (feature 011) ──
+
+/** The folder an item or folder really sits in: a dangling id is the top level,
+ *  so nothing is ever hidden. */
+export function liveFolderId(folderId: string | null | undefined, folders: readonly Pick<LibraryFolder, "id">[]): string | null {
+	return folderId && folders.some((f) => f.id === folderId) ? folderId : null;
+}
+
+/** Top level first, ending at the folder. Stops at a loop in a damaged catalog. */
+export function folderTrail<T extends Pick<LibraryFolder, "id" | "parentId">>(folderId: string | null | undefined, folders: readonly T[]): T[] {
+	const trail: T[] = [];
+	const seen = new Set<string>();
+	let current = folders.find((f) => f.id === folderId);
+	while (current && !seen.has(current.id)) {
+		seen.add(current.id);
+		trail.unshift(current);
+		const parent: string | null = current.parentId;
+		current = folders.find((f) => f.id === parent);
+	}
+	return trail;
+}
+
+/** "Physics / Waves", or an empty string at the top level. */
+export const folderPathLabel = (folderId: string | null | undefined, folders: readonly LibraryFolder[]): string =>
+	folderTrail(folderId, folders).map((f) => f.name).join(" / ");
+
+/** The folder and everything under it. */
+export function folderSubtree(folderId: string, folders: readonly Pick<LibraryFolder, "id" | "parentId">[]): Set<string> {
+	const found = new Set([folderId]);
+	for (let grew = true; grew;) {
+		grew = false;
+		for (const folder of folders) {
+			if (folder.parentId && found.has(folder.parentId) && !found.has(folder.id)) {
+				found.add(folder.id);
+				grew = true;
+			}
+		}
+	}
+	return found;
+}
+
+export const wouldCycle = (folderId: string, parentId: string | null, folders: readonly Pick<LibraryFolder, "id" | "parentId">[]): boolean =>
+	parentId !== null && folderSubtree(folderId, folders).has(parentId);

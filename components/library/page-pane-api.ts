@@ -35,11 +35,11 @@ export function usePagePane() {
 const NEW_PAGE_NAME = "Untitled page";
 
 /** A new empty page, stepping past a taken name. Null with the reason on failure. */
-export async function createBlankPage(): Promise<{ item: LibraryItem } | { error: string }> {
+export async function createBlankPage(folderId?: string | null): Promise<{ item: LibraryItem } | { error: string }> {
 	const send = (name: string) => fetch("/api/library/pages", {
 		method: "POST",
 		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ name, content: "" }),
+		body: JSON.stringify({ name, content: "", ...(folderId ? { folderId } : {}) }),
 	});
 	try {
 		let response = await send(NEW_PAGE_NAME);

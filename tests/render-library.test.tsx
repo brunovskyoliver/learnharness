@@ -113,3 +113,27 @@ describe("DeleteItemBody", () => {
 		assert.ok(html.includes("Try again"));
 	});
 });
+
+describe("Library folders (feature 011)", () => {
+	const folder = (id: string, name: string, parentId: string | null = null) => ({ id, name, parentId, createdAt: "2026-10-30T10:00:00.000Z", updatedAt: "2026-10-30T10:00:00.000Z" });
+	const folders = [folder("fld_a", "Physics"), folder("fld_b", "Waves", "fld_a")];
+	const items = [item({ id: "lib_top", name: "top.md" }), item({ id: "lib_in", name: "inside.md", folderId: "fld_a" })];
+
+	it("shows one level, folders and items together", () => {
+		const html = body({ items, folders });
+		assert.ok(html.includes("Open folder Physics") && html.includes("Folder · 2 items"));
+		assert.ok(html.includes("Open top.md") && !html.includes("Open inside.md") && !html.includes("Waves"));
+		const inside = body({ items, folders, folderId: "fld_a" });
+		assert.ok(inside.includes("Open inside.md") && inside.includes("Open folder Waves") && !inside.includes("Open top.md"));
+	});
+	it("an item in a folder that no longer exists stays visible at the top", () => {
+		assert.ok(body({ items: [item({ folderId: "fld_gone" })], folders }).includes("Open week 3 notes.md"));
+	});
+	it("a search reaches every level and says where", () => {
+		const html = body({ items, folders, query: "inside" });
+		assert.ok(textOf(html).includes("Physics") && html.includes("Open inside.md"));
+	});
+	it("an empty folder says so", () => {
+		assert.ok(body({ items: [], folders: [folder("fld_c", "Empty")], folderId: "fld_c" }).includes("This folder is empty."));
+	});
+});

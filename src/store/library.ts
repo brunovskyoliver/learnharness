@@ -12,9 +12,9 @@ import { nanoid } from "nanoid";
 import { PATHS, tenantScoped } from "../../config.ts";
 import { emit } from "../core/events.ts";
 import {
-	CATALOG_VERSION, CONTENT_CHECK_BYTES, contentMatches, isTombstone, isUnseenTutorVersion, kindForName, LIBRARY_REFUSALS, LibraryCatalogError,
+	CATALOG_VERSION, CONTENT_CHECK_BYTES, contentMatches, isTombstone, liveFolderId, wouldCycle, isUnseenTutorVersion, kindForName, LIBRARY_REFUSALS, LibraryCatalogError,
 	nameKey, PAGE_MAX_BYTES, suggestName, uploadName,
-	type LibraryCatalog, type LibraryItem, type LibraryKind, type LibraryOrigin, type LibraryRefusal, type LibraryTextState, type LibraryTombstone,
+	type LibraryCatalog, type LibraryFolder, type LibraryItem, type LibraryKind, type LibraryOrigin, type LibraryRefusal, type LibraryTextState, type LibraryTombstone,
 	type PageDraft, type PageHead, type PageState, type PageStale, type PageVersion, type PageVersionCause, type PageWriteResult,
 } from "../core/library.ts";
 import type { AgentRevision, AgentRevisionResult, LibraryStore, PageCreateOptions } from "../core/ports.ts";
@@ -67,6 +67,7 @@ async function writeCatalog(catalog: LibraryCatalog): Promise<void> {
 	await fs.rename(temp, catalogFile());
 }
 
+const foldersOf = (catalog: LibraryCatalog) => catalog.folders ?? [];
 const liveItems = (catalog: LibraryCatalog) => catalog.items.filter((i): i is LibraryItem => !isTombstone(i));
 const tombstone = (item: LibraryItem, deletedAt: string): LibraryTombstone => ({ id: item.id, name: item.name, kind: item.kind, deletedAt });
 const replace = (catalog: LibraryCatalog, id: string, next: LibraryItem | LibraryTombstone) => {
@@ -185,7 +186,7 @@ async function receive(body: AsyncIterable<Uint8Array>, declared: number, temp: 
 	return whole && received === declared;
 }
 
-async function writeUpload(name: string, body: AsyncIterable<Uint8Array>, declared: number): Promise<LibraryItem | LibraryRefusal> {
+async function writeUpload(name: string, body: AsyncIterable<Uint8Array>, declared: number, folderId?: string | null): Promise<LibraryItem | LibraryRefusal> {
 	await fs.mkdir(tmpDir(), { recursive: true });
 	const temp = path.join(tmpDir(), `upload-${nanoid()}`);
 	try {
@@ -195,6 +196,7 @@ async function writeUpload(name: string, body: AsyncIterable<Uint8Array>, declar
 		try { await handle.sync(); } finally { await handle.close(); }
 		const item = await withLock(async () => {
 			const catalog = await loadReconciled();
+			if (folderId && !foldersOf(catalog).some((f) => f.id === folderId)) return LIBRARY_REFUSALS.folderMissing;
 			const taken = await takenKeys(catalog);
 			if (taken.has(nameKey(name))) return nameTaken(name, taken);
 			await fs.mkdir(PATHS.files, { recursive: true });
@@ -210,7 +212,7 @@ async function writeUpload(name: string, body: AsyncIterable<Uint8Array>, declar
 			const kind = kindForName(name) ?? "other";
 			const added: LibraryItem = {
 				id: newId(), name, kind, size: stat.size, createdAt: new Date().toISOString(), updatedAt: stat.mtime.toISOString(),
-				origin: { type: "upload" }, ...(kind === "pdf" ? { textState: "pending" as const } : {}),
+				origin: { type: "upload" }, ...(kind === "pdf" ? { textState: "pending" as const } : {}), ...(folderId ? { folderId } : {}),
 			};
 			catalog.items.push(added);
 			await writeCatalog(catalog);
@@ -282,6 +284,100 @@ async function remove(id: string): Promise<boolean> {
 		await writeCatalog(catalog);
 		emit("library-changed", { itemId: id });
 		return true;
+	});
+}
+
+// ── Folders (feature 011): catalog only, so no byte ever moves ──
+
+const siblingKeys = (catalog: LibraryCatalog, parentId: string | null, except?: string) =>
+	new Set(foldersOf(catalog).filter((f) => f.id !== except && liveFolderId(f.parentId, foldersOf(catalog)) === parentId).map((f) => nameKey(f.name)));
+const folderClash = (name: string, taken: Set<string>): LibraryRefusal => ({
+	...nameTaken(name, taken),
+	message: `${name} is already a folder here.`,
+});
+const putFolder = (catalog: LibraryCatalog, next: LibraryFolder) => {
+	catalog.folders = foldersOf(catalog).map((f) => (f.id === next.id ? next : f));
+};
+
+async function createFolder(raw: string, parentId: string | null): Promise<LibraryFolder | LibraryRefusal> {
+	const name = uploadName(raw);
+	if (!name) return LIBRARY_REFUSALS.invalidName;
+	return withLock(async () => {
+		const catalog = await readCatalog();
+		if (parentId && !foldersOf(catalog).some((f) => f.id === parentId)) return LIBRARY_REFUSALS.folderMissing;
+		const taken = siblingKeys(catalog, parentId);
+		if (taken.has(nameKey(name))) return folderClash(name, taken);
+		const now = new Date().toISOString();
+		const folder: LibraryFolder = { id: `fld_${nanoid()}`, name, parentId, createdAt: now, updatedAt: now };
+		catalog.folders = [...foldersOf(catalog), folder];
+		await writeCatalog(catalog);
+		emit("library-changed", { itemId: folder.id });
+		return folder;
+	});
+}
+
+async function renameFolder(id: string, raw: string): Promise<LibraryFolder | LibraryRefusal | null> {
+	const name = uploadName(raw);
+	return withLock(async () => {
+		const catalog = await readCatalog();
+		const folder = foldersOf(catalog).find((f) => f.id === id);
+		if (!folder) return null;
+		if (!name) return LIBRARY_REFUSALS.invalidName;
+		if (name === folder.name) return folder;
+		const taken = siblingKeys(catalog, liveFolderId(folder.parentId, foldersOf(catalog)), id);
+		if (taken.has(nameKey(name))) return folderClash(name, taken);
+		const next = { ...folder, name, updatedAt: new Date().toISOString() };
+		putFolder(catalog, next);
+		await writeCatalog(catalog);
+		emit("library-changed", { itemId: id });
+		return next;
+	});
+}
+
+async function moveFolder(id: string, parentId: string | null): Promise<LibraryFolder | LibraryRefusal | null> {
+	return withLock(async () => {
+		const catalog = await readCatalog();
+		const folders = foldersOf(catalog);
+		const folder = folders.find((f) => f.id === id);
+		if (!folder) return null;
+		if (parentId && !folders.some((f) => f.id === parentId)) return LIBRARY_REFUSALS.folderMissing;
+		if (wouldCycle(id, parentId, folders)) return LIBRARY_REFUSALS.folderCycle;
+		if (liveFolderId(folder.parentId, folders) === parentId) return folder;
+		const taken = siblingKeys(catalog, parentId, id);
+		if (taken.has(nameKey(folder.name))) return folderClash(folder.name, taken);
+		const next = { ...folder, parentId, updatedAt: new Date().toISOString() };
+		putFolder(catalog, next);
+		await writeCatalog(catalog);
+		emit("library-changed", { itemId: id });
+		return next;
+	});
+}
+
+async function removeFolder(id: string): Promise<boolean | LibraryRefusal> {
+	return withLock(async () => {
+		const catalog = await loadReconciled();
+		const folders = foldersOf(catalog);
+		if (!folders.some((f) => f.id === id)) return false;
+		if (folders.some((f) => f.parentId === id) || liveItems(catalog).some((i) => i.folderId === id)) return LIBRARY_REFUSALS.folderNotEmpty;
+		catalog.folders = folders.filter((f) => f.id !== id);
+		await writeCatalog(catalog);
+		emit("library-changed", { itemId: id });
+		return true;
+	});
+}
+
+async function moveItem(id: string, folderId: string | null): Promise<LibraryItem | LibraryRefusal | null> {
+	return withLock(async () => {
+		const catalog = await loadReconciled();
+		const item = liveItems(catalog).find((i) => i.id === id);
+		if (!item) return null;
+		if (folderId && !foldersOf(catalog).some((f) => f.id === folderId)) return LIBRARY_REFUSALS.folderMissing;
+		const { folderId: _old, ...rest } = item;
+		const next: LibraryItem = folderId ? { ...rest, folderId } : rest;
+		replace(catalog, id, next);
+		await writeCatalog(catalog);
+		emit("library-changed", { itemId: id });
+		return next;
 	});
 }
 
@@ -451,11 +547,12 @@ async function createPage(rawName: string, content: string, options: PageCreateO
 				if (head) return { item, head: { ...head, n: versions.find((v) => v.toolCallId === options.toolCallId)!.n } };
 			}
 		}
+		if (options.folderId && !foldersOf(catalog).some((f) => f.id === options.folderId)) return LIBRARY_REFUSALS.folderMissing;
 		const taken = await takenKeys(catalog);
 		if (taken.has(nameKey(name))) return nameTaken(name, taken);
 		const now = new Date().toISOString();
 		const origin: LibraryOrigin = options.author === "agent" ? { type: "agent", ...(options.chatId ? { chatId: options.chatId } : {}) } : { type: "learner" };
-		const created: LibraryItem = { id: newId(), name, kind: "page", size: 0, createdAt: now, updatedAt: now, origin, headVersion: 0 };
+		const created: LibraryItem = { id: newId(), name, kind: "page", size: 0, createdAt: now, updatedAt: now, origin, headVersion: 0, ...(options.folderId ? { folderId: options.folderId } : {}) };
 		catalog.items.push(created);
 		const { version, item } = await appendVersion(catalog, created, [], content, {
 			author: options.author,
@@ -679,6 +776,12 @@ export const libraryStore: LibraryStore = {
 	revisePageAsAgent,
 	unlinkChat,
 	writeUpload,
+	folders: () => withLock(async () => [...foldersOf(await readCatalog())].sort((a, b) => a.name.localeCompare(b.name))),
+	createFolder,
+	renameFolder,
+	moveFolder,
+	removeFolder,
+	moveItem,
 	rename,
 	remove,
 	setTextState: (id, state: LibraryTextState) => withLock(async () => {
