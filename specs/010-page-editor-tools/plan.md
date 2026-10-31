@@ -1,113 +1,115 @@
-# Implementation Plan: [FEATURE]
+# Implementation Plan: Page editor tools
 
-**Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
+**Branch**: `claude/notes-editing-quality-review-wj8e49` | **Date**: 2026-10-31 | **Spec**: [spec.md](spec.md)
 
-**Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
-
-**Note**: This template is filled in by the `/speckit-plan` command; its definition describes the execution workflow.
+**Input**: Feature specification from `/specs/010-page-editor-tools/spec.md`
 
 ## Summary
 
-[Extract from feature spec: primary requirement + technical approach from research]
+The feature 009 page editor gains:
+- a formatting toolbar, Ctrl K links, table controls, a slash menu and a placeholder;
+- a selection bubble whose tutor actions send to the chat beside the page, or to a new session from the Library;
+- highlighted tutor changes with block-level undo, kept until Done or close;
+- History comparison and version names;
+- an outline, a word count and export;
+- images uploaded as Library items.
+
+Everything is built from TipTap pieces already installed, ProseMirror decorations and pure Markdown block functions, so stored bytes change only where the learner edits (research R1–R8).
 
 ## Technical Context
 
-<!--
-  ACTION REQUIRED: Replace the content in this section with the technical details
-  for the project. The structure here is presented in advisory capacity to guide
-  the iteration process.
--->
+**Language/Version**: TypeScript 5, React 19, Next.js 16.3.2.
 
-**Language/Version**: [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION]
+**Primary Dependencies**: no new ones. Reused:
+- TipTap 3.32.2: `@tiptap/react/menus` BubbleMenu, TableKit and StarterKit.
+- `@floating-ui/dom`, already installed through `@tiptap/react`.
+- The 009 page codec, `ChatActionsContext`, the Library upload and content routes.
 
-**Primary Dependencies**: [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
+**Storage**: two small files per page, `names.json` and `seen.json` ([data-model.md](data-model.md)). `versions.jsonl` stays append-only.
 
-**Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
+**Testing**: `node:test` through `tsx`, plus `scripts/check-library-ui.mjs` (`checkEditorTools`) in Chromium at 1440, 390 and 320 px. No model calls; tutor revisions are seeded through the store.
 
-**Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]
+**Target Platform**: hosted and desktop (Electron), as in 009.
 
-**Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
+**Project Type**: web application with a file-backed server.
 
-**Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]
+**Performance Goals**: all new UI code loads only in the page-editor chunk. Startup and the first page open stay within 5% of baseline (constitution VIII).
 
-**Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]
+**Constraints**:
+- Untouched blocks keep their bytes (SC-002).
+- Hidden scrollbars; 44 px coarse targets; keyboard access everywhere.
+- Comparison capped at 4,000 blocks.
 
-**Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]
-
-**Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
+**Scale/Scope**: pages up to 1 MiB (009 limit).
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+| Principle | Check | Status |
+|---|---|---|
+| I Owner decides | Scope, tutor actions, images, undo, Library-view sessions, when highlights clear and the slash-menu cut were decided by the owner (spec Clarifications). Strings in contracts/ui-contract.md await approval with this plan. | Pass once the plan is approved |
+| II Teaching theory | Quiz me goes through the chat's graded check. Tutor actions are refused while a question waits or a problem is active, and never dismiss a waiting question. No answer is written into a page (practice question cut). | Pass |
+| III Data never lost | Undo is a new version; highlights and placeholder are decorations, never stored; actions commit unsent text before sending; names and seen state live in side files, and the log stays append-only. | Pass |
+| IV Honest states | Unavailable actions say why; skipped undo blocks are counted; upload progress and refusals are shown. | Pass |
+| V Consent before cost | Every model call follows an explicit click. The Library-view path runs Home's keys checks before creating a session. | Pass |
+| VI DESIGN.md | Study ink tokens, one accent, no gradients, shadows or side rules, hidden scrollbars. DESIGN.md gains a "Page editor tools" section. Checked with shadcn, impeccable and web-design-guidelines before done. | Pass |
+| VII Boundaries and tenancy | New routes use `withTenant`; image links point at tenant-scoped content; SVG is refused. | Pass |
+| VIII Performance | No new dependency. Code goes in the existing dynamic editor chunk, measured as in 009 (T003 and T056a). | Pass |
 
 ## Project Structure
 
 ### Documentation (this feature)
 
 ```text
-specs/[###-feature]/
-├── plan.md              # This file (/speckit-plan command output)
-├── research.md          # Phase 0 output (/speckit-plan command)
-├── data-model.md        # Phase 1 output (/speckit-plan command)
-├── quickstart.md        # Phase 1 output (/speckit-plan command)
-├── contracts/           # Phase 1 output (/speckit-plan command)
-└── tasks.md             # Phase 2 output (/speckit-tasks command - NOT created by /speckit-plan)
+specs/010-page-editor-tools/
+├── plan.md
+├── research.md
+├── data-model.md
+├── quickstart.md
+├── contracts/ (ui-contract.md, api.md)
+└── tasks.md            (/speckit-tasks)
 ```
 
 ### Source Code (repository root)
-<!--
-  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
-  for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
--->
 
 ```text
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
-src/
-├── models/
-├── services/
-├── cli/
-└── lib/
-
-tests/
-├── contract/
-├── integration/
-└── unit/
-
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
-├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
-└── tests/
-
-frontend/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
-
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+components/library/
+├── page-editor.tsx          toolbar, bubble, slash menu, placeholder, decorations, paste and drop
+├── page-toolbar.tsx         new: toolbar, text style menu, table controls, link popover
+├── page-slash.ts            new: slash trigger plugin and filter (pure parts testable)
+├── page-blocks.ts           new: block split, compare, revertTutorChanges, word count, outline
+├── page-tutor-actions.ts    new: message texts, blocked reasons, send and fill paths
+├── page-changes.tsx         new: tutor change bar and decorations state
+├── page-history.tsx         Changes and Full text, names, Copy
+├── page-pane.tsx            header: words, Outline, Export; wiring
+├── page-export.ts           new: copy, download, print root
+├── upload.ts                sendFile returns the item
+components/chat.tsx          ChatActionsContext: fillComposer, blockedReason, busy
+src/core/library.ts          PageVersion.name, cause "undo-agent"
+src/store/library.ts         names.json, seen.json
+src/server/library.ts        name, seen routes; listPageVersions with names
+app/api/library/pages/[id]/versions/[n]/route.ts   PATCH
+app/api/library/pages/[id]/seen/route.ts           GET, PUT (new)
+app/globals.css              toolbar, bubble, menus, highlights, print
+DESIGN.md                    Page editor tools section
+tests/                       page-blocks, page-tools-ui, page-names-seen, page-tutor-messages
+scripts/check-library-ui.mjs checkEditorTools
 ```
 
-**Structure Decision**: [Document the selected structure and reference the real
-directories captured above]
+**Structure Decision**: the existing single Next.js app. New editor code sits beside the 009 page files under `components/library/`.
+
+## Delivery order
+
+Each step ships on its own, with its tests.
+
+1. **US1, formatting.** Toolbar, link popover, table controls, slash menu and placeholder.
+2. **US2, tutor actions.** Bubble, context additions and the Library-view path.
+3. **US3, tutor changes.** Seen routes, compare, decorations and undo.
+4. **US4, History.** Comparison and names.
+5. **US5, outline, word count and export.**
+6. **US6, images.**
 
 ## Complexity Tracking
 
-> **Fill ONLY if Constitution Check has violations that must be justified**
-
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| [e.g., 4th project] | [current need] | [why 3 projects insufficient] |
-| [e.g., Repository pattern] | [specific problem] | [why direct DB access insufficient] |
+None.

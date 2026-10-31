@@ -43,8 +43,26 @@
 
 ## R7 Chat actions from the page
 
-Pending the code trace (agent report). This decides how the pane sends a message and opens the composer.
+- **Beside a chat**:
+  - The pane renders inside `ChatActionsContext` (components/chat.tsx:131, slot at :1746), so `useContext` gives the chat. In the Library view it gives `null`.
+  - The context gains `fillComposer(text)`, which calls `applyText` and focuses the field, for Ask…. It also gains `blockedReason`, the same pending-question and active-problem state that `canSend` reads (chat.tsx:507, 517, 711).
+  - Explain, Simpler and Quiz me use the existing `sendText`, guarded by `blockedReason`. Without the guard, a text sent while a question waits would quietly dismiss the question (src/core/input-events.ts:204).
+  - While a turn is running, the actions are unavailable, as the composer's Send is.
+- **Library view**: follow Home's path (components/home.tsx:103-134):
+  - first the keys checks;
+  - then `POST /api/chats`;
+  - then `router.push("/chat/{id}?prompt=…")`, where `initialPrompt` sends it once.
+  The open page persists across routes through `PagePaneProvider`, so it appears beside the new session.
+- **Before sending**: pending editor text is handed over and committed (`controller.commit("save")`), so the @ reference resolves to the text on screen.
+- **Message**: plain text with an @ reference, which the server resolves (src/core/library-refs.ts:117). The selection is quoted as Markdown block quote lines, never in backticks, since references inside code are ignored. Its exact wording is in contracts/ui-contract.md.
+  - Known limit: an "@Name" inside the selected text can reference that item too.
+- **Rejected**:
+  - a new route that sends on the pane's behalf (it duplicates `send`, steer and setup handling);
+  - sending to the latest session (owner chose a new session).
 
 ## R8 Images
 
-Pending the upload and content-route trace (same report).
+- **Upload**: `sendFile` (components/library/upload.ts) already uploads with progress, but drops the created item on 201. It will return `{ status: "done", item }`.
+- **Refusals**: a name clash takes the suggested free name automatically, since the learner chose an image, not a name. Too large or not an image shows the existing refusal sentence.
+- **Link**: the page stores `![alt](/api/library/items/{id}/content)`. That route serves images inline with their real type, scoped to the tenant (src/server/library.ts:87-113), and returns 404 once the item is deleted, so the editor's image node shows the alt text instead.
+- **SVG**: SVG is served as text/plain, so it is refused for pages with the unsupported-type sentence.
