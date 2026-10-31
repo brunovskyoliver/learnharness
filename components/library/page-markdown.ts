@@ -318,6 +318,13 @@ function wrapStrayInlines(node: JSONContent): JSONContent {
 	return { ...node, content: holdsBlocks ? content.map((c) => (c.type === "pageImage" ? { type: "paragraph", content: [c] } : c)) : content };
 }
 
+/** The page's top-level tokens' source text, in order, whitespace tokens
+ *  included: joined, they give back the page with "\r\n" read as "\n". */
+export function markdownTokenRaws(markdown: string): { raw: string; space: boolean }[] {
+	const lexer = (shared().manager as unknown as ManagerInternals).createLexer();
+	return lexer.lex(markdown).map((token) => ({ raw: String(token.raw ?? ""), space: token.type === "space" }));
+}
+
 export function parsePageMarkdown(markdown: string): JSONContent {
 	const { manager, schema } = shared();
 	const doc = wrapStrayInlines(manager.parse(markdown));

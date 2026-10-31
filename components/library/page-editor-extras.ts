@@ -88,3 +88,83 @@ export function normalizeLinkAddress(raw: string): string | null {
 		return null;
 	}
 }
+
+/** What the tutor changed, in the editor's own Markdown form (feature 010, US3). */
+export interface TutorHighlights {
+	/** Blocks the tutor wrote that are still to be pointed at. */
+	added: string[];
+	/** Text the tutor removed, shown struck through after `anchor` (null: the top). */
+	removed: { anchor: string | null; before: string | null; blocks: string[] }[];
+}
+
+export const tutorHighlightsKey = new PluginKey<{ highlights: TutorHighlights | null; set: DecorationSet }>("tutorHighlights");
+
+/** A top-level node's Markdown, cached per node: nodes are immutable and reused. */
+function nodeKeyCache(toKey: (json: unknown) => string) {
+	const cache = new WeakMap<object, string>();
+	return (node: { toJSON(): unknown }) => {
+		let key = cache.get(node);
+		if (key === undefined) { key = toKey(node.toJSON()); cache.set(node, key); }
+		return key;
+	};
+}
+
+function removedWidget(blocks: string[]): HTMLElement {
+	const el = document.createElement("div");
+	el.className = "lh-tutor-removed";
+	el.dataset.testid = "page-tutor-removed";
+	const label = document.createElement("span");
+	label.className = "sr-only";
+	label.textContent = "Removed: ";
+	el.append(label, blocks.join("\n\n"));
+	return el;
+}
+
+/** Highlights the tutor's blocks and shows removed text, as decorations only:
+ *  nothing here is in the document, so nothing here can be stored. */
+export function createTutorHighlights(toKey: (json: unknown) => string) {
+	const keyOf = nodeKeyCache(toKey);
+	const build = (doc: import("@tiptap/pm/model").Node, highlights: TutorHighlights | null): DecorationSet => {
+		if (!highlights) return DecorationSet.empty;
+		const added = new Set(highlights.added);
+		const decorations: Decoration[] = [];
+		const starts: { key: string; pos: number }[] = [];
+		doc.forEach((node, offset) => {
+			const key = keyOf(node);
+			starts.push({ key, pos: offset });
+			if (added.has(key)) decorations.push(Decoration.node(offset, offset + node.nodeSize, { class: "lh-tutor-added", "data-tutor-change": "" }));
+		});
+		for (const removal of highlights.removed) {
+			// After the anchor, or before the block that now follows it.
+			let pos = 0;
+			if (removal.anchor !== null) {
+				const i = starts.findIndex((s) => s.key === removal.anchor);
+				if (i < 0) continue;
+				pos = i + 1 < starts.length ? starts[i + 1]!.pos : doc.content.size;
+			} else if (removal.before !== null) {
+				const i = starts.findIndex((s) => s.key === removal.before);
+				pos = i >= 0 ? starts[i]!.pos : 0;
+			}
+			decorations.push(Decoration.widget(pos, () => removedWidget(removal.blocks), { side: -1, key: `removed-${pos}-${removal.blocks.join("|").length}` }));
+		}
+		return DecorationSet.create(doc, decorations);
+	};
+	return Extension.create({
+		name: "tutorHighlights",
+		addProseMirrorPlugins() {
+			return [new Plugin({
+				key: tutorHighlightsKey,
+				state: {
+					init: (): { highlights: TutorHighlights | null; set: DecorationSet } => ({ highlights: null, set: DecorationSet.empty }),
+					apply: (tr, value, _old, state) => {
+						const next = tr.getMeta(tutorHighlightsKey) as TutorHighlights | null | undefined;
+						if (next !== undefined) return { highlights: next, set: build(state.doc, next) };
+						if (!tr.docChanged || !value.highlights) return value;
+						return { highlights: value.highlights, set: build(state.doc, value.highlights) };
+					},
+				},
+				props: { decorations: (state) => tutorHighlightsKey.getState(state)?.set ?? null },
+			})];
+		},
+	});
+}

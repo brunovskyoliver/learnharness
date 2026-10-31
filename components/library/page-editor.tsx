@@ -3,7 +3,8 @@
 import { NodeSelection } from "@tiptap/pm/state";
 import { EditorContent, useEditor, useEditorState } from "@tiptap/react";
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from "react";
-import { insertFormula, PagePlaceholder, runSlashBlock } from "./page-editor-extras.ts";
+import { createTutorHighlights, insertFormula, PagePlaceholder, runSlashBlock, tutorHighlightsKey, type TutorHighlights } from "./page-editor-extras.ts";
+import { nodeJsonKey } from "./page-changes.ts";
 import { createPageCodec, pageExtensions } from "./page-markdown.ts";
 import { OPEN_MATH_SOURCE_EVENT } from "./page-math-view.ts";
 import { slashQuery, type SlashItem } from "./page-slash.ts";
@@ -32,8 +33,10 @@ export function pageEditorAttributes(ariaLabel: string): Record<string, string> 
  *  stored Markdown, and answers with Markdown that is byte-identical until
  *  something is really edited (components/library/page-markdown.ts). A new
  *  `value` from outside comes with a new React key. */
-export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, ariaLabel, handle, tutor }: {
+export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, ariaLabel, handle, tutor, highlights = null }: {
 	value: string;
+	/** The tutor's changes to point at; decorations only, never stored. */
+	highlights?: TutorHighlights | null;
 	/** The tutor's actions on selected text; absent hides them. */
 	tutor?: PageTutor;
 	onChange: (markdown: string) => void;
@@ -61,6 +64,7 @@ export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, 
 	const extensions = useMemo(() => [
 		...pageExtensions({ onSave: () => { emit(); saveRef.current?.(); } }),
 		PagePlaceholder,
+		createTutorHighlights(nodeJsonKey),
 	], [emit]);
 	const host = useRef<HTMLDivElement>(null);
 	const [linkAt, setLinkAt] = useState<{ left: number; top: number } | null>(null);
@@ -172,6 +176,11 @@ export function PageEditor({ value, onChange, onSaveShortcut, readOnly = false, 
 	};
 	const pickSlashRef = useRef(pickSlash);
 	pickSlashRef.current = pickSlash;
+
+	useEffect(() => {
+		if (!editor || editor.isDestroyed) return;
+		editor.view.dispatch(editor.state.tr.setMeta(tutorHighlightsKey, highlights).setMeta("addToHistory", false));
+	}, [editor, highlights]);
 
 	openLinkRef.current = () => {
 		if (!editor || readOnly) return;

@@ -670,7 +670,8 @@ try {
 	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true });
 	if (toolsOnly) {
 		if (!process.env.LH_UI_SKIP_FORMAT) for (const width of [1440, 390, 320]) await checkEditorTools(width);
-		for (const width of [1440, 390]) await checkTutorActions(width);
+		if (!process.env.LH_UI_SKIP_ACTIONS) for (const width of [1440, 390]) await checkTutorActions(width);
+		for (const width of [1440, 390]) await checkTutorChanges(width);
 	} else if (fixesOnly) {
 		await checkPageFixes();
 	} else if (settingsOnly) {
@@ -686,6 +687,7 @@ try {
 		await checkPageFixes();
 		for (const width of [1440, 390, 320]) await checkEditorTools(width);
 		for (const width of [1440, 390]) await checkTutorActions(width);
+		for (const width of [1440, 390]) await checkTutorChanges(width);
 	}
 	if (!mentionsOnly && !pagesOnly) {
 		await checkLibrary();
@@ -694,6 +696,7 @@ try {
 		await checkPageFixes();
 		for (const width of [1440, 390, 320]) await checkEditorTools(width);
 		for (const width of [1440, 390]) await checkTutorActions(width);
+		for (const width of [1440, 390]) await checkTutorChanges(width);
 		await checkPageRows();
 		await checkPageAndDemo();
 	}
@@ -1243,8 +1246,11 @@ async function checkTutorActions(width) {
 		await page.waitForSelector(editor, { timeout: 60000 });
 	};
 	const selectFirst = async () => {
+		// The editor reads clicks and keyboard selection on selectionchange.
 		await page.click(`${editor} p`);
+		await pause(150);
 		await page.keyboard.press("Home");
+		await pause(60);
 		await page.keyboard.down("Shift");
 		await page.keyboard.press("End");
 		await page.keyboard.up("Shift");
@@ -1302,6 +1308,61 @@ async function checkTutorActions(width) {
 	assert.deepEqual(errors, [], `${width}px: no browser exceptions`);
 	await context.close();
 }
+
+/** A tutor revision written through the real store, as the agent's tool does. */
+async function agentRevise(id, base, text) {
+	const child = spawn(process.execPath, ["node_modules/tsx/dist/cli.mjs", "tests/helpers/agent-revise-cli.ts", data, id, String(base), JSON.stringify(text)], { stdio: ["ignore", "pipe", "inherit"], env: { ...process.env, LH_HOSTED: "0" } });
+	let out = "";
+	child.stdout.on("data", (chunk) => { out += chunk; });
+	await new Promise((resolve) => child.once("exit", resolve));
+	const result = JSON.parse(out.trim().split("\n").at(-1));
+	assert.equal(result.outcome, "revised", out);
+	return result.version;
+}
+
+/** Feature 010 US3: the tutor's edit made while the page was closed is
+ *  highlighted on open, stepped through, and undone around later typing. */
+async function checkTutorChanges(width) {
+	const page = await browser.newPage();
+	page.setDefaultTimeout(30000);
+	const errors = [];
+	page.on("pageerror", (error) => errors.push(error.message));
+	await page.setViewport({ width, height: width < 768 ? 800 : 900 });
+	const name = `Changed ${width}`;
+	const start = "# Notes\n\nOne.\n\nTwo.\n\nThree.\n";
+	const made = await pageApi.create(name, start);
+	// Seen up to version 1, as an open does.
+	assert.equal((await (await fetch(`${base_url(made.id)}/seen`)).json()).version, 1);
+	const v = await agentRevise(made.id, 1, "# Notes\n\nOne, simpler.\n\nTwo.\n\nThree.\n\nA new check.\n");
+	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
+	for (let i = 0; i < 40 && !(await page.$('[data-testid="page-pane"]')); i++) {
+		await page.click(`[aria-label="Open ${name}"]`).catch(() => {});
+		await pause(500);
+	}
+	await page.waitForSelector('[data-testid="page-change-bar"]', { timeout: 60000 });
+	assert.equal(await page.$eval('[data-testid="page-change-bar"] p', (el) => el.textContent), `The tutor changed 2 places · version ${v}`);
+	assert.equal(await page.$$eval(`${editor} [data-tutor-change]`, (els) => els.map((el) => el.textContent).join("|")), "One, simpler.|A new check.");
+	assert.equal(await page.$eval('[data-testid="page-tutor-removed"]', (el) => el.textContent), "Removed: One.");
+	if (shots) await page.screenshot({ path: path.join(shots, `tutor-changes-${width}.png`) });
+	// Typing elsewhere, then Undo: only the tutor's places go back.
+	const two = await page.evaluateHandle(() => [...document.querySelectorAll('[data-testid="page-editor"] p')].find((p) => p.textContent === "Two."));
+	await two.click();
+	await page.keyboard.press("End");
+	await page.keyboard.type(" Mine.");
+	await pause(300);
+	await page.click('[data-testid="page-undo-tutor"]');
+	await page.waitForFunction(() => !document.querySelector('[data-testid="page-change-bar"]'));
+	await page.waitForFunction(async (id) => (await (await fetch(`/api/library/pages/${id}`)).json()).head.content === "# Notes\n\nOne.\n\nTwo. Mine.\n\nThree.\n", {}, made.id);
+	const versions = await pageApi.versions(made.id);
+	assert.equal(versions[0].cause, "undo-agent");
+	assert.equal((await (await fetch(`${base_url(made.id)}/seen`)).json()).unseen.length, 0, "seen after undo");
+	assert.equal(await page.$(`${editor} [data-tutor-change]`), null, "no highlight left");
+	console.log(`PASS ${width}px a tutor edit made while closed is highlighted on open and undone around later typing`);
+	await page.click(width < 768 ? '[data-testid="page-back"]' : '[data-testid="page-close"]');
+	assert.deepEqual(errors, [], `${width}px: no browser exceptions`);
+	await page.close();
+}
+function base_url(id) { return `${base}/api/library/pages/${id}`; }
 
 /** The transcript rows, from a seeded tool result, since no model runs here. */
 async function checkPageRows() {

@@ -201,6 +201,13 @@ export interface LibraryStore {
 	/** Newest first, metadata only. */
 	listPageVersions(id: string): Promise<PageVersion[] | null>;
 	readPageVersion(id: string, n: number): Promise<{ version: PageVersion; content: string } | null>;
+	/** Names a version, or clears its name with null (feature 010). */
+	namePageVersion(id: string, n: number, name: string | null): Promise<PageVersion | "missing">;
+	/** The last version the learner has seen, and the tutor versions since. A
+	 *  page never seen counts as seen up to its head, which is written. */
+	readPageSeen(id: string): Promise<{ version: number; unseen: PageVersion[] } | "missing">;
+	/** Moves the seen version forward, never past the head. */
+	markPageSeen(id: string, version: number): Promise<{ version: number } | "missing">;
 	/** Commits a dirty draft, then adds one version with the old text. */
 	restorePageVersion(id: string, n: number): Promise<{ version: PageVersion } | "missing">;
 	/** Agent revision under the page lock, per contracts/agent-tools.md. */

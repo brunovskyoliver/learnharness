@@ -21,10 +21,10 @@ Approved plan: [plan.md](plan.md). Strings: [contracts/ui-contract.md](contracts
 - [x] T010 Browser: bubble, Ask… fills the composer, sends intercepted
 
 ## Phase 3: US3 Tutor changes (P2)
-- [ ] T011 Store and routes: `seen.json`, GET and PUT seen; cause `undo-agent` (tests/page-names-seen.test.ts)
-- [ ] T012 `page-blocks.ts`: split, compare, `revertTutorChanges` (tests/page-blocks.test.ts)
-- [ ] T013 Change bar, decorations, Previous and Next, Undo, Done; seen on Done and close
-- [ ] T014 Browser: two-place seeded revision, typing, undo
+- [x] T011 Store and routes: `seen.json`, GET and PUT seen; cause `undo-agent` (tests/page-names-seen.test.ts)
+- [x] T012 `page-blocks.ts`: split, compare, `revertTutorChanges` (tests/page-blocks.test.ts)
+- [x] T013 Change bar, decorations, Previous and Next, Undo, Done; seen on Done and close
+- [x] T014 Browser: two-place seeded revision, typing, undo
 
 ## Phase 4: US4 History (P2)
 - [ ] T015 `names.json`, PATCH route, names in the list

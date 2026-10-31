@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ArrowLeftIcon, HistoryIcon, XIcon } from "lucide-react";
 import { ChatActionsContext } from "@/components/chat-actions-context.ts";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,8 @@ import type { PagePaneApi, PaneItem } from "./page-pane-context.tsx";
 import { ReadOnlyView } from "./read-only-view.tsx";
 import type { PageTutor } from "./page-toolbar.tsx";
 import { TUTOR_BLOCKED_TEXT, tutorMessage, type TutorAction } from "./page-tutor-actions.ts";
+import { revertTutorChanges } from "./page-blocks.ts";
+import { changeBarText, highlightsOf, skippedText, UNDO_FAILED_TEXT, useTutorChanges } from "./page-changes.ts";
 import { usePageDraft } from "./use-page-draft.ts";
 
 const PageEditor = dynamic(() => import("./page-editor.tsx").then((m) => m.PageEditor), {
@@ -90,6 +92,19 @@ export function SaveState({ state, onRetry, canRetry = true }: { state: Pick<Pag
 			{SAVE_STATE_LABEL[state.status]}
 			{state.status === "failed" && canRetry && <button type="button" className="prompt-secondary" onClick={onRetry} data-testid="page-retry">Try again</button>}
 		</span>
+	);
+}
+
+/** The tutor's changes: count, step through, undo, done (contracts/ui-contract.md). */
+export function ChangeBar({ text, onPrevious, onNext, onUndo, onDone, busy }: { text: string; onPrevious: () => void; onNext: () => void; onUndo: () => void; onDone: () => void; busy: boolean }) {
+	return (
+		<div role="region" aria-label="The tutor's changes" className="mx-3 mb-2 flex flex-wrap items-center gap-2 rounded-[10px] bg-card px-3 py-2 text-sm" data-testid="page-change-bar">
+			<p role="status" className="min-w-0 flex-[1_1_14rem] text-foreground">{text}</p>
+			<button type="button" className="prompt-secondary" onClick={onPrevious}>Previous</button>
+			<button type="button" className="prompt-secondary" onClick={onNext}>Next</button>
+			<button type="button" className="prompt-secondary" disabled={busy} onClick={onUndo} data-testid="page-undo-tutor">Undo the tutor&apos;s edit</button>
+			<button type="button" className="prompt-primary" onClick={onDone} data-testid="page-changes-done">Done</button>
+		</div>
 	);
 }
 
@@ -210,8 +225,37 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 		editor.current?.flush();
 		void controller.commit("save");
 	};
+	// The tutor's changes (feature 010, US3), cleared on Done and on close.
+	const { changes, done } = useTutorChanges(item.id, state.loaded && !state.deleted, state.base);
+	const [changeLine, setChangeLine] = useState<string | null>(null);
+	const [undoing, setUndoing] = useState(false);
+	const changeIndex = useRef(-1);
+	const step = (by: 1 | -1) => {
+		const marks = [...(root.current?.querySelectorAll<HTMLElement>("[data-tutor-change], [data-testid=\"page-tutor-removed\"]") ?? [])];
+		if (marks.length === 0) return;
+		changeIndex.current = (changeIndex.current + by + marks.length) % marks.length;
+		marks[changeIndex.current]!.scrollIntoView({ block: "center" });
+	};
+	const undoTutor = async () => {
+		if (!changes) return;
+		editor.current?.flush();
+		setUndoing(true);
+		const { text, skipped, reverted } = revertTutorChanges(controller.state.text, changes.hunks);
+		const ok = reverted === 0 || await controller.replaceText(text, "undo-agent");
+		setUndoing(false);
+		if (!ok) { setChangeLine(UNDO_FAILED_TEXT); return; }
+		await done();
+		setChangeLine(skipped > 0 ? skippedText(skipped) : null);
+	};
+	useEffect(() => { if (changes) setChangeLine(null); }, [changes]);
+	const highlights = useMemo(() => highlightsOf(changes), [changes]);
+	// Leaving the route closes the page too.
+	const leaving = useRef({ changes, done });
+	leaving.current = { changes, done };
+	useEffect(() => () => { if (leaving.current.changes) void leaving.current.done(); }, []);
 	const close = () => {
 		editor.current?.flush();
+		if (changes) void done();
 		pane.close();
 	};
 	// Tutor actions (feature 010, US2): to the chat beside the page, or from
@@ -282,9 +326,13 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 						)}
 					/>
 					{state.deleted && <DeletedLine name={item.name} text={isUnsent(state) ? state.text : null} />}
+					{changes && !state.conflict && !history && (
+						<ChangeBar text={changeBarText(changes)} busy={undoing} onPrevious={() => step(-1)} onNext={() => step(1)} onUndo={() => void undoTutor()} onDone={() => void done()} />
+					)}
+					{changeLine && <p role="status" className="px-3 pb-2 text-sm text-ink-2" data-testid="page-change-line">{changeLine}</p>}
 					{state.conflict && <ConflictLine onKeepMine={() => void controller.keepMine()} onUseLatest={() => void controller.useLatest()} />}
 					<p role="status" aria-live="polite" className="px-3 text-sm text-ink-2 empty:hidden" data-testid="page-agent-update">
-						{state.agentUpdate !== null ? `Updated by the agent · version ${state.agentUpdate}` : ""}
+						{state.agentUpdate !== null && !changes ? `Updated by the agent · version ${state.agentUpdate}` : ""}
 					</p>
 					<div className={`flex min-h-0 flex-1 flex-col ${dragging ? "pointer-events-none" : ""}`}>
 						{loadFailed ? (
@@ -306,6 +354,7 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 								onChange={(text) => controller.edit(text)}
 								onSaveShortcut={save}
 								tutor={state.deleted ? undefined : tutor}
+								highlights={state.conflict ? null : highlights}
 							/>
 						)}
 					</div>

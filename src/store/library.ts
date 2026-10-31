@@ -12,7 +12,7 @@ import { nanoid } from "nanoid";
 import { PATHS, tenantScoped } from "../../config.ts";
 import { emit } from "../core/events.ts";
 import {
-	CATALOG_VERSION, CONTENT_CHECK_BYTES, contentMatches, isTombstone, kindForName, LIBRARY_REFUSALS, LibraryCatalogError,
+	CATALOG_VERSION, CONTENT_CHECK_BYTES, contentMatches, isTombstone, isUnseenTutorVersion, kindForName, LIBRARY_REFUSALS, LibraryCatalogError,
 	nameKey, PAGE_MAX_BYTES, suggestName, uploadName,
 	type LibraryCatalog, type LibraryItem, type LibraryKind, type LibraryOrigin, type LibraryRefusal, type LibraryTextState, type LibraryTombstone,
 	type PageDraft, type PageHead, type PageState, type PageStale, type PageVersion, type PageVersionCause, type PageWriteResult,
@@ -291,6 +291,34 @@ const pageDir = (id: string) => path.join(PATHS.library, "pages", id);
 const versionsFile = (id: string) => path.join(pageDir(id), "versions.jsonl");
 const contentFile = (id: string, n: number) => path.join(pageDir(id), `v${n}.md`);
 const draftFile = (id: string) => path.join(pageDir(id), "draft.json");
+const namesFile = (id: string) => path.join(pageDir(id), "names.json");
+const seenFile = (id: string) => path.join(pageDir(id), "seen.json");
+
+async function readJsonFile<T>(file: string): Promise<T | null> {
+	const raw = await fs.readFile(file, "utf8").catch((err) => {
+		if (isCode(err, "ENOENT")) return null;
+		throw err;
+	});
+	if (raw === null) return null;
+	try { return JSON.parse(raw) as T; } catch { return null; }
+}
+
+/** Written whole through a temp file, like the draft. */
+async function writeJsonFile(file: string, value: unknown): Promise<void> {
+	const temp = `${file}.${nanoid(8)}.tmp`;
+	const handle = await fs.open(temp, "wx");
+	try {
+		await handle.writeFile(JSON.stringify(value));
+		await handle.sync();
+	} finally {
+		await handle.close();
+	}
+	await fs.rename(temp, file);
+}
+
+const readNames = async (id: string) => (await readJsonFile<Record<string, string>>(namesFile(id))) ?? {};
+const withNames = (versions: readonly PageVersion[], names: Record<string, string>) =>
+	versions.map((v) => (names[String(v.n)] ? { ...v, name: names[String(v.n)] } : v));
 
 const tooLarge = (content: string) => Buffer.byteLength(content) > PAGE_MAX_BYTES;
 
@@ -611,7 +639,36 @@ export const libraryStore: LibraryStore = {
 	commitPageVersion,
 	listPageVersions: (id) => withLock(async () => {
 		const page = await loadPage(await readCatalog(), id);
-		return page ? [...page.versions].reverse() : null;
+		return page ? withNames([...page.versions].reverse(), await readNames(id)) : null;
+	}),
+	namePageVersion: (id, n, name) => withLock(async () => {
+		const page = await loadPage(await readCatalog(), id);
+		const version = page?.versions.find((v) => v.n === n);
+		if (!version) return "missing";
+		const names = await readNames(id);
+		if (name === null) delete names[String(n)];
+		else names[String(n)] = name;
+		await writeJsonFile(namesFile(id), names);
+		emit("library-changed", { itemId: id });
+		return name === null ? version : { ...version, name };
+	}),
+	readPageSeen: (id) => withLock(async () => {
+		const page = await loadPage(await readCatalog(), id);
+		if (!page) return "missing";
+		const seen = await readJsonFile<{ version: number }>(seenFile(id));
+		if (!seen || !Number.isInteger(seen.version)) {
+			await writeJsonFile(seenFile(id), { version: page.head.n, at: new Date().toISOString() });
+			return { version: page.head.n, unseen: [] };
+		}
+		return { version: seen.version, unseen: page.versions.filter((v) => isUnseenTutorVersion(v, seen.version)) };
+	}),
+	markPageSeen: (id, version) => withLock(async () => {
+		const page = await loadPage(await readCatalog(), id);
+		if (!page) return "missing";
+		const seen = await readJsonFile<{ version: number }>(seenFile(id));
+		const next = Math.min(page.head.n, Math.max(seen?.version ?? 0, version));
+		if (next !== seen?.version) await writeJsonFile(seenFile(id), { version: next, at: new Date().toISOString() });
+		return { version: next };
 	}),
 	readPageVersion: (id, n) => withLock(async () => {
 		const page = await loadPage(await readCatalog(), id);

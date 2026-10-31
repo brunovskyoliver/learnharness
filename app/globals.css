@@ -1255,6 +1255,10 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 [data-testid="page-toolbar"] :is(button, select):focus-visible,
 [data-testid="page-table-controls"] button:focus-visible { outline: 1px solid var(--ring); outline-offset: -1px; }
 [data-testid="page-slash-menu"], [data-testid="page-link-popover"] { scrollbar-width: none; }
+/* The tutor's changes: a raised step behind what it wrote, removed text struck
+   through in muted ink. Decorations only; never stored. */
+.lh-page-editor .lh-tutor-added { border-radius: 6px; background: var(--accent); box-decoration-break: clone; }
+.lh-page-editor .lh-tutor-removed { white-space: pre-wrap; color: var(--muted-foreground); text-decoration: line-through; user-select: none; }
 @media (pointer: coarse) {
 	[data-testid="page-toolbar"] select, [data-testid="page-table-controls"] button { min-height: 44px; }
 }

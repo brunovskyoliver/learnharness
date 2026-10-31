@@ -161,7 +161,7 @@ export function formatBytes(bytes: number): string {
 /** Why a write was refused. Nothing is stored or changed on any of these. */
 // ── Pages (data-model.md) ──
 export type PageAuthor = "learner" | "agent";
-export type PageVersionCause = "save" | "autosave-close" | "before-agent" | "conflict" | "restore" | "agent-create" | "agent-revise";
+export type PageVersionCause = "save" | "autosave-close" | "before-agent" | "conflict" | "restore" | "agent-create" | "agent-revise" | "undo-agent";
 export interface PageVersion {
 	n: number;
 	author: PageAuthor;
@@ -172,7 +172,22 @@ export interface PageVersion {
 	restoredFrom?: number;
 	chatId?: string;
 	toolCallId?: string;
+	/** The learner's name for it (feature 010), from names.json, never the log. */
+	name?: string;
 }
+
+/** A version name: trimmed, 1 to 80 characters, one line (feature 010). */
+export const PAGE_VERSION_NAME_MAX = 80;
+export function pageVersionName(raw: unknown): string | null | "invalid" {
+	if (raw === null || raw === "") return null;
+	if (typeof raw !== "string") return "invalid";
+	const name = raw.trim();
+	if (!name) return null;
+	return name.length > PAGE_VERSION_NAME_MAX || /[\r\n]/.test(name) ? "invalid" : name;
+}
+
+/** The tutor versions the learner hasn't seen highlighted (feature 010). */
+export const isUnseenTutorVersion = (version: PageVersion, seen: number) => version.author === "agent" && version.cause === "agent-revise" && version.n > seen;
 export interface PageHead { n: number; content: string; author: PageAuthor; at: string }
 export interface PageDraft { base: number; rev: number; content: string; updatedAt: string }
 export type PageDraftView = Pick<PageDraft, "base" | "rev" | "content">;

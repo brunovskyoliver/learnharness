@@ -8,7 +8,7 @@ import { Readable } from "node:stream";
 import {
 	ACCEPTED_EXTENSIONS, extensionOf, isPageStale, isRefusal, kindForName, LIBRARY_REFUSALS, LibraryCatalogError, MAX_FILE_BYTES,
 	REFERENCE_INLINE_MAX_BYTES, uploadName,
-	type LibraryItem, type LibraryRefusal, type LibraryRefusalCode, type PageVersionCause, type PageWriteResult,
+	pageVersionName, type LibraryItem, type LibraryRefusal, type LibraryRefusalCode, type PageVersionCause, type PageWriteResult,
 } from "../core/library.ts";
 import { libraryStore, openDocumentStream } from "../store/library.ts";
 import { indexAfterUpload } from "./library-text.ts";
@@ -127,7 +127,7 @@ export function libraryContentResponse(request: Request, id: string): Promise<Re
 const pageGone = () => json({ error: "That page is no longer in your Library." }, 404);
 const pageTooBig = () => refusal(LIBRARY_REFUSALS.pageTooLarge);
 /** Causes a client may name. The rest are the server's own to write. */
-const CLIENT_CAUSES: readonly PageVersionCause[] = ["save", "autosave-close", "conflict"];
+const CLIENT_CAUSES: readonly PageVersionCause[] = ["save", "autosave-close", "conflict", "undo-agent"];
 
 async function jsonBody(request: Request): Promise<Record<string, unknown> | null> {
 	const body = await request.json().catch(() => null) as unknown;
@@ -195,6 +195,35 @@ export function pageVersionsResponse(id: string, request?: Request): Promise<Res
 		const from = before === null ? all : all.filter((v) => v.n < before);
 		const versions = from.slice(0, PAGE_VERSIONS_LIMIT);
 		return json({ versions, more: from.length > versions.length });
+	});
+}
+
+/** PATCH a version's name (feature 010, contracts/api.md). */
+export function pageVersionNameResponse(request: Request, id: string, n: string): Promise<Response> {
+	return guarded(async () => {
+		const body = await jsonBody(request);
+		const name = pageVersionName(body?.name ?? null);
+		if (name === "invalid") return json({ error: "A version name is 1 to 80 characters on one line." }, 400);
+		if (!/^\d+$/.test(n)) return json({ error: "That version doesn't exist." }, 404);
+		const version = await libraryStore.namePageVersion(id, Number(n), name);
+		return version === "missing" ? json({ error: "That version doesn't exist." }, 404) : json({ version });
+	});
+}
+
+/** GET and PUT the last version the learner has seen (feature 010). */
+export function pageSeenResponse(id: string): Promise<Response> {
+	return guarded(async () => {
+		const seen = await libraryStore.readPageSeen(id);
+		return seen === "missing" ? pageGone() : json(seen);
+	});
+}
+
+export function pageMarkSeenResponse(request: Request, id: string): Promise<Response> {
+	return guarded(async () => {
+		const body = await jsonBody(request);
+		if (!Number.isInteger(body?.version)) return json({ error: "A version number is needed." }, 400);
+		const seen = await libraryStore.markPageSeen(id, body!.version as number);
+		return seen === "missing" ? pageGone() : json(seen);
 	});
 }
 

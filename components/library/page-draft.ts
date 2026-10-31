@@ -382,6 +382,29 @@ export class PageDraftController {
 		}
 	}
 
+	/** Replace the page's text with `text` as one version (feature 010's tutor
+	 *  undo). It includes the learner's typing, so nothing of theirs is lost. */
+	replaceText(text: string, cause: "undo-agent"): Promise<boolean> {
+		if (this.draftTimer) { clearTimeout(this.draftTimer); this.draftTimer = null; }
+		return this.enqueue(async () => {
+			const { base, rev, loaded, deleted, conflict } = this.state;
+			if (!loaded || deleted || conflict) return false;
+			try {
+				const result = await this.options.api.commit(this.options.id, { base, rev, content: text, cause });
+				if (result === PAGE_MISSING) { this.dispatch({ type: "deleted" }); return false; }
+				if (!result) return false;
+				if (isStale(result)) { this.dispatch({ type: "stale", ...result.stale }); return false; }
+				const page = await this.options.api.read(this.options.id);
+				if (!page) return false;
+				this.dispatch({ type: "resolved", page, replaceText: true });
+				this.syncBackup();
+				return true;
+			} catch {
+				return false;
+			}
+		});
+	}
+
 	/** Bring back version `n`. The learner's text must be on the server first:
 	 *  if it isn't, nothing is restored, so a reload can't replace it. */
 	async restore(n: number): Promise<"restored" | "not-saved" | "conflict" | "failed"> {
