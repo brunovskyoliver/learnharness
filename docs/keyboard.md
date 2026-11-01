@@ -115,3 +115,7 @@ While a question is expanded, the dock owns ↑/↓/Space/Enter/Tab:
 - Wave C remainder: ⌘F chat transcript search (new feature, needs its own
   design pass), ⌘I import notes on graph. ⌘F graph node search shipped
   early (owner live-tested the gap).
+
+## PDF reader
+
+Select text in the reader's toolbar starts a selection on the first word of the page in view. On the pages region: arrows move a word or line and go on to the next page at an edge; Shift with an arrow extends, within the page; Enter moves focus to the actions; Escape ends the selection and keeps the reader open. Feature 023.

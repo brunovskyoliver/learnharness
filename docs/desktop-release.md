@@ -37,6 +37,12 @@ npx electron-builder --win --x64 --publish never
 npx electron-builder --linux --x64 --publish never
 ```
 
+## Checking the shell without packaging
+
+`scripts/check-electron-shell.mjs` runs `electron/main.cjs` in Electron's `--headless` mode through `scripts/electron-headless-entry.cjs`, on `.next/standalone`, once with main starting the server and once with `LH_DEV_URL`. It checks the window's origin, the sandboxed preload, the private API header, the tab strip, drag regions in CSS and the palette. It draws no OS window, so window controls, real dragging, tiling and screenshots aren't covered, and it replaces no platform smoke pass. `electron-builder` doesn't run.
+
+A build from a repo with a real `data/` no longer trips `build-server.mjs`: the sweep came from `proxy.ts` importing `config.ts` (feature 023). The refusal stays, as the guard.
+
 ## CI vs release
 
 `.github/workflows/ci.yml` runs on main pushes and pull requests:

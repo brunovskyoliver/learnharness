@@ -56,7 +56,7 @@ Features 014 and 015; decisions in [their spec](specs/014-workspace-navigation/s
 ### Right pane
 
 - One column, one saved width. A page or demo holds it as described below. With neither, the toggle shows the context view: 52px header, then for a session "Outline" and "Demos", for a Library place "Location", "Tags here" and "Recently opened". It has no iframe.
-- Collapsing takes the column to no width with everything mounted. Any explicit open expands it. Below 768px the page layer and demo sheet are unchanged and there is no toggle or context view.
+- Collapsing takes the column to no width with everything mounted. Any explicit open expands it. Below 768px the page layer and demo sheet are unchanged. With neither up, the toggle opens the context view as a full-screen layer with "Back to chat" (feature 023); it is never saved.
 
 ### Command palette
 
@@ -193,6 +193,17 @@ Features 016-018. Every string is in [their plan](specs/016-intelligent-notes/pl
 - **Save to a page**: a small `surface-raised-2` button over selected teacher prose, under it on coarse pointers. It opens a `card` dialog: the passage, one field that filters pages or names a new one, then the rows.
 - **This session**: the context view starts with Notes: the session's pages, then "Turn this lesson into study notes" on lessons.
 
+### Held edits
+
+Feature 023. Simpler, Rewrite and Expand don't change the page until he accepts.
+
+- **Line**: above the editor on `card`: "The tutor proposed a change. Nothing changed yet." and Review. The Library lists the same for pages that aren't open, with the page's name, and leaves out the one open beside it. Empty renders nothing, and a failed read says so with Try again.
+- **Review**: `popover` dialog, "Proposed change to {name}", then "Nothing has changed. This page stays as it is unless you accept." Comparison uses History's rows, each with its word. Actions end the dialog: Reject, Edit first, amber Accept.
+- **Refused**: the reason replaces the comparison and Accept goes: "This page has a newer version than the one the tutor changed, so this can't be accepted. Your page and this proposal are both kept." or "You changed the same text since…". Copy the proposed text and Reject remain.
+- **Edit first**: full screen with the page editor, "Back to comparison" and Accept. Its line says edits stay in the proposal.
+- **After**: a status line with Dismiss: "Accepted as version {n}. Your text was saved first as version {m}. History has what came before." or "Rejected. The page didn't change." No review bar follows an Accept.
+- **Transcript row**: "Page · proposed a change to {name}, waiting for your review", with Review. Tutor edits from ordinary turns keep the review bar and Undo.
+
 ### Documents
 
 Features 019-020. Every string is in [their plan](specs/019-document-intelligence/plan.md). No amber except keyboard focus and a dialog's primary.
@@ -204,6 +215,7 @@ Features 019-020. Every string is in [their plan](specs/019-document-intelligenc
 - **Landing**: a page's block takes the `accent` step for about 2 seconds, as a decoration. A text file's line stays marked. A PDF's quote is outlined. If the words have gone, a muted line says so.
 - **Reader**: in the right pane, with a tab. The 52px header holds the name, "Open in a new tab" and "Download" as named icons. Under it a wrapping row: previous, page field "of {n}", next, zoom out, percent (fits to width), zoom in, and "Highlights ({n})" at the end. Pages are white paper on the ground, the width of the pane.
 - **Marks on paper**: colour here is data, like a chart's, so the accent stays reserved: a highlight is yellow, a note adds a dark underline so colour isn't the only signal, a citation's quote is blue with a 2px outline.
+- **Select text**: first in the toolbar, pressed while on. A real selection starts on the page's first word, so the bubble below is the same one. Arrows move a word or line, Shift extends, Enter goes to the actions, Escape stops, all said in a status line under the toolbar with the selected words. Focus stays on the pages until Enter, and comes back there when the bubble goes.
 - **Selection bubble**: `surface-raised-2`, 22rem at most: Highlight, Add a note, Save to a page, Make flashcards; then one muted line, "Ask the tutor. Sends this passage, from page {n}:", then Explain, Summarize, Challenge, Generate questions, Ask…. Above the selection, below it on coarse pointers, and always on screen. While a question waits or the tutor is answering, the tutor's actions become one sentence saying why.
 - **Highlights list**: a `surface-raised-2` block above the pages, 40dvh at most: page, quote, note, then Go to, Add or Edit note, Remove. A row whose words have gone adds "This text is no longer on that page." Remove offers Undo.
 - **Citation line**: a muted status above the pages saying whether the quote was found on that page, with Dismiss.

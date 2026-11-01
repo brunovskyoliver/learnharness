@@ -25,6 +25,7 @@ export function PageProposalsLine({ pageId, exceptPageId, className, beforeAccep
 	const [failed, setFailed] = useState(false);
 	const [open, setOpen] = useState<string | null>(null);
 	const opener = useRef<HTMLElement | null>(null);
+	const [notice, setNotice] = useState<string | null>(null);
 	/** Back to Review, or to the page if that row went with the decision. */
 	const closed = () => {
 		setOpen(null);
@@ -48,10 +49,16 @@ export function PageProposalsLine({ pageId, exceptPageId, className, beforeAccep
 	useServerEvent("library-changed", () => { void refresh(); });
 	useServerResync(() => { void refresh(); });
 	const shown = exceptPageId ? rows.filter((row) => row.pageId !== exceptPageId) : rows;
-	if (shown.length === 0 && !failed && !open) return null;
+	if (shown.length === 0 && !failed && !open && !notice) return null;
 	return (
 		<section aria-label="Changes the tutor proposed" className={cn("flex flex-col gap-1", className)} data-testid="page-proposals">
 			{failed && shown.length === 0 && <div role="status" className="flex flex-wrap items-center gap-2 text-sm text-ink-2"><p>Proposed changes could not be loaded.</p><button type="button" className="prompt-secondary" onClick={() => void refresh()}>Try again</button></div>}
+			{notice && (
+				<div role="status" className="flex flex-wrap items-center gap-2 text-sm text-ink-2" data-testid="page-proposal-notice">
+					<p className="min-w-0 flex-[1_1_12rem]">{notice}</p>
+					<button type="button" className="prompt-secondary" onClick={() => setNotice(null)}>Dismiss</button>
+				</div>
+			)}
 			{shown.map((row) => (
 				<div key={row.id} className="flex flex-wrap items-center gap-2 rounded-[10px] bg-card px-3 py-2 text-sm" data-testid="page-proposal-row">
 					<span className="min-w-0 flex-[1_1_12rem] [overflow-wrap:anywhere]">{pageId ? <span className="text-foreground">The tutor proposed a change.</span> : <span className="text-foreground">{row.name}</span>} <span className="text-muted-foreground">{pageId ? "Nothing changed yet." : "· Change proposed by the tutor, waiting for you"}</span></span>
@@ -64,7 +71,11 @@ export function PageProposalsLine({ pageId, exceptPageId, className, beforeAccep
 					onClose={closed}
 					beforeAccept={beforeAccept}
 					whileAccepting={whileAccepting}
-					onAccepted={(item) => onAccepted?.(item)}
+					onRejected={() => setNotice("Rejected. The page didn't change.")}
+					onAccepted={(item, { version, savedLearnerVersion }) => {
+						setNotice(`Accepted as version ${version}.${savedLearnerVersion ? ` Your text was saved first as version ${savedLearnerVersion}.` : ""} History has what came before.`);
+						onAccepted?.(item);
+					}}
 				/>
 			)}
 		</section>

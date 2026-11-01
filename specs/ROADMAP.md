@@ -16,7 +16,7 @@ Owner goal, 2026-10-31: evolve the app into one workspace connecting learning, d
 | 020 | PDF reader: selections, highlights, annotations, page citations, extract to notes | 019 | Implemented on `feat/019-document-intelligence`, not merged or deployed |
 | 021 | Flashcards and FSRS review queue, separate from graph evidence | 017, 020 | Implemented on `feat/021-spaced-repetition`, not merged or deployed |
 | 022 | Diagrams: editable maps and whiteboards, proposed AI changes | 016 | Implemented on `feat/022-diagrams`, not merged or deployed |
-| 023 | Integration polish: Electron and hosted verification across the slices | all | Not started |
+| 023 | Integration polish: held AI edits, PDF keyboard path, Electron and hosted verification across the slices | all | Implemented on `feat/023-integration-polish`, not merged or deployed |
 
 ## Dependency decisions to make with the owner
 
@@ -28,7 +28,7 @@ The constitution requires owner approval and a measured startup cost for each ne
 | cmdk | 015 | Decided, not adopted: Radix dialog plus `src/core/fuzzy.ts` |
 | ts-fsrs | 021 | Decided, adopted: 6.0.0 exact-pinned, server only, behind a core port |
 | Excalidraw | 022 | Decided, not adopted: 2.54 MB gzipped against React Flow's 59 KB, measured in specs/022-diagrams/spec.md |
-| Playwright | 023 | Browser regressions already run on puppeteer-core in `scripts/`; a second driver needs a reason |
+| Playwright | 023 | Decided, not adopted: puppeteer-core and plain CDP covered everything 023 needed |
 
 ## Standing rules for the remaining features
 
@@ -39,11 +39,11 @@ The owner approved every recommended option ("i approve it all", 2026-10-31) and
 - Each feature keeps `specs/<NNN-name>/spec.md`, `plan.md` with the Constitution Check I-VIII, `tasks.md` and `progress.md` with a Report, and updates DESIGN.md, PRODUCT.md and this table.
 - Stacked branches, one per feature, each branched from the previous. No pushing, merging or deploying.
 
-## Open gaps carried to 023
+## Open gaps after 023
 
-- Feature 018: AI edits to learner text are reviewed after the version lands (the 010 review bar and Undo). The owner's goal asks for review before. 023 adds a held proposal for learner-triggered AI edits.
-- Feature 020: selecting PDF text has no built-in keyboard path (constitution VI). See specs/019-document-intelligence/plan.md, Known limits.
-- `scripts/build-server.mjs` refuses a standalone with a `data/` folder, and any build from a repo with a real `data/` hits this, because the middleware's trace sweeps it in. It predates 019 (checked on `fff3418`). `.dockerignore` keeps `data/` out of Docker builds; a desktop build from a machine with real data is refused rather than shipped.
-- Feature 021: a page open in the pane has no direct Make flashcards; the Library row's menu does. Constitution II still names an "event ledger" that was removed on 2026-09-27; 021's weak ideas read graded transcripts instead. Both wording and the session-deletion exception are in specs/021-spaced-repetition/progress.md for the owner.
-- Feature 022: an approval from a transcript row while the same diagram is open with unsaved changes shows the conflict line rather than following; nothing is lost. A diagram's dangling link offers no Create page. See specs/022-diagrams/progress.md.
-- Constitution VI UI skill checks (`impeccable`, `web-design-guidelines`) to run across 011-021; 022 has had them.
+Every owner-facing decision and open question is in [docs/workspace-decisions.md](../docs/workspace-decisions.md).
+
+- Constitution II still names an "event ledger" that was removed on 2026-09-27.
+- Feature 022: an approval from a transcript row while the same diagram is open with unsaved changes shows the conflict line rather than following; nothing is lost. Feature 023's held page edits have the same limit from outside the page's own line.
+- Cards aren't in the palette or the Links panel beyond the page's Make flashcards door. Held edits aren't in Home's "Waiting for you".
+- `impeccable` and `web-design-guidelines` ran over 019-023's new surfaces only; 011-018 remain owed. See specs/023-integration-polish/progress.md.

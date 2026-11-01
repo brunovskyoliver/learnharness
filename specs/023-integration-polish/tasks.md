@@ -1,0 +1,22 @@
+# Tasks: Integration polish (023)
+
+- [x] T001 Full suite on `main` in a separate worktree, four times; remove the worktree
+- [x] T002 Reproduce the sign-in flake alone under load; fix the wait; repeat
+- [x] T003 Core: proposal record, turn detection, merge
+- [x] T004 Store: propose, review, edit, reject, accept, crash repair, unlink, removal with the page
+- [x] T005 Tool `held` context and both registries; held result wording
+- [x] T006 Routes and handlers, tenant-wrapped
+- [x] T007 Line beside the page and in the Library; transcript row; dialog with Accept, Reject, Edit first
+- [x] T008 Draft controller: save first, hold writes during Accept
+- [x] T009 PDF: Select text, word and line moves, Shift, Enter, Escape, next page
+- [x] T010 Session context view on phones
+- [x] T011 Page's Make flashcards in Links; diagram's dangling link Create page
+- [x] T012 Focus return from the proposals lines
+- [x] T013 Proxy no longer imports `config.ts`; confirm the standalone has no `data/`
+- [x] T014 `scripts/check-hosted-tenants.mjs` through the real proxy
+- [x] T015 `scripts/check-electron-shell.mjs`, both modes
+- [x] T016 `tests/page-proposals.test.ts`, `tests/pdf-keyboard-selection.test.ts`, `tests/integration-guards.test.ts`, `tests/data-preservation.test.ts`, `tests/render-page-proposals.test.tsx`, a case in `tests/note-ai-flow.test.ts`
+- [x] T017 Browser checks: `check-notes-ui` (held edit, phone notes, reduced motion), `check-documents-ui` (keyboard path, reduced motion)
+- [x] T018 `web-design-guidelines` and `impeccable` over the new surfaces
+- [x] T019 DESIGN, PRODUCT, architecture, hosting, desktop release, keyboard, ROADMAP, `docs/workspace-decisions.md`
+- [x] T020 Final verification in one pass; progress.md

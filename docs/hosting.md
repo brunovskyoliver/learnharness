@@ -85,6 +85,12 @@ docker compose up -d --build
 
 Caddy's certificates live in the `caddy-data` volume; keep it so you don't hit Let's Encrypt rate limits on rebuilds.
 
+## Checking tenant isolation
+
+`scripts/check-hosted-tenants.mjs` runs the standalone server with `LH_HOSTED=1` and the real Clerk middleware, on a throwaway RSA key, fake Clerk keys and two made-up users, with every outbound connection refused. It needs no Clerk account. It covers no-tenant refusal on all routes, cross-tenant reads and writes, disk, and a browser. It doesn't cover Clerk's real sign-in, cookies or hand-off, Docker, Caddy, or the seccomp profile.
+
+`CLERK_JWT_KEY` is optional. When set, it holds a PEM public key Clerk verifies session tokens against, instead of fetching its keys. The check uses it, and the image doesn't set it.
+
 ## Limits to know
 
 - **Uploads:** 50 MiB per file, one file per request. Next's proxy buffers request bodies up to `experimental.proxyClientMaxBodySize` (set to 51 MB) and cuts off anything larger, so raise that and `MAX_FILE_BYTES` in `src/core/library.ts` together. That buffer stays in memory for the request, before auth runs.

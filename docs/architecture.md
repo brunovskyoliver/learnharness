@@ -96,6 +96,12 @@ A diagram reuses the page's store functions and browser `PageDraftController`, w
 
 `diagram_propose` stores a proposal, and only `approve` makes a version. Approval carries the head and draft rev the learner compared, under the Library lock, and the version log finds an approval a crash left half-recorded. Nothing here touches the graph; `tests/diagrams.test.ts` hashes `graph/` to prove it.
 
+## Held page edits
+
+Feature 023. `page_revise` in a turn begun from a selection's Simpler, Rewrite or Expand, or on a page with an edit already waiting, stores `library/page-proposals/<pageId>/<id>.json` and writes nothing else. `isHeldEditTurn` decides from the running turn's messages in code, not from the prompt. Accept runs under the Library's lock: his draft as his version, then one AI-authored version with `proposalId`, with the crash between it and the status repaired from that field. `mergeProposal` keeps typing elsewhere and refuses typing on the same lines; a moved head refuses outright. Ordinary turns' `page_revise` still writes directly and is reviewed after (`docs/workspace-decisions.md`).
+
+`proxy.ts` must not import `config.ts`: its data path makes the tracer take the whole repo, the real `data/` included. `tests/integration-guards.test.ts` holds that.
+
 ## Host and provider boundaries
 
 Electron owns native windows and desktop services. Development Electron points at Next dev; packaged Electron launches its packaged server. Native window gutters, drag regions, overlays and tiling require live desktop verification.

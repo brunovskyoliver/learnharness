@@ -30,10 +30,12 @@ export function proposalBlockedText(review: PageProposalReview): string | null {
 	return null;
 }
 
-export function PageProposalDialog({ proposalId, onClose, onAccepted, beforeAccept, whileAccepting }: {
+export function PageProposalDialog({ proposalId, onClose, onAccepted, onRejected, beforeAccept, whileAccepting }: {
 	proposalId: string;
 	onClose: () => void;
-	onAccepted: (item: LibraryItem) => void;
+	onAccepted: (item: LibraryItem, versions: { version: number; savedLearnerVersion?: number }) => void;
+	/** He turned it down, so whoever shows the row can say so. */
+	onRejected?: () => void;
 	/** An open page gets his typing to the server first. False: it couldn't, so nothing is accepted. */
 	beforeAccept?: () => Promise<boolean>;
 	whileAccepting?: <T>(run: () => Promise<T>, accepted: (result: T) => boolean) => Promise<T>;
@@ -89,6 +91,7 @@ export function PageProposalDialog({ proposalId, onClose, onAccepted, beforeAcce
 		try {
 			const response = await fetch(`${url(proposalId)}/reject`, { method: "POST" });
 			if (!response.ok && response.status !== 404 && response.status !== 409) throw new Error(String(response.status));
+			onRejected?.();
 			onClose();
 		} catch {
 			setLine("The proposal could not be rejected. Nothing changed. Try again.");
@@ -109,10 +112,10 @@ export function PageProposalDialog({ proposalId, onClose, onAccepted, beforeAcce
 			const expected = fresh.current.expected;
 			const run = async () => {
 				const response = await fetch(`${url(proposalId)}/accept`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ expected }) });
-				return { ok: response.ok, body: await response.json().catch(() => ({})) as { item?: LibraryItem; error?: string; code?: string } };
+				return { ok: response.ok, body: await response.json().catch(() => ({})) as { item?: LibraryItem; version?: { n: number }; savedLearnerVersion?: number; error?: string; code?: string } };
 			};
 			const result = await (whileAccepting ? whileAccepting(run, (r) => r.ok) : run());
-			if (result.ok && result.body.item) { onAccepted(result.body.item); onClose(); return; }
+			if (result.ok && result.body.item) { onAccepted(result.body.item, { version: result.body.version?.n ?? 0, ...(result.body.savedLearnerVersion ? { savedLearnerVersion: result.body.savedLearnerVersion } : {}) }); onClose(); return; }
 			if (["stale", "moved", "overlap"].includes(result.body.code ?? "")) {
 				await load();
 				if (result.body.code === "stale") setLine(CHANGED_TEXT);
@@ -188,7 +191,7 @@ export function PageProposalDialog({ proposalId, onClose, onAccepted, beforeAcce
 						{blocked ? <p role="status" className="text-sm text-ink-2" data-testid="page-proposal-blocked">{blocked}</p> : rows === null ? <p className="text-sm text-ink-2">Too long to compare here. Use Edit first to read it.</p> : <div data-testid="page-proposal-diff"><ChangeRows rows={rows} /></div>}
 						{line && <p role="alert" className="text-sm text-destructive" data-testid="page-proposal-line">{line}</p>}
 						<div className="flex flex-wrap justify-end gap-2">
-							{copyable && <button type="button" className="prompt-secondary" data-testid="page-proposal-copy" onClick={() => void navigator.clipboard.writeText(data.proposal.text).then(() => setCopied(true), () => {})}>{copied ? "Copied" : "Copy the proposed text"}</button>}
+							{copyable && <button type="button" className="prompt-secondary" data-testid="page-proposal-copy" onClick={() => void navigator.clipboard.writeText(data.proposal.text).then(() => setCopied(true), () => setLine("The text could not be copied. Your browser refused."))}>{copied ? "Copied" : "Copy the proposed text"}</button>}
 							{data.proposal.status === "pending" && <button type="button" className="prompt-secondary" disabled={busy} data-testid="page-proposal-reject" onClick={() => void reject()}>Reject</button>}
 							{!blocked && <button type="button" className="prompt-secondary" disabled={busy} data-testid="page-proposal-edit" onClick={() => { setEditing(true); setEditSave("saved"); }}>Edit first</button>}
 							{!blocked && <button type="button" className="prompt-primary" disabled={busy} data-testid="page-proposal-accept" onClick={() => void accept()}>{busy ? "Accepting…" : "Accept"}</button>}
