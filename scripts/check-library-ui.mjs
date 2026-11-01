@@ -218,10 +218,10 @@ async function checkWidth(width) {
 	for (const name of ["program.exe", "empty.md", "fake.pdf"]) await page.click(`[aria-label="Dismiss ${name}"]`);
 	await page.waitForFunction(() => !document.querySelector('[data-testid="library-refusal"]'));
 
-	// PDF opens in a new tab, not in place.
+	// PDF opens in the pane now (feature 020), not in a new tab.
 	await pick(await fixture("paper.pdf", "%PDF-1.7 fixture"));
 	await waitRow("paper.pdf");
-	assert.deepEqual(await page.$eval('[aria-label="Open paper.pdf"]', (el) => [el.tagName, el.target, el.rel]), ["A", "_blank", "noreferrer"]);
+	assert.equal(await page.$eval('[aria-label="Open paper.pdf"]', (el) => el.tagName), "BUTTON");
 
 	// Delete: the dialog names the item; Escape keeps it and returns focus.
 	await page.click(`[aria-label="Delete renamed.md"]`);

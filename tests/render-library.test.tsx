@@ -73,13 +73,16 @@ describe("LibraryRow", () => {
 		const pending = textOf(renderToStaticMarkup(<LibraryRow item={item({ kind: "pdf", textState: "pending" })} {...rowProps} />));
 		assert.ok(!pending.includes("No text could be read"));
 	});
-	it("opens PDF and images in a new tab through the content route", () => {
-		for (const kind of ["pdf", "image"] as const) {
-			const html = renderToStaticMarkup(<LibraryRow item={item({ kind, name: "a.bin" })} {...rowProps} />);
-			assert.ok(html.includes('href="/api/library/items/lib_1/content"'));
-			assert.ok(html.includes('target="_blank"'));
-			assert.ok(html.includes('rel="noreferrer"'));
-		}
+	it("opens images in a new tab through the content route", () => {
+		const html = renderToStaticMarkup(<LibraryRow item={item({ kind: "image", name: "a.bin" })} {...rowProps} />);
+		assert.ok(html.includes('href="/api/library/items/lib_1/content"'));
+		assert.ok(html.includes('target="_blank"'));
+		assert.ok(html.includes('rel="noreferrer"'));
+	});
+	it("opens a PDF in the pane (feature 020)", () => {
+		const html = renderToStaticMarkup(<LibraryRow item={item({ kind: "pdf", name: "a.pdf" })} {...rowProps} />);
+		assert.ok(!html.includes('target="_blank"'));
+		assert.match(html, /<button[^>]*aria-label="Open a\.pdf"/);
 	});
 	it("text kinds and pages open through a button, for the pane", () => {
 		for (const kind of ["markdown", "page"] as const) {

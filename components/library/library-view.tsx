@@ -512,9 +512,9 @@ export function LibraryView() {
 							className="min-w-0 flex-1 bg-transparent text-base text-foreground placeholder:text-muted-foreground"
 						/>
 					</label>
-					<div role="radiogroup" aria-label="What to search" className="flex gap-1" data-testid="library-search-mode">
+					<div role="group" aria-label="What to search" className="flex gap-1" data-testid="library-search-mode">
 						{([["names", "Names"], ["text", "Full text"]] as const).map(([mode, label]) => (
-							<button key={mode} type="button" role="radio" aria-checked={prefs.searchMode === mode} onClick={() => updatePrefs({ searchMode: mode })} data-testid={`library-search-mode-${mode}`} className={`${PILL} ${prefs.searchMode === mode ? "bg-accent text-foreground" : "text-ink-2"}`}>{label}</button>
+							<button key={mode} type="button" aria-pressed={prefs.searchMode === mode} onClick={() => updatePrefs({ searchMode: mode })} data-testid={`library-search-mode-${mode}`} className={`${PILL} ${prefs.searchMode === mode ? "bg-accent text-foreground" : "text-ink-2"}`}>{label}</button>
 						))}
 					</div>
 					</div>
@@ -525,19 +525,23 @@ export function LibraryView() {
 					</nav>
 					{view !== "trash" && (
 						<div className="flex flex-wrap items-center gap-2" data-testid="library-filters">
-							<label className="flex items-center gap-1.5 text-sm text-ink-2">Sort
-								<select aria-label="Sort by" className={CONTROL} value={prefs.sort} onChange={(event) => updatePrefs({ sort: event.target.value as LibrarySort })}>
-									{(Object.keys(SORT_LABELS) as LibrarySort[]).map((name) => <option key={name} value={name}>{SORT_LABELS[name]}</option>)}
-								</select>
-							</label>
-							<button type="button" className={`${PILL} text-ink-2`} onClick={() => updatePrefs({ descending: !prefs.descending })} aria-label={prefs.descending ? "Sorted descending" : "Sorted ascending"}>{prefs.descending ? "Descending" : "Ascending"}</button>
+							{prefs.searchMode === "names" && (
+								<>
+									<label className="flex items-center gap-1.5 text-sm text-ink-2">Sort
+										<select aria-label="Sort by" className={CONTROL} value={prefs.sort} onChange={(event) => updatePrefs({ sort: event.target.value as LibrarySort })}>
+											{(Object.keys(SORT_LABELS) as LibrarySort[]).map((name) => <option key={name} value={name}>{SORT_LABELS[name]}</option>)}
+										</select>
+									</label>
+									<button type="button" className={`${PILL} text-ink-2`} onClick={() => updatePrefs({ descending: !prefs.descending })} aria-label={prefs.descending ? "Sorted descending" : "Sorted ascending"}>{prefs.descending ? "Descending" : "Ascending"}</button>
+								</>
+							)}
 							<label className="flex items-center gap-1.5 text-sm text-ink-2">Type
 								<select aria-label="Filter by type" className={CONTROL} value={kind ?? ""} onChange={(event) => setKind((event.target.value || null) as LibraryKind | null)}>
 									<option value="">All</option>
 									{(Object.keys(KIND_LABEL) as LibraryKind[]).map((name) => <option key={name} value={name}>{KIND_LABEL[name]}</option>)}
 								</select>
 							</label>
-							<div className="ml-auto flex gap-1">
+							<div className={`ml-auto flex gap-1 ${prefs.searchMode === "text" ? "hidden" : ""}`}>
 								<Button type="button" variant="ghost" size="icon" aria-label="List view" aria-pressed={prefs.layout === "list"} className={`size-9 pointer-coarse:size-11 ${prefs.layout === "list" ? "bg-accent" : "text-muted-foreground"}`} onClick={() => updatePrefs({ layout: "list" })}><ListIcon className="ui-icon" aria-hidden="true" /></Button>
 								<Button type="button" variant="ghost" size="icon" aria-label="Grid view" aria-pressed={prefs.layout === "grid"} className={`size-9 pointer-coarse:size-11 ${prefs.layout === "grid" ? "bg-accent" : "text-muted-foreground"}`} onClick={() => updatePrefs({ layout: "grid" })} data-testid="library-grid"><LayoutGridIcon className="ui-icon" aria-hidden="true" /></Button>
 							</div>
@@ -601,7 +605,7 @@ export function LibraryView() {
 					)}
 					{citeMissing && <p role="status" className="text-ink-2" data-testid="library-citation-missing">That document is no longer in your Library, so the citation can't be checked.</p>}
 					{prefs.searchMode === "text" && view !== "trash" ? (
-						<DocumentSearchPanel query={query} kind={kind} tag={tag} folders={folders} />
+						<DocumentSearchPanel query={query} kind={kind} tag={tag} folders={folders} narrowed={view !== "all" ? VIEW_LABELS[view] : null} />
 					) : view === "trash" ? (
 						<LibraryTrash entries={trash} failed={trashFailed} failure={trashFailure} onRetry={() => void refreshTrash()} onRestore={(entry) => void restoreEntry(entry)} onPurge={setPurging} />
 					) : (

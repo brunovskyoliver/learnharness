@@ -24,7 +24,7 @@ function hitMeta(hit: DocSearchResult): string {
 	return parts.join(" · ");
 }
 
-export function DocumentSearchPanel({ query, kind, tag, folders }: { query: string; kind: LibraryKind | null; tag: string | null; folders: readonly LibraryFolder[] }) {
+export function DocumentSearchPanel({ query, kind, tag, folders, narrowed = null }: { query: string; kind: LibraryKind | null; tag: string | null; folders: readonly LibraryFolder[]; /** The Library view open, which a text search doesn't narrow to. */ narrowed?: string | null }) {
 	const [folderId, setFolderId] = useState("");
 	const [hideArchived, setHideArchived] = useState(false);
 	const [showWhich, setShowWhich] = useState(false);
@@ -69,6 +69,7 @@ export function DocumentSearchPanel({ query, kind, tag, folders }: { query: stri
 					Hide archived
 				</label>
 			</div>
+			{narrowed && <p className="text-sm text-muted-foreground">Searching the whole Library, not only {narrowed}.</p>}
 			<p role="status" aria-live="polite" className="text-sm text-ink-2 empty:hidden" data-testid="doc-search-count">{live}</p>
 			{phase === "failed" && <button type="button" className="prompt-secondary self-start" onClick={search.retry}>Try again</button>}
 			{phase === "searching" && !response && (

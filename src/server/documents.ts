@@ -152,7 +152,9 @@ export async function pdfjsAssetResponse(segments: readonly string[]): Promise<R
 	if (!ALLOWED_ASSETS.some((pattern) => pattern.test(rel))) return new Response("Not found", { status: 404 });
 	const roots = [PDFJS_ROOT, path.join(process.cwd(), "node_modules", "pdfjs-dist")];
 	for (const root of roots) {
-		const bytes = await fs.readFile(path.join(root, rel)).catch(() => null);
+		// The tracer can't follow this and would sweep the whole project. It doesn't
+		// need to: next.config.ts includes these folders, and the patterns above bound it.
+		const bytes = await fs.readFile(/*turbopackIgnore: true*/ path.join(/*turbopackIgnore: true*/ root, rel)).catch(() => null);
 		if (bytes) {
 			return new Response(new Uint8Array(bytes), {
 				headers: {

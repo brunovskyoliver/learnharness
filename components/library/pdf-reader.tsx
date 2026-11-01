@@ -93,7 +93,9 @@ function offsetIn(layer: HTMLElement, node: Node, offset: number): number {
 interface PageLocated { anchored: Set<string>; lost: Set<string> }
 
 /** One page: canvas, marks and text layer, drawn only while near the viewport. */
-function PdfPage({ pdfjs, doc, number, width, fallbackRatio, annotations, cite, onLocated, onCite, register }: {
+function PdfPage({ pdfjs, doc, number, width, fallbackRatio, annotations, cite, onLocated, onCite, register, scrollRoot }: {
+	/** The margin below only reaches past the viewport when measured against this. */
+	scrollRoot: HTMLElement | null;
 	pdfjs: PdfJs;
 	doc: PdfDocument;
 	number: number;
@@ -119,10 +121,10 @@ function PdfPage({ pdfjs, doc, number, width, fallbackRatio, annotations, cite, 
 		const element = box.current;
 		if (!element) return;
 		register(number, element);
-		const observer = new IntersectionObserver(([entry]) => setNear(Boolean(entry?.isIntersecting)), { rootMargin: NEAR_MARGIN });
+		const observer = new IntersectionObserver(([entry]) => setNear(Boolean(entry?.isIntersecting)), { root: scrollRoot, rootMargin: NEAR_MARGIN });
 		observer.observe(element);
 		return () => { observer.disconnect(); register(number, null); };
-	}, [number, register]);
+	}, [number, register, scrollRoot]);
 	// Rendered whenever near, or at a new size. A superseded render is cancelled.
 	useEffect(() => {
 		if (!near || width <= 0) return;
@@ -360,7 +362,7 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 		const onScroll = () => {
 			cancelAnimationFrame(frame);
 			frame = requestAnimationFrame(() => {
-				const middle = element.getBoundingClientRect().top + element.clientHeight / 3;
+				const middle = element.getBoundingClientRect().top + element.clientHeight / 2;
 				let best = 1;
 				for (const [page, node] of pages.current) if (node.getBoundingClientRect().top <= middle && page > best) best = page;
 				setCurrent(best);
@@ -622,6 +624,7 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 								onLocated={onLocated}
 								onCite={onCite}
 								register={register}
+								scrollRoot={scroller.current}
 							/>
 						))}
 					</div>

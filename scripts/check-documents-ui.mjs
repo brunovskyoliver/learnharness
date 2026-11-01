@@ -161,7 +161,7 @@ async function checkWidth(width) {
 	// Names mode is still the default, and still filters on the client.
 	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
 	await page.waitForSelector(`[aria-label="Open ${pdfName}"]`);
-	assert.equal(await page.$eval('[data-testid="library-search-mode-names"]', (el) => el.getAttribute("aria-checked")), "true");
+	assert.equal(await page.$eval('[data-testid="library-search-mode-names"]', (el) => el.getAttribute("aria-pressed")), "true");
 	await page.type('[data-testid="library-search"]', `${p} sam`);
 	await page.waitForFunction((name) => document.querySelector(`[aria-label="Open ${name}"]`) && !document.querySelector('[data-testid="doc-search"]'), {}, pdfName);
 
@@ -335,6 +335,8 @@ async function checkWidth(width) {
 	const cited = await createPage(`${p} cited`, `[PDF: sample, p. 2](/library?item=${pdf.id}&page=2&quote=${encodeURIComponent("force equals mass")})`);
 	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
 	await page.waitForFunction(() => document.querySelector('[data-testid="library-search-mode-text"]'));
+	await page.waitForSelector('[data-testid="page-pane"]');
+	await closePane(page, mobile);
 	await page.click('[data-testid="library-search-mode-names"]');
 	await page.waitForSelector(`[aria-label="Open ${p} cited"]`);
 	await page.click(`[aria-label="Open ${p} cited"]`);
@@ -415,8 +417,11 @@ async function checkWidth(width) {
 try {
 	await mkdir(data, { recursive: true });
 	if (shots) await mkdir(shots, { recursive: true });
-	server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev", "--hostname", "127.0.0.1", "--port", String(port)], {
-		env: { ...process.env, OPENROUTER_API_KEY: "test-key-never-used", LH_HOSTED: "0", LH_DATA_DIR: data, LH_AUTH_FILE: path.join(data, "auth.json"), NEXT_TELEMETRY_DISABLED: "1" },
+	// LH_UI_STANDALONE=1 runs the production server the Docker image and desktop app
+	// ship, after `next build` and scripts/build-server.mjs.
+	const command = process.env.LH_UI_STANDALONE ? [".next/standalone/server.js"] : ["node_modules/next/dist/bin/next", "dev", "--hostname", "127.0.0.1", "--port", String(port)];
+	server = spawn(process.execPath, command, {
+		env: { ...process.env, PORT: String(port), HOSTNAME: "127.0.0.1", NODE_ENV: process.env.LH_UI_STANDALONE ? "production" : process.env.NODE_ENV, OPENROUTER_API_KEY: "test-key-never-used", LH_HOSTED: "0", LH_DATA_DIR: data, LH_AUTH_FILE: path.join(data, "auth.json"), NEXT_TELEMETRY_DISABLED: "1" },
 		stdio: ["ignore", "ignore", process.env.LH_UI_SERVER_LOG ? "inherit" : "ignore"],
 	});
 	let ready = false;
@@ -429,6 +434,7 @@ try {
 	for (const width of (process.env.LH_UI_WIDTHS ?? "1440,390,320").split(",").map(Number)) await checkWidth(width);
 	console.log("Documents browser checks passed.");
 } catch (error) {
+	if (failing) console.error(await failing.page.evaluate(() => [...document.querySelectorAll("[data-pdf-page]")].slice(0, 2).map((el) => `${el.dataset.pdfPage} ready=${el.dataset.textReady !== undefined} marks=${el.querySelectorAll('[data-testid="pdf-mark"]').length} text=${JSON.stringify(el.querySelector('[data-testid="pdf-text-layer"]')?.textContent.slice(0, 80))}`).join("\n")).catch(() => ""));
 	if (failing && shots) await failing.page.screenshot({ path: path.join(shots, `documents-failed-${failing.width}.png`) }).catch(() => {});
 	throw error;
 } finally {
