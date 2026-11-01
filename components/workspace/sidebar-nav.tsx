@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { BookOpenIcon, ChevronDownIcon, ChevronRightIcon, DumbbellIcon, FolderIcon, LibraryIcon } from "lucide-react";
+import { BookOpenIcon, ChevronDownIcon, ChevronRightIcon, DumbbellIcon, FolderIcon, LibraryIcon, RepeatIcon } from "lucide-react";
 import { Suspense, useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -196,6 +196,10 @@ export function SidebarNav({ pathname, kindFilter, onKindFilter, lessonCount, pr
 					<CurrentFolder>{(currentId) => <LibraryFolders currentId={pathname === "/library" ? currentId : null} onNavigate={onNavigate} />}</CurrentFolder>
 				</Suspense>
 			)}
+			<Link href="/review" data-nav-entry="" data-testid="sidebar-review" aria-current={pathname === "/review" ? "page" : undefined} onClick={onNavigate} className={entryClass(pathname === "/review")}>
+				<RepeatIcon className="size-[15px] shrink-0" aria-hidden="true" />
+				Review
+			</Link>
 		</nav>
 	);
 }

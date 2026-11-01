@@ -7,7 +7,7 @@ import type { DocSearchResult } from "./document-search.ts";
 import { fuzzyScore } from "./fuzzy.ts";
 import { folderPathLabel, KIND_LABEL, type LibraryFolder, type LibraryItem } from "./library.ts";
 
-export type PaletteActionId = "new-lesson" | "new-practice" | "new-page" | "open-settings" | "open-home" | "toggle-sidebar" | "toggle-right-pane" | "choose-model" | "show-shortcuts" | "library-all" | "library-favorites" | "library-recent" | "library-archive" | "library-trash" | "study-notes" | "save-passage";
+export type PaletteActionId = "new-lesson" | "new-practice" | "new-page" | "open-settings" | "open-home" | "toggle-sidebar" | "toggle-right-pane" | "choose-model" | "show-shortcuts" | "library-all" | "library-favorites" | "library-recent" | "library-archive" | "library-trash" | "study-notes" | "save-passage" | "open-review" | "new-card" | "make-cards";
 
 export type PaletteEntry =
 	| { kind: "action"; id: string; action: PaletteActionId; label: string; meta?: string; keywords: string[] }
@@ -35,12 +35,15 @@ export function paletteActions(inSession: boolean, inLesson = false): PaletteEnt
 		action("library-recent", "Open Library recent", ["view", "history"]),
 		action("library-archive", "Open Library archive", ["view"]),
 		action("library-trash", "Open Library trash", ["view", "deleted", "restore"]),
+		action("open-review", "Review flashcards", ["cards", "due", "queue", "fsrs", "spaced repetition"]),
+		action("new-card", "New flashcard", ["card", "write", "create", "review"]),
 		action("open-home", "Open Home", ["graph", "waiting", "start"]),
 		action("open-settings", "Open settings", ["preferences", "keys", "models"]),
 		action("toggle-sidebar", "Toggle sidebar", ["left", "pane", "panel", "navigation", "collapse"]),
 		action("toggle-right-pane", "Toggle right pane", ["context", "outline", "panel", "collapse", "demo", "page"]),
 		...(inSession ? [action("choose-model", "Choose a model", ["model", "selector", "composer"])] : []),
 		...(inLesson ? [action("study-notes", "Turn this lesson into study notes", ["page", "note", "summary", "extract"])] : []),
+		...(inLesson ? [action("make-cards", "Make flashcards from this lesson", ["cards", "generate", "drafts", "review"])] : []),
 		...(inSession ? [action("save-passage", "Save the selected text to a page", ["passage", "highlight", "note", "quote"])] : []),
 		action("show-shortcuts", "Show keyboard shortcuts", ["keys", "help", "cheat sheet"]),
 	];

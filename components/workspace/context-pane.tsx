@@ -76,7 +76,8 @@ export function SessionContextBody({ entries, demos, onJump, onOpenDemo, notes }
 export interface SessionPageRow { id: string; name: string; kind: LibraryItem["kind"]; size: number; passages: number }
 
 /** Pages tied to this session, and the one action that makes more. Pure for render tests. */
-export function SessionNotesBody({ pages, failed, canMakeNotes, busy, error, onOpen, onStudyNotes, onRetry }: {
+export function SessionNotesBody({ pages, failed, canMakeNotes, busy, error, onOpen, onStudyNotes, onRetry, chatId }: {
+	chatId?: string;
 	pages: readonly SessionPageRow[] | null;
 	failed: boolean;
 	canMakeNotes: boolean;
@@ -99,6 +100,7 @@ export function SessionNotesBody({ pages, failed, canMakeNotes, busy, error, onO
 				</button>
 			))}
 			{canMakeNotes && <button type="button" className={ROW} disabled={busy} data-testid="session-study-notes" onClick={onStudyNotes}>{busy ? "Making study notes…" : "Turn this lesson into study notes"}</button>}
+			{canMakeNotes && chatId && <Link href={`/review?make=${encodeURIComponent(`lesson:${chatId}`)}`} data-testid="session-make-cards" className={ROW}>Make flashcards from this lesson</Link>}
 			{error && <p role="alert" className="px-2 text-sm text-destructive">{error}</p>}
 		</Section>
 	);
@@ -130,6 +132,7 @@ function SessionNotes({ chatId, practice }: { chatId: string; practice: boolean 
 			error={error}
 			onRetry={() => void refresh()}
 			onOpen={(row) => workspace?.openItem(row)}
+			chatId={chatId}
 			onStudyNotes={() => {
 				setBusy(true);
 				setError(null);

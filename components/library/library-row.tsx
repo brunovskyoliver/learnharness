@@ -77,6 +77,7 @@ export function LibraryRow({ item, location, onRenamed, actions = [], grid = fal
 	const menuActions: LibraryMenuAction[] = actions.length === 0 ? [] : [
 		{ label: "Rename", onSelect: () => { discard.current = false; setRenaming(true); } },
 		...actions,
+		...(item.kind === "page" ? [{ label: "Make flashcards", onSelect: () => { window.location.assign(`/review?make=${encodeURIComponent(`page:${item.id}`)}`); } }] : []),
 		...(item.kind === "pdf" ? [
 			{ label: "Open in a new tab", onSelect: () => { window.open(contentUrl(item.id), "_blank", "noreferrer"); opened(); } },
 			{ label: "Download", onSelect: () => { window.location.assign(contentUrl(item.id, true)); } },

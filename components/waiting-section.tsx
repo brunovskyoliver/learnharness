@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useMemo } from "react";
-import type { ChatListItem, LessonProgress, WaitingItem } from "@/src/core";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { dueRowText, type ChatListItem, type LessonProgress, type ReviewQueue, type WaitingItem } from "@/src/core";
+import { useServerEvent } from "@/components/server-events";
 import { useSessionList, useSessionListDemand } from "@/components/session-list";
 import { shortAgo } from "@/components/sidebar";
 import { Teaser, teaserPlain } from "@/components/teaser";
@@ -50,15 +51,41 @@ export function answerHref(chat: Waiting): string {
 export function WaitingSection() {
 	const { chats, loadError, refresh } = useSessionList();
 	useSessionListDemand(true);
-	return <WaitingSectionView chats={chats} loadError={loadError} onRetry={() => void refresh()} />;
+	const cards = useDueCards();
+	return <WaitingSectionView chats={chats} loadError={loadError} onRetry={() => void refresh()} cards={cards} />;
+}
+
+/** What Home shows of the flashcards (feature 021): how many, never a card. */
+export interface DueCards { due: number; weakDue: number; failed: boolean; retry: () => void }
+
+function useDueCards(): DueCards {
+	const [state, setState] = useState({ due: 0, weakDue: 0, failed: false });
+	const ticket = useRef(0);
+	const load = useCallback(async () => {
+		const mine = ++ticket.current;
+		try {
+			const zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+			const response = await fetch(`/api/cards/queue?tz=${encodeURIComponent(zone)}`, { cache: "no-store" });
+			if (!response.ok) throw new Error(String(response.status));
+			const { queue } = await response.json() as { queue: ReviewQueue };
+			if (mine === ticket.current) setState({ due: queue.due, weakDue: queue.weakDue, failed: false });
+		} catch {
+			// A failed refresh keeps the last count.
+			if (mine === ticket.current) setState((last) => ({ ...last, failed: true }));
+		}
+	}, []);
+	useEffect(() => { void load(); }, [load]);
+	useServerEvent("cards-changed", () => void load());
+	return { ...state, retry: () => void load() };
 }
 
 /** The section as a pure function of the list state. Exported for render tests. */
-export function WaitingSectionView({ chats, loadError, onRetry }: { chats: readonly ChatListItem[] | null; loadError: boolean; onRetry: () => void }) {
+export function WaitingSectionView({ chats, loadError, onRetry, cards }: { chats: readonly ChatListItem[] | null; loadError: boolean; onRetry: () => void; cards?: DueCards }) {
 	const headingId = useId();
 	const items = useMemo(() => (chats ? waitingSessions(chats) : null), [chats]);
 	const lessons = useMemo(() => (chats ? continueSessions(chats) : []), [chats]);
-	const open = (items?.length ?? 0) + lessons.length;
+	const due = cards?.due ?? 0;
+	const open = (items?.length ?? 0) + lessons.length + (due > 0 ? 1 : 0);
 	return (
 		<section aria-labelledby={headingId} data-testid="waiting-section" className="flex flex-col gap-2">
 			<div className="flex items-baseline gap-2.5">
@@ -83,7 +110,14 @@ export function WaitingSectionView({ chats, loadError, onRetry }: { chats: reado
 				<ul className="flex flex-col gap-1">
 					{items.map((chat) => <WaitingRow key={chat.id} chat={chat} />)}
 					{lessons.map((chat) => <LessonRow key={chat.id} chat={chat} />)}
+					{due > 0 && <CardsRow due={due} weakDue={cards?.weakDue ?? 0} />}
 				</ul>
+			)}
+			{cards?.failed && (
+				<div role="status" data-testid="waiting-cards-failed" className="flex flex-wrap items-center gap-2 text-sm text-ink-2">
+					<p>Could not count your flashcards.</p>
+					<button type="button" onClick={cards.retry} className="prompt-secondary">Try again</button>
+				</div>
 			)}
 		</section>
 	);
@@ -142,6 +176,19 @@ function LessonRow({ chat }: { chat: Unfinished }) {
 			>
 				Continue
 			</Link>
+		</li>
+	);
+}
+
+/** The day's flashcards (feature 021): one row, however many are due. */
+function CardsRow({ due, weakDue }: { due: number; weakDue: number }) {
+	const id = useId();
+	return (
+		<li className="waiting-row" data-testid="waiting-cards-row">
+			<span className="waiting-row-kind text-sm font-medium text-primary">Flashcards</span>
+			<span id={`${id}-meta`} className="waiting-row-meta min-w-0 truncate text-sm font-medium text-muted-foreground">{weakDue > 0 ? `${weakDue} on weak ideas` : "Today"}</span>
+			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-lg leading-[27px] text-foreground">{dueRowText(due)}</p>
+			<Link href="/review" aria-describedby={`${id}-teaser ${id}-meta`} data-quiet="" className="waiting-row-action prompt-primary">Review</Link>
 		</li>
 	);
 }

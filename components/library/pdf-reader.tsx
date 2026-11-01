@@ -13,7 +13,7 @@ import { ChevronLeftIcon, ChevronRightIcon, HighlighterIcon, MinusIcon, PlusIcon
 import { ChatActionsContext } from "@/components/chat-actions-context.ts";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ANCHOR_UNANCHORED_TEXT, anchorContext, ANNOTATION_QUOTE_MAX, locateQuote, type AnchorRect, type DocumentAnnotation, type TextAnchor } from "@/src/core";
+import { ANCHOR_UNANCHORED_TEXT, anchorContext, CARD_PASSAGE_KEY, ANNOTATION_QUOTE_MAX, locateQuote, type AnchorRect, type DocumentAnnotation, type TextAnchor } from "@/src/core";
 import { pdfLoadOptions, PDF_WORKER_SRC } from "./pdf-options.ts";
 import type { PaneItem } from "./page-pane-context.tsx";
 import { DOCUMENT_TUTOR_ACTIONS, documentTutorMessage, TUTOR_ACTION_LABEL, TUTOR_BLOCKED_TEXT, type DocumentTutorAction } from "./page-tutor-actions.ts";
@@ -671,6 +671,7 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 					<button type="button" data-testid="pdf-highlight" onClick={() => void saveHighlight(selected.anchor).then((ok) => { if (ok) clearSelection(); })}>Highlight</button>
 					<button type="button" data-testid="pdf-note" onClick={() => { noteOpener.current = null; setNoteText(""); setNotePrompt({ anchor: selected.anchor }); }}>Add a note</button>
 					<button type="button" data-testid="pdf-save-passage" onClick={() => setSaving({ itemId: item.id, page: selected.anchor.page, text: selected.anchor.quote })}>Save to a page</button>
+					<button type="button" data-testid="pdf-make-cards" onClick={() => { try { sessionStorage.setItem(CARD_PASSAGE_KEY, JSON.stringify({ itemId: item.id, page: selected.anchor.page, text: selected.anchor.quote })); } catch { /* the panel says it can't read it */ } router.push("/review?make=passage"); }}>Make flashcards</button>
 					{blocked ? <p className="w-full px-2 py-1 text-sm text-ink-2">{blocked}</p> : (
 						<>
 							<p className="w-full px-2 pt-1 text-sm text-muted-foreground">Ask the tutor. Sends this passage, from page {selected.anchor.page}:</p>

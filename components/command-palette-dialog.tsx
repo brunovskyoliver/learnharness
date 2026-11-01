@@ -31,6 +31,8 @@ const ROUTES: Partial<Record<PaletteActionId, string>> = {
 	"library-recent": "/library?view=recent",
 	"library-archive": "/library?view=archive",
 	"library-trash": "/library?view=trash",
+	"open-review": "/review",
+	"new-card": "/review?new=1",
 };
 
 function EntryIcon({ entry }: { entry: PaletteEntry }) {
@@ -177,6 +179,9 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 				else pane?.open({ id: result.item.id, name: result.item.name, kind: result.item.kind, size: result.item.size });
 				return;
 			}
+			case "make-cards":
+				if (sessionId) go(`/review?make=${encodeURIComponent(`lesson:${sessionId}`)}`);
+				return;
 			case "save-passage":
 				skipReturn.current = true;
 				close();

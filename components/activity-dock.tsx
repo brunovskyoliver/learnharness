@@ -74,6 +74,8 @@ export interface FeedExtraction {
 export interface ActivityFeed {
 	jobs: FeedJob[];
 	extractions: FeedExtraction[];
+	/** Flashcards being made (feature 021). */
+	cardRuns?: { id: string; title: string; startedAt: number; costUsd: number | null; model?: string; steps?: number }[];
 }
 
 const EMPTY_FEED: ActivityFeed = { jobs: [], extractions: [] };
@@ -113,7 +115,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
 				if (res.ok) {
 					const data = (await res.json()) as Partial<ActivityFeed>;
 					if (alive)
-						setFeed({ jobs: data.jobs ?? [], extractions: data.extractions ?? [] });
+						setFeed({ jobs: data.jobs ?? [], extractions: data.extractions ?? [], cardRuns: data.cardRuns ?? [] });
 				}
 			} catch {
 				// transport blip: keep the last feed, announce again next event
@@ -173,7 +175,7 @@ export interface ActivityBlob {
 	/** job.id, or the extraction job's row id (source id, or "src#i" for
 	 *  chunk jobs — unique per row, per-chunk jobs owner 2026-09-28). */
 	id: string;
-	process: "job" | "extraction";
+	process: "job" | "extraction" | "cards";
 	/** Sub-agent kind for jobs (extraction blobs have none). */
 	jobKind?: JobKind;
 	/** Extraction phase (extracting/auditing/merging/embedding); jobs carry none. */
@@ -255,6 +257,9 @@ export function toBlobs(feed: ActivityFeed): ActivityBlob[] {
 			context: null,
 			activity: "",
 		});
+	}
+	for (const run of feed.cardRuns ?? []) {
+		blobs.push({ id: run.id, process: "cards", title: run.title, chatId: "", startedAt: run.startedAt, cost: run.costUsd, context: null, activity: "", model: run.model, steps: run.steps });
 	}
 	blobs.sort((a, b) => a.startedAt - b.startedAt);
 	return blobs;
@@ -391,7 +396,9 @@ function ActivityBlobRow({
 }) {
 	const Icon = blob.process === "extraction" ? WaypointsIcon : (blob.jobKind && KIND_ICON[blob.jobKind]) || BotIcon;
 	const label =
-		blob.process === "extraction"
+		blob.process === "cards"
+			? "Making flashcards"
+		: blob.process === "extraction"
 			? `Extraction — ${blob.phase ?? "running"}`
 			: blob.jobKind === "research"
 				? "Researcher"
@@ -462,7 +469,7 @@ function ActivityBlobRow({
 					>
 						<dt>Session</dt>
 						<dd className="min-w-0 text-right">
-							<a href={`/chat/${blob.chatId}`} className="block truncate text-card-foreground hover:underline" title={blob.title}>
+							<a href={blob.process === "cards" ? "/review?view=drafts" : `/chat/${blob.chatId}`} className="block truncate text-card-foreground hover:underline" title={blob.title}>
 								{blob.title}
 							</a>
 						</dd>

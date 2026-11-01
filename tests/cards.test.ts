@@ -483,7 +483,7 @@ describe("deleting what a card came from", () => {
 });
 
 describe("generation", () => {
-	const scripted = (log: string[], cards: unknown = [{ front: "Gen front", back: "Gen back" }, { front: "Second gen", back: "Second back" }]) => {
+	const scripted = (log: string[], cards: { front: string; back: string }[] = [{ front: "Gen front", back: "Gen back" }, { front: "Second gen", back: "Second back" }]) => {
 		const faux = createFauxCore({});
 		faux.setResponses([(context: { systemPrompt?: string; messages: unknown[] }) => {
 			log.push(`${context.systemPrompt}\n${JSON.stringify(context.messages)}`);
