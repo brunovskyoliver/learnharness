@@ -93,6 +93,8 @@ export const PATHS = {
 	get files() { return path.join(dataRoot(), "files"); },
 	/** Library catalog, page versions and cached text (feature 009). */
 	get library() { return path.join(dataRoot(), "library"); },
+	/** Flashcards and their review log (feature 021). */
+	get cards() { return path.join(dataRoot(), "cards"); },
 	/** Debug artifacts (env-gated): data/debug/provider-events/<chatId>.jsonl
 	 * raw provider stream recordings (src/agent/provider-events.ts). */
 	get debug() { return path.join(dataRoot(), "debug"); },

@@ -54,6 +54,8 @@ export interface ServerEvents {
 	"library-changed": { itemId?: string; version?: number; author?: "learner" | "agent" };
 	/** The search index moved on (feature 019). Open search views refetch. */
 	"library-index-changed": { building: boolean };
+	/** Flashcards changed (feature 021). Carries no card text. */
+	"cards-changed": Record<string, never>;
 }
 
 export type ServerEventType = keyof ServerEvents;
@@ -72,6 +74,7 @@ export const SERVER_EVENT_TYPES = [
 	"compaction-changed",
 	"library-changed",
 	"library-index-changed",
+	"cards-changed",
 ] as const satisfies readonly ServerEventType[];
 
 /** One notification: the type discriminates the payload. */

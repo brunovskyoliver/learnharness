@@ -23,6 +23,7 @@ export * from "./note-links.ts";
 export * from "./note-sources.ts";
 export * from "./document-search.ts";
 export * from "./document-anchors.ts";
+export * from "./cards.ts";
 export * from "./chains.ts";
 export * from "./render-settings.ts";
 
