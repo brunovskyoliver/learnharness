@@ -1,7 +1,9 @@
 /** Exercises real sandboxed iframe continuity, graph focus, and footer geometry.
- * All sessions are isolated; chat POSTs are rejected before invoking a model. */
+ * All sessions are isolated; chat POSTs are rejected before invoking a model, and the server
+ * is kept off every model provider by a guard that lists any attempt and fails the run. */
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -28,7 +30,12 @@ try {
  messages.push(question);
  await mkdir(path.join(data,'chats'));
  await writeFile(path.join(data,'chats','workspace-ui.json'),JSON.stringify({...fixture,id:'workspace-ui',title:'Workspace verification',messages}));
- server=spawn(process.execPath,['node_modules/next/dist/bin/next','dev','--hostname','127.0.0.1','--port',String(port)],{env:{...process.env,LH_HOSTED:'0',LH_DATA_DIR:data,LH_AUTH_FILE:path.join(data,'auth.json'),NEXT_TELEMETRY_DISABLED:'1'},stdio:['ignore','pipe','pipe']});
+ // The composer needs models to show: the golden record's slots, and a fake key to fill the catalog, which is static.
+ await writeFile(path.join(data,'settings.json'),await readFile(new URL('../tests/fixtures/golden-data/settings.json',import.meta.url)));
+ const blocked=path.join(data,'model-requests.log');
+ const guard=path.join(data,'guard.cjs');
+ await writeFile(guard,`const net=require('node:net'),fs=require('node:fs');const connect=net.Socket.prototype.connect;net.Socket.prototype.connect=function(...args){const first=Array.isArray(args[0])?args[0][0]:args[0];const host=String(typeof first==='object'?first.host??'':args[1]??'');if(/openrouter|openai|anthropic|googleapis|mistral|groq|x\\.ai/.test(host)){fs.appendFileSync(${JSON.stringify(blocked)},host+'\\n');process.nextTick(()=>this.destroy(new Error('model request refused by the test guard')));return this}return connect.apply(this,args)};`);
+ server=spawn(process.execPath,['node_modules/next/dist/bin/next','dev','--hostname','127.0.0.1','--port',String(port)],{env:{...process.env,OPENROUTER_API_KEY:'test-key-never-used',NODE_OPTIONS:`--require ${guard}`,LH_HOSTED:'0',LH_DATA_DIR:data,LH_AUTH_FILE:path.join(data,'auth.json'),NEXT_TELEMETRY_DISABLED:'1'},stdio:['ignore','pipe','pipe']});
  let output='';for(const stream of [server.stdout,server.stderr])stream.on('data',c=>output=(output+c).slice(-5000));
  let ready=false;for(let i=0;i<120;i++){if(server.exitCode!==null)throw Error(output);try{if((await fetch(base+'/api/chats')).ok){ready=true;break}}catch{}await pause(250)}assert.ok(ready,output);
  browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true});
@@ -36,6 +43,8 @@ try {
  await page.setRequestInterception(true);page.on('request',r=>{if(r.method()==='POST' && new URL(r.url()).pathname==='/api/chat')r.abort();else r.continue()});
  await page.setViewport({width:1440,height:1000});await page.goto(base+'/chat/workspace-ui',{waitUntil:'networkidle2'});
  await page.waitForSelector('[data-demo-slot]');
+ // The live demo glides from the transcript to the workspace; clicks need it at rest.
+ await page.waitForFunction(()=>{const slot=document.querySelector('[data-demo-slot]'),live=document.querySelector('[data-demo-live="steer_workspace"]');if(!slot||!live)return false;const a=slot.getBoundingClientRect(),b=live.getBoundingClientRect();return live.getAnimations().length===0&&Math.abs(a.left-b.left)<1&&Math.abs(a.top-b.top)<1;},{timeout:30000});
  const live = '[data-demo-live="steer_workspace"]';
  const handle=await page.$(live+' iframe');const frame=await handle.contentFrame();
  await frame.waitForFunction(()=>window.__lhKit && document.querySelectorAll('.k-panel').length===4);
@@ -53,8 +62,7 @@ try {
  await page.waitForSelector('.lesson-footer [data-testid="stats-model"]',{visible:true});
  assert.ok(await page.$('.lesson-footer [data-testid="stats-thinking"]'),'reasoning is directly available');
  assert.equal(await page.$('[data-testid="session-options"]'),null,'no outer Options popup');
- // The fixture intentionally has no provider credentials. Model/reasoning may
- // be disabled; the independent usage control must still open and claim Escape.
+ // The independent usage control opens and claims Escape.
  await page.focus('.lesson-footer [data-testid="stats-summary"]');await page.keyboard.press('Enter');
  await page.waitForSelector('[data-testid="stats-detail"]',{visible:true});
  await page.keyboard.press('Escape');
@@ -137,5 +145,5 @@ try {
  assert.ok(await page.$eval('.lesson-footer',e=>e.getBoundingClientRect().bottom<=innerHeight+1),'short viewport keeps footer visible');
  await page.setViewport({width:390,height:844});await pause(100);
  if(process.env.LH_UI_SCREENSHOT_DIR){await mkdir(process.env.LH_UI_SCREENSHOT_DIR,{recursive:true});await page.screenshot({path:path.join(process.env.LH_UI_SCREENSHOT_DIR,'mobile.png')});await page.setViewport({width:1440,height:1000});await pause(150);await page.screenshot({path:path.join(process.env.LH_UI_SCREENSHOT_DIR,'desktop.png')});}
- assert.deepEqual(errors,[]);console.log('PASS: kit/legacy continuity, three renderer focus modes, parameter and simulation state, Escape, footer geometry, automatic reference, manual close, mobile, reduced motion');
+ assert.deepEqual(errors,[]);assert.equal(existsSync(blocked),false,'no model provider was contacted');console.log('PASS: kit/legacy continuity, three renderer focus modes, parameter and simulation state, Escape, footer geometry, automatic reference, manual close, mobile, reduced motion');
 } finally {await browser?.close();server?.kill('SIGTERM');await rm(data,{recursive:true,force:true});}
