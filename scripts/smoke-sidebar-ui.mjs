@@ -58,10 +58,13 @@ try {
 	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true });
 	const page = await browser.newPage();
 	page.setDefaultTimeout(5000);
+	// A route's first compile on a cold dev server takes far longer than any step this checks.
+	page.setDefaultNavigationTimeout(180000);
 	const errors = [];
 	page.on("pageerror", (error) => errors.push(error.message));
 	await page.setViewport({ width: 1280, height: 800 });
 	await page.goto(`${base}/chat/${sample.id}`, { waitUntil: "networkidle2" });
+	await page.waitForFunction((sel) => { const el = document.querySelector(sel); return el && Object.keys(el).some((key) => key.startsWith("__reactProps")); }, { timeout: 180000 }, rail);
 	await page.waitForSelector(rail, { visible: true });
 	await page.evaluate(() => document.fonts.ready);
 	const frames = () => page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));

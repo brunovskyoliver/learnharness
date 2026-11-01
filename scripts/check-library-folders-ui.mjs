@@ -23,7 +23,15 @@ const api = async (url, method, body) => {
 let server;
 let browser;
 
+/** Waits until React owns an element. On a cold dev server the HTML arrives well before the
+ *  scripts compile, and a click before hydration is silently lost. */
+const live = (page, selector) => page.waitForFunction((sel) => {
+	const el = document.querySelector(sel);
+	return el && el.getClientRects().length > 0 && Object.keys(el).some((key) => key.startsWith("__reactProps"));
+}, { timeout: 120000 }, selector);
+
 async function chooseMenu(page, name, label) {
+	await live(page, `[aria-label="More actions for ${name}"]`);
 	await page.click(`[aria-label="More actions for ${name}"]`);
 	await page.waitForSelector("[data-lh-menu] [role=menuitem]");
 	await page.evaluate((text) => [...document.querySelectorAll("[data-lh-menu] [role=menuitem]")].find((el) => el.textContent === text).click(), label);
@@ -40,7 +48,7 @@ async function checkWidth(width) {
 	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
 
 	// New folder by keyboard: Enter submits, focus comes back.
-	await page.waitForSelector('[data-testid="library-new-folder"]');
+	await live(page, '[data-testid="library-new-folder"]');
 	await page.click('[data-testid="library-new-folder"]');
 	await page.waitForSelector('[data-testid="library-folder-name"]');
 	await page.keyboard.type(`${prefix} Physics`);
@@ -65,6 +73,7 @@ async function checkWidth(width) {
 	await page.waitForFunction((name) => !document.querySelector(`[aria-label="Open ${name}"]`), {}, `${prefix} note`);
 
 	// Into the folder: breadcrumbs, the page, and a subfolder.
+	await live(page, `[aria-label="Open folder ${prefix} Physics"]`);
 	await page.click(`[aria-label="Open folder ${prefix} Physics"]`);
 	await page.waitForSelector('[data-testid="library-breadcrumbs"]');
 	await page.waitForSelector(`[aria-label="Open ${prefix} note"]`);
@@ -84,6 +93,7 @@ async function checkWidth(width) {
 	// The folder can't be a target inside its own move dialog.
 	const up = await page.$eval('[data-testid="library-breadcrumbs"] a', (a) => a.getAttribute("href"));
 	assert.equal(up, "/library");
+	await live(page, '[data-testid="library-breadcrumbs"] a');
 	await page.click('[data-testid="library-breadcrumbs"] a');
 	await page.waitForSelector(`[aria-label="More actions for ${prefix} Physics"]`);
 	await chooseMenu(page, `${prefix} Physics`, "Move to…");
@@ -138,6 +148,7 @@ async function checkWidth(width) {
 	await api("/api/library/pages", "POST", { name: a, content: "x" });
 	await api("/api/library/pages", "POST", { name: b, content: "x" });
 	await page.waitForSelector(`[aria-label="Open ${b}"]`);
+	await live(page, '[data-testid="library-grid"]');
 	await page.click('[data-testid="library-grid"]');
 	await page.click('[data-testid="library-select-mode"]');
 	await page.click(`[aria-label="Select ${a}"]`);
@@ -147,6 +158,7 @@ async function checkWidth(width) {
 	await page.waitForFunction((name) => !document.querySelector(`[aria-label="Open ${name}"]`), {}, a);
 	await page.goto(`${base}/library?view=trash`, { waitUntil: "domcontentloaded" });
 	await page.waitForSelector(`[aria-label="Restore ${a}"]`);
+	await live(page, `[aria-label="Restore ${a}"]`);
 	await page.click(`[aria-label="Restore ${a}"]`);
 	await page.waitForFunction((name) => !document.querySelector(`[aria-label="Restore ${name}"]`), {}, a);
 	await page.click(`[aria-label="Delete ${b} for good"]`);
@@ -163,12 +175,14 @@ async function checkWidth(width) {
 	// A folder goes to the trash with what's in it (replaces the 011 refusal).
 	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
 	await page.waitForSelector(`[aria-label="Delete folder ${prefix} Physics"]`);
+	await live(page, `[aria-label="Delete folder ${prefix} Physics"]`);
 	await page.click(`[aria-label="Delete folder ${prefix} Physics"]`);
 	await page.waitForSelector('[data-testid="library-folder-delete-confirm"]');
 	await page.click('[data-testid="library-folder-delete-confirm"]');
 	await page.waitForFunction((name) => !document.querySelector(`[aria-label="Open folder ${name}"]`), {}, `${prefix} Physics`);
 	await page.goto(`${base}/library?view=trash`, { waitUntil: "domcontentloaded" });
 	await page.waitForSelector(`[aria-label="Restore ${prefix} Physics"]`);
+	await live(page, `[aria-label="Restore ${prefix} Physics"]`);
 	await page.click(`[aria-label="Restore ${prefix} Physics"]`);
 	await page.waitForFunction((name) => !document.querySelector(`[aria-label="Restore ${name}"]`), {}, `${prefix} Physics`);
 
