@@ -16,7 +16,7 @@ Owner-facing decisions are in spec.md, Clarifications, and docs/workspace-decisi
 - The Library's line had the open page's row too, behind the phone layer, and it lacked the save-first path. It now leaves out the page open beside it.
 - Focus fell to the body after closing a proposal dialog, on pages and on 022's diagram line. Both now return it to Review.
 - Clerk's Next SDK doesn't read `CLERK_JWT_KEY` from the environment in this version, only the `jwtKey` option, so `proxy.ts` passes it when set.
-- A signed-in request whose host differs from the server's name hung: Next proxied Clerk's rewrite to itself. The check uses `localhost` for both. See Risks.
+- A signed-in request whose host differs from the server's name hung: Next proxied Clerk's rewrite to itself. The check uses `localhost` for both. Corrected below: the Host header plays no part.
 - `BrowserWindow.show` segfaults Electron in `--headless`. `--ozone-platform=headless` segfaults too.
 
 ## Report
@@ -112,8 +112,7 @@ No existing assertion was changed. Golden fixtures are unchanged.
 - In a browser: the transcript row's Review, and Create page from a diagram link. Unit or code level only.
 
 **Risks**
-- Hosted hang: a signed-in request whose host the server doesn't recognise as itself never answered. Seen with `127.0.0.1` against a server named `localhost`. Not seen in production, where this check can't reach. A monitor on hosted latency would catch it.
-- Two browser checks are sensitive to a cold dev cache, and `check-library-ui` has an unexplained intermittent race. CI doesn't run them.
+- Hosted hang, two browser checks' cold cache and `check-library-ui`'s race: resolved, see Follow-up.
 - `tests/sampling-panels-headless.test.ts` can flake under load.
 - `next-env.d.ts` is rewritten by `next dev`; I restored it each time.
 - `.next` is 1.6 GB, down from 4.9 GB after removing its dev cache.
@@ -124,3 +123,67 @@ No existing assertion was changed. Golden fixtures are unchanged.
 ## Addendum after the report
 - Every `page_revise` is now held, not only selection-triggered ones (`turnHolds: () => true`), to meet the goal's wording. `tests/page-proposals.test.ts` changed deliberately. This supersedes the report's "what still lands directly" section.
 - `npm test` now uses a temporary `LH_DATA_DIR`, so the suite no longer writes the real `data/`. Fixture sessions already written there were left alone.
+
+## Follow-up: open items closed
+
+Evidence: `~/agent-runs/2026-11-01-followup/`. Decisions taken with no questions asked, under the owner's instruction:
+
+- **Filter menus**: the Library's Sort, Type and Folder choices became menus, because a native `<select>`'s open list can't meet "raised-2, 10px, no border". DESIGN.md names a select for the editor's text style and the callout's type, so those stay native.
+- **Hosted refusal**: a 503 for `HOSTNAME` of `127.x` or `::1`, rather than a change to Next or Clerk. It reads the variable, so `next dev --hostname 127.0.0.1` isn't covered.
+- **Headings**: `.lh-prose` h1 and h2 moved to the type scale (30, 22 at 17 px; were 31.875, 25), in lessons as well as pages, since they share the class. h3 is now the reading size (was 20). One line in `app/globals.css` to reverse.
+- **A held row opens by default**, or Review would sit behind its chevron.
+- **`practice/20-library.md` not changed**: it's owner-approved and pinned verbatim to a contract ("`page_create` and `page_revise` write pages"). The tool's description and result say it's held. Worth rewording when the owner next reads it.
+
+### `check-library-ui`: one product bug, four script races
+
+Reproduced on unchanged code: passes 1 of 3 (74 PASS once; failed at 1140 with 26 PASS, and at 1367 with 33 PASS). Failures moved around, so each got its own evidence, from an instrumented copy under load.
+
+| Failure | Kind | Evidence | Fix |
+| --- | --- | --- | --- |
+| 1140, placeholder missing; 1367, change bar never shows | Script | The pane restores the last open page by design, after hydration. Captured: the editor held `Tools 390`'s text at the 320 step. The script's loop stopped on "a pane exists", so it checked the wrong page | Opens by name and waits for that name |
+| 1579, row missing; click at 1590 "not clickable"; `[data-chat-id]` missing; "Node is detached" | Script | Per-frame timeline: under `next dev` rows sit in hidden `S:0`, then a client render replaces them (2 roots, 1 visible, then 1). In production that happened on the cold first load of 6. No hydration error, no blank frame caught, no console output | Waits until React owns visible rows. I didn't catch the "missing" variant in a timeline, only its siblings on the same step |
+| Settings dialog never opens | Script | A click before hydration, under load | Waits until React owns the control |
+| `checkPageAndDemo`, restored page gone | **Product** | A child's effect runs before the provider's, so on a client render the question's demo saw no page, opened, and closed the page for good. Breaks DESIGN.md's "doesn't replace an open page". `tests/question-demo-auto-open.test.tsx` failed before the fix (`actual: ['demo_1']`) | `restored` on the pane, and the automatic open waits for it |
+
+Result: **5 consecutive passes, 74 PASS each**, full flow, under 2 CPU burners (05:26-05:48).
+
+### `smoke-demo-workspace`
+On `main` (`31a3c73`): fails. Symlinked `node_modules` failed Turbopack ("Symlink ... points out of the filesystem root"), so the worktree used a hard-linked copy instead. Unmodified it failed 3 of 3 warm runs at line 45, clicking while the demo glided. With that step skipped it stalled at `stats-model`, so the stall predates this work. Cause: no model slots, so the composer shows "Set up your models". Fix: the golden settings' slots, a fake key, a wait for the demo to settle, and a guard that refuses and lists any model provider. **All later steps then passed, with no product change.** Worktree removed.
+
+### Cold cache
+From an empty `.next/dev`: `smoke-sidebar-ui` failed at line 64, navigation timeout of 5000 ms, confirming the cause. `check-library-folders-ui` passed unfixed cold twice, once under load, so its failure didn't reproduce; the earlier log shows the same step, line 45, waiting after a click. Fix: navigation budget of 180 s and waits for React to own the element. Assertions unchanged. Both pass cold.
+
+### Hosted hang: real, wider than reported, not reachable on the image
+- Cause: `next/dist/server/web/next-url.js` renames `127.x` and `[::1]` to `localhost` in the middleware's URL. Clerk's `decorateRequest` turns every pass-through into a rewrite to that URL. `resolve-routes.js` compares its origin against `http://{bound hostname}:{port}`, sees a difference and proxies, to itself.
+- **The earlier description was wrong.** The Host header plays no part: matrix in `hosted/matrix-head*.txt`. `HOSTNAME=localhost`, `0.0.0.0` and a real address answered 200 for every Host, and `127.0.0.1`, `::1` looped for every Host: about 300 self-requests in 6 s. With `x-forwarded-proto: https` it failed fast with a 500 instead. `127.0.0.2` returned 500 for every case. It isn't only signed-in requests: the public `/sign-in` too, with `CLERK_JWT_KEY` unset.
+- Predates the work: on `main` with hosted `next dev --hostname 127.0.0.1`, `/sign-in` gave a 500 after 30 s, and 200 with `0.0.0.0`. The `CLERK_JWT_KEY` change plays no part.
+- Production: `Dockerfile` sets `HOSTNAME=0.0.0.0`; `compose.yaml` doesn't override it unless `.env.hosted` does; `deploy/Caddyfile` is a plain `reverse_proxy app:3000`. So it can't happen on the documented setup, unless someone sets `HOSTNAME` to a loopback address. Read from the repo only: the live system's own compose file and environment weren't opened.
+- Fix: hosted mode answers 503 with the reason. `check-hosted-tenants` now sends Caddy's headers, and covers `0.0.0.0` and the refusal. Separately fixed a race there: no-session could read an empty document mid-redirect.
+
+### UI review, features 011-018
+
+**Skills, exactly**: `web-design-guidelines` loaded. Its WebFetch returned a summary, so I took the verbatim rules with `curl` from the same URL (191 lines) and checked against those. `impeccable` loaded: `context`, the audit playbook, craft floor, and `detect` over these files. `shadcn` loaded: its guidance only, with no registry fetch or CLI use, and it would have me use `Select`, which isn't installed; radix `DropdownMenu` was already in use for these menus and adds no dependency.
+
+**Method**: an audit script drove each surface at 320, 390 and 1440, and with `emulateMediaFeatures` reduced motion at 390 and 1440, measuring overflow, scrollbars, targets, names, sizes, shadows and running motion. Two rounds. Screenshots read: Library rows, More menu, page with bubble and Links panel, palette, sidebar tree, right pane, passage dialog, ordinary-turn row.
+
+| Finding | Source | Outcome |
+| --- | --- | --- |
+| Native `<select>` for Sort, Type, Folder: open list breaks the menu rules | DESIGN | **Fixed**, menus; keyboard, panel and focus return asserted in `check-documents-ui` |
+| ~all `transition-*` still ran under reduced motion (sidebar, rows, tabs, pills, controls) | DESIGN, both skills | **Fixed**, one global rule. Second round: no transition or animation running |
+| Focus fell to `<body>` after a dialog opened from a row's menu | Constitution VI | **Fixed**, back to the row's ⋯ |
+| Line dividers in the toolbar and bubble | DESIGN, no structural lines | **Fixed**, spacing |
+| Headings off the scale in pages and lessons, 31.875 and 25 | DESIGN | **Fixed**, see Decisions |
+| Empty-state text at 16 px | DESIGN | **Fixed**, 15 |
+| Coarse targets under 44: view pill, selection checkbox, phone header icons (40), dialog ×, sidebar Home, coverage ring, copy | Constitution VI | **Fixed** |
+| Coverage ring had no name | Guidelines | **Fixed** |
+| Search fields measured 22 px high | Audit | No change: the 44 px label is the target |
+| Chat title in the top bar, 26 px high on phones; `prompt-setup` at 14 px; `--text-sm` 13.005 | Audit | Left: outside 011-018, or within rounding |
+| Text style and callout type are native selects | DESIGN | No change: DESIGN.md names a select. Their open list is the system's |
+| Title Case; "…" placeholder patterns | Guidelines | No change: DESIGN.md wins |
+| `autoFocus` in the passage dialog raises a phone's keyboard | Guidelines | Left: it's the dialog's one field |
+| No skip link; filter state isn't in the URL | Guidelines | Left: filters persist per browser by design. Skip link is an owner call |
+| `layout-transition` at `globals.css:42`, the sidebar's width | Detector | Left: predates these features, and off under reduced motion |
+| Wiki links, callouts, Links panel, passage dialog, tabs, palette, sidebar tree | Screenshots and measures | No finding |
+
+### Held edits surface
+Previously a proposal's Review sat inside a collapsed row, so a tutor edit from an ordinary turn could go unnoticed in the chat. Fixed. `checkOrdinaryTurnProposal` in `check-notes-ui`, at 1440, 390 and 320: an `outcome: "proposed"` row shows Review with no click, it opens the review, the Library lists it and the page shows its line. Row seeded from the tool's real result shape; the proposal is from the real store. **A live update from a real tool call during a turn isn't browser-tested**; `announce` emits `library-changed`, which the line listens for.
