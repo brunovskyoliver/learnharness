@@ -619,7 +619,8 @@ async function checkPhoneNotes(width) {
 	const chatId = `phone-notes-${width}`;
 	await seedLesson(chatId, `w${width} Phone notes`);
 	await page.goto(`${base}/chat/${chatId}`, { waitUntil: "domcontentloaded" });
-	await page.waitForSelector(id("right-pane-toggle"), { visible: true, timeout: 60000 });
+	// A click on server HTML before hydration is lost.
+	await page.waitForFunction((sel) => { const el = document.querySelector(sel); return el && el.getClientRects().length > 0 && Object.keys(el).some((key) => key.startsWith("__reactProps")); }, { timeout: 60000 }, id("right-pane-toggle"));
 	const size = await page.$eval(id("right-pane-toggle"), (el) => { const r = el.getBoundingClientRect(); return [r.width, r.height]; });
 	assert.ok(size[0] >= 44 && size[1] >= 44, `coarse target ${size}`);
 	await page.click(id("right-pane-toggle"));
