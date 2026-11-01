@@ -2353,9 +2353,13 @@ function DockFooter({
 		readingAnswerRef.current = false;
 		scrollMotionRef.current?.cancel();
 		stopScroll();
+		// Offscreen rows take their real height near the view, and scroll anchoring then moves
+		// the scroller. That reads as an outside scroll and would stop the jump partway.
+		element.style.overflowAnchor = "none";
 		const motion = animateDockScroll(element, () => element.scrollHeight - element.clientHeight, (top) => { scrollState.scrollTop = top; }, { cancelOnExternalScroll: true });
 		scrollMotionRef.current = motion;
 		void motion.finished.then((completed) => {
+			element.style.overflowAnchor = "";
 			if (scrollMotionRef.current !== motion) { setBandHeld(false); return; }
 			scrollMotionRef.current = null;
 			jumpPendingRef.current = false;

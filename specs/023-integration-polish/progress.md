@@ -225,3 +225,10 @@ Earlier passes on earlier commits had the failures above, in `final-earlier/` an
 ## Independent re-check on e9dc835
 - `npm test`: 3875 tests, 3872 pass, 1 fail, 2 skipped. The failure, `tests/browser-service-readiness.test.ts` "readiness left an HTTP connection open", is a timing flake in a test from 3d70e0d that this work doesn't touch: 5 of 5 passes alone.
 - `scripts/smoke-dock-ui.mjs`, run whole: 2 of 2 failures at line 134, no `setup-cta` element. An earlier run failed at line 359. Not investigated; not known whether it predates this work.
+
+## Second re-check: `smoke-dock-ui`
+- Line 134 (`setup-cta`): the script seeded no key, so the app rightly showed the zero-keys button. Fixed with a fake key, as the other checks use.
+- Line 359 (wheel): the lesson scrolled the full 120px, but the cursor sat over a demo iframe, whose document took the event. Script artifact. It now aims at a lesson paragraph; the assertion is unchanged.
+- Product bug fixed in `components/chat.tsx`: "Scroll to latest" stopped about 10,000px short in a long session (trace: scrollTop stuck at 27438 with a 10754px gap). Scroll anchoring cancels the motion, the same cause as the rail jump. The motion now disables anchoring.
+- `tests/browser-service-readiness.test.ts`: the idle wait is 5s, not 1s, and returns as soon as sockets close. It failed under load only.
+- **Open, not root-caused:** `check-streaming-ui.mjs:102`, completion alignment. The whole script passed 1 of 2 final runs (29 PASS, exit 0); the other failed with the answer at -186 instead of 16. Disabling anchoring there did not help and was reverted. A probe showed two elements with the same `data-answer-part-id` (`stream_reading_1-t0`), 509px apart. It is not established whether that duplicate happens in real turns or comes from the script's faked record and stream, nor whether it causes the misalignment. Not tested on `main`.

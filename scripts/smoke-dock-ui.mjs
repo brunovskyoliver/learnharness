@@ -71,7 +71,7 @@ try {
 	quiz.arguments.correctAnswer = "2";
 	await writeFile(path.join(data, "chats", `${recordingChat.id}.json`), JSON.stringify(recordingChat));
 	server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev", "--hostname", "127.0.0.1", "--port", String(port)], {
-		env: { ...process.env, LH_HOSTED: "0", LH_DATA_DIR: data, LH_AUTH_FILE: path.join(data, "auth.json"), NEXT_TELEMETRY_DISABLED: "1" },
+		env: { ...process.env, OPENROUTER_API_KEY: "test-key-never-used", LH_HOSTED: "0", LH_DATA_DIR: data, LH_AUTH_FILE: path.join(data, "auth.json"), NEXT_TELEMETRY_DISABLED: "1" },
 		stdio: ["ignore", "pipe", "pipe"],
 	});
 	server.stdout.on("data", (chunk) => { output = (output + chunk).slice(-4000); });
@@ -346,7 +346,20 @@ try {
 	});
 	await wait(450);
 	const lessonLeft = await page.$eval('[role="log"]', (element) => element.getBoundingClientRect().left);
-	await page.mouse.move(lessonLeft + 40, 160);
+	// A wheel over a demo iframe goes to that document, so aim at the lesson's own text.
+	const lessonPoint = await page.evaluate(async () => {
+		const scroller = window.dockScroller;
+		const paragraphs = [...scroller.querySelectorAll('[role="log"] p')].filter((p) => !p.closest("[data-testid='composer']") && p.getBoundingClientRect().height > 0);
+		const middle = paragraphs[Math.floor(paragraphs.length / 2)];
+		if (!middle) return null;
+		scroller.scrollTop += middle.getBoundingClientRect().top - scroller.getBoundingClientRect().top - 120;
+		await new Promise((resolve) => setTimeout(resolve, 450));
+		const box = middle.getBoundingClientRect();
+		const point = { x: box.left + 10, y: box.top + box.height / 2 };
+		return scroller.contains(document.elementFromPoint(point.x, point.y)) ? point : null;
+	});
+	assert.ok(lessonPoint, "the lesson shows text outside its demos");
+	await page.mouse.move(lessonPoint.x, lessonPoint.y);
 	// The lesson scrolls natively (2026-10-27): the wheel is never cancelled,
 	// so the compositor owns the motion. Headless CDP wheels apply at once;
 	// a real trackpad/mouse animates in the browser itself.
@@ -381,7 +394,7 @@ try {
 	});
 	await page.type('[data-testid="composer"] textarea', "Ordinary composer draft");
 	await page.evaluate(() => { window.originalComposerInput = document.querySelector('[data-testid="composer"] textarea'); document.activeElement?.blur(); });
-	await page.mouse.move(lessonLeft + 40, 160);
+	await page.mouse.move(lessonPoint.x, lessonPoint.y);
 	sampling = sample();
 	await page.mouse.wheel({ deltaY: -420 });
 	frames = await sampling;

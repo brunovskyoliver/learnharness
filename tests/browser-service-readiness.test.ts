@@ -24,7 +24,7 @@ async function withEndpoint(
 	await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
 	port = (server.address() as AddressInfo).port;
 	const idle = async () => {
-		const deadline = Date.now() + 1000;
+		const deadline = Date.now() + 5000; // returns as soon as idle; a loaded machine closes sockets late
 		while (sockets.size && Date.now() < deadline) await delay(10);
 		assert.equal(sockets.size, 0, "readiness left an HTTP connection open");
 	};
