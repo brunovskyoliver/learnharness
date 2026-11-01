@@ -701,12 +701,11 @@ body {
 	font-weight: min(var(--lh-heading-weight, 700), 600);
 	letter-spacing: -0.01em;
 }
-/* Heading sizes are relative to the reading size, matching the old fixed
-   32/25/20px at the 17px default, so headings stay above body text when
-   the reading size grows. */
-.lh-prose :where(h1) { font-size: 1.875em; }
-.lh-prose :where(h2) { font-size: 1.47em; }
-.lh-prose :where(h3) { font-size: 1.18em; }
+/* Heading sizes are relative to the reading size: DESIGN.md's 30 and 22 at the 17px default,
+   so headings stay above body text when the reading size grows. h3 keeps the reading size. */
+.lh-prose :where(h1) { font-size: 1.7647em; }
+.lh-prose :where(h2) { font-size: 1.2941em; }
+.lh-prose :where(h3) { font-size: 1em; }
 .lh-prose :where(h4, h5, h6) { font-size: 1em; }
 
 /* Keep the measure in the body font so larger headings share its edge. */
@@ -1442,3 +1441,8 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 
 /* A diagram's full screen is the same element, so nothing remounts (feature 022). */
 .page-workspace.lh-diagram-full { position: fixed; inset: 0; z-index: 45; width: 100vw; height: 100dvh; padding: 0; }
+
+/* Reduced motion keeps the state change without the transition (DESIGN.md), everywhere. */
+@media (prefers-reduced-motion: reduce) {
+	*, *::before, *::after { transition: none !important; }
+}

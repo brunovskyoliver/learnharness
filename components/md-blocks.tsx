@@ -110,7 +110,7 @@ export function CopyCorner({
 				data-testid="md-copy"
 				className={cn(
 					"flex h-6 items-center justify-center rounded-md text-muted-foreground transition-opacity hover:text-foreground focus-visible:opacity-100",
-					text ? "px-1 text-sm" : cn("size-6 hover:bg-accent", !visible && "opacity-0 group-hover/md:opacity-100"),
+					text ? "px-1 text-sm pointer-coarse:min-h-11" : cn("size-6 hover:bg-accent pointer-coarse:size-11", !visible && "opacity-0 group-hover/md:opacity-100"),
 				)}
 				onClick={(e) => {
 					blurAfterPointerClick(e);

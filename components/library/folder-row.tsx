@@ -5,7 +5,7 @@ import { FolderIcon, PencilIcon, PinIcon, StarIcon, Trash2Icon } from "lucide-re
 import { Button } from "@/components/ui/button";
 import type { LibraryFolder } from "@/src/core";
 import { DRAG_TYPE, type EntryKey } from "./library-filter.ts";
-import { LibraryEntryMenu, LibraryMoreButton, type LibraryMenuAction } from "./library-menu.tsx";
+import { LibraryEntryMenu, LibraryMoreButton, LibrarySelectBox, moreButton, type LibraryMenuAction } from "./library-menu.tsx";
 
 const ACTION = "size-9 text-muted-foreground pointer-coarse:size-11";
 export const folderHref = (id: string | null) => (id ? `/library?folder=${encodeURIComponent(id)}` : "/library");
@@ -26,7 +26,7 @@ export function FolderRow({ folder, count, location, actions = [], selection, dr
 	const menuActions: LibraryMenuAction[] = actions.length === 0 ? [] : [
 		{ label: "Rename", onSelect: () => onRename(folder, document.body) },
 		...actions,
-		{ label: "Move to the trash", destructive: true, onSelect: () => onDelete(folder, document.body) },
+		{ label: "Move to the trash", destructive: true, onSelect: () => onDelete(folder, moreButton(`More actions for ${folder.name}`)) },
 	];
 	const meta = [`Folder · ${count} ${count === 1 ? "item" : "items"}`, folder.archivedAt ? "Archived" : "", location].filter(Boolean).join(" · ");
 	return (
@@ -50,7 +50,7 @@ export function FolderRow({ folder, count, location, actions = [], selection, dr
 			}}
 		>
 			<div className="flex items-center gap-1 pr-1.5">
-				{selection && <input type="checkbox" checked={selection.selected} onChange={selection.toggle} aria-label={`Select folder ${folder.name}`} data-testid="library-select" className="ml-3 size-4 shrink-0 accent-foreground pointer-coarse:size-6" />}
+				{selection && <LibrarySelectBox label={`Select folder ${folder.name}`} checked={selection.selected} onChange={selection.toggle} />}
 				<Link href={folderHref(folder.id)} aria-label={`Open folder ${folder.name}`} className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[10px] px-3 py-2.5 transition-colors hover:bg-accent">
 					<FolderIcon className="ui-icon shrink-0 text-muted-foreground" aria-hidden="true" />
 					<span className="flex min-w-0 flex-col gap-0.5">

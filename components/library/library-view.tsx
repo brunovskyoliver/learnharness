@@ -17,7 +17,7 @@ import { DeleteItemDialog, DESTRUCTIVE_BUTTON } from "./delete-item-dialog.tsx";
 import { FolderNameDialog, MoveDialog, sendLibraryChange } from "./folder-dialogs.tsx";
 import { FolderBreadcrumbs, folderHref, FolderRow } from "./folder-row.tsx";
 import { allTags, DRAG_TYPE, parseTags, parseView, runBulk, selectEntries, SORT_LABELS, VIEW_LABELS, type EntryKey, type LibraryLayout, type LibrarySort, type LibraryViewName } from "./library-filter.ts";
-import type { LibraryMenuAction } from "./library-menu.tsx";
+import { LibraryChoice, type LibraryMenuAction } from "./library-menu.tsx";
 import { LibraryRow } from "./library-row.tsx";
 import { LibraryTrash } from "./library-trash.tsx";
 import { createBlankPage, PagePaneSlot, usePagePane } from "./page-pane-context.tsx";
@@ -108,9 +108,9 @@ export function LibraryBody({ items, folders = [], folderId = null, view = "all"
 		<>
 			{refreshFailed && failedLine}
 			{filtering && nothing ? (
-				<p role="status" className="text-ink-2">Nothing matched</p>
+				<p role="status" className="text-base text-ink-2">Nothing matched</p>
 			) : nothing ? (
-				<p className="text-ink-2">{folderId ? "This folder is empty." : EMPTY[view]}</p>
+				<p className="text-base text-ink-2">{folderId ? "This folder is empty." : EMPTY[view]}</p>
 			) : (
 				<ul className={layout === "grid" ? "grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-1"} data-testid="library-list">
 					{shown.folders.map((folder) => (
@@ -150,8 +150,7 @@ const PREFS_KEY = "lh-library-view";
 type LibrarySearchMode = "names" | "text";
 type LibraryPrefs = { layout: LibraryLayout; sort: LibrarySort; descending: boolean; searchMode: LibrarySearchMode };
 const DEFAULT_PREFS: LibraryPrefs = { layout: "list", sort: "name", descending: false, searchMode: "names" };
-const CONTROL = "h-9 rounded-md border border-input bg-transparent px-2 text-sm text-foreground pointer-coarse:h-11";
-const PILL = "inline-flex min-h-9 items-center rounded-md px-2.5 text-sm transition-colors hover:bg-accent pointer-coarse:min-h-11";
+const PILL = "inline-flex min-h-9 items-center justify-center rounded-md px-2.5 text-sm transition-colors hover:bg-accent pointer-coarse:min-h-11 pointer-coarse:min-w-11";
 
 function viewHref(view: LibraryViewName, tag?: string | null): string {
 	const params = new URLSearchParams();
@@ -551,20 +550,11 @@ export function LibraryView() {
 						<div className="flex flex-wrap items-center gap-2" data-testid="library-filters">
 							{prefs.searchMode === "names" && (
 								<>
-									<label className="flex items-center gap-1.5 text-sm text-ink-2">Sort
-										<select aria-label="Sort by" className={CONTROL} value={prefs.sort} onChange={(event) => updatePrefs({ sort: event.target.value as LibrarySort })}>
-											{(Object.keys(SORT_LABELS) as LibrarySort[]).map((name) => <option key={name} value={name}>{SORT_LABELS[name]}</option>)}
-										</select>
-									</label>
+									<LibraryChoice label="Sort" name="Sort by" testId="library-sort" value={prefs.sort} onChange={(sort) => updatePrefs({ sort })} options={(Object.keys(SORT_LABELS) as LibrarySort[]).map((name) => ({ value: name, label: SORT_LABELS[name] }))} />
 									<button type="button" className={`${PILL} text-ink-2`} onClick={() => updatePrefs({ descending: !prefs.descending })} aria-label={prefs.descending ? "Sorted descending" : "Sorted ascending"}>{prefs.descending ? "Descending" : "Ascending"}</button>
 								</>
 							)}
-							<label className="flex items-center gap-1.5 text-sm text-ink-2">Type
-								<select aria-label="Filter by type" className={CONTROL} value={kind ?? ""} onChange={(event) => setKind((event.target.value || null) as LibraryKind | null)}>
-									<option value="">All</option>
-									{(Object.keys(KIND_LABEL) as LibraryKind[]).map((name) => <option key={name} value={name}>{KIND_LABEL[name]}</option>)}
-								</select>
-							</label>
+							<LibraryChoice<LibraryKind | "all"> label="Type" name="Filter by type" testId="library-kind" value={kind ?? "all"} onChange={(next) => setKind(next === "all" ? null : next)} options={[{ value: "all", label: "All" }, ...(Object.keys(KIND_LABEL) as LibraryKind[]).map((name) => ({ value: name, label: KIND_LABEL[name] }))]} />
 							<div className={`ml-auto flex gap-1 ${prefs.searchMode === "text" ? "hidden" : ""}`}>
 								<Button type="button" variant="ghost" size="icon" aria-label="List view" aria-pressed={prefs.layout === "list"} className={`size-9 pointer-coarse:size-11 ${prefs.layout === "list" ? "bg-accent" : "text-muted-foreground"}`} onClick={() => updatePrefs({ layout: "list" })}><ListIcon className="ui-icon" aria-hidden="true" /></Button>
 								<Button type="button" variant="ghost" size="icon" aria-label="Grid view" aria-pressed={prefs.layout === "grid"} className={`size-9 pointer-coarse:size-11 ${prefs.layout === "grid" ? "bg-accent" : "text-muted-foreground"}`} onClick={() => updatePrefs({ layout: "grid" })} data-testid="library-grid"><LayoutGridIcon className="ui-icon" aria-hidden="true" /></Button>
@@ -627,7 +617,7 @@ export function LibraryView() {
 							<Link href={folderHref(null)} className="prompt-secondary">Back to Library</Link>
 						</div>
 					)}
-					{citeMissing && <p role="status" className="text-ink-2" data-testid="library-citation-missing">That document is no longer in your Library, so the citation can't be checked.</p>}
+					{citeMissing && <p role="status" className="text-base text-ink-2" data-testid="library-citation-missing">That document is no longer in your Library, so the citation can't be checked.</p>}
 					{prefs.searchMode === "text" && view !== "trash" ? (
 						<DocumentSearchPanel query={query} kind={kind} tag={tag} folders={folders} narrowed={view !== "all" ? VIEW_LABELS[view] : null} />
 					) : view === "trash" ? (

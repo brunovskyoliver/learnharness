@@ -188,20 +188,33 @@ async function checkWidth(width) {
 	await typeQuery(page, "force equals mass");
 	await page.waitForSelector(resultButton(pdfName, "Page 2"));
 
-	// Filters narrow: by type, then by folder.
+	// Filters narrow: by type, then by folder. They are menus by DESIGN.md's rules, not the system's list.
+	assert.equal(await page.$('[data-testid="library-filters"] select, [data-testid="doc-search"] select'), null, "no native select in the filter row");
+	const choose = async (testId, label) => {
+		await page.focus(`[data-testid="${testId}"]`);
+		await page.keyboard.press("Enter");
+		await page.waitForSelector(`[data-testid="${testId}-option"]`);
+		const panel = await page.$eval("[data-lh-menu]", (el) => { const s = getComputedStyle(el); return { background: s.backgroundColor, radius: s.borderRadius, border: s.borderTopWidth, shadow: s.boxShadow, accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() }; });
+		assert.equal(panel.radius, "10px", "a menu's radius");
+		assert.equal(panel.border, "0px", "a menu has no border");
+		assert.equal(panel.shadow, "none", "a menu has no shadow");
+		await page.evaluate((id, text) => [...document.querySelectorAll(`[data-testid="${id}-option"]`)].find((el) => el.textContent.trim().endsWith(text)).click(), testId, label);
+		await page.waitForFunction(() => !document.querySelector("[data-lh-menu]"));
+		await page.waitForFunction((id) => document.activeElement?.getAttribute("data-testid") === id, {}, testId);
+	};
 	await typeQuery(page, word);
 	await page.waitForFunction((name) => document.querySelector(`[aria-label^="Open ${name}"]`), {}, `${p} data.txt`);
 	const before = (await page.$$('[data-testid="doc-search-result"]')).length;
 	assert.ok(before >= 2, `results for both: ${before}`);
-	await page.select('[aria-label="Filter by type"]', "page");
+	await choose("library-kind", "Page");
 	await page.waitForFunction((name) => !document.querySelector(`[aria-label^="Open ${name}"]`), {}, `${p} data.txt`);
 	assert.ok(await page.$(resultButton(`${p} note`)), "the page stays");
-	await page.select('[aria-label="Filter by type"]', "");
+	await choose("library-kind", "All");
 	await page.waitForFunction((name) => document.querySelector(`[aria-label^="Open ${name}"]`), {}, `${p} data.txt`);
-	await page.select('[data-testid="doc-search-folder"]', folder.id);
+	await choose("doc-search-folder", folder.name);
 	await page.waitForFunction((name) => !document.querySelector(`[aria-label^="Open ${name}"]`), {}, `${p} data.txt`);
 	assert.ok(await page.$(resultButton(`${p} note`)), "the page's folder stays");
-	await page.select('[data-testid="doc-search-folder"]', "");
+	await choose("doc-search-folder", "Anywhere");
 
 	// A scanned PDF says it has no text: its row, the list and the reader.
 	await typeQuery(page, scanName);

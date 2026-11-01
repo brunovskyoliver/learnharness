@@ -8,10 +8,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useWorkspace } from "@/components/workspace/workspace-context";
 import { docCountText, DOC_STATE_LABEL, docStatusText, folderPathLabel, KIND_LABEL, type DocSearchResult, type LibraryFolder, type LibraryKind } from "@/src/core";
 import { docHitPlace, DocSnippetText } from "./doc-snippet.tsx";
+import { LibraryChoice } from "./library-menu.tsx";
 import { usePagePane } from "./page-pane-api.ts";
 import { useDocumentSearch } from "./use-document-search.ts";
 
-const CONTROL = "h-9 max-w-full rounded-md border border-input bg-transparent px-2 text-sm text-foreground pointer-coarse:h-11";
 
 function hitMeta(hit: DocSearchResult): string {
 	const parts = [KIND_LABEL[hit.kind]];
@@ -58,12 +58,7 @@ export function DocumentSearchPanel({ query, kind, tag, folders, narrowed = null
 	return (
 		<section aria-label="Search results" className="flex flex-col gap-3" data-testid="doc-search">
 			<div className="flex flex-wrap items-center gap-2">
-				<label className="flex min-w-0 items-center gap-1.5 text-sm text-ink-2">Folder
-					<select aria-label="Filter by folder" className={CONTROL} value={folderId} onChange={(event) => setFolderId(event.target.value)} data-testid="doc-search-folder">
-						<option value="">Anywhere</option>
-						{folders.map((folder) => <option key={folder.id} value={folder.id}>{[folderPathLabel(folder.parentId, folders), folder.name].filter(Boolean).join(" / ")}</option>)}
-					</select>
-				</label>
+				<LibraryChoice label="Folder" name="Filter by folder" testId="doc-search-folder" value={folderId || "anywhere"} onChange={(next) => setFolderId(next === "anywhere" ? "" : next)} options={[{ value: "anywhere", label: "Anywhere" }, ...folders.map((folder) => ({ value: folder.id, label: [folderPathLabel(folder.parentId, folders), folder.name].filter(Boolean).join(" / ") }))]} />
 				<label className="flex min-h-9 items-center gap-1.5 text-sm text-ink-2 pointer-coarse:min-h-11">
 					<input type="checkbox" className="size-4 accent-foreground pointer-coarse:size-6" checked={hideArchived} onChange={(event) => setHideArchived(event.target.checked)} data-testid="doc-search-hide-archived" />
 					Hide archived

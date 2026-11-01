@@ -636,7 +636,7 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 						<Link
 							href="/"
 							aria-label="Home"
-							className="lh-no-drag flex min-w-0 items-center gap-2 rounded-md px-1 py-1 transition-colors hover:bg-accent"
+							className="lh-no-drag flex min-w-0 items-center gap-2 rounded-md px-1 py-1 transition-colors hover:bg-accent pointer-coarse:min-h-11"
 						>
 							<LhMark className="size-5 shrink-0" />
 							<span className="truncate text-sm font-medium tracking-tight">Brunovský&apos;s study</span>

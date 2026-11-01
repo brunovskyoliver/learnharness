@@ -34,7 +34,7 @@ const ICON_BUTTON = "ui-icon-button text-ink-2 hover:bg-accent hover:text-foregr
 const TEXT_BUTTON = "inline-flex h-8 shrink-0 items-center gap-2 rounded-[6px] px-2 text-sm text-ink-2 hover:bg-accent hover:text-foreground pointer-coarse:min-h-11";
 
 function Divider() {
-	return <span aria-hidden="true" className="mx-1 h-4 w-px shrink-0 bg-input" />;
+	return <span aria-hidden="true" className="w-2 shrink-0" />;
 }
 
 function ToolButton({ label, keys, pressed, disabled, onClick, children }: { label: string; keys?: string; pressed?: boolean; disabled?: boolean; onClick: () => void; children: ReactNode }) {

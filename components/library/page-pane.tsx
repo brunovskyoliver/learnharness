@@ -190,7 +190,7 @@ function ExportMenu({ name, text, container, onPrint, labelClass }: { name: stri
 	return (
 		<Popover open={open} onOpenChange={(next) => { setOpen(next); if (!next) setCopied(false); }}>
 			<PopoverTrigger asChild>
-				<Button type="button" variant="ghost" className="shrink-0 pointer-coarse:h-11" data-testid="page-export">
+				<Button type="button" variant="ghost" className="shrink-0 pointer-coarse:h-11 pointer-coarse:min-w-11" data-testid="page-export">
 					<DownloadIcon className="ui-icon" aria-hidden="true" />
 					<span className={labelClass}>Export</span>
 				</Button>
@@ -509,16 +509,16 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 						status={state.loaded && !state.deleted ? <SaveState state={state} canRetry={!state.conflict} onRetry={() => void controller.retry()} words={stats?.words} /> : undefined}
 						actions={state.deleted ? undefined : (
 							<>
-							<Button type="button" variant="ghost" aria-pressed={outline} className="shrink-0 aria-pressed:bg-accent aria-pressed:text-foreground pointer-coarse:h-11" onClick={() => setOutline((open) => !open)} data-testid="page-outline-toggle">
+							<Button type="button" variant="ghost" aria-pressed={outline} className="shrink-0 aria-pressed:bg-accent aria-pressed:text-foreground pointer-coarse:h-11 pointer-coarse:min-w-11" onClick={() => setOutline((open) => !open)} data-testid="page-outline-toggle">
 								<ListTreeIcon className="ui-icon" aria-hidden="true" />
 								<span className={paneLabel}>Outline</span>
 							</Button>
-							<Button type="button" variant="ghost" aria-pressed={links} className="shrink-0 aria-pressed:bg-accent aria-pressed:text-foreground pointer-coarse:h-11" onClick={() => setLinks((open) => !open)} data-testid="page-links-toggle">
+							<Button type="button" variant="ghost" aria-pressed={links} className="shrink-0 aria-pressed:bg-accent aria-pressed:text-foreground pointer-coarse:h-11 pointer-coarse:min-w-11" onClick={() => setLinks((open) => !open)} data-testid="page-links-toggle">
 									<Link2Icon className="ui-icon" aria-hidden="true" />
 									<span className={paneLabel}>Links</span>
 								</Button>
 								<ExportMenu name={item.name} text={currentText} container={root.current} onPrint={() => setPrinting(true)} labelClass={paneLabel} />
-							<Button type="button" variant="ghost" aria-pressed={history} className="shrink-0 aria-pressed:bg-accent aria-pressed:text-foreground pointer-coarse:h-11" onClick={() => setHistory((open) => !open)} data-testid="page-history-toggle">
+							<Button type="button" variant="ghost" aria-pressed={history} className="shrink-0 aria-pressed:bg-accent aria-pressed:text-foreground pointer-coarse:h-11 pointer-coarse:min-w-11" onClick={() => setHistory((open) => !open)} data-testid="page-history-toggle">
 								<HistoryIcon className="ui-icon" aria-hidden="true" />
 								<span className={paneLabel}>History</span>
 							</Button>

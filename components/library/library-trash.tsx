@@ -31,7 +31,7 @@ export function LibraryTrash({ entries, failed, failure, onRetry, onRestore, onP
 			</div>
 		) : <div role="status" aria-label="Loading your trash"><Skeleton className="h-[62px] w-full rounded-[10px]" /></div>;
 	}
-	if (entries.length === 0) return <p className="text-ink-2">The trash is empty.</p>;
+	if (entries.length === 0) return <p className="text-base text-ink-2">The trash is empty.</p>;
 	return (
 		<>
 			{failure && <p role="alert" className="text-sm text-destructive">{failure}</p>}

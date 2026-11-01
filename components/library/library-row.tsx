@@ -5,7 +5,7 @@ import { PencilIcon, PinIcon, StarIcon, Trash2Icon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatBytes, KIND_LABEL, type LibraryItem } from "@/src/core";
 import type { EntryKey } from "./library-filter.ts";
-import { LibraryEntryMenu, LibraryMoreButton, type LibraryMenuAction } from "./library-menu.tsx";
+import { LibraryEntryMenu, LibraryMoreButton, LibrarySelectBox, moreButton, type LibraryMenuAction } from "./library-menu.tsx";
 import { opensInPane, usePagePane } from "./page-pane-context.tsx";
 
 const ACTION = "size-9 text-muted-foreground pointer-coarse:size-11";
@@ -82,7 +82,7 @@ export function LibraryRow({ item, location, onRenamed, actions = [], grid = fal
 			{ label: "Open in a new tab", onSelect: () => { window.open(contentUrl(item.id), "_blank", "noreferrer"); opened(); } },
 			{ label: "Download", onSelect: () => { window.location.assign(contentUrl(item.id, true)); } },
 		] : []),
-		{ label: "Move to the trash", destructive: true, onSelect: () => onDelete(item, document.body) },
+		{ label: "Move to the trash", destructive: true, onSelect: () => onDelete(item, moreButton(`More actions for ${item.name}`)) },
 	];
 	const body = (
 		<>
@@ -106,7 +106,7 @@ export function LibraryRow({ item, location, onRenamed, actions = [], grid = fal
 			onDragStart={(event) => onDragStartEntry?.(`item:${item.id}`, event)}
 		>
 			<div className={`flex items-center gap-1 pr-1.5 ${grid ? "h-full" : ""}`}>
-				{selection && <input type="checkbox" checked={selection.selected} onChange={selection.toggle} aria-label={`Select ${item.name}`} data-testid="library-select" className="ml-3 size-4 shrink-0 accent-foreground pointer-coarse:size-6" />}
+				{selection && <LibrarySelectBox label={`Select ${item.name}`} checked={selection.selected} onChange={selection.toggle} />}
 				{renaming ? (
 					<div className="flex min-w-0 flex-1 flex-col gap-1 px-3 py-2">
 						<input
