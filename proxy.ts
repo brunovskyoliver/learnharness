@@ -1,7 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { desktopAPIAuthorized } from "./src/server/desktop-access.ts";
-import { clerkConfigured } from "./src/server/clerk-configured.ts";
+import { clerkConfigured, loopbackLiteralHostname } from "./src/server/clerk-configured.ts";
 import { CLERK_URLS } from "./components/clerk-appearance.ts";
 
 const NO_STORE = { "Cache-Control": "no-store" };
@@ -38,6 +38,9 @@ export function proxy(request: NextRequest, event?: NextFetchEvent) {
 	if (process.env.LH_HOSTED === "1") {
 		if (!clerkConfigured()) {
 			return NextResponse.json({ error: "Hosted mode needs CLERK_SECRET_KEY and CLERK_PUBLISHABLE_KEY." }, { status: 503, headers: NO_STORE });
+		}
+		if (loopbackLiteralHostname()) {
+			return NextResponse.json({ error: "Hosted mode can't run with HOSTNAME set to a loopback address, because requests would loop. Use localhost or 0.0.0.0." }, { status: 503, headers: NO_STORE });
 		}
 		return hosted(request, event as NextFetchEvent);
 	}

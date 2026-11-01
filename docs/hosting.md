@@ -94,5 +94,6 @@ Caddy's certificates live in the `caddy-data` volume; keep it so you don't hit L
 ## Limits to know
 
 - **Uploads:** 50 MiB per file, one file per request. Next's proxy buffers request bodies up to `experimental.proxyClientMaxBodySize` (set to 51 MB) and cuts off anything larger, so raise that and `MAX_FILE_BYTES` in `src/core/library.ts` together. That buffer stays in memory for the request, before auth runs.
+- **`HOSTNAME`:** the image sets `0.0.0.0`. Hosted mode refuses (503) a `HOSTNAME` of `127.x` or `::1`: Next renames such a host to `localhost` inside the proxy, so Clerk's pass-through rewrite looks external, and the server proxies each request to itself until it dies. `localhost`, `0.0.0.0` and a real address are fine, whatever Host header arrives. The refusal reads the variable, so `next dev --hostname 127.0.0.1` with `LH_HOSTED=1` still fails that way, as a 500 after 30 s.
 - **One process.** Per-user state is kept in memory inside one Node process. Don't scale the app service to more than one replica.
 - **Removing a person:** delete them in Clerk, then remove `/data/users/<their id>/`.

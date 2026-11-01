@@ -13,15 +13,16 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { readdirSync, readFileSync, statSync } from "node:fs";
+import http from "node:http";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
+import net from "node:net";
 import path from "node:path";
 import { exportSPKI, generateKeyPair, SignJWT } from "jose";
 import puppeteer from "puppeteer-core";
 
 const port = Number(process.env.LH_UI_PORT ?? 3123);
-// localhost, matching HOSTNAME: Clerk rewrites to the request's own URL, and Next proxies a rewrite
-// to a host it doesn't recognise as itself back into the server, which never answers.
+// localhost, so the server's name is one proxy.ts accepts: see the "server's name" section below.
 const base = `http://localhost:${port}`;
 const root = await mkdtemp(path.join(os.tmpdir(), "learning-hosted-"));
 const data = path.join(root, "data");
@@ -103,9 +104,9 @@ const familyId = (pattern, ids) => {
 	return null;
 };
 
+const guard = path.join(root, "guard.cjs");
 try {
 	await mkdir(data, { recursive: true });
-	const guard = path.join(root, "guard.cjs");
 	await writeFile(guard, GUARD);
 	server = spawn(process.execPath, ["--require", guard, ".next/standalone/server.js"], {
 		env: {
@@ -291,11 +292,56 @@ try {
 	assert.ok(!(await beta.tab.evaluate(() => document.documentElement.outerHTML)).includes(SECRET), "B's review holds none of A's words");
 	const noSession = await open(undefined);
 	const response = await noSession.tab.goto(`${base}/library`, { waitUntil: "domcontentloaded" }).catch(() => null);
-	assert.ok(!(await noSession.tab.evaluate(() => document.documentElement.outerHTML)).includes(SECRET), "no session, none of A's words");
+	// The redirect leaves for Clerk, which is blocked, so the document can be empty at this moment.
+	assert.ok(!(await noSession.tab.evaluate(() => document.documentElement?.outerHTML ?? "")).includes(SECRET), "no session, none of A's words");
 	console.log(`ok browser: A sees A's Library, B sees none of it on /library and /review, no session sees none (${response?.status() ?? "redirected away"})`);
 	console.log(`note browser requests to other origins, all blocked: [${[...new Set(external)].join(", ")}]`);
 	console.log(`note page errors with Clerk's script blocked: A ${alpha.errors.length}, B ${beta.errors.length}`);
 	await Promise.all([alpha.close(), beta.close(), noSession.close()]);
+
+	// ── The server's name, and the headers the production proxy sends ──
+	// Caddy keeps the public Host and adds X-Forwarded-*. Nothing here may depend on them.
+	const CADDY = { host: "learn.example.com", "x-forwarded-host": "learn.example.com", "x-forwarded-proto": "https", "x-forwarded-for": "203.0.113.9" };
+	const raw = (connect, atPort, url, headers) => new Promise((resolve, reject) => {
+		const sent = http.request({ host: connect, port: atPort, path: url, headers, timeout: 8000 }, (reply) => {
+			const chunks = [];
+			reply.on("data", (chunk) => chunks.push(chunk));
+			reply.on("end", () => resolve({ status: reply.statusCode, text: Buffer.concat(chunks).toString() }));
+		});
+		sent.on("timeout", () => { sent.destroy(); reject(new Error(`${url} never answered`)); });
+		sent.on("error", reject);
+		sent.end();
+	});
+	for (const [label, extra] of [["forwarded", CADDY], ["another host", { host: "app:3000" }], ["a loopback host", { host: `127.0.0.1:${port}` }]]) {
+		const reply = await raw("localhost", port, "/api/library", { ...extra, authorization: `Bearer ${tokenA}` });
+		assert.equal(reply.status, 200, label);
+		assert.ok(reply.text.includes(SECRET), `${label}: A still reads A's folders`);
+		assert.equal((await raw("localhost", port, "/sign-in", extra)).status, 200, `${label}: the sign-in page`);
+	}
+	console.log("ok a signed-in request answers under Caddy's headers, the compose service's host and a loopback host");
+	const another = async (hostname, atPort, connect) => {
+		const child = spawn(process.execPath, ["--require", guard, ".next/standalone/server.js"], {
+			env: {
+				PATH: process.env.PATH, HOME: root, PORT: String(atPort), HOSTNAME: hostname, NODE_ENV: "production", NEXT_TELEMETRY_DISABLED: "1", LH_HOSTED: "1", LH_DATA_DIR: data,
+				CLERK_SECRET_KEY: "sk_test_local_only_not_a_real_key", CLERK_PUBLISHABLE_KEY: `pk_test_${Buffer.from("local.clerk.accounts.dev$").toString("base64")}`, CLERK_JWT_KEY: await exportSPKI(publicKey),
+			},
+			stdio: "ignore",
+		});
+		try {
+			for (let i = 0; i < 120; i++) {
+				const open = await new Promise((resolve) => { const probe = net.connect(atPort, connect, () => { probe.destroy(); resolve(true); }); probe.on("error", () => resolve(false)); });
+				if (open) break;
+				await pause(250);
+			}
+			return await raw(connect, atPort, "/api/library", { ...CADDY, authorization: `Bearer ${tokenA}` });
+		} finally { child.kill(); }
+	};
+	const image = await another("0.0.0.0", port + 1, "127.0.0.1");
+	assert.equal(image.status, 200, "HOSTNAME=0.0.0.0, as the image sets it, behind Caddy's headers");
+	const looped = await another("127.0.0.1", port + 2, "127.0.0.1");
+	assert.equal(looped.status, 503, "a loopback address refuses at once rather than looping");
+	assert.ok(looped.text.includes("HOSTNAME"), looped.text);
+	console.log("ok HOSTNAME=0.0.0.0 answers behind Caddy's headers; HOSTNAME=127.0.0.1 refuses with 503 rather than hanging");
 
 	// ── The server stayed on this machine ──
 	const outbound = await readFile(blocked, "utf8").catch(() => "");

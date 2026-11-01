@@ -73,4 +73,4 @@ Feature 023 adds no dependency.
 
 - **The constitution's performance baseline is still a TODO.** Every number since 014 is initial JS from production HTML against the pre-014 commit, not the throttled benchmark. `/library` has about 1% of its 5% left.
 - **Not verified**: see specs/023-integration-polish/progress.md for hosted and Electron, exactly. Real Clerk sign-in, Docker and Caddy, an OS window, Mac packaging and notarization have not run.
-- **Hosted hang worth watching**: with a signed-in request whose host the server doesn't recognise as itself, Next proxied Clerk's rewrite back to itself and never answered (`127.0.0.1` against a server named `localhost`, in the tenant check). It wasn't seen on the production setup, where this check can't reach, and nothing in this branch changes it.
+- **Hosted hang: closed.** It needs a server bound to a loopback literal, not an unknown Host header. It predates this work, the image can't reach it, and hosted mode now refuses that setting. See docs/hosting.md, Limits.
