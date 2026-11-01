@@ -76,7 +76,7 @@ export const JOB_TOOLS = ["research", "demo", "visual"] as const;
  *  lenient for forward-compat. The names are the MODEL-FACING tool names
  *  (research, not researcher; pdf is the PDF-reader dispatch, sources v0
  *  2026-09). */
-export const TOGGLEABLE_TOOLS = ["research", "demo", "visual", "pdf", "math_check", "ml_visuals", "model_hub", "papers", "pages"] as const;
+export const TOGGLEABLE_TOOLS = ["research", "demo", "visual", "pdf", "math_check", "ml_visuals", "model_hub", "papers", "pages", "diagrams"] as const;
 
 /** The keys the settings WRITE side accepts in agent.tools: the plain
  *  toggleables PLUS the quizzing-mechanics switch (`explain: true` arms
@@ -160,6 +160,7 @@ const ACTIVITY_LABELS: Record<string, string> = {
 	image: "Looking at an image…",
 	page_create: "Writing a page…",
 	page_revise: "Revising a page…",
+	diagram_propose: "Drafting a diagram proposal…",
 };
 
 /** The activity label for ONE running tool (owner, streaming round

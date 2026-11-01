@@ -23,6 +23,7 @@ import { findTool } from "./find.ts";
 import { grepTool } from "./grep.ts";
 import { jobTools, type JobToolContext } from "./jobs.ts";
 import { libraryTools, type LibraryToolContext } from "./library.ts";
+import { DIAGRAM_BLOCKED_PROBLEM, DIAGRAM_BLOCKED_QUESTION, diagramTools } from "./diagrams.ts";
 import { PAGE_BLOCKED_PROBLEM, PAGE_BLOCKED_QUESTION, pageTools } from "./pages.ts";
 import { mlVisualTool } from "./ml-visual.ts";
 import { tokenizeTool } from "./tokenize.ts";
@@ -265,6 +266,15 @@ export function practiceTools(ctx: PracticeToolContext, enabled?: EnabledTools):
 			blocked: () => {
 				if (gate.problemActive) return PAGE_BLOCKED_PROBLEM;
 				return danglingQuestionOf(ctx.chatStore.getChat(ctx.chatId)?.messages ?? []) ? PAGE_BLOCKED_QUESTION : null;
+			},
+		})),
+		...(enabled?.diagrams === false || !ctx.library?.diagrams ? {} : diagramTools({
+			store: ctx.library.store,
+			diagrams: ctx.library.diagrams,
+			chatId: ctx.chatId,
+			blocked: () => {
+				if (gate.problemActive) return DIAGRAM_BLOCKED_PROBLEM;
+				return danglingQuestionOf(ctx.chatStore.getChat(ctx.chatId)?.messages ?? []) ? DIAGRAM_BLOCKED_QUESTION : null;
 			},
 		})),
 		// Quick plots (feature 005): on the learner's request only (doctrine).

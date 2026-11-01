@@ -15,7 +15,9 @@ export const CONTENT_CHECK_BYTES = 1_048_576;
 const NUL_CHECK_BYTES = 8 * 1024;
 const NAME_MAX_CHARS = 200;
 
-export type LibraryKind = "markdown" | "text" | "code" | "csv" | "pdf" | "image" | "page" | "other";
+export type LibraryKind = "markdown" | "text" | "code" | "csv" | "pdf" | "image" | "page" | "diagram" | "other";
+/** Kinds with version folders rather than bytes in files/ (feature 022). */
+export const isVersionedKind = (kind: LibraryKind | "folder"): boolean => kind === "page" || kind === "diagram";
 export type LibraryTextState = "ok" | "none" | "pending" | "failed";
 export type LibraryOrigin =
 	| { type: "upload" }
@@ -119,6 +121,10 @@ export interface LibraryCatalog {
 	/** Additive, so the version stays and an older app keeps these on rewrite. */
 	folders?: LibraryFolder[];
 	trash?: LibraryTrashEntry[];
+	/** Diagrams and their tombstones (feature 022), on disk only: outside `items`,
+	 *  because an older app tombstones any item with no file behind it. The store
+	 *  merges them into `items` on read and splits them out again on write. */
+	diagrams?: (LibraryItem | LibraryTombstone)[];
 }
 
 export const isTombstone = (item: LibraryItem | LibraryTombstone): item is LibraryTombstone => "deletedAt" in item;
@@ -149,6 +155,7 @@ export const KIND_LABEL: Record<LibraryKind, string> = {
 	pdf: "PDF",
 	image: "Image",
 	page: "Page",
+	diagram: "Diagram",
 	other: "File",
 };
 
@@ -230,7 +237,7 @@ export function formatBytes(bytes: number): string {
 /** Why a write was refused. Nothing is stored or changed on any of these. */
 // ── Pages (data-model.md) ──
 export type PageAuthor = "learner" | "agent";
-export type PageVersionCause = "save" | "autosave-close" | "before-agent" | "conflict" | "restore" | "agent-create" | "agent-revise" | "undo-agent" | "passage";
+export type PageVersionCause = "save" | "autosave-close" | "before-agent" | "conflict" | "restore" | "agent-create" | "agent-revise" | "undo-agent" | "passage" | "proposal-approved";
 export interface PageVersion {
 	n: number;
 	author: PageAuthor;
@@ -241,6 +248,9 @@ export interface PageVersion {
 	restoredFrom?: number;
 	chatId?: string;
 	toolCallId?: string;
+	/** Feature 022: the proposal this version came from, and whether he changed it first. */
+	proposalId?: string;
+	editedByLearner?: boolean;
 	/** The learner's name for it (feature 010), from names.json, never the log. */
 	name?: string;
 }

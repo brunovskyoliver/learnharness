@@ -158,6 +158,7 @@ export async function deleteChatSession(chatId: string, mode: ChatDeleteMode): P
 	// After the sync block. Agent-made pages stay and lose their link (owner,
 	// 2026-10-30). The session is already gone, so a failure here only logs.
 	await stores.libraryStore.unlinkChat(chatId).catch((err) => console.error("[library] page link not cleared:", err));
+	await stores.diagramStore.unlinkChat(chatId).catch((err) => console.error("[library] proposal link not cleared:", err));
 	return { ok: true, mode, stats, jobsRemoved, graphRevision: graphRevision() };
 }
 

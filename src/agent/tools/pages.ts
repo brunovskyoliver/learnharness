@@ -86,6 +86,7 @@ export function pageTools(ctx: PageToolContext): Record<string, AgentTool<any>> 
 					const entry = findLibraryEntry(await ctx.store.catalog(), input.item);
 					if (!entry) return failed(`Nothing in the Library is called ${input.item}. Use library_list to see what is there.`);
 					if (isTombstone(entry)) return failed("That item was deleted from the Library.");
+					if (entry.kind === "diagram") return failed(`${entry.name} is a diagram. Use diagram_propose, which he reviews first.`);
 					if (entry.kind !== "page") return failed(`${entry.name} is a document, and only pages can be revised.`);
 					const result = await ctx.store.revisePageAsAgent(entry.id, {
 						baseVersion: input.baseVersion,

@@ -2,7 +2,8 @@ import { Type } from "typebox";
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { renderLibraryItem } from "../../core/library-refs.ts";
 import { folderPathLabel, formatBytes, isTombstone, nameKey, type LibraryItem, type LibraryTombstone } from "../../core/library.ts";
-import type { LibraryStore } from "../../core/ports.ts";
+import { diagramAgentText, parseDiagram } from "../../core/diagram.ts";
+import type { DiagramStore, LibraryStore } from "../../core/ports.ts";
 import { pdfExtract, pdfSearch } from "../subagents/pdf-ops.ts";
 import { serverExecute } from "../tool-execute.ts";
 import { readTextSlice } from "./read.ts";
@@ -15,6 +16,8 @@ import { readTextSlice } from "./read.ts";
 
 export interface LibraryToolContext {
 	store: LibraryStore;
+	/** Diagrams' versions and proposals (feature 022). Without it a diagram reads as its outline. */
+	diagrams?: DiagramStore;
 	/** A PDF's page count, bookmarks and how to read on. Null when unreadable. */
 	pdfOverview: (item: LibraryItem) => Promise<string | null>;
 	visionAvailable: () => boolean;
@@ -77,6 +80,13 @@ async function readLibrary(ctx: LibraryToolContext, input: { item: string; offse
 			if (input.pages) return wrap(readTextSlice(await pdfExtract(file, input.pages), input.offset, input.limit));
 			const overview = await ctx.pdfOverview(entry);
 			return overview === null ? failedRead(`No text could be read from ${entry.name}.`) : wrap(overview);
+		}
+		case "diagram": {
+			const state = await ctx.diagrams?.read(entry.id);
+			if (state && "refused" in state) return failedRead(state.message);
+			const parsed = state ? parseDiagram(state.head.content) : null;
+			const text = parsed?.ok ? diagramAgentText(parsed.doc) : await ctx.store.readText(entry);
+			return wrap(`version: ${state?.head.n ?? entry.headVersion ?? 1}\n${readTextSlice(text, input.offset, input.limit)}`);
 		}
 		default: {
 			const slice = readTextSlice(await ctx.store.readText(entry), input.offset, input.limit);

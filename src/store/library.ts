@@ -12,11 +12,12 @@ import { nanoid } from "nanoid";
 import { PATHS, tenantScoped } from "../../config.ts";
 import { emit } from "../core/events.ts";
 import {
-	CATALOG_VERSION, CONTENT_CHECK_BYTES, contentMatches, folderSubtree, isTombstone, liveFolderId, withMarks, wouldCycle, isUnseenTutorVersion, kindForName, LIBRARY_REFUSALS, LibraryCatalogError,
+	CATALOG_VERSION, CONTENT_CHECK_BYTES, contentMatches, folderSubtree, isTombstone, isVersionedKind, liveFolderId, withMarks, wouldCycle, isUnseenTutorVersion, kindForName, LIBRARY_REFUSALS, LibraryCatalogError,
 	nameKey, PAGE_MAX_BYTES, suggestName, uploadName,
 	type LibraryCatalog, type LibraryFolder, type LibraryItem, type LibraryMarks, type LibraryTrashEntry, type LibraryKind, type LibraryOrigin, type LibraryRefusal, type LibraryTextState, type LibraryTombstone,
 	type PageDraft, type PageHead, type PageState, type PageStale, type PageVersion, type PageVersionCause, type PageWriteResult,
 } from "../core/library.ts";
+import { diagramIdeaLinks, diagramOutline, diagramScanText, parseDiagram } from "../core/diagram.ts";
 import { scanWikiLinks, type WikiPins } from "../core/note-links.ts";
 import { appendBlock } from "../core/note-sources.ts";
 import type { AgentRevision, AgentRevisionResult, LibraryStore, PageCreateOptions, PageText } from "../core/ports.ts";
@@ -55,15 +56,21 @@ async function readCatalog(): Promise<LibraryCatalog> {
 	}
 	if (typeof parsed?.version !== "number" || !Array.isArray(parsed.items)) throw new LibraryCatalogError("The Library catalog is damaged.");
 	if (parsed.version > CATALOG_VERSION) throw new LibraryCatalogError("The Library catalog comes from a newer version of the app.");
-	return parsed;
+	// Diagrams live beside `items` on disk (feature 022). In memory they are items.
+	const { diagrams, ...rest } = parsed;
+	if (!Array.isArray(diagrams)) return rest;
+	const known = new Set(diagrams.map((entry) => entry.id));
+	return { ...rest, items: [...rest.items.filter((entry) => !known.has(entry.id)), ...diagrams] };
 }
 
 async function writeCatalog(catalog: LibraryCatalog): Promise<void> {
 	await fs.mkdir(PATHS.library, { recursive: true });
 	const temp = `${catalogFile()}.${nanoid(8)}.tmp`;
 	const file = await fs.open(temp, "wx");
+	const diagrams = catalog.items.filter((entry) => entry.kind === "diagram");
+	const onDisk: LibraryCatalog = diagrams.length === 0 ? catalog : { ...catalog, items: catalog.items.filter((entry) => entry.kind !== "diagram"), diagrams };
 	try {
-		await file.writeFile(JSON.stringify(catalog, null, "\t"));
+		await file.writeFile(JSON.stringify(onDisk, null, "\t"));
 		await file.sync();
 	} finally {
 		await file.close();
@@ -92,7 +99,7 @@ async function reconcile(catalog: LibraryCatalog): Promise<boolean> {
 		onDisk.set(entry.name, { size: stat.size, mtime: stat.mtime.toISOString() });
 	}
 	let changed = false;
-	const documents = liveItems(catalog).filter((i) => i.kind !== "page");
+	const documents = liveItems(catalog).filter((i) => !isVersionedKind(i.kind));
 	const vanished: LibraryItem[] = [];
 	for (const item of documents) {
 		const file = onDisk.get(item.name);
@@ -231,7 +238,7 @@ async function writeUpload(name: string, body: AsyncIterable<Uint8Array>, declar
 
 /** What a rename's new name makes the item. Null when the bytes don't fit it. */
 async function kindAfterRename(item: LibraryItem, name: string): Promise<LibraryKind | null> {
-	if (item.kind === "page") return "page";
+	if (isVersionedKind(item.kind)) return item.kind;
 	const next = kindForName(name) ?? "other";
 	if (next === item.kind) return next;
 	if (next === "other") return null;
@@ -259,7 +266,7 @@ async function rename(id: string, raw: string): Promise<LibraryItem | LibraryRef
 		if (nameKey(name) !== nameKey(item.name) && taken.has(nameKey(name))) return nameTaken(name, taken);
 		const kind = await kindAfterRename(item, name);
 		if (!kind) return { refused: "unsupported_type", message: `${item.name} can't become that type of file.` };
-		if (item.kind !== "page") {
+		if (!isVersionedKind(item.kind)) {
 			try {
 				await moveDocument(item.name, name);
 			} catch (err) {
@@ -282,8 +289,9 @@ async function remove(id: string): Promise<boolean> {
 		const catalog = await readCatalog();
 		const item = liveItems(catalog).find((i) => i.id === id);
 		if (!item) return false;
-		if (item.kind === "page") await fs.rm(path.join(PATHS.library, "pages", id), { recursive: true, force: true });
+		if (isVersionedKind(item.kind)) await fs.rm(pageDir(id), { recursive: true, force: true });
 		else await fs.rm(path.join(PATHS.files, item.name), { force: true });
+		await fs.rm(proposalsDir(id), { recursive: true, force: true });
 		await fs.rm(derivedFile(id), { force: true });
 		await fs.rm(annotationsFile(id), { force: true });
 		replace(catalog, id, tombstone(item, new Date().toISOString()));
@@ -421,7 +429,7 @@ const trashedBytes = (entryId: string, itemId: string) => path.join(trashDir(ent
 async function moveBytesToTrash(entry: LibraryTrashEntry): Promise<void> {
 	await fs.mkdir(trashDir(entry.id), { recursive: true });
 	for (const item of entry.items) {
-		if (item.kind !== "page") await fs.rename(path.join(PATHS.files, item.name), trashedBytes(entry.id, item.id)).catch((err) => { if (!isCode(err, "ENOENT")) throw err; });
+		if (!isVersionedKind(item.kind)) await fs.rename(path.join(PATHS.files, item.name), trashedBytes(entry.id, item.id)).catch((err) => { if (!isCode(err, "ENOENT")) throw err; });
 	}
 }
 
@@ -484,7 +492,7 @@ async function restoreTrash(entryId: string): Promise<{ items: LibraryItem[]; fo
 			taken.add(nameKey(name));
 			const { folderId: _old, ...rest } = item;
 			const home = entry.folders.length > 0 ? item.folderId : (parent ?? undefined);
-			if (item.kind !== "page") {
+			if (!isVersionedKind(item.kind)) {
 				await fs.mkdir(PATHS.files, { recursive: true });
 				// link() never overwrites. The bytes stay in the trash until the catalog is written.
 				await fs.link(trashedBytes(entry.id, item.id), path.join(PATHS.files, name));
@@ -515,7 +523,8 @@ async function purgeTrash(entryId: string): Promise<boolean> {
 		await writeCatalog(catalog);
 		await fs.rm(trashDir(entry.id), { recursive: true, force: true });
 		for (const item of entry.items) {
-			if (item.kind === "page") await fs.rm(path.join(PATHS.library, "pages", item.id), { recursive: true, force: true });
+			if (isVersionedKind(item.kind)) await fs.rm(pageDir(item.id), { recursive: true, force: true });
+			await fs.rm(proposalsDir(item.id), { recursive: true, force: true });
 			await fs.rm(derivedFile(item.id), { force: true });
 			await fs.rm(annotationsFile(item.id), { force: true });
 		}
@@ -536,10 +545,10 @@ async function pinLinksTo(catalog: LibraryCatalog, id: string, oldName: string):
 		const key = nameKey(oldName.trim());
 		const pins = (await readJsonFile<WikiPins>(pinsFile())) ?? {};
 		let touched = false;
-		for (const page of liveItems(catalog).filter((i) => i.kind === "page")) {
-			const loaded = await loadPage(catalog, page.id);
+		for (const page of liveItems(catalog).filter((i) => isVersionedKind(i.kind))) {
+			const loaded = await loadPage(catalog, page.id, page.kind);
 			if (!loaded || pins[page.id]?.[key]) continue;
-			const texts = [loaded.head.content, ...(loaded.draft ? [loaded.draft.content] : [])];
+			const texts = [loaded.head.content, ...(loaded.draft ? [loaded.draft.content] : [])].map((text) => linkableText(page.kind, text));
 			if (!texts.some((text) => scanWikiLinks(text).some(({ target }) => nameKey(target.trim()) === key))) continue;
 			pins[page.id] = { ...pins[page.id], [key]: id };
 			touched = true;
@@ -550,15 +559,24 @@ async function pinLinksTo(catalog: LibraryCatalog, id: string, oldName: string):
 	}
 }
 
+/** What the link scanners may read. A diagram that can't be read has no links to give. */
+function linkableText(kind: LibraryKind, content: string): string {
+	if (kind !== "diagram") return content;
+	const parsed = parseDiagram(content);
+	return parsed.ok ? diagramScanText(parsed.doc) : "";
+}
+
 const pageTexts = () => withLock(async (): Promise<PageText[]> => {
 	const catalog = await loadReconciled();
 	const out: PageText[] = [];
 	for (const item of liveItems(catalog)) {
-		if (item.kind !== "page") continue;
-		const page = await loadPage(catalog, item.id);
+		if (!isVersionedKind(item.kind)) continue;
+		const page = await loadPage(catalog, item.id, item.kind);
 		if (!page) continue;
 		const chatIds = [...new Set(page.versions.flatMap((v) => (v.chatId ? [v.chatId] : [])))];
-		out.push({ item, text: page.draft?.content ?? page.head.content, chatIds });
+		const content = page.draft?.content ?? page.head.content;
+		const parsed = item.kind === "diagram" ? parseDiagram(content) : null;
+		out.push({ item, text: linkableText(item.kind, content), chatIds, ...(parsed?.ok ? { ideas: diagramIdeaLinks(parsed.doc) } : {}) });
 	}
 	return out;
 });
@@ -585,6 +603,8 @@ const recentItems = (limit = 20) => withLock(async () => {
 // ── Pages (data-model.md): append-only versions and one learner draft ──────
 
 const pageDir = (id: string) => path.join(PATHS.library, "pages", id);
+/** A diagram's proposals (feature 022), apart from its versions. "new" holds those that make one. */
+const proposalsDir = (id: string) => path.join(PATHS.library, "diagram-proposals", id);
 const versionsFile = (id: string) => path.join(pageDir(id), "versions.jsonl");
 const contentFile = (id: string, n: number) => path.join(pageDir(id), `v${n}.md`);
 const draftFile = (id: string) => path.join(pageDir(id), "draft.json");
@@ -663,7 +683,7 @@ async function appendSynced(file: string, text: string): Promise<void> {
 /** Content first, synced, with "wx"; the line after. Then the catalog follows. */
 async function appendVersion(
 	catalog: LibraryCatalog, item: LibraryItem, versions: readonly PageVersion[], content: string,
-	meta: Pick<PageVersion, "author" | "base" | "cause"> & Partial<Pick<PageVersion, "restoredFrom" | "chatId" | "toolCallId">>,
+	meta: Pick<PageVersion, "author" | "base" | "cause"> & Partial<Pick<PageVersion, "restoredFrom" | "chatId" | "toolCallId" | "proposalId" | "editedByLearner">>,
 ): Promise<{ version: PageVersion; item: LibraryItem }> {
 	await fs.mkdir(pageDir(item.id), { recursive: true });
 	const n = await nextVersionNumber(item.id, versions);
@@ -717,9 +737,9 @@ const headOf = async (id: string, versions: readonly PageVersion[]): Promise<Pag
 	return { n: last.n, content: await readVersionText(id, last.n), author: last.author, at: last.at };
 };
 
-/** The page under the lock: its catalog entry, versions, head and draft. */
-async function loadPage(catalog: LibraryCatalog, id: string) {
-	const item = liveItems(catalog).find((i) => i.id === id && i.kind === "page");
+/** The page or diagram under the lock: its catalog entry, versions, head and draft. */
+async function loadPage(catalog: LibraryCatalog, id: string, kind: LibraryKind = "page") {
+	const item = liveItems(catalog).find((i) => i.id === id && i.kind === kind);
 	if (!item) return null;
 	const versions = await readVersions(id);
 	const head = await headOf(id, versions);
@@ -732,7 +752,7 @@ function changed(itemId: string, version: PageVersion) {
 	emit("library-changed", { itemId, version: version.n, author: version.author });
 }
 
-async function createPage(rawName: string, content: string, options: PageCreateOptions): Promise<{ item: LibraryItem; head: PageHead } | LibraryRefusal> {
+async function createVersioned(kind: "page" | "diagram", rawName: string, content: string, options: PageCreateOptions & { cause?: PageVersionCause; proposalId?: string; editedByLearner?: boolean }): Promise<{ item: LibraryItem; head: PageHead } | LibraryRefusal> {
 	const name = uploadName(rawName);
 	if (!name) return LIBRARY_REFUSALS.invalidName;
 	if (tooLarge(content)) return LIBRARY_REFUSALS.pageTooLarge;
@@ -741,7 +761,7 @@ async function createPage(rawName: string, content: string, options: PageCreateO
 		if (options.toolCallId) {
 			// The same call again returns its page, whatever has happened to it since.
 			for (const item of liveItems(catalog)) {
-				if (item.kind !== "page" || item.origin.type !== "agent") continue;
+				if (item.kind !== kind || item.origin.type !== "agent") continue;
 				const versions = await readVersions(item.id);
 				if (!versions.some((v) => v.toolCallId === options.toolCallId)) continue;
 				const head = await headOf(item.id, versions);
@@ -753,19 +773,23 @@ async function createPage(rawName: string, content: string, options: PageCreateO
 		if (taken.has(nameKey(name))) return nameTaken(name, taken);
 		const now = new Date().toISOString();
 		const origin: LibraryOrigin = options.author === "agent" ? { type: "agent", ...(options.chatId ? { chatId: options.chatId } : {}) } : { type: "learner" };
-		const created: LibraryItem = { id: newId(), name, kind: "page", size: 0, createdAt: now, updatedAt: now, origin, headVersion: 0, ...(options.folderId ? { folderId: options.folderId } : {}) };
+		const created: LibraryItem = { id: newId(), name, kind, size: 0, createdAt: now, updatedAt: now, origin, headVersion: 0, ...(options.folderId ? { folderId: options.folderId } : {}) };
 		catalog.items.push(created);
 		const { version, item } = await appendVersion(catalog, created, [], content, {
 			author: options.author,
 			base: 0,
-			cause: options.author === "agent" ? "agent-create" : "save",
+			cause: options.cause ?? (options.author === "agent" ? "agent-create" : "save"),
 			...(options.chatId ? { chatId: options.chatId } : {}),
 			...(options.toolCallId ? { toolCallId: options.toolCallId } : {}),
+			...(options.proposalId ? { proposalId: options.proposalId } : {}),
+			...(options.editedByLearner ? { editedByLearner: true } : {}),
 		});
 		changed(item.id, version);
 		return { item, head: { n: version.n, content, author: version.author, at: version.at } };
 	});
 }
+
+const createPage = (name: string, content: string, options: PageCreateOptions) => createVersioned("page", name, content, options);
 
 const staleOf = (head: PageHead, draft: PageDraft | null): PageStale => ({
 	stale: true,
@@ -773,10 +797,10 @@ const staleOf = (head: PageHead, draft: PageDraft | null): PageStale => ({
 	draft: draft ? { base: draft.base, rev: draft.rev, content: draft.content } : null,
 });
 
-async function savePageDraft(id: string, input: { base: number; rev: number; content: string }): Promise<PageWriteResult<{ rev: number }>> {
+async function savePageDraft(id: string, input: { base: number; rev: number; content: string }, kind: LibraryKind = "page"): Promise<PageWriteResult<{ rev: number }>> {
 	if (tooLarge(input.content)) return "too-large";
 	return withLock(async () => {
-		const page = await loadPage(await readCatalog(), id);
+		const page = await loadPage(await readCatalog(), id, kind);
 		if (!page) return "missing";
 		const { head, draft } = page;
 		if (input.base !== head.n || input.rev !== (draft?.rev ?? 0)) return staleOf(head, draft);
@@ -794,11 +818,12 @@ async function savePageDraft(id: string, input: { base: number; rev: number; con
 async function commitPageVersion(
 	id: string,
 	input: { base: number; rev: number; content: string; cause?: PageVersionCause },
+	kind: LibraryKind = "page",
 ): Promise<PageWriteResult<{ version: PageVersion; created: boolean; otherVersion?: number }>> {
 	if (tooLarge(input.content)) return "too-large";
 	return withLock(async () => {
 		const catalog = await readCatalog();
-		const page = await loadPage(catalog, id);
+		const page = await loadPage(catalog, id, kind);
 		if (!page) return "missing";
 		const { item, versions, head, draft } = page;
 		const conflict = input.cause === "conflict";
@@ -827,10 +852,10 @@ async function commitPageVersion(
 	});
 }
 
-async function restorePageVersion(id: string, n: number): Promise<{ version: PageVersion } | "missing"> {
+async function restorePageVersion(id: string, n: number, kind: LibraryKind = "page"): Promise<{ version: PageVersion } | "missing"> {
 	return withLock(async () => {
 		const catalog = await readCatalog();
-		const page = await loadPage(catalog, id);
+		const page = await loadPage(catalog, id, kind);
 		if (!page) return "missing";
 		if (!page.versions.some((v) => v.n === n)) return "missing";
 		const { head, draft } = page;
@@ -950,6 +975,33 @@ async function unlinkChat(chatId: string): Promise<void> {
 	});
 }
 
+/** A diagram's text was asked for and it can't be read. The message is for the learner. */
+export class DiagramUnreadableError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = "DiagramUnreadableError";
+	}
+}
+
+/** The page machinery for store/diagrams.ts: same files, same order of writes, same
+ *  repair after a crash. Everything but the catalog row stays private to these two. */
+export const versionedInternals = {
+	withLock,
+	readCatalog,
+	loadPage,
+	appendVersion,
+	clearDraft,
+	createVersioned,
+	savePageDraft,
+	commitPageVersion,
+	restorePageVersion,
+	readVersionText,
+	readJsonFile,
+	writeJsonFile,
+	proposalsDir,
+	changed,
+};
+
 export const libraryStore: LibraryStore = {
 	list: () => withLock(async () => {
 		await sweepStaleUploads();
@@ -963,9 +1015,13 @@ export const libraryStore: LibraryStore = {
 		return [...catalog.items, ...trashOf(catalog).flatMap((entry) => entry.items.map((item) => tombstone(item, entry.trashedAt)))];
 	}),
 	readText: async (item) => {
-		if (item.kind !== "page") return fs.readFile(path.join(PATHS.files, item.name), "utf8");
+		if (!isVersionedKind(item.kind)) return fs.readFile(path.join(PATHS.files, item.name), "utf8");
 		const last = (await readVersions(item.id)).at(-1);
-		return readVersionText(item.id, last?.n ?? item.headVersion ?? 1);
+		const content = await readVersionText(item.id, last?.n ?? item.headVersion ?? 1);
+		if (item.kind !== "diagram") return content;
+		const parsed = parseDiagram(content);
+		if (!parsed.ok) throw new DiagramUnreadableError(parsed.message);
+		return diagramOutline(parsed.doc);
 	},
 	createPage,
 	readPage: (id) => withLock(async (): Promise<PageState | null> => {

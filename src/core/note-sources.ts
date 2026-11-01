@@ -126,7 +126,7 @@ export function studyNotesMarkdown(chat: { id: string; title: string; messages: 
 
 // ─── the knowledge graph, read only ──────────────────────────────────────────
 
-export interface GraphLinkRow { id: string; name: string; statement: string; reason: "source" | "terms"; href: string | null }
+export interface GraphLinkRow { id: string; name: string; statement: string; reason: "source" | "terms" | "linked"; href: string | null; gone?: boolean }
 
 export const GRAPH_LINK_LIMIT = 8;
 const GRAPH_MIN_TERMS = 2;
@@ -146,5 +146,16 @@ export function graphLinksOf(text: string, sessions: readonly string[], nodes: r
 	return scored.slice(0, GRAPH_LINK_LIMIT).map(({ node, point }) => {
 		const anywhere = point ?? node.provenance.find((p) => p.chatId && !p.chatId.startsWith("src_"));
 		return { id: node.id, name: node.name, statement: node.statement, reason: point ? "source" : "terms", href: anywhere ? sourceHref(anywhere.chatId, anywhere.messageId || null) : null };
+	});
+}
+
+/** The ideas a diagram links to by id (feature 022), read from the graph and never
+ *  written to it. An idea no longer there says so, under the name it had. */
+export function linkedIdeaRows(links: readonly { nodeId: string; name: string }[], nodes: readonly GraphNode[]): GraphLinkRow[] {
+	return links.map(({ nodeId, name }) => {
+		const node = nodes.find((other) => other.id === nodeId);
+		if (!node) return { id: nodeId, name, statement: "This idea is no longer in your graph.", reason: "linked", href: null, gone: true };
+		const point = node.provenance.find((p) => p.chatId && !p.chatId.startsWith("src_"));
+		return { id: node.id, name: node.name, statement: node.statement, reason: "linked", href: point ? sourceHref(point.chatId, point.messageId || null) : null };
 	});
 }

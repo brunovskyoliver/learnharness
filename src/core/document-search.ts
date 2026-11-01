@@ -48,7 +48,7 @@ export interface DocIndexShard {
 /** Changes exactly when the indexed text can have changed. Names, folders and
  *  tags are read from the catalog at query time, so a rename or move costs nothing. */
 export function docSignature(item: Pick<LibraryItem, "kind" | "size" | "updatedAt" | "headVersion">): string {
-	return item.kind === "page" ? `page:${item.headVersion ?? 0}:${item.size}` : `${item.kind}:${item.size}:${item.updatedAt}`;
+	return item.kind === "page" || item.kind === "diagram" ? `${item.kind}:${item.headVersion ?? 0}:${item.size}` : `${item.kind}:${item.size}:${item.updatedAt}`;
 }
 
 export const isSearchableKind = (kind: LibraryKind): boolean => kind !== "image" && kind !== "other";

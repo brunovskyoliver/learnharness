@@ -6,7 +6,7 @@
  */
 import { Readable } from "node:stream";
 import {
-	ACCEPTED_EXTENSIONS, cleanTags, extensionOf, isPageStale, isRefusal, kindForName, LIBRARY_REFUSALS, LibraryCatalogError, MAX_FILE_BYTES,
+	ACCEPTED_EXTENSIONS, cleanTags, extensionOf, isPageStale, isRefusal, isVersionedKind, kindForName, LIBRARY_REFUSALS, LibraryCatalogError, MAX_FILE_BYTES,
 	REFERENCE_INLINE_MAX_BYTES, uploadName,
 	pageVersionName, type LibraryItem, type LibraryMarks, type LibraryRefusal, type LibraryRefusalCode, type PageVersionCause, type PageWriteResult,
 } from "../core/library.ts";
@@ -225,7 +225,7 @@ export function libraryContentResponse(request: Request, id: string): Promise<Re
 	return guarded(async () => {
 		const missing = () => json({ error: "That item is no longer in your Library." }, 404);
 		const item = await libraryStore.get(id);
-		if (!item || item.kind === "page") return missing();
+		if (!item || isVersionedKind(item.kind)) return missing();
 		const opened = await openDocumentStream(libraryStore.documentPath(item));
 		if (!opened) return missing();
 		const download = new URL(request.url).searchParams.get("download") === "1";

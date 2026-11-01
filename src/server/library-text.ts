@@ -103,7 +103,7 @@ export function enqueuePdfWork<T>(work: () => Promise<T>): Promise<T> {
 
 /** After an upload, in the background. Images have no text to index. */
 export function indexAfterUpload(item: LibraryItem): void {
-	if (item.kind === "image" || item.kind === "other" || item.kind === "page") return;
+	if (item.kind === "image" || item.kind === "other" || item.kind === "page" || item.kind === "diagram") return;
 	void enqueue(item);
 }
 

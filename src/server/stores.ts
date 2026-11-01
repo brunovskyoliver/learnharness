@@ -10,6 +10,7 @@ import { createPaperFiles } from "../store/papers.ts";
 import { chatStore } from "../store/chats.ts";
 import { graphStore } from "../store/graph.ts";
 import { jobStore } from "../store/jobs.ts";
+import { diagramStore } from "../store/diagrams.ts";
 import { libraryStore } from "../store/library.ts";
 import { settingsStore } from "../store/settings.ts";
 import { resolveSettings, type EffectiveSettings } from "../core/settings-resolution.ts";
@@ -20,6 +21,7 @@ export const stores = {
 	graphStore,
 	jobStore,
 	libraryStore,
+	diagramStore,
 	settingsStore,
 };
 

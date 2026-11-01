@@ -15,7 +15,7 @@ import {
 } from "../core/document-search.ts";
 import { emit, subscribe } from "../core/events.ts";
 import { folderPathLabel, type LibraryFolder, type LibraryItem } from "../core/library.ts";
-import { libraryStore } from "../store/library.ts";
+import { DiagramUnreadableError, libraryStore } from "../store/library.ts";
 import * as files from "../store/library-index.ts";
 import { enqueuePdfWork } from "./library-text.ts";
 
@@ -55,10 +55,12 @@ export const extractDocument: DocExtract = async (item) => {
 			const passages = pdfPassages(pages);
 			return passages.length === 0 ? shardOf(item, "no-text", [], "No text could be read. It may be a scan.") : shardOf(item, "indexed", passages);
 		}
-		if (item.kind === "page") return shardOf(item, "indexed", pagePassages(await libraryStore.readText(item)));
+		if (item.kind === "page" || item.kind === "diagram") return shardOf(item, "indexed", pagePassages(await libraryStore.readText(item)));
 		if (item.size > DOC_TEXT_MAX_BYTES) return shardOf(item, "unsupported", [], "Too large to search.");
 		return shardOf(item, "indexed", textPassages(await libraryStore.readText(item)));
 	} catch (err) {
+		// A diagram from a newer app is left out and says why, without being a failure.
+		if (err instanceof DiagramUnreadableError) return shardOf(item, "unsupported", [], err.message);
 		console.error(`[library-index] ${item.id}:`, err instanceof Error ? err.message : err);
 		return shardOf(item, "failed", [], "This file could not be read.");
 	}

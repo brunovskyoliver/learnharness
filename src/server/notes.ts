@@ -7,7 +7,7 @@
 import { isRefusal, LIBRARY_REFUSALS, LibraryCatalogError } from "../core/library.ts";
 import { getGraph } from "../core/graph.ts";
 import { backlinksOf, outgoingLinks, relatedNotes, wikiTable, type NoteDoc } from "../core/note-links.ts";
-import { graphLinksOf, PASSAGE_MAX_CHARS, passageBlock, scanSourceRefs, sourceHref, studyNotesMarkdown, studyNotesName } from "../core/note-sources.ts";
+import { graphLinksOf, linkedIdeaRows, PASSAGE_MAX_CHARS, passageBlock, scanSourceRefs, sourceHref, studyNotesMarkdown, studyNotesName } from "../core/note-sources.ts";
 import type { PageText } from "../core/ports.ts";
 import { stores } from "./stores.ts";
 
@@ -31,6 +31,7 @@ const asDoc = ({ item, text }: PageText): NoteDoc => ({
 	...(item.tags ? { tags: item.tags } : {}),
 	...(item.folderId ? { folderId: item.folderId } : {}),
 	...(item.archivedAt ? { archived: true } : {}),
+	...(item.kind === "diagram" ? { kind: item.kind } : {}),
 });
 
 /** The sessions a page came from or was edited in. */
@@ -74,6 +75,8 @@ export function pageConnectionsResponse(id: string): Promise<Response> {
 		const docs = pages.map(asDoc);
 		const sessionsByDoc = new Map(pages.map((page) => [page.item.id, sessionsOfPage(page)]));
 		const sessionIds = sessionsByDoc.get(id) ?? [];
+		const graphNodes = getGraph(stores.graphStore).nodes;
+		const ideas = linkedIdeaRows(self.ideas ?? [], graphNodes);
 		const sessions = sessionIds.map((chatId) => {
 			const chat = stores.chatStore.getChat(chatId);
 			return { chatId, title: chat?.title ?? null, gone: !chat, href: sourceHref(chatId, null) };
@@ -84,7 +87,7 @@ export function pageConnectionsResponse(id: string): Promise<Response> {
 			related: relatedNotes(id, docs, table, pins, (doc) => sessionsByDoc.get(doc.id) ?? []),
 			sources: sourceRows(self.text),
 			sessions,
-			graph: graphLinksOf(self.text, sessionIds, getGraph(stores.graphStore).nodes),
+			graph: [...ideas, ...graphLinksOf(self.text, sessionIds, graphNodes).filter((row) => !ideas.some((idea) => idea.id === row.id))],
 		});
 	});
 }

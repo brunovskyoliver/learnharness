@@ -149,11 +149,11 @@ export function resolveWikiTarget(target: string, table: WikiTable, pins?: Recor
 }
 
 /** A page's text as the index sees it: the learner's draft when one exists. */
-export interface NoteDoc { id: string; name: string; text: string; tags?: readonly string[]; folderId?: string; archived?: boolean }
+export interface NoteDoc { id: string; name: string; text: string; tags?: readonly string[]; folderId?: string; archived?: boolean; kind?: LibraryKind }
 
 export interface NoteLinkRow { target: string; resolution: WikiResolution }
-export interface BacklinkRow { id: string; name: string; count: number; snippet: string; archived?: boolean }
-export interface RelatedRow { id: string; name: string; reason: string; score: number }
+export interface BacklinkRow { id: string; name: string; count: number; snippet: string; archived?: boolean; kind?: LibraryKind }
+export interface RelatedRow { id: string; name: string; reason: string; score: number; kind?: LibraryKind }
 
 /** Each distinct target a page links to, first-seen, resolved. */
 export function outgoingLinks(doc: NoteDoc, table: WikiTable, pins: WikiPins = {}): NoteLinkRow[] {
@@ -184,7 +184,7 @@ export function backlinksOf(id: string, docs: readonly NoteDoc[], table: WikiTab
 		if (doc.id === id) continue;
 		const hits = scanWikiLinks(doc.text).filter(({ target }) => resolveWikiTarget(target, table, pins[doc.id]).id === id);
 		if (hits.length === 0) continue;
-		rows.push({ id: doc.id, name: doc.name, count: hits.length, snippet: snippetAround(doc.text, hits[0]!), ...(doc.archived ? { archived: true } : {}) });
+		rows.push({ id: doc.id, name: doc.name, count: hits.length, snippet: snippetAround(doc.text, hits[0]!), ...(doc.archived ? { archived: true } : {}), ...(doc.kind ? { kind: doc.kind } : {}) });
 	}
 	return rows.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 }
@@ -245,7 +245,7 @@ export function relatedNotes(id: string, docs: readonly NoteDoc[], table: WikiTa
 			sameFolder ? "Same folder" : "",
 			words.length > 0 ? `Both mention ${words.slice(0, 3).join(", ")}` : "",
 		].filter(Boolean).join(" · ");
-		rows.push({ id: doc.id, name: doc.name, reason, score });
+		rows.push({ id: doc.id, name: doc.name, reason, score, ...(doc.kind ? { kind: doc.kind } : {}) });
 	}
 	return rows.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name) || a.id.localeCompare(b.id)).slice(0, RELATED_LIMIT);
 }

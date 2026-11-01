@@ -28,6 +28,7 @@ import type {
 	NotesSource,
 } from "./contracts.ts";
 import type { UserSettings } from "./settings.ts";
+import type { DiagramDoc, DiagramProposal, DiagramProposalStatus, DiagramRefusalCode } from "./diagram.ts";
 import type { LibraryFolder, LibraryItem, LibraryMarks, LibraryTrashEntry, LibraryRefusal, LibraryTextState, LibraryTombstone, PageAuthor, PageHead, PageState, PageVersion, PageVersionCause, PageWriteResult } from "./library.ts";
 
 // ─── ChatStore — the session record's home (data/chats) ─────────────────────
@@ -250,7 +251,44 @@ export interface LibraryStore {
 	appendToPage(id: string, block: string, options: { chatId?: string }): Promise<{ item: LibraryItem; version: PageVersion } | "missing" | "too-large">;
 }
 
-export interface PageText { item: LibraryItem; text: string; chatIds: string[] }
+export interface PageText { item: LibraryItem; text: string; chatIds: string[]; ideas?: { nodeId: string; name: string }[] }
+
+/** What a diagram read answers (feature 022). `content` is the stored JSON. */
+export type DiagramRead = PageState | { refused: DiagramRefusalCode; message: string; item: LibraryItem };
+export type DiagramWrite<T> = PageWriteResult<T> | { refused: DiagramRefusalCode; message: string };
+export type ProposalOutcome =
+	| { outcome: "approved"; proposal: DiagramProposal; item: LibraryItem; version: PageVersion; savedLearnerVersion?: number }
+	| { outcome: "stale"; head: number }
+	| { outcome: "resolved"; proposal: DiagramProposal }
+	| { outcome: "missing" }
+	| { outcome: "target-gone" }
+	| { outcome: "refused"; code: DiagramRefusalCode; message: string }
+	| { outcome: "name-taken"; refusal: LibraryRefusal };
+
+/** Diagrams and their proposals (feature 022). A diagram's catalog row, marks and
+ *  trash are the LibraryStore's; these are its versions and what the agent proposes. */
+export interface DiagramStore {
+	create(name: string, doc: DiagramDoc, options: PageCreateOptions): Promise<{ item: LibraryItem; head: PageHead } | LibraryRefusal>;
+	/** Null for an unknown id or another kind. A newer schema is refused, not read. */
+	read(id: string): Promise<DiagramRead | null>;
+	saveDraft(id: string, input: { base: number; rev: number; content: string }): Promise<DiagramWrite<{ rev: number }>>;
+	commit(id: string, input: { base: number; rev: number; content: string; cause?: PageVersionCause }): Promise<DiagramWrite<{ version: PageVersion; created: boolean; otherVersion?: number }>>;
+	versions(id: string): Promise<PageVersion[] | null>;
+	version(id: string, n: number): Promise<{ version: PageVersion; content: string } | null>;
+	restore(id: string, n: number): Promise<{ version: PageVersion } | "missing" | { refused: DiagramRefusalCode; message: string }>;
+	/** Stores a proposal apart from the diagram. The same call again returns the same one. */
+	propose(input: { diagramId: string | null; name: string; summary: string; baseVersion: number | null; doc: DiagramDoc; chatId?: string; toolCallId?: string }): Promise<DiagramProposal | "missing">;
+	proposals(filter?: { diagramId?: string; status?: DiagramProposalStatus }): Promise<DiagramProposal[]>;
+	proposal(id: string): Promise<DiagramProposal | null>;
+	/** Edit first: changes only the proposal. */
+	editProposal(id: string, doc: DiagramDoc): Promise<DiagramProposal | "missing" | "resolved">;
+	reject(id: string): Promise<ProposalOutcome>;
+	/** `expected` is what the learner compared against. A move since then refuses, so
+	 *  an approval can't undo what he never saw. His draft becomes his version first. */
+	approve(id: string, options: { expected?: { head: number; rev: number }; name?: string }): Promise<ProposalOutcome>;
+	/** A deleted session's proposals lose their link, as its pages do. */
+	unlinkChat(chatId: string): Promise<void>;
+}
 
 export interface PageCreateOptions { author: PageAuthor; chatId?: string; toolCallId?: string; folderId?: string | null }
 

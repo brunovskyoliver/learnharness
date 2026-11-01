@@ -7,7 +7,7 @@ import type { DocSearchResult } from "./document-search.ts";
 import { fuzzyScore } from "./fuzzy.ts";
 import { folderPathLabel, KIND_LABEL, type LibraryFolder, type LibraryItem } from "./library.ts";
 
-export type PaletteActionId = "new-lesson" | "new-practice" | "new-page" | "open-settings" | "open-home" | "toggle-sidebar" | "toggle-right-pane" | "choose-model" | "show-shortcuts" | "library-all" | "library-favorites" | "library-recent" | "library-archive" | "library-trash" | "study-notes" | "save-passage" | "open-review" | "new-card" | "make-cards";
+export type PaletteActionId = "new-lesson" | "new-practice" | "new-page" | "new-diagram" | "open-settings" | "open-home" | "toggle-sidebar" | "toggle-right-pane" | "choose-model" | "show-shortcuts" | "library-all" | "library-favorites" | "library-recent" | "library-archive" | "library-trash" | "study-notes" | "save-passage" | "open-review" | "new-card" | "make-cards";
 
 export type PaletteEntry =
 	| { kind: "action"; id: string; action: PaletteActionId; label: string; meta?: string; keywords: string[] }
@@ -30,6 +30,7 @@ export function paletteActions(inSession: boolean, inLesson = false): PaletteEnt
 		action("new-lesson", "New lesson", ["session", "teach", "start"]),
 		action("new-practice", "New practice", ["session", "problem", "start"]),
 		action("new-page", "New page", ["note", "document", "library", "create"]),
+		action("new-diagram", "New diagram", ["concept map", "whiteboard", "library", "create", "draw"]),
 		action("library-all", "Open Library", ["documents", "notes", "view", "all"]),
 		action("library-favorites", "Open Library favorites", ["view", "star"]),
 		action("library-recent", "Open Library recent", ["view", "history"]),

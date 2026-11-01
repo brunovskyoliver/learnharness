@@ -48,6 +48,7 @@ export * from "./model-catalog.ts";
 export { subscriptionControlsResponse, subscriptionBrowserResponse } from "./web-subscription-http.ts";
 export { sessionCost } from "./pricing.ts";
 export * from "./library.ts";
+export * from "./diagrams.ts";
 export * from "./notes.ts";
 export * from "./documents.ts";
 export * from "./cards.ts";

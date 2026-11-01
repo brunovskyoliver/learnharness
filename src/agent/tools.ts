@@ -18,6 +18,7 @@ import type { JobRecord } from "../core/contracts.ts";
 import type { PaperFiles, JobStore } from "../core/ports.ts";
 import { jobTools, type JobDispatchInput } from "./tools/jobs.ts";
 import { libraryTools, type LibraryToolContext } from "./tools/library.ts";
+import { DIAGRAM_BLOCKED_PROBLEM, DIAGRAM_BLOCKED_QUESTION, diagramTools } from "./tools/diagrams.ts";
 import { PAGE_BLOCKED_PROBLEM, PAGE_BLOCKED_QUESTION, pageTools } from "./tools/pages.ts";
 import { mlVisualTool } from "./tools/ml-visual.ts";
 import { tokenizeTool } from "./tools/tokenize.ts";
@@ -505,6 +506,17 @@ export function createTeacherTools(
 					const messages = ctx.chatStore.getChat(ctx.chatId)?.messages ?? [];
 					if (danglingQuestionOf(messages)) return PAGE_BLOCKED_QUESTION;
 					return activeProblemOf(messages) ? PAGE_BLOCKED_PROBLEM : null;
+				},
+			})),
+			// Diagrams (feature 022): a proposal only, under the same gate as pages.
+			...(enabled?.diagrams === false || !ctx.library?.diagrams ? {} : diagramTools({
+				store: ctx.library.store,
+				diagrams: ctx.library.diagrams,
+				chatId: ctx.chatId,
+				blocked: () => {
+					const messages = ctx.chatStore.getChat(ctx.chatId)?.messages ?? [];
+					if (danglingQuestionOf(messages)) return DIAGRAM_BLOCKED_QUESTION;
+					return activeProblemOf(messages) ? DIAGRAM_BLOCKED_PROBLEM : null;
 				},
 			})),
 		},
