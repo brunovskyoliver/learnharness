@@ -25,6 +25,7 @@ Core has no dependency on server or store. Agents receive effects through depend
 | Lessons and practice | `chats/<id>.json`, `ChatRecord`, native `LhMessage[]` |
 | Knowledge graph | JSONL evidence ledgers, sources and coverage under `graph/` |
 | Library | `library/catalog.json` for items and folders, flat bytes in `files/`, page versions under `library/pages/<id>/`. Folders are catalog-only and additive: the catalog version stays 1. Trash entries sit in their own catalog array, so an older app neither lists nor tombstones them; document bytes wait under `library/trash/<entry>/`, outside the agent file jail. Recent opens live in `library/recent.json` |
+| Diagrams | Catalog rows and tombstones in a top-level `diagrams` array, outside `items`, so an older app can't tombstone them; merged on read and split on write. Versions as pages, under `library/pages/<id>/`, holding schema-versioned JSON. A newer schema is refused and never rewritten. Proposals, one file each, under `library/diagram-proposals/<id or new>/` |
 | Search index | Rebuildable, safe to delete: `library/search/current.json` names a generation, `library/search/g_<id>/<itemId>.json` holds one shard per item, written atomically. A rebuild swaps generations only when complete |
 | Annotations | `library/annotations/<itemId>.json`: highlights and notes per PDF, apart from its bytes. They stay through the trash and go on purge |
 | Flashcards | `cards/cards.json` (cards and generation runs, atomic) and `cards/reviews.jsonl` (append-only). Newer formats are refused unchanged. Source and idea "gone" are worked out on read |
@@ -86,6 +87,14 @@ Scheduling and evidence don't meet. The graph ledgers have held no learner evide
 Generation uses `runSubmitAgent` with the extractor role. It isn't a `JobRecord`, because a job belongs to a chat and steers its result back into one. `src/server/card-generation.ts` keeps a per-tenant registry, and `activityFeed()` reports runs with cost, aborted through `/api/activity/abort`. What comes back is drafts, kept one at a time.
 
 The back reaches the browser only from the reveal route, or from an explicit Edit. The UI lives in `components/review/` and loads with `/review`; Home and the shell import none of it.
+
+## Diagrams
+
+A diagram reuses the page's store functions and browser `PageDraftController`, with `serializeDiagram` as its text, so autosave, conflicts and crash repair are the page's own. `readText` gives an outline, so `@` references and the index read labels and never JSON. `diagramScanText` gives the link scanners only stored links, so typed brackets can't make one. `pageTexts` includes diagrams, which is how backlinks, pins and the Links panel see them.
+
+`components/diagram/diagram-canvas.tsx` is the only app import of `@xyflow/react`, reached by two dynamic steps from the pane. The document stays ours: React Flow draws it and reports moves. The list view loads none of it.
+
+`diagram_propose` stores a proposal, and only `approve` makes a version. Approval carries the head and draft rev the learner compared, under the Library lock, and the version log finds an approval a crash left half-recorded. Nothing here touches the graph; `tests/diagrams.test.ts` hashes `graph/` to prove it.
 
 ## Host and provider boundaries
 

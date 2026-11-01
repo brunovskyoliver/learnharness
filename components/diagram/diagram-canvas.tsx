@@ -11,7 +11,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "./diagram.css";
-import { MaximizeIcon, MinusIcon, PlusIcon } from "lucide-react";
+import { Link2Icon, MaximizeIcon, MinusIcon, PlusIcon } from "lucide-react";
 import { diagramNodeName, type DiagramDoc, type DiagramEdge, type DiagramNode } from "@/src/core";
 
 export interface CanvasActions {
@@ -76,6 +76,7 @@ const NodeText = memo(function NodeText({ node }: { node: DiagramNode }) {
 					}}
 				/>
 			) : (node.text.trim() || "Untitled")}
+			{!editing && node.links?.length ? <Link2Icon className="ms-1 inline size-3 text-muted-foreground" aria-hidden="true" data-testid="diagram-node-linked" /> : null}
 			<Handle type="source" position={Position.Bottom} />
 		</div>
 	);
@@ -174,7 +175,7 @@ function toFlowNode(node: DiagramNode, prior?: Node): Node {
 		position: { x: node.x, y: node.y },
 		data: { node },
 		connectable: node.type !== "stroke",
-		ariaLabel: node.type === "stroke" ? "Freehand stroke. Press Delete to remove." : `${name}. Press Enter to edit.`,
+		ariaLabel: node.type === "stroke" ? "Freehand stroke. Press Delete to remove." : `${name}${node.links?.length ? `, linked to ${node.links.length}` : ""}. Press Enter to edit.`,
 	};
 }
 

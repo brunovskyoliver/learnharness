@@ -1,0 +1,22 @@
+# Tasks: Diagrams (022)
+
+- [x] T001 Measure Excalidraw outside the repo; record the decision
+- [x] T002 Core document, validation, edits, outline, comparison, proposal building
+- [x] T003 SVG export with escaping
+- [x] T004 Catalog split and versioned kinds in the Library store
+- [x] T005 `DiagramStore`: versions, drafts, restore, schema refusal, proposals
+- [x] T006 Search index, `@` references, `library_read`, Links panel, pins
+- [x] T007 Routes and handlers, tenant-wrapped
+- [x] T008 `diagram_propose`, gating, Settings switch, prompt fragments
+- [x] T009 Editor: canvas, list, undo, tools, keyboard, outline, full screen, autosave
+- [x] T010 Whiteboard: sticky notes and freehand
+- [x] T011 Export: SVG, PNG, JSON
+- [x] T012 Link dialog, whole-diagram links, Links panel by kind
+- [x] T013 Proposal review, Edit first, Library row, transcript row, proposal bar
+- [x] T014 Library button, palette action, tab icon
+- [x] T015 `tests/diagrams.test.ts`, `tests/render-diagrams.test.tsx`
+- [x] T016 `scripts/check-diagrams-ui.mjs`
+- [x] T017 Rollback run against the base commit's store
+- [x] T018 `web-design-guidelines` and `impeccable`, findings fixed
+- [x] T019 DESIGN.md, PRODUCT.md, docs/architecture.md, ROADMAP
+- [x] T020 Full gates and measurements

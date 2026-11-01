@@ -226,6 +226,26 @@ Feature 021. Every string is in [its plan](specs/021-spaced-repetition/plan.md).
 - **Make flashcards**: a raised block saying how many characters go to which model, then amber "Generate drafts", "Write one by hand" and Cancel. With no model, the reason and Open settings replace the send. Doors: the Library's More menu on a page, the PDF bubble, and "This session" in the context view.
 - **Dock**: a row "Making flashcards" with cost, linking to Drafts, with Abort.
 
+## Diagrams
+
+Feature 022; decisions in [its spec](specs/022-diagrams/spec.md). Amber only on Create, Approve and keyboard focus. No shadows or dashed borders: `diagram.css` overrides React Flow's defaults with Study ink tokens.
+
+- **Doors**: "New diagram" in the Library (raised-2) opens a `surface-raised-2` dialog: three forms as radio rows, Name, Create. Palette: "New diagram". Tabs use the network icon.
+- **Pane**: the page's 52px header: name, save state ("Not saved. Your diagram is kept in this browser."), then named icons as one group: Outline, Links, Export, History, Ask the tutor, Full screen. Full screen is the same element over the app; Escape leaves it and focus returns to the toggle.
+- **Tools**: a `surface-raised` row: undo, redo, Add {node, idea or note}, Connect, Draw (whiteboard, canvas), Link and Delete (canvas), then Canvas and List. Labels show from 620 px, and otherwise are named icons. Unavailable tools use muted ink and say what to select.
+- **Connect**: a `surface-raised-2` form under the tools: From, To, Label, Add, Close. It stays open to add more.
+- **Canvas**: ground, no dot grid. A node is a `card` box, 6px, 15px text, with the 14% edge; a sticky note is `popover`, 10px, 180×120 at least. Selected takes a foreground edge. Edges are straight, in muted ink with an arrow; labels sit on ground in `ink-2`, 13px. Handles show on hover, focus and selection, always on coarse pointers with a 44px hit area. A linked node ends in a small link icon. Zoom out, in and fit sit bottom right.
+- **List**: below 360 px of editor width it leads, and no canvas loads. Headed sections of fields: text, Link, Delete; then each connection's ends in `ink-2` with its label field.
+- **Outline**: a `surface-raised-2` block, 40dvh at most: each node, its connections, its links. A name moves focus to that node.
+- **Export**: Download SVG, Download PNG, Download JSON. The file uses literal Study ink colours. A failure stays as one line.
+- **History**: `Version {n} · {You, Tutor or Tutor, edited by you} · {time} · {cause}`. A chosen version shows its picture, what changed in words, "Read as text" and "Restore this version".
+- **Proposal bar**: a `card` row, "The tutor proposed a change. Nothing has changed." with Review. In the Library, rows above the views: "{name} · Proposed by the tutor, waiting for you". In the transcript: "Diagram · proposed {name}, waiting for your approval" with Review.
+- **Review**: a `surface-raised-2` dialog: "Proposed changes to {name}" or "Proposed diagram: {name}", the summary, "Nothing has changed.", a preview picture, then Added, Removed and Changed nodes, connections and links as counted lists in words. Reject, Edit first, amber Approve. Labels are text, always.
+- **Edit first**: the editor on the whole screen: "Editing the proposal: {name}", Back to comparison, amber Approve. Escape takes the field, then returns to the comparison.
+- **States**: skeletons; "Nothing here yet. Add a {noun} to start."; "{name} could not be loaded." with Try again; "This diagram was saved by a newer version of the app, so it can't be opened or changed here."; "This diagram changed elsewhere. Your version is safe here." with Keep mine and Use latest.
+- **Links panel**: as a page's, worded for a diagram, with "Link the whole diagram" above it. A page's panel lists a diagram with "Diagram ·".
+- **Settings → Agent**: "Diagrams", "Proposes diagrams and concept maps for you to review and approve".
+
 ## Demos
 
 - A question's exact demo reference opens the workspace automatically once for that question. Closing or switching it is respected.

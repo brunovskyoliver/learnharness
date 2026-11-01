@@ -462,6 +462,11 @@ describe("Library prompts (feature 009)", () => {
 			assert.ok(!paths("practice").some((p) => /shared\/3[01]-/.test(p)));
 		});
 	});
+	it("diagram fragments compose for teacher and practice, never the prober (feature 022)", () => {
+		assert.ok(paths("teacher").includes("teacher/48-diagrams.md"));
+		assert.ok(paths("practice").includes("practice/25-diagrams.md"));
+		assert.ok(!paths("prober").some((p) => p.includes("diagrams")));
+	});
 	it("the approved wording is verbatim", () => {
 		const source = (p: string) => fs.readFileSync(path.resolve(import.meta.dirname, "../src/agent/prompts", p), "utf8");
 		const doctrine = fs.readFileSync(path.resolve(import.meta.dirname, "../specs/009-library-canvas/contracts/doctrine.md"), "utf8");
