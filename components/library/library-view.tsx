@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type DragEvent } from "react"
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckSquareIcon, FilePlusIcon, FolderPlusIcon, LayoutGridIcon, ListIcon, SearchIcon, UploadIcon, XIcon } from "lucide-react";
+import { CheckSquareIcon, FilePlusIcon, FolderPlusIcon, LayoutGridIcon, ListIcon, NetworkIcon, SearchIcon, UploadIcon, XIcon } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import { LibraryContextSlot } from "@/components/workspace/context-slot";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,10 @@ import { createBlankPage, PagePaneSlot, usePagePane } from "./page-pane-context.
 import { runUploadQueue, sendFile } from "./upload.ts";
 
 /** Only loads once "Full text" is chosen: the search field itself stays small. */
+import { DiagramProposalsLine } from "@/components/diagram/diagram-proposals-line.tsx";
+/** Loads on the click: the dialog and its form list aren't part of the Library's first load. */
+const NewDiagramDialog = dynamic(() => import("@/components/diagram/new-diagram-dialog.tsx").then((m) => m.NewDiagramDialog), { ssr: false });
+
 const DocumentSearchPanel = dynamic(() => import("./document-search.tsx").then((m) => m.DocumentSearchPanel), {
 	ssr: false,
 	loading: () => <p role="status" className="text-sm text-muted-foreground">Loading search…</p>,
@@ -399,6 +403,7 @@ export function LibraryView() {
 		clash?.answer(keepBoth);
 		setClash(null);
 	};
+	const [newDiagram, setNewDiagram] = useState(false);
 	const newPage = async () => {
 		setCreating(true);
 		const result = await createBlankPage(folderId);
@@ -484,6 +489,10 @@ export function LibraryView() {
 								<FilePlusIcon className="ui-icon" aria-hidden="true" />
 								New page
 							</Button>
+							<Button type="button" className={RAISED_2} onClick={() => setNewDiagram(true)} data-testid="library-new-diagram">
+								<NetworkIcon className="ui-icon" aria-hidden="true" />
+								New diagram
+							</Button>
 						</div>
 						<input
 							ref={picker}
@@ -518,6 +527,18 @@ export function LibraryView() {
 						))}
 					</div>
 					</div>
+					{newDiagram && (
+						<NewDiagramDialog
+							folderId={folderId}
+							onClose={() => setNewDiagram(false)}
+							onCreated={(item) => {
+								setNewDiagram(false);
+								pane?.open({ id: item.id, name: item.name, kind: item.kind, size: item.size });
+								void refresh();
+							}}
+						/>
+					)}
+					<DiagramProposalsLine />
 					<nav aria-label="Library views" className="flex flex-wrap gap-1" data-testid="library-views">
 						{(Object.keys(VIEW_LABELS) as LibraryViewName[]).map((name) => (
 							<Link key={name} href={viewHref(name)} aria-current={view === name ? "page" : undefined} className={`${PILL} ${view === name ? "bg-accent text-foreground" : "text-ink-2"}`}>{VIEW_LABELS[name]}</Link>

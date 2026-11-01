@@ -1439,3 +1439,6 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 .lh-passage-trigger:hover { background: var(--card); }
 .lh-passage-trigger:focus-visible { outline: 1px solid var(--ring); outline-offset: 1px; }
 @media (pointer: coarse) { .lh-passage-trigger { height: 2.75rem; padding-inline: 0.75rem; } }
+
+/* A diagram's full screen is the same element, so nothing remounts (feature 022). */
+.page-workspace.lh-diagram-full { position: fixed; inset: 0; z-index: 45; width: 100vw; height: 100dvh; padding: 0; }

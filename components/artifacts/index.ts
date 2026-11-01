@@ -46,6 +46,7 @@ export const artifactRenderers: Record<string, ComponentType<ArtifactPartProps>>
 	paper_read: LookupRow,
 	page_create: PageRow,
 	page_revise: PageRow,
+	diagram_propose: PageRow,
 	library_read: PageRow,
 	// The probe conclusion: the assessment belongs to the learner as much as
 	// to the transcript (docs/probe-teach-split.md §2). Plain v1 card.

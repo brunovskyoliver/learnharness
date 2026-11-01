@@ -18,7 +18,7 @@ export function DeleteItemBody({ item, busy, failure, onClose, onConfirm }: {
 	return (
 		<>
 			<DialogTitle className="text-base font-semibold [overflow-wrap:anywhere]">Move {item.name} to the trash?</DialogTitle>
-			<DialogDescription className="text-sm text-muted-foreground">{item.kind === "page" ? "You can restore it, with its whole version history, from Trash." : "You can restore it from Trash."}</DialogDescription>
+			<DialogDescription className="text-sm text-muted-foreground">{item.kind === "page" || item.kind === "diagram" ? "You can restore it, with its whole version history, from Trash." : "You can restore it from Trash."}</DialogDescription>
 			{failure && <p role="alert" className="text-sm text-destructive">{failure}</p>}
 			<div className="flex justify-end gap-2">
 				<Button type="button" variant="ghost" className="pointer-coarse:h-11" disabled={busy} onClick={onClose} data-testid="library-delete-cancel">Cancel</Button>

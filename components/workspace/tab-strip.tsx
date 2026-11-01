@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { BookOpenIcon, DumbbellIcon, FileTextIcon, PanelRightCloseIcon, PanelRightOpenIcon, XIcon } from "lucide-react";
+import { BookOpenIcon, DumbbellIcon, FileTextIcon, NetworkIcon, PanelRightCloseIcon, PanelRightOpenIcon, XIcon } from "lucide-react";
 import { BrailleSpinner } from "@/components/braille-spinner";
 import { Hint } from "@/components/ui/hint";
 import { cn } from "@/lib/utils";
@@ -34,7 +34,7 @@ export function TabStripView({ tabs, selectedId, shownIds, pendingId, focusId, o
 		<div data-workspace-tabs="" data-testid="workspace-tabs" className={cn("flex h-9 shrink-0 items-stretch gap-1 bg-background px-3 pb-1 pointer-coarse:h-12 pointer-coarse:pb-0", className)}>
 			<div ref={listRef} role="tablist" aria-label="Open items" aria-orientation="horizontal" onKeyDownCapture={onKeyDown} className="flex min-w-0 flex-1 items-stretch gap-0.5 overflow-x-auto p-px">
 				{tabs.map((tab) => {
-					const Icon = TAB_ICON[tab.kind];
+					const Icon = tab.itemKind === "diagram" ? NetworkIcon : TAB_ICON[tab.kind];
 					const selected = tab.id === selectedId;
 					const shown = shownIds.includes(tab.id);
 					return (

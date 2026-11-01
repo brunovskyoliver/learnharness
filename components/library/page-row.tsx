@@ -1,12 +1,17 @@
 "use client";
 
+import dynamic from "next/dynamic";
+import { useState } from "react";
 import { ChevronRight, LoaderCircleIcon } from "lucide-react";
 import { usePagePane } from "@/components/library/page-pane-context";
 import { SessionDetails } from "@/components/session-state";
 import { pageRowHeadline, toolActivityLabel, type ArtifactPartProps, type PageRowDetails } from "@/src/core";
 
+/** Arrives on the first Review, so a transcript carries none of it (feature 022). */
+const DiagramProposalDialog = dynamic(() => import("@/components/diagram/diagram-proposal-dialog.tsx").then((m) => m.DiagramProposalDialog), { ssr: false });
+
 const ACTION = "text-foreground underline decoration-foreground/40 underline-offset-[3px] hover:decoration-foreground pointer-coarse:min-h-11";
-const OUTCOMES = ["created", "revised", "stale", "failed", "read"];
+const OUTCOMES = ["created", "revised", "stale", "failed", "read", "proposed"];
 
 function detailsOf(output: unknown): PageRowDetails | null {
 	const d = output as { outcome?: unknown } | null | undefined;
@@ -15,7 +20,7 @@ function detailsOf(output: unknown): PageRowDetails | null {
 
 /** A failure the row shows, rather than the model's retry on a bad call. */
 export function isShownPageFailure(part: { type: string; state?: string; errorText?: unknown }): boolean {
-	return ["tool-page_create", "tool-page_revise", "tool-library_read"].includes(part.type) && part.state === "output-error" && !String(part.errorText ?? "").startsWith("Invalid tool input");
+	return ["tool-page_create", "tool-page_revise", "tool-library_read", "tool-diagram_propose"].includes(part.type) && part.state === "output-error" && !String(part.errorText ?? "").startsWith("Invalid tool input");
 }
 
 /** The math-check skeleton on the reading edge, no amber. While running, only the
@@ -24,6 +29,7 @@ export function PageRow({ part }: ArtifactPartProps) {
 	const p = part as { type: string; state: string; toolCallId: string; output?: unknown; errorText?: string };
 	const tool = p.type.replace(/^tool-/, "");
 	const pane = usePagePane();
+	const [reviewing, setReviewing] = useState(false);
 	const errored = p.state === "output-error";
 	if (p.state !== "output-available" && !errored) {
 		return (
@@ -36,7 +42,8 @@ export function PageRow({ part }: ArtifactPartProps) {
 	const d = errored ? null : detailsOf(p.output);
 	const reason = errored ? p.errorText : d && "reason" in d ? d.reason : undefined;
 	const bad = !d || d.outcome === "failed" || d.outcome === "stale";
-	const target = d && "itemId" in d && d.itemId ? { id: d.itemId, name: "name" in d ? d.name : "", kind: d.outcome === "read" ? d.kind : "page", size: d.outcome === "read" ? d.size : 0 } : null;
+	const proposal = d?.outcome === "proposed" ? d : null;
+	const target = d && !proposal && "itemId" in d && d.itemId ? { id: d.itemId, name: "name" in d ? d.name : "", kind: d.outcome === "read" ? d.kind : "page", size: d.outcome === "read" ? d.size : 0 } : null;
 	const opensHere = !!target && target.name !== "" && !!pane && (target.kind !== "pdf" && target.kind !== "image" && target.kind !== "other");
 	const open = (history: boolean) => pane?.open({ id: target!.id, name: target!.name, kind: target!.kind as "page", size: target!.size, ...(history ? { history: true } : {}) });
 	return (
@@ -47,6 +54,18 @@ export function PageRow({ part }: ArtifactPartProps) {
 			</summary>
 			<div className="mt-2 flex flex-col gap-2 rounded-[10px] bg-card p-3 text-sm">
 				{reason && <p className="text-destructive">{reason}</p>}
+				{proposal && (
+					<div className="flex flex-wrap gap-3">
+						<button type="button" className={ACTION} aria-label={`Review the proposal for ${proposal.name}`} data-testid="diagram-row-review" onClick={() => setReviewing(true)}>Review</button>
+					</div>
+				)}
+				{proposal && reviewing && (
+					<DiagramProposalDialog
+						proposalId={proposal.proposalId}
+						onClose={() => setReviewing(false)}
+						onApproved={(item) => pane?.open({ id: item.id, name: item.name, kind: item.kind, size: item.size })}
+					/>
+				)}
 				{d && "savedLearnerVersion" in d && d.savedLearnerVersion !== undefined && <p className="text-ink-2">Saved your edits first as version {d.savedLearnerVersion}</p>}
 				{opensHere && (
 					<div className="flex flex-wrap gap-3">

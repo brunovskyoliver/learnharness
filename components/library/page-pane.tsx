@@ -40,11 +40,17 @@ const PdfReader = dynamic(() => import("./pdf-reader.tsx").then((m) => m.PdfRead
 	loading: () => <EditorLoading />,
 });
 
+/** A diagram's surface and, behind it, React Flow arrive with the first diagram (feature 022). */
+const DiagramSurface = dynamic(() => import("@/components/diagram/diagram-surface.tsx").then((m) => m.DiagramSurface), {
+	ssr: false,
+	loading: () => <EditorLoading />,
+});
+
 const PHONE_QUERY = "(max-width: 767.98px)";
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"]), [contenteditable="true"]';
 const AGENT_UPDATE_MS = 4000;
 
-function EditorLoading() {
+export function EditorLoading() {
 	return (
 		<div role="status" aria-label="Loading the page" className="flex flex-col gap-2 px-3 py-2">
 			<Skeleton className="h-5 w-2/3 rounded-md" />
@@ -67,7 +73,7 @@ function usePhone(): boolean {
 
 /** On phones the layer follows the visual viewport, so the keyboard never covers
  *  the caret, and focus stays inside it. */
-function usePhoneLayer(active: boolean, root: React.RefObject<HTMLElement | null>) {
+export function usePhoneLayer(active: boolean, root: React.RefObject<HTMLElement | null>) {
 	useEffect(() => {
 		if (!active) return;
 		const opener = document.activeElement as HTMLElement | null;
@@ -95,7 +101,7 @@ function usePhoneLayer(active: boolean, root: React.RefObject<HTMLElement | null
 }
 
 /** Desktop Escape: back to what the learner was reading. */
-function focusTranscript() {
+export function focusTranscript() {
 	const target = document.querySelector<HTMLElement>('[data-chat-id] [role="log"], [data-testid="library-search"]');
 	if (!target) return;
 	if (target.getAttribute("role") === "log" && !target.hasAttribute("tabindex")) target.setAttribute("tabindex", "-1");
@@ -104,10 +110,10 @@ function focusTranscript() {
 
 export const wordsText = (n: number) => `${n} ${n === 1 ? "word" : "words"}`;
 
-export function SaveState({ state, onRetry, canRetry = true, words }: { state: Pick<PageDraftState, "status">; onRetry: () => void; canRetry?: boolean; words?: number }) {
+export function SaveState({ state, onRetry, canRetry = true, words, failedLabel }: { state: Pick<PageDraftState, "status">; onRetry: () => void; canRetry?: boolean; words?: number; failedLabel?: string }) {
 	return (
 		<span className="flex min-w-0 flex-wrap items-center gap-x-2 text-sm text-muted-foreground" data-testid="page-save-state">
-			{SAVE_STATE_LABEL[state.status]}
+			{state.status === "failed" && failedLabel ? failedLabel : SAVE_STATE_LABEL[state.status]}
 			{words !== undefined && <span data-testid="page-word-count">· {wordsText(words)}</span>}
 			{state.status === "failed" && canRetry && <button type="button" className="prompt-secondary" onClick={onRetry} data-testid="page-retry">Try again</button>}
 		</span>
@@ -197,7 +203,7 @@ function ExportMenu({ name, text, container, onPrint, labelClass }: { name: stri
 	);
 }
 
-function PageName({ item, pane }: { item: PaneItem; pane: PagePaneApi }) {
+export function PageName({ item, pane }: { item: PaneItem; pane: PagePaneApi }) {
 	const [renaming, setRenaming] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const commit = async (raw: string) => {
@@ -435,7 +441,7 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 	const connections = links && !history && !state.deleted ? (
 		<NoteConnectionsPanel
 			pageId={item.id}
-			onOpenPage={(id, name) => openItem({ id, name, kind: "page", size: 0 })}
+			onOpenPage={(id, name, kind) => openItem({ id, name, kind: kind ?? "page", size: 0 })}
 			onFollowLink={(row) => followLink(row.target, row.resolution)}
 			onSource={followSource}
 			className={wide ? "w-64 shrink-0 overflow-y-auto pr-3 pb-6" : "mx-3 mb-2 max-h-[40dvh] shrink-0 overflow-y-auto rounded-[10px] bg-popover p-2"}
@@ -675,5 +681,6 @@ export function PagePane({ item, pane }: { item: PaneItem; pane: PagePaneApi }) 
 	const phone = usePhone();
 	if (item.kind === "page") return <PageSurface item={item} pane={pane} phone={phone} />;
 	if (item.kind === "pdf") return <PdfSurface item={item} pane={pane} phone={phone} />;
+	if (item.kind === "diagram") return <DiagramSurface item={item} pane={pane} phone={phone} />;
 	return <ReadOnlySurface item={item} pane={pane} phone={phone} />;
 }

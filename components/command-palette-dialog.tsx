@@ -150,6 +150,17 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 				else pane?.open({ id: item.id, name: item.name, kind: item.kind, size: item.size });
 				return;
 			}
+			case "new-diagram": {
+				const { createDiagram } = await import("@/components/diagram/new-diagram-dialog.tsx");
+				const result = await createDiagram("Untitled diagram", "diagram", null, true);
+				if ("error" in result) { setFailure(`New diagram · ${result.error}`); return; }
+				const { item } = result;
+				skipReturn.current = true;
+				close();
+				if (workspace) workspace.openItem(item);
+				else pane?.open({ id: item.id, name: item.name, kind: item.kind, size: item.size });
+				return;
+			}
 			case "open-settings":
 				skipReturn.current = true;
 				close();

@@ -8,7 +8,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { Skeleton } from "@/components/ui/skeleton";
 import { useServerEvent, useServerResync } from "@/components/server-events";
 import { cn } from "@/lib/utils";
-import type { BacklinkRow, NoteLinkRow, RelatedRow } from "@/src/core";
+import type { BacklinkRow, LibraryKind, NoteLinkRow, RelatedRow } from "@/src/core";
 import type { GraphLinkRow } from "@/src/core";
 
 export interface NoteConnections {
@@ -36,9 +36,11 @@ const Name = ({ children }: { children: ReactNode }) => <span className="text-fo
 const Meta = ({ children }: { children: ReactNode }) => <span className="text-muted-foreground [overflow-wrap:anywhere]">{children}</span>;
 
 /** Pure for render tests: every section, with its own empty line. */
-export function NoteConnectionsBody({ data, onOpenPage, onFollowLink, onSource }: {
+export function NoteConnectionsBody({ data, subject = "page", onOpenPage, onFollowLink, onSource }: {
 	data: NoteConnections;
-	onOpenPage: (id: string, name: string) => void;
+	/** What these links belong to (feature 022 adds diagrams). */
+	subject?: "page" | "diagram";
+	onOpenPage: (id: string, name: string, kind?: LibraryKind) => void;
 	onFollowLink: (row: NoteLinkRow) => void;
 	onSource: (href: string) => void;
 }) {
@@ -46,16 +48,16 @@ export function NoteConnectionsBody({ data, onOpenPage, onFollowLink, onSource }
 	const otherSessions = data.sessions.filter((row) => !cited.has(row.chatId) && !row.gone);
 	return (
 		<>
-			<Section title="Links to this page">
+			<Section title={`Links to this ${subject}`}>
 				{data.backlinks.length === 0 ? <Empty>No page links here yet.</Empty> : data.backlinks.map((row) => (
-					<button key={row.id} type="button" className={ROW} data-testid="note-backlink" onClick={() => onOpenPage(row.id, row.name)}>
+					<button key={row.id} type="button" className={ROW} data-testid="note-backlink" onClick={() => onOpenPage(row.id, row.name, row.kind)}>
 						<Name>{row.name}{row.archived ? " · archived" : ""}</Name>
-						<Meta>{row.snippet}</Meta>
+						<Meta>{row.kind === "diagram" ? `Diagram · ${row.snippet}` : row.snippet}</Meta>
 					</button>
 				))}
 			</Section>
-			<Section title="Links from this page">
-				{data.links.length === 0 ? <Empty>Type [[ in the text to link a page.</Empty> : data.links.map((row) => (
+			<Section title={`Links from this ${subject}`}>
+				{data.links.length === 0 ? <Empty>{subject === "diagram" ? "Select a node and choose Link to link a note." : "Type [[ in the text to link a page."}</Empty> : data.links.map((row) => (
 					<button key={row.target} type="button" className={ROW} data-testid="note-link" data-state={row.resolution.state} onClick={() => onFollowLink(row)}>
 						<Name>{row.resolution.name ?? row.target}</Name>
 						{row.resolution.state === "missing" && <Meta>No such page yet</Meta>}
@@ -66,14 +68,14 @@ export function NoteConnectionsBody({ data, onOpenPage, onFollowLink, onSource }
 			</Section>
 			<Section title="Related notes">
 				{data.related.length === 0 ? <Empty>Nothing related yet.</Empty> : data.related.map((row) => (
-					<button key={row.id} type="button" className={ROW} data-testid="note-related" onClick={() => onOpenPage(row.id, row.name)}>
+					<button key={row.id} type="button" className={ROW} data-testid="note-related" onClick={() => onOpenPage(row.id, row.name, row.kind)}>
 						<Name>{row.name}</Name>
-						<Meta>{row.reason}</Meta>
+						<Meta>{row.kind === "diagram" ? `Diagram · ${row.reason}` : row.reason}</Meta>
 					</button>
 				))}
 			</Section>
 			<Section title="Lessons">
-				{data.sources.length === 0 && otherSessions.length === 0 ? <Empty>No lesson is tied to this page.</Empty> : null}
+				{data.sources.length === 0 && otherSessions.length === 0 ? <Empty>No lesson is tied to this {subject}.</Empty> : null}
 				{data.sources.map((row) => row.gone ? (
 					<p key={`${row.chatId}/${row.messageId}`} className="px-2 py-1 text-sm text-ink-2" data-testid="note-source-gone">A saved passage&apos;s session was deleted. The text stays here, and its source is gone.</p>
 				) : (
@@ -90,7 +92,7 @@ export function NoteConnectionsBody({ data, onOpenPage, onFollowLink, onSource }
 				))}
 			</Section>
 			<Section title="Ideas in your graph">
-				{data.graph.length === 0 ? <Empty>No graph idea relates to this page yet.</Empty> : data.graph.map((row) => {
+				{data.graph.length === 0 ? <Empty>No graph idea relates to this {subject} yet.</Empty> : data.graph.map((row) => {
 					const body = (<><Name>{row.name}</Name><Meta>{row.statement}</Meta></>);
 					return row.href
 						? <button key={row.id} type="button" className={ROW} data-testid="note-graph" onClick={() => onSource(row.href!)}>{body}</button>
@@ -102,9 +104,10 @@ export function NoteConnectionsBody({ data, onOpenPage, onFollowLink, onSource }
 }
 
 /** Fetched only while shown. Loading, failed and empty are distinct, and a failed refresh keeps the last list. */
-export function NoteConnectionsPanel({ pageId, onOpenPage, onFollowLink, onSource, className }: {
+export function NoteConnectionsPanel({ pageId, subject, onOpenPage, onFollowLink, onSource, className }: {
 	pageId: string;
-	onOpenPage: (id: string, name: string) => void;
+	subject?: "page" | "diagram";
+	onOpenPage: (id: string, name: string, kind?: LibraryKind) => void;
 	onFollowLink: (row: NoteLinkRow) => void;
 	onSource: (href: string) => void;
 	className?: string;
@@ -131,7 +134,7 @@ export function NoteConnectionsPanel({ pageId, onOpenPage, onFollowLink, onSourc
 	return (
 		<aside aria-label="Links and sources" data-testid="note-connections" className={cn("flex flex-col gap-4", className)}>
 			{data
-				? <NoteConnectionsBody data={data} onOpenPage={onOpenPage} onFollowLink={onFollowLink} onSource={onSource} />
+				? <NoteConnectionsBody data={data} subject={subject} onOpenPage={onOpenPage} onFollowLink={onFollowLink} onSource={onSource} />
 				: failed
 					? <div role="status" className="flex flex-wrap items-center gap-2 px-2 text-sm text-ink-2"><p>These links could not be loaded.</p><button type="button" className="prompt-secondary" onClick={() => void refresh()}>Try again</button></div>
 					: <div role="status" aria-label="Loading links" className="flex flex-col gap-2 px-2"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-5 w-1/2" /></div>}

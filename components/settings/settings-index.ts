@@ -19,7 +19,7 @@ export interface SettingsIndexEntry {
 
 /** The owner's final toggleable-tool list (confirm with the user before
  *  changing; the Teacher stream settled this 2026-09-19). */
-export const TOGGLE_TOOLS = ["research", "demo", "visual", "pdf", "math_check", "ml_visuals", "model_hub", "papers", "pages"] as const;
+export const TOGGLE_TOOLS = ["research", "demo", "visual", "pdf", "math_check", "ml_visuals", "model_hub", "papers", "pages", "diagrams"] as const;
 
 /** Row copy for the tool toggles (ui-v2: every tool row gets a description). */
 export const TOOL_COPY: Record<(typeof TOGGLE_TOOLS)[number], { label: string; hint: string }> = {
@@ -32,6 +32,7 @@ export const TOOL_COPY: Record<(typeof TOGGLE_TOOLS)[number], { label: string; h
 	model_hub: { label: "Model hub", hint: "Looks up model configs, datasets and papers on Hugging Face" },
 	papers: { label: "Papers", hint: "Finds papers on arXiv and Semantic Scholar and cites their pages" },
 	pages: { label: "Pages", hint: "Creates and revises pages you can edit beside the lesson" },
+	diagrams: { label: "Diagrams", hint: "Proposes diagrams and concept maps for you to review and approve" },
 };
 
 export const AUTO_UPDATE_HINT = "Check at startup and every 24 hours. Turning this off does not stop updates already in progress or ready to install.";
