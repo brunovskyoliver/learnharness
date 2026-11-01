@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState, type ReactNode, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { createStudyNotes } from "@/components/library/page-pane-api";
+import { usePhoneLayer } from "@/components/library/page-pane";
 import { useServerEvent, useServerResync } from "@/components/server-events";
-import { XIcon } from "lucide-react";
+import { ArrowLeftIcon, XIcon } from "lucide-react";
 import { requestFullTranscript } from "@/components/transcript-window";
 import { scrollSessionTarget, type SessionScrollContext } from "@/components/session-navigation";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -16,15 +17,38 @@ const ROW = "block min-h-8 w-full rounded-[6px] px-2 py-1 text-left text-sm text
 
 function Shell({ title, children }: { title: string; children: ReactNode }) {
 	const workspace = useWorkspace();
+	const phone = Boolean(workspace?.phoneContext);
+	const root = useRef<HTMLElement | null>(null);
+	usePhoneLayer(phone, root);
 	return (
-		<WorkspacePane label={title} resizeLabel="Resize context panel" testId="context-pane" className="hidden md:flex">
+		<WorkspacePane
+			label={title}
+			resizeLabel="Resize context panel"
+			testId="context-pane"
+			className={phone ? "page-workspace bg-background" : "hidden md:flex"}
+			rootRef={root}
+			onKeyDown={(event) => {
+				if (!phone || event.key !== "Escape") return;
+				event.preventDefault();
+				event.stopPropagation();
+				workspace?.closeContext();
+			}}
+		>
 			{() => (
 				<>
-					<div className="flex h-13 shrink-0 items-center gap-3 px-3">
+					<div className="flex min-h-13 shrink-0 items-center gap-3 px-3">
+						{phone && (
+							<button type="button" data-testid="page-back" onClick={workspace?.closeContext} className="prompt-secondary inline-flex shrink-0 items-center gap-1.5">
+								<ArrowLeftIcon className="ui-icon" aria-hidden="true" />
+								Back to chat
+							</button>
+						)}
 						<h2 className="min-w-0 flex-1 truncate text-base font-medium">{title}</h2>
-						<button type="button" aria-label={`Close ${title}`} data-testid="context-pane-close" onClick={workspace?.closeContext} className="ui-icon-button text-muted-foreground hover:bg-accent hover:text-foreground">
-							<XIcon className="ui-icon" />
-						</button>
+						{!phone && (
+							<button type="button" aria-label={`Close ${title}`} data-testid="context-pane-close" onClick={workspace?.closeContext} className="ui-icon-button text-muted-foreground hover:bg-accent hover:text-foreground">
+								<XIcon className="ui-icon" />
+							</button>
+						)}
 					</div>
 					<div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-3 pb-6">{children}</div>
 				</>
@@ -131,15 +155,16 @@ function SessionNotes({ chatId, practice }: { chatId: string; practice: boolean 
 			busy={busy}
 			error={error}
 			onRetry={() => void refresh()}
-			onOpen={(row) => workspace?.openItem(row)}
+			onOpen={(row) => { if (workspace?.phoneContext) workspace.closeContext(); workspace?.openItem(row); }}
 			chatId={chatId}
 			onStudyNotes={() => {
 				setBusy(true);
 				setError(null);
 				void createStudyNotes(chatId).then((result) => {
 					setBusy(false);
-					if ("error" in result) setError(result.error);
-					else workspace?.openItem(result.item);
+					if ("error" in result) { setError(result.error); return; }
+					if (workspace?.phoneContext) workspace.closeContext();
+					workspace?.openItem(result.item);
 				});
 			}}
 		/>
@@ -160,7 +185,9 @@ export function SessionContextPane({ chatId, practice, messages, nativeMessages,
 	scrollContextRef: RefObject<SessionScrollContext | null>;
 }) {
 	const entries = useMemo(() => sessionTurnEntries(messages, nativeMessages, turns), [messages, nativeMessages, turns]);
+	const workspaceNow = useWorkspace();
 	const jump = (entry: SessionTurnEntry) => {
+		if (workspaceNow?.phoneContext) workspaceNow.closeContext();
 		requestFullTranscript();
 		requestAnimationFrame(() => {
 			const scope = scopeRef.current;

@@ -4,6 +4,7 @@
  *  what links here, what it links to, what is related, the lessons it came from
  *  and the graph ideas it touches. All of it is read from stored text, with no
  *  model call. Nothing here writes. */
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useServerEvent, useServerResync } from "@/components/server-events";
@@ -36,8 +37,10 @@ const Name = ({ children }: { children: ReactNode }) => <span className="text-fo
 const Meta = ({ children }: { children: ReactNode }) => <span className="text-muted-foreground [overflow-wrap:anywhere]">{children}</span>;
 
 /** Pure for render tests: every section, with its own empty line. */
-export function NoteConnectionsBody({ data, subject = "page", onOpenPage, onFollowLink, onSource }: {
+export function NoteConnectionsBody({ data, subject = "page", onOpenPage, onFollowLink, onSource, makeCardsHref }: {
 	data: NoteConnections;
+	/** A page's own door to drafting flashcards (feature 023), so the Library's menu isn't the only one. */
+	makeCardsHref?: string;
 	/** What these links belong to (feature 022 adds diagrams). */
 	subject?: "page" | "diagram";
 	onOpenPage: (id: string, name: string, kind?: LibraryKind) => void;
@@ -91,6 +94,11 @@ export function NoteConnectionsBody({ data, subject = "page", onOpenPage, onFoll
 					</button>
 				))}
 			</Section>
+			{makeCardsHref && (
+				<Section title="Flashcards">
+					<Link href={makeCardsHref} className={ROW} data-testid="note-make-cards"><Name>Make flashcards from this page</Name></Link>
+				</Section>
+			)}
 			<Section title="Ideas in your graph">
 				{data.graph.length === 0 ? <Empty>No graph idea relates to this {subject} yet.</Empty> : data.graph.map((row) => {
 					const body = (<><Name>{row.name}</Name><Meta>{row.statement}</Meta></>);
@@ -134,7 +142,7 @@ export function NoteConnectionsPanel({ pageId, subject, onOpenPage, onFollowLink
 	return (
 		<aside aria-label="Links and sources" data-testid="note-connections" className={cn("flex flex-col gap-4", className)}>
 			{data
-				? <NoteConnectionsBody data={data} subject={subject} onOpenPage={onOpenPage} onFollowLink={onFollowLink} onSource={onSource} />
+				? <NoteConnectionsBody data={data} subject={subject} onOpenPage={onOpenPage} onFollowLink={onFollowLink} onSource={onSource} makeCardsHref={subject === "diagram" ? undefined : `/review?make=${encodeURIComponent(`page:${pageId}`)}`} />
 				: failed
 					? <div role="status" className="flex flex-wrap items-center gap-2 px-2 text-sm text-ink-2"><p>These links could not be loaded.</p><button type="button" className="prompt-secondary" onClick={() => void refresh()}>Try again</button></div>
 					: <div role="status" aria-label="Loading links" className="flex flex-col gap-2 px-2"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-5 w-1/2" /></div>}

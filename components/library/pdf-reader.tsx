@@ -9,7 +9,7 @@
 import "./pdf-reader.css";
 import { useRouter } from "next/navigation";
 import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeftIcon, ChevronRightIcon, HighlighterIcon, MinusIcon, PlusIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, HighlighterIcon, MinusIcon, PlusIcon, TextCursorInputIcon } from "lucide-react";
 import { ChatActionsContext } from "@/components/chat-actions-context.ts";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,6 +17,7 @@ import { ANCHOR_UNANCHORED_TEXT, anchorContext, CARD_PASSAGE_KEY, ANNOTATION_QUO
 import { pdfLoadOptions, PDF_WORKER_SRC } from "./pdf-options.ts";
 import type { PaneItem } from "./page-pane-context.tsx";
 import { DOCUMENT_TUTOR_ACTIONS, documentTutorMessage, TUTOR_ACTION_LABEL, TUTOR_BLOCKED_TEXT, type DocumentTutorAction } from "./page-tutor-actions.ts";
+import { firstPdfCursor, movePdfCursor, pdfCursorMoveFor, type PdfCursor } from "./pdf-keyboard-selection.ts";
 import { SavePassageDialog, type DocumentPassage } from "./save-passage-dialog.tsx";
 
 type PdfJs = typeof import("pdfjs-dist/legacy/build/pdf.mjs");
@@ -276,6 +277,10 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 	const [removed, setRemoved] = useState<DocumentAnnotation | null>(null);
 	const [bubbleHeight, setBubbleHeight] = useState(150);
 	const noteOpener = useRef<HTMLElement | null>(null);
+	// The keyboard's selection (feature 023): which page, and what is selected on it.
+	const [keyboardPage, setKeyboardPage] = useState<number | null>(null);
+	const keyboardCursor = useRef<PdfCursor | null>(null);
+	const [keyboardLine, setKeyboardLine] = useState<string | null>(null);
 	const [saving, setSaving] = useState<DocumentPassage | null>(null);
 	const [sentLine, setSentLine] = useState<string | null>(null);
 	const [cite, setCite] = useState<{ page: number; quote: string; nonce: number; citation: boolean; terms?: readonly string[] } | null>(null);
@@ -424,7 +429,10 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 			cancelAnimationFrame(frame);
 			frame = requestAnimationFrame(() => {
 				if (pressingBubble.current || !scroller.current) return;
-				setSelected(readSelection(scroller.current));
+				const next = readSelection(scroller.current);
+				setSelected(next);
+				// A click elsewhere ended it: the keyboard's mode goes too. Focus staying put isn't enough to keep it.
+				if (!next && document.activeElement !== scroller.current && keyboardCursor.current) { keyboardCursor.current = null; setKeyboardPage(null); setKeyboardLine(null); }
 			});
 		};
 		document.addEventListener("selectionchange", read);
@@ -434,6 +442,62 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 		pressingBubble.current = false;
 		setSelected(null);
 		window.getSelection()?.removeAllRanges();
+		keyboardCursor.current = null;
+		setKeyboardPage(null);
+		setKeyboardLine(null);
+	};
+	/** Puts a real selection on the page, so what follows is what a pointer gets. */
+	const showKeyboardSelection = (page: number, cursor: PdfCursor): boolean => {
+		const box = pages.current.get(page);
+		const layer = box?.querySelector<HTMLElement>('[data-testid="pdf-text-layer"]');
+		const range = layer && rangeFor(layer, cursor.start, cursor.end);
+		if (!range) return false;
+		const selection = window.getSelection();
+		selection?.removeAllRanges();
+		selection?.addRange(range);
+		keyboardCursor.current = cursor;
+		setKeyboardPage(page);
+		const quote = range.toString();
+		setKeyboardLine(`Page ${page}: ${quote.length > 80 ? `${quote.slice(0, 80)}…` : quote}`);
+		const start = range.startContainer instanceof Element ? range.startContainer : range.startContainer.parentElement;
+		start?.scrollIntoView({ block: "nearest", inline: "nearest" });
+		return true;
+	};
+	/** A page's first word, once its text is drawn: it may still be off screen, so it can take a moment. */
+	const startKeyboardSelectionOn = (page: number, tries = 40) => {
+		const box = pages.current.get(page);
+		const layer = box?.querySelector<HTMLElement>('[data-testid="pdf-text-layer"]');
+		const ready = box?.hasAttribute("data-text-ready") && layer;
+		const first = ready ? firstPdfCursor(layerText(layer).text) : null;
+		if (first) { showKeyboardSelection(page, first); return; }
+		if (ready || tries <= 0) { setKeyboardLine(`Page ${page} has no text to select.`); setKeyboardPage(page); return; }
+		setKeyboardPage(page);
+		setKeyboardLine(`Getting page ${page}'s text…`);
+		window.setTimeout(() => startKeyboardSelectionOn(page, tries - 1), 100);
+	};
+	const startKeyboardSelection = () => {
+		scroller.current?.focus({ preventScroll: true });
+		scrollToPage(current, "nearest");
+		startKeyboardSelectionOn(current);
+	};
+	/** Arrows move, Shift extends, and off the end of a page goes on to the next one. */
+	const moveKeyboardSelection = (key: string, extend: boolean): boolean => {
+		if (keyboardPage === null) return false;
+		const move = pdfCursorMoveFor(key);
+		if (!move) return false;
+		const cursor = keyboardCursor.current;
+		const layer = pages.current.get(keyboardPage)?.querySelector<HTMLElement>('[data-testid="pdf-text-layer"]');
+		if (!cursor || !layer) return true;
+		const { text, nodes } = layerText(layer);
+		const next = movePdfCursor(text, nodes.map((node) => node.start), cursor, move, extend);
+		if (next) { showKeyboardSelection(keyboardPage, next); return true; }
+		// A selection stays on one page, as a pointer's does: Shift stops at the edge.
+		if (extend) return true;
+		const page = keyboardPage + (move.endsWith("next") ? 1 : -1);
+		if (page < 1 || page > numPages) return true;
+		scrollToPage(page, "nearest");
+		startKeyboardSelectionOn(page);
+		return true;
 	};
 
 	const saveHighlight = async (anchor: TextAnchor, note?: string) => {
@@ -550,11 +614,20 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 			onKeyDown={(event) => {
 				if (event.key !== "Escape") return;
 				// Innermost first: the selection, then the list, then the pane's own Escape.
-				if (selected) { event.preventDefault(); event.stopPropagation(); clearSelection(); }
+				if (selected || keyboardPage !== null) {
+					event.preventDefault();
+					event.stopPropagation();
+					clearSelection();
+					scroller.current?.focus({ preventScroll: true });
+				}
 				else if (panel) { event.preventDefault(); event.stopPropagation(); setPanel(false); }
 			}}
 		>
 			<div role="toolbar" aria-label="PDF controls" className="flex shrink-0 flex-wrap items-center gap-1 px-2 pb-1">
+				<button type="button" className={TEXT_BUTTON} aria-pressed={keyboardPage !== null} disabled={noText} onClick={() => { if (keyboardPage !== null) clearSelection(); else startKeyboardSelection(); }} data-testid="pdf-keyboard-select" title="Select text with the keyboard">
+					<TextCursorInputIcon className="ui-icon" aria-hidden="true" />
+					Select text
+				</button>
 				<button type="button" className={TOOL} aria-label="Previous page" disabled={current <= 1} onClick={() => scrollToPage(current - 1)}><ChevronLeftIcon className="ui-icon" aria-hidden="true" /></button>
 				<form className="flex items-center gap-1 text-sm text-ink-2" onSubmit={(event) => { event.preventDefault(); goToField(); }}>
 					<label className="sr-only" htmlFor={`pdf-page-${item.id}`}>Page number</label>
@@ -570,6 +643,12 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 					Highlights{annotations.length ? ` (${annotations.length})` : ""}
 				</button>
 			</div>
+			{keyboardPage !== null && (
+				<p role="status" aria-live="polite" className="px-3 pb-1 text-sm text-ink-2 [overflow-wrap:anywhere]" data-testid="pdf-keyboard-line">
+					<span className="block">Arrows move a word or line. Shift extends. Enter opens the actions. Escape stops.</span>
+					{keyboardLine && <span className="block text-muted-foreground">{keyboardLine}</span>}
+				</p>
+			)}
 			{noText && <p role="status" className="px-3 pb-1 text-sm text-ink-2" data-testid="pdf-no-text">No text could be read in this PDF, so passages can&apos;t be selected, highlighted or searched. It may be a scan.</p>}
 			{jumpLine && (
 				<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-1 text-sm text-ink-2" data-testid="pdf-jump-status">
@@ -621,6 +700,15 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 				aria-label={`${item.name}, pages`}
 				data-testid="pdf-scroll"
 				className="min-h-0 flex-1 overflow-auto overscroll-contain focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring"
+				onKeyDown={(event) => {
+					if (keyboardPage === null || event.target !== event.currentTarget) return;
+					if (event.key === "Enter" && selected) {
+						event.preventDefault();
+						bubble.current?.querySelector<HTMLElement>("button")?.focus();
+						return;
+					}
+					if (moveKeyboardSelection(event.key, event.shiftKey)) event.preventDefault();
+				}}
 			>
 				{!doc || !pdfjs ? (
 					<div role="status" aria-label={`Loading ${item.name}`} className="flex flex-col gap-2 px-3 py-2">

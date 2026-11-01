@@ -60,6 +60,8 @@ export function DiagramSurface({ item, pane, phone }: { item: PaneItem; pane: Pa
 	const [exportOpen, setExportOpen] = useState(false);
 	const [exportLine, setExportLine] = useState<string | null>(null);
 	const [dangling, setDangling] = useState<string | null>(null);
+	const [danglingTarget, setDanglingTarget] = useState<string | null>(null);
+	const [createFailed, setCreateFailed] = useState<string | null>(null);
 	const [wide, setWide] = useState(false);
 	useEffect(() => {
 		const el = root.current;
@@ -106,7 +108,23 @@ export function DiagramSurface({ item, pane, phone }: { item: PaneItem; pane: Pa
 			openItem({ id: resolution.id, name: resolution.name, kind: resolution.kind, size: resolution.size ?? 0 });
 			return;
 		}
+		setCreateFailed(null);
+		setDanglingTarget(resolution.state === "missing" ? row.target : null);
 		setDangling(resolution.state === "deleted" ? `${row.target} was deleted from your Library. The link is kept.` : `Nothing in your Library is called ${row.target} yet.`);
+	};
+	// The page's own dangling link offers this too (feature 016); the name is the link's.
+	const createLinked = async (name: string) => {
+		setCreateFailed(null);
+		try {
+			const response = await fetch("/api/library/pages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name.trim(), content: "" }) });
+			const body = await response.json().catch(() => ({})) as { item?: { id: string; name: string; kind: LibraryKind; size: number }; error?: string };
+			if (!response.ok || !body.item) { setCreateFailed(body.error ?? `${name} could not be created.`); return; }
+			setDangling(null);
+			setDanglingTarget(null);
+			openItem(body.item);
+		} catch {
+			setCreateFailed(`${name} could not be created. Check your connection and try again.`);
+		}
 	};
 	const followSource = (href: string) => {
 		setFullScreen(false);
@@ -234,7 +252,9 @@ export function DiagramSurface({ item, pane, phone }: { item: PaneItem; pane: Pa
 					{dangling && (
 						<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-ink-2" data-testid="diagram-link-dangling-line">
 							<p className="min-w-0 flex-[1_1_12rem] [overflow-wrap:anywhere]">{dangling}</p>
+							{danglingTarget && <button type="button" className="prompt-secondary" data-testid="diagram-link-create" onClick={() => void createLinked(danglingTarget)}>Create page</button>}
 							<button type="button" className="prompt-secondary" onClick={() => setDangling(null)}>Dismiss</button>
+							{createFailed && <p role="alert" className="w-full text-sm text-destructive">{createFailed}</p>}
 						</div>
 					)}
 					{proposals.length > 0 && usable && (

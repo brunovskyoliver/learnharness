@@ -11,7 +11,7 @@ const LibraryPane = dynamic(() => import("./context-pane").then((m) => m.Library
  *  column. A page or demo always wins, and loads nothing until then. */
 function useContextVisible() {
 	const workspace = useWorkspace();
-	return Boolean(workspace?.contextOpen && !workspace.occupied);
+	return Boolean((workspace?.contextOpen || workspace?.phoneContext) && !workspace.occupied);
 }
 
 export function SessionContextSlot(props: ComponentProps<typeof SessionPane>) {

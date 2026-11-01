@@ -154,6 +154,7 @@ export function WorkspaceTabStrip({ className }: { className?: string }) {
 		}
 	};
 
+	// On a phone it opens the session's Notes and outline; a page or demo has its own layer.
 	const label = rightPaneVisible ? "Hide right pane" : "Show right pane";
 	const showToggle = paneRoute || workspace.occupied;
 	return (
@@ -168,7 +169,7 @@ export function WorkspaceTabStrip({ className }: { className?: string }) {
 			onClose={closeAndKeepFocus}
 			onKeyDown={onKeyDown}
 			listRef={list}
-			// The toggle is the only content then, and it is hidden on phones.
+			// The toggle would be the only content then, with nothing to say on a phone.
 			className={cn(className, tabs.length === 0 && workspace.shownIds.length === 0 && "max-md:hidden")}
 			trailing={showToggle ? (
 				<Hint label={label} action="toggle-right-pane" side="bottom">
@@ -178,7 +179,7 @@ export function WorkspaceTabStrip({ className }: { className?: string }) {
 						aria-expanded={rightPaneVisible}
 						data-testid="right-pane-toggle"
 						onClick={toggleRightPane}
-						className="hidden size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:flex pointer-coarse:size-11"
+						className={cn("size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:flex pointer-coarse:size-11", workspace.occupied ? "hidden" : "flex")}
 					>
 						{rightPaneVisible ? <PanelRightCloseIcon className="ui-icon" aria-hidden="true" /> : <PanelRightOpenIcon className="ui-icon" aria-hidden="true" />}
 					</button>

@@ -34,6 +34,8 @@ export interface WorkspaceApi {
 	/** Hidden on wide screens; the page or demo stays mounted. */
 	paneCollapsed: boolean;
 	contextOpen: boolean;
+	/** The context view's phone layer is up. Never saved. */
+	phoneContext: boolean;
 	closeContext: () => void;
 	expandPane: () => void;
 	toggleRightPane: () => void;
@@ -207,9 +209,20 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 	}, [tabs, paneTabId, routeTabId, pane, navigate]);
 
 	const occupied = paneItemId !== null || demoOpen;
-	const closeContext = useCallback(() => { setContextOpen(false); store.set("contextOpen", false); }, [store]);
+	// Phones (feature 023): the context view is a full-screen layer for this visit only, so
+	// a width change or a saved desktop choice can never cover a phone's page on load.
+	const [phoneContext, setPhoneContext] = useState(false);
+	const closeContext = useCallback(() => {
+		if (phoneContext) { setPhoneContext(false); return; }
+		setContextOpen(false);
+		store.set("contextOpen", false);
+	}, [store, phoneContext]);
 	const toggleRightPane = useCallback(() => {
-		if (!window.matchMedia(DESKTOP_QUERY).matches) return; // Phones use a full-screen layer.
+		if (!window.matchMedia(DESKTOP_QUERY).matches) {
+			// A page or demo already has its own layer there.
+			if (paneRoute && !occupied) setPhoneContext((open) => !open);
+			return;
+		}
 		if (occupied) {
 			const next = !paneCollapsed;
 			if (next) {
@@ -252,7 +265,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 	const rightPaneVisible = occupied ? !paneCollapsed : paneRoute && contextOpen;
 
 	const value = useMemo<WorkspaceApi>(() => ({
-		tabs, selectedId, shownIds, pendingId, activate, close, openItem, paneRoute, occupied, setDemoOpen, paneCollapsed, contextOpen, closeContext, expandPane, toggleRightPane, rightPaneVisible, libraryOpen, toggleLibrary, expandedFolders, toggleFolder,
-	}), [tabs, selectedId, shownIds, pendingId, activate, close, openItem, paneRoute, occupied, paneCollapsed, contextOpen, closeContext, expandPane, toggleRightPane, rightPaneVisible, libraryOpen, toggleLibrary, expandedFolders, toggleFolder]);
+		tabs, selectedId, shownIds, pendingId, activate, close, openItem, paneRoute, occupied, setDemoOpen, paneCollapsed, contextOpen, phoneContext, closeContext, expandPane, toggleRightPane, rightPaneVisible, libraryOpen, toggleLibrary, expandedFolders, toggleFolder,
+	}), [tabs, selectedId, shownIds, pendingId, activate, close, openItem, paneRoute, occupied, paneCollapsed, contextOpen, phoneContext, closeContext, expandPane, toggleRightPane, rightPaneVisible, libraryOpen, toggleLibrary, expandedFolders, toggleFolder]);
 	return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }
