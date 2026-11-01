@@ -1,6 +1,6 @@
 # Feature 023: Integration polish
 Stage: done, not merged or deployed
-Updated: 2026-11-01
+Updated: 2026-11-01 (follow-up at the end)
 
 ## Decisions
 
@@ -114,7 +114,7 @@ No existing assertion was changed. Golden fixtures are unchanged.
 **Risks**
 - Hosted hang, two browser checks' cold cache and `check-library-ui`'s race: resolved, see Follow-up.
 - `tests/sampling-panels-headless.test.ts` can flake under load.
-- `next-env.d.ts` is rewritten by `next dev`; I restored it each time.
+- `next-env.d.ts` is rewritten by `next dev` and `next build`; I restored it each time.
 - `.next` is 1.6 GB, down from 4.9 GB after removing its dev cache.
 - A next-server from an earlier session, PID 1472540, port 3133, still runs from a deleted standalone. Left alone, since this run didn't start it. PID 1264648 is the live deployment's container, untouched.
 - **The full test suite writes fixture records into the repo's real `data/`.** Each run adds sessions titled "Fixture mixed queue", "Scratch mixed queue", "Toggle bridge test", "steer: …" and "getApiKey pin", plus their jobs: 121 chat files on 2026-11-01, and the pattern goes back to 2026-10-27, so it predates the workspace work. It adds to the folder and touches no other file I found. Which tests isn't pinned down, beyond that only 59 of 306 test files mention `LH_DATA_DIR`. Not fixed and nothing deleted, since `data/` was to be left alone. The owner should decide whether to clean it and make the suite isolate itself.
@@ -194,3 +194,30 @@ Previously a proposal's Review sat inside a collapsed row, so a tutor edit from 
 Running them for real found a **product bug**, on `main` since `0328bf6`: a rail jump in a long session stopped partway. Positions 24609, 20289, 16213, 13169, then 13918 and still, against a target near 587. Offscreen rows taking their real height made the browser's scroll anchoring move the scroller, which the animation treats as someone else's scroll, and cancels. A jump now turns off `overflow-anchor` while it runs; the target is measured each frame. Gestures still cancel it. `check-turn-navigation-ui` covers it.
 
 The whole `smoke-dock-ui` (not on the requested list) still fails at line 359, "lesson wheel input scrolls natively". It also needs a key in the environment since `setup-cta` changed. Not investigated, not fixed.
+
+Later races, found by the final passes and fixed in the scripts: `check-notes-ui`, a phone's pane toggle clicked before hydration, 1 failure in 4 runs; `check-workspace-ui`, a composer handle detached by a client render, 1 of 4; `check-review-ui`, a rating key in the same frame as the answer, 2 of about 5, then 8 of 8 passed. For that last one the screen state was captured, the answer still showing and no rating; the stale handler is from reading the code, not shown directly. A person can't press a key that fast, so the product wasn't changed.
+
+### Final verification, on `6a2dd7c` (commits after it are this file only)
+
+Evidence: `~/agent-runs/2026-11-01-followup/final/`. All commands were run in one sequential pass, none failing.
+
+| Command | Result |
+| --- | --- |
+| `npx tsc --noEmit`, `npx eslint .` | clean, no output |
+| `npm test` | 3875 tests, 3873 pass, 0 fail, 2 skipped |
+| `npx next build`, `build-server.mjs`, `smoke-server.mjs` | pass, 4 tracing warnings as before; no `data/` in the standalone |
+| `check-library-folders-ui`, `check-workspace-ui`, `check-notes-ui`, `check-documents-ui`, `check-diagrams-ui` (57 PASS), `check-review-ui`, `smoke-sidebar-ui` (8), `smoke-demo-workspace`, `check-transcript-scroll-ui` | pass |
+| `check-library-ui` | pass, 74 PASS |
+| `check-session-state-ui` (7 PASS), `check-turn-navigation-ui` (6 PASS) | pass, now really running |
+| `check-hosted-tenants` | pass |
+| `smoke-server --electron`, `check-electron-shell` | pass, with GTK from the `gnome-46-2404` snap and `libwayland` unpacked to a temp folder, since removed. Without them Electron can't load `libgtk-3` here |
+
+Earlier passes on earlier commits had the failures above, in `final-earlier/` and `final-2/`. `git diff main -- tests/fixtures/golden-data` is empty. No file in `data/` changed in this run.
+
+### Still unverified
+- A real tool call in a live turn surfacing its row and line: seeded from the tool's result shape, and from the real store.
+- The whole `smoke-dock-ui`: fails at line 359, unexplained, not on the list.
+- Production `HOSTNAME` on the live system: repo files only.
+- Everything under "Hosted: not verified" and "Electron: not verified" above.
+- Intermittent races may remain in scripts other than those fixed. Each pass here had at most a new one or two until the last.
+- `practice/20-library.md` still says page tools "write pages". Also the bar and "Updated by the agent" paths in `DESIGN.md` describe code kept for older versions and outside updates.
