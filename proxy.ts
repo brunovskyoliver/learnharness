@@ -24,6 +24,9 @@ const hosted = clerkMiddleware(async (auth, request) => {
 	// read from the runtime env by Clerk itself; passing it here would
 	// require CLERK_ENCRYPTION_KEY.
 	publishableKey: process.env.CLERK_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+	// Optional: verify session tokens against this PEM rather than fetching Clerk's keys.
+	// scripts/check-hosted-tenants.mjs runs the real middleware offline this way.
+	...(process.env.CLERK_JWT_KEY ? { jwtKey: process.env.CLERK_JWT_KEY } : {}),
 	...CLERK_URLS,
 }));
 
