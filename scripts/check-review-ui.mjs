@@ -32,7 +32,16 @@ const api = async (url, method = "GET", body) => {
 };
 const shot = async (page, name) => { if (shots) await page.screenshot({ path: path.join(shots, `review-${name}.png`) }); };
 const text = (page, selector) => page.$eval(selector, (el) => el.textContent);
-const waitText = (page, selector, wanted) => page.waitForFunction((s, w) => document.querySelector(s)?.textContent?.includes(w), { timeout: 15000 }, selector, wanted);
+const waitText = (page, selector, wanted) => page.waitForFunction((s, w) => document.querySelector(s)?.textContent?.includes(w), { timeout: 15000 }, selector, wanted).catch(async (error) => {
+	const seen = await page.evaluate((s) => ({ found: document.querySelector(s)?.textContent ?? null, queue: document.querySelector('[data-testid="queue-panel"], main')?.innerText.slice(0, 400) }), selector);
+	throw new Error(`${selector} never held "${wanted}": ${JSON.stringify(seen)}`, { cause: error });
+});
+/** The queue's key handler is replaced by an effect after each render, so a key in the same frame as
+ *  the text it follows reaches the old one, which sees the reveal as still busy and drops it. */
+const queueKey = async (page, key) => {
+	await page.evaluate(() => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+	await page.keyboard.press(key);
+};
 const typeInto = async (page, selector, value) => { await page.click(selector); await page.type(selector, value); };
 const inDom = (page, needle) => page.evaluate((n) => document.documentElement.outerHTML.includes(n), needle);
 async function noOverflow(page, label) {
@@ -153,7 +162,7 @@ async function checkWidth(width, coarse) {
 	await shot(page, `${prefix}-back`);
 	ok(`${prefix} Space reveals, with predicted intervals`);
 	const firstFront = await text(page, '[data-testid="queue-front"]');
-	await page.keyboard.press("3");
+	await queueKey(page, "3");
 	await page.waitForFunction((f) => document.querySelector('[data-testid="queue-front"]')?.textContent !== f, {}, firstFront);
 	await waitText(page, '[data-testid="queue-live"]', "Good, back in 10 min");
 	await waitText(page, '[data-testid="queue-live"]', "1 card due");
@@ -171,7 +180,7 @@ async function checkWidth(width, coarse) {
 	ok(`${prefix} undo restores the card`);
 	await page.keyboard.press("Space");
 	await page.waitForSelector('[data-testid="queue-rate-easy"]');
-	await page.keyboard.press("4");
+	await queueKey(page, "4");
 	await waitText(page, '[data-testid="queue-count"]', "1 card due");
 
 	// Reload mid-queue: the next card, back hidden, undo still offered.
@@ -312,7 +321,7 @@ async function checkWidth(width, coarse) {
 	await page.waitForSelector('[data-testid="queue-reveal"]');
 	await page.click('[data-testid="queue-reveal"]');
 	await waitText(page, '[data-testid="queue-source"]', "this source is gone");
-	await page.keyboard.press("1");
+	await queueKey(page, "1");
 	await waitText(page, '[data-testid="queue-note"]', "Again");
 	ok(`${prefix} a trashed source reads as gone, and the card stays`);
 

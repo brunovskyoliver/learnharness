@@ -127,7 +127,8 @@ async function checkDesktop() {
 
 	// Palette: search, walk, navigate.
 	await page.goto(`${base}/chat/tab-one`, { waitUntil: "domcontentloaded" });
-	await page.waitForSelector(composer);
+	// The server's composer can be replaced by a client render, and a handle to it detached.
+	await page.waitForFunction((sel) => { const el = document.querySelector(sel); return el && el.getClientRects().length > 0 && Object.keys(el).some((key) => key.startsWith("__reactProps")); }, { timeout: 60000 }, composer);
 	await page.click(composer);
 	await chord(page, "Control", "k");
 	await page.waitForSelector(paletteInput);
