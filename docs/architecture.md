@@ -27,6 +27,7 @@ Core has no dependency on server or store. Agents receive effects through depend
 | Library | `library/catalog.json` for items and folders, flat bytes in `files/`, page versions under `library/pages/<id>/`. Folders are catalog-only and additive: the catalog version stays 1. Trash entries sit in their own catalog array, so an older app neither lists nor tombstones them; document bytes wait under `library/trash/<entry>/`, outside the agent file jail. Recent opens live in `library/recent.json` |
 | Search index | Rebuildable, safe to delete: `library/search/current.json` names a generation, `library/search/g_<id>/<itemId>.json` holds one shard per item, written atomically. A rebuild swaps generations only when complete |
 | Annotations | `library/annotations/<itemId>.json`: highlights and notes per PDF, apart from its bytes. They stay through the trash and go on purge |
+| Flashcards | `cards/cards.json` (cards and generation runs, atomic) and `cards/reviews.jsonl` (append-only). Newer formats are refused unchanged. Source and idea "gone" are worked out on read |
 | Background jobs | Job records under `jobs/` |
 | Product preferences | Versioned settings JSON |
 | Credentials | Dedicated auth/subscription storage through local or hosted boundaries |
@@ -75,6 +76,16 @@ A demo keeps one live sandboxed iframe while its inline, workspace and focused p
 `src/server/library-index.ts` keeps the index. Every Library write emits `library-changed`; one listener debounces it into a background catch-up in the emitter's tenant context, and PDFs parse on the per-tenant queue `library-text.ts` already had. A search reads shards and folded text from a capped per-tenant cache, yields while scanning, and reports what isn't ready as pending, so no request parses a PDF. The catalog decides what exists, so a trashed item can't appear even before its shard goes.
 
 The reader (`components/library/pdf-reader.tsx`) loads `pdfjs-dist` on the first PDF and uses its core API only: canvas plus text layer, with no annotation layer, scripting manager or sandbox bundle, and eval off. The worker, fonts, cmaps, wasm and ICC profiles come from the installed package through `/pdfjs/…`, by allow-list, and `next.config.ts` includes them in the standalone trace. Tests can't parse in the browser, so `tests/render-documents.test.tsx` pins the options and `scripts/check-documents-ui.mjs` fails on any request to another origin.
+
+## Flashcards
+
+FSRS sits behind core's `CardScheduler` port (`src/core/card-schedule.ts`). `src/server/card-scheduler.ts` is the only import of `ts-fsrs`, a dynamic one on the server. Handlers take the clock as an argument. A rating is appended to the log, then applied to the card, and `reconcileCards` makes the log win on read, so a crash between the two loses nothing.
+
+Scheduling and evidence don't meet. The graph ledgers have held no learner evidence since 2026-09-27, so `src/core/card-evidence.ts` derives weak ideas at read time from graded transcripts: practice targets with their outcomes, and graded checks joined to nodes by provenance. The result only chooses which due card shows first. No schedule reads it, no review feeds it, and `tests/cards.test.ts` compares ledger, transcript and card bytes to prove it.
+
+Generation uses `runSubmitAgent` with the extractor role. It isn't a `JobRecord`, because a job belongs to a chat and steers its result back into one. `src/server/card-generation.ts` keeps a per-tenant registry, and `activityFeed()` reports runs with cost, aborted through `/api/activity/abort`. What comes back is drafts, kept one at a time.
+
+The back reaches the browser only from the reveal route, or from an explicit Edit. The UI lives in `components/review/` and loads with `/review`; Home and the shell import none of it.
 
 ## Host and provider boundaries
 

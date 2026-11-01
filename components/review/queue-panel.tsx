@@ -10,7 +10,7 @@ import { CardText } from "./card-text.tsx";
 
 const FOCUS_LABEL: Record<CardFocus, string> = { all: "All due", "weak-first": "Weak ideas first", "weak-only": "Only weak ideas" };
 const FOCUS_KEY = "lh:review-focus";
-const PILL = "inline-flex h-9 items-center rounded-md px-3 text-sm font-medium transition-colors hover:bg-accent pointer-coarse:h-11";
+const PILL = "inline-flex h-9 items-center rounded-md px-3 text-sm font-medium transition-colors hover:bg-accent motion-reduce:transition-none pointer-coarse:h-11";
 
 function readFocus(): CardFocus {
 	try {
@@ -62,7 +62,7 @@ export function RatingButtons({ reveal, disabled, onRate }: { reveal: CardReveal
 					aria-keyshortcuts={String(index + 1)}
 					aria-label={`${preview.label}, back in ${preview.interval}`}
 					onClick={() => onRate(preview.rating)}
-					className="flex min-h-14 flex-col items-center justify-center rounded-md bg-accent px-2 py-1 text-foreground transition-colors hover:bg-[color-mix(in_srgb,var(--accent)_80%,var(--foreground))] disabled:cursor-default disabled:text-muted-foreground"
+					className="flex min-h-14 flex-col items-center justify-center rounded-md bg-accent px-2 py-1 text-foreground transition-colors motion-reduce:transition-none hover:bg-[color-mix(in_srgb,var(--accent)_80%,var(--foreground))] disabled:cursor-default disabled:text-muted-foreground"
 				>
 					<span className="text-base font-medium">{preview.label}</span>
 					<span className="text-sm text-ink-2 tabular-nums">{preview.interval}<span className="ml-1.5 font-mono text-xs text-muted-foreground max-sm:hidden" aria-hidden="true">{index + 1}</span></span>
@@ -274,7 +274,7 @@ export function QueuePanel({ refreshKey, busyLayer, onDrafts, onEdit, onHistory,
 					<div data-testid="queue-front"><CardText text={card.front} /></div>
 					{reveal ? (
 						<>
-							<div ref={answerRegion} tabIndex={-1} role="region" aria-label="Answer" data-testid="queue-back" className="rounded-md"><CardText text={reveal.back} className="text-ink-2" /></div>
+							<div ref={answerRegion} tabIndex={-1} role="region" aria-label="Answer" data-testid="queue-back" className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"><CardText text={reveal.back} className="text-ink-2" /></div>
 							<RevealMeta reveal={reveal} />
 							<RatingButtons reveal={reveal} disabled={busy} onRate={(rating) => void rate(rating)} />
 						</>

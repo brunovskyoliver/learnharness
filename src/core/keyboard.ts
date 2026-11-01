@@ -38,7 +38,10 @@ export type KeyAction =
 	| "toggle-user-thinking"
 	| "command-palette"
 	| "focus-tabs"
-	| "toggle-right-pane";
+	| "toggle-right-pane"
+	| "review-show"
+	| "review-rate"
+	| "review-undo";
 
 /** Where the cheat sheet groups an action (display only — dispatch is
  *  global; a seam that isn't mounted simply no-ops). */
@@ -92,6 +95,10 @@ export const KEYBOARD_ACTIONS: readonly KeyActionDef[] = [
 	{ id: "question-prev-row", label: "Question · previous row", scope: "chat", binding: "arrowup", displayOnly: true },
 	{ id: "question-pick-row", label: "Question · pick row", scope: "chat", binding: "space", displayOnly: true },
 	{ id: "question-submit", label: "Question · submit", scope: "chat", binding: "enter", displayOnly: true },
+	// The review queue's own keys (feature 021): it listens for them itself, on /review only.
+	{ id: "review-show", label: "Review · show the answer", scope: "global", binding: "space", displayOnly: true },
+	{ id: "review-rate", label: "Review · rate Again, Hard, Good or Easy (1 to 4)", scope: "global", binding: "1", displayOnly: true },
+	{ id: "review-undo", label: "Review · undo the last rating", scope: "global", binding: "u", displayOnly: true },
 ];
 
 const STORAGE_KEY = "lh:keymap";

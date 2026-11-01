@@ -32,6 +32,7 @@ export function CardEditorDialog({ target, onClose, onSaved }: { target: EditorT
 	const [hitsFailed, setHitsFailed] = useState(false);
 	const frontId = useId(), backId = useId(), ideasId = useId();
 	const frontField = useRef<HTMLTextAreaElement>(null);
+	const backField = useRef<HTMLTextAreaElement>(null);
 
 	const setDraft = (next: CardDraft) => {
 		setDraftState(next);
@@ -76,13 +77,17 @@ export function CardEditorDialog({ target, onClose, onSaved }: { target: EditorT
 	}, [target, query]);
 
 	const dirty = target?.mode === "edit" ? saved !== null && (draft.front !== saved.front || draft.back !== saved.back || draft.conceptIds.map((c) => c.id).join() !== saved.conceptIds.map((c) => c.id).join()) : Boolean(draft.front.trim() || draft.back.trim());
-	const canSave = draft.front.trim() !== "" && draft.back.trim() !== "" && !busy;
-
+	
 	const close = () => { drafts.writeOpen(null); onClose(); };
 	const discard = () => { drafts.clear(key); drafts.writeOpen(null); onClose(); };
 
 	const save = async (keepBoth = false) => {
-		if (!target || !canSave) return;
+		if (!target || busy) return;
+		if (!draft.front.trim() || !draft.back.trim()) {
+			setFailure(draft.front.trim() ? "Write the back too." : "Write the front first.");
+			(draft.front.trim() ? backField : frontField).current?.focus();
+			return;
+		}
 		setBusy(true); setFailure(null);
 		const body = { front: draft.front, back: draft.back, conceptIds: draft.conceptIds.map((concept) => concept.id), ...(keepBoth ? { keepBoth: true } : {}), ...(target.mode === "new" && draft.source ? { source: draft.source } : {}) };
 		const result = target.mode === "new"
@@ -105,7 +110,7 @@ export function CardEditorDialog({ target, onClose, onSaved }: { target: EditorT
 			<DialogContent
 				showCloseButton={false}
 				data-testid="card-editor"
-				className="flex max-h-[min(92dvh,48rem)] flex-col gap-3 overflow-y-auto rounded-[10px] border-0 bg-popover p-4 sm:max-w-xl"
+				className="flex max-h-[min(92dvh,48rem)] flex-col gap-3 overflow-y-auto overscroll-contain rounded-[10px] border-0 bg-popover p-4 sm:max-w-xl"
 				onEscapeKeyDown={(event) => { if (duplicates) { event.preventDefault(); setDuplicates(null); } }}
 				onOpenAutoFocus={(event) => { event.preventDefault(); frontField.current?.focus(); }}
 			>
@@ -116,9 +121,9 @@ export function CardEditorDialog({ target, onClose, onSaved }: { target: EditorT
 					: (
 					<>
 						<label htmlFor={frontId} className="text-sm font-medium text-ink-2">Front</label>
-						<textarea ref={frontField} id={frontId} data-testid="card-front" rows={3} maxLength={20_000} value={draft.front} placeholder="A question with one answer" onChange={(event) => { setDraft({ ...draft, front: event.target.value }); setDuplicates(null); }} className={FIELD} />
+						<textarea ref={frontField} id={frontId} name="card-front" data-testid="card-front" rows={3} maxLength={20_000} value={draft.front} placeholder="A question with one answer…" onChange={(event) => { setDraft({ ...draft, front: event.target.value }); setDuplicates(null); }} className={FIELD} />
 						<label htmlFor={backId} className="text-sm font-medium text-ink-2">Back</label>
-						<textarea id={backId} data-testid="card-back" rows={4} maxLength={20_000} value={draft.back} placeholder="The answer" onChange={(event) => setDraft({ ...draft, back: event.target.value })} className={FIELD} />
+						<textarea ref={backField} id={backId} name="card-back" data-testid="card-back" rows={4} maxLength={20_000} value={draft.back} placeholder="The answer…" onChange={(event) => setDraft({ ...draft, back: event.target.value })} className={FIELD} />
 						{preview && (
 							<div data-testid="card-preview" className="flex flex-col gap-2 rounded-[10px] bg-card p-3">
 								<CardText text={draft.front || "Nothing on the front yet."} />
@@ -138,7 +143,7 @@ export function CardEditorDialog({ target, onClose, onSaved }: { target: EditorT
 								))}
 							</ul>
 						)}
-						<input id={ideasId} data-testid="card-concept-search" value={query} onChange={(event) => setQuery(event.target.value)} autoComplete="off" spellCheck={false} placeholder="Search your ideas" className={`${FIELD} resize-none`} />
+						<input id={ideasId} name="card-idea-search" data-testid="card-concept-search" value={query} onChange={(event) => setQuery(event.target.value)} autoComplete="off" spellCheck={false} placeholder="Search your ideas…" className={`${FIELD} resize-none`} />
 						{hitsFailed && <p role="status" className="text-sm text-ink-2">Your ideas could not be searched.</p>}
 						{hits && hits.length > 0 && (
 							<ul className="flex max-h-40 flex-col gap-px overflow-y-auto" data-testid="card-concept-hits">
@@ -169,7 +174,7 @@ export function CardEditorDialog({ target, onClose, onSaved }: { target: EditorT
 							{dirty && <button type="button" data-testid="card-discard" className="prompt-secondary mr-auto" onClick={discard}>Discard draft</button>}
 							<button type="button" aria-pressed={preview} data-testid="card-preview-toggle" className="prompt-secondary" onClick={() => setPreview((open) => !open)}>Preview</button>
 							<button type="button" className="prompt-secondary" onClick={close}>Close</button>
-							<button type="button" data-testid="card-save" className="prompt-primary" disabled={!canSave || duplicates !== null} onClick={() => void save()}>{busy ? "Saving…" : "Save card"}</button>
+							<button type="button" data-testid="card-save" className="prompt-primary" disabled={busy || duplicates !== null} onClick={() => void save()}>{busy ? "Saving…" : "Save card"}</button>
 						</div>
 					</>
 				)}
@@ -191,7 +196,7 @@ export function CardHistoryDialog({ cardId, onClose }: { cardId: string | null; 
 	}, [cardId]);
 	return (
 		<Dialog open={cardId !== null} onOpenChange={(open) => { if (!open) onClose(); }}>
-			<DialogContent data-testid="card-history" aria-describedby={undefined} className="flex max-h-[min(80dvh,32rem)] flex-col gap-3 overflow-y-auto rounded-[10px] border-0 bg-popover p-4 sm:max-w-md">
+			<DialogContent data-testid="card-history" aria-describedby={undefined} className="flex max-h-[min(80dvh,32rem)] flex-col gap-3 overflow-y-auto overscroll-contain rounded-[10px] border-0 bg-popover p-4 sm:max-w-md">
 				<DialogTitle className="font-title text-xl font-medium">Review history</DialogTitle>
 				{failure && <p role="alert" className="text-sm text-destructive">{failure}</p>}
 				{!failure && rows === null && <div role="status" aria-label="Loading history"><Skeleton className="h-16 w-full" /></div>}

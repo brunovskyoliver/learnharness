@@ -58,6 +58,7 @@ second pillar of input).
 | ~~Open selected session~~ | ~~⌥Enter~~ | RETIRED (owner, 2026-10-10) — the search Enter above replaces it |
 | Jump to graph (home) | ⌘G | router.push in keyboard-shortcuts.tsx |
 | New session | ⌘N | router.push in keyboard-shortcuts.tsx |
+| Show the answer, rate 1 to 4, undo the last rating | Space, 1 2 3 4, U *on `/review`, outside fields, dialogs and menus* | `components/review/queue-panel.tsx` (displayOnly: never dispatched from the registry) |
 | Rename session | F2 | `lh:kbd-rename-session` (chat.tsx) |
 | Cheat sheet | ? | keyboard-shortcuts.tsx |
 | Find (graph: node search) | ⌘F | `lh:kbd-find` (graph-view.tsx; chat transcript search rides the same event when that feature lands) |

@@ -94,6 +94,15 @@ async function checkWidth(width, coarse) {
 	await waitText(page, '[data-testid="queue-front"]', frontA);
 	ok(`${prefix} a card by hand joins the queue`);
 
+	// An empty side is said in words, next to the field.
+	await page.click('[data-testid="review-new"]');
+	await page.waitForSelector('[data-testid="card-save"]');
+	await page.click('[data-testid="card-save"]');
+	await waitText(page, '[data-testid="card-editor"] [role="alert"]', "Write the front first");
+	assert.equal(await page.evaluate(() => document.activeElement?.getAttribute("data-testid")), "card-front");
+	await page.keyboard.press("Escape");
+	await page.waitForFunction(() => !document.querySelector('[data-testid="card-editor"]'));
+
 	// The duplicate warning: nothing is dropped, Skip and Keep both both work, Escape goes inner first.
 	await newCard(page, `  ${prefix} what is **ENTROPY** `, "dup back");
 	await page.waitForSelector('[data-testid="card-duplicate"]');
@@ -139,6 +148,7 @@ async function checkWidth(width, coarse) {
 	await waitText(page, '[data-testid="queue-live"]', "Answer shown");
 	await page.waitForSelector('[data-testid="queue-rate-good"]');
 	assert.match(await page.$eval('[data-testid="queue-rate-good"]', (el) => el.getAttribute("aria-label")), /Good, back in 10 min/);
+	assert.notEqual(await page.$eval('[data-testid="queue-back"]', (el) => (document.activeElement === el ? getComputedStyle(el).outlineStyle : "not focused")), "none", "the answer shows focus");
 	await noOverflow(page, `${prefix} revealed`);
 	await shot(page, `${prefix}-back`);
 	ok(`${prefix} Space reveals, with predicted intervals`);

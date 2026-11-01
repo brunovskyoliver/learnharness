@@ -47,6 +47,7 @@ export function ListStates({ data, failure, onRetry, label, children }: { data: 
 export function AllCards({ cards, onEdit, onHistory, onChanged, onFailure }: { cards: CardRow[]; onEdit: (id: string) => void; onHistory: (id: string) => void; onChanged: (message: string) => void; onFailure: (text: string) => void }) {
 	const [query, setQuery] = useState("");
 	const [weakOnly, setWeakOnly] = useState(false);
+	const [limit, setLimit] = useState(100);
 	const live = cards.filter((card) => !card.deletedAt);
 	const hasWeak = live.some((card) => card.concepts.some((concept) => concept.weak));
 	const needle = query.trim().toLowerCase();
@@ -63,12 +64,12 @@ export function AllCards({ cards, onEdit, onHistory, onChanged, onFailure }: { c
 	return (
 		<div className="flex flex-col gap-2">
 			<div className="flex flex-wrap items-center gap-2">
-				<input aria-label="Search your cards" name="card-search" data-testid="cards-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search your cards" autoComplete="off" className="h-10 min-w-0 flex-1 rounded-md border border-[var(--edge)] bg-background px-3 text-base text-foreground placeholder:text-muted-foreground pointer-coarse:h-11" />
+				<input aria-label="Search your cards" name="card-search" data-testid="cards-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search your cards…" autoComplete="off" className="h-10 min-w-0 flex-1 rounded-md border border-[var(--edge)] bg-background px-3 text-base text-foreground placeholder:text-muted-foreground pointer-coarse:h-11" />
 				{hasWeak && <button type="button" aria-pressed={weakOnly} data-testid="cards-weak" className={`prompt-secondary ${weakOnly ? "bg-accent text-foreground" : ""}`} onClick={() => setWeakOnly((on) => !on)}>Only weak ideas</button>}
 			</div>
 			{shown.length === 0 ? <p role="status" className="text-ink-2">Nothing matched</p> : (
 				<ul className="flex flex-col gap-1" data-testid="cards-list">
-					{shown.map((card) => (
+					{shown.slice(0, limit).map((card) => (
 						<li key={card.id} data-testid="card-row" className="flex items-start gap-2 rounded-[10px] bg-card py-2 pl-3 pr-1">
 							<div className="flex min-w-0 flex-1 flex-col gap-0.5">
 								<span className="text-base text-foreground [overflow-wrap:anywhere]">{teaserPlain(card.front)}</span>
@@ -85,6 +86,7 @@ export function AllCards({ cards, onEdit, onHistory, onChanged, onFailure }: { c
 					))}
 				</ul>
 			)}
+			{shown.length > limit && <button type="button" data-testid="cards-more" className="prompt-secondary self-start" onClick={() => setLimit((at) => at + 100)}>Show {Math.min(100, shown.length - limit)} more</button>}
 		</div>
 	);
 }

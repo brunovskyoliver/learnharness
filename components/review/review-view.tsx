@@ -15,7 +15,7 @@ import { MakePanel } from "./make-panel.tsx";
 import { QueuePanel } from "./queue-panel.tsx";
 
 const RAISED_2 = "bg-accent text-foreground hover:bg-[color-mix(in_srgb,var(--accent)_80%,var(--foreground))] pointer-coarse:h-11";
-const PILL = "inline-flex h-9 items-center rounded-md px-3 text-sm font-medium transition-colors hover:bg-accent pointer-coarse:h-11";
+const PILL = "inline-flex h-9 items-center rounded-md px-3 text-sm font-medium transition-colors hover:bg-accent motion-reduce:transition-none pointer-coarse:h-11";
 const VIEWS = { due: "Due", cards: "All cards", drafts: "Drafts", deleted: "Deleted" } as const;
 type ViewName = keyof typeof VIEWS;
 
