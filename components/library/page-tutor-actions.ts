@@ -21,8 +21,9 @@ export const TUTOR_ACTION_LABEL: Record<TutorAction, string> = {
 /** The bubble's order (feature 018): answers first, then edits, then checks. */
 export const TUTOR_ACTIONS: readonly TutorAction[] = ["explain", "simpler", "summarize", "rewrite", "expand", "challenge", "quiz", "questions", "ask"];
 
-/** These ask for a change in the page: a tutor version, with its review bar and
- *  Undo, the learner's draft saved first (feature 010). The rest answer in chat. */
+/** These ask for a change in the page: held for his review, apart from the page, until
+ *  he accepts it (feature 023, src/core/page-proposals.ts pins these messages). The
+ *  rest answer in chat. */
 export const TUTOR_EDIT_ACTIONS: ReadonlySet<TutorAction> = new Set(["simpler", "rewrite", "expand"]);
 
 export const TUTOR_BLOCKED_TEXT: Record<Exclude<ChatSendBlock, null>, string> = {

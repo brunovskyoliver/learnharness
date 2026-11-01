@@ -29,6 +29,7 @@ import type {
 } from "./contracts.ts";
 import type { UserSettings } from "./settings.ts";
 import type { DiagramDoc, DiagramProposal, DiagramProposalStatus, DiagramRefusalCode } from "./diagram.ts";
+import type { PageProposal, PageProposalStatus } from "./page-proposals.ts";
 import type { LibraryFolder, LibraryItem, LibraryMarks, LibraryTrashEntry, LibraryRefusal, LibraryTextState, LibraryTombstone, PageAuthor, PageHead, PageState, PageVersion, PageVersionCause, PageWriteResult } from "./library.ts";
 
 // ─── ChatStore — the session record's home (data/chats) ─────────────────────
@@ -287,6 +288,45 @@ export interface DiagramStore {
 	 *  an approval can't undo what he never saw. His draft becomes his version first. */
 	approve(id: string, options: { expected?: { head: number; rev: number }; name?: string }): Promise<ProposalOutcome>;
 	/** A deleted session's proposals lose their link, as its pages do. */
+	unlinkChat(chatId: string): Promise<void>;
+}
+
+export type PageProposalAccept =
+	| { outcome: "accepted"; proposal: PageProposal; item: LibraryItem; version: PageVersion; savedLearnerVersion?: number }
+	/** The head is not the one the tutor changed. */
+	| { outcome: "moved"; head: number }
+	/** His typing since sits on the same lines. */
+	| { outcome: "overlap"; head: number }
+	/** The page isn't what the review compared against. */
+	| { outcome: "compared-stale"; head: number }
+	| { outcome: "too-large" }
+	| { outcome: "resolved"; proposal: PageProposal }
+	| { outcome: "target-gone" }
+	| { outcome: "missing" };
+
+export interface PageProposalReview {
+	proposal: PageProposal;
+	/** Null once the page has left the Library. `merged` is what Accept would write, null if it can't. */
+	current: { text: string; name: string; expected: { head: number; rev: number }; merged: string | null; moved: boolean } | null;
+}
+
+/** Held page edits (feature 023). Nothing but `accept` touches a page. */
+export interface PageProposalStore {
+	/** Same contract as an agent revision's base and `apply`, with no write to the page or its draft. */
+	propose(input: { pageId: string; baseVersion: number; chatId?: string; toolCallId?: string; apply: (head: string) => string | { refused: string } }): Promise<
+		| { outcome: "proposed"; proposal: PageProposal }
+		| { outcome: "stale"; head: number }
+		| { outcome: "refused"; reason: string }
+		| { outcome: "too-large" }
+		| { outcome: "missing" }
+	>;
+	proposals(filter?: { pageId?: string; status?: PageProposalStatus }): Promise<PageProposal[]>;
+	proposal(id: string): Promise<PageProposal | null>;
+	review(id: string): Promise<PageProposalReview | null>;
+	edit(id: string, text: string): Promise<PageProposal | "missing" | "resolved" | "too-large">;
+	reject(id: string): Promise<{ outcome: "rejected" | "resolved"; proposal: PageProposal } | { outcome: "missing" }>;
+	accept(id: string, expected: { head: number; rev: number }): Promise<PageProposalAccept>;
+	/** A deleted session's proposals stay and lose their link, as its pages do. */
 	unlinkChat(chatId: string): Promise<void>;
 }
 

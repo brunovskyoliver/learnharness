@@ -9,6 +9,7 @@ import { pageRowHeadline, toolActivityLabel, type ArtifactPartProps, type PageRo
 
 /** Arrives on the first Review, so a transcript carries none of it (feature 022). */
 const DiagramProposalDialog = dynamic(() => import("@/components/diagram/diagram-proposal-dialog.tsx").then((m) => m.DiagramProposalDialog), { ssr: false });
+const PageProposalDialog = dynamic(() => import("./page-proposal-dialog.tsx").then((m) => m.PageProposalDialog), { ssr: false });
 
 const ACTION = "text-foreground underline decoration-foreground/40 underline-offset-[3px] hover:decoration-foreground pointer-coarse:min-h-11";
 const OUTCOMES = ["created", "revised", "stale", "failed", "read", "proposed"];
@@ -56,10 +57,17 @@ export function PageRow({ part }: ArtifactPartProps) {
 				{reason && <p className="text-destructive">{reason}</p>}
 				{proposal && (
 					<div className="flex flex-wrap gap-3">
-						<button type="button" className={ACTION} aria-label={`Review the proposal for ${proposal.name}`} data-testid="diagram-row-review" onClick={() => setReviewing(true)}>Review</button>
+						<button type="button" className={ACTION} aria-label={`Review the proposal for ${proposal.name}`} data-testid={proposal.target === "page" ? "page-row-review" : "diagram-row-review"} onClick={() => setReviewing(true)}>Review</button>
 					</div>
 				)}
-				{proposal && reviewing && (
+				{proposal && reviewing && proposal.target === "page" && (
+					<PageProposalDialog
+						proposalId={proposal.proposalId}
+						onClose={() => setReviewing(false)}
+						onAccepted={(item) => pane?.open({ id: item.id, name: item.name, kind: item.kind, size: item.size })}
+					/>
+				)}
+				{proposal && reviewing && proposal.target !== "page" && (
 					<DiagramProposalDialog
 						proposalId={proposal.proposalId}
 						onClose={() => setReviewing(false)}

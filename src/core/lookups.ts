@@ -57,7 +57,7 @@ export type PageRowDetails =
 	| { outcome: "stale"; reason: string; itemId?: string; savedLearnerVersion?: number }
 	| { outcome: "failed"; reason: string }
 	| { outcome: "read"; itemId: string; name: string; kind: string; size: number }
-	| { outcome: "proposed"; proposalId: string; itemId: string | null; name: string };
+	| { outcome: "proposed"; proposalId: string; itemId: string | null; name: string; target?: "page" };
 
 export function pageRowHeadline(tool: string, details: PageRowDetails | null): string {
 	if (tool === "library_read") return details?.outcome === "read" ? `Library · read ${details.name}` : "Library · failed";
@@ -67,6 +67,7 @@ export function pageRowHeadline(tool: string, details: PageRowDetails | null): s
 	}
 	switch (details?.outcome) {
 		case "created": return `Page · created ${details.name}`;
+		case "proposed": return `Page · proposed a change to ${details.name}, waiting for your review`;
 		case "revised": return `Page · revised ${details.name} · version ${details.version}`;
 		case "stale": return "Page · couldn't revise, it changed";
 		default: return "Page · failed";

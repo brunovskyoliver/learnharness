@@ -19,6 +19,7 @@ const { stores } = await import("../src/server/stores.ts");
 const { tutorHunks, revertTutorChanges } = await import("../components/library/page-blocks.ts");
 const { tutorMessage } = await import("../components/library/page-tutor-actions.ts");
 const { isRefusal } = await import("../src/core/library.ts");
+const { isHeldEditTurn } = await import("../src/core/page-proposals.ts");
 after(() => fs.rmSync(dir, { recursive: true, force: true }));
 
 const store = stores.libraryStore;
@@ -30,7 +31,7 @@ function chatWithModel(title: string) {
 	return chat;
 }
 
-async function turn(chatId: string, text: string, steps: (seen: string[]) => FauxResponseStep[]) {
+async function turn(chatId: string, text: string, steps: (seen: string[]) => FauxResponseStep[], options: { held?: { proposals: typeof stores.pageProposalStore; turnHolds: () => boolean } } = {}) {
 	const seen: string[] = [];
 	const faux = createFauxCore({});
 	faux.setResponses(steps(seen));
@@ -38,7 +39,7 @@ async function turn(chatId: string, text: string, steps: (seen: string[]) => Fau
 	const request = new Request("http://test/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ chatId, input: { type: "text", text } }) });
 	const ack = await handleChatRequest(request, (opts) => createTeacherAgent(undefined, {
 		engine, messages: opts.messages,
-		tools: { ...bareQuestionTools(), ...pageTools({ store, chatId, blocked: () => null }) },
+		tools: { ...bareQuestionTools(), ...pageTools({ store, chatId, blocked: () => null, ...options }) },
 	}));
 	assert.equal(ack.status, 200, await ack.clone().text());
 	const handle = runningTurn(chatId);
@@ -78,6 +79,27 @@ describe("contextual AI actions", () => {
 		const after = (await store.readPageVersion(id, 3))!.content;
 		assert.equal(after, "Keep this, typed.\n\nWritten more clearly.\n");
 		assert.equal(revertTutorChanges(after, tutorHunks(3, before, after)).text, before);
+	});
+
+	it("Rewrite with held edits wired in, as the app's registries do (feature 023): the page and draft wait for his decision", async () => {
+		const made = await store.createPage("Week 5", "Keep this.\n\nRewrite this.\n", { author: "learner" });
+		assert.ok(!isRefusal(made));
+		const id = made.item.id;
+		await store.savePageDraft(id, { base: 1, rev: 0, content: "Keep this, typed.\n\nRewrite this.\n" });
+		const chat = chatWithModel("Rewrite held");
+		const held = { proposals: stores.pageProposalStore, turnHolds: () => isHeldEditTurn(stores.chatStore.getChat(chat.id)?.messages ?? []) };
+		await turn(chat.id, tutorMessage("rewrite", "Week 5", "Rewrite this."), () => [
+			() => fauxAssistantMessage([fauxToolCall("page_revise", { item: id, baseVersion: 1, edits: [{ find: "Rewrite this.", replace: "Written more clearly." }] }, { id: "revise-held" })], { stopReason: "toolUse" }),
+			() => fauxAssistantMessage([fauxText("It is waiting for you.")]),
+		], { held });
+		const state = (await store.readPage(id))!;
+		assert.equal(state.head.n, 1);
+		assert.equal(state.draft?.content, "Keep this, typed.\n\nRewrite this.\n");
+		assert.equal((await store.listPageVersions(id))!.length, 1);
+		const [proposal] = await stores.pageProposalStore.proposals({ pageId: id, status: "pending" });
+		assert.equal(proposal!.text, "Keep this.\n\nWritten more clearly.\n");
+		const review = (await stores.pageProposalStore.review(proposal!.id))!;
+		assert.equal(review.current!.merged, "Keep this, typed.\n\nWritten more clearly.\n");
 	});
 
 	it("Generate questions: posed through the question mechanics, and the page isn't touched", async () => {

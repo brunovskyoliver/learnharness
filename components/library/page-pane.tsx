@@ -46,6 +46,9 @@ const DiagramSurface = dynamic(() => import("@/components/diagram/diagram-surfac
 	loading: () => <EditorLoading />,
 });
 
+/** Waiting edits on this page (feature 023); its dialog loads on the first Review. */
+const PageProposalsLine = dynamic(() => import("./page-proposals-line.tsx").then((m) => m.PageProposalsLine), { ssr: false });
+
 const PHONE_QUERY = "(max-width: 767.98px)";
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"]), [contenteditable="true"]';
 const AGENT_UPDATE_MS = 4000;
@@ -535,6 +538,14 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 						<ChangeBar text={changeBarText(changes)} busy={undoing} onPrevious={() => step(-1)} onNext={() => step(1)} onUndo={() => void undoTutor()} onDone={() => void done()} />
 					)}
 					{changeLine && <p role="status" className="px-3 pb-2 text-sm text-ink-2" data-testid="page-change-line">{changeLine}</p>}
+					{!state.deleted && state.loaded && (
+						<PageProposalsLine
+							pageId={item.id}
+							className="mx-3 mb-2"
+							beforeAccept={async () => { editor.current?.flush(); return controller.savedForReview(); }}
+							whileAccepting={(run, accepted) => controller.whileAccepting(run, accepted)}
+						/>
+					)}
 					{state.conflict && <ConflictLine onKeepMine={() => void controller.keepMine()} onUseLatest={() => void controller.useLatest()} />}
 					<p role="status" aria-live="polite" className="px-3 text-sm text-ink-2 empty:hidden" data-testid="page-agent-update">
 						{state.agentUpdate !== null && !changes ? `Updated by the agent · version ${state.agentUpdate}` : ""}

@@ -2,7 +2,7 @@ import { Type } from "typebox";
 import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { isRefusal, isTombstone, PAGE_MAX_BYTES } from "../../core/library.ts";
 import { applyPageEdits } from "../../core/page-edits.ts";
-import type { LibraryStore } from "../../core/ports.ts";
+import type { LibraryStore, PageProposalStore } from "../../core/ports.ts";
 import { serverExecute } from "../tool-execute.ts";
 import { findLibraryEntry } from "./library.ts";
 import { fitsOneRead } from "./read.ts";
@@ -19,16 +19,22 @@ export interface PageToolContext {
 	chatId: string;
 	/** Why a page can't be written now: a waiting question or an active problem. */
 	blocked: () => string | null;
+	/** Held edits (feature 023): when `turnHolds` says so, or the page already has an
+	 *  edit waiting, page_revise stores a proposal and leaves the page alone. */
+	held?: { proposals: PageProposalStore; turnHolds: () => boolean };
 }
 
 export const PAGE_BLOCKED_QUESTION = "Pages can't be written while a question is waiting for his answer.";
 export const PAGE_BLOCKED_PROBLEM = "Pages can't be written while a problem is active.";
 /** Whole content would drop text the agent never saw (owner, 2026-10-31). */
+/** Model-facing, seen by the owner in docs/workspace-decisions.md. */
+export const pageEditHeld = (name: string) => `Held for his review: nothing on ${name} changed. It waits for him to accept, reject or edit it first, so say it is waiting for him and never call it done.`;
 export const pageTooLongForContent = (name: string) => `${name} is longer than one read. Revise it with edits, so text you did not read is not replaced.`;
 
 /** The row's data: success, a stale base, or a failure with its sentence. */
 export type PageToolDetails =
 	| { outcome: "created" | "revised"; itemId: string; name: string; version: number; savedLearnerVersion?: number }
+	| { outcome: "proposed"; proposalId: string; itemId: string; name: string; target: "page" }
 	| { outcome: "stale"; reason: string; itemId?: string; savedLearnerVersion?: number }
 	| { outcome: "failed"; reason: string };
 
@@ -88,15 +94,28 @@ export function pageTools(ctx: PageToolContext): Record<string, AgentTool<any>> 
 					if (isTombstone(entry)) return failed("That item was deleted from the Library.");
 					if (entry.kind === "diagram") return failed(`${entry.name} is a diagram. Use diagram_propose, which he reviews first.`);
 					if (entry.kind !== "page") return failed(`${entry.name} is a document, and only pages can be revised.`);
-					const result = await ctx.store.revisePageAsAgent(entry.id, {
-						baseVersion: input.baseVersion,
-						chatId: ctx.chatId,
-						toolCallId,
-						apply: (head) => {
-							if (input.edits !== undefined) return applyPageEdits(head, input.edits);
-							return fitsOneRead(head) ? input.content! : { refused: pageTooLongForContent(entry.name) };
-						},
-					});
+					const apply = (head: string) => {
+						if (input.edits !== undefined) return applyPageEdits(head, input.edits);
+						return fitsOneRead(head) ? input.content! : { refused: pageTooLongForContent(entry.name) };
+					};
+					const held = ctx.held;
+					if (held && (held.turnHolds() || (await held.proposals.proposals({ pageId: entry.id, status: "pending" })).length > 0)) {
+						const proposed = await held.proposals.propose({ pageId: entry.id, baseVersion: input.baseVersion, chatId: ctx.chatId, toolCallId, apply });
+						switch (proposed.outcome) {
+							case "missing": return failed("That item was deleted from the Library.");
+							case "stale": {
+								const reason = `The page is at version ${proposed.head}. Read it and redo your edit.`;
+								return { text: reason, details: { outcome: "stale", reason, itemId: entry.id } satisfies PageToolDetails };
+							}
+							case "refused": return failed(proposed.reason);
+							case "too-large": return failed(`That text is over the page limit of ${PAGE_MAX_BYTES} bytes.`);
+							case "proposed": return {
+								text: pageEditHeld(entry.name),
+								details: { outcome: "proposed", proposalId: proposed.proposal.id, itemId: entry.id, name: entry.name, target: "page" } satisfies PageToolDetails,
+							};
+						}
+					}
+					const result = await ctx.store.revisePageAsAgent(entry.id, { baseVersion: input.baseVersion, chatId: ctx.chatId, toolCallId, apply });
 					switch (result.outcome) {
 						case "missing":
 							return failed("That item was deleted from the Library.");

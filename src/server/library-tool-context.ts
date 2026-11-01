@@ -11,6 +11,7 @@ import { stores } from "./stores.ts";
 export const libraryContext: LibraryToolContext = {
 	store: stores.libraryStore,
 	diagrams: stores.diagramStore,
+	pageProposals: stores.pageProposalStore,
 	pdfOverview: libraryPdfOverview,
 	visionAvailable,
 };

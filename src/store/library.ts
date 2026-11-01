@@ -292,6 +292,7 @@ async function remove(id: string): Promise<boolean> {
 		if (isVersionedKind(item.kind)) await fs.rm(pageDir(id), { recursive: true, force: true });
 		else await fs.rm(path.join(PATHS.files, item.name), { force: true });
 		await fs.rm(proposalsDir(id), { recursive: true, force: true });
+		await fs.rm(pageProposalsDir(id), { recursive: true, force: true });
 		await fs.rm(derivedFile(id), { force: true });
 		await fs.rm(annotationsFile(id), { force: true });
 		replace(catalog, id, tombstone(item, new Date().toISOString()));
@@ -525,6 +526,7 @@ async function purgeTrash(entryId: string): Promise<boolean> {
 		for (const item of entry.items) {
 			if (isVersionedKind(item.kind)) await fs.rm(pageDir(item.id), { recursive: true, force: true });
 			await fs.rm(proposalsDir(item.id), { recursive: true, force: true });
+			await fs.rm(pageProposalsDir(item.id), { recursive: true, force: true });
 			await fs.rm(derivedFile(item.id), { force: true });
 			await fs.rm(annotationsFile(item.id), { force: true });
 		}
@@ -605,6 +607,8 @@ const recentItems = (limit = 20) => withLock(async () => {
 const pageDir = (id: string) => path.join(PATHS.library, "pages", id);
 /** A diagram's proposals (feature 022), apart from its versions. "new" holds those that make one. */
 const proposalsDir = (id: string) => path.join(PATHS.library, "diagram-proposals", id);
+/** A page's held edits (feature 023), apart from its versions and draft. */
+const pageProposalsDir = (id: string) => path.join(PATHS.library, "page-proposals", id);
 const versionsFile = (id: string) => path.join(pageDir(id), "versions.jsonl");
 const contentFile = (id: string, n: number) => path.join(pageDir(id), `v${n}.md`);
 const draftFile = (id: string) => path.join(pageDir(id), "draft.json");
@@ -999,6 +1003,7 @@ export const versionedInternals = {
 	readJsonFile,
 	writeJsonFile,
 	proposalsDir,
+	pageProposalsDir,
 	changed,
 };
 

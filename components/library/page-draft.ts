@@ -405,6 +405,28 @@ export class PageDraftController {
 		});
 	}
 
+	/** A held edit's acceptance from this page (feature 023). His text reaches the server
+	 *  first, writes and outside changes wait while `run` goes, and an accepted edit is
+	 *  loaded as the new text, with the conflict line never showing for his own decision. */
+	async savedForReview(): Promise<boolean> {
+		await this.saveDraft();
+		return !isUnsent(this.state) && !this.state.conflict && !this.state.deleted;
+	}
+
+	whileAccepting<T>(run: () => Promise<T>, accepted: (result: T) => boolean): Promise<T> {
+		if (this.draftTimer) { clearTimeout(this.draftTimer); this.draftTimer = null; }
+		return this.enqueue(async () => {
+			const result = await run();
+			if (!accepted(result)) return result;
+			const page = await this.options.api.read(this.options.id).catch(() => null);
+			if (page) {
+				this.dispatch({ type: "resolved", page, replaceText: true });
+				this.syncBackup();
+			}
+			return result;
+		});
+	}
+
 	/** Bring back version `n`. The learner's text must be on the server first:
 	 *  if it isn't, nothing is restored, so a reload can't replace it. */
 	async restore(n: number): Promise<"restored" | "not-saved" | "conflict" | "failed"> {

@@ -13,7 +13,7 @@ const PagePreview = dynamic(() => import("./page-preview.tsx").then((m) => m.Pag
 /** `Version {n} · {You | Agent} · {time}`, then the tutor-undo note and the learner's name for it. */
 export function versionLabel(version: Pick<PageVersion, "n" | "author" | "at"> & Partial<Pick<PageVersion, "cause" | "name">>): string {
 	const time = new Date(version.at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
-	const undo = version.cause === "undo-agent" ? " · Undid the tutor's edit" : version.cause === "passage" ? " · Saved a passage" : "";
+	const undo = version.cause === "undo-agent" ? " · Undid the tutor's edit" : version.cause === "passage" ? " · Saved a passage" : version.cause === "proposal-approved" ? " · Accepted from the tutor" : "";
 	const name = version.name ? ` · ${version.name}` : "";
 	return `Version ${version.n} · ${version.author === "agent" ? "Agent" : "You"} · ${time}${undo}${name}`;
 }
@@ -34,7 +34,23 @@ export function changeViewRows(rows: readonly CompareRow[]): ChangeViewRow[] {
 
 const unchangedText = (count: number) => `${count} unchanged ${count === 1 ? "block" : "blocks"}`;
 
-/** Added and removed blocks, each with its word (contracts/ui-contract.md, History). */
+/** Added and removed blocks, each with its word, so colour never carries it. */
+export function ChangeRows({ rows }: { rows: readonly CompareRow[] }) {
+	return (
+		<div className="flex flex-col gap-1 rounded-[10px] bg-card px-3 py-2 text-base">
+			{changeViewRows(rows).map((row, i) => row.kind === "same" ? (
+				<p key={i} className="text-sm text-muted-foreground">{unchangedText(row.count)}</p>
+			) : (
+				<div key={i} className="flex min-w-0 items-baseline gap-2" data-change={row.kind}>
+					<span className={cn("shrink-0 font-mono text-xs", row.kind === "added" ? "text-success" : "text-destructive")}>{row.kind}</span>
+					<span className={cn("min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere]", row.kind === "removed" && "text-ink-2 line-through")}>{row.markdown}</span>
+				</div>
+			))}
+		</div>
+	);
+}
+
+/** History's comparison of a version with the one before (contracts/ui-contract.md, History). */
 export function VersionChanges({ n, before, after }: { n: number; before: string | null; after: string }) {
 	const rows = compareTexts(before ?? "", after);
 	return (
@@ -43,16 +59,7 @@ export function VersionChanges({ n, before, after }: { n: number; before: string
 			{rows === null ? (
 				<p className="text-sm text-ink-2">Too long to compare. Use Full text.</p>
 			) : (
-				<div className="flex flex-col gap-1 rounded-[10px] bg-card px-3 py-2 text-base">
-					{changeViewRows(rows).map((row, i) => row.kind === "same" ? (
-						<p key={i} className="text-sm text-muted-foreground">{unchangedText(row.count)}</p>
-					) : (
-						<div key={i} className="flex min-w-0 items-baseline gap-2" data-change={row.kind}>
-							<span className={cn("shrink-0 font-mono text-xs", row.kind === "added" ? "text-success" : "text-destructive")}>{row.kind}</span>
-							<span className={cn("min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere]", row.kind === "removed" && "text-ink-2 line-through")}>{row.markdown}</span>
-						</div>
-					))}
-				</div>
+				<ChangeRows rows={rows} />
 			)}
 		</div>
 	);

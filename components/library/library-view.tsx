@@ -25,6 +25,8 @@ import { runUploadQueue, sendFile } from "./upload.ts";
 
 /** Only loads once "Full text" is chosen: the search field itself stays small. */
 import { DiagramProposalsLine } from "@/components/diagram/diagram-proposals-line.tsx";
+/** Page edits waiting for him (feature 023): loads after the list, so /library's first load stays as it was. */
+const PageProposalsLine = dynamic(() => import("./page-proposals-line.tsx").then((m) => m.PageProposalsLine), { ssr: false });
 /** Loads on the click: the dialog and its form list aren't part of the Library's first load. */
 const NewDiagramDialog = dynamic(() => import("@/components/diagram/new-diagram-dialog.tsx").then((m) => m.NewDiagramDialog), { ssr: false });
 
@@ -539,6 +541,7 @@ export function LibraryView() {
 						/>
 					)}
 					<DiagramProposalsLine />
+					<PageProposalsLine onAccepted={(item) => { if (workspace) workspace.openItem(item); else pane?.open({ id: item.id, name: item.name, kind: item.kind, size: item.size }); }} />
 					<nav aria-label="Library views" className="flex flex-wrap gap-1" data-testid="library-views">
 						{(Object.keys(VIEW_LABELS) as LibraryViewName[]).map((name) => (
 							<Link key={name} href={viewHref(name)} aria-current={view === name ? "page" : undefined} className={`${PILL} ${view === name ? "bg-accent text-foreground" : "text-ink-2"}`}>{VIEW_LABELS[name]}</Link>

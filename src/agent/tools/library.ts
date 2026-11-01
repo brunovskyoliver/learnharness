@@ -3,7 +3,7 @@ import type { AgentTool } from "@earendil-works/pi-agent-core";
 import { renderLibraryItem } from "../../core/library-refs.ts";
 import { folderPathLabel, formatBytes, isTombstone, nameKey, type LibraryItem, type LibraryTombstone } from "../../core/library.ts";
 import { diagramAgentText, parseDiagram } from "../../core/diagram.ts";
-import type { DiagramStore, LibraryStore } from "../../core/ports.ts";
+import type { DiagramStore, PageProposalStore, LibraryStore } from "../../core/ports.ts";
 import { pdfExtract, pdfSearch } from "../subagents/pdf-ops.ts";
 import { serverExecute } from "../tool-execute.ts";
 import { readTextSlice } from "./read.ts";
@@ -18,6 +18,8 @@ export interface LibraryToolContext {
 	store: LibraryStore;
 	/** Diagrams' versions and proposals (feature 022). Without it a diagram reads as its outline. */
 	diagrams?: DiagramStore;
+	/** Held page edits (feature 023). Without it page_revise always lands directly. */
+	pageProposals?: PageProposalStore;
 	/** A PDF's page count, bookmarks and how to read on. Null when unreadable. */
 	pdfOverview: (item: LibraryItem) => Promise<string | null>;
 	visionAvailable: () => boolean;
