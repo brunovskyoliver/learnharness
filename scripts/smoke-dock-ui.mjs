@@ -17,7 +17,8 @@ const port = Number(process.env.LH_UI_PORT ?? 3101);
 const base = `http://127.0.0.1:${port}`;
 const motionOnly = process.env.LH_UI_MOTION_ONLY === "1";
 const stateOnly = process.env.LH_UI_STATE_ONLY === "1";
-const helpersOnly = process.env.LH_UI_HELPERS_ONLY === "1" || stateOnly;
+const navOnly = process.env.LH_UI_TURN_NAV_ONLY === "1";
+const helpersOnly = process.env.LH_UI_HELPERS_ONLY === "1" || stateOnly || navOnly;
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const pythonSnippet = "predictions = X @ w\nerrors = predictions - y\nmse = np.mean(errors ** 2)";
 let server;
@@ -543,13 +544,13 @@ try {
 	await motionClient.send("Emulation.setCPUThrottlingRate", { rate: 1 });
 	}
 	if (!motionOnly) {
-	if (!helpersOnly) {
+	if (!helpersOnly || navOnly) {
 	const resetNavigation = await page.evaluateOnNewDocument((id) => { if (window === window.top) localStorage.removeItem(`lh:session-ui:v1:local:${id}`); }, recordingChat.id);
 	await checkTurnNavigationUi(page, base, recordingChat.id, completed.id);
 	await page.removeScriptToEvaluateOnNewDocument(resetNavigation.identifier);
 	}
-	if (!stateOnly) await checkStreamingUi(page, base, completed);
-	await checkSessionStateUi(page, base, completed.id, codeChat.id, recordingChat.id);
+	if (!stateOnly && !navOnly) await checkStreamingUi(page, base, completed);
+	if (!navOnly) await checkSessionStateUi(page, base, completed.id, codeChat.id, recordingChat.id);
 	}
 	assert.deepEqual(motionFailures, [], "all dock height transitions animate");
 	assert.deepEqual(errors, [], "no browser exceptions");

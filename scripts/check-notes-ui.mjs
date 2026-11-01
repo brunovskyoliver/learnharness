@@ -485,6 +485,8 @@ async function checkOrdinaryTurnProposal(width) {
 	await openInLibrary(page, name);
 	await page.waitForSelector(`${id("page-pane")} ${id("page-proposal-row")}`, { timeout: 60000 });
 	assert.deepEqual(errors, [], "no browser exceptions");
+	// The Library lists every waiting edit, so this one mustn't stay for the next width's check.
+	assert.equal((await api(`/api/library/page-proposals/${proposalId}/reject`, "POST", {})).status, 200);
 	await close();
 	console.log(`ok ${width} a held edit from an ordinary turn shows on its row without a click, in the Library and on the page`);
 }

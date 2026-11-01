@@ -1,4 +1,12 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+// This file exports a check that scripts/smoke-dock-ui.mjs runs. Run directly, it must not pass by doing nothing.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+	const { status } = spawnSync(process.execPath, ["scripts/smoke-dock-ui.mjs"], { stdio: "inherit", env: { ...process.env, LH_UI_STATE_ONLY: "1" } });
+	process.exit(status ?? 1);
+}
 
 /** Isolated fixture sessions only. Uses real session navigation and reloads. */
 export async function checkSessionStateUi(page, base, firstId, secondId, questionId) {

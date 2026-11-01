@@ -134,12 +134,19 @@ export function SessionTurnRail({ messages, nativeMessages, turns, onReserve }: 
 			const spacer = main.querySelector<HTMLElement>('[data-testid="dock-spacer"]');
 			onReserve((spacer?.getBoundingClientRect().height ?? 0) + Math.max(0, top + main.clientHeight - main.scrollHeight));
 			frames.current.push(requestAnimationFrame(() => {
+				// Rows offscreen take their real height as they near the view, and the browser's scroll
+				// anchoring then moves the scroller. That reads as someone else's scroll and would stop
+				// the jump partway. The target is measured every frame, so nothing needs the anchor.
+				main.style.overflowAnchor = "none";
 				const animation = animateDockScroll(main, () => {
 					const answer = target();
 					return answer ? main.scrollTop + answer.getBoundingClientRect().top - main.getBoundingClientRect().top - 16 : main.scrollTop;
 				}, (top) => { current.current.state.scrollTop = top; }, { cancelOnExternalScroll: true });
 				motion.current = animation;
-				void animation.finished.then(() => { if (motion.current === animation) motion.current = null; });
+				void animation.finished.then(() => {
+					main.style.overflowAnchor = "";
+					if (motion.current === animation) motion.current = null;
+				});
 			}));
 		}));
 	};

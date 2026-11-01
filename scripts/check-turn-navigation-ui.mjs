@@ -1,3 +1,12 @@
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+// This file exports a check that scripts/smoke-dock-ui.mjs runs. Run directly, it must not pass by doing nothing.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+	const { status } = spawnSync(process.execPath, ["scripts/smoke-dock-ui.mjs"], { stdio: "inherit", env: { ...process.env, LH_UI_TURN_NAV_ONLY: "1" } });
+	process.exit(status ?? 1);
+}
+
 import assert from "node:assert/strict";
 
 /** Long transcripts mount their earlier part in idle chunks after hydration;
@@ -114,7 +123,7 @@ export async function checkTurnNavigationUi(page, base, quizChatId, completedCha
 			const answer = [...window.turnScroller.querySelectorAll('[data-answer-part-id]')].find((element) => element.dataset.answerPartId === id);
 			return { offset: answer.getBoundingClientRect().top - window.turnScroller.getBoundingClientRect().top, active: document.querySelector('[data-testid="session-turn-rail"] [aria-current="step"]')?.dataset.turnPartId };
 		}, partId);
-		assert.ok(Math.abs(result.offset - 16) < 2, `turn ${index + 1} aligns at 16px: ${result.offset}`);
+		assert.ok(Math.abs(result.offset - 16) < 2, `turn ${index + 1} aligns at 16px: ${result.offset} ${JSON.stringify(jump).slice(0, 700)}`);
 		assert.equal(result.active, partId, "the visible answer's marker is highlighted");
 	};
 	await jumpTo(0);

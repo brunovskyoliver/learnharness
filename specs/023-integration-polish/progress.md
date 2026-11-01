@@ -187,3 +187,10 @@ From an empty `.next/dev`: `smoke-sidebar-ui` failed at line 64, navigation time
 
 ### Held edits surface
 Previously a proposal's Review sat inside a collapsed row, so a tutor edit from an ordinary turn could go unnoticed in the chat. Fixed. `checkOrdinaryTurnProposal` in `check-notes-ui`, at 1440, 390 and 320: an `outcome: "proposed"` row shows Review with no click, it opens the review, the Library lists it and the page shows its line. Row seeded from the tool's real result shape; the proposal is from the real store. **A live update from a real tool call during a turn isn't browser-tested**; `announce` emits `library-changed`, which the line listens for.
+
+### Two checks that passed by doing nothing
+`check-session-state-ui.mjs` and `check-turn-navigation-ui.mjs` only export functions for `smoke-dock-ui.mjs`. Run directly, they exited 0 in 0 s with empty logs, so **the earlier "pass" for both in this file's Final verification, and in my first pass here, meant nothing**. Both now run their part of the dock smoke when run directly (`LH_UI_STATE_ONLY`, new `LH_UI_TURN_NAV_ONLY`).
+
+Running them for real found a **product bug**, on `main` since `0328bf6`: a rail jump in a long session stopped partway. Positions 24609, 20289, 16213, 13169, then 13918 and still, against a target near 587. Offscreen rows taking their real height made the browser's scroll anchoring move the scroller, which the animation treats as someone else's scroll, and cancels. A jump now turns off `overflow-anchor` while it runs; the target is measured each frame. Gestures still cancel it. `check-turn-navigation-ui` covers it.
+
+The whole `smoke-dock-ui` (not on the requested list) still fails at line 359, "lesson wheel input scrolls natively". It also needs a key in the environment since `setup-cta` changed. Not investigated, not fixed.
