@@ -17,10 +17,12 @@ export function PagePaneProvider({ children }: { children: ReactNode }) {
 	// Not one chat's state: the open page follows the learner between routes.
 	const store = useMemo(() => new SessionStateStore(account ?? "signed-out", "__page-pane", () => (account && typeof window !== "undefined" ? window.localStorage : undefined)), [account]);
 	const [item, setItem] = useState<PaneItem | null>(null);
+	const [restored, setRestored] = useState(false);
 	const [openCount, setOpenCount] = useState(0);
 	useEffect(() => {
 		const saved = store.get(STATE_KEY) as PaneItem | null | undefined;
 		if (saved && typeof saved.id === "string") setItem(saved);
+		setRestored(true);
 		const flush = () => store.flush();
 		window.addEventListener("pagehide", flush);
 		return () => window.removeEventListener("pagehide", flush);
@@ -38,7 +40,7 @@ export function PagePaneProvider({ children }: { children: ReactNode }) {
 		void fetch(`/api/library/items/${next.id}/opened`, { method: "POST" }).catch(() => {});
 	}, [remember]);
 	const close = useCallback(() => remember(null), [remember]);
-	const value = useMemo(() => ({ item, openCount, open, close, update: remember }), [item, openCount, open, close, remember]);
+	const value = useMemo(() => ({ item, restored, openCount, open, close, update: remember }), [item, restored, openCount, open, close, remember]);
 	return <PagePaneContext.Provider value={value}>{children}</PagePaneContext.Provider>;
 }
 

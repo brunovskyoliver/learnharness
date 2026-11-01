@@ -91,6 +91,7 @@ import {
 	questionNeedsReveal,
 } from "@/src/core";
 import { resolveQuestionDemo } from "@/components/artifacts/demo-panel-context";
+import { useQuestionDemoAutoOpen } from "@/components/question-demo-auto-open";
 import { requestFullTranscript } from "@/components/transcript-window";
 import { currentUserThinkingOpen, setAllUserThinkingOpen } from "@/components/thinking-block";
 import { slotsConfigured, type ModelsSettings } from "@/src/core";
@@ -877,18 +878,9 @@ function ChatView({
 	);
 	const pageOpens = pagePane?.openCount ?? 0;
 	useEffect(() => { if (pageOpens > 0) setDemoOpenId(null); }, [pageOpens]);
-	const pageIsOpen = !!pagePane?.item;
 
 	const questionDemo = useMemo(() => resolveQuestionDemo(demos, pending?.input), [demos, pending?.input]);
-	const autoOpenedQuestion = useRef<string | null>(null);
-	useEffect(() => {
-		if (!pending || autoOpenedQuestion.current === pending.toolCallId || !questionDemo.demo) return;
-		// A question's automatic open doesn't replace an open page; its "Using" link stays.
-		if (pageIsOpen) { autoOpenedQuestion.current = pending.toolCallId; return; }
-		// Backfill runs outside React's effect to avoid flushSync during commit.
-		const timer = window.setTimeout(() => { autoOpenedQuestion.current = pending.toolCallId; demoPanel.open(questionDemo.demo!.id, questionDemo.panel); }, 0);
-		return () => window.clearTimeout(timer);
-	}, [pending?.toolCallId, questionDemo.demo?.id]);
+	useQuestionDemoAutoOpen(pending?.toolCallId, questionDemo.demo ? { id: questionDemo.demo.id, panel: questionDemo.panel } : null, demoPanel.open);
 
 	// ── Session usage (wave-4 stats bar) ──
 	// The money channel: the record's turns log and read-time server Pi

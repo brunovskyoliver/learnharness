@@ -19,6 +19,8 @@ export interface PaneItem {
 
 export interface PagePaneApi {
 	item: PaneItem | null;
+	/** The page saved from last time has been read. Until then `item` being null means nothing. */
+	restored: boolean;
 	/** Bumps on every explicit open: the most recent open wins over a demo. */
 	openCount: number;
 	open: (item: PaneItem) => void;

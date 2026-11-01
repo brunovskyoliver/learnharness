@@ -50,11 +50,42 @@ const saveKeys = async (page) => {
 	await page.keyboard.up(SAVE);
 };
 const editor = '[data-testid="page-editor"]';
+/** Waits until React owns an element, since a click on server HTML before hydration does nothing. */
+const live = (page, selector) => page.waitForFunction((sel) => {
+	const el = document.querySelector(sel);
+	return el && el.getClientRects().length > 0 && Object.keys(el).some((key) => key.startsWith("__reactProps"));
+}, { timeout: 60000 }, selector);
 const openPage = async (page, name) => {
-	await page.waitForSelector(`[aria-label="Open ${name}"]`);
+	await live(page, `[aria-label="Open ${name}"]`);
 	await page.click(`[aria-label="Open ${name}"]`);
 	await page.waitForSelector(editor, { timeout: 60000 });
 };
+/** Opens a page from the Library's list and returns once the pane names it. The pane's page
+ *  comes back from saved state by design, after hydration, so one left by an earlier check can
+ *  appear at any moment; and a row clicked before hydration does nothing. Hence a loop, on the
+ *  page's name rather than on "a pane exists". */
+const openInPane = async (page, name) => {
+	const wanted = `[data-testid="page-pane"][aria-label="Page ${name}"]`;
+	for (let i = 0; i < 240 && !(await page.$(wanted)); i++) {
+		const closedOther = await page.evaluate(() => {
+			if (!document.querySelector('[data-testid="page-pane"]')) return false;
+			const button = [...document.querySelectorAll('[data-testid="page-close"], [data-testid="page-back"]')].find((el) => el.getClientRects().length > 0);
+			button?.click();
+			return !!button;
+		});
+		if (!closedOther) await page.click(`[aria-label="Open ${name}"]`).catch(() => {});
+		await pause(250);
+	}
+	await page.waitForSelector(wanted, { timeout: 1000 });
+};
+/** Waits for React to own the transcript's rows. Under next dev the server's rows first sit in a
+ *  hidden streaming template, then show, and then a client render replaces them with new nodes,
+ *  so a count or a handle taken before that races: an element goes missing, has no box or is
+ *  detached. React marks the nodes it commits, which is the one signal that holds across all three. */
+const rowsLive = (page, count) => page.waitForFunction((n) => {
+	const rows = [...document.querySelectorAll('[data-testid="page-row"]')];
+	return rows.length === n && rows.every((row) => row.getClientRects().length > 0 && Object.keys(row).some((key) => key.startsWith("__reactFiber")));
+}, { timeout: 60000 }, count);
 /** Save state text, once it settles on one of `wanted`. */
 const waitSave = (page, ...wanted) => page.waitForFunction((list) => list.some((text) => document.querySelector('[data-testid="page-save-state"]')?.textContent.startsWith(text)), {}, wanted);
 const hiddenScrollbars = (page) => page.$eval(editor, (el) => {
@@ -750,8 +781,8 @@ async function checkSettings(width) {
 	const id = (name) => `[data-testid="${name}"]`;
 	const openSettings = async () => {
 		await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
-		if (phone) { await page.waitForSelector('[aria-label="Open sidebar"]', { visible: true }); for (let i = 0; i < 30 && !(await page.$("[data-mobile-navigation]")); i++) { await page.click('[aria-label="Open sidebar"]'); await pause(300); } }
-		await page.waitForSelector(id("settings-entry"), { visible: true });
+		if (phone) { await live(page, '[aria-label="Open sidebar"]'); for (let i = 0; i < 30 && !(await page.$("[data-mobile-navigation]")); i++) { await page.click('[aria-label="Open sidebar"]'); await pause(300); } }
+		await live(page, id("settings-entry"));
 		await page.click(id("settings-entry"));
 		await page.waitForSelector(id("settings-dialog"), { visible: true });
 	};
@@ -1038,10 +1069,7 @@ async function checkPageFixes() {
 	await page.setViewport({ width: 1440, height: 900 });
 	const made = await pageApi.create("Fixes page", "# Fixes\n\nstart\n\n$$\na\n$$\n");
 	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
-	for (let i = 0; i < 40 && !(await page.$('[data-testid="page-pane"]')); i++) {
-		await page.click('[aria-label="Open Fixes page"]').catch(() => {});
-		await pause(500);
-	}
+	await openInPane(page, "Fixes page");
 	await page.waitForSelector(editor, { timeout: 60000 });
 
 	// Guard: typing, then History at once; the keystrokes still in the 120 ms wait arrive.
@@ -1131,10 +1159,7 @@ async function checkEditorTools(width) {
 	await page.setViewport({ width, height: width < 768 ? 800 : 900 });
 	const made = await pageApi.create(`Tools ${width}`, "");
 	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
-	for (let i = 0; i < 40 && !(await page.$('[data-testid="page-pane"]')); i++) {
-		await page.click(`[aria-label="Open Tools ${width}"]`).catch(() => {});
-		await pause(500);
-	}
+	await openInPane(page, `Tools ${width}`);
 	await page.waitForSelector(editor, { timeout: 60000 });
 	await page.waitForSelector('[data-testid="page-toolbar"]');
 	assert.equal(await page.$eval(`${editor} .lh-page-placeholder`, (el) => el.dataset.placeholder), "Start writing, or type / for headings, lists, tables and formulas.");
@@ -1255,10 +1280,7 @@ async function checkTutorActions(width) {
 	const expected = (lead) => `${lead} @${name}:\n\n> An eigenvector keeps its direction.`;
 	const openInLibrary = async () => {
 		await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
-		for (let i = 0; i < 40 && !(await page.$('[data-testid="page-pane"]')); i++) {
-			await page.click(`[aria-label="Open ${name}"]`).catch(() => {});
-			await pause(500);
-		}
+		await openInPane(page, `${name}`);
 		await page.waitForSelector(editor, { timeout: 60000 });
 	};
 	const selectFirst = async () => {
@@ -1360,10 +1382,7 @@ async function checkTutorChanges(width) {
 	assert.equal((await (await fetch(`${base_url(made.id)}/seen`)).json()).version, 1);
 	const v = await agentRevise(made.id, 1, "# Notes\n\nOne, simpler.\n\nTwo.\n\nThree.\n\nA new check.\n");
 	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
-	for (let i = 0; i < 40 && !(await page.$('[data-testid="page-pane"]')); i++) {
-		await page.click(`[aria-label="Open ${name}"]`).catch(() => {});
-		await pause(500);
-	}
+	await openInPane(page, `${name}`);
 	await page.waitForSelector('[data-testid="page-change-bar"]', { timeout: 60000 });
 	assert.equal(await page.$eval('[data-testid="page-change-bar"] p', (el) => el.textContent), `The tutor changed 2 places · version ${v}`);
 	assert.equal(await page.$$eval(`${editor} [data-tutor-change]`, (els) => els.map((el) => el.textContent).join("|")), "One, simpler.|A new check.");
@@ -1436,10 +1455,7 @@ async function checkOutlineExport(width) {
 	const text = "# First\n\nOne two three.\n\n## Second part\n\nFour five $x$.\n\n### Third\n\nSix.\n";
 	await pageApi.create(name, text);
 	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
-	for (let i = 0; i < 40 && !(await page.$('[data-testid="page-pane"]')); i++) {
-		await page.click(`[aria-label="Open ${name}"]`).catch(() => {});
-		await pause(500);
-	}
+	await openInPane(page, `${name}`);
 	await page.waitForSelector(editor, { timeout: 60000 });
 	await page.waitForFunction(() => document.querySelector('[data-testid="page-word-count"]')?.textContent === "· 10 words");
 	await page.click('[data-testid="page-outline-toggle"]');
@@ -1493,10 +1509,7 @@ async function checkPageImages(width) {
 	const name = `Pictures ${width}`;
 	const made = await pageApi.create(name, "Before.\n");
 	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
-	for (let i = 0; i < 40 && !(await page.$('[data-testid="page-pane"]')); i++) {
-		await page.click(`[aria-label="Open ${name}"]`).catch(() => {});
-		await pause(500);
-	}
+	await openInPane(page, `${name}`);
 	await page.waitForSelector(editor, { timeout: 60000 });
 	await page.click(`${editor} p`);
 	await pause(150);
@@ -1571,7 +1584,7 @@ async function checkPageRows() {
 		await page.setViewport({ width, height: 900 });
 		await page.goto(`${base}/chat/page-rows`, { waitUntil: "domcontentloaded" });
 		await page.waitForSelector('[data-testid="page-row"]', { timeout: 60000 });
-		await page.waitForFunction(() => document.querySelectorAll('[data-testid="page-row"]').length === 6);
+		await rowsLive(page, 6);
 		const headlines = await page.$$eval('[data-testid="page-row"] summary', (rows) => rows.map((el) => el.innerText.trim()));
 		assert.deepEqual(headlines, ["Page · created Row page", "Page · revised Row page · version 3", "Page · couldn't revise, it changed", "Page · failed", "Library · read Row page", "Library · failed"]);
 		assert.ok(!(await page.$eval("[data-chat-id]", (el) => el.innerText)).includes("SECRET"), "inputs never show");
@@ -1648,6 +1661,7 @@ async function checkPageAndDemo() {
 	await pause(800);
 	assert.equal(await page.$('[data-testid="demo-panel"]'), null, "the automatic open leaves the page");
 	assert.ok(await page.$('[data-testid="page-pane"]'));
+	await live(page, ".question-demo-reference button");
 	await page.click(".question-demo-reference button");
 	await page.waitForSelector('[data-testid="demo-panel"]');
 	await page.waitForFunction(() => !document.querySelector('[data-testid="page-pane"]'));
@@ -1661,6 +1675,7 @@ async function checkPageAndDemo() {
 	assert.equal((await thisDemo()).length, 1, "one live iframe");
 	const identity = await (await thisDemo())[0].evaluate(() => window.identity);
 	if (shots) await page.screenshot({ path: path.join(shots, "page-1440-demo-open.png") });
+	await rowsLive(page, 1);
 	await page.evaluate(() => { const row = document.querySelector('[data-testid="page-row"]'); row.open = true; });
 	await page.waitForSelector('[data-testid="page-row"] [aria-label="Open Beside demo"]');
 	await page.$eval('[data-testid="page-row"] [aria-label="Open Beside demo"]', (el) => el.click());
