@@ -1,7 +1,7 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse, type NextFetchEvent, type NextRequest } from "next/server";
 import { desktopAPIAuthorized } from "./src/server/desktop-access.ts";
-import { clerkConfigured } from "./src/server/tenant-access.ts";
+import { clerkConfigured } from "./src/server/clerk-configured.ts";
 import { CLERK_URLS } from "./components/clerk-appearance.ts";
 
 const NO_STORE = { "Cache-Control": "no-store" };

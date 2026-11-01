@@ -440,6 +440,8 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 	}, []);
 	const clearSelection = () => {
 		pressingBubble.current = false;
+		// Focus must not vanish with the bubble.
+		if (bubble.current?.contains(document.activeElement)) scroller.current?.focus({ preventScroll: true });
 		setSelected(null);
 		window.getSelection()?.removeAllRanges();
 		keyboardCursor.current = null;

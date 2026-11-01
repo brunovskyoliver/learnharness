@@ -4,7 +4,7 @@
  *  wait here (feature 022). Small and fetched on the Library only; the dialog loads
  *  when one is opened. Empty renders nothing, and a failed read says so. */
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePagePane } from "@/components/library/page-pane-api.ts";
 import { useServerEvent } from "@/components/server-events";
 import { useWorkspace } from "@/components/workspace/workspace-context";
@@ -16,6 +16,7 @@ export function DiagramProposalsLine() {
 	const [rows, setRows] = useState<Omit<DiagramProposal, "doc">[]>([]);
 	const [failed, setFailed] = useState(false);
 	const [open, setOpen] = useState<string | null>(null);
+	const opener = useRef<HTMLElement | null>(null);
 	const pane = usePagePane();
 	const workspace = useWorkspace();
 	const refresh = useCallback(async () => {
@@ -37,13 +38,13 @@ export function DiagramProposalsLine() {
 			{rows.map((row) => (
 				<div key={row.id} className="flex flex-wrap items-center gap-2 rounded-[10px] bg-card px-3 py-2 text-sm" data-testid="diagram-proposal-row">
 					<span className="min-w-0 flex-[1_1_12rem] [overflow-wrap:anywhere]"><span className="text-foreground">{row.name}</span> <span className="text-muted-foreground">· Proposed by the tutor, waiting for you</span></span>
-					<button type="button" className="prompt-secondary" aria-label={`Review the proposal for ${row.name}`} data-testid="diagram-proposal-open" onClick={() => setOpen(row.id)}>Review</button>
+					<button type="button" className="prompt-secondary" aria-label={`Review the proposal for ${row.name}`} data-testid="diagram-proposal-open" onClick={(event) => { opener.current = event.currentTarget; setOpen(row.id); }}>Review</button>
 				</div>
 			))}
 			{open && (
 				<ProposalDialog
 					proposalId={open}
-					onClose={() => { setOpen(null); void refresh(); }}
+					onClose={() => { setOpen(null); void refresh().then(() => requestAnimationFrame(() => { if (opener.current?.isConnected) opener.current.focus(); })); }}
 					onApproved={(item: LibraryItem) => {
 						if (workspace) workspace.openItem(item);
 						else pane?.open({ id: item.id, name: item.name, kind: item.kind, size: item.size });

@@ -283,6 +283,57 @@ async function checkWidth(width) {
 	await page.waitForFunction(() => !document.querySelector('[data-testid="pdf-bubble"]'));
 	assert.ok(await page.$('[data-testid="pdf-reader"]'), "Escape closed only the selection");
 
+	// The keyboard's way in (feature 023): the same selection, bubble and actions.
+	await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
+	await page.$eval('[data-testid="pdf-page-field"]', (el) => { el.value = ""; });
+	const marksBefore = await page.$$eval('[data-pdf-page="1"] [data-testid="pdf-mark"]', (els) => els.length);
+	await page.evaluate(() => document.querySelector('[data-testid="pdf-scroll"]').scrollTo(0, 0));
+	await pause(300);
+	await page.focus('[data-testid="pdf-keyboard-select"]');
+	await page.keyboard.press("Enter");
+	await page.waitForSelector('[data-testid="pdf-keyboard-line"]');
+	await page.waitForSelector('[data-testid="pdf-bubble"]');
+	const focusAfterStart = await page.evaluate(() => document.activeElement?.dataset?.testid);
+	assert.equal(focusAfterStart, "pdf-scroll", "the page's region has the keys");
+	const selectedNow = () => page.evaluate(() => getSelection().toString());
+	const firstWord = await selectedNow();
+	assert.ok(firstWord.trim() && !firstWord.includes(" "), `one word: ${firstWord}`);
+	await page.keyboard.press("ArrowRight");
+	await page.waitForFunction((w) => getSelection().toString() !== w, {}, firstWord);
+	const second = await selectedNow();
+	await page.keyboard.down("Shift");
+	await page.keyboard.press("ArrowRight");
+	await page.keyboard.press("ArrowRight");
+	await page.keyboard.up("Shift");
+	await page.waitForFunction((w) => getSelection().toString().length > w.length, {}, second);
+	const passage = (await selectedNow()).trim();
+	assert.ok(passage.startsWith(second.trim()) && /\s/.test(passage), `extended: ${passage}`);
+	await pause(100);
+	const scrollBefore = await page.$eval('[data-testid="pdf-scroll"]', (el) => el.offsetWidth - el.clientWidth);
+	assert.equal(scrollBefore, 0, "no visible scrollbar");
+	await shot(page, `documents-keyboard-${width}.png`);
+	await noOverflow(page, "keyboard selection");
+	await page.keyboard.press("Enter");
+	await page.waitForFunction(() => document.querySelector('[data-testid="pdf-bubble"]')?.contains(document.activeElement));
+	assert.equal(await page.evaluate(() => document.activeElement.dataset.testid), "pdf-highlight", "Enter reaches the actions");
+	const focusRing = await page.evaluate(() => { const s = getComputedStyle(document.activeElement); return s.outlineStyle !== "none" && parseFloat(s.outlineWidth) > 0; });
+	assert.ok(focusRing, "focus shows");
+	await page.keyboard.press("Enter");
+	await page.waitForFunction((n) => document.querySelectorAll('[data-pdf-page="1"] [data-testid="pdf-mark"]').length > n, {}, marksBefore);
+	await page.waitForFunction(() => !document.querySelector('[data-testid="pdf-keyboard-line"]') && document.activeElement?.dataset?.testid === "pdf-scroll");
+	const keyed = (await api(`/api/library/items/${pdf.id}/annotations`)).body.annotations.at(-1);
+	assert.equal(keyed.anchor.quote.trim(), passage, "the keyboard's passage is what is kept");
+	assert.equal(keyed.anchor.page, 1);
+	await api(`/api/library/items/${pdf.id}/annotations/${keyed.id}`, "DELETE");
+	// Escape: the selection first, then the mode with it, and the pane stays.
+	await page.focus('[data-testid="pdf-keyboard-select"]');
+	await page.keyboard.press("Enter");
+	await page.waitForSelector('[data-testid="pdf-bubble"]');
+	await page.keyboard.press("Escape");
+	await page.waitForFunction(() => !document.querySelector('[data-testid="pdf-bubble"]') && !document.querySelector('[data-testid="pdf-keyboard-line"]'));
+	assert.ok(await page.$('[data-testid="pdf-reader"]'), "Escape ended only the selection");
+	await page.$eval('[data-testid="pdf-page-field"]', (el) => { el.blur(); });
+
 	// A highlight survives a reload, with its note.
 	await page.reload({ waitUntil: "domcontentloaded" });
 	await page.waitForSelector('[data-testid="pdf-reader"]');

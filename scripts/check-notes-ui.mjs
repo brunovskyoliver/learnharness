@@ -57,6 +57,17 @@ async function agentRevise(pageId, version, text) {
 	return result.version;
 }
 
+/** A held edit through the real store, as page_revise stores one in a selection's turn. */
+async function agentPropose(pageId, version, text) {
+	const child = spawn(process.execPath, ["node_modules/tsx/dist/cli.mjs", "tests/helpers/agent-propose-cli.ts", data, pageId, String(version), JSON.stringify(text)], { stdio: ["ignore", "pipe", "inherit"], env: { ...process.env, LH_HOSTED: "0" } });
+	let out = "";
+	child.stdout.on("data", (chunk) => { out += chunk; });
+	await new Promise((resolve) => child.once("exit", resolve));
+	const result = JSON.parse(out.trim().split("\n").at(-1));
+	assert.equal(result.outcome, "proposed", out);
+	return result.id;
+}
+
 /** A lesson on disk, from the golden fixture's shape, so nothing calls a model. */
 async function seedLesson(chatId, title) {
 	const golden = JSON.parse(await readFile(path.join("tests/fixtures/golden-data/chats/chat_mv27rrra_feff23b6.json"), "utf8"));
@@ -436,6 +447,157 @@ async function checkAiEdit(width) {
 	console.log(`ok ${width} AI edit review`);
 }
 
+/** Feature 023: Simpler, Rewrite and Expand are held. Their send is one click and changes
+ *  nothing; the page and draft wait through the review, by keyboard, with reduced motion. */
+async function checkHeldEdit(width) {
+	const { page, errors, posts, close } = await newPage(width);
+	await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
+	const p = `w${width}`;
+	const original = "Keep this line.\n\nA middle line.\n\nA sentence to rewrite.\n";
+	const note = await createPage(`${p} Held`, original);
+	await openInLibrary(page, `${p} Held`);
+
+	// The action itself: one message, in the words the server holds on.
+	const proposed = original.replace("A sentence to rewrite.", "A clearer sentence.");
+	const id1 = await agentPropose(note.id, 1, proposed);
+	await page.reload({ waitUntil: "domcontentloaded" });
+	await page.waitForSelector(id("page-proposal-row"), { timeout: 60000 });
+	assert.equal((await api(`/api/library/pages/${note.id}`)).body.head.n, 1, "the head waits");
+	assert.ok(!await page.$(id("page-change-bar")), "not the after-the-fact bar");
+	await noOverflow(page, width, "proposal row");
+	if (width < 768) {
+		const size = await page.$eval(id("page-proposal-open"), (el) => { const r = el.getBoundingClientRect(); return [r.width, r.height]; });
+		assert.ok(size[0] >= 44 && size[1] >= 44, `coarse target ${size}`);
+	}
+
+	// The review opens by keyboard, draws no motion and hides its scrollbars.
+	await page.waitForSelector(id("page-editor"));
+	await pause(300);
+	await page.focus(id("page-proposal-open"));
+	await page.keyboard.press("Enter");
+	await page.waitForSelector(id("page-proposal-diff"), { timeout: 60000 });
+	if (shots) await page.screenshot({ path: path.join(shots, `held-review-${width}.png`) });
+	const diff = await page.$$eval(`${id("page-proposal-diff")} [data-change]`, (els) => els.map((el) => [el.dataset.change, el.textContent]));
+	assert.deepEqual(diff, [["removed", "removedA sentence to rewrite."], ["added", "addedA clearer sentence."]]);
+	const look = await page.$eval(id("page-proposal-dialog"), (el) => {
+		const style = getComputedStyle(el);
+		return { width: el.offsetWidth - el.clientWidth, duration: parseFloat(style.animationDuration) * (style.animationDuration.endsWith("ms") ? 0.001 : 1), name: style.animationName, right: el.getBoundingClientRect().right };
+	});
+	assert.equal(look.width, 0, "no visible scrollbar");
+	assert.ok(look.name === "none" || look.duration <= 0.01, `reduced motion: ${look.name} ${look.duration}`);
+	assert.ok(look.right <= width, "fits");
+	assert.ok(await page.evaluate(() => document.querySelector('[data-testid="page-proposal-dialog"]').contains(document.activeElement)), "focus moved in");
+
+	// Escape closes the review only, and focus returns to Review.
+	await page.keyboard.press("Escape");
+	await page.waitForFunction(() => !document.querySelector('[data-testid="page-proposal-dialog"]'));
+	assert.ok(await page.$(id("page-pane")), "the page stays open");
+	await page.waitForFunction(() => document.activeElement?.dataset?.testid === "page-proposal-open");
+
+	// Typing elsewhere since: Accept keeps it, his draft going in first.
+	await page.click(`${editor} p`);
+	await page.keyboard.press("End");
+	await page.keyboard.type(" Typed.");
+	await waitStored(note.id, (text) => text.includes("Typed."), "the draft");
+	assert.equal((await api(`/api/library/pages/${note.id}`)).body.head.n, 1, "typing only drafts");
+	await page.click(id("page-proposal-open"));
+	await page.waitForSelector(id("page-proposal-edit"));
+	// Edit first changes only the proposal.
+	await page.click(id("page-proposal-edit"));
+	await page.waitForSelector(`${id("page-proposal-dialog")} ${id("page-editor")}`, { timeout: 60000 });
+	if (shots) await page.screenshot({ path: path.join(shots, `held-edit-${width}.png`) });
+	await pause(300);
+	await page.keyboard.press("Escape");
+	await page.waitForSelector(id("page-proposal-diff"));
+	await page.click(id("page-proposal-accept"));
+	await page.waitForFunction(() => !document.querySelector('[data-testid="page-proposal-dialog"]'), { timeout: 30000 });
+	const final = "Keep this line. Typed.\n\nA middle line.\n\nA clearer sentence.\n";
+	const accepted = (await api(`/api/library/pages/${note.id}`)).body;
+	assert.equal(accepted.head.content, final, "both his typing and the change");
+	assert.equal(accepted.draft, null);
+	const versions = (await api(`/api/library/pages/${note.id}/versions`)).body.versions;
+	assert.deepEqual(versions.map((v) => [v.author, v.cause]), [["agent", "proposal-approved"], ["learner", "before-agent"], ["learner", "save"]]);
+	assert.equal(versions[0].proposalId, id1);
+	await page.waitForFunction((text) => document.querySelector('[data-testid="page-editor"]')?.textContent.includes(text), {}, "A clearer sentence.");
+	assert.ok(!await page.$(id("page-conflict")), "his own decision is no conflict");
+	assert.ok(!await page.$(id("page-proposal-row")), "the row goes");
+
+	// A page that moved on: refused, nothing lost, the proposed text can be copied, Reject ends it.
+	const id2 = await agentPropose(note.id, accepted.head.n, final.replace("A middle line.", "A better middle."));
+	const moved = await api(`/api/library/pages/${note.id}/versions`, "POST", { base: accepted.head.n, rev: 0, content: `${final}\nAnother.\n` });
+	assert.equal(moved.status, 201, JSON.stringify(moved.body));
+	await page.reload({ waitUntil: "domcontentloaded" });
+	await page.waitForSelector(id("page-proposal-row"), { timeout: 60000 });
+	await pause(300);
+	await page.click(id("page-proposal-open"));
+	await page.waitForSelector(id("page-proposal-blocked"));
+	assert.ok(!await page.$(id("page-proposal-accept")), "no Accept to press");
+	assert.ok(await page.$(id("page-proposal-copy")));
+	if (shots) await page.screenshot({ path: path.join(shots, `held-moved-${width}.png`) });
+	const refused = await api(`/api/library/page-proposals/${id2}/accept`, "POST", { expected: { head: moved.body.version.n, rev: 0 } });
+	assert.equal(refused.status, 409);
+	assert.equal(refused.body.code, "moved");
+	const still = (await api(`/api/library/pages/${note.id}`)).body;
+	assert.equal(still.head.content, `${final}\nAnother.\n`, "the page is untouched");
+	await page.click(id("page-proposal-reject"));
+	await page.waitForFunction(() => !document.querySelector('[data-testid="page-proposal-dialog"]') && !document.querySelector('[data-testid="page-proposal-row"]'), { timeout: 30000 });
+	assert.equal((await api(`/api/library/pages/${note.id}`)).body.head.n, still.head.n, "Reject writes nothing to the page");
+
+	// The bubble's Rewrite is one click, and the message is the held one.
+	await page.click(`${editor} p`);
+	await pause(150);
+	await page.keyboard.press("Home");
+	await page.keyboard.down("Shift");
+	await page.keyboard.press("End");
+	await page.keyboard.up("Shift");
+	await page.waitForSelector(id("page-bubble"), { visible: true });
+	await pause(300);
+	await page.evaluate(() => {
+		window.__urls = [];
+		for (const name of ["pushState", "replaceState"]) {
+			const original = history[name].bind(history);
+			history[name] = (state, title, url) => { window.__urls.push(String(url)); return original(state, title, url); };
+		}
+	});
+	await page.$$eval(`${id("page-bubble")} button`, (els) => els.find((el) => el.textContent === "Rewrite").click());
+	const sentTo = await page.waitForFunction(() => window.__urls.find((url) => url.includes("send=")), { timeout: 30000 }).then((handle) => handle.jsonValue());
+	const sent = new URL(sentTo, base).searchParams.get("send");
+	assert.match(sent, /^Rewrite this part of @.* Held more clearly, in the page:\n\n> /, `the held message: ${sent}`);
+	assert.deepEqual(errors, [], "no page errors");
+	await close();
+	console.log(`ok ${width} held AI edit`);
+}
+
+/** Feature 023: the session's Notes on a phone, as a layer that is left with Escape or Back. */
+async function checkPhoneNotes(width) {
+	const { page, errors, close } = await newPage(width);
+	await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
+	const chatId = `phone-notes-${width}`;
+	await seedLesson(chatId, `w${width} Phone notes`);
+	await page.goto(`${base}/chat/${chatId}`, { waitUntil: "domcontentloaded" });
+	await page.waitForSelector(id("right-pane-toggle"), { visible: true, timeout: 60000 });
+	const size = await page.$eval(id("right-pane-toggle"), (el) => { const r = el.getBoundingClientRect(); return [r.width, r.height]; });
+	assert.ok(size[0] >= 44 && size[1] >= 44, `coarse target ${size}`);
+	await page.click(id("right-pane-toggle"));
+	await page.waitForSelector(id("session-study-notes"), { visible: true, timeout: 60000 });
+	await page.waitForFunction(() => document.activeElement?.dataset?.testid === "page-back");
+	assert.ok(await page.$(id("session-make-cards")));
+	await noOverflow(page, width, "phone notes");
+	if (shots) await page.screenshot({ path: path.join(shots, `phone-notes-${width}.png`) });
+	await page.keyboard.press("Escape");
+	await page.waitForFunction(() => !document.querySelector('[data-testid="context-pane"]'));
+	await page.reload({ waitUntil: "domcontentloaded" });
+	await page.waitForSelector(id("right-pane-toggle"), { visible: true, timeout: 60000 });
+	assert.ok(!await page.$(id("context-pane")), "not saved across a visit");
+	await page.click(id("right-pane-toggle"));
+	await page.waitForSelector(id("page-back"), { visible: true, timeout: 60000 });
+	await page.click(id("page-back"));
+	await page.waitForFunction(() => !document.querySelector('[data-testid="context-pane"]'));
+	assert.deepEqual(errors, [], "no page errors");
+	await close();
+	console.log(`ok ${width} phone notes`);
+}
+
 /** A pane wide enough for columns: the panel sits beside the text, not above it. */
 async function checkWideColumn() {
 	const { page, errors, close } = await newPage(2560);
@@ -481,6 +643,8 @@ try {
 		await checkBlocks(width);
 		await checkPassages(width);
 		await checkAiEdit(width);
+		await checkHeldEdit(width);
+		if (width < 768) await checkPhoneNotes(width);
 	}
 	await checkWideColumn();
 	console.log("Notes browser checks passed.");

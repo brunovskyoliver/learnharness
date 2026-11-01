@@ -7,14 +7,11 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { hostedMode, runAsTenant } from "../../config.ts";
+import { clerkConfigured } from "./clerk-configured.ts";
 
 export { hostedMode, runAsTenant };
 
-/** Hosted mode refuses to run without Clerk keys rather than letting
- * Clerk invent a keyless development instance. */
-export function clerkConfigured(env: Record<string, string | undefined> = process.env): boolean {
-	return Boolean(env.CLERK_SECRET_KEY && (env.CLERK_PUBLISHABLE_KEY || env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY));
-}
+export { clerkConfigured };
 
 export async function signedInUserId(): Promise<string | null> {
 	if (!clerkConfigured()) return null;
