@@ -221,3 +221,7 @@ Earlier passes on earlier commits had the failures above, in `final-earlier/` an
 - Everything under "Hosted: not verified" and "Electron: not verified" above.
 - Intermittent races may remain in scripts other than those fixed. Each pass here had at most a new one or two until the last.
 - `practice/20-library.md` still says page tools "write pages". Also the bar and "Updated by the agent" paths in `DESIGN.md` describe code kept for older versions and outside updates.
+
+## Independent re-check on e9dc835
+- `npm test`: 3875 tests, 3872 pass, 1 fail, 2 skipped. The failure, `tests/browser-service-readiness.test.ts` "readiness left an HTTP connection open", is a timing flake in a test from 3d70e0d that this work doesn't touch: 5 of 5 passes alone.
+- `scripts/smoke-dock-ui.mjs`, run whole: 2 of 2 failures at line 134, no `setup-cta` element. An earlier run failed at line 359. Not investigated; not known whether it predates this work.
