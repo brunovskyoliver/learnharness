@@ -68,6 +68,12 @@ async function loggedIn(options: Parameters<typeof fixture>[0] = {}) {
 	return f;
 }
 
+/** Waits by the clock. Counting event-loop turns raced real RS256 work on the thread
+ *  pool: a busy machine ran out of turns first (specs/023-integration-polish/progress.md). */
+async function settled(done: () => boolean | Promise<boolean>, ms = 15000) {
+	for (const end = Date.now() + ms; !(await done()) && Date.now() < end;) await new Promise((resolve) => setTimeout(resolve, 2));
+}
+
 test("PKCE/state/nonce/host identity and exact ephemeral 127.0.0.1 callback; no secret renderer snapshot", async () => {
 	const f = fixture();
 	try {
@@ -433,7 +439,7 @@ test("cancellation during verified durable save cannot activate late credentials
 	try {
 		await f.service.login(); await f.callback(); await entered.promise;
 		f.service.cancelLogin(); release.resolve();
-		for (let i = 0; i < 30 && f.writeCount < 2; i++) await new Promise((resolve) => setImmediate(resolve));
+		await settled(() => f.writeCount >= 2);
 		assert.equal(f.saved.activeId, null);
 		assert.equal((await f.service.status()).accounts.length, 0);
 	} finally { f.service.close(); }
@@ -630,7 +636,7 @@ test("one app-wide background preference defaults ON over legacy OFF, persists w
 		const id = f.saved.activeId;
 		await f.service.select(id); assert.equal((await f.service.status()).allowBackgroundUse, false);
 		await f.service.login(id); await f.callback();
-		for (let i = 0; i < 100 && (await f.service.status()).pending; i++) await new Promise((r) => setImmediate(r));
+		await settled(async () => !(await f.service.status()).pending);
 		assert.equal(f.saved.allowBackgroundUse, false, "reconnecting cannot overwrite app preference");
 		assert.equal(f.saved.registrations[0].background, undefined, "new verified registrations omit obsolete per-account preference");
 		await f.service.disconnect(f.saved.activeId);
@@ -639,7 +645,7 @@ test("one app-wide background preference defaults ON over legacy OFF, persists w
 		try {
 			assert.equal((await restarted.service.status()).allowBackgroundUse, false, "zero-account restart preserves global OFF");
 			await restarted.service.login(); await restarted.callback();
-			for (let i = 0; i < 100 && (await restarted.service.status()).pending; i++) await new Promise((r) => setImmediate(r));
+			await settled(async () => !(await restarted.service.status()).pending);
 			assert.equal(restarted.saved.allowBackgroundUse, false);
 			await restarted.service.consent(true); assert.equal(restarted.saved.allowBackgroundUse, true);
 		} finally { restarted.service.close(); }
