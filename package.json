@@ -18,7 +18,7 @@
 		"dev:review": "node scripts/seed-review.mjs && npm run dev",
 		"build": "node scripts/build-demo-kit.mjs && next build",
 		"start": "next start",
-		"test": "NODE_ENV=test tsx --test tests/*.test.ts tests/*.test.tsx",
+		"test": "export LH_DATA_DIR=$(mktemp -d); NODE_ENV=test tsx --test tests/*.test.ts tests/*.test.tsx; status=$?; rm -rf \"$LH_DATA_DIR\"; exit $status",
 		"lint": "eslint .",
 		"typecheck": "tsc --noEmit",
 		"desktop:dev": "node scripts/build-demo-kit.mjs && concurrently -k \"next dev\" \"LH_DEV_URL=http://localhost:3000 electron .\"",

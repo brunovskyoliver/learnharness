@@ -24,7 +24,6 @@ import { grepTool } from "./grep.ts";
 import { jobTools, type JobToolContext } from "./jobs.ts";
 import { libraryTools, type LibraryToolContext } from "./library.ts";
 import { DIAGRAM_BLOCKED_PROBLEM, DIAGRAM_BLOCKED_QUESTION, diagramTools } from "./diagrams.ts";
-import { isHeldEditTurn } from "../../core/page-proposals.ts";
 import { PAGE_BLOCKED_PROBLEM, PAGE_BLOCKED_QUESTION, pageTools } from "./pages.ts";
 import { mlVisualTool } from "./ml-visual.ts";
 import { tokenizeTool } from "./tokenize.ts";
@@ -264,7 +263,7 @@ export function practiceTools(ctx: PracticeToolContext, enabled?: EnabledTools):
 		...(enabled?.pages === false || !ctx.library ? {} : pageTools({
 			store: ctx.library.store,
 			chatId: ctx.chatId,
-			...(ctx.library.pageProposals ? { held: { proposals: ctx.library.pageProposals, turnHolds: () => isHeldEditTurn(ctx.chatStore.getChat(ctx.chatId)?.messages ?? []) } } : {}),
+			...(ctx.library.pageProposals ? { held: { proposals: ctx.library.pageProposals, turnHolds: () => true } } : {}),
 			blocked: () => {
 				if (gate.problemActive) return PAGE_BLOCKED_PROBLEM;
 				return danglingQuestionOf(ctx.chatStore.getChat(ctx.chatId)?.messages ?? []) ? PAGE_BLOCKED_QUESTION : null;

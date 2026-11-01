@@ -19,7 +19,6 @@ import type { PaperFiles, JobStore } from "../core/ports.ts";
 import { jobTools, type JobDispatchInput } from "./tools/jobs.ts";
 import { libraryTools, type LibraryToolContext } from "./tools/library.ts";
 import { DIAGRAM_BLOCKED_PROBLEM, DIAGRAM_BLOCKED_QUESTION, diagramTools } from "./tools/diagrams.ts";
-import { isHeldEditTurn } from "../core/page-proposals.ts";
 import { PAGE_BLOCKED_PROBLEM, PAGE_BLOCKED_QUESTION, pageTools } from "./tools/pages.ts";
 import { mlVisualTool } from "./tools/ml-visual.ts";
 import { tokenizeTool } from "./tools/tokenize.ts";
@@ -503,7 +502,7 @@ export function createTeacherTools(
 			...(enabled?.pages === false || !ctx.library ? {} : pageTools({
 				store: ctx.library.store,
 				chatId: ctx.chatId,
-				...(ctx.library.pageProposals ? { held: { proposals: ctx.library.pageProposals, turnHolds: () => isHeldEditTurn(ctx.chatStore.getChat(ctx.chatId)?.messages ?? []) } } : {}),
+				...(ctx.library.pageProposals ? { held: { proposals: ctx.library.pageProposals, turnHolds: () => true } } : {}),
 				blocked: () => {
 					const messages = ctx.chatStore.getChat(ctx.chatId)?.messages ?? [];
 					if (danglingQuestionOf(messages)) return PAGE_BLOCKED_QUESTION;

@@ -250,16 +250,16 @@ describe("page_revise", () => {
 		assert.deepEqual(await proposals.proposals({ pageId: id }), []);
 	});
 
-	it("an ordinary turn still lands directly, the older ruling's case", async () => {
+	it("an ordinary turn is held too: no AI edit reaches a page before review", async () => {
 		const id = await page("Keep.\n");
 		const chatId = chatStore.createChat("Plain").id;
 		chatStore.saveMessages(chatId, [newUserMessage("Tidy that page please.")]);
 		const out = await run(tools(chatId).page_revise as never, "c3", { item: id, baseVersion: 1, content: "Kept.\n" });
-		assert.equal(details(out).outcome, "revised");
-		assert.equal((await store.readPage(id))!.head.content, "Kept.\n");
+		assert.equal(details(out).outcome, "proposed");
+		assert.equal((await store.readPage(id))!.head.content, "Keep.\n");
 	});
 
-	it("but not over an edit already waiting on that page", async () => {
+	it("and so is one over an edit already waiting on that page", async () => {
 		const id = await page("Keep.\n");
 		await propose(id, "Keep, waiting.\n");
 		const chatId = chatStore.createChat("Plain").id;

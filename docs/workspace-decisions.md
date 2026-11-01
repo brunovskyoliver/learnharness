@@ -4,18 +4,9 @@ Features 011-023 were built under "i approve it all" (2026-10-31) with no questi
 
 ## Questions to rule on
 
-### 1. Should every AI edit wait for review, not just the ones from a selection?
+### 1. Every AI edit to a page now waits for review (decided)
 
-Your goal says "require review before AI edits learner text". Your older ruling in specs/009 says "It edits directly, as a restorable version". Feature 023 applied the newer goal to what you trigger from selected text.
-
-| Trigger | What happens now |
-| --- | --- |
-| Simpler, Rewrite, Expand on a selection | Held. The page and draft don't move until Accept |
-| Any `page_revise` on a page with an edit already waiting | Held |
-| `page_revise` in an ordinary turn, such as "tidy that page" or the tutor deciding to update a page | **Lands directly**. Your draft is saved first, then the review bar and Undo. Reviewed after, not before |
-| `page_create` | Makes a new page. No text of yours changes |
-
-So your goal isn't fully met for the third row. **Recommended: hold those too**, since your goal has no carve-out. The cost is a tutor keeping notes up to date mid-lesson would leave a proposal per change, which you may find noisy. It is one line: make `turnHolds` return true in `src/agent/tools.ts` and `src/agent/tools/practice.ts`. The ROADMAP's standing rule, "Learner text is never changed by AI without review", is only true in the "reviewed after" sense for that row until you decide.
+Your goal says "require review before AI edits learner text" with no carve-out, so it replaces the older specs/009 ruling "It edits directly, as a restorable version". Every `page_revise`, from a selection or an ordinary turn, is held as a proposal: the page and draft don't move until Accept. `page_create` still makes a new page, since no text of yours changes. The cost is that a tutor keeping notes up to date mid-lesson leaves one proposal per change. To go back, make `turnHolds` in `src/agent/tools.ts` and `src/agent/tools/practice.ts` call `isHeldEditTurn` again.
 
 ### 2. Constitution III: what should deleting a session remove?
 

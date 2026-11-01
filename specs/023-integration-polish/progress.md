@@ -119,3 +119,8 @@ No existing assertion was changed. Golden fixtures are unchanged.
 - `.next` is 1.6 GB, down from 4.9 GB after removing its dev cache.
 - A next-server from an earlier session, PID 1472540, port 3133, still runs from a deleted standalone. Left alone, since this run didn't start it. PID 1264648 is the live deployment's container, untouched.
 - **The full test suite writes fixture records into the repo's real `data/`.** Each run adds sessions titled "Fixture mixed queue", "Scratch mixed queue", "Toggle bridge test", "steer: …" and "getApiKey pin", plus their jobs: 121 chat files on 2026-11-01, and the pattern goes back to 2026-10-27, so it predates the workspace work. It adds to the folder and touches no other file I found. Which tests isn't pinned down, beyond that only 59 of 306 test files mention `LH_DATA_DIR`. Not fixed and nothing deleted, since `data/` was to be left alone. The owner should decide whether to clean it and make the suite isolate itself.
+
+
+## Addendum after the report
+- Every `page_revise` is now held, not only selection-triggered ones (`turnHolds: () => true`), to meet the goal's wording. `tests/page-proposals.test.ts` changed deliberately. This supersedes the report's "what still lands directly" section.
+- `npm test` now uses a temporary `LH_DATA_DIR`, so the suite no longer writes the real `data/`. Fixture sessions already written there were left alone.
