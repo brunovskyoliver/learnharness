@@ -106,7 +106,8 @@ export async function checkStreamingUi(page, base, record) {
 	console.log("PASS atomic paragraphs/code/math/tables/lists and completion alignment");
 
 	// Start another turn while following, then deliberately leave its tail.
-	await page.click('[aria-label="Scroll to latest"]');
+	// The reserve can leave a short answer aligned at the very bottom, with no button to show.
+	if (await page.$('[aria-label="Scroll to latest"]')) await page.click('[aria-label="Scroll to latest"]');
 	await page.waitForFunction(() => window.streamScroller.scrollHeight - window.streamScroller.clientHeight - window.streamScroller.scrollTop < 2);
 	await begin("stream_reading_2");
 	await write("Another completed paragraph.\n\nA final unfinished paragraph");

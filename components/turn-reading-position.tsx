@@ -98,7 +98,12 @@ export function TurnReadingPosition({ busy, messages, onReserve }: {
 			motion.current = null;
 			pending.current = false;
 			turn.current = { active: true, before: previousIds.current };
-			detached.current = current.current.state.escapedFromLock && !current.current.state.isAtBottom;
+			// The library's flags can stay "escaped" after a restored open at the very bottom, and
+			// starting a turn resizes the composer. So the real distance decides, by the library's
+			// own 70px meaning of "at the bottom".
+			const scroller = current.current.scrollRef.current;
+			const gap = scroller ? scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop : 0;
+			detached.current = current.current.state.escapedFromLock && !current.current.state.isAtBottom && gap >= 70;
 			onReserve(0);
 		}
 		if (!busy && turn.current.active) {

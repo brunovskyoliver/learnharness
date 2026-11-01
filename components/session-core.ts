@@ -928,9 +928,12 @@ export class SessionModel {
 		const baseAbsorbed = this.base.some((m) => !recordIds.has((m as { id?: string }).id));
 		if (baseAbsorbed) return; // not a pure append — the idle full sync is the net
 		this.mutate(() => {
-			this.base = record;
 			this.forgetResolvedDrafts(record);
 			this.tail = this.tail.filter((m) => !absorbed(m, record));
+			// A message in both would render twice with one id. The live copy stays, since the
+			// record's may be behind it; the idle full sync settles them.
+			const live = new Set(this.tail.map((m) => m.id));
+			this.base = record.filter((m) => !live.has((m as { id?: string }).id as string));
 		});
 	}
 

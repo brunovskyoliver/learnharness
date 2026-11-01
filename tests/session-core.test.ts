@@ -1653,3 +1653,19 @@ describe("absorbed — the custom role (the doubled thinking card)", () => {
 		assert.equal((customs[0] as { id?: string }).id, "srv_1");
 	});
 });
+
+it("adopting a record that holds a live message renders it once, keeping the live copy", () => {
+	const m = model({ fetch: () => new Promise<Response>(() => {}) });
+	m.adoptRecord([{ id: "u1", role: "user", content: "hello", timestamp: 1 } as never] as never);
+	void m.send({ type: "text", text: "hello" });
+	const live = { id: "a1", role: "assistant", content: [{ type: "text", text: "newest" }], stopReason: "stop", timestamp: 2 };
+	m.applyWireEvent({ type: "message_start", message: live } as never);
+	m.applyWireEvent({ type: "message_end", message: live } as never);
+	m.adoptRecord([
+		{ id: "u1", role: "user", content: "hello", timestamp: 1 },
+		{ ...live, content: [{ type: "text", text: "older" }] },
+	] as never);
+	const copies = (m.getState().nativeMessages as { id?: string; content?: unknown }[]).filter((message) => message.id === "a1");
+	assert.equal(copies.length, 1);
+	assert.deepEqual(copies[0]!.content, live.content);
+});
