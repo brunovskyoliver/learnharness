@@ -8,7 +8,7 @@
  */
 import "./pdf-reader.css";
 import { useRouter } from "next/navigation";
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeftIcon, ChevronRightIcon, HighlighterIcon, MinusIcon, PlusIcon } from "lucide-react";
 import { ChatActionsContext } from "@/components/chat-actions-context.ts";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -273,6 +273,9 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 	const [notePrompt, setNotePrompt] = useState<{ anchor: TextAnchor } | { annotation: DocumentAnnotation } | null>(null);
 	const [noteText, setNoteText] = useState("");
 	const [failureLine, setFailureLine] = useState<string | null>(null);
+	const [removed, setRemoved] = useState<DocumentAnnotation | null>(null);
+	const [bubbleHeight, setBubbleHeight] = useState(150);
+	const noteOpener = useRef<HTMLElement | null>(null);
 	const [saving, setSaving] = useState<DocumentPassage | null>(null);
 	const [sentLine, setSentLine] = useState<string | null>(null);
 	const [cite, setCite] = useState<{ page: number; quote: string; nonce: number; citation: boolean; terms?: readonly string[] } | null>(null);
@@ -387,16 +390,20 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 		setCite({ page: jump.page, quote: jump.quote ?? "", nonce: jump.nonce ?? 0, citation: Boolean(jump.citation), terms: jump.terms });
 		requestAnimationFrame(() => scrollToPage(jump.page!));
 	}, [doc, paneWidth === 0, jump?.nonce, scrollToPage]);
+	const citeReported = useRef<number | null>(null);
 	const citeRef = useRef(cite);
 	citeRef.current = cite;
 	const onCite = useCallback((found: boolean, nonce: number, element: HTMLElement | null) => {
 		const asked = citeRef.current;
-		if (!asked || asked.nonce !== nonce) return;
+		// Once per request: a page redrawn later must not pull the learner back to it.
+		if (!asked || asked.nonce !== nonce || citeReported.current === nonce) return;
+		citeReported.current = nonce;
 		if (found && element) {
 			const mark = element.querySelector<HTMLElement>('[data-testid="pdf-cite-mark"]');
 			// The mark lands on the next paint.
 			requestAnimationFrame(() => (element.querySelector<HTMLElement>('[data-testid="pdf-cite-mark"]') ?? mark ?? element).scrollIntoView({ block: "center" }));
 		}
+		if (!asked.quote) { if (asked.citation) setJumpLine(`Showing page ${asked.page}. This link names no words to check.`); return; }
 		if (asked.citation) setJumpLine(found ? `Quote found on page ${asked.page}.` : `This quote isn't on page ${asked.page}, so the citation can't be confirmed. Showing the page anyway.`);
 		else if (!found) setJumpLine(`That passage wasn't found on page ${asked.page}. The file may have changed. Showing the page anyway.`);
 	}, []);
@@ -465,6 +472,7 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 			const response = await fetch(`${annotationsUrl(item.id)}/${encodeURIComponent(annotation.id)}`, { method: "DELETE" });
 			if (!response.ok && response.status !== 404) throw new Error(String(response.status));
 			setAnnotations((list) => list.filter((entry) => entry.id !== annotation.id));
+			setRemoved(annotation);
 		} catch {
 			setFailureLine("That highlight could not be removed.");
 		}
@@ -489,6 +497,9 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 		router.push(`/chat/new?${action === "ask" ? "draft" : "send"}=${encodeURIComponent(message)}`);
 	};
 
+	useLayoutEffect(() => {
+		if (selected && bubble.current) setBubbleHeight(bubble.current.offsetHeight);
+	}, [selected]);
 	const pageNumbers = useMemo(() => Array.from({ length: numPages }, (_, i) => i + 1), [numPages]);
 	const pageWidth = Math.max(0, Math.round((paneWidth - 16) * zoom));
 	const goToField = () => {
@@ -524,7 +535,6 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 	const blocked = chat?.sendBlock ? TUTOR_BLOCKED_TEXT[chat.sendBlock] : null;
 	// Above the selection, or below on touch, where the system's own menu sits above;
 	// on the other side when there is no room, and always on screen.
-	const bubbleHeight = bubble.current?.offsetHeight ?? 150;
 	const bubbleTop = (() => {
 		if (!selected) return 0;
 		const above = selected.rect.top - bubbleHeight - 8;
@@ -548,12 +558,12 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 				<button type="button" className={TOOL} aria-label="Previous page" disabled={current <= 1} onClick={() => scrollToPage(current - 1)}><ChevronLeftIcon className="ui-icon" aria-hidden="true" /></button>
 				<form className="flex items-center gap-1 text-sm text-ink-2" onSubmit={(event) => { event.preventDefault(); goToField(); }}>
 					<label className="sr-only" htmlFor={`pdf-page-${item.id}`}>Page number</label>
-					<input id={`pdf-page-${item.id}`} value={pageField} inputMode="numeric" autoComplete="off" data-testid="pdf-page-field" onChange={(event) => setPageField(event.target.value)} onBlur={goToField} className="h-9 w-11 rounded-md border border-input bg-transparent px-1 text-center text-sm text-foreground pointer-coarse:h-11" />
+					<input id={`pdf-page-${item.id}`} name="page" value={pageField} inputMode="numeric" autoComplete="off" data-testid="pdf-page-field" onChange={(event) => setPageField(event.target.value)} onBlur={goToField} className="h-9 w-11 rounded-md border border-input bg-transparent px-1 text-center text-sm text-foreground pointer-coarse:h-11" />
 					<span className="whitespace-nowrap" data-testid="pdf-page-count">of {numPages || "…"}</span>
 				</form>
 				<button type="button" className={TOOL} aria-label="Next page" disabled={current >= numPages} onClick={() => scrollToPage(current + 1)}><ChevronRightIcon className="ui-icon" aria-hidden="true" /></button>
 				<button type="button" className={TOOL} aria-label="Zoom out" disabled={zoom <= ZOOMS[0]!} onClick={() => stepZoom(-1)}><MinusIcon className="ui-icon" aria-hidden="true" /></button>
-				<button type="button" className={TEXT_BUTTON} aria-label={`Fit to width. Zoom is ${Math.round(zoom * 100)} percent`} onClick={() => setZoom(1)}>{Math.round(zoom * 100)}%</button>
+				<button type="button" className={`${TEXT_BUTTON} max-[359px]:hidden`} aria-label={`Fit to width. Zoom is ${Math.round(zoom * 100)} percent`} onClick={() => setZoom(1)}>{Math.round(zoom * 100)}%</button>
 				<button type="button" className={TOOL} aria-label="Zoom in" disabled={zoom >= ZOOMS.at(-1)!} onClick={() => stepZoom(1)}><PlusIcon className="ui-icon" aria-hidden="true" /></button>
 				<button type="button" className={`${TEXT_BUTTON} ml-auto aria-pressed:bg-accent`} aria-pressed={panel} onClick={() => setPanel((open) => !open)} data-testid="pdf-highlights-toggle">
 					<HighlighterIcon className="ui-icon" aria-hidden="true" />
@@ -573,6 +583,13 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 					<button type="button" className="prompt-secondary" onClick={() => setSentLine(null)}>Dismiss</button>
 				</div>
 			)}
+			{removed && (
+				<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-1 text-sm text-ink-2" data-testid="pdf-removed">
+					<p>Highlight on page {removed.anchor.page} removed.</p>
+					<button type="button" className="prompt-secondary" data-testid="pdf-removed-undo" onClick={() => void saveHighlight(removed.anchor, removed.note).then((ok) => { if (ok) setRemoved(null); })}>Undo</button>
+					<button type="button" className="prompt-secondary" onClick={() => setRemoved(null)}>Dismiss</button>
+				</div>
+			)}
 			{failureLine && <p role="alert" className="px-3 pb-1 text-sm text-destructive">{failureLine}</p>}
 			{annotationsFailed && (
 				<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-1 text-sm text-ink-2">
@@ -590,7 +607,7 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 							{annotation.note && <p className="text-foreground [overflow-wrap:anywhere]" data-testid="pdf-highlight-note">{annotation.note}</p>}
 							<div className="flex flex-wrap gap-1">
 								{annotation.anchor.page <= numPages && <button type="button" className="prompt-secondary" aria-label={`Go to page ${annotation.anchor.page}`} onClick={() => scrollToPage(annotation.anchor.page)}>Go to</button>}
-								<button type="button" className="prompt-secondary" aria-label={`${annotation.note ? "Edit" : "Add"} note on page ${annotation.anchor.page}`} onClick={() => { setNoteText(annotation.note ?? ""); setNotePrompt({ annotation }); }}>{annotation.note ? "Edit note" : "Add note"}</button>
+								<button type="button" className="prompt-secondary" aria-label={`${annotation.note ? "Edit" : "Add"} note on page ${annotation.anchor.page}`} onClick={(event) => { noteOpener.current = event.currentTarget; setNoteText(annotation.note ?? ""); setNotePrompt({ annotation }); }}>{annotation.note ? "Edit note" : "Add note"}</button>
 								<button type="button" className="prompt-secondary" aria-label={`Remove highlight on page ${annotation.anchor.page}`} onClick={() => void removeAnnotation(annotation)}>Remove</button>
 							</div>
 						</div>
@@ -603,7 +620,7 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 				role="region"
 				aria-label={`${item.name}, pages`}
 				data-testid="pdf-scroll"
-				className="min-h-0 flex-1 overflow-auto focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring"
+				className="min-h-0 flex-1 overflow-auto overscroll-contain focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring"
 			>
 				{!doc || !pdfjs ? (
 					<div role="status" aria-label={`Loading ${item.name}`} className="flex flex-col gap-2 px-3 py-2">
@@ -652,7 +669,7 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 					onMouseDown={(event) => event.preventDefault()}
 				>
 					<button type="button" data-testid="pdf-highlight" onClick={() => void saveHighlight(selected.anchor).then((ok) => { if (ok) clearSelection(); })}>Highlight</button>
-					<button type="button" data-testid="pdf-note" onClick={() => { setNoteText(""); setNotePrompt({ anchor: selected.anchor }); }}>Add a note</button>
+					<button type="button" data-testid="pdf-note" onClick={() => { noteOpener.current = null; setNoteText(""); setNotePrompt({ anchor: selected.anchor }); }}>Add a note</button>
 					<button type="button" data-testid="pdf-save-passage" onClick={() => setSaving({ itemId: item.id, page: selected.anchor.page, text: selected.anchor.quote })}>Save to a page</button>
 					{blocked ? <p className="w-full px-2 py-1 text-sm text-ink-2">{blocked}</p> : (
 						<>
@@ -664,7 +681,7 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 				</div>
 			)}
 			<Dialog open={notePrompt !== null} onOpenChange={(open) => { if (!open) setNotePrompt(null); }}>
-				<DialogContent className="gap-3 rounded-[10px] border-0 bg-card sm:max-w-md" data-testid="pdf-note-dialog" aria-describedby={undefined}>
+				<DialogContent className="gap-3 rounded-[10px] border-0 bg-card sm:max-w-md" data-testid="pdf-note-dialog" aria-describedby={undefined} onCloseAutoFocus={(event) => { event.preventDefault(); (noteOpener.current?.isConnected ? noteOpener.current : scroller.current)?.focus({ preventScroll: true }); }}>
 					<DialogTitle className="title-serif text-[17px] font-medium">Note on page {notePrompt ? ("anchor" in notePrompt ? notePrompt.anchor.page : notePrompt.annotation.anchor.page) : ""}</DialogTitle>
 					<label className="flex flex-col gap-1 text-sm font-medium text-ink-2">
 						Your note
@@ -677,7 +694,7 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 					</div>
 				</DialogContent>
 			</Dialog>
-			{saving && <SavePassageDialog document={saving} onClose={() => { setSaving(null); clearSelection(); }} />}
+			{saving && <SavePassageDialog document={saving} onClose={() => { setSaving(null); clearSelection(); requestAnimationFrame(() => scroller.current?.focus({ preventScroll: true })); }} />}
 		</div>
 	);
 }

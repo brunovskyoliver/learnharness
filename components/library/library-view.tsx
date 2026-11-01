@@ -503,7 +503,7 @@ export function LibraryView() {
 						<input
 							type="search"
 							value={query}
-							placeholder={prefs.searchMode === "text" ? "Search inside your notes and files" : "Search your Library"}
+							placeholder={prefs.searchMode === "text" ? "Search inside your notes and files…" : "Search your Library"}
 							aria-label={prefs.searchMode === "text" ? "Search inside your notes and files" : "Search your Library"}
 							data-testid="library-search"
 							onChange={(event) => setQuery(event.target.value)}

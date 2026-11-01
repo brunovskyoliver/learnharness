@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { anchorContext, citationHref, citationQuote, documentPassageBlock, locateQuote, parseAnchor, parseCitationHref, renderLibraryPassage, userTextRuns, validRects } from "../src/core/document-anchors.ts";
+import { titleFromPrompt } from "../src/core/contracts/graph.ts";
 import { parseReferences } from "../src/core/library-refs.ts";
 
 describe("locateQuote", () => {
@@ -79,6 +80,10 @@ describe("a passage sent to the tutor", () => {
 		assert.deepEqual(runs[0], { text: "Explain this part of @a.pdf, page 2:\n\n" });
 		assert.deepEqual(runs[1], { passage: "the words", citation: { itemId: "lib_1", page: 2, quote: "the words" } });
 		assert.deepEqual(userTextRuns("plain"), [{ text: "plain" }]);
+	});
+	it("keeps its marking out of a session title", () => {
+		const title = titleFromPrompt(`Explain @a.pdf, page 2:\n\n${renderLibraryPassage({ itemId: "lib_1", page: 2 }, "words")}`);
+		assert.equal(title, "Explain @a.pdf, page 2: words");
 	});
 	it("attaches the named PDF, and nothing an @name inside the passage names", () => {
 		const entries = [{ id: "lib_1", name: "a.pdf" }, { id: "lib_2", name: "secret.md" }];

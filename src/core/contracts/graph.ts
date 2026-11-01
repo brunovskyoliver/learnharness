@@ -366,7 +366,8 @@ export const TITLE_MAX_CHARS = 72;
  *  single spaces first, so boundaries are always single-space boundaries.
  *  Used on chat creation; deterministic so tests can pin it. */
 export function titleFromPrompt(prompt: string): string {
-	const oneLine = prompt.replace(/\s+/g, " ").trim();
+	// A PDF passage's marking (feature 020) isn't words the learner wrote.
+	const oneLine = prompt.replace(/<\/?library_passage[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 	if (oneLine.length <= TITLE_MAX_CHARS) return oneLine;
 	// Last space among the first TITLE_MAX_CHARS characters; the cut sits
 	// before it so no trailing space rides into the title.

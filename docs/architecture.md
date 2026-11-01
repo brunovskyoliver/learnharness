@@ -25,6 +25,8 @@ Core has no dependency on server or store. Agents receive effects through depend
 | Lessons and practice | `chats/<id>.json`, `ChatRecord`, native `LhMessage[]` |
 | Knowledge graph | JSONL evidence ledgers, sources and coverage under `graph/` |
 | Library | `library/catalog.json` for items and folders, flat bytes in `files/`, page versions under `library/pages/<id>/`. Folders are catalog-only and additive: the catalog version stays 1. Trash entries sit in their own catalog array, so an older app neither lists nor tombstones them; document bytes wait under `library/trash/<entry>/`, outside the agent file jail. Recent opens live in `library/recent.json` |
+| Search index | Rebuildable, safe to delete: `library/search/current.json` names a generation, `library/search/g_<id>/<itemId>.json` holds one shard per item, written atomically. A rebuild swaps generations only when complete |
+| Annotations | `library/annotations/<itemId>.json`: highlights and notes per PDF, apart from its bytes. They stay through the trash and go on purge |
 | Background jobs | Job records under `jobs/` |
 | Product preferences | Versioned settings JSON |
 | Credentials | Dedicated auth/subscription storage through local or hosted boundaries |
@@ -67,6 +69,12 @@ The workspace provider (`components/workspace/workspace-context.tsx`, feature 01
 Radix dialogs contain focus for Settings, setup and connection overlays. Menus portal into the active modal boundary. Composer menus anchor to their toolbar controls; Escape closes the innermost menu first. Global lesson shortcuts defer inside modal/menu controls. Closing resolves the live opening control even when a tooltip wrapper has replaced its DOM node.
 
 A demo keeps one live sandboxed iframe while its inline, workspace and focused presentations change. Parameter, simulation, path and camera state belong to that live document. Parent messages validate the source and allowed payload. Theme messages update app-owned neutral styles and renderer colors without replacing the document; authored demo styles may override injected defaults. Individual graph focus uses demo-kit panels; arbitrary legacy HTML expands as a whole.
+
+## Search and the PDF reader
+
+`src/server/library-index.ts` keeps the index. Every Library write emits `library-changed`; one listener debounces it into a background catch-up in the emitter's tenant context, and PDFs parse on the per-tenant queue `library-text.ts` already had. A search reads shards and folded text from a capped per-tenant cache, yields while scanning, and reports what isn't ready as pending, so no request parses a PDF. The catalog decides what exists, so a trashed item can't appear even before its shard goes.
+
+The reader (`components/library/pdf-reader.tsx`) loads `pdfjs-dist` on the first PDF and uses its core API only: canvas plus text layer, with no annotation layer, scripting manager or sandbox bundle, and eval off. The worker, fonts, cmaps, wasm and ICC profiles come from the installed package through `/pdfjs/…`, by allow-list, and `next.config.ts` includes them in the standalone trace. Tests can't parse in the browser, so `tests/render-documents.test.tsx` pins the options and `scripts/check-documents-ui.mjs` fails on any request to another origin.
 
 ## Host and provider boundaries
 

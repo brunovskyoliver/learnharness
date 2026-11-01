@@ -36,7 +36,7 @@ const ROUTES: Partial<Record<PaletteActionId, string>> = {
 function EntryIcon({ entry }: { entry: PaletteEntry }) {
 	const className = "ui-icon shrink-0 text-muted-foreground";
 	if (entry.kind === "session") return entry.practice ? <DumbbellIcon className={className} aria-hidden="true" /> : <BookOpenIcon className={className} aria-hidden="true" />;
-	if (entry.kind === "item") return <FileTextIcon className={className} aria-hidden="true" />;
+	if (entry.kind === "item" || entry.kind === "passage") return <FileTextIcon className={className} aria-hidden="true" />;
 	if (entry.kind === "folder") return <FolderIcon className={className} aria-hidden="true" />;
 	return <ZapIcon className={className} aria-hidden="true" />;
 }

@@ -278,8 +278,8 @@ async function checkWidth(width) {
 
 	// Escape: the innermost first.
 	await selectWord(page, 2, "force");
-	await page.keyboard.press("Escape").catch(() => {});
-	await page.evaluate(() => document.querySelector('[data-testid="pdf-scroll"]').dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true })));
+	await page.$eval('[data-testid="pdf-scroll"]', (el) => el.focus());
+	await page.keyboard.press("Escape");
 	await page.waitForFunction(() => !document.querySelector('[data-testid="pdf-bubble"]'));
 	assert.ok(await page.$('[data-testid="pdf-reader"]'), "Escape closed only the selection");
 
@@ -294,6 +294,11 @@ async function checkWidth(width) {
 	await page.waitForSelector('[data-testid="pdf-highlight-row"]');
 	assert.ok((await textOf(page, '[data-testid="pdf-highlights"]')).includes("My note on this"));
 	await shot(page, `documents-highlights-${width}.png`);
+	// Removing is undoable, not immediate and final.
+	await page.click('[aria-label="Remove highlight on page 1"]');
+	await page.waitForSelector('[data-testid="pdf-removed-undo"]');
+	await page.click('[data-testid="pdf-removed-undo"]');
+	await page.waitForFunction(() => document.querySelector('[data-testid="pdf-highlights-toggle"]').innerText.includes("(2)"));
 	await page.click('[data-testid="pdf-highlights-toggle"]');
 	await page.waitForSelector('[data-pdf-page="1"]');
 	await closePane(page, mobile);

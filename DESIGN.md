@@ -50,7 +50,7 @@ Features 014 and 015; decisions in [their spec](specs/014-workspace-navigation/s
 
 - A row directly under the 52px band on sessions and the Library, and on Home and new sessions once tabs exist. It is never in the band, so drag regions and native gutters don't change. 36px tall, 48px on coarse pointers.
 - A tab is a type icon, the title (13px, truncating at 13rem, whole in its tooltip) and a × named "Close {title}". Selected is raised-2, also on screen is raised, the rest are `ink-2`. A loading tab swaps its icon for the running indicator.
-- Visiting a session or opening an item in the pane opens its tab, up to 12. PDF, images and other files open as in the Library, without a tab.
+- Visiting a session or opening an item in the pane opens its tab, up to 12. PDFs hold a tab like a page. Images and other files open as in the Library, without a tab.
 - The strip ends in "Hide right pane" or "Show right pane" from 768px.
 
 ### Right pane
@@ -127,7 +127,7 @@ Feature 009; the binding reference is its [UI contract](specs/009-library-canvas
 - Upload is a file picker and a drop on the page, with a row and a percent per upload in flight. Refusals name the file and the reason and stay until dismissed.
 - A name clash asks "{name} is already in your Library." with "Keep both as {suggested}" and "Cancel". Originals are never replaced.
 - Empty: "Nothing here yet. Upload a document or start a page." Loading uses row skeletons. Failed: "Your Library could not be loaded." with Try again. A failed refresh keeps the list.
-- Pages open in the pane. Markdown, text, code and CSV open read-only with "This is your original; it can't be edited here." PDF and images open in a new tab. Over 1 MiB of text shows "Too long to preview" and Download.
+- Pages open in the pane. Markdown, text, code and CSV open read-only with "This is your original; it can't be edited here." PDFs open in the reader (features 019-020). Images open in a new tab. Over 1 MiB of text shows "Too long to preview" and Download.
 
 ### @ list
 
@@ -192,6 +192,22 @@ Features 016-018. Every string is in [their plan](specs/016-intelligent-notes/pl
 - **Saved passage**: a quote ending in a link, "Lesson: {title}". Following it jumps to the message, which flashes as a graph link's does. If the session is gone the link is muted and followed by "· this session was deleted, so the source is gone".
 - **Save to a page**: a small `surface-raised-2` button over selected teacher prose, under it on coarse pointers. It opens a `card` dialog: the passage, one field that filters pages or names a new one, then the rows.
 - **This session**: the context view starts with Notes: the session's pages, then "Turn this lesson into study notes" on lessons.
+
+### Documents
+
+Features 019-020. Every string is in [their plan](specs/019-document-intelligence/plan.md). No amber except keyboard focus and a dialog's primary.
+
+- **Search mode**: "Names" and "Full text" pills beside the Library's field; Names is the default and the choice persists. Full text hides Sort, direction and layout, keeps Type and tags, and adds Folder and "Hide archived".
+- **Results**: raised 10px rows: the name, the snippet in `ink-2` with each match a `<mark>` on the `accent` step and underlined, then meta (`{Kind} · Page 3 · {folder}`). The count sits above them in a live region.
+- **Index state**: a muted line under the results, `{n} searched · …`, with "Show which" listing each file not searched and why, and "Reindex". A scan reads "No text could be read". This line shows on an empty result too, so nothing is silently left out.
+- **Palette**: name matches first, then "Inside your documents", each row with its snippet under the name.
+- **Landing**: a page's block takes the `accent` step for about 2 seconds, as a decoration. A text file's line stays marked. A PDF's quote is outlined. If the words have gone, a muted line says so.
+- **Reader**: in the right pane, with a tab. The 52px header holds the name, "Open in a new tab" and "Download" as named icons. Under it a wrapping row: previous, page field "of {n}", next, zoom out, percent (fits to width), zoom in, and "Highlights ({n})" at the end. Pages are white paper on the ground, the width of the pane.
+- **Marks on paper**: colour here is data, like a chart's, so the accent stays reserved: a highlight is yellow, a note adds a dark underline so colour isn't the only signal, a citation's quote is blue with a 2px outline.
+- **Selection bubble**: `surface-raised-2`, 22rem at most: Highlight, Add a note, Save to a page; then one muted line, "Ask the tutor. Sends this passage, from page {n}:", then Explain, Summarize, Challenge, Generate questions, Ask…. Above the selection, below it on coarse pointers, and always on screen. While a question waits or the tutor is answering, the tutor's actions become one sentence saying why.
+- **Highlights list**: a `surface-raised-2` block above the pages, 40dvh at most: page, quote, note, then Go to, Add or Edit note, Remove. A row whose words have gone adds "This text is no longer on that page." Remove offers Undo.
+- **Citation line**: a muted status above the pages saying whether the quote was found on that page, with Dismiss.
+- **Sent passage**: in the transcript, the passage on the ground step inside the learner's block, then an underlined "Sent from page {n}".
 
 ## Demos
 

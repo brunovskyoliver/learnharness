@@ -12,8 +12,8 @@ Owner goal, 2026-10-31: evolve the app into one workspace connecting learning, d
 | 016 | Note links: wiki links, backlinks, related notes, callouts, collapsible sections | 014 | Implemented on `feat/016-intelligent-notes`, not merged or deployed |
 | 017 | Study notes from lessons: saved passages with source references, lesson to notes | 016 | Implemented on `feat/016-intelligent-notes`, not merged or deployed |
 | 018 | Contextual AI note actions with review before any edit lands | 016 | Implemented on `feat/016-intelligent-notes`, not merged or deployed |
-| 019 | Full-text search: deterministic index, snippets, filters, jump to passage | 016 | Not started |
-| 020 | PDF reader: selections, highlights, annotations, page citations, extract to notes | 019 | Not started |
+| 019 | Full-text search: deterministic index, snippets, filters, jump to passage | 016 | Implemented on `feat/019-document-intelligence`, not merged or deployed |
+| 020 | PDF reader: selections, highlights, annotations, page citations, extract to notes | 019 | Implemented on `feat/019-document-intelligence`, not merged or deployed |
 | 021 | Flashcards and FSRS review queue, separate from graph evidence | 017, 020 | Not started |
 | 022 | Diagrams: editable maps and whiteboards, proposed AI changes | 016 | Not started |
 | 023 | Integration polish: Electron and hosted verification across the slices | all | Not started |
@@ -42,4 +42,6 @@ The owner approved every recommended option ("i approve it all", 2026-10-31) and
 ## Open gaps carried to 023
 
 - Feature 018: AI edits to learner text are reviewed after the version lands (the 010 review bar and Undo). The owner's goal asks for review before. 023 adds a held proposal for learner-triggered AI edits.
+- Feature 020: selecting PDF text has no built-in keyboard path (constitution VI). See specs/019-document-intelligence/plan.md, Known limits.
+- `scripts/build-server.mjs` refuses a standalone with a `data/` folder, and any build from a repo with a real `data/` hits this, because the middleware's trace sweeps it in. It predates 019 (checked on `fff3418`). `.dockerignore` keeps `data/` out of Docker builds; a desktop build from a machine with real data is refused rather than shipped.
 - Constitution VI UI skill checks (`impeccable`, `web-design-guidelines`) to run across 011-022.
