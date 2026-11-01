@@ -447,6 +447,48 @@ async function checkAiEdit(width) {
 	console.log(`ok ${width} AI edit review`);
 }
 
+/** A held edit from an ordinary turn, not a selection's action: the row, its Review, the page
+ *  and the Library all show it, so he can't miss it. No model: the row is the tool's own result. */
+async function checkOrdinaryTurnProposal(width) {
+	const { page, errors, close } = await newPage(width);
+	const name = `w${width} Ordinary`;
+	const original = "A line to tidy.\n";
+	const note = await createPage(name, original);
+	const proposalId = await agentPropose(note.id, 1, "A tidier line.\n");
+	const golden = JSON.parse(await readFile(path.join("tests/fixtures/golden-data/chats/chat_mv27rrra_feff23b6.json"), "utf8"));
+	const reply = golden.messages.find((m) => m.role === "assistant" && m.stopReason === "stop");
+	const chatId = `ordinary-${width}`;
+	await writeFile(path.join(data, "chats", `${chatId}.json`), JSON.stringify({
+		...structuredClone(golden), id: chatId, title: name, settings: { model: { provider: "openrouter", id: "openai/gpt-4o" } },
+		messages: [
+			{ id: "m_user", role: "user", content: "Can you tidy my notes?", timestamp: 1 },
+			{ ...reply, id: "a_rev", stopReason: "toolUse", content: [{ type: "toolCall", id: "rev", name: "page_revise", arguments: { item: name, baseVersion: 1, content: "x" } }] },
+			{ id: "r_rev", role: "toolResult", toolCallId: "rev", toolName: "page_revise", content: [{ type: "text", text: "{}" }], details: { outcome: "proposed", proposalId, itemId: note.id, name, target: "page" }, isError: false, timestamp: 3 },
+			{ ...reply, id: "m_done", content: [{ type: "text", text: "It is waiting for you." }] },
+		],
+	}));
+	await page.goto(`${base}/chat/${chatId}`, { waitUntil: "domcontentloaded" });
+	// Review shows with no click on the row. It must not need one.
+	await page.waitForFunction((sel) => { const el = document.querySelector(sel); return el && el.getClientRects().length > 0 && Object.keys(el).some((key) => key.startsWith("__reactProps")); }, { timeout: 60000 }, id("page-row-review"));
+	assert.equal(await page.$eval(`${id("page-row")} summary`, (el) => el.innerText.trim()), `Page · proposed a change to ${name}, waiting for your review`);
+	if (shots) await page.screenshot({ path: path.join(shots, `held-ordinary-row-${width}.png`) });
+	await noOverflow(page, width, "ordinary proposal row");
+	await page.click(id("page-row-review"));
+	await page.waitForSelector(id("page-proposal-diff"), { timeout: 60000 });
+	await page.keyboard.press("Escape");
+	await page.waitForFunction(() => !document.querySelector('[data-testid="page-proposal-dialog"]'));
+	assert.equal((await api(`/api/library/pages/${note.id}`)).body.head.content, original, "nothing changed");
+	// The Library, in any session or none.
+	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
+	await page.waitForFunction((text) => [...document.querySelectorAll('[data-testid="page-proposal-row"]')].some((el) => el.textContent.includes(text)), { timeout: 60000 }, name);
+	// The page itself, opened beside the list.
+	await openInLibrary(page, name);
+	await page.waitForSelector(`${id("page-pane")} ${id("page-proposal-row")}`, { timeout: 60000 });
+	assert.deepEqual(errors, [], "no browser exceptions");
+	await close();
+	console.log(`ok ${width} a held edit from an ordinary turn shows on its row without a click, in the Library and on the page`);
+}
+
 /** Feature 023: Simpler, Rewrite and Expand are held. Their send is one click and changes
  *  nothing; the page and draft wait through the review, by keyboard, with reduced motion. */
 async function checkHeldEdit(width) {
@@ -644,6 +686,7 @@ try {
 		await checkPassages(width);
 		await checkAiEdit(width);
 		await checkHeldEdit(width);
+		await checkOrdinaryTurnProposal(width);
 		if (width < 768) await checkPhoneNotes(width);
 	}
 	await checkWideColumn();

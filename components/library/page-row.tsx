@@ -48,7 +48,7 @@ export function PageRow({ part }: ArtifactPartProps) {
 	const opensHere = !!target && target.name !== "" && !!pane && (target.kind !== "pdf" && target.kind !== "image" && target.kind !== "other");
 	const open = (history: boolean) => pane?.open({ id: target!.id, name: target!.name, kind: target!.kind as "page", size: target!.size, ...(history ? { history: true } : {}) });
 	return (
-		<SessionDetails stateKey={`tool/${p.toolCallId}`} data-testid="page-row" data-tool={tool} className="group lh-reading my-1">
+		<SessionDetails stateKey={`tool/${p.toolCallId}`} initialOpen={!!proposal} data-testid="page-row" data-tool={tool} className="group lh-reading my-1">
 			<summary className="flex cursor-pointer select-none list-none items-center gap-2 text-sm text-muted-foreground [&::-webkit-details-marker]:hidden">
 				<span className={`font-medium [overflow-wrap:anywhere] ${bad ? "text-destructive" : ""}`}>{pageRowHeadline(tool, d)}</span>
 				<ChevronRight className="size-3 shrink-0 opacity-50 transition-transform group-open:rotate-90" aria-hidden="true" />

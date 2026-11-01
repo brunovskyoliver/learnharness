@@ -121,7 +121,7 @@ Feature 009; the binding reference is its [UI contract](specs/009-library-canvas
 - Folders (feature 011): "New folder" sits beside Upload and New page (raised-2). Inside a folder the title is the folder's name, under breadcrumbs ("Library / Physics / Waves", 13px `ink-2`, the current one in foreground with `aria-current="page"`). Folder rows come before items: folder icon, name, `Folder · {n} items`, then "Open folder", "Rename folder", "Move folder" and "Delete folder" with the name. "Move {name} to" is a dialog listing every allowed folder by its path. Searching covers the whole Library and appends each match's location to the meta line. An empty folder reads "This folder is empty."; a missing one "That folder is no longer in your Library." with Back to Library.
 - Views (feature 012): a "Library views" row of links under Search: All, Favorites, Recent, Archive, Trash, the current one on raised-2 with `aria-current`. Tags appear as a second row of links once any exist. Favorites and pins show as small `ink-2` star and pin icons before the name; pinned entries sort first at every level.
 - Delete moves to the trash: "Move {name} to the trash?" with "You can restore it from Trash." Everything in a folder goes with it. Trash rows have Restore and "Delete for good", which alone confirms "Delete {name} for good?" with "This can't be undone." A restored name that is taken steps as in a clash.
-- Sorting and layout (feature 013): Sort, direction and Type controls, then the list and grid icons at the row's end. Sort and layout persist per browser. "Select" turns on a checkbox per row and a sticky raised-2 toolbar: "{n} selected", Move to…, Favorite, Tags…, Archive and "Move to the trash". A bulk failure names each item and its reason and the rest still happen.
+- Sorting and layout (feature 013): Sort, direction and Type controls, the two choices being menus with a check on the current one, then the list and grid icons at the row's end. Sort and layout persist per browser. "Select" turns on a checkbox per row and a sticky raised-2 toolbar: "{n} selected", Move to…, Favorite, Tags…, Archive and "Move to the trash". A bulk failure names each item and its reason and the rest still happen.
 - Every row has a More menu (⋯), and the same list on right-click: Rename, favorites, pin, Tags… (items), Move to…, Archive, Move to the trash. Below 640px the Rename icon hides. Rows drag onto a folder or the breadcrumbs above; a selection drags together. Move to… is the keyboard and touch path.
 - Rows are raised, 10px. The name is 15px and wraps. The meta line is `{Kind} · {size} · {date}`, plus "Made by the agent" or "No text could be read" when true. Clicking the row opens the item ("Open {name}"); "Rename {name}" and "Delete {name}" are named buttons.
 - Upload is a file picker and a drop on the page, with a row and a percent per upload in flight. Refusals name the file and the reason and stay until dismissed.
@@ -143,7 +143,7 @@ Feature 009; the binding reference is its [UI contract](specs/009-library-canvas
 - A resizable pane shared with the demo workspace shows a demo or a page; the most recent explicit open wins and the one live iframe stays mounted. A question's automatic demo open does not replace an open page.
 - The 52px header holds the page name (click to rename), a muted save state ("Saved", "Saving…", "Draft saved", "Not saved. Your text is kept in this browser." with Try again), History and close. The body is one rich-text surface at reading size, with no separate preview pane.
 - Cmd/Ctrl+S saves a version. Escape returns focus to the transcript on desktop and closes the layer on phones.
-- A conflict shows "This page changed elsewhere. Your text is safe here." with "Keep mine" and "Use latest". An agent update on a clean page shows "Updated by the agent · version {n}" for 4s and announces it in a live region.
+- A conflict shows "This page changed elsewhere. Your text is safe here." with "Keep mine" and "Use latest". An AI edit never lands on the page: it waits under Held edits until he accepts. An accepted edit or an update from elsewhere on a clean page shows "Updated by the agent · version {n}" for 4s and announces it in a live region.
 - History lists `Version {n} · {You | Agent} · {time}`, with a read-only preview and "Restore this version".
 - Below 768px the pane is a full-screen layer with contained focus and "Back to chat". The composer's draft stays mounted underneath.
 - Transcript rows follow the math-check skeleton with no amber: "Page · created {name}", "Page · revised {name} · version {n}", "Page · couldn't revise, it changed", "Page · failed", "Library · read {name}" and "Library · failed". Running rows show only the spinner and activity label.
@@ -170,8 +170,8 @@ These come from feature 010. Every string is in specs/010-page-editor-tools/cont
 - **Selection bubble**: a `surface-raised-2` toolbar over selected text with Bold, Italic, Link, then Explain, Simpler, "Quiz me on this" and Ask….
   - While a question waits, a problem is active or the tutor is answering, the tutor's actions are replaced by one sentence saying why.
   - Explain, Simpler and Quiz me send at once; Ask… only fills the composer. From the Library they open a new session.
-  - Feature 018 adds Summarize, Rewrite, Expand, Challenge and "Generate questions", in the order Explain, Simpler, Summarize, Rewrite, Expand, Challenge, Quiz me on this, Generate questions, Ask…. All but Ask… send at once. Simpler, Rewrite and Expand change the page, through Tutor changes below. The rest answer in chat, and questions are graded checks that stay out of the page. The bubble wraps at 22rem.
-- **Tutor changes**: a `surface-raised` bar ("The tutor changed {n} places · version {v}") with Previous, Next, "Undo the tutor's edit" and Done. Done is the one amber action.
+  - Feature 018 adds Summarize, Rewrite, Expand, Challenge and "Generate questions", in the order Explain, Simpler, Summarize, Rewrite, Expand, Challenge, Quiz me on this, Generate questions, Ask…. All but Ask… send at once. Simpler, Rewrite and Expand propose a change, through Held edits below. The rest answer in chat, and questions are graded checks that stay out of the page. The bubble wraps at 22rem.
+- **Tutor changes**: AI edits wait for Accept (Held edits below), so this bar only shows on versions the agent wrote before that rule. A `surface-raised` bar ("The tutor changed {n} places · version {v}") with Previous, Next, "Undo the tutor's edit" and Done. Done is the one amber action.
   - The tutor's blocks sit on the `accent` step. Removed text is struck through in muted ink.
   - Done or closing the page clears them, and typing does not.
 - **History**: opens on Changes, which shows added and removed blocks against the version before, each labelled in mono with its word and colour. Full text shows the rendered version. Versions can be named and copied.
@@ -195,14 +195,14 @@ Features 016-018. Every string is in [their plan](specs/016-intelligent-notes/pl
 
 ### Held edits
 
-Feature 023. Simpler, Rewrite and Expand don't change the page until he accepts.
+Feature 023. No AI edit changes the page until he accepts, from a selection's action or an ordinary turn.
 
 - **Line**: above the editor on `card`: "The tutor proposed a change. Nothing changed yet." and Review. The Library lists the same for pages that aren't open, with the page's name, and leaves out the one open beside it. Empty renders nothing, and a failed read says so with Try again.
 - **Review**: `popover` dialog, "Proposed change to {name}", then "Nothing has changed. This page stays as it is unless you accept." Comparison uses History's rows, each with its word. Actions end the dialog: Reject, Edit first, amber Accept.
 - **Refused**: the reason replaces the comparison and Accept goes: "This page has a newer version than the one the tutor changed, so this can't be accepted. Your page and this proposal are both kept." or "You changed the same text since…". Copy the proposed text and Reject remain.
 - **Edit first**: full screen with the page editor, "Back to comparison" and Accept. Its line says edits stay in the proposal.
 - **After**: a status line with Dismiss: "Accepted as version {n}. Your text was saved first as version {m}. History has what came before." or "Rejected. The page didn't change." No review bar follows an Accept.
-- **Transcript row**: "Page · proposed a change to {name}, waiting for your review", with Review. Tutor edits from ordinary turns keep the review bar and Undo.
+- **Transcript row**: "Page · proposed a change to {name}, waiting for your review", open by default so Review shows without a click.
 
 ### Documents
 

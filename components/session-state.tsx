@@ -34,8 +34,8 @@ export function SessionPartState({ id, children }: { id: string; children: React
 
 export function useSessionStateStore() { return useContext(StateContext); }
 
-export function SessionDetails({ stateKey = "details", children, ...props }: ComponentProps<"details"> & { stateKey?: string }) {
-	const [open, setOpen] = useSessionState(stateKey, false);
+export function SessionDetails({ stateKey = "details", initialOpen = false, children, ...props }: ComponentProps<"details"> & { stateKey?: string; initialOpen?: boolean }) {
+	const [open, setOpen] = useSessionState(stateKey, initialOpen);
 	return <details {...props} open={open} onToggle={(event) => setOpen(event.currentTarget.open)}>{children}</details>;
 }
 

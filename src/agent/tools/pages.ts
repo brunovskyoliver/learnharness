@@ -81,7 +81,7 @@ export function pageTools(ctx: PageToolContext): Record<string, AgentTool<any>> 
 		page_revise: {
 			name: "page_revise",
 			label: "page_revise",
-			description: "Revise a page as a new restorable version. Read it first and pass the version you read. If the learner edited since, the call refuses and you read again.",
+			description: "Propose a revision of a page. It is held for the learner's review and not applied until they accept it. Read the page first and pass the version you read. If the learner edited since, the call refuses and you read again.",
 			parameters: reviseInput,
 			executionMode: "sequential",
 			execute: serverExecute("page_revise", reviseInput, async (input, { toolCallId }) => {

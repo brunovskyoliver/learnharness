@@ -467,6 +467,12 @@ describe("Library prompts (feature 009)", () => {
 		assert.ok(paths("practice").includes("practice/25-diagrams.md"));
 		assert.ok(!paths("prober").some((p) => p.includes("diagrams")));
 	});
+	it("the teacher and the tool say a page edit is held until he accepts (feature 023)", async () => {
+		const prompt = fs.readFileSync(path.resolve(import.meta.dirname, "../src/agent/prompts/teacher/47-pages.md"), "utf8");
+		assert.match(prompt, /held for his review: nothing changes until he accepts/);
+		const tools = fs.readFileSync(path.resolve(import.meta.dirname, "../src/agent/tools/pages.ts"), "utf8");
+		assert.match(tools, /held for the learner's review and not applied until they accept it/);
+	});
 	it("the approved wording is verbatim", () => {
 		const source = (p: string) => fs.readFileSync(path.resolve(import.meta.dirname, "../src/agent/prompts", p), "utf8");
 		const doctrine = fs.readFileSync(path.resolve(import.meta.dirname, "../specs/009-library-canvas/contracts/doctrine.md"), "utf8");
