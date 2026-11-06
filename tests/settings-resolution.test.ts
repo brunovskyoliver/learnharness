@@ -24,7 +24,7 @@ import { BACKGROUND_MODEL_ROLES, type UserSettings } from "../src/core/settings.
 describe("resolveSettings", () => {
 	it("null record (first boot): non-model knobs land on factory defaults; every model view is EMPTY", () => {
 		const eff = resolveSettings(null);
-		assert.deepEqual(eff.general, { autoUpdate: true });
+		assert.deepEqual(eff.general, { autoUpdate: true, interface: "study" });
 		assert.deepEqual(eff.agent.tools, {});
 		assert.deepEqual(eff.agent.prompts, {});
 		assert.deepEqual(eff.agent.search, {});
@@ -154,6 +154,19 @@ describe("the slot tier (BYOK, owner 2026-09-22)", () => {
 			thinkingLevel: "high", // slot level rides the override's model
 		});
 		assert.deepEqual(eff.agent.models.auditor, { provider: "zai", id: "r-slot", thinkingLevel: "high" });
+	});
+
+	it("notebook role (feature 024) draws from the STRONG slot; its own override wins", () => {
+		const strong = { version: 1, models: { strong: { model: { provider: "zai", id: "s-model" }, thinkingLevel: "high" as const } } };
+		assert.deepEqual(resolveSettings(strong).agent.models.notebook, { provider: "zai", id: "s-model", thinkingLevel: "high" });
+		assert.deepEqual(resolveRoleSpec("notebook", strong), { provider: "zai", id: "s-model", thinkingLevel: "high" });
+		const cheapOnly = resolveSettings({ version: 1, models: { cheap: { model: { provider: "zai", id: "c-model" } } } });
+		assert.equal(cheapOnly.agent.models.notebook, undefined, "the cheap tier never feeds Notebook");
+		const overridden = resolveSettings({
+			...strong,
+			agent: { models: { notebook: { model: { provider: "groq", id: "n-override" } } } },
+		});
+		assert.deepEqual(overridden.agent.models.notebook, { provider: "groq", id: "n-override", thinkingLevel: "high" });
 	});
 
 	it("vision slot covers visualMaker AND pdfReader; level-only slots resolve as NULL", () => {

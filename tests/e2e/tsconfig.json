@@ -1,0 +1,6 @@
+{
+  "//": "Playwright specs and config type-check as their own program: with Playwright types in the main program, tsc fails on a createElement overload in tests/svg-image.test.tsx.",
+  "extends": "../../tsconfig.json",
+  "include": ["./**/*.ts", "../../playwright.config.ts"],
+  "exclude": []
+}

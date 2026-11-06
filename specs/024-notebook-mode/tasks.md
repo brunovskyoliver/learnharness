@@ -7,12 +7,12 @@ Format: `- [ ] T### [P?] [US?] description (paths)`. All Notebook CSS values com
 
 ## Phase 1: Setup
 
-- [ ] T001 Add `@playwright/test` exact-pinned dev dependency; `playwright.config.ts` (system Chromium via `CHROME_PATH` or `/usr/bin/chromium-browser`, `TMPDIR` under `$HOME`, `webServer` = `next dev -p 3124` with fresh `LH_DATA_DIR`, `LH_HOSTED=0`, `LH_NOTEBOOK_FAUX=1`); script `test:e2e`; exclude `tests/e2e` from `npm test` globs and from tsc/eslint config where needed
-- [ ] T002 [P] Notebook fonts `app/(app)/notebook/notebook-fonts.ts` (Instrument Sans variable `--nb-font-sans`; Newsreader variable with opsz `--nb-font-voice`), not imported outside the route
-- [ ] T003 [P] `app/(app)/notebook/notebook.css`: tokens light/dark under `.nb-root[data-nb-theme]`, AI ink colour variants, grain `.nb-paper`, lift, selection, focus, note-size scale, all keyframes and reduced-motion fallbacks, hidden scrollbars; imported only by the route
-- [ ] T004 [P] Settings: `general.interface`, `notebook` section (data-model.md) in `src/core/settings.ts` (types, FACTORY, sanitize, resolve), `src/server/settings-body.ts` parser, `SETTINGS_SECTIONS`; seeded reviewers; tests in `tests/notebook-settings.test.ts`
-- [ ] T005 [P] Role `notebook` → strong in `config.ts`, `ROLE_SLOT`, `BACKGROUND_MODEL_ROLES`; roster line in `components/setup-dialog.tsx` `SLOT_META`; test in `tests/settings-resolution.test.ts`
-- [ ] T006 [P] Server event `notebook-changed` in `src/core/events.ts`
+- [X] T001 Add `@playwright/test` exact-pinned dev dependency; `playwright.config.ts` (system Chromium via `CHROME_PATH` or `/usr/bin/chromium-browser`, `TMPDIR` under `$HOME`, `webServer` = `next dev -p 3124` with fresh `LH_DATA_DIR`, `LH_HOSTED=0`, `LH_NOTEBOOK_FAUX=1`); script `test:e2e`; exclude `tests/e2e` from `npm test` globs and from tsc/eslint config where needed
+- [X] T002 [P] Notebook fonts `app/(app)/notebook/notebook-fonts.ts` (Instrument Sans variable `--nb-font-sans`; Newsreader variable with opsz `--nb-font-voice`), not imported outside the route
+- [X] T003 [P] `app/(app)/notebook/notebook.css`: tokens light/dark under `.nb-root[data-nb-theme]`, AI ink colour variants, grain `.nb-paper`, lift, selection, focus, note-size scale, all keyframes and reduced-motion fallbacks, hidden scrollbars; imported only by the route
+- [X] T004 [P] Settings: `general.interface`, `notebook` section (data-model.md) in `src/core/settings.ts` (types, FACTORY, sanitize, resolve), `src/server/settings-body.ts` parser, `SETTINGS_SECTIONS`; seeded reviewers; tests in `tests/notebook-settings.test.ts`
+- [X] T005 [P] Role `notebook` → strong in `config.ts`, `ROLE_SLOT`, `BACKGROUND_MODEL_ROLES`; roster line in `components/setup-dialog.tsx` `SLOT_META`; test in `tests/settings-resolution.test.ts`
+- [X] T006 [P] Server event `notebook-changed` in `src/core/events.ts`
 
 ## Phase 2: Foundation (blocks all stories)
 

@@ -7,7 +7,7 @@
  */
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { emit, subscribe, type ServerEvent } from "../src/core/events.ts";
+import { SERVER_EVENT_TYPES, emit, subscribe, type ServerEvent } from "../src/core/events.ts";
 import { eventsResponse } from "../src/server/events-stream.ts";
 
 // ─── the bus ────────────────────────────────────────────────────────────────
@@ -25,6 +25,15 @@ describe("event bus", () => {
 			{ type: "jobs-changed", chatId: "chat_a" },
 			{ type: "activity-changed" },
 		]);
+	});
+
+	it("carries notebook-changed with its pageId (feature 024)", () => {
+		assert.ok((SERVER_EVENT_TYPES as readonly string[]).includes("notebook-changed"));
+		const got: ServerEvent[] = [];
+		const off = subscribe((e) => got.push(e));
+		emit("notebook-changed", { pageId: "page_a" });
+		off();
+		assert.deepEqual(got, [{ type: "notebook-changed", pageId: "page_a" }]);
 	});
 
 	it("unsubscribe stops delivery, exactly once", () => {

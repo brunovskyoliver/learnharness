@@ -16,5 +16,9 @@ Updated: 2026-11-06
 - 2026-11-06 plan: plan.md, research.md, data-model.md, contracts/{api,ui-contract,visual-reference}.md, quickstart.md. Constitution Check I-VIII pass (VI with the owner's in-goal override for the Notebook section).
 - 2026-11-06 tasks: 50 tasks in 11 phases; MVP = phases 1-5.
 - 2026-11-06 analyze: 0 critical, 0 high; 3 medium (Notebook skips TopBar/MenuShell under the VI override, recorded in plan; reading pace delays are ours because Riddled's are not visible; ROADMAP's "Playwright not adopted" row must be updated in T048). Baseline before changes: npm test 3837 pass / 0 fail / 27 skipped, typecheck and lint clean.
+- 2026-11-06 implement phase 1 (T001-T006): Playwright 1.65.0 (exact, no browser download), playwright.config.ts + tests/e2e smoke; fonts and notebook.css scaffold (not imported yet); `general.interface` and the `notebook` settings section with the five seeded reviewers; role `notebook` on the strong slot; `notebook-changed` event. npm test 3855 pass / 0 fail / 27 skipped; typecheck (now two programs) and lint clean; e2e smoke 1 passed.
+- Agent: snap Chromium cannot open profiles under hidden $HOME folders (~/.cache, ~/.t3), so Playwright's TMPDIR is ~/snap/chromium/common/learnharness-e2e (PW_TMPDIR overrides). Each e2e run leaves a small lh-data-* dir there.
+- Agent: with Playwright's types in the main program, tsc fails on a createElement overload in tests/svg-image.test.tsx (cause not traced), so playwright.config.ts and tests/e2e type-check as a separate program (tests/e2e/tsconfig.json); `npm run typecheck` runs both.
+- Agent: the seeded reviewers are the factory value of `notebook.reviewers` (absent key = seeded list, stored list, even empty, wins), so "seeded on first read" needs no disk write and deleting a seeded reviewer sticks. Reviewer ids must match [A-Za-z0-9_-]{1,64}.
 
 ## Report

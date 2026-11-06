@@ -56,6 +56,10 @@ export interface ServerEvents {
 	"library-index-changed": { building: boolean };
 	/** Flashcards changed (feature 021). Carries no card text. */
 	"cards-changed": Record<string, never>;
+	/** A Notebook companion changed: threads, messages, chat or a run's
+	 *  state for one page (feature 024). Open Notebook views of the page
+	 *  refetch. Carries no note or AI text. */
+	"notebook-changed": { pageId: string };
 }
 
 export type ServerEventType = keyof ServerEvents;
@@ -75,6 +79,7 @@ export const SERVER_EVENT_TYPES = [
 	"library-changed",
 	"library-index-changed",
 	"cards-changed",
+	"notebook-changed",
 ] as const satisfies readonly ServerEventType[];
 
 /** One notification: the type discriminates the payload. */

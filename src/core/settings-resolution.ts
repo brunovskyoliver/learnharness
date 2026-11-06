@@ -39,6 +39,7 @@ import {
 	type GraphSettings,
 	type ModelSlot,
 	type ModelSlotName,
+	type NotebookReviewer,
 	type RoleModelOverride,
 	type UserSettings,
 } from "./settings.ts";
@@ -93,6 +94,13 @@ export interface EffectiveSettings {
 	/** Compaction (owner round 14): resolved concrete — absent record
 	 *  section resolves to the factory 150k. */
 	compaction: Required<CompactionSettings>;
+	/** Notebook (feature 024): every knob concrete. `reviewers` is the
+	 *  stored list, or the seeded list when the record has none; a fresh
+	 *  copy, safe to mutate. lastNoteId null = no note to reopen. */
+	notebook: Omit<FactorySettings["notebook"], "reviewers"> & {
+		reviewers: NotebookReviewer[];
+		lastNoteId: string | null;
+	};
 }
 
 /** The conversation pair's chain (BYOK, owner 2026-09-22): the chat's own
@@ -166,6 +174,8 @@ export function resolveSettings(record: UserSettings | null): EffectiveSettings 
 	const appearance = record?.appearance ?? {};
 	const md = appearance.mdRendering ?? {};
 	const graph = record?.graph ?? {};
+	const notebook = record?.notebook ?? {};
+	const factoryNotebook = FACTORY_SETTINGS.notebook;
 	const factoryAppearance = FACTORY_SETTINGS.appearance;
 	const factoryMd = factoryAppearance.mdRendering;
 	const models = {} as Record<BackgroundModelRole, EffectiveModelSpec | undefined>;
@@ -175,6 +185,7 @@ export function resolveSettings(record: UserSettings | null): EffectiveSettings 
 	return {
 		general: {
 			autoUpdate: record?.general?.autoUpdate ?? FACTORY_SETTINGS.general.autoUpdate,
+			interface: record?.general?.interface ?? FACTORY_SETTINGS.general.interface,
 		},
 		agent: {
 			models,
@@ -215,6 +226,18 @@ export function resolveSettings(record: UserSettings | null): EffectiveSettings 
 		},
 		compaction: {
 			thresholdTokens: record?.compaction?.thresholdTokens ?? FACTORY_SETTINGS.compaction.thresholdTokens,
+		},
+		notebook: {
+			startMode: notebook.startMode ?? factoryNotebook.startMode,
+			pointerInk: notebook.pointerInk ?? factoryNotebook.pointerInk,
+			pace: notebook.pace ?? factoryNotebook.pace,
+			layout: notebook.layout ?? factoryNotebook.layout,
+			appearance: notebook.appearance ?? factoryNotebook.appearance,
+			textSize: notebook.textSize ?? factoryNotebook.textSize,
+			lettering: notebook.lettering ?? factoryNotebook.lettering,
+			ink: notebook.ink ?? factoryNotebook.ink,
+			reviewers: (Array.isArray(notebook.reviewers) ? notebook.reviewers : factoryNotebook.reviewers).map((r) => ({ ...r })),
+			lastNoteId: notebook.lastNoteId ?? null,
 		},
 	};
 }
