@@ -8,17 +8,20 @@
  * Collided notes settle as a packed cluster (nb-geometry placeStack). A
  * note that had to move gets a faint tether; a fresh note's tether draws
  * itself once. Threads whose words are gone stack at the top of the right
- * margin. Collapsed notes only here: expanding, writing back, resolving
- * and dismissing come with the thread view (Phase 5).
+ * margin. An open thread (thread.tsx) widens in place, the others fade, and
+ * its tether and rail stay drawn; hovering a passage shows its note's
+ * faint tether.
  */
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { EditorView } from "@tiptap/pm/view";
-import { replyCount, replyCountLabel, type NotebookLayout, type NotebookThread } from "@/src/core";
-import { InkDot } from "./blot";
-import { InkText } from "./ink-text";
-import { drawnSide, LEFT_TEXT_GAP, marginWidths, mergeLines, NOTE_LINE, NOTE_WIDTH, placeStack, RIGHT_TEXT_GAP, type PassageLine, type Side } from "./nb-geometry";
+import type { NotebookLayout, NotebookThread } from "@/src/core";
+import { drawnSide, EXPANDED_WIDTH, LEFT_TEXT_GAP, marginWidths, mergeLines, NOTE_LINE, NOTE_WIDTH, placeStack, RIGHT_TEXT_GAP, type PassageLine, type Side } from "./nb-geometry";
 import type { NoteBridge } from "./nb-plugins";
 import { Tether } from "./tether";
+import { Thread } from "./thread";
+import { useThreads } from "./use-threads";
+
+export { DETACHED_LINE } from "./thread";
 
 /** A document range's visual lines in the column's coordinates. */
 export function rangeLines(view: EditorView, from: number, to: number, column: DOMRect): PassageLine[] {
@@ -46,103 +49,139 @@ function firstLineCentre(view: EditorView, from: number, column: DOMRect): numbe
 	}
 }
 
-interface Placed { top: number; side: Side; width: number; passageY: number | null }
+interface Placed { top: number; side: Side; width: number; passageY: number | null; from: number }
 
 const same = (a: Record<string, Placed>, b: Record<string, Placed>) => {
 	const ka = Object.keys(a), kb = Object.keys(b);
 	if (ka.length !== kb.length) return false;
 	return ka.every((k) => {
 		const x = a[k], y = b[k];
-		return !!y && x!.side === y.side && x!.width === y.width && Math.abs(x!.top - y.top) < 0.5 && (x!.passageY === null) === (y.passageY === null) && Math.abs((x!.passageY ?? 0) - (y.passageY ?? 0)) < 0.5;
+		return !!y && x!.side === y.side && x!.width === y.width && x!.from === y.from && Math.abs(x!.top - y.top) < 0.5 && (x!.passageY === null) === (y.passageY === null) && Math.abs((x!.passageY ?? 0) - (y.passageY ?? 0)) < 0.5;
 	});
 };
 
-export const DETACHED_LINE = "The words this was about are gone.";
+/**
+ * Elements by thread id, each watched for size changes (a thread opening,
+ * an answer growing); `bump` moves when one changes. The ref callbacks are
+ * stable per id, so a re-render never re-observes.
+ */
+export function useMeasuredRefs(): { elements: Map<string, HTMLDivElement>; refFor: (id: string) => (el: HTMLDivElement | null) => void; bump: number } {
+	const [bump, setBump] = useState(0);
+	const elements = useRef(new Map<string, HTMLDivElement>()).current;
+	const callbacks = useRef(new Map<string, (el: HTMLDivElement | null) => void>()).current;
+	const observer = useRef<ResizeObserver | null>(null);
+	useEffect(() => () => observer.current?.disconnect(), []);
+	const refFor = (id: string) => {
+		let fn = callbacks.get(id);
+		if (!fn) {
+			fn = (el) => {
+				if (typeof ResizeObserver !== "undefined") observer.current ??= new ResizeObserver(() => setBump((n) => n + 1));
+				const before = elements.get(id);
+				if (before && before !== el) observer.current?.unobserve(before);
+				if (el) { elements.set(id, el); observer.current?.observe(el); } else { elements.delete(id); callbacks.delete(id); }
+			};
+			callbacks.set(id, fn);
+		}
+		return fn;
+	};
+	return { elements, refFor, bump };
+}
 
 export function Margin({ bridge, column, threads, layout, fresh, tick }: {
 	bridge: NoteBridge;
 	column: HTMLElement | null;
-	/** Open threads shown in the margin (inline threads whose words are gone come here too). */
+	/** Threads shown in the margin (inline threads whose words are gone come here too), and ones leaving. */
 	threads: readonly NotebookThread[];
 	layout: NotebookLayout;
 	fresh: ReadonlySet<string>;
 	tick: number;
 }) {
-	const notes = useRef(new Map<string, HTMLDivElement>());
+	const api = useThreads();
+	const { elements: notes, refFor, bump } = useMeasuredRefs();
 	const [placed, setPlaced] = useState<Record<string, Placed>>({});
 	const [columnWidth, setColumnWidth] = useState(0);
 	const [pointed, setPointed] = useState<string | null>(null);
+	const openId = api.openId;
+
+	// Hovering a passage shows its note's faint tether.
+	useEffect(() => {
+		const dom = bridge.view?.dom;
+		if (!dom) return;
+		const over = (event: PointerEvent) => {
+			const id = (event.target as HTMLElement | null)?.closest?.<HTMLElement>(".nb-anchor[data-thread]")?.dataset.thread ?? null;
+			setPointed((prev) => (prev === id ? prev : id));
+		};
+		const out = () => setPointed(null);
+		dom.addEventListener("pointerover", over);
+		dom.addEventListener("pointerleave", out);
+		return () => { dom.removeEventListener("pointerover", over); dom.removeEventListener("pointerleave", out); };
+	}, [bridge, tick]);
 
 	useLayoutEffect(() => {
 		const view = bridge.view;
 		if (!view || view.isDestroyed || !column || layout === "marks") return;
 		const rect = column.getBoundingClientRect();
-		const widths = marginWidths({ columnLeft: rect.left, columnWidth: rect.width, viewportWidth: document.documentElement.clientWidth });
+		const space = { columnLeft: rect.left, columnWidth: rect.width, viewportWidth: document.documentElement.clientWidth };
+		const widths = marginWidths(space);
+		const wide = marginWidths(space, EXPANDED_WIDTH);
 		const anchors = new Map((bridge.decor()?.anchors ?? []).map((a) => [a.id, a]));
 		const stacks: Record<Side, { id: string; want: number; height: number }[]> = { left: [], right: [] };
-		const meta: Record<string, { side: Side; passageY: number | null }> = {};
+		const meta: Record<string, { side: Side; passageY: number | null; from: number }> = {};
 		for (const thread of threads) {
 			const anchor = anchors.get(thread.id);
 			const passageY = anchor ? firstLineCentre(view, anchor.from, rect) : null;
 			const wanted: Side = !anchor || layout === "right" ? "right" : thread.side;
 			const side = drawnSide(wanted, widths);
 			if (!side) continue;
-			const height = notes.current.get(thread.id)?.offsetHeight || NOTE_LINE * 3;
+			const height = notes.get(thread.id)?.offsetHeight || NOTE_LINE * 3;
 			stacks[side].push({ id: thread.id, want: passageY === null ? 0 : passageY - NOTE_LINE / 2, height });
-			meta[thread.id] = { side, passageY };
+			meta[thread.id] = { side, passageY, from: anchor ? anchor.from : -1 };
 		}
 		const next: Record<string, Placed> = {};
 		for (const side of ["left", "right"] as const) {
-			for (const [id, top] of placeStack(stacks[side])) next[id] = { top, side, width: widths[side]!, passageY: meta[id]!.passageY };
+			for (const [id, top] of placeStack(stacks[side])) {
+				const width = id === openId ? wide[side] ?? widths[side]! : widths[side]!;
+				next[id] = { top, side, width, passageY: meta[id]!.passageY, from: meta[id]!.from };
+			}
 		}
 		setColumnWidth((w) => (Math.abs(w - rect.width) < 0.5 ? w : rect.width));
 		setPlaced((prev) => (same(prev, next) ? prev : next));
 		// Heights measured at the new widths settle on the next pass; equal results stop it.
-	}, [bridge, column, threads, layout, tick, placed]);
+	}, [bridge, column, threads, layout, tick, placed, openId, bump]);
 
 	if (layout === "marks") return null;
 	const tethers = threads.flatMap((thread) => {
 		const at = placed[thread.id];
-		if (!at || at.passageY === null) return [];
+		if (!at || at.passageY === null || api.leaving(thread.id)) return [];
+		const open = openId === thread.id;
+		if (!open && !fresh.has(thread.id) && pointed !== thread.id) return [];
 		const noteY = at.top + NOTE_LINE / 2;
-		if (!fresh.has(thread.id) && pointed !== thread.id) return [];
-		return [<Tether key={thread.id} threadId={thread.id} side={at.side} columnWidth={columnWidth} noteY={noteY} passageY={at.passageY} faint={!fresh.has(thread.id)} />];
+		return [<Tether key={`${thread.id}${open ? "-open" : ""}`} threadId={thread.id} side={at.side} columnWidth={columnWidth} noteY={noteY} passageY={at.passageY} faint={!open && !fresh.has(thread.id)} />];
 	});
 
 	return (
-		<div className="nb-margin" data-testid="nb-margin">
+		<div className="nb-margin" data-testid="nb-margin" data-open={openId ? "true" : undefined}>
 			<svg className="nb-tether" aria-hidden="true">{tethers}</svg>
 			{threads.map((thread) => {
 				const at = placed[thread.id];
-				const first = thread.messages[0];
-				const count = replyCountLabel(replyCount(thread));
-				const detached = at?.passageY === null;
 				const style: React.CSSProperties = at
 					? { top: at.top, width: at.width, left: at.side === "left" ? -LEFT_TEXT_GAP - at.width : columnWidth + RIGHT_TEXT_GAP }
-					: { top: 0, left: 0, width: NOTE_WIDTH, visibility: "hidden" };
+					: { top: 0, left: 0, width: NOTE_WIDTH, opacity: 0, pointerEvents: "none" };
 				return (
-					<div
+					<Thread
 						key={thread.id}
-						ref={(el) => { if (el) notes.current.set(thread.id, el); else notes.current.delete(thread.id); }}
-						className="nb-note"
-						data-side={at?.side ?? "right"}
-						data-thread={thread.id}
-						data-testid="nb-margin-note"
-						data-fresh={fresh.has(thread.id) ? "true" : undefined}
-						role="note"
-						aria-roledescription="note"
-						aria-label="Margin note"
+						thread={thread}
+						variant="margin"
+						side={at?.side ?? "right"}
+						fresh={fresh.has(thread.id)}
+						detached={at?.passageY === null}
+						order={at?.from ?? -1}
+						faded={openId !== null && openId !== thread.id && pointed !== thread.id}
 						style={style}
+						rootRef={refFor(thread.id)}
 						onPointerEnter={() => setPointed(thread.id)}
 						onPointerLeave={() => setPointed((id) => (id === thread.id ? null : id))}
-						onFocus={() => setPointed(thread.id)}
-						onBlur={() => setPointed((id) => (id === thread.id ? null : id))}
-					>
-						<InkDot fresh={fresh.has(thread.id)} className="nb-note-dot" />
-						<p className="nb-note-text nb-voice"><InkText text={first?.text ?? ""} animate={fresh.has(thread.id)} /></p>
-						{detached && <p className="nb-note-meta">{DETACHED_LINE}</p>}
-						{count && <p className="nb-note-meta nb-note-count" data-testid="nb-reply-count">{count}</p>}
-					</div>
+					/>
 				);
 			})}
 		</div>

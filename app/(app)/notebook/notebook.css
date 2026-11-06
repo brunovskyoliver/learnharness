@@ -1394,3 +1394,246 @@
 	.nb-root .nb-reading-blot { animation: none; }
 	.nb-root .nb-activity { animation: none; }
 }
+
+/* ══ Phase 5 (US3): margin threads ══════════════════════════════════════════
+ * Collapsed and open threads, Write back, Resolve / Dismiss / ⋯, the
+ * Marks only "?". Values from visual-reference §8.1, §13, §14 and frame
+ * margin-thread (1:1); "≈" where measured.
+ */
+
+.nb-root .nb-note,
+.nb-root .nb-inline { transition: opacity 0.2s ease-out; }
+/* §8.1: the other notes fade while one is open (≈.35-.4). */
+.nb-root :is(.nb-note, .nb-inline)[data-faded="true"] { opacity: 0.38; }
+.nb-root .nb-note[data-state="open"],
+.nb-root .nb-inline[data-state="open"] { z-index: 1; }
+.nb-root :is(.nb-note, .nb-inline)[data-state="open"]:focus { outline: none; }
+
+/* The collapsed thread is one button: its question, clamped, and the count. */
+.nb-root .nb-thread-open {
+	display: block;
+	width: 100%;
+	padding: 0;
+	border: 0;
+	border-radius: 2px;
+	background: none;
+	color: inherit;
+	font: inherit;
+	line-height: inherit;
+	text-align: inherit;
+	letter-spacing: inherit;
+}
+.nb-root .nb-thread-open > span { display: block; }
+.nb-root .nb-clamp {
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 6;
+	line-clamp: 6;
+	overflow: hidden;
+}
+.nb-root .nb-thread-open .nb-note-meta { margin-top: 8px; }
+
+/* "⋯": at the outer edge of a hovered note's first line (frame margin-notes x≈169). */
+.nb-root .nb-thread-more {
+	display: inline-grid;
+	place-items: center;
+	width: 20px;
+	height: 16px;
+	padding: 0;
+	border: 0;
+	border-radius: 4px;
+	background: none;
+	color: var(--faint);
+	font-family: var(--nb-sans);
+	font-size: 13px;
+	line-height: 1;
+	letter-spacing: 0.5px;
+}
+.nb-root .nb-thread-more:hover { color: var(--graphite); }
+.nb-root .nb-thread-more-hover {
+	position: absolute;
+	top: 4px;
+	opacity: 0;
+	transition: opacity 0.15s ease-out;
+}
+.nb-root .nb-note[data-side="left"] .nb-thread-more-hover { left: -22px; }
+.nb-root .nb-note[data-side="right"] .nb-thread-more-hover { right: -22px; }
+.nb-root .nb-inline .nb-thread-more-hover { right: 0; }
+.nb-root :is(.nb-note, .nb-inline):not([data-faded="true"]):is(:hover, :focus-within) .nb-thread-more-hover,
+.nb-root .nb-thread-more-hover[data-state="open"] { opacity: 1; }
+
+/* ── 8.1 Open thread ────────────────────────────────────────────────────── */
+
+.nb-root .nb-note[data-state="open"] { text-align: left; }
+/* The rail beside an open thread, down from its dot (frame margin-thread x≈589). */
+.nb-root .nb-thread-rail {
+	position: absolute;
+	top: 20px;
+	bottom: 6px;
+	width: 1px;
+	border-radius: 1px;
+	background: color-mix(in srgb, var(--riddle) 16%, transparent);
+	pointer-events: none;
+}
+.nb-root .nb-note[data-side="left"] .nb-thread-rail { right: -23.5px; }
+.nb-root .nb-note[data-side="right"] .nb-thread-rail { left: -20.5px; }
+
+/* His words: sans on ≈23px, graphite. The landing's 14.5px sets "Well in my opinion … USC i can" 336px
+ * wide; the frame's line is ≈364px, so the app's size is ≈15px (15.5px drops "how" from the frame's second line). */
+.nb-root .nb-msg-user {
+	margin-top: 12px;
+	color: var(--graphite);
+	font-family: var(--nb-sans);
+	font-size: 15px;
+	line-height: 23px;
+	letter-spacing: 0;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+.nb-root .nb-msg-ai { color: var(--riddle); }
+/* The words keep a ≈404px measure (frame: lines end by x≈551); the field and arrow run to the note's edge. */
+.nb-root .nb-note .nb-thread-messages { padding-right: 6px; }
+.nb-root .nb-msg + .nb-msg-ai { margin-top: 11px; }
+.nb-root .nb-inline .nb-msg-user { font-size: var(--note-size); line-height: 1.6; }
+
+/* Write back: underline only (1px rule), the reply-line ink grows on focus, send arrow at the end. */
+.nb-root .nb-write {
+	display: flex;
+	align-items: flex-end;
+	gap: 7px;
+	margin-top: 16px;
+}
+.nb-root .nb-write .nb-reply-line {
+	flex: 1;
+	min-width: 0;
+	border-bottom: 1px solid var(--rule);
+}
+.nb-root .nb-write-field {
+	display: block;
+	width: 100%;
+	max-height: 40vh;
+	margin: 0;
+	padding: 0 0 5px;
+	border: 0;
+	background: none;
+	color: var(--ink);
+	font-family: var(--nb-sans);
+	font-size: 14px;
+	line-height: 23px;
+	letter-spacing: 0;
+	resize: none;
+	overflow-y: auto;
+	outline: none;
+}
+.nb-root .nb-write-field::placeholder { color: var(--faint); opacity: 1; }
+.nb-root .nb-write-field:focus-visible { outline: none; }
+.nb-root .nb-send {
+	display: inline-grid;
+	flex: none;
+	place-items: center;
+	width: 18px;
+	height: 23px;
+	margin-bottom: 4px;
+	padding: 0;
+	border: 0;
+	border-radius: 4px;
+	background: none;
+	color: var(--faint);
+}
+.nb-root .nb-send svg { width: 13px; height: 13px; stroke-width: 1.6; }
+.nb-root .nb-send:not([aria-disabled="true"]):hover { color: var(--ink); }
+.nb-root .nb-send[aria-disabled="true"] { cursor: default; }
+
+/* Resolve · Dismiss · ⋯: sans ≈12px faint, ≈16px apart, ≈16px under the field. */
+.nb-root .nb-thread-actions {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	margin-top: 15px;
+	font-family: var(--nb-sans);
+	font-size: 12px;
+	line-height: 16px;
+}
+.nb-root .nb-thread-more-end { margin-left: auto; }
+.nb-root .nb-thread-button {
+	padding: 0;
+	border: 0;
+	border-radius: 3px;
+	background: none;
+	color: var(--faint);
+	font: inherit;
+	letter-spacing: 0;
+	transition: color 0.15s ease-out;
+}
+.nb-root .nb-thread-button:hover { color: var(--graphite); }
+.nb-root .nb-thread-link {
+	color: var(--ink);
+	text-decoration: underline;
+	text-decoration-color: var(--riddle-line);
+	text-underline-offset: 2px;
+}
+.nb-root .nb-thread-link:hover { color: var(--ink); text-decoration-color: currentColor; }
+
+/* Status, failure and stop lines inside a thread. */
+.nb-root .nb-thread-line {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 2px 10px;
+	margin: 8px 0 0;
+	color: var(--faint);
+	font-family: var(--nb-sans);
+	font-size: 12px;
+	line-height: 16px;
+	letter-spacing: 0;
+}
+.nb-root .nb-thread-detail { flex-basis: 100%; color: var(--graphite); overflow-wrap: anywhere; }
+.nb-root .nb-thread-gone .nb-thread-line { margin-top: 4px; }
+.nb-root .nb-note[data-side="left"].nb-thread-gone .nb-thread-line { justify-content: flex-end; }
+.nb-root .nb-ink-wait-blot { display: block; overflow: visible; }
+
+/* ── 14 Marks only: the "?" after a passage ─────────────────────────────── */
+
+.nb-root .nb-mark {
+	position: relative;
+	display: inline-grid;
+	place-items: center;
+	width: 15px;
+	height: 15px;
+	margin: 0 3px 0 5px;
+	padding: 0;
+	border: 0;
+	border-radius: 999px;
+	background: none;
+	box-shadow: inset 0 0 0 1px currentColor;
+	color: var(--riddle);
+	opacity: 0.55;
+	font-family: var(--nb-sans);
+	font-size: 10px;
+	font-weight: 600;
+	font-style: normal;
+	line-height: 1;
+	vertical-align: -0.12em;
+	text-decoration: none;
+	user-select: none;
+	transition: transform 0.15s, opacity 0.15s;
+}
+.nb-root .nb-mark::before {
+	content: "";
+	position: absolute;
+	inset: -14px;
+	border-radius: 999px;
+}
+.nb-root .nb-mark:hover,
+.nb-root .nb-mark[aria-expanded="true"],
+.nb-root .nb-anchor[data-active="true"] + .nb-mark { transform: scale(1.15); opacity: 0.8; }
+.nb-root .nb-mark-fresh { animation: 0.46s cubic-bezier(0.2, 0.9, 0.25, 1.12) backwards nb-blot-splat; }
+
+@media (pointer: coarse) {
+	.nb-root :is(.nb-thread-button, .nb-thread-more, .nb-send) { min-height: 44px; min-width: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.nb-root :is(.nb-note, .nb-inline, .nb-thread-more-hover, .nb-thread-button, .nb-mark) { transition: none; }
+	.nb-root .nb-mark-fresh { animation: none; }
+}

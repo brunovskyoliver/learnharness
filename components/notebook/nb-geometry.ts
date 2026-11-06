@@ -11,6 +11,8 @@
 export const NOTE_LINE = 23.5;
 /** A note's full width at most (§8 measured ≈376px; at 15px our Newsreader needs 384px to break lines where the frame does). */
 export const NOTE_WIDTH = 384;
+/** An open thread's measure (§8.1, frame margin-thread: x 156-566, the same right edge as collapsed). */
+export const EXPANDED_WIDTH = 410;
 /** Narrower than this and a margin is too tight for notes. */
 export const NOTE_MIN_WIDTH = 180;
 /** Left notes: text right edge this far left of the column; the dot centre at 36px. */
@@ -35,11 +37,11 @@ export interface MarginSpace {
 	viewportWidth: number;
 }
 
-/** Each margin's note width, or null when that margin is too narrow. */
-export function marginWidths(space: MarginSpace): Record<Side, number | null> {
+/** Each margin's note width (`cap`: NOTE_WIDTH, or EXPANDED_WIDTH for an open thread), or null when that margin is too narrow. */
+export function marginWidths(space: MarginSpace, cap = NOTE_WIDTH): Record<Side, number | null> {
 	const left = space.columnLeft - LEFT_TEXT_GAP - EDGE_GAP;
 	const right = space.viewportWidth - (space.columnLeft + space.columnWidth + RIGHT_TEXT_GAP) - EDGE_GAP;
-	const fit = (room: number) => (room >= NOTE_MIN_WIDTH ? Math.min(NOTE_WIDTH, Math.floor(room)) : null);
+	const fit = (room: number) => (room >= NOTE_MIN_WIDTH ? Math.min(cap, Math.floor(room)) : null);
 	return { left: fit(left), right: fit(right) };
 }
 

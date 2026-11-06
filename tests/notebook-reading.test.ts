@@ -316,6 +316,12 @@ describe("noteText (what a read sends, what anchors match)", () => {
 		const text = noteText(doc);
 		const range = quoteRange(text, "Video Ideas:")!;
 		assert.equal(blockEnd(doc, range.from), doc.child(0).nodeSize + doc.child(1).nodeSize);
+		// In a list: under that item's own paragraph, inside the item.
+		const item = quoteRange(text, "AI is making people dumber")!;
+		const end = blockEnd(doc, item.from);
+		const $end = doc.resolve(end);
+		assert.equal($end.parent.type.name, "listItem");
+		assert.equal($end.nodeBefore?.textContent, "AI is making people dumber");
 	});
 });
 

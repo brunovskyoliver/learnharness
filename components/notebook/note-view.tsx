@@ -143,7 +143,7 @@ export function NoteView({ note }: { note: { id: string; name: string } }) {
 	const nb = useNotebook();
 	const title = useRef<TitleHandle>(null);
 	const body = useRef<NoteEditorHandle>(null);
-	const { companion, mode, patch } = useCompanion(note.id, nb.startMode);
+	const { companion, mode, patch, reload } = useCompanion(note.id, nb.startMode);
 	// The draft reads this browser's backup, so the body starts after mount.
 	const [mounted, setMounted] = useState(false);
 	useEffect(() => { setMounted(true); }, []);
@@ -192,6 +192,7 @@ export function NoteView({ note }: { note: { id: string; name: string } }) {
 						column={column}
 						pageId={note.id}
 						companion={companion}
+						reload={reload}
 						mode={mode}
 						pace={nb.preferences.pace}
 						layout={nb.preferences.layout}

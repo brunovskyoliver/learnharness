@@ -40,6 +40,8 @@ export interface CompanionView {
 	/** The note's mode, the settings' start mode until the companion says otherwise. */
 	mode: NoteMode;
 	patch: (patch: CompanionPatch) => Promise<boolean>;
+	/** Reads the companion again (after a thread write). */
+	reload: () => void;
 }
 
 /** GET/PATCH /api/notebook/:pageId, refetched on `notebook-changed` for this page. */
@@ -87,5 +89,6 @@ export function useCompanion(pageId: string, startMode: NoteMode): CompanionView
 		}
 	}, [pageId, load]);
 
-	return { companion, mode: companion?.mode ?? effective ?? startMode, patch };
+	const reload = useCallback(() => { void load(); }, [load]);
+	return { companion, mode: companion?.mode ?? effective ?? startMode, patch, reload };
 }

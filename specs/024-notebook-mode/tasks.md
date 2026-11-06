@@ -44,10 +44,10 @@ Format: `- [ ] T### [P?] [US?] description (paths)`. All Notebook CSS values com
 
 ## Phase 5: US3 Margin threads (P1)
 
-- [ ] T026 [US3] `thread.tsx`: collapsed (clamp, reply count), expanded in place, others fade, passage wash, Write back field with reply-line underline and send, Resolve/Dismiss with Undo, ⋯ Copy text; reply run streaming
-- [ ] T027 [US3] Layouts: Both / Right / Marks only (`marks.tsx` "?" with quiet-mark), phone fallback inline; detached stack
-- [ ] T028 [US3] Keyboard: Mod+Alt+↓/↑ between notes, Enter/Escape, live region
-- [ ] T029 [US3] Tests: render + Playwright `threads.spec.ts` (expand, write back, counts, resolve, dismiss, undo, layouts, persistence after reload)
+- [X] T026 [US3] `thread.tsx`: collapsed (clamp, reply count), expanded in place, others fade, passage wash, Write back field with reply-line underline and send, Resolve/Dismiss with Undo, ⋯ Copy text; reply run streaming
+- [X] T027 [US3] Layouts: Both / Right / Marks only (`marks.tsx` "?" with quiet-mark), phone fallback inline; detached stack
+- [X] T028 [US3] Keyboard: Mod+Alt+↓/↑ between notes, Enter/Escape, live region
+- [X] T029 [US3] Tests: render + Playwright `threads.spec.ts` (expand, write back, counts, resolve, dismiss, undo, layouts, persistence after reload)
 
 ## Phase 6: US4 Selection menu and sketches (P2)
 

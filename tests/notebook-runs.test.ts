@@ -244,6 +244,32 @@ describe("replies and chat", () => {
 		assert.equal(last.event, "failed");
 		assert.equal(last.data.error, "That didn't come through.");
 	}));
+
+	it("Try again on a failed reply replaces that answer; his message stays; a running one refuses", () => fresh(async () => {
+		const id = await page();
+		const at = "2026-11-06T10:00:00.000Z";
+		await stores.notebookStore.update(id, (c) => {
+			c.threads.push({ id: "thr_r", anchor: { quote: "a cup of tea", prefix: "", suffix: "" }, placement: "margin", side: "left", status: "open", origin: "read", createdAt: at, updatedAt: at, messages: [
+				{ id: "m_ai", author: "ai", text: "Why tea?", at },
+				{ id: "m_user", author: "user", text: "Because it cools.", at },
+			] });
+			return { companion: c, result: null };
+		});
+		await withEngine(scripted(() => fauxAssistantMessage("", { stopReason: "error", errorMessage: "upstream 500" })), async () => {
+			await start(id, { kind: "reply", text: NOTE, threadId: "thr_r" });
+			await nb.notebookRunIdle();
+		});
+		assert.deepEqual((await companion(id)).threads[0]!.messages.map((m) => [m.author, m.state ?? "ok"]), [["ai", "ok"], ["user", "ok"], ["ai", "failed"]]);
+		const gate = held();
+		await withEngine(scripted(async () => { await gate.gate; return fauxAssistantMessage("Heat leaves."); }), async () => {
+			await start(id, { kind: "reply", text: NOTE, threadId: "thr_r" });
+			assert.equal((await nb.startNotebookRun(id, { kind: "reply", text: NOTE, threadId: "thr_r" })).status, 409, "one answer at a time");
+			gate.release();
+			await nb.notebookRunIdle();
+		});
+		const messages = (await companion(id)).threads[0]!.messages;
+		assert.deepEqual(messages.map((m) => [m.author, m.text, m.state ?? "ok"]), [["ai", "Why tea?", "ok"], ["user", "Because it cools.", "ok"], ["ai", "Heat leaves.", "ok"]]);
+	}));
 });
 
 describe("tenancy", () => {

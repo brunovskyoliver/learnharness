@@ -83,3 +83,41 @@ export async function stopRun(id: string): Promise<boolean> {
 		return false;
 	}
 }
+
+// ─── threads (api.md "Threads", "Runs") ──────────────────────────────────────
+
+const base = (pageId: string, threadId: string) => `/api/notebook/${encodeURIComponent(pageId)}/threads/${encodeURIComponent(threadId)}`;
+
+/** His Write back, written ahead of the reply run (constitution III). */
+export async function postThreadMessage(pageId: string, threadId: string, text: string): Promise<{ ok: { id: string } } | { error: string }> {
+	try {
+		const response = await post(`${base(pageId, threadId)}/messages`, { text });
+		const body = (await response.json().catch(() => ({}))) as { message?: { id: string }; error?: string };
+		return response.ok && body.message ? { ok: { id: body.message.id } } : { error: body.error ?? "That didn't come through." };
+	} catch {
+		return { error: "That didn't come through." };
+	}
+}
+
+/** Starts the AI's answer in a thread (after his Write back, or Try again). */
+export async function startReply(pageId: string, threadId: string, text: string): Promise<StartReadOutcome> {
+	try {
+		const response = await post(`/api/notebook/${encodeURIComponent(pageId)}/runs`, { kind: "reply", text, threadId });
+		const body = (await response.json().catch(() => ({}))) as { run?: { id: string }; reason?: "models" | "key"; provider?: string; error?: string };
+		if (response.status === 202 && body.run) return { ok: { id: body.run.id } };
+		if (response.status === 503 && (body.reason === "models" || body.reason === "key")) return { refused: { reason: body.reason, ...(body.provider ? { provider: body.provider } : {}) } };
+		return { error: body.error ?? "That didn't come through." };
+	} catch {
+		return { error: "That didn't come through." };
+	}
+}
+
+/** Resolve, dismiss, or "open" again (the Undo). */
+export async function setThreadStatus(pageId: string, threadId: string, status: "open" | "resolved" | "dismissed"): Promise<boolean> {
+	try {
+		const response = await fetch(base(pageId, threadId), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status }) });
+		return response.ok;
+	} catch {
+		return false;
+	}
+}

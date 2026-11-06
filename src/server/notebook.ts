@@ -212,6 +212,15 @@ const reviewerOf = (companion: NoteCompanion) => {
 	return resolveReviewer(settings.notebook.reviewers, companion.reviewerId)?.id;
 };
 
+/** An AI answer "Try again" may replace: it failed, or it still says
+ *  streaming but no run is writing it (the server restarted mid-answer). */
+function retryable(message: ThreadMessage): boolean {
+	if (message.state === "failed") return true;
+	if (message.state !== "streaming") return false;
+	const live = message.runId ? registry().get(message.runId) : undefined;
+	return !live || live.run.status !== "running";
+}
+
 export type StartRunResult = { status: 202; run: Pick<NotebookRun, "id" | "kind" | "status"> } | { status: number; body: Record<string, unknown> };
 
 /** Starts a run for a page (POST /api/notebook/:pageId/runs). */
@@ -237,6 +246,11 @@ export async function startNotebookRun(pageId: string, raw: unknown): Promise<St
 		const placed = await change<{ threadId: string; messageId: string }>(pageId, (companion) => {
 			const thread = companion.threads.find((t) => t.id === body.threadId);
 			if (!thread) return { refused: "That thread is no longer on this note.", status: 404 };
+			// "Try again" after a failed answer (or one whose run is gone) replaces that answer;
+			// his message before it stays.
+			const last = thread.messages.at(-1);
+			if (last?.author === "ai" && retryable(last)) thread.messages.pop();
+			else if (last?.author === "ai" && last.state === "streaming") return { refused: "It is already writing back.", status: 409 };
 			if (thread.messages.at(-1)?.author !== "user") return { refused: "There is nothing to reply to yet.", status: 409 };
 			if (thread.messages.length >= NOTEBOOK_LIMITS.messagesPerThread) return { refused: NOTEBOOK_LIMIT_TEXT.messages, status: 409 };
 			const message: ThreadMessage = { id: `msg_${nanoid()}`, author: "ai", text: "", at: new Date().toISOString(), runId: run.id, state: "streaming", ...(reviewerOf(companion) ? { reviewerId: reviewerOf(companion) } : {}) };

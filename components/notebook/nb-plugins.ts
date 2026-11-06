@@ -158,18 +158,24 @@ export interface AnchorMark {
 	state: "open" | "resolved";
 	active?: boolean;
 	kind?: "margin" | "inline";
+	/** Kept and mapped through edits, but not drawn (a thread leaving, its Undo still open). */
+	hidden?: boolean;
 }
 
 export interface SpacerMark { id: string; pos: number; height: number }
+
+/** Marks only (§14): the small "?" after a passage that opens its thread. */
+export interface QuestionMark { id: string; pos: number; label: string; open: boolean; fresh: boolean }
 
 export interface DecorState {
 	anchors: AnchorMark[];
 	asking: { from: number; to: number } | null;
 	spacers: SpacerMark[];
+	marks: QuestionMark[];
 	deco: DecorationSet;
 }
 
-export type DecorPatch = Partial<Pick<DecorState, "anchors" | "asking" | "spacers">>;
+export type DecorPatch = Partial<Pick<DecorState, "anchors" | "asking" | "spacers" | "marks">>;
 
 export const nbDecorKey = new PluginKey<DecorState>("nbDecor");
 
@@ -185,13 +191,31 @@ function spacerWidget(spacer: SpacerMark) {
 	}, { key: `nb-spacer-${spacer.id}-${Math.round(spacer.height)}`, side: -1, ignoreSelection: true });
 }
 
-function build(doc: PMNode, anchors: AnchorMark[], asking: DecorState["asking"], spacers: SpacerMark[]): DecorationSet {
+/** The "?" as a real button (name "Open question about “…”"); ProseMirror
+ *  leaves its events alone, the thinking layer listens for its clicks. */
+function markWidget(mark: QuestionMark) {
+	return Decoration.widget(mark.pos, () => {
+		const el = document.createElement("button");
+		el.type = "button";
+		el.className = `nb-mark${mark.fresh ? " nb-mark-fresh" : ""}`;
+		el.contentEditable = "false";
+		el.dataset.thread = mark.id;
+		el.dataset.testid = "nb-mark";
+		el.dataset.nbEntry = "";
+		el.setAttribute("aria-label", mark.label);
+		el.setAttribute("aria-expanded", String(mark.open));
+		el.textContent = "?";
+		return el;
+	}, { key: `nb-mark-${mark.id}-${mark.open ? 1 : 0}-${mark.label}`, side: 1, ignoreSelection: true, stopEvent: () => true });
+}
+
+function build(doc: PMNode, anchors: AnchorMark[], asking: DecorState["asking"], spacers: SpacerMark[], marks: QuestionMark[] = []): DecorationSet {
 	const size = doc.content.size;
 	const clamp = (n: number) => Math.max(0, Math.min(size, n));
 	const decos: Decoration[] = [];
 	for (const a of anchors) {
 		const from = clamp(a.from), to = clamp(a.to);
-		if (to <= from) continue;
+		if (to <= from || a.hidden) continue;
 		decos.push(Decoration.inline(from, to, {
 			class: "nb-anchor",
 			"data-state": a.state,
@@ -202,6 +226,7 @@ function build(doc: PMNode, anchors: AnchorMark[], asking: DecorState["asking"],
 	}
 	if (asking && asking.to > asking.from) decos.push(Decoration.inline(clamp(asking.from), clamp(asking.to), { class: "nb-asking" }));
 	for (const s of spacers) decos.push(spacerWidget({ ...s, pos: clamp(s.pos) }));
+	for (const m of marks) decos.push(markWidget({ ...m, pos: clamp(m.pos) }));
 	return DecorationSet.create(doc, decos);
 }
 
@@ -214,7 +239,7 @@ export const NotebookDecor = Extension.create({
 		return [new Plugin<DecorState>({
 			key: nbDecorKey,
 			state: {
-				init: (_config, state: EditorState) => ({ anchors: [], asking: null, spacers: [], deco: DecorationSet.create(state.doc, []) }),
+				init: (_config, state: EditorState) => ({ anchors: [], asking: null, spacers: [], marks: [], deco: DecorationSet.create(state.doc, []) }),
 				apply: (tr, prev) => {
 					const patch = tr.getMeta(nbDecorKey) as DecorPatch | undefined;
 					if (!patch && !tr.docChanged) return prev;
@@ -222,10 +247,12 @@ export const NotebookDecor = Extension.create({
 					let anchors = tr.docChanged ? prev.anchors.map((a) => mapRange(a, map)).filter((a) => a.to > a.from) : prev.anchors;
 					let asking = tr.docChanged && prev.asking ? mapRange(prev.asking, map) : prev.asking;
 					let spacers = tr.docChanged ? prev.spacers.map((s) => ({ ...s, pos: map(s.pos, -1) })) : prev.spacers;
+					let marks = tr.docChanged ? prev.marks.map((m) => ({ ...m, pos: map(m.pos, 1) })) : prev.marks;
 					if (patch?.anchors) anchors = patch.anchors;
 					if (patch && "asking" in patch) asking = patch.asking ?? null;
 					if (patch?.spacers) spacers = patch.spacers;
-					return { anchors, asking, spacers, deco: build(tr.doc, anchors, asking, spacers) };
+					if (patch?.marks) marks = patch.marks;
+					return { anchors, asking, spacers, marks, deco: build(tr.doc, anchors, asking, spacers, marks) };
 				},
 			},
 			props: { decorations: (state) => nbDecorKey.getState(state)?.deco ?? null },
@@ -233,8 +260,10 @@ export const NotebookDecor = Extension.create({
 	},
 });
 
-/** Where an inline reply goes: after the top-level block holding `pos`. */
+/** Where an inline reply goes: after the top-level block holding `pos`, or,
+ *  in a list, after the item's own paragraph (so it sits under that item). */
 export function blockEnd(doc: PMNode, pos: number): number {
 	const $pos = doc.resolve(Math.max(0, Math.min(doc.content.size, pos)));
+	if ($pos.depth >= 2 && $pos.parent.isTextblock && /^(listItem|taskItem)$/.test($pos.node($pos.depth - 1).type.name)) return $pos.after($pos.depth);
 	return $pos.depth >= 1 ? $pos.after(1) : $pos.pos;
 }
