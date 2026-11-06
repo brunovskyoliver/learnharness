@@ -25,6 +25,8 @@ Updated: 2026-11-06
 - Agent (phase 3): the note body mounts after hydration (usePageDraft reads browser storage during render); toolbar and title server-render. Study's token names (--popover, --card, --ring, ...) point at Notebook tokens inside `.nb-root`, so Study's slash and [[ menus and node views draw in Notebook ink. The hosted sidebar email comes from Clerk `currentUser()` (`signedInEmail()` in tenant-access.ts).
 - Agent (phase 3): with the demo kit built (npm run build), `npm test` has 12 headless-browser failures (ML panel, plots) because snap Chromium cannot read /tmp; the untouched baseline commit fails the same way. Not caused by Notebook.
 
+- Agent (environment): the 12 headless test failures after the demo kit is built are snap Chromium being denied files under the hidden ~/.t3 worktree path, not code. With CHROME_PATH=/home/brunovsky/.t3/tools/chrome-headless-shell/linux64/156.0.8078.70/chrome-headless-shell they pass (plot + ML composition: 11/11). Full-suite runs on this machine use that CHROME_PATH.
+
 ## Log
 - 2026-11-06 specify: spec.md and checklists/requirements.md written; all checklist items pass.
 - 2026-11-06 clarify: 10 owner questions asked one per call before the spec; none left. Gate 1 covered by those questions.
