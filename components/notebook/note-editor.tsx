@@ -20,6 +20,7 @@ import { OPEN_MATH_SOURCE_EVENT } from "@/components/library/page-math-view";
 import type { WikiBridge } from "@/components/library/page-note-views";
 import { slashQuery, type SlashItem } from "@/components/library/page-slash";
 import { anchorBelowSelection, filterSlashItems, SlashMenu, WikiMenu, type WikiMenuRow } from "@/components/library/page-toolbar";
+import { NotebookDecor, type NoteBridge } from "./nb-plugins";
 
 const CHANGE_DELAY_MS = 120;
 
@@ -57,7 +58,7 @@ function notePlaceholder(text: () => string) {
 	});
 }
 
-export default function NoteEditor({ value, onChange, onSave, onExitTop, readOnly = false, ariaLabel, mode, handle, wiki, wikiMenu }: {
+export default function NoteEditor({ value, onChange, onSave, onExitTop, readOnly = false, ariaLabel, mode, handle, wiki, wikiMenu, bridge }: {
 	value: string;
 	onChange: (markdown: string) => void;
 	onSave?: () => void;
@@ -69,6 +70,8 @@ export default function NoteEditor({ value, onChange, onSave, onExitTop, readOnl
 	handle?: Ref<NoteEditorHandle>;
 	wiki?: WikiBridge;
 	wikiMenu?: () => { items: readonly LibraryItem[]; status: string | null };
+	/** Lets the AI's layers (marks, margin, reading) follow this editor. */
+	bridge?: NoteBridge;
 }) {
 	const onChangeRef = useRef(onChange);
 	onChangeRef.current = onChange;
@@ -93,7 +96,10 @@ export default function NoteEditor({ value, onChange, onSave, onExitTop, readOnl
 	const extensions = useMemo(() => [
 		...pageExtensions({ onSave: () => { emit(); saveRef.current?.(); }, wiki: wikiRef.current }),
 		notePlaceholder(() => placeholderRef.current),
+		NotebookDecor,
 	], [emit]);
+	const bridgeRef = useRef(bridge);
+	bridgeRef.current = bridge;
 	const host = useRef<HTMLDivElement>(null);
 
 	// The slash menu: open while the caret ends a paragraph that holds "/query".
@@ -182,13 +188,24 @@ export default function NoteEditor({ value, onChange, onSave, onExitTop, readOnl
 			},
 		},
 		onCreate: ({ editor: created }) => { codec.settle(created.getJSON()); },
-		onUpdate: () => {
+		onUpdate: ({ editor: updated }) => {
+			bridgeRef.current?.emit("doc");
+			// Only his edits restart the pause: loading and normalizing the page must not start a read.
+			if (updated.view.hasFocus()) bridgeRef.current?.emit("edit");
 			if (timer.current) clearTimeout(timer.current);
 			timer.current = setTimeout(emit, CHANGE_DELAY_MS);
 		},
 		onBlur: () => { if (timer.current) emit(); },
 	}, [extensions]);
 	editorRef.current = editor;
+
+	// The AI's layers follow this editor while it lives.
+	useEffect(() => {
+		if (!editor || !bridge) return;
+		const view = editor.view;
+		bridge.attach(view);
+		return () => { if (bridge.view === view) bridge.attach(null); };
+	}, [editor, bridge]);
 
 	// A mode change rewrites the second placeholder line.
 	useEffect(() => {

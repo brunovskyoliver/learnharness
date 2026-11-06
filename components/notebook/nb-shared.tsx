@@ -8,14 +8,23 @@
 import { createContext, useContext, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { SaveStatus } from "@/components/library/page-draft";
 import type { LibraryList } from "./use-notebook-data";
-import type { NotebookAppearance, NotebookInk, NotebookLettering, NotebookStartMode, NotebookTextSize } from "@/src/core";
+import type { NotebookAppearance, NotebookInk, NotebookLayout, NotebookLettering, NotebookPace, NotebookStartMode, NotebookTextSize } from "@/src/core";
 
 export interface NotebookPreferences {
 	appearance: NotebookAppearance;
 	textSize: NotebookTextSize;
 	lettering: NotebookLettering;
 	ink: NotebookInk;
+	pace: NotebookPace;
+	layout: NotebookLayout;
 }
+
+/** What the corner hint says about this note's automatic reading (ui-contract "Chrome"). */
+export type ReadingStatus =
+	| { state: "running"; runId: string; phase: "reading" | "writing" | "drawing" }
+	| { state: "refused"; reason: "models" | "key"; provider?: string }
+	| { state: "failed"; retry: () => void }
+	| null;
 
 export interface NotebookReviewerView { id: string; name: string; instructions: string }
 
@@ -41,6 +50,11 @@ export interface NotebookShared {
 	library: LibraryList | null;
 	libraryFailed: boolean;
 	refreshLibrary: () => Promise<void>;
+	/** The note's automatic reading, for the corner hint. */
+	reading: ReadingStatus;
+	setReading: (status: ReadingStatus) => void;
+	/** Says something once to screen readers (polite live region). */
+	announce: (text: string) => void;
 }
 
 const noop = () => {};
@@ -52,7 +66,7 @@ export const NotebookContext = createContext<NotebookShared>({
 	startMode: "thinks",
 	reviewers: [],
 	account: null,
-	preferences: { appearance: "system", textSize: "default", lettering: "serif", ink: "ink" },
+	preferences: { appearance: "system", textSize: "default", lettering: "serif", ink: "ink", pace: "regular", layout: "both" },
 	updatePreferences: noop,
 	sidebar: null,
 	openSidebar: noop,
@@ -62,6 +76,9 @@ export const NotebookContext = createContext<NotebookShared>({
 	library: null,
 	libraryFailed: false,
 	refreshLibrary: async () => {},
+	reading: null,
+	setReading: noop,
+	announce: noop,
 });
 
 export const useNotebook = () => useContext(NotebookContext);

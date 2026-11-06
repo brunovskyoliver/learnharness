@@ -304,11 +304,19 @@ export const FAUX_SKETCH: Sketch = {
 	],
 };
 
+/** The faux engine's think time before a structured answer: 700 ms, or
+ *  LH_NOTEBOOK_FAUX_MS (the browser tests widen it so Stop and typing can
+ *  land while a read runs). */
+export function fauxStructuredMs(): number {
+	const ms = Number(process.env.LH_NOTEBOOK_FAUX_MS);
+	return Number.isFinite(ms) && ms >= 0 && ms <= 60_000 ? ms : 700;
+}
+
 /** A scripted engine for one run: plausible, deterministic answers per kind. */
 export function fauxNotebookEngine(kind: NotebookRunKind, note: string, passage?: string): PiEngine {
 	const faux = createFauxCore({ tokensPerSecond: 60, tokenSize: { min: 2, max: 5 } });
 	const structured = (name: string, args: Record<string, unknown>) => async (_context: unknown, options: { signal?: AbortSignal } | undefined) => {
-		await wait(700, options?.signal);
+		await wait(fauxStructuredMs(), options?.signal);
 		return fauxAssistantMessage([fauxToolCall(name, args as never, { id: `faux_${name}` })], { stopReason: "toolUse" });
 	};
 	const prose = (text: string) => async (_context: unknown, options: { signal?: AbortSignal } | undefined) => {

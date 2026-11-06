@@ -74,6 +74,7 @@ export default defineConfig({
 			LH_HOSTED: "0",
 			LH_IGNORE_ENV_KEYS: "1",
 			LH_NOTEBOOK_FAUX: "1",
+			LH_NOTEBOOK_FAUX_MS: "1500",
 			NEXT_TELEMETRY_DISABLED: "1",
 			TMPDIR: tmpRoot,
 		},

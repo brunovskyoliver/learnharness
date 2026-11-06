@@ -15,8 +15,10 @@ import { useNoteLinks } from "@/components/library/use-note-links";
 import { usePageDraft } from "@/components/library/use-page-draft";
 import { notebookHref, type NoteMode, type WikiResolution } from "@/src/core";
 import { renameNote } from "./nb-actions";
+import { NoteBridge } from "./nb-plugins";
 import { isUntitledName, useNotebook } from "./nb-shared";
 import type { NoteEditorHandle } from "./note-editor";
+import { NoteThinking } from "./thinking";
 import { ToolbarRow } from "./toolbar-row";
 import { useCompanion } from "./use-notebook-data";
 
@@ -146,6 +148,8 @@ export function NoteView({ note }: { note: { id: string; name: string } }) {
 	const [mounted, setMounted] = useState(false);
 	useEffect(() => { setMounted(true); }, []);
 	const [deleted, setDeleted] = useState(false);
+	const [bridge] = useState(() => new NoteBridge());
+	const [column, setColumn] = useState<HTMLDivElement | null>(null);
 
 	// The live name: the Library list follows renames made anywhere.
 	const listed = nb.library?.items.find((item) => item.id === note.id);
@@ -153,7 +157,7 @@ export function NoteView({ note }: { note: { id: string; name: string } }) {
 
 	return (
 		<main className="nb-page" data-testid="nb-page">
-			<div className="nb-column" data-testid="nb-column">
+			<div ref={setColumn} className="nb-column" data-testid="nb-column">
 				<ToolbarRow
 					reviewers={nb.reviewers}
 					reviewerId={companion?.reviewerId}
@@ -181,19 +185,32 @@ export function NoteView({ note }: { note: { id: string; name: string } }) {
 					}}
 					onEnter={() => body.current?.focusStart()}
 				/>
-				{mounted ? <NoteBody id={note.id} name={name} mode={mode} handle={body} title={title} onDeleted={setDeleted} /> : <div className="nb-body"><BodyLoading /></div>}
+				{mounted ? <NoteBody id={note.id} name={name} mode={mode} handle={body} title={title} noteBridge={bridge} onDeleted={setDeleted} /> : <div className="nb-body"><BodyLoading /></div>}
+				{mounted && (
+					<NoteThinking
+						bridge={bridge}
+						column={column}
+						pageId={note.id}
+						companion={companion}
+						mode={mode}
+						pace={nb.preferences.pace}
+						layout={nb.preferences.layout}
+						readOnly={deleted}
+					/>
+				)}
 			</div>
 		</main>
 	);
 }
 
 /** The page's text through the Library's draft controller, as Study's page pane holds it. */
-function NoteBody({ id, name, mode, handle, title, onDeleted }: {
+function NoteBody({ id, name, mode, handle, title, noteBridge, onDeleted }: {
 	id: string;
 	name: string;
 	mode: NoteMode;
 	handle: RefObject<NoteEditorHandle | null>;
 	title: RefObject<TitleHandle | null>;
+	noteBridge: NoteBridge;
 	onDeleted: (deleted: boolean) => void;
 }) {
 	const nb = useNotebook();
@@ -261,6 +278,7 @@ function NoteBody({ id, name, mode, handle, title, onDeleted }: {
 						onExitTop={() => title.current?.focusEnd()}
 						wiki={bridge}
 						wikiMenu={wikiMenu}
+						bridge={noteBridge}
 					/>
 				)}
 			</div>

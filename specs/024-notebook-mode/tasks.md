@@ -35,12 +35,12 @@ Format: `- [ ] T### [P?] [US?] description (paths)`. All Notebook CSS values com
 
 ## Phase 4: US2 It thinks with you (P1)
 
-- [ ] T020 [US2] `use-reading.ts`: pause timer by pace, IME/focus guards, unchanged-text skip, abort on typing, start `read` run; "When you ask" never starts
-- [ ] T021 [US2] `use-run-stream.ts` SSE client; phase → underline + blot (`blot.tsx`) via `nb-plugins.ts` decorations; deltas → word ink (`ink-text.tsx`)
-- [ ] T022 [US2] `margin.tsx` layout engine (paragraph-aligned, both/right, non-overlapping stacking, left notes right-aligned), `tether.tsx` SVG with tether-draw
-- [ ] T023 [US2] `inline-reply.tsx` under the anchored block (dot, indent) with optional sketch
-- [ ] T024 [US2] Corner hint running state + activity popover + Stop; refusals for no model / no key
-- [ ] T025 [US2] Tests: unit for timer and placement; Playwright `reading.spec.ts` (faux read → underline, blot, question, tether; typing aborts; Stop; When you ask silent; reduced motion)
+- [X] T020 [US2] `use-reading.ts`: pause timer by pace, IME/focus guards, unchanged-text skip, abort on typing, start `read` run; "When you ask" never starts
+- [X] T021 [US2] `use-run-stream.ts` SSE client; phase → underline + blot (`blot.tsx`) via `nb-plugins.ts` decorations; deltas → word ink (`ink-text.tsx`)
+- [X] T022 [US2] `margin.tsx` layout engine (paragraph-aligned, both/right, non-overlapping stacking, left notes right-aligned), `tether.tsx` SVG with tether-draw
+- [X] T023 [US2] `inline-reply.tsx` under the anchored block (dot, indent) with optional sketch
+- [X] T024 [US2] Corner hint running state + activity popover + Stop; refusals for no model / no key
+- [X] T025 [US2] Tests: unit for timer and placement; Playwright `reading.spec.ts` (faux read → underline, blot, question, tether; typing aborts; Stop; When you ask silent; reduced motion)
 
 ## Phase 5: US3 Margin threads (P1)
 

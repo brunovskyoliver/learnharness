@@ -23,7 +23,7 @@ async function NotebookPage({ params }: { params: Promise<{ id?: string[] }> }) 
 		<NotebookApp
 			note={resolved.note}
 			fontClasses={notebookFontClasses}
-			preferences={{ appearance: notebook.appearance, textSize: notebook.textSize, lettering: notebook.lettering, ink: notebook.ink }}
+			preferences={{ appearance: notebook.appearance, textSize: notebook.textSize, lettering: notebook.lettering, ink: notebook.ink, pace: notebook.pace, layout: notebook.layout }}
 			startMode={notebook.startMode}
 			reviewers={notebook.reviewers.map((r) => ({ id: r.id, name: r.name, instructions: r.instructions }))}
 			lastNoteId={notebook.lastNoteId}

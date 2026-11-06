@@ -52,3 +52,34 @@ export function renameNote(id: string, name: string): Promise<Outcome<LibraryIte
 		"The name could not be saved.",
 	);
 }
+
+export type StartReadOutcome =
+	| { ok: { id: string } }
+	| { refused: { reason: "models" | "key"; provider?: string } }
+	/** Nothing to say (a note that can't take notes, a page that is gone). */
+	| { skipped: true }
+	| { error: string };
+
+/** POST an automatic read of the text he sees (api.md "Runs"). */
+export async function startRead(pageId: string, text: string): Promise<StartReadOutcome> {
+	try {
+		const response = await post(`/api/notebook/${encodeURIComponent(pageId)}/runs`, { kind: "read", text, auto: true });
+		const body = (await response.json().catch(() => ({}))) as { run?: { id: string }; reason?: "models" | "key"; provider?: string; error?: string };
+		if (response.status === 202 && body.run) return { ok: { id: body.run.id } };
+		if (response.status === 503 && (body.reason === "models" || body.reason === "key")) return { refused: { reason: body.reason, ...(body.provider ? { provider: body.provider } : {}) } };
+		if (response.status === 404 || response.status === 409) return { skipped: true };
+		return { error: body.error ?? "That didn't come through." };
+	} catch {
+		return { error: "That didn't come through." };
+	}
+}
+
+/** Stop a run (the activity abort route, kind "notebook"). Leaving never stops one; only this. */
+export async function stopRun(id: string): Promise<boolean> {
+	try {
+		const response = await post("/api/activity/abort", { kind: "notebook", id });
+		return response.ok;
+	} catch {
+		return false;
+	}
+}

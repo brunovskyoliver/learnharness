@@ -943,7 +943,8 @@
 .nb-root .nb-prose > * + * { margin-top: 1.05em; }
 .nb-root .nb-prose > :first-child { margin-top: 0; }
 .nb-root .nb-prose :is(li, blockquote) > * + * { margin-top: 0.25em; }
-.nb-root .nb-prose p { margin: 0; }
+/* Below `> * + *` in weight, so a paragraph after a list or heading keeps the 1.05em gap (§3.2). */
+.nb-root :where(.nb-prose p) { margin: 0; }
 .nb-root .nb-prose :is(ul, ol) { padding-left: 1.3em; }
 .nb-root .nb-prose ul { list-style: disc outside; }
 .nb-root .nb-prose ol { list-style: decimal outside; }
@@ -1230,4 +1231,166 @@
 @media (prefers-reduced-motion: reduce) {
 	.nb-root :is(.nb-sheet, .nb-menu-button, .nb-tool, .nb-side-row, .nb-side-chevron) { transition: none; }
 	.nb-root :is(.nb-menu, .nb-sidebar) { animation: none; }
+}
+
+/* ══ Phase 4 (US2): it thinks with you ══════════════════════════════════════
+ * Margin notes, tethers, reading marks, inline replies and the corner hint's
+ * running state. Values from visual-reference §8-§13; "≈" where measured.
+ */
+
+.nb-root .nb-sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* Words of the AI's paragraphs (§12 .riddled-words). */
+.nb-root .nb-words { display: block; }
+.nb-root .nb-words + .nb-words { margin-top: 0.5em; }
+
+/* ── 8 Margin notes ─────────────────────────────────────────────────────── */
+
+.nb-root .nb-margin {
+	position: absolute;
+	inset: 0;
+	z-index: 5;
+	pointer-events: none;
+}
+.nb-root .nb-margin .nb-note { pointer-events: auto; }
+.nb-root .nb-note {
+	position: absolute;
+	color: var(--riddle);
+	/* ≈15px: the frame's lines ("If AI makes competent-looking code cheap, college", 354px) set at 15px. */
+	font-size: 15px;
+	line-height: 23.5px;
+	overflow-wrap: break-word;
+}
+.nb-root .nb-note[data-side="left"] { text-align: right; }
+.nb-root .nb-note-text { margin: 0; }
+.nb-root .nb-note .nb-note-dot { top: 4.75px; }
+/* Left: dot centre 36px left of the column, 23px right of the text. Right: 20px before the text. */
+.nb-root .nb-note[data-side="left"] .nb-note-dot { right: -30px; }
+.nb-root .nb-note[data-side="right"] .nb-note-dot { left: -27px; }
+/* "2 replies" and the detached line: sans ≈12px faint, ≈8px under the last line. */
+.nb-root .nb-note-meta {
+	margin: 8px 0 0;
+	color: var(--faint);
+	font-family: var(--nb-sans);
+	font-size: 12px;
+	line-height: 16px;
+	letter-spacing: 0;
+}
+
+/* ── 11 Tethers: the faint spine (≈, a fainter run than the tie) ─────────── */
+
+.nb-root .nb-tether-faint .nb-tether-spine { stroke-opacity: 0.16; }
+
+/* ── 9.1 / 10.2 The passage being read ──────────────────────────────────── */
+
+.nb-root .nb-reading {
+	position: absolute;
+	inset: 0;
+	z-index: 5;
+	pointer-events: none;
+	transition: opacity 0.5s ease-out;
+}
+.nb-root .nb-reading.nb-leaving { opacity: 0; }
+.nb-root .nb-pencil {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+}
+.nb-root .nb-reading-blot {
+	display: block;
+	overflow: visible;
+	animation: 0.46s cubic-bezier(0.2, 0.9, 0.25, 1.12) backwards nb-blot-splat;
+}
+
+/* ── 13 Inline replies ──────────────────────────────────────────────────── */
+
+.nb-root .nb-prose > .nb-spacer {
+	margin-top: 0;
+	pointer-events: none;
+	user-select: none;
+}
+.nb-root .nb-inline {
+	position: absolute;
+	left: 0;
+	right: 0;
+	z-index: 5;
+	padding-left: 22px;
+	color: var(--riddle);
+	font-size: calc(var(--note-size) * 1.06);
+	line-height: 1.5;
+}
+.nb-root .nb-inline .nb-inline-dot { left: 3px; top: 0.42em; }
+.nb-root .nb-sketch-still { margin: 0.9em 0 0; }
+.nb-root .nb-sketch-head {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	margin-bottom: 1.4em;
+	text-align: center;
+}
+.nb-root .nb-sketch-title { color: var(--ink); font-size: 1.12em; line-height: 1.3; }
+.nb-root .nb-sketch-subtitle { color: var(--faint); font-family: var(--nb-sans); font-size: 13px; line-height: 1.4; }
+.nb-root .nb-sketch-art { margin: 0 auto; }
+.nb-root .nb-sketch-art svg { display: block; width: 100%; height: auto; overflow: visible; }
+/* A drawing that was already there shows finished; only a new one draws itself. */
+.nb-root .nb-sketch-still[data-static] .nb-drawing * { animation: none; stroke-dashoffset: 0; }
+.nb-root .nb-sketch-note { margin: 1em 0 0; color: var(--ink); text-align: center; font-size: 1.06em; }
+.nb-root .nb-sketch-caption { margin: 0.9em 0 0; color: var(--graphite); font-size: 0.86em; }
+
+/* ── 7 Corner hint: running, refused, failed; the activity popover ──────── */
+
+.nb-root .nb-corner-hint .nb-hint-button {
+	padding: 2px 0;
+	color: inherit;
+	pointer-events: auto;
+	cursor: pointer;
+	transition: color 0.15s;
+}
+.nb-root .nb-corner-hint .nb-hint-button:hover { color: var(--ink); }
+.nb-root .nb-hint-link {
+	text-decoration: underline;
+	text-decoration-color: var(--riddle-line);
+	text-underline-offset: 2px;
+}
+.nb-root .nb-hint-running { white-space: nowrap; }
+.nb-root .nb-activity {
+	z-index: 50;
+	min-width: 220px;
+	max-width: min(360px, calc(100vw - 32px));
+	padding: 8px 12px;
+	border-radius: 12px;
+	background: var(--paper);
+	box-shadow: var(--lift);
+	color: var(--graphite);
+	font-family: var(--nb-sans);
+	font-size: 12.5px;
+	line-height: 1.5;
+	animation: 0.16s ease-out both nb-menu-in;
+}
+.nb-root .nb-activity-list { margin: 0; padding: 0; list-style: none; }
+.nb-root .nb-activity-row + .nb-activity-row { margin-top: 4px; }
+.nb-root .nb-activity .nb-hint-button { color: var(--ink); text-decoration: underline; text-decoration-color: var(--riddle-line); text-underline-offset: 2px; }
+.nb-root .nb-activity-empty { margin: 0; color: var(--faint); }
+
+@media (pointer: coarse) {
+	.nb-root .nb-corner-hint .nb-hint-button { min-height: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.nb-root .nb-reading { transition: none; }
+	.nb-root .nb-reading-blot { animation: none; }
+	.nb-root .nb-activity { animation: none; }
 }

@@ -139,4 +139,17 @@ test.describe("Notebook: a note on paper", () => {
 		await page.getByTestId("nb-sidebar-close").click();
 		await expect(page.getByTestId("nb-sidebar")).toBeHidden();
 	});
+
+	test("hovering the left edge opens the sidebar; a page loading under the pointer does not", async ({ page }) => {
+		await page.setViewportSize({ width: 1440, height: 962 });
+		await putSection(page.request, "general", { interface: "notebook" });
+		// The pointer rests at (0, 0), on the strip, while the page loads.
+		await page.goto("/notebook");
+		await expect(page.getByTestId("nb-editor")).toBeVisible({ timeout: 60_000 });
+		await page.waitForTimeout(600);
+		await expect(page.getByTestId("nb-sidebar")).toHaveCount(0);
+		await page.mouse.move(400, 400);
+		await page.mouse.move(4, 400, { steps: 8 });
+		await expect(page.getByTestId("nb-sidebar")).toBeVisible();
+	});
 });

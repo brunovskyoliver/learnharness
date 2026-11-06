@@ -12,7 +12,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { writeSettingsKey } from "@/components/interface-switch";
 import type { SaveStatus } from "@/components/library/page-draft";
 import type { NotebookStartMode } from "@/src/core";
-import { isMod, keyLabel, NotebookContext, useIsMac, type NotebookPreferences, type NotebookReviewerView, type NotebookShared, type SidebarOpen } from "./nb-shared";
+import { CornerHint } from "./corner-hint";
+import { isMod, NotebookContext, useIsMac, type NotebookPreferences, type NotebookReviewerView, type NotebookShared, type ReadingStatus, type SidebarOpen } from "./nb-shared";
 import { MenuGlyph, Wordmark } from "./chrome";
 import { NoteView } from "./note-view";
 import { OverlaySidebar } from "./overlay-sidebar";
@@ -56,6 +57,10 @@ export function NotebookApp({ note, fontClasses, preferences, startMode = "think
 	const theme = useResolvedTheme(prefs.appearance);
 	const [sidebar, setSidebar] = useState<SidebarOpen>(null);
 	const [saveStatus, setSaveStatus] = useState<SaveStatus | null>(null);
+	const [reading, setReading] = useState<ReadingStatus>(null);
+	// The polite live region: the same words twice in a row still get said (a nonce keeps them apart).
+	const [spoken, setSpoken] = useState<{ text: string; n: number }>({ text: "", n: 0 });
+	const announce = useCallback((text: string) => setSpoken((s) => ({ text, n: s.n + 1 })), []);
 	const { list: library, failed: libraryFailed, refresh: refreshLibrary } = useLibraryList();
 	const menuButton = useRef<HTMLButtonElement>(null);
 	const edgeTimer = useRef<number | null>(null);
@@ -93,10 +98,15 @@ export function NotebookApp({ note, fontClasses, preferences, startMode = "think
 	}, [mac]);
 
 	useEffect(() => () => { if (edgeTimer.current) window.clearTimeout(edgeTimer.current); }, []);
+	// A real pointer movement on the strip starts the wait: the browser's synthetic "over" at (0, 0)
+	// when a page loads under a resting (or absent) pointer must not open the sidebar.
 	const edgeEnter = (event: React.PointerEvent) => {
 		if (event.pointerType !== "mouse" || !window.matchMedia("(pointer: fine)").matches) return;
-		if (edgeTimer.current) window.clearTimeout(edgeTimer.current);
-		edgeTimer.current = window.setTimeout(() => setSidebar((open) => open ?? { via: "hover", search: false }), EDGE_HOVER_MS);
+		if (edgeTimer.current) return;
+		edgeTimer.current = window.setTimeout(() => {
+			edgeTimer.current = null;
+			setSidebar((open) => open ?? { via: "hover", search: false });
+		}, EDGE_HOVER_MS);
 	};
 	const edgeLeave = () => {
 		if (edgeTimer.current) window.clearTimeout(edgeTimer.current);
@@ -106,7 +116,8 @@ export function NotebookApp({ note, fontClasses, preferences, startMode = "think
 	const shared = useMemo<NotebookShared>(() => ({
 		root, mac, noteId: note.id, startMode, reviewers, account, preferences: prefs, updatePreferences,
 		sidebar, openSidebar, closeSidebar, saveStatus, setSaveStatus, library, libraryFailed, refreshLibrary,
-	}), [root, mac, note.id, startMode, reviewers, account, prefs, updatePreferences, sidebar, openSidebar, closeSidebar, saveStatus, library, libraryFailed, refreshLibrary]);
+		reading, setReading, announce,
+	}), [root, mac, note.id, startMode, reviewers, account, prefs, updatePreferences, sidebar, openSidebar, closeSidebar, saveStatus, library, libraryFailed, refreshLibrary, reading, announce]);
 
 	return (
 		<NotebookContext.Provider value={shared}>
@@ -136,12 +147,13 @@ export function NotebookApp({ note, fontClasses, preferences, startMode = "think
 					</button>
 					<Wordmark noteId={note.id} />
 				</header>
-				<div className="nb-edge" aria-hidden="true" data-testid="nb-edge" onPointerEnter={edgeEnter} onPointerLeave={edgeLeave} />
+				<div className="nb-edge" aria-hidden="true" data-testid="nb-edge" onPointerMove={edgeEnter} onPointerLeave={edgeLeave} />
 				<OverlaySidebar returnFocus={menuButton} />
 				<div className="nb-sheet" data-aside={sidebar ? "" : undefined} inert={sidebar ? true : undefined}>
 					<NoteView key={note.id} note={note} />
 				</div>
-				<p className="nb-corner-hint" data-testid="nb-corner-hint">{`${keyLabel("mod+k", mac)} finds a note`}</p>
+				<CornerHint />
+				<p className="nb-sr-only" aria-live="polite" data-testid="nb-live"><span key={spoken.n}>{spoken.text}</span></p>
 			</div>
 		</NotebookContext.Provider>
 	);
