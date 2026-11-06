@@ -76,6 +76,8 @@ export interface ActivityFeed {
 	extractions: FeedExtraction[];
 	/** Flashcards being made (feature 021). */
 	cardRuns?: { id: string; title: string; startedAt: number; costUsd: number | null; model?: string; steps?: number }[];
+	/** Notebook runs (feature 024): reads, replies, drawings and chat. */
+	notebookRuns?: { id: string; pageId: string; pageName: string; kind: string; auto: boolean; startedAt: number; costUsd: number | null; model?: string; steps?: number }[];
 }
 
 const EMPTY_FEED: ActivityFeed = { jobs: [], extractions: [] };
@@ -115,7 +117,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
 				if (res.ok) {
 					const data = (await res.json()) as Partial<ActivityFeed>;
 					if (alive)
-						setFeed({ jobs: data.jobs ?? [], extractions: data.extractions ?? [], cardRuns: data.cardRuns ?? [] });
+						setFeed({ jobs: data.jobs ?? [], extractions: data.extractions ?? [], cardRuns: data.cardRuns ?? [], notebookRuns: data.notebookRuns ?? [] });
 				}
 			} catch {
 				// transport blip: keep the last feed, announce again next event
@@ -175,7 +177,11 @@ export interface ActivityBlob {
 	/** job.id, or the extraction job's row id (source id, or "src#i" for
 	 *  chunk jobs — unique per row, per-chunk jobs owner 2026-09-28). */
 	id: string;
-	process: "job" | "extraction" | "cards";
+	process: "job" | "extraction" | "cards" | "notebook";
+	/** A Notebook run's kind word ("Reading", "Replying", …). */
+	notebookKind?: string;
+	/** Where the row's link goes, when it isn't a session. */
+	href?: string;
 	/** Sub-agent kind for jobs (extraction blobs have none). */
 	jobKind?: JobKind;
 	/** Extraction phase (extracting/auditing/merging/embedding); jobs carry none. */
@@ -195,6 +201,9 @@ export interface ActivityBlob {
 	/** Model calls made so far, when usage is reported. */
 	steps?: number;
 }
+
+/** A Notebook run's kind as its row names it (ui-contract.md activity popover). */
+const NOTEBOOK_KIND_WORD: Record<string, string> = { read: "Reading", think: "Thinking", ask: "Thinking", reply: "Replying", visualize: "Drawing", chat: "Chat" };
 
 /** Merge the feed into one oldest-first blob list (the stable blob order). */
 export function toBlobs(feed: ActivityFeed): ActivityBlob[] {
@@ -260,6 +269,9 @@ export function toBlobs(feed: ActivityFeed): ActivityBlob[] {
 	}
 	for (const run of feed.cardRuns ?? []) {
 		blobs.push({ id: run.id, process: "cards", title: run.title, chatId: "", startedAt: run.startedAt, cost: run.costUsd, context: null, activity: "", model: run.model, steps: run.steps });
+	}
+	for (const run of feed.notebookRuns ?? []) {
+		blobs.push({ id: run.id, process: "notebook", notebookKind: NOTEBOOK_KIND_WORD[run.kind] ?? run.kind, href: `/notebook/${encodeURIComponent(run.pageId)}`, title: run.pageName, chatId: "", startedAt: run.startedAt, cost: run.costUsd, context: null, activity: "", model: run.model, steps: run.steps });
 	}
 	blobs.sort((a, b) => a.startedAt - b.startedAt);
 	return blobs;
@@ -398,6 +410,8 @@ function ActivityBlobRow({
 	const label =
 		blob.process === "cards"
 			? "Making flashcards"
+		: blob.process === "notebook"
+			? `Notebook · ${blob.notebookKind ?? "Running"}`
 		: blob.process === "extraction"
 			? `Extraction — ${blob.phase ?? "running"}`
 			: blob.jobKind === "research"
@@ -467,9 +481,9 @@ function ActivityBlobRow({
 						data-testid="activity-blob-detail"
 						className="mx-2 mb-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 rounded-md bg-accent/40 p-2 text-muted-foreground"
 					>
-						<dt>Session</dt>
+						<dt>{blob.process === "notebook" ? "Note" : "Session"}</dt>
 						<dd className="min-w-0 text-right">
-							<a href={blob.process === "cards" ? "/review?view=drafts" : `/chat/${blob.chatId}`} className="block truncate text-card-foreground hover:underline" title={blob.title}>
+							<a href={blob.href ?? (blob.process === "cards" ? "/review?view=drafts" : `/chat/${blob.chatId}`)} className="block truncate text-card-foreground hover:underline" title={blob.title}>
 								{blob.title}
 							</a>
 						</dd>

@@ -16,12 +16,14 @@ import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { usePointerBlur } from "@/components/focus-hygiene";
 import { SettingsDialogProvider, useSettingsDialog } from "@/components/settings/settings-dialog.tsx";
 import { Hint } from "@/components/ui/hint";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { switchInterface, rememberStudyPath } from "@/components/interface-switch";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { fuzzyScore } from "@/src/core";
 import type { ChatListItem } from "@/src/core";
-import { kbdEventForAction } from "@/src/core";
+import { bindingForAction, formatBinding, isNotebookPath, kbdEventForAction } from "@/src/core";
 import { notifySettingsSaved } from "@/components/settings-signal";
 import { SessionListProvider, useSessionList, useSessionListDemand } from "@/components/session-list";
 import { SidebarFrame } from "@/components/sidebar-frame";
@@ -829,6 +831,25 @@ function SessionsSidebar({ account }: { account?: React.ReactNode }) {
 								<CommandIcon className="ui-icon" />
 							</button>
 						</Hint>
+						{/* Feature 024: the switch to Notebook, after the palette. */}
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<button
+										type="button"
+										onClick={() => {
+											if (overlay) close();
+											void switchInterface("notebook", (href) => router.push(href));
+										}}
+										data-testid="switch-to-notebook"
+										className="flex h-8 items-center rounded-md px-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground pointer-coarse:h-11"
+									>
+										Notebook
+									</button>
+								</TooltipTrigger>
+								<TooltipContent side="top">{`Switch to Notebook · ${formatBinding(bindingForAction("toggle-interface"))}`}</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
 						<div className="ml-auto">{account}</div>
 				</div>
 			</div>
@@ -989,6 +1010,26 @@ export function AppShell({ children, account, hosted = false, initialChats }: { 
 	// Keep mobile navigation interactive while the conversation's richer
 	// rendering modules are still downloading. Its header keeps the same slot.
 	const conversation = pathname.startsWith("/chat/") && pathname !== "/chat/new";
+	const notebook = isNotebookPath(pathname);
+	// Study's last location, so a switch back from Notebook returns there (feature 024).
+	useEffect(() => {
+		if (!notebook) rememberStudyPath(`${pathname}${window.location.search}`);
+	}, [pathname, notebook]);
+	if (notebook) {
+		// Notebook brings its own chrome: no sessions sidebar, tabs, right pane
+		// or palette. The providers stay, so drafts, settings and events work,
+		// and the keyboard listener keeps only the mode toggle there.
+		return (
+			<SettingsDialogProvider hosted={hosted}>
+				<SessionListProvider initialChats={initialChats}>
+					<WorkspaceProvider>
+						{children}
+						<KeyboardShortcuts />
+					</WorkspaceProvider>
+				</SessionListProvider>
+			</SettingsDialogProvider>
+		);
+	}
 	return (
 		<SettingsDialogProvider hosted={hosted}>
 			<SessionListProvider initialChats={initialChats}>

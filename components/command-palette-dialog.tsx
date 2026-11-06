@@ -5,6 +5,7 @@ import { useEffect, useId, useMemo, useRef, useState, type RefObject } from "rea
 import { BookOpenIcon, DumbbellIcon, FileTextIcon, FolderIcon, SearchIcon, ZapIcon } from "lucide-react";
 import { DocSnippetText } from "@/components/library/doc-snippet";
 import { useDocumentSearch } from "@/components/library/use-document-search";
+import { switchInterface } from "@/components/interface-switch";
 import { createBlankPage, createStudyNotes, SAVE_PASSAGE_EVENT, usePagePane } from "@/components/library/page-pane-api";
 import { useSessionList, useSessionListDemand } from "@/components/session-list";
 import { useSettingsDialog } from "@/components/settings/settings-dialog.tsx";
@@ -201,6 +202,12 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 			case "show-shortcuts":
 				close();
 				window.dispatchEvent(new CustomEvent(kbdEventForAction("cheat-sheet")));
+				return;
+			case "switch-to-notebook":
+				skipReturn.current = true;
+				close();
+				if (sidebar.overlay) sidebar.close();
+				void switchInterface("notebook", (href) => router.push(href));
 				return;
 		}
 	};

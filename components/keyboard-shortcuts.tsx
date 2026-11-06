@@ -25,9 +25,13 @@
 import { useEffect, useRef, useState } from "react";
 import { chatUsesNativeTraversal } from "@/components/enter-submits";
 import { useBackdropDismiss } from "@/components/backdrop-dismiss";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { switchInterface } from "@/components/interface-switch";
 import {
 	actionForBinding,
+	interfaceOfPath,
+	isNotebookPath,
+	otherInterface,
 	bindingForAction,
 	commandPaletteDefers,
 	eventBinding,
@@ -46,6 +50,7 @@ export { kbdEventForAction };
 
 export function KeyboardShortcuts() {
 	const router = useRouter();
+	const pathname = usePathname();
 	const [cheatOpen, setCheatOpen] = useState(false);
 	const { open: openSettings } = useSettingsDialog();
 	const sidebar = useSidebar();
@@ -55,14 +60,25 @@ export function KeyboardShortcuts() {
 	// (attached once) never goes stale.
 	const handlersRef = useRef<{
 		router: ReturnType<typeof useRouter>;
+		pathname: string;
 		setCheatOpen: (v: boolean) => void;
 		openSettings: () => void;
-	}>({ router, setCheatOpen, openSettings: openSettingsFromKeyboard });
-	handlersRef.current = { router, setCheatOpen, openSettings: openSettingsFromKeyboard };
+	}>({ router, pathname, setCheatOpen, openSettings: openSettingsFromKeyboard });
+	handlersRef.current = { router, pathname, setCheatOpen, openSettings: openSettingsFromKeyboard };
 
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
 			if (e.defaultPrevented) return;
+			// The mode toggle works everywhere, Notebook included (feature 024).
+			if (actionForBinding(eventBinding(e)) === "toggle-interface") {
+				e.preventDefault();
+				const { router: nav, pathname: here } = handlersRef.current;
+				void switchInterface(otherInterface(interfaceOfPath(here)), (href) => nav.push(href));
+				return;
+			}
+			// Notebook owns every other key on its routes: native Tab order,
+			// its own Escape layers and shortcuts. Study's map stays out.
+			if (isNotebookPath(handlersRef.current.pathname)) return;
 			// ML-result chats retain native Tab/Shift+Tab (owner, feature 008).
 			if (e.key === "Tab" && chatUsesNativeTraversal(document)) return;
 			// Dialogs own native traversal, including their portaled child menus.

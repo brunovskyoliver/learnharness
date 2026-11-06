@@ -41,7 +41,8 @@ export type KeyAction =
 	| "toggle-right-pane"
 	| "review-show"
 	| "review-rate"
-	| "review-undo";
+	| "review-undo"
+	| "toggle-interface";
 
 /** Where the cheat sheet groups an action (display only — dispatch is
  *  global; a seam that isn't mounted simply no-ops). */
@@ -83,6 +84,8 @@ export const KEYBOARD_ACTIONS: readonly KeyActionDef[] = [
 	// one action/binding. Only the currently mounted surface listens.
 	{ id: "find", label: "Find", scope: "global", binding: "mod+f" },
 	{ id: "cheat-sheet", label: "Shortcut cheat sheet", scope: "global", binding: "?" },
+	// Feature 024: toggles Study and Notebook from anywhere, Notebook included.
+	{ id: "toggle-interface", label: "Switch between Study and Notebook", scope: "global", binding: "mod+shift+o" },
 	// The question dock's row machine (wave B) — displayOnly: the dock owns
 	// the keys while a question is expanded; the registry never dispatches
 	// them, so bare arrows stay free everywhere else.

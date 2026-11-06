@@ -20,6 +20,7 @@ import {
 import { diagramIdeaLinks, diagramOutline, diagramScanText, parseDiagram } from "../core/diagram.ts";
 import { scanWikiLinks, type WikiPins } from "../core/note-links.ts";
 import { appendBlock } from "../core/note-sources.ts";
+import { removeCompanionFile } from "./notebook.ts";
 import type { AgentRevision, AgentRevisionResult, LibraryStore, PageCreateOptions, PageText } from "../core/ports.ts";
 
 const STALE_UPLOAD_MS = 24 * 60 * 60 * 1000;
@@ -295,6 +296,7 @@ async function remove(id: string): Promise<boolean> {
 		await fs.rm(pageProposalsDir(id), { recursive: true, force: true });
 		await fs.rm(derivedFile(id), { force: true });
 		await fs.rm(annotationsFile(id), { force: true });
+		await removeCompanionFile(id);
 		replace(catalog, id, tombstone(item, new Date().toISOString()));
 		await writeCatalog(catalog);
 		emit("library-changed", { itemId: id });
@@ -529,6 +531,7 @@ async function purgeTrash(entryId: string): Promise<boolean> {
 			await fs.rm(pageProposalsDir(item.id), { recursive: true, force: true });
 			await fs.rm(derivedFile(item.id), { force: true });
 			await fs.rm(annotationsFile(item.id), { force: true });
+			await removeCompanionFile(item.id);
 		}
 		emit("library-changed", { itemId: entryId });
 		return true;

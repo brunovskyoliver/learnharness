@@ -100,6 +100,11 @@ export { sessionTurnEntries, textPartMessageId, firstSourceTextParts, type Sessi
 export * from "./auth-keys.ts";
 // keyboard.ts: the shortcut registry + binding normalization (pure, browser-safe).
 export * from "./keyboard.ts";
+// Notebook mode (feature 024): pure; the mode helpers are tiny, the rest
+// tree-shakes out of Study (tests/startup-module-graph.test.ts).
+export * from "./interface-mode.ts";
+export * from "./notebook.ts";
+export * from "./notebook-sketch.ts";
 // coverage.ts stays server-side: its fingerprints use node:crypto, which
 // pulled ~330 KB of crypto-browserify into every page (2026-10-27).
 export type { CoverageEntry, CoverageSlot } from "./coverage.ts";
