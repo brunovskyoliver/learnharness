@@ -1,11 +1,12 @@
 # Feature 024: Notebook mode
-Stage: analyze-gate
+Stage: implement
 Updated: 2026-11-06
 
 ## Decisions
 - Owner answers (one question per call, 2026-11-06): see spec.md Clarifications. Mode "Notebook" / "Study"; AI has no name, verbs only; note = Library page; threads and chat stay with the note, not sessions; extras: rich editor, Make flashcards, Links panel; automatic reads uncapped but shown with cost and Stop; activity lives in the corner hint; switch in both sidebars + palette + one shortcut; Export replaces Share; strong slot for everything; phones not a focus.
 - Agent: below 768px every layout falls back to Marks only, opening inline (owner deprioritised mobile).
 - Agent: title = page name edited in place (no text inserted into the page); mode toggle Mod+Shift+O (Mod+Shift+M is the editor formula key); pace Regular 1600 ms / Slow 3200 ms (Riddled does not show its delay); sketches are our own validated JSON primitives rendered to SVG; Word export by a hand-written zip/docx writer; PDF via the existing headless Chromium.
+- Owner gate 2 (2026-11-06): "go" — implement all 11 phases. Real-model checks use the ChatGPT subscription connection from the existing ~/.codex login, in a throwaway data dir.
 - Agent: clarify found no further owner questions; the full microcopy goes to the owner at gate 2 in the UI contract.
 
 ## Log
