@@ -10,10 +10,9 @@ import {
 	applyCompanionPatch, assignSide, isNotebookId, messageTextProblem, NOTEBOOK_LIMIT_TEXT, NOTEBOOK_LIMITS, parseCompanionPatch, parseThreadAnchor,
 	THREAD_STATUSES, type NoteCompanion, type NotebookThread, type ThreadMessage, type ThreadStatus,
 } from "../core/notebook.ts";
-import { resolveSettings } from "../core/settings-resolution.ts";
+import { effectiveSettings, stores } from "./stores.ts";
 import { NotebookReadOnlyError, type CompanionChange } from "../store/notebook.ts";
 import { notebookRunStreamResponse, startNotebookRun } from "./notebook.ts";
-import { stores } from "./stores.ts";
 
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 const noPage = () => json({ error: "That note is no longer in your Library." }, 404);
@@ -57,7 +56,7 @@ export function notebookReadResponse(pageId: string): Promise<Response> {
 		if (!isNotebookId(pageId)) return badId();
 		if (!(await liveOrTrashedPage(pageId))) return noPage();
 		const read = await stores.notebookStore.read(pageId);
-		const startMode = resolveSettings(stores.settingsStore.readSettings()).notebook.startMode;
+		const startMode = effectiveSettings().notebook.startMode;
 		return json({ companion: read.companion, effective: { mode: read.companion.mode ?? startMode }, readOnly: read.readOnly, setAside: read.setAside });
 	});
 }
@@ -88,7 +87,7 @@ export function notebookThreadCreateResponse(request: Request, pageId: string): 
 		const problem = messageTextProblem(raw.text);
 		if (problem) return json({ error: problem.error }, problem.status);
 		if (!(await livePage(pageId))) return noPage();
-		const layout = resolveSettings(stores.settingsStore.readSettings()).notebook.layout;
+		const layout = effectiveSettings().notebook.layout;
 		const done = await write(pageId, (companion) => {
 			if (companion.threads.length >= NOTEBOOK_LIMITS.threads) return { refused: NOTEBOOK_LIMIT_TEXT.threads, status: 409 };
 			const now = new Date().toISOString();
@@ -165,7 +164,7 @@ export async function resolveNotebookNote(requested: string | undefined): Promis
 		return page ? { note: { id: page.item.id, name: page.item.name } } : { missing: true };
 	}
 	const to = (id: string) => ({ redirectTo: `/notebook/${encodeURIComponent(id)}` });
-	const last = resolveSettings(stores.settingsStore.readSettings()).notebook.lastNoteId;
+	const last = effectiveSettings().notebook.lastNoteId;
 	if (last && isNotebookId(last) && (await stores.libraryStore.readPage(last))) return to(last);
 	const pages = (await stores.libraryStore.list()).filter((item) => item.kind === "page" && !item.archivedAt);
 	pages.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));

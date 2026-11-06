@@ -33,6 +33,8 @@ for (const entry of ["components/sidebar.tsx", "components/home.tsx", "component
 				assert.doesNotMatch(input, /node_modules\/(?:@tiptap|prosemirror-[^/]+)\//, `${input} entered startup JS; the page editor loads on demand`);
 				// The composer's small @ hook is the one exception (research R14).
 				assert.doesNotMatch(input, /components\/library\/(?!use-library-mention\.ts$)/, `${input} entered startup JS; the Library loads with its own route`);
+				// Feature 024: Notebook's code, styles and fonts load with its own route.
+				assert.doesNotMatch(input, /(?:components\/notebook\/|app\/\(app\)\/notebook\/|src\/core\/notebook(?:-sketch)?\.ts$)/, `${input} entered Study's startup JS; Notebook loads with its own route`);
 				if (entry === "components/graph-view.tsx") assert.doesNotMatch(input, /(?:components\/graph-canvas\.ts|src\/core\/layout\.ts|node_modules\/d3-[^/]+\/)/, `${input} entered the empty graph's static JS`);
 			}
 			for (const imported of output.imports) if (imported.kind === "import-statement" && !imported.external) walk(imported.path);

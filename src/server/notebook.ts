@@ -33,11 +33,11 @@ import {
 } from "../core/notebook.ts";
 import type { Sketch } from "../core/notebook-sketch.ts";
 import { modelsNotConfigured, providerKeyMissing, resolveReviewer } from "../core/settings.ts";
-import { resolveRoleSpec, resolveSettings } from "../core/settings-resolution.ts";
+import { resolveRoleSpec } from "../core/settings-resolution.ts";
 import { NotebookReadOnlyError, type CompanionChange } from "../store/notebook.ts";
 import { providerKeyPresent } from "./keys.ts";
 import { jobCost } from "./pricing.ts";
-import { stores } from "./stores.ts";
+import { effectiveSettings, stores } from "./stores.ts";
 
 export interface NotebookRun {
 	id: string;
@@ -99,7 +99,7 @@ function engineFor(kind: NotebookRunKind, note: string, passage: string | undefi
 // ─── context ─────────────────────────────────────────────────────────────────
 
 function contextFor(companion: NoteCompanion, note: string): NotebookContext {
-	const settings = resolveSettings(stores.settingsStore.readSettings());
+	const settings = effectiveSettings();
 	const reviewer = resolveReviewer(settings.notebook.reviewers, companion.reviewerId);
 	return {
 		note,
@@ -120,7 +120,7 @@ function noteText(clientText: unknown, saved: string): string {
 	return typeof clientText === "string" && utf8Bytes(clientText) <= PAGE_MAX_BYTES ? clientText : saved;
 }
 
-const layoutNow = () => resolveSettings(stores.settingsStore.readSettings()).notebook.layout;
+const layoutNow = () => effectiveSettings().notebook.layout;
 
 // ─── run bodies (api.md) ─────────────────────────────────────────────────────
 
@@ -208,7 +208,7 @@ function addAiThread(pageId: string, run: NotebookRun, input: { note: string; an
 }
 
 const reviewerOf = (companion: NoteCompanion) => {
-	const settings = resolveSettings(stores.settingsStore.readSettings());
+	const settings = effectiveSettings();
 	return resolveReviewer(settings.notebook.reviewers, companion.reviewerId)?.id;
 };
 
@@ -409,6 +409,8 @@ export function notebookRunFeed() {
 
 /** A run as the registry holds it (tests and the stream route). */
 export const notebookRun = (id: string): NotebookRun | null => registry().get(id)?.run ?? null;
+/** The events a run has buffered so far (tests; the stream route replays the same list). */
+export const notebookRunEvents = (id: string): NotebookRunEvent[] => [...(registry().get(id)?.events ?? [])];
 export const notebookRunIdle = async (): Promise<void> => { await Promise.all([...registry().values()].map((live) => live.done)); };
 
 const TERMINAL = new Set(["done", "failed", "stopped"]);

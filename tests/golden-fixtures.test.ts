@@ -39,6 +39,7 @@ const { chatStore } = await import("../src/store/chats.ts");
 const { graphStore } = await import("../src/store/graph.ts");
 const { jobStore } = await import("../src/store/jobs.ts");
 const { settingsStore } = await import("../src/store/settings.ts");
+const { notebookStore } = await import("../src/store/notebook.ts");
 const { readRenderSettings } = await import("../src/store/render-settings.ts");
 const { getGraph, deriveView } = await import("../src/core/graph.ts");
 const { sanitizeRenderSettings } = await import("../src/core/render-settings.ts");
@@ -217,6 +218,23 @@ test("settings: the stamped record parses", () => {
 	assert.ok(s, "settings record reads");
 	assert.equal(s!.version, 1, "settings carry their version stamp");
 	assert.ok(s!.models && typeof s!.models === "object", "model slots present");
+});
+
+// ── notebook companion (feature 024) ────────────────────────────────────────
+
+test("notebook: the companion record parses through the companion store", async () => {
+	const id = "lib_2D9xpc6CWLSgAYRtI1og4";
+	const read = await notebookStore.read(id);
+	assert.equal(read.readOnly, null, "current version");
+	assert.equal(read.setAside, false, "not damaged");
+	const c = read.companion;
+	assert.equal(c.pageId, id);
+	assert.ok(c.instruction.length > 0 && c.reviewerId, "instruction and reviewer");
+	assert.ok(c.readCursor, "read cursor");
+	assert.deepEqual(c.threads.map((t) => t.origin).sort(), ["ask", "read", "visualize"], "every origin a run or route writes");
+	assert.deepEqual([...new Set(c.threads.map((t) => t.status))].sort(), ["open", "resolved"]);
+	assert.ok(c.threads.some((t) => t.messages.some((m) => m.sketch)), "a sketch survives validation");
+	assert.deepEqual(c.chat.map((m) => m.author), ["user", "ai"]);
 });
 
 // ── read-only: readers never write ──────────────────────────────────────────

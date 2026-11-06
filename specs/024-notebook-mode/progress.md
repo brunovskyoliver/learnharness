@@ -9,6 +9,14 @@ Updated: 2026-11-06
 - Owner gate 2 (2026-11-06): "go" — implement all 11 phases. Real-model checks use the ChatGPT subscription connection from the existing ~/.codex login, in a throwaway data dir.
 - Agent: clarify found no further owner questions; the full microcopy goes to the owner at gate 2 in the UI contract.
 
+- Agent (phase 2): thread status PATCH also accepts "open", the Undo of a resolve or dismiss inside its 6 s window (api.md lists only resolved/dismissed).
+- Agent (phase 2): the `/` → `/notebook` redirect lives in the Home page (`app/(app)/page.tsx`), only for a plain visit with no query, not in the `(app)` layout, so no other Study route pays for a settings read.
+- Agent (phase 2): the model gate runs before any write-ahead, so a refused chat or reply persists nothing; reply 404/409 checks follow the gate.
+- Agent (phase 2): Notebook's AppShell branch keeps SettingsDialogProvider, SessionListProvider, WorkspaceProvider and KeyboardShortcuts (mode toggle only); it drops the sessions sidebar, tabs, right pane and Study's command palette host (Notebook gets its own Mod+K finder in US1/US8).
+- Agent (phase 2): notebook core modules stay in the `@/src/core` barrel (components import only the barrel); `tests/startup-module-graph.test.ts` asserts they tree-shake out of Study's startup graph.
+- Agent (phase 2): the faux engine builds one scripted `createFauxCore` per run (60 tokens/s, 2-5 chars per token; 700 ms before a structured submit, 300 ms before prose); `notebookRunEvents(id)` is exported for tests.
+- Agent (phase 2): the golden companion `tests/fixtures/golden-data/library/notebook/lib_2D9xpc6CWLSgAYRtI1og4.json` was written by the real handlers and run registry with the faux engine (no hand edits); existing fixtures untouched.
+
 ## Log
 - 2026-11-06 specify: spec.md and checklists/requirements.md written; all checklist items pass.
 - 2026-11-06 clarify: 10 owner questions asked one per call before the spec; none left. Gate 1 covered by those questions.
@@ -20,5 +28,7 @@ Updated: 2026-11-06
 - Agent: snap Chromium cannot open profiles under hidden $HOME folders (~/.cache, ~/.t3), so Playwright's TMPDIR is ~/snap/chromium/common/learnharness-e2e (PW_TMPDIR overrides). Each e2e run leaves a small lh-data-* dir there.
 - Agent: with Playwright's types in the main program, tsc fails on a createElement overload in tests/svg-image.test.tsx (cause not traced), so playwright.config.ts and tests/e2e type-check as a separate program (tests/e2e/tsconfig.json); `npm run typecheck` runs both.
 - Agent: the seeded reviewers are the factory value of `notebook.reviewers` (absent key = seeded list, stored list, even empty, wins), so "seeded on first read" needs no disk write and deleting a seeded reviewer sticks. Reviewer ids must match [A-Za-z0-9_-]{1,64}.
+
+- 2026-11-06 implement phase 2 (T007-T014): reviewed and kept the interrupted run's core, sketch, store, agent, run registry, routes, shell and mode switch; switched server reads to `effectiveSettings()`; added tests notebook-sketch, notebook-store, notebook-agent, notebook-runs, notebook-api, notebook-mode-switch, a golden companion fixture and the startup-graph assertion. npm test 3926 pass / 0 fail / 27 skipped; typecheck, lint and build clean; ad-hoc Playwright round trip (/notebook → Untitled note, Mod+Shift+O to Study, footer Notebook back, / redirects) passed and was not kept.
 
 ## Report
