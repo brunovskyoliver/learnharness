@@ -147,9 +147,9 @@ export function PageToolbar({ editor, onLink, tutor, onImage }: { editor: Editor
 	);
 }
 
-/** The box of the selected text. Select-all ends on block boundaries, whose box
+/** The box of the selected text (also used by Notebook, feature 024). Select-all ends on block boundaries, whose box
  * is the whole block's width, so it measures from the first and last text inside. */
-function selectedTextReference(editor: Editor) {
+export function selectedTextReference(editor: Editor) {
 	const { doc, selection } = editor.state;
 	const from = TextSelection.findFrom(doc.resolve(selection.from), 1, true)?.from ?? selection.from;
 	const to = TextSelection.findFrom(doc.resolve(selection.to), -1, true)?.to ?? selection.to;

@@ -6,7 +6,7 @@
 import "../notebook.css";
 import { notFound, redirect } from "next/navigation";
 import { NotebookApp } from "@/components/notebook/notebook-app";
-import { effectiveSettings, resolveNotebookNote, withTenantPage } from "@/src/server";
+import { effectiveSettings, hostedMode, resolveNotebookNote, signedInEmail, withTenantPage } from "@/src/server";
 import { notebookFontClasses } from "../notebook-fonts";
 
 export const dynamic = "force-dynamic";
@@ -18,12 +18,16 @@ async function NotebookPage({ params }: { params: Promise<{ id?: string[] }> }) 
 	if ("redirectTo" in resolved) redirect(resolved.redirectTo);
 	if ("missing" in resolved) notFound();
 	const { notebook } = effectiveSettings();
+	const hosted = hostedMode();
 	return (
 		<NotebookApp
 			note={resolved.note}
 			fontClasses={notebookFontClasses}
 			preferences={{ appearance: notebook.appearance, textSize: notebook.textSize, lettering: notebook.lettering, ink: notebook.ink }}
+			startMode={notebook.startMode}
+			reviewers={notebook.reviewers.map((r) => ({ id: r.id, name: r.name, instructions: r.instructions }))}
 			lastNoteId={notebook.lastNoteId}
+			account={hosted ? await signedInEmail() : null}
 		/>
 	);
 }

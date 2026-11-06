@@ -27,11 +27,11 @@ Format: `- [ ] T### [P?] [US?] description (paths)`. All Notebook CSS values com
 
 ## Phase 3: US1 Write a note on paper (P1) — MVP
 
-- [ ] T015 [US1] `components/notebook/notebook-app.tsx` root: `.nb-root`, theme attr (system via media query), fonts, paper + grain layer, text size, lettering, ink attributes
-- [ ] T016 [US1] `note-view.tsx` + `note-editor.tsx`: column layout, title field (page name, rename route), body editor via `useEditor` + `pageExtensions` + `createPageCodec` + `usePageDraft`; placeholders; rich extras styled
-- [ ] T017 [P] [US1] Top-left menu + wordmark, toolbar row (sticky) with mode menu and Export slot, corner hint idle
-- [ ] T018 [P] [US1] Overlay sidebar base: open/close (☰, edge hover, Mod+\\, Escape), search with create-on-Enter, New note, notes list from `/api/library`, folders tree, New folder, save state
-- [ ] T019 [US1] Render tests `tests/render-notebook.test.tsx` (column, title, toolbar row, sidebar rows); Playwright `tests/e2e/notebook/note.spec.ts`: switch, create, type, reload, Study Library shows the same text, switch back, both themes, 1440 and 390
+- [X] T015 [US1] `components/notebook/notebook-app.tsx` root: `.nb-root`, theme attr (system via media query), fonts, paper + grain layer, text size, lettering, ink attributes
+- [X] T016 [US1] `note-view.tsx` + `note-editor.tsx`: column layout, title field (page name, rename route), body editor via `useEditor` + `pageExtensions` + `createPageCodec` + `usePageDraft`; placeholders; rich extras styled
+- [X] T017 [P] [US1] Top-left menu + wordmark, toolbar row (sticky) with mode menu and Export slot, corner hint idle
+- [X] T018 [P] [US1] Overlay sidebar base: open/close (☰, edge hover, Mod+\\, Escape), search with create-on-Enter, New note, notes list from `/api/library`, folders tree, New folder, save state
+- [X] T019 [US1] Render tests `tests/render-notebook.test.tsx` (column, title, toolbar row, sidebar rows); Playwright `tests/e2e/notebook/note.spec.ts`: switch, create, type, reload, Study Library shows the same text, switch back, both themes, 1440 and 390
 
 ## Phase 4: US2 It thinks with you (P1)
 

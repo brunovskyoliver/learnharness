@@ -1,0 +1,54 @@
+"use client";
+
+/**
+ * Notebook's Library writes (feature 024): a new note, a new folder, a
+ * renamed note. Each steps past a taken name the way the Library does
+ * (the server's `suggestedName`, "Name (2)").
+ */
+import type { LibraryFolder, LibraryItem } from "@/src/core";
+import { UNTITLED_NOTE } from "./nb-shared";
+
+type Outcome<T> = { ok: T } | { error: string };
+
+async function stepping<T>(send: (name: string) => Promise<Response>, name: string, pick: (body: unknown) => T | undefined, fallback: string): Promise<Outcome<T>> {
+	try {
+		let response = await send(name);
+		if (response.status === 409) {
+			const body = (await response.json().catch(() => ({}))) as { suggestedName?: string };
+			if (body.suggestedName) response = await send(body.suggestedName);
+		}
+		const body = (await response.json().catch(() => ({}))) as { error?: string };
+		const value = response.ok ? pick(body) : undefined;
+		return value ? { ok: value } : { error: body.error ?? fallback };
+	} catch {
+		return { error: `${fallback} Check your connection and try again.` };
+	}
+}
+
+const post = (url: string, body: unknown) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
+/** A new empty page called `name` (or "Untitled note"). */
+export function createNote(name = UNTITLED_NOTE, folderId?: string | null): Promise<Outcome<LibraryItem>> {
+	const wanted = name.trim() || UNTITLED_NOTE;
+	return stepping(
+		(n) => post("/api/library/pages", { name: n, content: "", ...(folderId ? { folderId } : {}) }),
+		wanted,
+		(body) => (body as { item?: LibraryItem }).item,
+		"The note could not be created.",
+	);
+}
+
+export function createFolder(name = "New folder"): Promise<Outcome<LibraryFolder>> {
+	return stepping((n) => post("/api/library/folders", { name: n, parentId: null }), name, (body) => (body as { folder?: LibraryFolder }).folder, "The folder could not be created.");
+}
+
+/** Renames the note's page; an empty name saves as "Untitled note". */
+export function renameNote(id: string, name: string): Promise<Outcome<LibraryItem>> {
+	const wanted = name.trim() || UNTITLED_NOTE;
+	return stepping(
+		(n) => fetch(`/api/library/items/${encodeURIComponent(id)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: n }) }),
+		wanted,
+		(body) => (body as { item?: LibraryItem }).item,
+		"The name could not be saved.",
+	);
+}
