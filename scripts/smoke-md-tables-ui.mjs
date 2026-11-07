@@ -135,15 +135,18 @@ try {
 	console.log("PASS wide-table floor, scrolling, keyboard focus, and hidden scrollbars");
 
 	// Change a reading preference without remounting the table or composer.
-	await page.$eval(body, (el) => el.style.setProperty("--lh-prose-size", "24px"));
+	await page.$eval(body, (el) => el.style.setProperty("--note-size", "24px"));
 	await frames();
 	rows = await metrics();
 	assert.equal(rows[0].font, 24);
 	assert.ok(rows.every((r) => r.effectiveFont >= 12.99));
 	await capture("table-large-reading");
-	await page.$eval(body, (el) => el.style.removeProperty("--lh-prose-size"));
+	await page.$eval(body, (el) => el.style.removeProperty("--note-size"));
 	await frames();
-	// A streamed cell can grow without changing the available width.
+	// A streamed cell can grow without changing the available width. At 390, where the
+	// three-column table fits its inline thread (at 320 it already sits on the 13px floor).
+	await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
+	await frames();
 	const original = await page.$eval(`${table} th`, (el) => el.textContent);
 	await page.$eval(`${table} th`, (el) => { el.textContent = "An exceptionally long example heading newly streamed into this table"; });
 	await frames();
@@ -158,10 +161,10 @@ try {
 	await page.$eval(body, (el) => el.style.removeProperty("width"));
 	await frames();
 	assert.ok((await metrics())[0].effectiveFont > 13.1);
-	await page.$eval(body, (el) => el.style.setProperty("--lh-prose-size", "12px"));
+	await page.$eval(body, (el) => el.style.setProperty("--note-size", "12px"));
 	await frames();
 	assert.ok((await metrics()).every((r) => r.zoom === 1), "existing small reading preferences are never enlarged or shrunk");
-	await page.$eval(body, (el) => el.style.removeProperty("--lh-prose-size"));
+	await page.$eval(body, (el) => el.style.removeProperty("--note-size"));
 	await frames();
 	const mutations = await page.$eval(body, (el) => new Promise((resolve) => {
 		let count = 0;

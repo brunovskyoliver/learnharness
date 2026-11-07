@@ -43,6 +43,9 @@ describe("graph section", () => {
 		assert.match(html, /aria-label="Knowledge graph"/);
 		assert.match(html, /fixed inset-0 z-50/);
 		assert.match(html, /data-testid="graph-collapse"[^>]*>.*Close<\/button>/);
+		// Feature 025: the expanded graph is on paper; Close floats as a lifted toolbar word.
+		assert.match(html, /fixed inset-0 z-50 h-dvh bg-paper/);
+		assert.match(html, /class="[^"]*lh-tool[^"]*bg-paper[^"]*shadow-lift"[^>]*data-testid="graph-collapse"|data-testid="graph-collapse"[^>]*class="[^"]*lh-tool[^"]*bg-paper[^"]*shadow-lift"/);
 	});
 
 	it("never renders Import notes inside the graph", () => {

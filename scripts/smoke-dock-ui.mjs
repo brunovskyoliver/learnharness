@@ -424,10 +424,26 @@ try {
 	await page.waitForSelector('[data-testid="md-code"]');
 	await page.waitForFunction(() => {
 		const code = document.querySelector('[data-testid="md-code"] code');
-		// Shiki's highlighted tokens are in. Feature 025: the paper theme's Shiki colours land
-		// in phase 8, so this no longer pins Study's old dark keyword colour.
-		return [...code.querySelectorAll('span span')].some((token) => token.textContent.trim() === '=');
+		// Shiki's highlighted tokens are in, in the paper theme's colours (feature 025): the
+		// operator takes the keyword role (--lh-code-token-keyword → the paper's purple ink
+		// of the current theme), which is not the code's own ink.
+		const probe = document.createElement("span");
+		probe.style.color = "var(--lh-code-token-keyword)";
+		code.append(probe);
+		const keyword = getComputedStyle(probe).color;
+		probe.style.color = "var(--lh-code-foreground)";
+		const ink = getComputedStyle(probe).color;
+		probe.remove();
+		return keyword !== ink && [...code.querySelectorAll('span span')].some((token) => token.textContent.trim() === '=' && getComputedStyle(token).color === keyword);
 	});
+	// The pair is one set of variables: the keyword colour is the paper's purple ink.
+	assert.deepEqual(await page.evaluate(() => {
+		const code = document.querySelector('[data-testid="md-code"] code');
+		const token = [...code.querySelectorAll('span span')].find((t) => t.textContent.trim() === '=');
+		const probe = document.createElement("span"); probe.style.color = "var(--text-purple)"; code.append(probe);
+		const purple = getComputedStyle(probe).color; probe.remove();
+		return { token: getComputedStyle(token).color === purple, light: token.style.getPropertyValue("--sdm-c").includes("--lh-code-"), dark: token.style.getPropertyValue("--shiki-dark").includes("--lh-code-") };
+	}), { token: true, light: true, dark: true }, "Shiki tokens use the paper code variables in both themes");
 	const presentation = await page.evaluate(() => {
 		const blocks = [...document.querySelectorAll('[data-testid="md-code"]')];
 		const short = blocks[0].querySelector('[data-streamdown="code-block"]');

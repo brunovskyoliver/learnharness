@@ -74,10 +74,13 @@ describe("WaitingSectionView", () => {
 		assert.match(render([chat]), /href="\/chat\/x%20y\?answer=call%2F1"/);
 	});
 
-	it("uses the quiet button: raised grey, never the amber fill", () => {
+	it("is a quiet row on the paper: no fill, a toolbar text action, the teaser in graphite (feature 025)", () => {
 		const html = render([item("a", {})]);
-		assert.match(html, /<a[^>]*data-quiet=""[^>]*class="waiting-row-action prompt-primary"/);
-		assert.doesNotMatch(html, /bg-ink/);
+		assert.match(html, /<li class="waiting-row"/);
+		assert.match(html, /<a[^>]*class="waiting-row-action lh-tool"[^>]*>Answer</);
+		assert.match(html, /class="waiting-row-teaser[^"]*text-base[^"]*text-graphite"/);
+		assert.match(html, /<h2[^>]*class="text-lg font-\[550\][^"]*text-ink"[^>]*>Waiting for you</);
+		assert.doesNotMatch(html, /bg-ink|bg-shelf|prompt-primary/);
 	});
 
 	it("truncates a long title in the meta line, never the time", () => {

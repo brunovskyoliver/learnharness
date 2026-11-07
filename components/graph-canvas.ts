@@ -117,6 +117,8 @@ export interface CanvasColors {
 	edge: string;
 	label: string;
 	hoverText: string;
+	/** The paper is dark: cluster labels take a light tint of their hue, else a deep one (feature 025). */
+	dark?: boolean;
 }
 
 export interface CanvasData {
@@ -1733,9 +1735,11 @@ export class GraphCanvasRenderer {
 			// Screen px ÷ k = world units — the lines stay evenly spaced
 			// at a constant on-screen pitch at any zoom.
 			const lineH = (settings.clusterLabelSize * REGION_LABEL_LINE_HEIGHT) / k;
+			// The hue is the cluster's (data); its lightness keeps the label legible on either paper.
+			const labelLightness = data.colors.dark === false ? 34 : 78;
 			for (const rm of this.regionMeta) {
 				if (!rm.lines) continue;
-				ctx.fillStyle = `hsla(${rm.hue}, 55%, 78%, 0.85)`;
+				ctx.fillStyle = `hsla(${rm.hue}, 55%, ${labelLightness}%, 0.85)`;
 				const firstOffset = (-(rm.lines.length - 1) / 2) * lineH;
 				for (let i = 0; i < rm.lines.length; i++) {
 					ctx.fillText(rm.lines[i]!, rm.cx, rm.cy + firstOffset + i * lineH);

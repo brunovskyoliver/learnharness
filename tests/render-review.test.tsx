@@ -115,7 +115,7 @@ describe("Home's row", () => {
 		assert.match(html, />Flashcards</);
 		assert.match(html, />7 due</);
 		assert.match(html, /2 on weak ideas/);
-		assert.match(html, /data-quiet=""[^>]*>Review</);
+		assert.match(html, /class="waiting-row-action lh-tool"[^>]*>Review</);
 		assert.match(html, />1 open</);
 	});
 	it("shows no row at zero, and the empty line still reads", () => {
@@ -137,5 +137,28 @@ describe("the palette", () => {
 		assert.ok(labels(false).includes("New flashcard"));
 		assert.ok(!labels(false).includes("Make flashcards from this lesson"));
 		assert.ok(labels(true).includes("Make flashcards from this lesson"));
+	});
+});
+
+describe("Review on the paper (feature 025)", () => {
+	const reveal: CardReveal = {
+		id: "c", back: "B", source: null, concepts: [],
+		previews: CARD_RATINGS.map((rating, index) => ({ rating, label: rating, interval: `${index + 1} min`, due: "x" })),
+	};
+	it("draws the ratings as ringed cards with the key in mono from 640px", () => {
+		const html = renderToStaticMarkup(<RatingButtons reveal={reveal} disabled={false} onRate={() => {}} />);
+		assert.equal(html.match(/class="lh-rating"/g)?.length, 4);
+		assert.match(html, /grid-cols-2[^"]*sm:grid-cols-4/, "two by two below 640px");
+		assert.match(html, /class="[^"]*font-mono[^"]*max-sm:hidden"[^>]*>1</);
+		assert.doesNotMatch(html, /bg-shelf/);
+	});
+	it("has one ink pill per state and quiet text actions", () => {
+		assert.match(empty(queue()), /class="nb-pill"[^>]*>New card</);
+		assert.match(empty(queue({ total: 3, due: 2 }), "weak-only"), /class="lh-text-action"[^>]*>Show all due</);
+		const make = renderToStaticMarkup(<MakePreviewBody preview={{ label: "N", source: null, chars: 10, truncated: false, model: "m", refusal: null }} busy={false} failure={null} onGenerate={() => {}} onByHand={() => {}} onCancel={() => {}} onSettings={() => {}} />);
+		assert.match(make, /data-testid="make-panel" class="lh-card-block/);
+		assert.match(make, /class="nb-pill"[^>]*>Generate drafts</);
+		assert.match(make, /class="lh-text-action"[^>]*>Write one by hand</);
+		assert.doesNotMatch(make, /prompt-(primary|secondary)|bg-shelf/);
 	});
 });

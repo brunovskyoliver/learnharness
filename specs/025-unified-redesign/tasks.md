@@ -77,11 +77,11 @@ Inputs: spec.md, plan.md, research.md (R1-R16), data-model.md, contracts/ui-cont
 
 ## Phase 8: Home, Review, demos
 
-- [ ] T053 [P] Home (title, composer, waiting list with bulb kind labels, lesson rows, flashcards row, calibration, knowledge graph box and expanded dialog, chain table, notes import), minimal home.
-- [ ] T054 [P] Review (page, pills, queue card, reveal, ratings, after-rating line, states, card editor, All cards, Drafts, Deleted, Make flashcards panel).
-- [ ] T055 Demo theme bridge: `src/core/demo-theme.ts` sends paper tokens (bg paper, surface shelf, surface-2 code, border rule, text ink, muted faint, plus `color-scheme` per resolved theme and the font); default `DEMO_THEME_VARS` = paper light/dark by scheme; demo-kit runtime and flow-entry follow `color-scheme` (no hard-coded dark); series colours stay data; `demoPrefersInvert` per resolved theme. Bridge allowlist and validation unchanged (VII).
-- [ ] T056 [P] ML panels and lookups chrome, heatmap neutral ends (ground → paper), mermaid pele vars, shiki theme pair = paper light/dark from tokens, KaTeX colour inherit.
-- [ ] T057 Tests: demo-theme tests, `smoke-demo-workspace.mjs`, `smoke-demo-runtime.mjs`, `check-review-ui.mjs`, home render tests.
+- [X] T053 [P] Home (title, composer, waiting list with bulb kind labels, lesson rows, flashcards row, calibration, knowledge graph box and expanded dialog, chain table, notes import), minimal home.
+- [X] T054 [P] Review (page, pills, queue card, reveal, ratings, after-rating line, states, card editor, All cards, Drafts, Deleted, Make flashcards panel).
+- [X] T055 Demo theme bridge: `src/core/demo-theme.ts` sends paper tokens (bg paper, surface shelf, surface-2 code, border rule, text ink, muted faint, plus `color-scheme` per resolved theme and the font); default `DEMO_THEME_VARS` = paper light/dark by scheme; demo-kit runtime and flow-entry follow `color-scheme` (no hard-coded dark); series colours stay data; `demoPrefersInvert` per resolved theme. Bridge allowlist and validation unchanged (VII).
+- [X] T056 [P] ML panels and lookups chrome, heatmap neutral ends (ground → paper), mermaid pele vars, shiki theme pair = paper light/dark from tokens, KaTeX colour inherit.
+- [X] T057 Tests: demo-theme tests, `smoke-demo-workspace.mjs`, `smoke-demo-runtime.mjs`, `check-review-ui.mjs`, home render tests.
 
 ## Phase 9: Dialogs and states
 

@@ -188,6 +188,11 @@ function tokenHex(cssVar: string): string {
 	return value ? cssColorToHex(value) : "#888888";
 }
 
+/** The resolved paper theme (light or dark) from the computed colour scheme on <html>. */
+function paperIsDark(): boolean {
+	return (getComputedStyle(document.documentElement).colorScheme ?? "").trim().startsWith("dark");
+}
+
 // ---- Component ------------------------------------------------------------
 
 interface Selection {
@@ -316,7 +321,7 @@ function GraphCostPanel({ costs }: { costs: GraphCostSummary }) {
 	// the pill and this panel must agree).
 	const { unpricedRuns } = displayCostTotals(costs);
 	return (
-		<div className="w-80 max-w-[calc(100vw-1.5rem)] rounded-lg border bg-shelf p-3 text-sm ">
+		<div className="w-80 max-w-[calc(100vw-1.5rem)] rounded-xl bg-paper p-3 text-sm shadow-lift">
 			<div className="mb-2 flex items-baseline justify-between">
 				<span className="text-sm font-medium text-faint">
 					Graph pipeline costs
@@ -421,7 +426,7 @@ export function GraphChromeRow({
 			{!isEmpty && (
 				<div
 					data-mobile-graph-search={mobileSearchOpen ? "true" : undefined}
-					className={cn("min-w-0 shrink rounded-lg border bg-shelf px-1 py-[3px] sm:static sm:w-56", mobileSearchOpen ? "fixed inset-x-2 top-2 z-30 w-auto" : "graph-chrome-fade-in w-auto sm:w-56")}
+					className={cn("min-w-0 shrink rounded-[10px] bg-paper px-1 py-[3px] shadow-lift sm:static sm:w-56", mobileSearchOpen ? "fixed inset-x-2 top-2 z-30 w-auto" : "graph-chrome-fade-in w-auto sm:w-56")}
 					onKeyDown={(event) => {
 						if (event.key === "Escape" && mobileSearchOpen && window.matchMedia("(max-width: 639px)").matches) {
 							event.preventDefault();
@@ -454,7 +459,7 @@ export function GraphChromeRow({
 							placeholder="Search ideas…"
 							aria-label="Search ideas"
 							spellCheck={false}
-							className="h-7 min-w-0 w-full rounded-lg border bg-paper pl-8 text-sm outline-none placeholder:text-faint focus:border-focus"
+							className="h-7 min-w-0 w-full rounded-md bg-transparent pl-8 text-sm text-ink caret-ink outline-none placeholder:text-faint"
 						/>
 						<button
 							type="button"
@@ -472,13 +477,13 @@ export function GraphChromeRow({
 			{/* The chain table (chains overlay, owner plan 2026-09-29). Own
 			    container (36px band), between the search and Import. */}
 			{!isEmpty && (
-				<div className={cn("graph-chrome-fade-in shrink-0 rounded-lg border bg-shelf px-1 py-[3px] ", mobileSearchOpen && "max-sm:hidden")}>
+				<div className={cn("graph-chrome-fade-in shrink-0 rounded-[10px] bg-paper px-1 py-[3px] shadow-lift", mobileSearchOpen && "max-sm:hidden")}>
 					<Hint label="Every reasoning chain" side="bottom">
 						<button
 							type="button"
 							onClick={onOpenChains}
 							data-testid="open-chain-table"
-							className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-sm text-faint transition-colors hover:bg-shelf"
+							className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-sm text-faint transition-colors hover:text-ink"
 						>
 							<ListTreeIcon className="size-4" />
 							<span className="max-sm:sr-only">Chains</span>
@@ -993,6 +998,7 @@ export function GraphView({
 				edge: tokenHex("--nb-focus"),
 				label: tokenHex("--faint"),
 				hoverText: tokenHex("--ink"),
+				dark: paperIsDark(),
 			},
 			// Match the app typography (Geist via the body's stack).
 			fontFamily: getComputedStyle(document.body).fontFamily,
@@ -1003,6 +1009,7 @@ export function GraphView({
 			edge: tokenHex("--nb-focus"),
 			label: tokenHex("--faint"),
 			hoverText: tokenHex("--ink"),
+			dark: paperIsDark(),
 		}, getComputedStyle(document.body).fontFamily);
 		// The paper theme and ink live on <html> (feature 025); "system" follows the OS.
 		const observer = new MutationObserver(retheme);
@@ -1102,16 +1109,16 @@ export function GraphView({
 					type="button"
 					onClick={section?.onCollapse}
 					data-testid="graph-collapse"
-					className="lh-no-drag lh-closed-toggle prompt-secondary absolute left-2 top-2 z-20 gap-2 bg-shelf"
+					className="lh-no-drag lh-closed-toggle lh-tool absolute left-2 top-2 z-20 h-9 rounded-[10px] bg-paper px-3 shadow-lift"
 				>
 					<XIcon aria-hidden="true" className="size-4" />
 					Close
 				</button>
 			)}
 			{!isEmpty && engineFailed && <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center px-5">
-				<div role="alert" className="pointer-events-auto flex max-h-[50dvh] max-w-md flex-col items-center gap-3 overflow-y-auto rounded-lg bg-shelf p-5 text-center text-sm">
+				<div role="alert" className="pointer-events-auto flex max-h-[50dvh] max-w-md flex-col items-center gap-3 overflow-y-auto rounded-xl bg-paper p-5 text-center text-sm shadow-lift">
 				<p>The knowledge graph could not load. Reload to retry. Your draft will be saved before reloading.</p>
-				<button type="button" onClick={graphRecovery.reload} className="min-h-11 rounded-md border px-4">Reload to retry</button>
+				<button type="button" onClick={graphRecovery.reload} className="lh-text-action min-h-11">Reload to retry</button>
 				{graphRecovery.error && <p>{graphRecovery.error}</p>}
 				</div>
 			</div>}
@@ -1237,7 +1244,7 @@ export function GraphView({
 			{pipelineRuns.map((run) => (
 				<div
 					key={run.id}
-					className="flex items-center gap-2 rounded-full border bg-shelf px-3 py-1.5 text-sm text-faint "
+					className="flex items-center gap-2 rounded-full bg-paper px-3 py-1.5 text-sm text-faint shadow-lift"
 				>
 					<Loader2Icon className="size-3.5 shrink-0 animate-spin" />
 					<span className="capitalize">{run.phase}</span>
@@ -1256,7 +1263,7 @@ export function GraphView({
 					// lh-no-drag: the card is placed anywhere on the canvas —
 					// when it lands in the top strip it must stay interactive
 					// over home.tsx's drag surface (2026-09-17).
-					className="lh-no-drag absolute z-10 w-80 max-w-[calc(100%-1rem)] rounded-lg border bg-shelf p-4 text-left "
+					className="lh-no-drag absolute z-10 w-80 max-w-[calc(100%-1rem)] rounded-xl bg-paper p-4 text-left shadow-lift"
 				>
 					<div className="text-sm font-medium leading-snug">{selected.node.name}</div>
 					<div className="mt-1 text-sm leading-relaxed text-faint">{selected.node.statement}</div>

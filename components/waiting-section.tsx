@@ -89,25 +89,25 @@ export function WaitingSectionView({ chats, loadError, onRetry, cards }: { chats
 	return (
 		<section aria-labelledby={headingId} data-testid="waiting-section" className="flex flex-col gap-2">
 			<div className="flex items-baseline gap-2.5">
-				<h2 id={headingId} className="text-xl font-semibold leading-[1.3]">Waiting for you</h2>
-				{items && open > 0 && <span className="text-sm font-medium text-faint">{open} open</span>}
+				<h2 id={headingId} className="text-lg font-[550] leading-[1.35] text-ink">Waiting for you</h2>
+				{items && open > 0 && <span className="text-meta text-faint">{open} open</span>}
 			</div>
 			{items === null ? (
 				loadError ? (
 					<div role="status" className="flex flex-wrap items-center gap-2 text-graphite">
 						<p>Could not load what is waiting.</p>
-						<button type="button" onClick={onRetry} className="prompt-secondary">Try again</button>
+						<button type="button" onClick={onRetry} className="lh-text-action">Try again</button>
 					</div>
 				) : (
 					<div role="status" aria-label="Loading what is waiting" className="flex flex-col gap-1">
-						<Skeleton className="h-[75px] w-full rounded-lg" />
-						<Skeleton className="h-[75px] w-full rounded-lg" />
+						<Skeleton className="h-[68px] w-full rounded-lg" />
+						<Skeleton className="h-[68px] w-full rounded-lg" />
 					</div>
 				)
 			) : open === 0 ? (
 				<p className="text-graphite">Nothing is waiting. Every check is answered and every problem solved.</p>
 			) : (
-				<ul className="flex flex-col gap-1">
+				<ul className="waiting-list flex flex-col">
 					{items.map((chat) => <WaitingRow key={chat.id} chat={chat} />)}
 					{lessons.map((chat) => <LessonRow key={chat.id} chat={chat} />)}
 					{due > 0 && <CardsRow due={due} weakDue={cards?.weakDue ?? 0} />}
@@ -116,7 +116,7 @@ export function WaitingSectionView({ chats, loadError, onRetry, cards }: { chats
 			{cards?.failed && (
 				<div role="status" data-testid="waiting-cards-failed" className="flex flex-wrap items-center gap-2 text-sm text-graphite">
 					<p>Could not count your flashcards.</p>
-					<button type="button" onClick={cards.retry} className="prompt-secondary">Try again</button>
+					<button type="button" onClick={cards.retry} className="lh-text-action">Try again</button>
 				</div>
 			)}
 		</section>
@@ -127,7 +127,7 @@ export function WaitingSectionView({ chats, loadError, onRetry, cards }: { chats
  *  does — on phones a long title would otherwise hide it. */
 export function RowMeta({ id, title, at }: { id: string; title: string; at: string }) {
 	return (
-		<span id={id} suppressHydrationWarning className="waiting-row-meta flex min-w-0 text-sm font-medium text-faint">
+		<span id={id} suppressHydrationWarning className="waiting-row-meta flex min-w-0 text-meta text-faint">
 			<span className="min-w-0 truncate">{title}</span>
 			<span className="shrink-0 whitespace-pre"> · {shortAgo(at)}</span>
 		</span>
@@ -141,15 +141,14 @@ function WaitingRow({ chat }: { chat: Waiting }) {
 		<li className="waiting-row" data-testid="waiting-row" data-progress={chat.progress ? "" : undefined}>
 			<span className="waiting-row-kind text-sm font-medium text-bulb">{kind}</span>
 			<RowMeta id={`${id}-meta`} title={chat.title} at={postedAt} />
-			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-lg leading-[27px] text-ink">
+			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-base leading-[1.6] text-graphite">
 				<Teaser text={teaserPlain(teaser)} />
 			</p>
 			{chat.progress && <span className="waiting-row-progress min-w-0 text-sm text-faint">{progressLine(chat.progress, chat.course)}</span>}
 			<Link
 				href={answerHref(chat)}
 				aria-describedby={`${id}-teaser ${id}-meta`}
-				data-quiet=""
-				className="waiting-row-action prompt-primary"
+				className="waiting-row-action lh-tool"
 			>
 				{action}
 			</Link>
@@ -165,14 +164,13 @@ function LessonRow({ chat }: { chat: Unfinished }) {
 		<li className="waiting-row" data-testid="waiting-row">
 			<span className="waiting-row-kind text-sm font-medium text-bulb">Lesson</span>
 			<RowMeta id={`${id}-meta`} title={chat.title} at={chat.updatedAt} />
-			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-lg leading-[27px] text-ink">
+			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-base leading-[1.6] text-graphite">
 				{progressLine(chat.progress, chat.course)}
 			</p>
 			<Link
 				href={continueHref(chat)}
 				aria-describedby={`${id}-teaser ${id}-meta`}
-				data-quiet=""
-				className="waiting-row-action prompt-primary"
+				className="waiting-row-action lh-tool"
 			>
 				Continue
 			</Link>
@@ -186,9 +184,9 @@ function CardsRow({ due, weakDue }: { due: number; weakDue: number }) {
 	return (
 		<li className="waiting-row" data-testid="waiting-cards-row">
 			<span className="waiting-row-kind text-sm font-medium text-bulb">Flashcards</span>
-			<span id={`${id}-meta`} className="waiting-row-meta min-w-0 truncate text-sm font-medium text-faint">{weakDue > 0 ? `${weakDue} on weak ideas` : "Today"}</span>
-			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-lg leading-[27px] text-ink">{dueRowText(due)}</p>
-			<Link href="/review" aria-describedby={`${id}-teaser ${id}-meta`} data-quiet="" className="waiting-row-action prompt-primary">Review</Link>
+			<span id={`${id}-meta`} className="waiting-row-meta min-w-0 truncate text-meta text-faint">{weakDue > 0 ? `${weakDue} on weak ideas` : "Today"}</span>
+			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-base leading-[1.6] text-graphite">{dueRowText(due)}</p>
+			<Link href="/review" aria-describedby={`${id}-teaser ${id}-meta`} className="waiting-row-action lh-tool">Review</Link>
 		</li>
 	);
 }

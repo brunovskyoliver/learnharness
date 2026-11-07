@@ -4,7 +4,7 @@
  *  same folder only when a panel needs them. Colors and fonts come from the
  *  --lh-* variables injected ahead of the demo (src/core/demo-theme.ts). */
 
-import { DEMO_THEME_VARS, DEMO_SCROLLBAR_CSS } from "../core/demo-theme.ts";
+import { DEMO_PAPER, DEMO_SCROLLBAR_CSS } from "../core/demo-theme.ts";
 import { distribution, sample, type SamplingOptions, type SamplingToken, type SamplingRow } from "../core/ml-sampling.ts";
 import { forward, backward, steps, type NetworkSpec, type ForwardPass, type BackwardPass } from "../core/ml-net.ts";
 import { arithmetic, nearest, coordinates, validatePoints, type Point, type Arithmetic } from "../core/ml-vectors.ts";
@@ -63,14 +63,40 @@ function load(file: string): Promise<void> {
 function cssVar(name: string, fallback: string): string {
 	return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 }
+/** A colour role as the renderers need it: resolved by the page's colour
+ *  scheme (the defaults are light-dark() pairs, src/core/demo-theme.ts), so
+ *  a probe's computed colour, not the variable's text. */
+let probe: HTMLElement | null = null;
+function colorVar(name: string, fallback: string): string {
+	if (!probe) {
+		probe = document.createElement("span");
+		probe.setAttribute("aria-hidden", "true");
+		probe.style.cssText = "position:absolute;width:0;height:0;overflow:hidden;visibility:hidden;pointer-events:none";
+		document.documentElement.append(probe);
+	}
+	probe.style.color = "";
+	probe.style.color = `var(${name}, ${fallback})`;
+	return getComputedStyle(probe).color || fallback;
+}
+/** Light or dark: the resolved page background's luminance (the bridge sets the app's scheme). */
+function schemeOf(bg: string): "light" | "dark" {
+	const [r = 0, g = 0, b = 0] = (bg.match(/[\d.]+/g) ?? []).map(Number);
+	return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.5 ? "light" : "dark";
+}
 function readTheme() {
+	const bg = colorVar("--lh-bg", DEMO_PAPER.dark["--lh-bg"]);
+	const scheme = schemeOf(bg);
+	const paper = DEMO_PAPER[scheme];
+	// Strong heatmap cells: the ground's ink on the dark theme's pale series, the text on paper light.
+	document.documentElement.style.setProperty("--k-strong-ink", scheme === "dark" ? "var(--lh-bg)" : "var(--lh-text)");
 	return {
-		bg: cssVar("--lh-bg", DEMO_THEME_VARS["--lh-bg"]),
-		surface: cssVar("--lh-surface", DEMO_THEME_VARS["--lh-surface"]),
-		surface2: cssVar("--lh-surface-2", DEMO_THEME_VARS["--lh-surface-2"]),
-		border: cssVar("--lh-border", DEMO_THEME_VARS["--lh-border"]),
-		text: cssVar("--lh-text", DEMO_THEME_VARS["--lh-text"]),
-		muted: cssVar("--lh-muted", DEMO_THEME_VARS["--lh-muted"]),
+		scheme,
+		bg,
+		surface: colorVar("--lh-surface", paper["--lh-surface"]),
+		surface2: colorVar("--lh-surface-2", paper["--lh-surface-2"]),
+		border: colorVar("--lh-border", paper["--lh-border"]),
+		text: colorVar("--lh-text", paper["--lh-text"]),
+		muted: colorVar("--lh-muted", paper["--lh-muted"]),
 		series: ["--lh-blue", "--lh-teal", "--lh-amber", "--lh-red", "--lh-green"].map((v, i) =>
 			cssVar(v, ["#7cacf8", "#5fd4c4", "#e5b55a", "#f28b82", "#7fd18b"][i]!),
 		),
@@ -847,7 +873,7 @@ class Kit {
 				const color = (value: number) => {
 					const amount = panel.scale === "sequential" ? max === min ? 0 : (value - min) / (max - min) : value < 0 ? min === 0 ? 0 : value / min : max === 0 ? 0 : value / max;
 					const strength = Math.max(0, Math.min(1, amount));
-					return { background: `color-mix(in srgb,var(${panel.scale === "diverging" && value > 0 ? "--lh-red" : "--lh-blue"}) ${strength * 100}%,var(--lh-bg))`, ink: strength > .55 ? "var(--lh-bg)" : "var(--lh-text)" };
+					return { background: `color-mix(in srgb,var(${panel.scale === "diverging" && value > 0 ? "--lh-red" : "--lh-blue"}) ${strength * 100}%,var(--lh-bg))`, ink: strength > .55 ? "var(--k-strong-ink, var(--lh-bg))" : "var(--lh-text)" };
 				};
 				grid.style.setProperty("--k-heatmap-columns", String(cols.length)); grid.style.setProperty("--k-heatmap-width", `${72 + cols.length * 58}px`); grid.classList.toggle("k-large", rows.length > 12 || cols.length > 12);
 				grid.replaceChildren(); cells = []; rowLabels = []; colLabels = [];

@@ -339,6 +339,11 @@ async function runDemo(html: string, opts: RunDemoOptions = {}): Promise<DemoRun
 
 		try {
 			await page.setViewport({ width: 900, height: 700 });
+			// The theme's defaults follow the page's colour scheme (paper light
+			// or dark, feature 025). The check asks whether the demo hard-codes a
+			// light page, so it runs on the dark defaults: a demo on the
+			// variables passes in either theme.
+			await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "dark" }]);
 			await page.goto(pathToFileURL(file).href, { waitUntil: "load", timeout: 30_000 });
 			await new Promise((resolve) => setTimeout(resolve, settleMs));
 			// Kit demos: step the process and sweep every control, so errors in

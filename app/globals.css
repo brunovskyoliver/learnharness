@@ -279,10 +279,16 @@
 	align-items: center;
 	column-gap: 12px;
 	row-gap: 2px;
+	/* Quiet rows on the paper (feature 025): no fill until the pointer is on
+	   one; the text keeps the section's left edge (the row bleeds 12px). */
+	margin-inline: -12px;
 	border-radius: var(--radius-lg);
-	background: var(--shelf);
-	padding: 12px 12px 12px 16px;
+	padding: 10px 12px;
+	transition: background-color 0.12s;
 }
+.waiting-row:hover { background: var(--shelf); }
+.waiting-row:hover .waiting-row-action:not(:disabled) { color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .waiting-row { transition: none; } }
 .waiting-row-kind { grid-area: kind; }
 .waiting-row-meta { grid-area: meta; margin-top: 6px; }
 .waiting-row-teaser {
@@ -1450,6 +1456,13 @@ div.lh-math-source > .lh-math-input { width: 100%; }
    off its workspace slot. Found by feature 014; it dates from the render skip. */
 [data-transcript-measured]:has(.demo-live-workspace) {
 	content-visibility: visible;
+}
+/* Demos and wide figures break out past the 660px column (.lh-breakout, up to
+   --lh-wide; twice that to the left beside a margin thread): the row's paint
+   containment would cut them at the column's edges, so its clip margin covers
+   the breakout (feature 025: found on the ML panels at 1440). */
+[data-transcript-measured]:has(.lh-breakout) {
+	overflow-clip-margin: 180px; /* --lh-wide (832px) − --lh-measure (660px) + 8px; Chrome takes no calc() here */
 }
 
 /* Note links, callouts and collapsible sections (feature 016). No side rules and

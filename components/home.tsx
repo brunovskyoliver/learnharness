@@ -323,9 +323,9 @@ function GraphSection({
 
 	return (
 		<section aria-labelledby={headingId} data-testid="graph-section" className="flex flex-col gap-2.5 sm:gap-3">
-			<div className="flex flex-wrap items-center gap-x-1 gap-y-1 sm:gap-x-2.5">
-				<h2 id={headingId} className="flex-1 whitespace-nowrap text-xl font-semibold leading-[1.3] sm:flex-none">Knowledge graph</h2>
-				{statsLabel && <span data-testid="graph-stats" className="text-sm font-medium text-faint max-sm:hidden">{statsLabel}</span>}
+			<div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:gap-x-2.5">
+				<h2 id={headingId} className="flex-1 whitespace-nowrap text-lg font-[550] leading-[1.35] text-ink sm:flex-none">Knowledge graph</h2>
+				{statsLabel && <span data-testid="graph-stats" className="text-meta text-faint max-sm:hidden">{statsLabel}</span>}
 				<span className="hidden flex-1 sm:block" aria-hidden="true" />
 				<input
 					ref={fileInputRef}
@@ -343,9 +343,9 @@ function GraphSection({
 					disabled={importing}
 					onClick={() => fileInputRef.current?.click()}
 					data-testid="import-notes"
-					className="prompt-secondary ml-auto gap-2 disabled:cursor-default max-sm:px-2.5! sm:ml-0"
+					className="lh-tool ml-auto sm:ml-0"
 				>
-					<UploadIcon aria-hidden="true" className="size-4" />
+					<UploadIcon aria-hidden="true" />
 					{importing ? "Importing…" : "Import notes"}
 				</button>
 				{rendering && statsLabel && (
@@ -354,9 +354,9 @@ function GraphSection({
 						type="button"
 						onClick={() => setExpanded(true)}
 						data-testid="graph-expand"
-						className="prompt-secondary gap-2 max-sm:min-w-11 max-sm:justify-center max-sm:px-0!"
+						className="lh-tool"
 					>
-						<Maximize2Icon aria-hidden="true" className="size-4" />
+						<Maximize2Icon aria-hidden="true" />
 						<span className="max-sm:sr-only">Expand</span>
 					</button>
 				)}

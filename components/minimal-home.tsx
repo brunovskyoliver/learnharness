@@ -219,13 +219,13 @@ export function MinimalHome({
 			    and stay gone. */}
 			<div className="lh-no-drag absolute right-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-col items-end gap-2">
 				<div className="flex min-w-0 items-start gap-2">
-					<div className="graph-chrome-fade-in shrink-0 rounded-lg border bg-shelf px-1 py-[3px] ">
+					<div className="graph-chrome-fade-in shrink-0 rounded-[10px] bg-paper px-1 py-[3px] shadow-lift">
 						<Hint label="Every reasoning chain" side="bottom">
 							<button
 								type="button"
 								onClick={() => setChainsOpen(true)}
 								data-testid="open-chain-table"
-								className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-sm text-faint transition-colors hover:bg-shelf"
+								className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-sm text-faint transition-colors hover:text-ink"
 							>
 								<ListTreeIcon className="size-4" />
 								Chains

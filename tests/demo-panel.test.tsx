@@ -2,9 +2,12 @@
  *  links that open the demo panel (2026-10-27). */
 import React from "react";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { demoPrefersInvert, injectDemoTheme } from "../src/core/demo-theme.ts";
+import { DEMO_PAPER, demoDeclaredScheme, demoPrefersInvert, injectDemoTheme } from "../src/core/demo-theme.ts";
+import { PaperAppearanceProvider } from "../components/paper/appearance.tsx";
+import { DEFAULT_SHARED_APPEARANCE } from "../src/core/index.ts";
 import { buildSubagentSteer } from "../src/core/contracts.ts";
 import { projectView } from "../src/core/view.ts";
 import { SubagentSteerCard } from "../components/artifacts/steer-card.tsx";
@@ -22,9 +25,13 @@ describe("demo theme", () => {
 	it("goes first in <head>, so the demo's own CSS still wins", () => {
 		const out = injectDemoTheme(LIGHT);
 		assert.ok(out.indexOf("data-lh-theme") < out.indexOf("color-scheme:light"));
-		assert.match(out, /--lh-bg:#000000/);
+		// Paper light or dark by the page's scheme (feature 025), until the bridge sets the app's.
+		assert.match(out, /:root\{color-scheme:light dark;/);
+		assert.match(out, /--lh-bg:light-dark\(#f8f7f4,#1a1a19\)/);
+		assert.match(out, /--lh-text:light-dark\(#1d1c1a,#e9e7e2\)/);
+		assert.match(out, /--lh-blue:#7cacf8/, "series colours stay the demo's data");
 		assert.ok(!out.includes("@font-face"), "no font without an app server");
-		assert.match(injectDemoTheme(LIGHT, true), /@font-face\{font-family:"LH Sans";src:url\("\/fonts\/source-sans-3-latin\.woff2"\)/);
+		assert.match(injectDemoTheme(LIGHT, true), /@font-face\{font-family:"LH Sans";src:url\("\/fonts\/instrument-sans-latin\.woff2"\)/);
 	});
 
 	it("never mistakes <header> for <head>", () => {
@@ -38,19 +45,50 @@ describe("demo theme", () => {
 	});
 });
 
-describe("light demos open inverted", () => {
-	it("detects a declared light page, and leaves dark or unstyled pages alone", () => {
-		assert.equal(demoPrefersInvert(LIGHT), true);
-		assert.equal(demoPrefersInvert("<style>body{background:white}</style>"), true);
-		assert.equal(demoPrefersInvert(DARK), false);
-		assert.equal(demoPrefersInvert("<body><canvas></canvas></body>"), false);
+describe("demos of the other scheme open inverted", () => {
+	it("reads the scheme a demo's own page declares", () => {
+		assert.equal(demoDeclaredScheme(LIGHT), "light");
+		assert.equal(demoDeclaredScheme("<style>body{background:white}</style>"), "light");
+		assert.equal(demoDeclaredScheme(DARK), "dark");
+		assert.equal(demoDeclaredScheme("<style>body{background:#000}</style>"), "dark");
+		assert.equal(demoDeclaredScheme("<body><canvas></canvas></body>"), null, "a page on the theme says nothing");
 	});
 
-	it("a light demo's card starts inverted; the learner's saved switch wins", () => {
-		const light = renderToStaticMarkup(<SubagentSteerCard message={projectView([steer("a", "Old", LIGHT)])[0] as never} />);
-		assert.match(light, /hue-rotate\(180deg\)/);
-		const dark = renderToStaticMarkup(<SubagentSteerCard message={projectView([steer("b", "New", DARK)])[0] as never} />);
-		assert.ok(!dark.includes("hue-rotate"));
+	it("inverts only against the resolved theme", () => {
+		assert.equal(demoPrefersInvert(LIGHT, "dark"), true);
+		assert.equal(demoPrefersInvert(LIGHT, "light"), false);
+		assert.equal(demoPrefersInvert(DARK, "light"), true);
+		assert.equal(demoPrefersInvert(DARK, "dark"), false);
+		assert.equal(demoPrefersInvert("<body><canvas></canvas></body>", "light"), false);
+		assert.equal(demoPrefersInvert("<body><canvas></canvas></body>", "dark"), false);
+	});
+
+	it("a card follows the theme until the learner's saved switch says otherwise", () => {
+		const card = (html: string, theme: "light" | "dark", inverted?: boolean) => {
+			const record = steer("a", "Old", html) as { details: { ui?: { inverted: boolean } } };
+			if (inverted !== undefined) record.details.ui = { inverted };
+			const message = projectView([record as never])[0];
+			return renderToStaticMarkup(<PaperAppearanceProvider initial={{ ...DEFAULT_SHARED_APPEARANCE, theme }}><SubagentSteerCard message={message as never} /></PaperAppearanceProvider>);
+		};
+		assert.match(card(LIGHT, "dark"), /hue-rotate\(180deg\)/);
+		assert.ok(!card(LIGHT, "light").includes("hue-rotate"));
+		assert.match(card(DARK, "light"), /hue-rotate\(180deg\)/);
+		assert.ok(!card(DARK, "dark").includes("hue-rotate"));
+		assert.ok(!card(LIGHT, "dark", false).includes("hue-rotate"), "the saved switch wins");
+		assert.match(card(DARK, "dark", true), /hue-rotate\(180deg\)/);
+	});
+
+	it("keeps the defaults equal to the paper tokens", () => {
+		const css = readFileSync(new URL("../app/paper.css", import.meta.url), "utf8");
+		const block = (selector: string) => css.slice(css.indexOf(`${selector} {`), css.indexOf("}", css.indexOf(`${selector} {`)));
+		const light = block('html.lh-paper[data-theme="light"]');
+		const dark = block('html.lh-paper[data-theme="dark"]');
+		const token = (text: string, name: string) => text.match(new RegExp(`--${name}: (#[0-9a-f]{6})`))![1];
+		const roles = { "--lh-bg": "paper", "--lh-surface": "shelf", "--lh-surface-2": "code", "--lh-border": "rule", "--lh-text": "ink", "--lh-muted": "faint" } as const;
+		for (const [role, name] of Object.entries(roles)) {
+			assert.equal(DEMO_PAPER.light[role as keyof typeof roles], token(light, name), `light ${role}`);
+			assert.equal(DEMO_PAPER.dark[role as keyof typeof roles], token(dark, name), `dark ${role}`);
+		}
 	});
 });
 
@@ -61,8 +99,9 @@ describe("session demos", () => {
 		const failed = projectView([steer("f", "Broken", "")]);
 		const demos = sessionDemos([...messages, ...failed] as never);
 		assert.deepEqual(demos.map((d) => d.title), ["Choose a weight, watch the loss", "Gradient descent and step size"]);
-		assert.equal(demos[0]!.inverted, true);
-		assert.equal(demos[1]!.inverted, false);
+		// Nothing saved: the card follows the resolved theme (demoPrefersInvert).
+		assert.equal(demos[0]!.inverted, null);
+		assert.equal(demos[1]!.inverted, null);
 	});
 
 	it("matches titles ignoring case, quotes and spacing", () => {

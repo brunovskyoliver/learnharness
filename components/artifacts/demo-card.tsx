@@ -7,9 +7,10 @@ import { InvertDiscIcon } from "@/components/artifacts/invert-disc";
 import { ChatActionsContext } from "@/components/chat";
 import { downloadFile, slugFilename } from "@/components/artifacts/download";
 import { DispatchCard } from "@/components/artifacts/dispatch-card";
-import { kitSpecOf, injectDemoTheme, DEMO_APPEARANCE_PROPERTIES, demoAppearanceVars, type ArtifactPartProps, type DemoResult, type DemoTokenizeRequest, type DemoTokensReply } from "@/src/core";
+import { kitSpecOf, injectDemoTheme, DEMO_BRIDGE_KEYS, demoAppearanceVars, demoPrefersInvert, type ArtifactPartProps, type DemoResult, type DemoTokenizeRequest, type DemoTokensReply } from "@/src/core";
 import { useDemoPresentation } from "@/components/artifacts/demo-presentation";
 import { useDemoPanel } from "@/components/artifacts/demo-panel-context";
+import { usePaperAppearance } from "@/components/paper/appearance";
 
 /**
  * Demo artifact card (W6): while the part is input-available, a job activity
@@ -30,7 +31,7 @@ import { useDemoPanel } from "@/components/artifacts/demo-panel-context";
 
 // ─── bridge injection + message handling (pure, testable) ───────────────────
 
-const THEME_PROPERTIES = JSON.stringify([...Object.keys(DEMO_APPEARANCE_PROPERTIES), "--lh-font"]);
+const THEME_PROPERTIES = JSON.stringify(DEMO_BRIDGE_KEYS);
 
 export const DEMO_BRIDGE_SCRIPT = `<script>(function(){
 var send=function(m){try{parent.postMessage(m,"*")}catch(e){}};
@@ -49,7 +50,7 @@ window.addEventListener("keydown",function(e){if(e.key==="Escape"){e.preventDefa
 window.addEventListener("message",function(e){if(e.source!==parent||!e.data)return;
 if(e.data.type==="lh-demo-theme"&&e.data.vars&&typeof e.data.vars==="object"&&!Array.isArray(e.data.vars)){
 var rules=document.querySelector("style[data-lh-theme]");var root=rules&&rules.sheet&&Array.from(rules.sheet.cssRules).find(function(r){return r.selectorText===":root"});
-if(root){var allowed=${THEME_PROPERTIES};allowed.forEach(function(k){var v=e.data.vars[k];if(typeof v!=="string"||v.length>512)return;var prop=k==="--lh-font"?"font-family":k==="--lh-heading-weight"?"font-weight":"color";if(CSS.supports(prop,v))root.style.setProperty(k,v)});window.dispatchEvent(new Event("lh-demo-theme"))}
+if(root){var allowed=${THEME_PROPERTIES};allowed.forEach(function(k){var v=e.data.vars[k];if(typeof v!=="string"||v.length>512)return;if(k==="color-scheme"){if(v==="light"||v==="dark")root.style.setProperty(k,v);return}var prop=k==="--lh-font"?"font-family":"color";if(CSS.supports(prop,v))root.style.setProperty(k,v)});window.dispatchEvent(new Event("lh-demo-theme"))}
 }
 if(e.data.type==="lh-demo-size"&&typeof e.data.size==="number"&&e.data.size>=12&&e.data.size<=48)document.documentElement.style.setProperty("--lh-demo-size",e.data.size+"px");
 if(e.data.type==="lh-demo-preview"){try{var s=Array.from(document.querySelectorAll("svg")).find(function(x){var r=x.getBoundingClientRect();return r.width>80&&r.height>80}),c=document.querySelector("canvas");var url=s?"data:image/svg+xml;charset=utf-8,"+encodeURIComponent(new XMLSerializer().serializeToString(s)):c?c.toDataURL():null;if(url&&url.length<2000000)send({type:"demo-preview",url:url})}catch(_){}}
@@ -132,12 +133,13 @@ export function DemoCard({ part }: ArtifactPartProps) {
 export function DemoOutputCard({
 	output,
 	messageId,
-	initialInverted = false,
+	initialInverted = null,
 	look = "card",
 }: {
 	output: unknown;
 	messageId?: string;
-	initialInverted?: boolean;
+	/** The learner's saved switch; null or absent follows the resolved theme. */
+	initialInverted?: boolean | null;
 	/** "sketch": a quick plot's title in the voice, Notebook's sketch frame (feature 025, R12). */
 	look?: "card" | "sketch";
 }) {
@@ -166,18 +168,25 @@ export function DemoOutputCard({
 	);
 }
 
+/** The app's resolved theme for a demo: light or dark ("system" asks the OS; on the server, light). */
+function useDemoScheme(): "light" | "dark" {
+	const { resolvedTheme } = usePaperAppearance();
+	if (resolvedTheme !== "system") return resolvedTheme;
+	return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
 export function DemoFrame({
 	title,
 	html,
 	messageId,
-	initialInverted = false,
+	initialInverted = null,
 	variant = "card",
 	look = "card",
 }: {
 	title: string;
 	html: string;
 	messageId?: string;
-	initialInverted?: boolean;
+	initialInverted?: boolean | null;
 	/** "panel": the side panel supplies its own header; no card frame. */
 	variant?: "card" | "panel";
 	/** "sketch": the title in the voice at 19px, as Notebook's sketch block (feature 025, R12). */
@@ -230,13 +239,16 @@ export function DemoFrame({
 	// Brightness inversion (owner, 2026-10-07): the switch state PERSISTS on
 	// the steer record (details.ui.inverted) — seeded here, written through
 	// the silent artifact-ui route on toggle. Without a chat page (tests,
-	// previews) the toggle stays local-only. Light demos built before the
-	// dark default seed inverted (demoPrefersInvert). The filter rides the
+	// previews) the toggle stays local-only. Until the learner sets it, a demo
+	// whose own page is the other scheme than the resolved theme shows
+	// inverted, and follows a theme change (demoPrefersInvert). The filter rides the
 	// iframe element, so one filter flips page + content together while
 	// hue-rotate(180deg) undoes invert's hue flip.
-	const [inverted, setInverted] = useState(initialInverted);
+	const scheme = useDemoScheme();
+	const [chosen, setChosen] = useState<boolean | null>(initialInverted);
+	const inverted = chosen ?? demoPrefersInvert(html, scheme);
 	const toggleInverted = (next: boolean) => {
-		setInverted(next);
+		setChosen(next);
 		if (!actions?.chatId || !messageId) return;
 		void fetch(`/api/chats/${actions.chatId}/artifact-ui`, {
 			method: "POST",
@@ -330,7 +342,7 @@ export function DemoFrame({
 				scrolling={inWorkspace || focused ? "auto" : "no"}
 				// White backing only under inversion (it flips to black); dark
 				// demos sit on the card color.
-				className={`w-full ${inverted ? "bg-white" : "bg-paper"}`}
+				className={`w-full ${!inverted ? "bg-paper" : scheme === "dark" ? "bg-white" : "bg-black"}`}
 				// content-box: the bridge reports the CONTENT height — with the
 				// preflight's border-box the 2px border would eat into it and clip
 				// the bottom of the demo (smoke finding, 2026-10-07).

@@ -8,6 +8,8 @@ import { Handle, MarkerType, Position, ReactFlow, type Edge, type Node, type Nod
 import "@xyflow/react/dist/style.css";
 
 interface Theme {
+	/** The page's resolved scheme (the app theme through the bridge). */
+	scheme?: "light" | "dark";
 	surface: string;
 	surface2: string;
 	border: string;
@@ -93,7 +95,7 @@ function Flow({ direction, theme, nodes, edges }: FlowProps) {
 			nodesDraggable={false}
 			nodesConnectable={false}
 			elementsSelectable={false}
-			colorMode="dark"
+			colorMode={theme.scheme ?? "dark"}
 			style={{ background: "transparent" }}
 		/>
 	);

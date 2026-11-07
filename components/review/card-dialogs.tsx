@@ -10,7 +10,7 @@ import { useCardDraftStore, type CardDraft } from "./card-draft.ts";
 import { CardText } from "./card-text.tsx";
 
 interface ConceptHit { id: string; name: string; statement: string; weak: boolean }
-const FIELD = "w-full resize-y rounded-md border border-[var(--edge)] bg-paper px-3 py-2 text-md text-ink placeholder:text-faint";
+const FIELD = "lh-box-field";
 
 export type EditorTarget = { mode: "new"; source?: unknown; sourceLabel?: string | null } | { mode: "edit"; id: string };
 
@@ -110,40 +110,40 @@ export function CardEditorDialog({ target, onClose, onSaved }: { target: EditorT
 			<DialogContent
 				showCloseButton={false}
 				data-testid="card-editor"
-				className="flex max-h-[min(92dvh,48rem)] flex-col gap-3 overflow-y-auto overscroll-contain rounded-xl border-0 bg-paper shadow-lift p-4 sm:max-w-xl"
+				className="flex max-h-[min(92dvh,48rem)] flex-col gap-3 overflow-y-auto overscroll-contain rounded-xl border-0 bg-paper shadow-lift p-5 sm:max-w-xl"
 				onEscapeKeyDown={(event) => { if (duplicates) { event.preventDefault(); setDuplicates(null); } }}
 				onOpenAutoFocus={(event) => { event.preventDefault(); frontField.current?.focus(); }}
 			>
-				<DialogTitle className="tracking-title text-xl font-medium">{titled}</DialogTitle>
-				<DialogDescription className="text-sm text-faint">Markdown and math work on both sides, as $x^2$.</DialogDescription>
+				<DialogTitle>{titled}</DialogTitle>
+				<DialogDescription>Markdown and math work on both sides, as $x^2$.</DialogDescription>
 				{!loaded ? <div role="status" aria-label="Loading the card" className="flex flex-col gap-2"><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" /></div>
-					: loadFailure ? <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-red"><p>{loadFailure}</p><button type="button" className="prompt-secondary" onClick={close}>Close</button></div>
+					: loadFailure ? <div role="alert" className="flex flex-wrap items-center gap-2 text-sm text-red"><p>{loadFailure}</p><button type="button" className="lh-text-action" onClick={close}>Close</button></div>
 					: (
 					<>
-						<label htmlFor={frontId} className="text-sm font-medium text-graphite">Front</label>
+						<label htmlFor={frontId} className="lh-field-label">Front</label>
 						<textarea ref={frontField} id={frontId} name="card-front" data-testid="card-front" rows={3} maxLength={20_000} value={draft.front} placeholder="A question with one answer…" onChange={(event) => { setDraft({ ...draft, front: event.target.value }); setDuplicates(null); }} className={FIELD} />
-						<label htmlFor={backId} className="text-sm font-medium text-graphite">Back</label>
+						<label htmlFor={backId} className="lh-field-label">Back</label>
 						<textarea ref={backField} id={backId} name="card-back" data-testid="card-back" rows={4} maxLength={20_000} value={draft.back} placeholder="The answer…" onChange={(event) => setDraft({ ...draft, back: event.target.value })} className={FIELD} />
 						{preview && (
-							<div data-testid="card-preview" className="flex flex-col gap-2 rounded-lg bg-shelf p-3">
+							<div data-testid="card-preview" className="lh-card-block flex flex-col gap-2">
 								<CardText text={draft.front || "Nothing on the front yet."} />
 								<CardText text={draft.back || "Nothing on the back yet."} className="text-graphite" />
 							</div>
 						)}
 						{draft.sourceLabel && <p className="flex flex-wrap items-center gap-2 text-sm text-faint" data-testid="card-source-line">From {draft.sourceLabel}</p>}
 
-						<label htmlFor={ideasId} className="text-sm font-medium text-graphite">Ideas from your graph</label>
+						<label htmlFor={ideasId} className="lh-field-label">Ideas from your graph</label>
 						{draft.conceptIds.length > 0 && (
 							<ul className="flex flex-wrap gap-1" data-testid="card-concepts">
 								{draft.conceptIds.map((concept) => (
-									<li key={concept.id} className="flex items-center gap-1 rounded-md bg-shelf pl-2 text-sm text-ink">
+									<li key={concept.id} className="flex items-center gap-1 rounded-full pl-3 text-sm text-ink shadow-[0_0_0_1px_var(--rule)]">
 										<span className="[overflow-wrap:anywhere]">{concept.name}</span>
-										<button type="button" aria-label={`Remove ${concept.name}`} className="flex size-7 items-center justify-center rounded-md text-faint hover:text-ink pointer-coarse:size-11" onClick={() => setDraft({ ...draft, conceptIds: draft.conceptIds.filter((other) => other.id !== concept.id) })}><XIcon className="size-3.5" aria-hidden="true" /></button>
+										<button type="button" aria-label={`Remove ${concept.name}`} className="flex size-7 items-center justify-center rounded-full text-faint hover:text-ink pointer-coarse:size-11" onClick={() => setDraft({ ...draft, conceptIds: draft.conceptIds.filter((other) => other.id !== concept.id) })}><XIcon className="size-3.5" aria-hidden="true" /></button>
 									</li>
 								))}
 							</ul>
 						)}
-						<input id={ideasId} name="card-idea-search" data-testid="card-concept-search" value={query} onChange={(event) => setQuery(event.target.value)} autoComplete="off" spellCheck={false} placeholder="Search your ideas…" className={`${FIELD} resize-none`} />
+						<input id={ideasId} name="card-idea-search" data-testid="card-concept-search" value={query} onChange={(event) => setQuery(event.target.value)} autoComplete="off" spellCheck={false} placeholder="Search your ideas…" className="lh-line-field" />
 						{hitsFailed && <p role="status" className="text-sm text-graphite">Your ideas could not be searched.</p>}
 						{hits && hits.length > 0 && (
 							<ul className="flex max-h-40 flex-col gap-px overflow-y-auto" data-testid="card-concept-hits">
@@ -160,21 +160,21 @@ export function CardEditorDialog({ target, onClose, onSaved }: { target: EditorT
 						{hits?.length === 0 && query.trim() && <p role="status" className="text-sm text-faint">Nothing matched</p>}
 
 						{duplicates && (
-							<div role="alert" data-testid="card-duplicate" className="flex flex-col gap-2 rounded-lg bg-shelf p-3 text-md">
+							<div role="alert" data-testid="card-duplicate" className="lh-card-block flex flex-col gap-2 text-md">
 								<p>{duplicates.length === 1 ? "You already have a card with this front." : `You already have ${duplicates.length} cards with this front.`}</p>
 								{duplicates.slice(0, 3).map((other) => <p key={other.id} className="text-sm text-graphite [overflow-wrap:anywhere]">{other.front}</p>)}
 								<div className="flex flex-wrap gap-2">
-									<button type="button" data-testid="card-keep-both" className="prompt-secondary bg-shelf text-ink" disabled={busy} onClick={() => void save(true)}>Keep both</button>
-									<button type="button" data-testid="card-skip" className="prompt-secondary" onClick={discard}>Skip</button>
+									<button type="button" data-testid="card-keep-both" className="nb-pill" disabled={busy} onClick={() => void save(true)}>Keep both</button>
+									<button type="button" data-testid="card-skip" className="lh-text-action" onClick={discard}>Skip</button>
 								</div>
 							</div>
 						)}
 						{failure && <p role="alert" className="text-sm text-red">{failure}</p>}
-						<div className="flex flex-wrap items-center justify-end gap-2">
-							{dirty && <button type="button" data-testid="card-discard" className="prompt-secondary mr-auto" onClick={discard}>Discard draft</button>}
-							<button type="button" aria-pressed={preview} data-testid="card-preview-toggle" className="prompt-secondary" onClick={() => setPreview((open) => !open)}>Preview</button>
-							<button type="button" className="prompt-secondary" onClick={close}>Close</button>
-							<button type="button" data-testid="card-save" className="prompt-primary" disabled={busy || duplicates !== null} onClick={() => void save()}>{busy ? "Saving…" : "Save card"}</button>
+						<div className="flex flex-wrap items-center justify-end gap-x-5 gap-y-2 pt-1">
+							{dirty && <button type="button" data-testid="card-discard" className="lh-text-action mr-auto" onClick={discard}>Discard draft</button>}
+							<button type="button" aria-pressed={preview} data-testid="card-preview-toggle" className="lh-text-action" onClick={() => setPreview((open) => !open)}>Preview</button>
+							<button type="button" className="lh-text-action" onClick={close}>Close</button>
+							<button type="button" data-testid="card-save" className="nb-pill" disabled={busy || duplicates !== null} onClick={() => void save()}>{busy ? "Saving…" : "Save card"}</button>
 						</div>
 					</>
 				)}
@@ -196,8 +196,8 @@ export function CardHistoryDialog({ cardId, onClose }: { cardId: string | null; 
 	}, [cardId]);
 	return (
 		<Dialog open={cardId !== null} onOpenChange={(open) => { if (!open) onClose(); }}>
-			<DialogContent data-testid="card-history" aria-describedby={undefined} className="flex max-h-[min(80dvh,32rem)] flex-col gap-3 overflow-y-auto overscroll-contain rounded-xl border-0 bg-paper shadow-lift p-4 sm:max-w-md">
-				<DialogTitle className="tracking-title text-xl font-medium">Review history</DialogTitle>
+			<DialogContent data-testid="card-history" aria-describedby={undefined} className="flex max-h-[min(80dvh,32rem)] flex-col gap-3 overflow-y-auto overscroll-contain rounded-xl border-0 bg-paper shadow-lift p-5 sm:max-w-md">
+				<DialogTitle>Review history</DialogTitle>
 				{failure && <p role="alert" className="text-sm text-red">{failure}</p>}
 				{!failure && rows === null && <div role="status" aria-label="Loading history"><Skeleton className="h-16 w-full" /></div>}
 				{rows?.length === 0 && <p className="text-graphite">Not reviewed yet.</p>}
@@ -231,13 +231,13 @@ export function DeleteForGoodDialog({ cardId, onClose, onDone }: { cardId: strin
 	};
 	return (
 		<Dialog open={cardId !== null} onOpenChange={(open) => { if (!open) onClose(); }}>
-			<DialogContent showCloseButton={false} data-testid="card-delete-dialog" className="flex flex-col gap-3 rounded-xl border-0 bg-paper shadow-lift p-4 sm:max-w-md">
-				<DialogTitle className="tracking-title text-xl font-medium">Delete this card for good?</DialogTitle>
-				<DialogDescription className="text-md text-graphite">This can&apos;t be undone.</DialogDescription>
+			<DialogContent showCloseButton={false} data-testid="card-delete-dialog" className="flex flex-col gap-3 rounded-xl border-0 bg-paper shadow-lift p-5 sm:max-w-md">
+				<DialogTitle>Delete this card for good?</DialogTitle>
+				<DialogDescription>This can&apos;t be undone.</DialogDescription>
 				{failure && <p role="alert" className="text-sm text-red">{failure}</p>}
-				<div className="flex justify-end gap-2">
-					<button type="button" className="prompt-secondary" onClick={onClose}>Cancel</button>
-					<button type="button" data-testid="card-delete-confirm" className="prompt-secondary text-red" disabled={busy} onClick={() => void confirm()}>{busy ? "Deleting…" : "Delete for good"}</button>
+				<div className="flex items-center justify-end gap-5">
+					<button type="button" className="lh-text-action" onClick={onClose}>Cancel</button>
+					<button type="button" data-testid="card-delete-confirm" className="nb-pill lh-pill-danger" disabled={busy} onClick={() => void confirm()}>{busy ? "Deleting…" : "Delete for good"}</button>
 				</div>
 			</DialogContent>
 		</Dialog>

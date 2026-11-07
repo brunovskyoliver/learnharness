@@ -258,7 +258,7 @@ export function ChainTableBody({
 						placeholder="Search ideas…"
 						aria-label="Search ideas"
 						spellCheck={false}
-						className="lh-no-drag h-8 w-full rounded-lg border bg-paper pl-8 pr-3 text-sm outline-none placeholder:text-faint focus:border-focus"
+						className="lh-no-drag h-8 w-full rounded-none border-0 border-b border-rule bg-transparent pl-8 pr-3 text-sm text-ink caret-ink outline-none placeholder:text-faint focus:border-ink"
 					/>
 				</div>
 			<button
@@ -483,7 +483,7 @@ export function ChainTableBody({
 				<div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center pb-4">
 					<div
 						data-testid="chain-selection-bar"
-						className="pointer-events-auto mx-2 flex max-w-full flex-wrap items-center justify-center gap-2 rounded-lg border bg-shelf px-4 py-2 "
+						className="pointer-events-auto mx-2 flex max-w-full flex-wrap items-center justify-center gap-2 rounded-xl bg-paper px-4 py-2 shadow-lift"
 					>
 						<span data-testid="chain-selected-summary" className="text-sm font-medium">
 							{selection.size} {selection.size === 1 ? "idea" : "ideas"} →{" "}

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PlusIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { TopBar } from "@/components/top-bar";
 import { useServerEvent } from "@/components/server-events";
 import { cardFetch, failed } from "./card-api.ts";
@@ -14,8 +13,6 @@ import { AllCards, DeletedCards, DraftList, ListStates, type CardListData } from
 import { MakePanel } from "./make-panel.tsx";
 import { QueuePanel } from "./queue-panel.tsx";
 
-const RAISED_2 = "bg-shelf text-ink hover:bg-[color-mix(in_srgb,var(--shelf)_80%,var(--ink))] pointer-coarse:h-11";
-const PILL = "inline-flex h-9 items-center rounded-md px-3 text-sm font-medium transition-colors hover:bg-shelf motion-reduce:transition-none pointer-coarse:h-11";
 const VIEWS = { due: "Due", cards: "All cards", drafts: "Drafts", deleted: "Deleted" } as const;
 type ViewName = keyof typeof VIEWS;
 
@@ -81,14 +78,14 @@ export function ReviewView() {
 				<div className="mx-auto flex w-full max-w-[52rem] flex-col gap-4 px-4 pb-12 pt-3 sm:pt-11">
 					<div className="flex flex-wrap items-center justify-between gap-3">
 						<h1 className="tracking-title text-2xl font-medium leading-[1.2]">Review</h1>
-						<Button type="button" className={RAISED_2} data-testid="review-new" onClick={newCard}>
-							<PlusIcon className="ui-icon" aria-hidden="true" />
+						<button type="button" className="lh-tool" data-testid="review-new" onClick={newCard}>
+							<PlusIcon aria-hidden="true" />
 							New card
-						</Button>
+						</button>
 					</div>
-					<nav aria-label="Flashcard views" className="flex flex-wrap gap-1" data-testid="review-views">
+					<nav aria-label="Flashcard views" className="nb-set-pills" data-testid="review-views">
 						{(Object.keys(VIEWS) as ViewName[]).map((name) => (
-							<Link key={name} href={hrefOf(name)} aria-current={view === name && !make ? "page" : undefined} className={`${PILL} ${view === name && !make ? "bg-shelf text-ink" : "text-graphite"}`}>
+							<Link key={name} href={hrefOf(name)} aria-current={view === name && !make ? "page" : undefined} className="nb-set-pill">
 								{VIEWS[name]}{name === "drafts" && draftCount ? ` (${draftCount})` : ""}
 							</Link>
 						))}

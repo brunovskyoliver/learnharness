@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext } from "react";
-import { demoPrefersInvert, type DemoResult, type LhViewMessage, type LhViewPart, type SubagentArtifactData } from "@/src/core";
+import { type DemoResult, type LhViewMessage, type LhViewPart, type SubagentArtifactData } from "@/src/core";
 
 /** A delivered demo in this session: the steer message that carries it. */
 export interface SessionDemo {
@@ -9,7 +9,8 @@ export interface SessionDemo {
 	id: string;
 	title: string;
 	html: string;
-	inverted: boolean;
+	/** The learner's saved invert switch; null follows the resolved theme (demoPrefersInvert). */
+	inverted: boolean | null;
 }
 
 /** Every delivered, non-failed demo in transcript order. A re-built demo with
@@ -35,7 +36,7 @@ export function sessionDemos(messages: readonly LhViewMessage[]): SessionDemo[] 
 			id: m.id,
 			title: result.title,
 			html: result.html,
-			inverted: data.ui?.inverted ?? demoPrefersInvert(result.html),
+			inverted: data.ui?.inverted ?? null,
 		});
 	}
 	return demos;
@@ -54,7 +55,7 @@ export function plotArtifactOf(part: LhViewPart): Omit<SessionDemo, "id"> | null
 	const output = part.output as { kind?: unknown; result?: Partial<DemoResult>; ui?: { inverted?: boolean } } | undefined;
 	const result = output?.result;
 	if (output?.kind !== "demo" || typeof result?.html !== "string" || result.html.length === 0 || typeof result.title !== "string") return null;
-	return { title: result.title, html: result.html, inverted: output.ui?.inverted ?? demoPrefersInvert(result.html) };
+	return { title: result.title, html: result.html, inverted: output.ui?.inverted ?? null };
 }
 
 /** Title match for teacher mentions: case, quotes and spacing ignored. */

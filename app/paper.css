@@ -2843,3 +2843,79 @@ html.lh-paper {
 	.lh-paper .nb-export-extra { width: 100%; margin-right: 0; }
 	.lh-paper .nb-export-actions:has(.nb-export-extra) .nb-export-cancel { margin-left: auto; }
 }
+
+/* ── Home and Review (feature 025, T053-T054) ───────────────────────────── */
+
+/* A block of content on the paper (the queue card, a draft, Make flashcards,
+   the editor's preview and duplicate note): a rule edge at radius 10, no fill. */
+.lh-paper .lh-card-block { padding: 18px 20px; border-radius: 10px; box-shadow: inset 0 0 0 1px var(--rule); }
+@media (max-width: 639px) { .lh-paper .lh-card-block { padding: 14px 16px; } }
+/* Quiet row lists keep the column's left edge: each row bleeds by its padding. */
+.lh-paper .lh-row-list { margin-inline: -12px; }
+/* A rating: an option card's ring, name over the gap and (from 640px) its key in mono. */
+.lh-paper .lh-rating {
+	display: flex;
+	min-height: 56px;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 6px 8px;
+	border-radius: 10px;
+	box-shadow: 0 0 0 1px var(--rule);
+	color: var(--ink);
+	transition: box-shadow 0.15s;
+}
+.lh-paper .lh-rating:hover:not(:disabled) { box-shadow: 0 0 0 1px var(--faint); }
+.lh-paper .lh-rating:active:not(:disabled) { box-shadow: 0 0 0 1.5px var(--ink); }
+.lh-paper .lh-rating:disabled { color: var(--faint); cursor: default; }
+.lh-paper .lh-rating:focus-visible { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
+/* A multi-line field: a rule-edged box, the edge in ink while typing, caret only. */
+.lh-paper .lh-box-field {
+	width: 100%;
+	resize: vertical;
+	padding: 8px 12px;
+	border: 1px solid var(--rule);
+	border-radius: 8px;
+	background: transparent;
+	color: var(--ink);
+	caret-color: var(--ink);
+	font-size: var(--text-md);
+	line-height: 1.55;
+	transition: border-color 0.15s;
+}
+.lh-paper .lh-box-field::placeholder { color: var(--faint); }
+.lh-paper .lh-box-field:focus-visible { outline: none; border-color: var(--ink); }
+.lh-paper .lh-field-label { color: var(--graphite); font-size: var(--text-sm); font-weight: 500; }
+@media (prefers-reduced-motion: reduce) {
+	.lh-paper :is(.lh-rating, .lh-box-field) { transition: none; }
+}
+
+/* The @ list (Library mentions) is Notebook's menu card, in the prompt shell's
+   flow above the field: up to 6 rows, the keyboard-active row on shelf with the
+   inset ring (the slash menu's), each row 44px tall as before (min-h-11). */
+.lh-paper .nb-menu.lh-at-menu { position: relative; min-width: 0; max-width: none; max-height: min(16.5rem, 40dvh); }
+.lh-paper .lh-at-row { align-items: center; }
+.lh-paper .lh-at-row:hover { background: var(--shelf); }
+.lh-paper .lh-at-row[aria-selected="true"] { background: var(--shelf); box-shadow: inset 0 0 0 2px var(--nb-focus); }
+.lh-paper .lh-at-menu > [role="status"] { padding: 8px 10px; color: var(--graphite); font-size: var(--text-ui); }
+
+/* ── Code, math and diagrams in both themes (T056) ─────────────────────────
+   Shiki's paper theme (components/ai-elements/paper-code-theme.ts) colours
+   each token with a --lh-code-* variable; here they point at the paper inks,
+   which have light and dark values and pass 4.5:1 on paper and shelf. */
+.lh-paper {
+	--lh-code-foreground: var(--ink);
+	--lh-code-background: transparent;
+	--lh-code-token-comment: var(--faint);
+	--lh-code-token-keyword: var(--text-purple);
+	--lh-code-token-string: var(--text-green);
+	--lh-code-token-constant: var(--text-orange);
+	--lh-code-token-function: var(--text-blue);
+	--lh-code-token-parameter: var(--graphite);
+	--lh-code-token-punctuation: var(--graphite);
+	--lh-code-token-link: var(--text-blue);
+	--lh-code-token-inserted: var(--text-green);
+	--lh-code-token-deleted: var(--text-red);
+}
+/* Math takes the colour of the words around it (the voice's ink in a reply). */
+.lh-paper .katex { color: inherit; }

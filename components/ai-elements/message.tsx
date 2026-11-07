@@ -14,6 +14,7 @@ import {
 import { cn } from "@/lib/utils";
 import { cjk } from "@streamdown/cjk";
 import { createCodePlugin } from "@streamdown/code";
+import { paperCodeTheme } from "@/components/ai-elements/paper-code-theme";
 import { createMathPlugin } from "@streamdown/math";
 
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
@@ -356,20 +357,12 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown> & {
 // `code` override intercepts mermaid fences and renders via
 // components/mermaid-render.ts — streamdown's internal mermaid machinery
 // (the plugin entry + the `mermaid` prop) is retired with it.
+//
+// SHIKI (feature 025, T056): one paper theme for light and dark
+// (components/ai-elements/paper-code-theme.ts), its colours --lh-code-*
+// variables that app/paper.css points at the current theme's paper inks.
 const code = createCodePlugin({
-  themes: ["github-light", {
-    name: "learnharness-dark",
-    type: "dark",
-    colors: { "editor.background": "#141414", "editor.foreground": "#dedede" },
-    tokenColors: [
-      { scope: ["comment"], settings: { foreground: "#929292" } },
-      { scope: ["string", "constant.other.symbol"], settings: { foreground: "#b9c7ad" } },
-      { scope: ["constant.numeric"], settings: { foreground: "#d0be96" } },
-      { scope: ["keyword", "storage"], settings: { foreground: "#b1b9c4" } },
-      { scope: ["entity.name.function", "support.function"], settings: { foreground: "#b6ccdf" } },
-      { scope: ["entity.name.type", "support.class"], settings: { foreground: "#bcafca" } },
-    ],
-  }],
+  themes: [paperCodeTheme("paper-light", "light"), paperCodeTheme("paper-dark", "dark")],
 });
 
 export const streamdownPlugins = {
