@@ -56,6 +56,7 @@ describe("Notebook chrome", () => {
 		assert.ok(html.includes("Brunovský’s study"));
 		assert.ok(html.includes('href="/notebook/lib_a"'));
 		assert.ok(!/riddled/i.test(html));
+		assert.ok(html.includes('<span translate="no">'), "the name is not machine-translated");
 	});
 	it("the menu and close glyphs are hidden from readers", () => {
 		for (const html of [renderToStaticMarkup(<MenuGlyph />), renderToStaticMarkup(<CloseGlyph />)]) assert.ok(html.includes('aria-hidden="true"'));

@@ -73,6 +73,7 @@ describe("ink", () => {
 			const html = renderToStaticMarkup(<InkText text={text} animate={animate} />);
 			assert.equal((html.match(/class="nb-math"/g) ?? []).length, 2, "two formulas");
 			assert.match(html, /class="katex"/);
+			assert.match(html, /<math[^>]*>[\s\S]*<annotation encoding="application\/x-tex">/, "MathML for screen readers");
 			assert.doesNotMatch(html, /\$\\theta\$|\$g/, "no raw dollar math");
 			assert.match(html, /<strong>always<\/strong>/);
 			assert.match(html, /<code class="nb-code">F=ma<\/code>/);

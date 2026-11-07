@@ -1111,6 +1111,8 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 	font-family: var(--nb-sans);
 	font-size: 11px;
 	line-height: 1.4;
+	/* The running cost changes in place: fixed-width digits keep the line still. */
+	font-variant-numeric: tabular-nums;
 	pointer-events: none;
 	user-select: none;
 }
@@ -1258,6 +1260,12 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 }
 
 /* ── 44px targets on coarse pointers (constitution VI) ──────────────────── */
+
+/* Taps act at once (no double-tap zoom wait) and flash a paper-toned tint, not the browser's blue. */
+.nb-root :is(button, a, [role="button"], [role="menuitem"], [role="menuitemradio"], [role="radio"], [role="tab"], [role="option"]) {
+	touch-action: manipulation;
+	-webkit-tap-highlight-color: color-mix(in srgb, var(--ink) 8%, transparent);
+}
 
 @media (pointer: coarse) {
 	.nb-root .nb-menu-button { width: 44px; height: 44px; }
@@ -1432,6 +1440,8 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 .nb-root .nb-inline { transition: opacity 0.2s ease-out; }
 /* §8.1: the other notes fade while one is open (≈.35-.4). */
 .nb-root :is(.nb-note, .nb-inline)[data-faded="true"] { opacity: 0.38; }
+/* A faded note the keyboard reaches reads at full strength, as one under the pointer does. */
+.nb-root :is(.nb-note, .nb-inline)[data-faded="true"]:focus-within { opacity: 1; }
 .nb-root .nb-note[data-state="open"],
 .nb-root .nb-inline[data-state="open"] { z-index: 1; }
 .nb-root :is(.nb-note, .nb-inline)[data-state="open"]:focus:not(:focus-visible) { outline: none; }

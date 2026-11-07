@@ -55,7 +55,8 @@ export function inkTokens(paragraph: string): InkToken[] {
 	return out;
 }
 
-const mathHtml = (tex: string, display: boolean) => katex.renderToString(tex, { throwOnError: false, displayMode: display, output: "html" });
+// HTML for the eye and MathML for screen readers (katex.min.css hides the MathML), as Study's rehype-katex.
+const mathHtml = (tex: string, display: boolean) => katex.renderToString(tex, { throwOnError: false, displayMode: display, output: "htmlAndMathml" });
 
 function tokenNode(token: InkToken): ReactNode {
 	if (token.kind === "math") {

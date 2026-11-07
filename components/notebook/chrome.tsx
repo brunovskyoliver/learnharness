@@ -19,7 +19,7 @@ export function Wordmark({ noteId }: { noteId: string }) {
 	return (
 		<Link href={notebookHref(noteId)} className="nb-wordmark" data-testid="nb-wordmark">
 			<LhMark className="nb-wordmark-mark" />
-			<span>Brunovský’s study</span>
+			<span translate="no">Brunovský’s study</span>
 		</Link>
 	);
 }

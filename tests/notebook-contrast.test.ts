@@ -81,6 +81,15 @@ describe("notebook contrast", () => {
 		assert.match(rule, /outline:\s*2px solid var\(--nb-focus\)/);
 	});
 
+	it("a faded note reads at full strength once the keyboard reaches it", () => {
+		assert.match(css, /\[data-faded="true"\]:focus-within \{ opacity: 1; \}/);
+	});
+
+	it("touch: taps act at once with a paper-toned tint; the running cost keeps fixed-width digits", () => {
+		assert.match(css, /touch-action: manipulation;\s*-webkit-tap-highlight-color: color-mix\(in srgb, var\(--ink\) 8%, transparent\)/);
+		assert.match(block(".nb-root .nb-corner-hint"), /font-variant-numeric: tabular-nums/);
+	});
+
 	it("exports use the light faint and gray", () => {
 		assert.equal(EXPORT_PALETTE.faint, THEMES.light.faint);
 		assert.equal(EXPORT_PALETTE["text-gray"], THEMES.light["text-gray"]);
