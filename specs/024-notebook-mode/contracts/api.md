@@ -20,7 +20,8 @@ All routes wrapped in `withTenant`; JSON; ids `^[A-Za-z0-9_-]+$`. Errors `{error
   - `{ kind: "think", text, anchor }` — "Think about this".
   - `{ kind: "visualize", text, anchor }`.
   - `{ kind: "reply", text, threadId }` — after his Write back or ask.
-  - `{ kind: "chat", text, message }` — note chat; `message` is appended write-ahead.
+  - `{ kind: "chat", text, message }` — note chat; `message` is appended write-ahead. 409 while the last answer is still being written.
+  - `{ kind: "chat", text, retry: true }` — "Try again" on the chat's last answer when it failed, was stopped, or still says streaming with no run behind it: that answer is replaced, his message before it stays (phase 8). 409 when there is nothing to try again.
   → `202 { run: { id, kind, status } }`. A second automatic read on the same page aborts the earlier one.
 - `GET /api/notebook/runs/:runId/stream` → SSE events:
   - `phase` `{ phase: "reading" | "writing" | "drawing", anchor? }` (anchor = the quote being considered; drives the underline and blot)

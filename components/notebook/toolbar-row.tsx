@@ -35,6 +35,9 @@ export interface ToolbarRowProps {
 	hasInstruction: boolean;
 	container: HTMLElement | null;
 	instructionsRef?: Ref<HTMLButtonElement>;
+	chatRef?: Ref<HTMLButtonElement>;
+	/** The note chat is open. */
+	chatOpen?: boolean;
 	onReviewer: (id: string) => void;
 	/** "Edit reviewers…": the Reviewers page. */
 	onEditReviewers: () => void;
@@ -53,7 +56,7 @@ function ReviewerDot() {
 	);
 }
 
-export function ToolbarRow({ reviewers, reviewerId, mode, hasInstruction, container, instructionsRef, onReviewer, onEditReviewers, onMode, onInstructions, onExport, onChat }: ToolbarRowProps) {
+export function ToolbarRow({ reviewers, reviewerId, mode, hasInstruction, container, instructionsRef, chatRef, chatOpen = false, onReviewer, onEditReviewers, onMode, onInstructions, onExport, onChat }: ToolbarRowProps) {
 	const reviewer = currentReviewer(reviewers, reviewerId);
 	return (
 		<div className="nb-toolbar" role="toolbar" aria-label="Note" data-testid="nb-toolbar">
@@ -124,7 +127,7 @@ export function ToolbarRow({ reviewers, reviewerId, mode, hasInstruction, contai
 				<span>Export</span>
 			</button>
 
-			<button type="button" className="nb-tool nb-tool-chat" data-testid="nb-chat" aria-label="Ask about this note" title="Ask about this note" onClick={onChat}>
+			<button ref={chatRef} type="button" className="nb-tool nb-tool-chat" data-testid="nb-chat" aria-label="Ask about this note" title="Ask about this note" aria-haspopup="dialog" aria-expanded={chatOpen} onClick={onChat}>
 				<MessageSquareTextIcon className="nb-tool-icon" aria-hidden="true" />
 			</button>
 		</div>

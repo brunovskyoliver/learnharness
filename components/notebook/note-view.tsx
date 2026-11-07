@@ -16,6 +16,7 @@ import { usePageDraft } from "@/components/library/use-page-draft";
 import { notebookHref, type NoteMode, type WikiResolution } from "@/src/core";
 import { InstructionLine, type InstructionHandle } from "./instruction-line";
 import { renameNote } from "./nb-actions";
+import { NoteChat } from "./note-chat";
 import { NoteBridge } from "./nb-plugins";
 import { isUntitledName, useNotebook } from "./nb-shared";
 import type { NoteEditorHandle } from "./note-editor";
@@ -155,6 +156,9 @@ export function NoteView({ note }: { note: { id: string; name: string } }) {
 	const instructionsButton = useRef<HTMLButtonElement>(null);
 	const [instructionShown, setInstructionShown] = useState(false);
 	const [refocusInstructions, setRefocusInstructions] = useState(0);
+	const [chatOpen, setChatOpen] = useState(false);
+	const chatButton = useRef<HTMLButtonElement>(null);
+	const noteText = useCallback(() => bridge.text()?.text ?? "", [bridge]);
 	// The button comes back a render after the line hides: focus it once it is there.
 	const refocused = useRef(0);
 	useEffect(() => {
@@ -168,7 +172,7 @@ export function NoteView({ note }: { note: { id: string; name: string } }) {
 	const name = listed?.name ?? note.name;
 
 	return (
-		<main className="nb-page" data-testid="nb-page">
+		<main className="nb-page" data-testid="nb-page" data-chat={chatOpen ? "" : undefined}>
 			<div ref={setColumn} className="nb-column" data-testid="nb-column">
 				<ToolbarRow
 					reviewers={nb.reviewers}
@@ -177,14 +181,15 @@ export function NoteView({ note }: { note: { id: string; name: string } }) {
 					hasInstruction={instructionShown}
 					container={nb.root}
 					instructionsRef={instructionsButton}
+					chatRef={chatButton}
+					chatOpen={chatOpen}
 					onReviewer={(id) => void patch({ reviewerId: id })}
 					onEditReviewers={nb.openReviewers}
 					onMode={(next: NoteMode) => void patch({ mode: next })}
 					onInstructions={() => instruction.current?.open()}
 					// TODO(024 Phase 9): open the Export dialog.
 					onExport={() => {}}
-					// TODO(024 Phase 8): open the note chat.
-					onChat={() => {}}
+					onChat={() => setChatOpen(true)}
 				/>
 				{companion && (
 					<InstructionLine
@@ -224,6 +229,16 @@ export function NoteView({ note }: { note: { id: string; name: string } }) {
 					/>
 				)}
 			</div>
+			<NoteChat
+				open={chatOpen}
+				onOpenChange={setChatOpen}
+				pageId={note.id}
+				noteName={name}
+				companion={companion}
+				reload={reload}
+				noteText={noteText}
+				returnFocus={chatButton}
+			/>
 		</main>
 	);
 }

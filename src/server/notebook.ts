@@ -128,7 +128,9 @@ type RunBody =
 	| { kind: "read"; text: unknown; auto: boolean }
 	| { kind: "think" | "visualize"; text: unknown; anchor: ThreadAnchor }
 	| { kind: "reply"; text: unknown; threadId: string }
-	| { kind: "chat"; text: unknown; message: string };
+	| { kind: "chat"; text: unknown; message: string }
+	/** "Try again" on the chat's last answer (failed, stopped, or left streaming with no run): replaces it. */
+	| { kind: "chat"; text: unknown; retry: true };
 
 export function parseRunBody(raw: unknown): { ok: true; body: RunBody } | { ok: false; error: string } {
 	if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ok: false, error: "The body must be an object." };
@@ -148,6 +150,7 @@ export function parseRunBody(raw: unknown): { ok: true; body: RunBody } | { ok: 
 			if (!isNotebookId(body.threadId)) return { ok: false, error: "threadId must name a thread." };
 			return { ok: true, body: { kind: "reply", text: body.text, threadId: body.threadId } };
 		case "chat": {
+			if (body.retry === true && body.message === undefined) return { ok: true, body: { kind: "chat", text: body.text, retry: true } };
 			const problem = messageTextProblem(body.message);
 			if (problem) return { ok: false, error: problem.error };
 			return { ok: true, body: { kind: "chat", text: body.text, message: body.message as string } };
@@ -213,9 +216,10 @@ const reviewerOf = (companion: NoteCompanion) => {
 };
 
 /** An AI answer "Try again" may replace: it failed, or it still says
- *  streaming but no run is writing it (the server restarted mid-answer). */
-function retryable(message: ThreadMessage): boolean {
-	if (message.state === "failed") return true;
+ *  streaming but no run is writing it (the server restarted mid-answer).
+ *  In the note chat a stopped answer can be tried again too. */
+function retryable(message: ThreadMessage | NoteChatMessage, stopped = false): boolean {
+	if (message.state === "failed" || (stopped && message.state === "stopped")) return true;
 	if (message.state !== "streaming") return false;
 	const live = message.runId ? registry().get(message.runId) : undefined;
 	return !live || live.run.status !== "running";
@@ -264,9 +268,17 @@ export async function startNotebookRun(pageId: string, raw: unknown): Promise<St
 	}
 	if (body.kind === "chat") {
 		const placed = await change<{ messageId: string }>(pageId, (companion) => {
-			if (companion.chat.length + 2 > NOTEBOOK_LIMITS.chat) return { refused: NOTEBOOK_LIMIT_TEXT.chat, status: 409 };
+			const last = companion.chat.at(-1);
+			if (last?.author === "ai" && last.state === "streaming" && !retryable(last)) return { refused: "It is already writing back.", status: 409 };
 			const at = new Date().toISOString();
-			companion.chat.push({ id: `msg_${nanoid()}`, author: "user", text: body.message, at });
+			if ("retry" in body) {
+				if (last?.author !== "ai" || !retryable(last, true)) return { refused: "There is nothing to try again.", status: 409 };
+				companion.chat.pop();
+				if (companion.chat.at(-1)?.author !== "user") return { refused: "There is nothing to reply to yet.", status: 409 };
+			} else {
+				if (companion.chat.length + 2 > NOTEBOOK_LIMITS.chat) return { refused: NOTEBOOK_LIMIT_TEXT.chat, status: 409 };
+				companion.chat.push({ id: `msg_${nanoid()}`, author: "user", text: body.message, at });
+			}
 			const answer: NoteChatMessage = { id: `msg_${nanoid()}`, author: "ai", text: "", at, runId: run.id, state: "streaming" };
 			companion.chat.push(answer);
 			return { companion, result: { messageId: answer.id } };

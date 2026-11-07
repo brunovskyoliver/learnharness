@@ -1991,3 +1991,171 @@
 	.nb-root :is(.nb-dialog-backdrop, .nb-dialog) { animation: none; }
 	.nb-root .nb-rev-item { transition: none; }
 }
+
+/* ══ Phase 8 (US6): note chat ═══════════════════════════════════════════════ */
+
+/* 17: the page slides 210px left and fades to half while the chat is open. */
+.nb-root .nb-page {
+	transition: opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@media (min-width: 768px) {
+	.nb-root .nb-page[data-chat] { opacity: 0.5; transform: translateX(-210px); }
+}
+/* Nothing scrolls under the row while a panel is open, and a moved page would misplace the band's fixed grain. */
+.nb-root :is(.nb-page[data-chat], .nb-sheet[data-aside]) .nb-toolbar::before,
+.nb-root :is(.nb-page[data-chat], .nb-sheet[data-aside]) .nb-toolbar::after { display: none; }
+/* The page itself is the dim (the frame shows no extra tint); this layer takes the click that closes. */
+.nb-root .nb-chat-dim { position: fixed; inset: 0; z-index: 30; background: transparent; }
+.nb-root .nb-chat {
+	position: fixed;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 40;
+	display: flex;
+	width: min(466px, 100vw);
+	flex-direction: column;
+	color: var(--ink);
+	font-family: var(--nb-sans);
+	outline: none;
+	isolation: isolate;
+	box-shadow: -1px 0 0 var(--rule);
+	animation: 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both nb-chat-in;
+}
+.nb-root .nb-chat::before,
+.nb-root .nb-chat::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	pointer-events: none;
+}
+.nb-root .nb-chat::before { background-color: var(--paper); }
+.nb-root .nb-chat::after {
+	opacity: var(--grain-opacity);
+	mix-blend-mode: var(--texture-blend);
+	background-image: var(--nb-grain);
+	background-size: 180px 180px;
+	background-attachment: fixed;
+}
+@keyframes nb-chat-in {
+	0% { opacity: 0; transform: translateX(24px); }
+	to { opacity: 1; transform: none; }
+}
+.nb-root .nb-chat-head { position: relative; flex: none; padding: 20px 56px 0 24px; }
+.nb-root .nb-chat-heading { display: flex; align-items: center; gap: 10px; padding-left: 2px; }
+.nb-root .nb-chat-dot { flex: none; color: var(--ink); }
+.nb-root .nb-chat-title { margin: 0; color: var(--ink); font-size: 17px; line-height: 22px; white-space: normal; }
+.nb-root .nb-chat-sub {
+	margin: 8px 0 0;
+	overflow: hidden;
+	color: var(--faint);
+	font-size: 11.5px;
+	line-height: 16px;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.nb-root .nb-chat-close {
+	position: absolute;
+	top: 15px;
+	right: 14px;
+	display: grid;
+	place-items: center;
+	width: 32px;
+	height: 32px;
+	border-radius: 999px;
+	color: var(--faint);
+	transition: color 0.15s, background-color 0.15s;
+}
+.nb-root .nb-chat-close:hover { background: var(--shelf); color: var(--ink); }
+.nb-root .nb-chat-scroll {
+	min-height: 0;
+	flex: 1;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	padding: 26px 24px 16px;
+}
+/* The frame's opening line wraps after ≈290px ("…Ask / anything about it."). */
+.nb-root .nb-chat-open-line { max-width: 290px; margin: 0; color: var(--riddle); font-size: 17px; line-height: 27px; }
+.nb-root .nb-chat-context { margin: 6px 0 0; color: var(--faint); font-size: 12px; line-height: 17px; }
+.nb-root .nb-chat-starters { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; margin: 14px 0 0; padding: 0; list-style: none; }
+.nb-root .nb-chat-starter {
+	min-height: 32px;
+	padding: 0 14px;
+	border-radius: 8px;
+	box-shadow: 0 0 0 1px var(--rule);
+	color: var(--graphite);
+	font-size: 13px;
+	line-height: 1.3;
+	text-align: left;
+	transition: box-shadow 0.15s, color 0.15s;
+}
+.nb-root .nb-chat-starter:hover { box-shadow: 0 0 0 1px var(--faint); color: var(--ink); }
+.nb-root .nb-chat-messages { display: flex; flex-direction: column; gap: 18px; margin: 0; padding: 0; list-style: none; }
+.nb-root .nb-chat-user {
+	align-self: flex-end;
+	max-width: 85%;
+	padding: 7px 12px;
+	border-radius: 8px;
+	background: var(--shelf);
+	color: var(--ink);
+	font-size: 12.5px;
+	line-height: 1.5;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+.nb-root .nb-chat-ai { align-self: stretch; font-size: 14.5px; line-height: 1.6; }
+.nb-root .nb-chat-ai .nb-words { display: block; }
+.nb-root .nb-chat-ai .nb-words + .nb-words { margin-top: 0.6em; }
+.nb-root .nb-chat-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 6px 0 0; color: var(--graphite); font-family: var(--nb-sans); font-size: 12.5px; line-height: 1.4; }
+.nb-root .nb-chat-problem { margin-top: 14px; }
+.nb-root .nb-chat-link { color: var(--ink); text-decoration: underline; text-decoration-color: var(--riddle-line); text-underline-offset: 3px; }
+.nb-root .nb-chat-text-button { color: var(--faint); }
+.nb-root .nb-chat-text-button:hover { color: var(--ink); }
+.nb-root .nb-chat-detail { flex-basis: 100%; color: var(--faint); font-size: 12px; overflow-wrap: anywhere; }
+.nb-root .nb-chat-form { display: flex; flex: none; align-items: flex-end; gap: 12px; padding: 10px 18px 18px 24px; }
+.nb-root .nb-chat-field {
+	min-width: 0;
+	flex: 1;
+	max-height: 160px;
+	padding: 0;
+	border: 0;
+	resize: none;
+	background: transparent;
+	color: var(--ink);
+	caret-color: var(--ink);
+	font-family: var(--nb-sans);
+	font-size: 14px;
+	line-height: 22px;
+	outline: none;
+}
+.nb-root .nb-chat-field::placeholder { color: var(--faint); opacity: 1; }
+.nb-root .nb-chat-field:focus-visible { outline: none; }
+.nb-root .nb-chat-send {
+	display: grid;
+	flex: none;
+	place-items: center;
+	width: 22px;
+	height: 22px;
+	border-radius: 999px;
+	background: var(--rule);
+	color: var(--paper);
+	transition: background-color 0.15s;
+}
+.nb-root .nb-chat-send[data-filled] { background: var(--ink); }
+.nb-root .nb-chat-send[aria-disabled="true"] { cursor: default; }
+.nb-root .nb-chat-send svg { width: 13px; height: 13px; stroke-width: 2.2; }
+.nb-root .nb-chat-send[data-testid="nb-chat-stop"] svg { width: 9px; height: 9px; fill: currentColor; stroke-width: 0; }
+
+@media (max-width: 767px) {
+	.nb-root .nb-chat { width: 100vw; box-shadow: none; }
+}
+@media (pointer: coarse) {
+	.nb-root :is(.nb-chat-close, .nb-chat-starter) { min-height: 44px; min-width: 44px; }
+	.nb-root .nb-chat-send { width: 44px; height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.nb-root .nb-page { transition: none; }
+	.nb-root .nb-chat { animation: none; }
+	.nb-root .nb-chat-starter, .nb-root .nb-chat-send { transition: none; }
+}

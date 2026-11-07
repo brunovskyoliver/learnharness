@@ -154,3 +154,18 @@ export async function startPassageRun(pageId: string, kind: "think" | "visualize
  * (`/review?make=page:<id>`). The passage is not passed on yet.
  */
 export const flashcardsHref = (pageId: string): string => `/review?make=${encodeURIComponent(`page:${pageId}`)}`;
+
+// ─── note chat (US6) ────────────────────────────────────────────────────────
+
+/** His chat message (written ahead by the server) and the answer's run; or `retry`: Try again on the last answer. */
+export async function startChat(pageId: string, text: string, send: { message: string } | { retry: true }): Promise<StartReadOutcome> {
+	try {
+		const response = await post(`/api/notebook/${encodeURIComponent(pageId)}/runs`, { kind: "chat", text, ...send });
+		const body = (await response.json().catch(() => ({}))) as { run?: { id: string }; reason?: "models" | "key"; provider?: string; error?: string };
+		if (response.status === 202 && body.run) return { ok: { id: body.run.id } };
+		if (response.status === 503 && (body.reason === "models" || body.reason === "key")) return { refused: { reason: body.reason, ...(body.provider ? { provider: body.provider } : {}) } };
+		return { error: body.error ?? "That didn't come through." };
+	} catch {
+		return { error: "That didn't come through." };
+	}
+}

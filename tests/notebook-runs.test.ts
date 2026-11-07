@@ -327,6 +327,71 @@ describe("instructions and reviewers (US5)", () => {
 	}));
 });
 
+describe("note chat (US6)", () => {
+	it("the chat sees the whole note, a line per thread, his instruction and the conversation", () => fresh(async () => {
+		const long = `${NOTE}\n\nSecond paragraph: the room warms a little.\n\nThird: equilibrium at last.`;
+		const id = await page(long);
+		const at = "2026-11-06T10:00:00.000Z";
+		await stores.notebookStore.update(id, (c) => {
+			c.instruction = "Argue with everything.";
+			c.threads.push(
+				{ id: "thr_a", anchor: { quote: "a cup of tea", prefix: "", suffix: "" }, placement: "margin", side: "right", status: "open", origin: "read", createdAt: at, updatedAt: at, messages: [{ id: "m1", author: "ai", text: "Why would tea cool?", at }, { id: "m2", author: "user", text: "Heat leaves.", at }] },
+				{ id: "thr_b", anchor: { quote: "Entropy always rises", prefix: "", suffix: "" }, placement: "margin", side: "left", status: "resolved", origin: "read", createdAt: at, updatedAt: at, messages: [{ id: "m3", author: "ai", text: "Always?", at }] },
+				{ id: "thr_c", anchor: { quote: "closed system", prefix: "", suffix: "" }, placement: "margin", side: "left", status: "dismissed", origin: "read", createdAt: at, updatedAt: at, messages: [{ id: "m4", author: "ai", text: "Dismissed question.", at }] },
+			);
+			c.chat.push({ id: "c1", author: "user", text: "Earlier question?", at }, { id: "c2", author: "ai", text: "Earlier answer.", at });
+			return { companion: c, result: null };
+		});
+		const seen: { system?: string; messages: string }[] = [];
+		const engine = scripted((ctx: { systemPrompt?: string; messages: unknown[] }) => {
+			seen.push({ system: ctx.systemPrompt, messages: JSON.stringify(ctx.messages) });
+			return fauxAssistantMessage("Two threads so far.");
+		});
+		await withEngine(engine, async () => { await start(id, { kind: "chat", text: long, message: "What have we worked out?" }); await nb.notebookRunIdle(); });
+		const all = JSON.parse(seen[0]!.messages) as { content: unknown }[];
+		const text = all.map((m) => (typeof m.content === "string" ? m.content : JSON.stringify(m.content))).join("\n") + (seen[0]!.system ?? "");
+		assert.ok(text.includes(long), "the whole note");
+		assert.match(text, /\[open\] on "a cup of tea": Why would tea cool\? \(1 replies\)/, "an open thread's line");
+		assert.match(text, /\[resolved\] on "Entropy always rises": Always\?/, "a resolved thread's line");
+		assert.doesNotMatch(text, /Dismissed question/, "dismissed threads stay out");
+		assert.match(text, /<instructions>\nArgue with everything\.\n<\/instructions>/, "his instruction");
+		assert.match(text, /whole note/, "the chat task");
+		assert.match(text, /He: Earlier question\?\n\nYou: Earlier answer\.\n\nHe: What have we worked out\?/, "the conversation so far, oldest first");
+		assert.deepEqual((await companion(id)).chat.map((m) => [m.author, m.text, m.state ?? "ok"]), [["user", "Earlier question?", "ok"], ["ai", "Earlier answer.", "ok"], ["user", "What have we worked out?", "ok"], ["ai", "Two threads so far.", "ok"]]);
+	}));
+
+	it("a second message while one is being answered is refused; Try again replaces a failed or stopped answer", () => fresh(async () => {
+		const id = await page();
+		const gate = held();
+		await withEngine(scripted(async () => { await gate.gate; return fauxAssistantMessage("", { stopReason: "error", errorMessage: "upstream 500" }); }), async () => {
+			await start(id, { kind: "chat", text: NOTE, message: "Why?" });
+			const second = await nb.startNotebookRun(id, { kind: "chat", text: NOTE, message: "And?" });
+			assert.equal(second.status, 409);
+			assert.equal((await nb.startNotebookRun(id, { kind: "chat", text: NOTE, retry: true })).status, 409, "nothing to try again while it writes");
+			gate.release();
+			await nb.notebookRunIdle();
+		});
+		assert.equal((await companion(id)).chat[1]!.state, "failed");
+		await withEngine(scripted(() => fauxAssistantMessage("Because heat leaves.")), async () => { await start(id, { kind: "chat", text: NOTE, retry: true }); await nb.notebookRunIdle(); });
+		assert.deepEqual((await companion(id)).chat.map((m) => [m.author, m.text, m.state ?? "ok"]), [["user", "Why?", "ok"], ["ai", "Because heat leaves.", "ok"]]);
+		await withEngine(scripted(() => fauxAssistantMessage("unused")), async () => {
+			assert.equal((await nb.startNotebookRun(id, { kind: "chat", text: NOTE, retry: true })).status, 409, "a complete answer stays");
+		});
+
+		// Stopped: Try again replaces it too.
+		const stopGate = held();
+		await withEngine(scripted(async () => { await stopGate.gate; return fauxAssistantMessage("never"); }), async () => {
+			const runId = await start(id, { kind: "chat", text: NOTE, message: "Then what?" });
+			assert.equal(nb.abortNotebookRun(runId), true);
+			stopGate.release();
+			await nb.notebookRunIdle();
+		});
+		assert.equal((await companion(id)).chat.at(-1)!.state, "stopped");
+		await withEngine(scripted(() => fauxAssistantMessage("It cools.")), async () => { await start(id, { kind: "chat", text: NOTE, retry: true }); await nb.notebookRunIdle(); });
+		assert.deepEqual((await companion(id)).chat.slice(2).map((m) => [m.author, m.text, m.state ?? "ok"]), [["user", "Then what?", "ok"], ["ai", "It cools.", "ok"]]);
+	}));
+});
+
 describe("tenancy", () => {
 	it("a run belongs to its tenant: invisible and unstoppable from another", async () => {
 		const gate = held();

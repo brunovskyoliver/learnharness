@@ -62,8 +62,8 @@ Format: `- [ ] T### [P?] [US?] description (paths)`. All Notebook CSS values com
 
 ## Phase 8: US6 Note chat (P2)
 
-- [ ] T035 [US6] `note-chat.tsx` right panel over dimmed page, opening line, context label, starters fill, streaming answers, persisted history, Escape/focus return
-- [ ] T036 [US6] Tests: Playwright `chat.spec.ts`; agent test that chat context has the whole note, threads, instruction
+- [X] T035 [US6] `note-chat.tsx` right panel over dimmed page, opening line, context label, starters fill, streaming answers, persisted history, Escape/focus return
+- [X] T036 [US6] Tests: Playwright `chat.spec.ts`; agent test that chat context has the whole note, threads, instruction
 
 ## Phase 9: US7 Just my words and export (P2)
 
