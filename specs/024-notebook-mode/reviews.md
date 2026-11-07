@@ -65,3 +65,59 @@ selection-menu, toolbar, footer - sentence case, not Title Case → kept (Riddle
 | Straight apostrophes in strings | web-design-guidelines | Fixed (owner asked): ’ in every Notebook string and ui-contract.md |
 | Placeholder without "…", sentence case, no text-wrap balance | web-design-guidelines | Kept by design (Riddled); approved by owner 2026-11-07 |
 | No theme-color for Notebook | web-design-guidelines | Deferred (phones out of focus); approved by owner 2026-11-07 |
+
+## Re-review 2026-11-07 (after contrast raise)
+
+Scope and authority as above, on 930a170 (the tighter frame match: no clamp, offsets, hover tether, selection menu rows) plus the Markdown subset and math from the T047 pass (c8595e5). Run in order: `impeccable` (audit), then `web-design-guidelines` (guidelines fetched fresh from vercel-labs/web-interface-guidelines). Evidence: `impeccable detect --json` over components/notebook and app/(app)/notebook, reading every file changed since 729f10c, token contrast computed from notebook.css, and the compare re-run.
+
+### impeccable audit
+
+| # | Dimension | Score | Key finding |
+|---|---|---|---|
+| 1 | Accessibility | 3 | The AI's math rendered as KaTeX HTML only, so a screen reader read glyph fragments; fixed |
+| 2 | Performance | 3 | Unchanged: transform/opacity/stroke animation only; layout reads batched in layout effects |
+| 3 | Responsive | 3 | Unchanged: Marks only on phones, 44px coarse targets; tap behaviour fixed under web-design-guidelines |
+| 4 | Theming | 4 | Every colour a token in light, dark and system; contrast tokens pass (tests/notebook-contrast.test.ts) |
+| 5 | Implementation integrity | 4 | One product-specific system; the detector's only findings are Riddled's own easings |
+| **Total** | | **17/20** | **Good** (16/20 before) |
+
+Findings:
+
+- **[P1] AI math had no accessible text.** `ink-text.tsx` rendered `$…$` / `$$…$$` with KaTeX `output: "html"`; with no MathML a screen reader reads the HTML's glyph spans. Fixed: `output: "htmlAndMathml"` (katex.min.css, loaded by the app layout, hides the MathML visually), as Study's rehype-katex does; render-notebook-reading asserts the `<math>` with its TeX annotation.
+- **[P2] A faded note reached by the keyboard stayed at .38.** While a thread is open the other notes fade (DESIGN.md, frame); the pointer un-fades the note it is on, the keyboard did not, so a focused note read at ≈2.2:1. Fixed: `[data-faded="true"]:focus-within { opacity: 1 }`; notebook-contrast asserts it.
+- **[P3, kept by design] Faded notes at rest are ≈2.2:1 light / 3.1:1 dark** (`--riddle` at .38). DESIGN.md "others fade to .38" and frame margin-thread set this as the not-current state while one thread is open; they return to full strength under the pointer and (now) on focus, and the open thread itself is at full contrast. Changing the .38 would override DESIGN.md, so it stays; listed for the owner below.
+- **[P3, kept by design, approved 2026-11-07] Detector: 8 × bounce easing**, the same eight as the first review (Riddled's curves, visual-reference §10.1, §10.4, §16.3, §21).
+- Checked and passing: the hovered note's spine-only tether is `aria-hidden` decoration; removing the clamp leaves the collapsed note one button whose accessible name is the whole question; the open thread's new 8px bottom space sits inside its focus ring; reduced motion still draws tethers at once.
+
+### web-design-guidelines
+
+```text
+## app/(app)/notebook/notebook.css
+notebook.css - buttons, links, menu items, radios, tabs: no touch-action: manipulation → fixed (taps act at once)
+notebook.css - no intentional -webkit-tap-highlight-color (browser blue flash on paper) → fixed: ink at 8%
+notebook.css:1104 - corner hint's running cost changes in place without tabular-nums → fixed
+## components/notebook/chrome.tsx
+chrome.tsx:22 - wordmark name machine-translatable → fixed: translate="no"
+## components/notebook/ink-text.tsx
+ink-text.tsx:58 - KaTeX html-only output (no text alternative) → fixed (see impeccable P1)
+## copy (overlay-sidebar.tsx, reviewers.tsx, instruction-line.tsx, note-chat.tsx)
+placeholders without "…", sentence case, no text-wrap balance on the title → kept (Riddled's strings and ui-contract; approved by owner 2026-11-07)
+## theme
+<meta name="theme-color"> not set for Notebook → kept (phones out of focus; approved by owner 2026-11-07)
+## components/notebook/*.tsx (everything else)
+✓ pass (every button typed and named, decorative icons aria-hidden, no div/span click handlers, no transition: all, no autoFocus, no onPaste, live regions for runs, captions and saves, Undo on Resolve / Dismiss / Delete, overscroll contained in sidebar, chat, settings and dialogs)
+```
+
+### Resolution
+
+| Finding | Source | Resolution |
+|---|---|---|
+| AI math without accessible text | impeccable | Fixed (ink-text.tsx, MathML) + test |
+| Faded note stays faded on keyboard focus | impeccable | Fixed (notebook.css `:focus-within`) + test |
+| No `touch-action: manipulation`, default tap highlight | web-design-guidelines | Fixed (notebook.css) + test |
+| Running cost without tabular digits | web-design-guidelines | Fixed (notebook.css) + test |
+| Wordmark name translatable | web-design-guidelines | Fixed (chrome.tsx) + test |
+| Faded notes ≈2.2:1 at rest | impeccable | Kept: DESIGN.md's .38 fade (Riddled's); un-fades on pointer and focus |
+| Bounce easings; placeholders, sentence case, title balance; theme-color | both | Kept by design, approved by owner 2026-11-07 |
+
+No open findings remain. Every finding is fixed except the items kept by design: the approved ones above, and one new one for the owner to confirm or change, the .38 fade of the other notes while a thread is open (DESIGN.md's value; it now lifts to full strength on keyboard focus as it already did under the pointer).

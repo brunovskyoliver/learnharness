@@ -427,8 +427,9 @@ All values measured ≈ (frames inline-sketch-and-selection, sheet-06 tile 9, sh
 |---|---|
 | Position | in the right margin, top aligned with the selection's line (x≈1356 for a column ending ≈1265) |
 | Size | ≈236 × 233px |
+| Measured 2026-11-07 (frame inline-sketch-and-selection, viewport px) | card left x 1228.5 (ours 1228.5); row tops: the filled Text button 212 (spanning x 1237-1264, y 213-242, so ≈27.5 × 29.5, the eight styles sharing the width), B 266, the inks 300, actions 341, 377, 412 (pitch ≈35.5). Ours lands each within 1px (MENU_RISE 8 above the selection's text box, styles 29.5px tall, actions 35.5px) |
 | Surface | `--paper`, `--lift` shadow plus 1px `--rule` ring (likely `shadow-[var(--lift),0_0_0_1px_var(--rule)]`), radius ≈12px |
-| Row 1 (blocks) | T, H1, H2, H3, quote, code, bullet list, numbered list. Active "T" is a filled `--ink` rounded square (≈26px, radius ≈6px) with `--paper` glyph |
+| Row 1 (blocks) | T, H1, H2, H3, quote, code, bullet list, numbered list. Active "T" is a filled `--ink` rounded square (≈26px in the contact sheet; ≈27.5 × 29.5px in the named still, radius ≈6px) with `--paper` glyph |
 | Row 2 (marks) | B, I, U, S, `<>`, ≈16px glyphs `--graphite` |
 | Row 3 (colours) | 8 "A" glyphs: default ink, then gray, brown, red, orange, green, blue, purple (text colours §1.2) |
 | Actions | "Riddle this" (shortcut hint at right, e.g. "⌘↵"), "Ask Riddled" (hint "Your own question"), "Visualize" (hint "See it drawn out"); labels ≈14px `--ink`, hints ≈10.5px `--faint`, row pitch ≈35px, hover row fill `--shelf` |
