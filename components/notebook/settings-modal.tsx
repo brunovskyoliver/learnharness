@@ -14,7 +14,7 @@ import { Dialog, RadioGroup, Switch, Tabs } from "radix-ui";
 import { useId, useRef, type ReactNode } from "react";
 import type { NotebookAppearance, NotebookInk, NotebookLayout, NotebookLettering, NotebookPace, NotebookStartMode, NotebookTextSize } from "@/src/core";
 import { ReviewersPage } from "./reviewers";
-import { useNotebook, type NotebookPreferences, type SettingsTab } from "./nb-shared";
+import { useArrowChoice, useNotebook, type NotebookPreferences, type SettingsTab } from "./nb-shared";
 
 // ─── the words (ui-contract "Settings modal") ───────────────────────────────
 
@@ -170,11 +170,7 @@ function CardGroup<T extends string>({ field, label, value, columns, onChange, c
 	children: ReactNode;
 }) {
 	const id = useId();
-	// An arrow key moves to a card and chooses it (WAI-ARIA radio). Radix moves
-	// the focus a tick after the keydown and forgets the arrow on keyup, so a
-	// quick press (or a fast typist) can land without choosing; the group
-	// keeps the arrow until the focus it caused arrives.
-	const arrowed = useRef(false);
+	const arrows = useArrowChoice(value, onChange);
 	return (
 		<section className="nb-set-section" data-section={field}>
 			<h3 id={id} className="nb-set-label">{label}</h3>
@@ -184,14 +180,7 @@ function CardGroup<T extends string>({ field, label, value, columns, onChange, c
 				style={{ "--cols": columns } as React.CSSProperties}
 				value={value}
 				onValueChange={(next) => onChange(next as T)}
-				onKeyDownCapture={(event) => { arrowed.current = event.key.startsWith("Arrow"); }}
-				onPointerDownCapture={() => { arrowed.current = false; }}
-				onFocusCapture={(event) => {
-					const next = (event.target as HTMLElement).getAttribute("value");
-					const byArrow = arrowed.current;
-					arrowed.current = false;
-					if (byArrow && next && next !== value) onChange(next as T);
-				}}
+				{...arrows}
 				loop
 				data-testid={`nb-set-${field}`}
 			>

@@ -37,7 +37,9 @@ Study's last location: `localStorage["lh.study.lastPath"]` (per browser; written
 NoteCompanion = {
   v: 1;                                 // future version → refused read-only, never rewritten
   pageId: string;
-  mode?: "thinks" | "ask";              // absent → settings.startMode
+  mode?: "thinks" | "ask";              // stamped from settings.startMode when the note is made in Notebook
+                                        // or first opened there; absent only for pages never opened in Notebook
+                                        // (read as settings.startMode). Changing the setting never flips a stamped note.
   instruction: string;                  // 0..500 chars
   reviewerId?: string;                  // absent or unknown → Plain reader
   threads: Thread[];

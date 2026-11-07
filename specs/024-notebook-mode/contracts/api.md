@@ -5,7 +5,7 @@ All routes wrapped in `withTenant`; JSON; ids `^[A-Za-z0-9_-]+$`. Errors `{error
 ## Companion
 
 - `GET /api/notebook/:pageId` → `{ companion: NoteCompanion, effective: { mode }, readOnly?: "future-version" | null, setAside?: boolean }`. 404 if the page is not a live or trashed page.
-- `PATCH /api/notebook/:pageId` `{ mode?, instruction?, reviewerId? }` → `{ companion }`.
+- `PATCH /api/notebook/:pageId` `{ mode?, stampMode?, instruction?, reviewerId? }` → `{ companion }`. `stampMode` sets the mode only when the companion has none (a note's first open in Notebook, "New notes start in"); a mode already there stays.
 
 - `GET /api/notebook/summary` → `{ openThreads: { [pageId]: number } }`: live pages whose companion has open threads, with the count (the sidebar's dots; phase 10). Read-only: damaged or newer-version files are skipped, not set aside.
 

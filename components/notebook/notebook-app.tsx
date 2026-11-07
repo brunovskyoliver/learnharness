@@ -13,6 +13,7 @@ import { flushSync } from "react-dom";
 import { writeSettingsKey } from "@/components/interface-switch";
 import type { SaveStatus } from "@/components/library/page-draft";
 import { CornerHint } from "./corner-hint";
+import { LinksPanel } from "./links-panel";
 import { readJustMyWords, writeJustMyWords } from "./nb-actions";
 import { isMod, NotebookContext, useIsMac, type NoteCommands, type NotebookPreferences, type NotebookReviewerView, type NotebookShared, type ReadingStatus, type SettingsTab, type SidebarOpen } from "./nb-shared";
 import { MenuGlyph, Wordmark } from "./chrome";
@@ -124,8 +125,12 @@ export function NotebookApp({ note, fontClasses, preferences, reviewers = [], la
 	// From a menu item or a sidebar row: the menu gives the focus back first, so closing returns it there.
 	const openSettings = useCallback((tab: SettingsTab = "customize") => { window.setTimeout(() => setSettings(tab), 0); }, []);
 	const openReviewers = useCallback(() => openSettings("reviewers"), [openSettings]);
-	// TODO(phase 11, T044): the Links panel opens here.
-	const openLinks = useCallback(() => setSidebar(null), []);
+	// The Links panel (sidebar footer): the sidebar closes and gives the focus to ☰, where it comes back after.
+	const [linksOpen, setLinksOpen] = useState(false);
+	const openLinks = useCallback(() => {
+		setSidebar(null);
+		window.setTimeout(() => setLinksOpen(true), 0);
+	}, []);
 
 	// Just my words: read after mount (the server can't see this browser's choice).
 	const [plain, setPlain] = useState(false);
@@ -197,11 +202,11 @@ export function NotebookApp({ note, fontClasses, preferences, reviewers = [], la
 	};
 
 	const shared = useMemo<NotebookShared>(() => ({
-		root, mac, noteId: note.id, startMode: prefs.startMode, reviewers: reviewerList, saveReviewers, openReviewers, openSettings, openLinks, hosted, account,
+		root, mac, noteId: note.id, startMode: prefs.startMode, reviewers: reviewerList, saveReviewers, openReviewers, openSettings, openLinks, linksOpen, hosted, account,
 		preferences: prefs, updatePreferences, preferencesFailed, retryPreferences,
 		sidebar, openSidebar, closeSidebar, saveStatus, setSaveStatus, library, libraryFailed, refreshLibrary,
 		reading, setReading, announce, plain, togglePlain, copyNote, openExport, noteCommands,
-	}), [root, mac, note.id, reviewerList, saveReviewers, openReviewers, openSettings, openLinks, hosted, account, prefs, updatePreferences, preferencesFailed, retryPreferences, sidebar, openSidebar, closeSidebar, saveStatus, library, libraryFailed, refreshLibrary, reading, announce, plain, togglePlain, copyNote, openExport]);
+	}), [root, mac, note.id, reviewerList, saveReviewers, openReviewers, openSettings, openLinks, linksOpen, hosted, account, prefs, updatePreferences, preferencesFailed, retryPreferences, sidebar, openSidebar, closeSidebar, saveStatus, library, libraryFailed, refreshLibrary, reading, announce, plain, togglePlain, copyNote, openExport]);
 
 	return (
 		<NotebookContext.Provider value={shared}>
@@ -238,6 +243,7 @@ export function NotebookApp({ note, fontClasses, preferences, reviewers = [], la
 					<NoteView key={note.id} note={note} />
 				</div>
 				<SettingsModal tab={settings} onTabChange={setSettings} />
+				<LinksPanel open={linksOpen} onOpenChange={setLinksOpen} pageId={note.id} noteName={library?.items.find((item) => item.id === note.id)?.name ?? note.name} returnFocus={menuButton} />
 				{prefs.pointerInk && <PointerInk />}
 				<CornerHint />
 				<p className="nb-sr-only" aria-live="polite" data-testid="nb-live"><span key={spoken.n}>{spoken.text}</span></p>

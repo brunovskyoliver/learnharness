@@ -68,6 +68,19 @@ describe("companion", () => {
 		await ok(await companionRoute.PATCH(req("PATCH", { mode: "ask" }), ctx({ pageId: "lib_nope" })), 404);
 	});
 
+	it("PATCH stampMode gives a note without a mode the start mode and never changes a mode already there", async () => {
+		const id = await page();
+		const stamped = await ok(await companionRoute.PATCH(req("PATCH", { stampMode: "ask" }), ctx({ pageId: id })));
+		assert.equal(stamped.companion.mode, "ask");
+		// "New notes start in" changing later leaves this note alone.
+		const again = await ok(await companionRoute.PATCH(req("PATCH", { stampMode: "thinks" }), ctx({ pageId: id })));
+		assert.equal(again.companion.mode, "ask");
+		const read = await ok(await companionRoute.GET(req("GET"), ctx({ pageId: id })));
+		assert.equal(read.companion.mode, "ask");
+		await ok(await companionRoute.PATCH(req("PATCH", { stampMode: null }), ctx({ pageId: id })), 400);
+		await ok(await companionRoute.PATCH(req("PATCH", { stampMode: "loud" }), ctx({ pageId: id })), 400);
+	});
+
 	it("a newer companion version reads empty and refuses writes with 409", async () => {
 		const id = await page();
 		fs.mkdirSync(path.join(PATHS.library, "notebook"), { recursive: true });
@@ -215,6 +228,8 @@ describe("the note Notebook opens", () => {
 				const pages = (await stores.libraryStore.list()).filter((item) => item.kind === "page");
 				assert.deepEqual(pages.map((p) => p.name), [UNTITLED_NOTE]);
 				assert.equal((made as { redirectTo: string }).redirectTo, `/notebook/${pages[0]!.id}`);
+				// The new note starts in the start mode and keeps it.
+				assert.equal((await stores.notebookStore.read(pages[0]!.id)).companion.mode, "thinks");
 				const older = await page("Older");
 				await new Promise((r) => setTimeout(r, 5));
 				const newer = await page("Newer");

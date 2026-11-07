@@ -117,9 +117,13 @@ test.describe("Notebook: sidebar and settings", () => {
 		await page.keyboard.press("Escape");
 		await expect(settings).toBeHidden();
 
-		// Links: Phase 11's panel; for now the row closes the sidebar.
+		// Links: the sidebar closes and the Links panel opens; Escape gives the focus back to ☰.
 		await page.getByTestId("nb-side-links").click();
 		await expect(page.getByTestId("nb-sidebar")).toBeHidden();
+		await expect(page.getByTestId("nb-links-panel")).toBeVisible();
+		await page.keyboard.press("Escape");
+		await expect(page.getByTestId("nb-links-panel")).toBeHidden();
+		await expect(page.getByTestId("nb-menu-button").filter({ visible: true })).toBeFocused();
 
 		// Export this note: the sidebar closes and the dialog opens.
 		await openSidebar(page);
@@ -129,7 +133,7 @@ test.describe("Notebook: sidebar and settings", () => {
 		await page.keyboard.press("Escape");
 		await expect(page.getByTestId("nb-export-dialog")).toBeHidden();
 
-		// Make flashcards: Study's card drafting for this note.
+		// Make flashcards: Study's card drafting for this whole note (saved first).
 		await openSidebar(page);
 		await page.getByTestId("nb-side-flashcards").click();
 		await expect(page).toHaveURL(new RegExp(`/review\\?make=page%3A${id}$`), { timeout: 60_000 });
@@ -234,6 +238,41 @@ test.describe("Notebook: sidebar and settings", () => {
 		await page.getByTestId("nb-new-note").click();
 		await expect(page).not.toHaveURL(new RegExp(id), { timeout: 60_000 });
 		await expect(page.getByTestId("nb-mode-picker").filter({ visible: true })).toHaveAttribute("data-mode", "ask", { timeout: 60_000 });
+	});
+
+	test("New notes start in: only new notes take it; an older note keeps the mode it opened with", async ({ page, request }) => {
+		const companionMode = async (id: string) => ((await (await request.get(`/api/notebook/${id}`)).json()) as { companion: { mode?: string } }).companion.mode;
+		// A page made elsewhere and never opened here has no mode; its first open here stamps the start mode.
+		const old = await seededNote(request, "Older", []);
+		expect(await companionMode(old)).toBeUndefined();
+		await open(page, old);
+		await expect(page.getByTestId("nb-mode-picker")).toHaveAttribute("data-mode", "thinks");
+		await expect.poll(() => companionMode(old)).toBe("thinks");
+
+		const dialog = await openSettings(page);
+		await dialog.getByTestId("nb-set-startMode-ask").click();
+		await expect.poll(async () => (await stored(request)).startMode).toBe("ask");
+		await page.keyboard.press("Escape");
+		await page.keyboard.press("Escape");
+
+		// The open note and, after a reload, the older note keep "Thinks with you".
+		await page.reload();
+		await expect(page.getByTestId("nb-editor").filter({ visible: true })).toBeVisible({ timeout: 60_000 });
+		await expect(page.getByTestId("nb-mode-picker").filter({ visible: true })).toHaveAttribute("data-mode", "thinks");
+		expect(await companionMode(old)).toBe("thinks");
+
+		// A new note from the sidebar starts in "When you ask", and keeps it when the setting changes back.
+		await openSidebar(page);
+		await page.getByTestId("nb-new-note").click();
+		await expect(page).not.toHaveURL(new RegExp(old), { timeout: 60_000 });
+		await expect(page.getByTestId("nb-editor").filter({ visible: true })).toBeVisible({ timeout: 60_000 });
+		const made = decodeURIComponent(new URL(page.url()).pathname.split("/").pop()!);
+		await expect(page.getByTestId("nb-mode-picker").filter({ visible: true })).toHaveAttribute("data-mode", "ask");
+		await expect.poll(() => companionMode(made)).toBe("ask");
+		await putSection(request, "notebook", { startMode: "thinks" });
+		await page.reload();
+		await expect(page.getByTestId("nb-editor").filter({ visible: true })).toBeVisible({ timeout: 60_000 });
+		await expect(page.getByTestId("nb-mode-picker").filter({ visible: true })).toHaveAttribute("data-mode", "ask");
 	});
 
 	test("reading pace: Regular reads after about 1.6 s, Slow after about 3.2 s", async ({ page, request }) => {

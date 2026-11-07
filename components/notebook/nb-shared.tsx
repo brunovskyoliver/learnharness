@@ -5,7 +5,7 @@
  * dialogs portal into it so they keep the Notebook tokens), the platform's
  * key glyphs, the sidebar's open state and the note's save state.
  */
-import { createContext, useContext, useSyncExternalStore, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { createContext, useContext, useRef, useSyncExternalStore, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { SaveStatus } from "@/components/library/page-draft";
 import type { LibraryList } from "./use-notebook-data";
 import type { NotebookAppearance, NotebookInk, NotebookLayout, NotebookLettering, NotebookPace, NotebookStartMode, NotebookTextSize } from "@/src/core";
@@ -48,11 +48,10 @@ export interface NotebookShared {
 	openReviewers: () => void;
 	/** Opens the settings modal (Mod+,), on Customize unless told otherwise. */
 	openSettings: (tab?: SettingsTab) => void;
-	/**
-	 * Links (sidebar footer): the hook Phase 11's Links panel takes over.
-	 * Until then it only closes the sidebar (TODO phase 11, T044).
-	 */
+	/** Links (sidebar footer): closes the sidebar and opens the Links panel. */
 	openLinks: () => void;
+	/** The Links panel is open (the page slides aside as for the chat). */
+	linksOpen: boolean;
 	/** Hosted (signed-in) mode: the footer offers Sign out. */
 	hosted: boolean;
 	account: string | null;
@@ -88,7 +87,7 @@ export interface NotebookShared {
 	noteCommands: { current: NoteCommands | null };
 }
 
-export interface NoteCommands { copy: () => void; openExport: () => void }
+export interface NoteCommands { copy: () => void; openExport: () => void; makeFlashcards: () => void }
 
 const noop = () => {};
 
@@ -106,6 +105,7 @@ export const DEFAULT_SHARED: NotebookShared = {
 	openReviewers: noop,
 	openSettings: noop,
 	openLinks: noop,
+	linksOpen: false,
 	hosted: false,
 	account: null,
 	preferences: DEFAULT_PREFERENCES,
@@ -168,3 +168,24 @@ export const isMod = (event: KeyboardEvent | ReactKeyboardEvent, mac: boolean): 
 /** Names the Library gives a new note; the title shows them as its placeholder. */
 export const UNTITLED_NOTE = "Untitled note";
 export const isUntitledName = (name: string): boolean => /^Untitled note( \(\d+\))?$/.test(name);
+
+/**
+ * A radio group of cards where an arrow key moves and chooses (WAI-ARIA
+ * radio). Radix moves the focus a tick after the keydown and forgets the
+ * arrow on keyup, so a quick press (or a fast typist) could land without
+ * choosing; these handlers keep the arrow until the focus it caused
+ * arrives. Spread them on `RadioGroup.Root`.
+ */
+export function useArrowChoice<T extends string>(value: T, onChange: (value: T) => void) {
+	const arrowed = useRef(false);
+	return {
+		onKeyDownCapture: (event: ReactKeyboardEvent) => { arrowed.current = event.key.startsWith("Arrow"); },
+		onPointerDownCapture: () => { arrowed.current = false; },
+		onFocusCapture: (event: ReactFocusEvent) => {
+			const next = (event.target as HTMLElement).getAttribute("value");
+			const byArrow = arrowed.current;
+			arrowed.current = false;
+			if (byArrow && next && next !== value) onChange(next as T);
+		},
+	};
+}

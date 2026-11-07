@@ -16,7 +16,7 @@ import { usePageDraft } from "@/components/library/use-page-draft";
 import { copyNoteMarkdown, notebookHref, type NoteMode, type WikiResolution } from "@/src/core";
 import { ExportDialog } from "./export-dialog";
 import { InstructionLine, type InstructionHandle } from "./instruction-line";
-import { copyText, renameNote } from "./nb-actions";
+import { copyText, flashcardsHref, renameNote } from "./nb-actions";
 import { NoteChat } from "./note-chat";
 import { NoteBridge } from "./nb-plugins";
 import { isUntitledName, useNotebook } from "./nb-shared";
@@ -145,8 +145,16 @@ export const TitleField = forwardRef<TitleHandle, {
 	);
 });
 
+/** Notes shown in this document so far (the first is the page load); a repeat of the last one is the same showing. */
+const notesShown: string[] = [];
+function openedWithin(id: string): boolean {
+	if (notesShown.at(-1) !== id) notesShown.push(id);
+	return notesShown.length > 1;
+}
+
 export function NoteView({ note }: { note: { id: string; name: string } }) {
 	const nb = useNotebook();
+	const router = useRouter();
 	const title = useRef<TitleHandle>(null);
 	const body = useRef<NoteEditorHandle>(null);
 	const { companion, mode, patch, reload } = useCompanion(note.id, nb.startMode);
@@ -179,9 +187,13 @@ export function NoteView({ note }: { note: { id: string; name: string } }) {
 				void copyText(markdown).then((ok) => announce(ok ? "Copied." : "The note could not be copied. The browser refused."));
 			},
 			openExport: () => setExportOpen(true),
+			// The whole note, saved first so the drafting panel reads what he sees.
+			makeFlashcards: () => {
+				void (draft.current?.save() ?? Promise.resolve()).catch(() => { /* the server's copy is read */ }).then(() => router.push(flashcardsHref(note.id)));
+			},
 		};
 		return () => { noteCommands.current = null; };
-	}, [noteCommands, announce, reviewers, plain]);
+	}, [noteCommands, announce, reviewers, plain, router, note.id]);
 	// The button comes back a render after the line hides: focus it once it is there.
 	const refocused = useRef(0);
 	useEffect(() => {
@@ -190,12 +202,27 @@ export function NoteView({ note }: { note: { id: string; name: string } }) {
 		instructionsButton.current.focus();
 	}, [refocusInstructions, instructionShown]);
 
+	// Opening another note (sidebar, Links, a [[link]]) mounts this view anew: a focus
+	// left on nothing goes to the title of an untitled note, else to the start of its text.
+	useEffect(() => {
+		if (!openedWithin(note.id)) return;
+		let tries = 0;
+		const timer = window.setInterval(() => {
+			const active = document.activeElement;
+			if (active && active !== document.body) { window.clearInterval(timer); return; }
+			if (isUntitledName(note.name)) { title.current?.focusEnd(); window.clearInterval(timer); return; }
+			if (body.current) { body.current.focusStart(); window.clearInterval(timer); return; }
+			if (++tries > 50) window.clearInterval(timer);
+		}, 100);
+		return () => window.clearInterval(timer);
+	}, [note.id, note.name]);
+
 	// The live name: the Library list follows renames made anywhere.
 	const listed = nb.library?.items.find((item) => item.id === note.id);
 	const name = listed?.name ?? note.name;
 
 	return (
-		<main className="nb-page" data-testid="nb-page" data-chat={chatOpen ? "" : undefined}>
+		<main className="nb-page" data-testid="nb-page" data-chat={chatOpen || nb.linksOpen ? "" : undefined}>
 			<div ref={setColumn} className="nb-column" data-testid="nb-column">
 				<ToolbarRow
 					reviewers={nb.reviewers}

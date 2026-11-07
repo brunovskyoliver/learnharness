@@ -17,7 +17,7 @@ import { ReadingMarks } from "./blot";
 import { InlineReplies } from "./inline-reply";
 import { Margin, rangeLines } from "./margin";
 import { marginWidths, readingHoldMs, type PassageLine } from "./nb-geometry";
-import { flashcardsHref } from "./nb-actions";
+import { flashcardsHref, passageFlashcardsHref } from "./nb-actions";
 import { anchorRange, quoteRange, rangeText, type AnchorMark, type NoteBridge, type QuestionMark } from "./nb-plugins";
 import { useNotebook } from "./nb-shared";
 import { useLayoutTick } from "./use-layout-tick";
@@ -140,9 +140,14 @@ export function NoteThinking({ bridge, column, pageId, companion, reload, mode, 
 	useEffect(() => {
 		if (readOnly) return;
 		bridge.selectionAction = (action, range) => {
-			if (action === "flashcards") { router.push(flashcardsHref(pageId)); return; }
 			const text = bridge.text();
 			const span = text ? rangeText(text, range.from, range.to) : null;
+			if (action === "flashcards") {
+				// Only the selected words go to the drafting panel; nothing is sent until he chooses Generate there.
+				const words = text && span ? text.text.slice(span.start, span.end).trim() : "";
+				router.push(words ? passageFlashcardsHref(pageId, words) : flashcardsHref(pageId));
+				return;
+			}
 			if (!text || !span) return;
 			const anchor = anchorForSpan(text.text, span.start, span.end);
 			if (action === "ask") apiRef.current.ask(anchor);

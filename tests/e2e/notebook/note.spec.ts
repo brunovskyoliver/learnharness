@@ -106,7 +106,8 @@ test.describe("Notebook: a note on paper", () => {
 				await noHorizontalOverflow(page);
 				const column = await page.getByTestId("nb-column").boundingBox();
 				expect(column).not.toBeNull();
-				if (width === 1440) expect(Math.round(column!.x)).toBe(390);
+				// The 690px column, centred (phase 11).
+				if (width === 1440) expect(Math.round(column!.x)).toBe(375);
 				else expect(column!.x).toBeGreaterThanOrEqual(16);
 				// Scroll tracks are hidden; scrolling still works.
 				expect(await root.evaluate((el) => getComputedStyle(el).scrollbarWidth)).toBe("none");

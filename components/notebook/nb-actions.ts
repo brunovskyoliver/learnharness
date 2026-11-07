@@ -5,7 +5,8 @@
  * renamed note. Each steps past a taken name the way the Library does
  * (the server's `suggestedName`, "Name (2)").
  */
-import { EXPORT_FORMATS, type ExportFormat, type LibraryFolder, type LibraryItem, type NotebookThread, type ThreadAnchor } from "@/src/core";
+import { CARD_PASSAGE_KEY, EXPORT_FORMATS, type CardPassageHandoff, type ExportFormat, type LibraryFolder, type LibraryItem, type NotebookThread, type NoteMode, type ThreadAnchor } from "@/src/core";
+import { stampMode } from "./use-notebook-data";
 import { UNTITLED_NOTE } from "./nb-shared";
 
 type Outcome<T> = { ok: T } | { error: string };
@@ -27,15 +28,18 @@ async function stepping<T>(send: (name: string) => Promise<Response>, name: stri
 
 const post = (url: string, body: unknown) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
-/** A new empty page called `name` (or "Untitled note"). */
-export function createNote(name = UNTITLED_NOTE, folderId?: string | null): Promise<Outcome<LibraryItem>> {
+/** A new empty page called `name` (or "Untitled note"), in the mode new notes start in when one is given. */
+export async function createNote(name = UNTITLED_NOTE, folderId?: string | null, startMode?: NoteMode): Promise<Outcome<LibraryItem>> {
 	const wanted = name.trim() || UNTITLED_NOTE;
-	return stepping(
+	const made = await stepping(
 		(n) => post("/api/library/pages", { name: n, content: "", ...(folderId ? { folderId } : {}) }),
 		wanted,
 		(body) => (body as { item?: LibraryItem }).item,
 		"The note could not be created.",
 	);
+	// "New notes start in" belongs to the note from now on; a failed stamp is made on its first open instead.
+	if ("ok" in made && startMode) await stampMode(made.ok.id, startMode);
+	return made;
 }
 
 export function createFolder(name = "New folder"): Promise<Outcome<LibraryFolder>> {
@@ -149,11 +153,24 @@ export async function startPassageRun(pageId: string, kind: "think" | "visualize
 }
 
 /**
- * "Make flashcards" (the hook Phase 11 wires to feature 021's flow): for now
- * Study's card drafting for this whole page, the door feature 023 opened
- * (`/review?make=page:<id>`). The passage is not passed on yet.
+ * "Make flashcards" (feature 021's flow): Study's card drafting, which says
+ * what would be sent and sends nothing until he chooses Generate drafts
+ * there. From the footer the whole note (`/review?make=page:<id>`, feature
+ * 023's door); from the selection menu only the passage, handed over in
+ * this tab's sessionStorage as the PDF reader does (`/review?make=passage`).
  */
 export const flashcardsHref = (pageId: string): string => `/review?make=${encodeURIComponent(`page:${pageId}`)}`;
+
+/** Leaves the passage for the Make flashcards panel and gives its address (the whole note when the browser refuses storage). */
+export function passageFlashcardsHref(pageId: string, text: string): string {
+	try {
+		const handoff: CardPassageHandoff = { itemId: pageId, text };
+		sessionStorage.setItem(CARD_PASSAGE_KEY, JSON.stringify(handoff));
+		return "/review?make=passage";
+	} catch {
+		return flashcardsHref(pageId);
+	}
+}
 
 // ─── note chat (US6) ────────────────────────────────────────────────────────
 

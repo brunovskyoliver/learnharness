@@ -55,7 +55,7 @@ test.describe("Notebook: the selection menu and sketches", () => {
 		const box = (await menu.boundingBox())!;
 		expect(box.x).toBeGreaterThan(column.x + column.width);
 		await expect(menu.getByRole("button", { name: "Text" })).toHaveAttribute("aria-pressed", "true");
-		for (const name of ["Heading 1", "Heading 2", "Bold", "Italic", "Underline", "Strikethrough", "Code", "Default ink", "Purple ink", "Think about this", "Ask about this", "Visualize", "Make flashcards"]) {
+		for (const name of ["Heading 1", "Heading 2", "Heading 3", "Heading 4", "Quote", "Bulleted list", "Numbered list", "Bold", "Italic", "Underline", "Strikethrough", "Code", "Default ink", "Purple ink", "Think about this", "Ask about this", "Visualize", "Make flashcards"]) {
 			await expect(menu.getByRole("button", { name, exact: true })).toBeVisible();
 		}
 
@@ -223,5 +223,46 @@ test.describe("Notebook: the selection menu and sketches", () => {
 		await expect(sketch.getByTestId("nb-sketch-larger")).toBeVisible();
 		const animations = await sketch.locator("svg .nb-sketch-line").first().evaluate((el) => getComputedStyle(el).animationName);
 		expect(animations).toBe("none");
+	});
+
+	test("row 1 makes a heading, a quote and lists; Text lifts the block back to a paragraph", async ({ page, request }) => {
+		const id = await openNote(page, request, "Blocks");
+		const menu = page.getByTestId("nb-selection-menu");
+		const press = async (name: string) => {
+			await page.locator(".nb-prose :is(p, h3)", { hasText: SECOND }).click();
+			await page.keyboard.press("End");
+			await page.keyboard.press("Shift+Home");
+			await expect(menu).toBeVisible();
+			await menu.getByRole("button", { name, exact: true }).click();
+			await expect(menu.getByRole("button", { name, exact: true })).toHaveAttribute("aria-pressed", "true");
+		};
+		await press("Heading 3");
+		await expect.poll(() => stored(request, id), { timeout: 15_000 }).toBe(`${FIRST}\n\n### ${SECOND}\n`);
+		await press("Text");
+		await press("Bulleted list");
+		await expect.poll(() => stored(request, id), { timeout: 15_000 }).toBe(`${FIRST}\n\n- ${SECOND}\n`);
+		await press("Text");
+		await press("Quote");
+		await expect.poll(() => stored(request, id), { timeout: 15_000 }).toBe(`${FIRST}\n\n> ${SECOND}\n`);
+		await press("Text");
+		await expect.poll(() => stored(request, id), { timeout: 15_000 }).toBe(CONTENT);
+	});
+
+	test("Make flashcards hands only the passage to the drafting panel, which sends nothing until Generate", async ({ page, request }) => {
+		const id = await openNote(page, request, "Cards");
+		const generated: string[] = [];
+		page.on("request", (req) => {
+			if (req.method() === "POST" && req.url().endsWith("/api/cards/generate")) generated.push(req.postData() ?? "");
+		});
+		await selectParagraph(page, SECOND);
+		await page.getByTestId("nb-sel-flashcards").click();
+		await expect(page).toHaveURL(/\/review\?make=passage$/, { timeout: 60_000 });
+		await expect(page.getByTestId("make-panel")).toContainText("Make flashcards from a passage of", { timeout: 60_000 });
+		// Only the preview went: it names what would be sent (this passage's characters) and calls no model.
+		expect(generated.length).toBeGreaterThan(0);
+		for (const body of generated) {
+			const sent = JSON.parse(body) as { kind: string; itemId: string; text: string; preview?: boolean };
+			expect(sent).toMatchObject({ kind: "passage", itemId: id, text: SECOND, preview: true });
+		}
 	});
 });

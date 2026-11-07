@@ -244,7 +244,7 @@ export function OverlaySidebar({ returnFocus }: { returnFocus: RefObject<HTMLBut
 	};
 	const startNote = async (name?: string) => {
 		setError(null);
-		const made = await createNote(name);
+		const made = await createNote(name, null, nb.startMode);
 		if ("error" in made) { setError(made.error); return; }
 		void nb.refreshLibrary();
 		go(made.ok.id);
@@ -315,7 +315,11 @@ export function OverlaySidebar({ returnFocus }: { returnFocus: RefObject<HTMLBut
 							onTogglePlain: nb.togglePlain,
 							onSettings: () => nb.openSettings("customize"),
 							onReviewers: () => nb.openSettings("reviewers"),
-							onFlashcards: () => { nb.closeSidebar(); router.push(flashcardsHref(nb.noteId)); },
+							onFlashcards: () => {
+								nb.closeSidebar();
+								if (nb.noteCommands.current) nb.noteCommands.current.makeFlashcards();
+								else router.push(flashcardsHref(nb.noteId));
+							},
 							onLinks: nb.openLinks,
 							onSwitchToStudy: () => {
 								nb.closeSidebar();

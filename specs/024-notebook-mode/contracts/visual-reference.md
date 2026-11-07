@@ -155,7 +155,7 @@ User text weights: body 400, `strong` **620**, title 500, H1/H2 **550**, H3/H4 6
 | Measure | Value |
 |---|---|
 | Column left edge | x=625 in still = **498px** from viewport left at a ~1665px viewport (roughly centred: column centre ≈ 818-832px from viewport left) |
-| Column width | **≈640-680px** (wrap of "…replaced and" ends at x=1259; the next word did not fit). The CSS has a `max-w-[660px]` utility; the landing uses 620px (`.landing-scene` ≥1120px) and 660px max-width below. Exact app value unknown. |
+| Column width | **≈640-680px** (wrap of "…replaced and" ends at x=1259; the next word did not fit). The CSS has a `max-w-[660px]` utility; the landing uses 620px (`.landing-scene` ≥1120px) and 660px max-width below. Exact app value unknown. Ours: **690px** (phase 11), where every frame line break of the list items and the inline reply matches with our fonts (progress.md). |
 | Toolbar row baseline | y≈176 (112px below the viewport top) |
 | Tell-Riddled line | y≈215 (≈39px below toolbar) |
 | Title cap top | y≈255; title to first body line ≈ 62px |

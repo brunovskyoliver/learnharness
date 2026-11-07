@@ -573,6 +573,27 @@ describe("generation", () => {
 		await ok(await api.cardAcceptResponse(req(`/api/cards/${dup.id}/accept`, "POST", { keepBoth: true }), dup.id, T0));
 		assert.equal((await queue()).total, 2, "kept both, on the learner's say");
 	}));
+	it("a note's passage (Notebook) sends only those words and points back at the note; a page number is for PDFs", () => fresh(async () => {
+		const made = await stores.libraryStore.createPage("Entropy", "Entropy rises.\n\nSo tea cools down.", { author: "learner" });
+		assert.ok(!isRefusal(made));
+		const preview = await start({ kind: "passage", itemId: made.item.id, text: "So tea cools down.", preview: true }, 200);
+		assert.equal(preview.label, "a passage of Entropy");
+		assert.equal(preview.chars, "So tea cools down.".length);
+		const log: string[] = [];
+		cardModelOverride.current = scripted(log);
+		try {
+			await start({ kind: "passage", itemId: made.item.id, text: "So tea cools down." });
+			await gen.cardRunIdle();
+		} finally { cardModelOverride.current = undefined; }
+		assert.ok(log[0]!.includes("So tea cools down."));
+		assert.ok(!log[0]!.includes("Entropy rises."), "only the passage is sent");
+		const { drafts } = await ok(await api.cardsListResponse());
+		assert.ok(drafts.length > 0);
+		assert.equal(drafts[0].source.label, "Entropy");
+		// A page number on a note, or none on a PDF, does not fit.
+		assert.equal((await api.cardGenerateResponse(req("/api/cards/generate", "POST", { kind: "passage", itemId: made.item.id, page: 2, text: "x", preview: true }), () => T0)).status, 404);
+		assert.equal((await api.cardGenerateResponse(req("/api/cards/generate", "POST", { kind: "passage", itemId: made.item.id, page: 0, text: "x" }), () => T0)).status, 400);
+	}));
 	it("previews with no model and refuses honestly with none set up, writing nothing", () => fresh(async () => {
 		const made = await stores.libraryStore.createPage("N", "text", { author: "learner" });
 		assert.ok(!isRefusal(made));

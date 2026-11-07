@@ -12,7 +12,7 @@ import { Dialog, RadioGroup, Switch } from "radix-ui";
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
 import { EXPORT_FORMAT_NAME, EXPORT_FORMATS, type ExportFormat } from "@/src/core";
 import { exportNote, readExportChoice, writeExportChoice } from "./nb-actions";
-import { isUntitledName, useNotebook } from "./nb-shared";
+import { isUntitledName, useArrowChoice, useNotebook } from "./nb-shared";
 
 const DESCRIPTION: Record<ExportFormat, string> = {
 	pdf: "To read, print or send.",
@@ -41,6 +41,7 @@ export function ExportDialog({ open, onOpenChange, pageId, noteName, beforeExpor
 	const running = useRef<AbortController | null>(null);
 	const before = useRef<Element | null>(null);
 	const switchId = useId();
+	const arrows = useArrowChoice<ExportFormat>(format, (next) => choose({ format: next }));
 	const hintId = useId();
 
 	// Each opening starts from the last choices made in this browser.
@@ -118,6 +119,8 @@ export function ExportDialog({ open, onOpenChange, pageId, noteName, beforeExpor
 							orientation="horizontal"
 							value={format}
 							onValueChange={(value) => choose({ format: value as ExportFormat })}
+							{...arrows}
+							loop
 						>
 							{EXPORT_FORMATS.map((f) => (
 								<RadioGroup.Item key={f} value={f} className="nb-option-card" data-testid={`nb-export-format-${f}`}>

@@ -3,8 +3,8 @@
 /**
  * The selection menu (feature 024, US4; ui-contract "Selection menu";
  * visual-reference §15): a lifted paper card in the right margin, level
- * with the selection's first line. Rows: the block style (Text, Heading 1,
- * Heading 2), the marks (Bold, Italic, Underline, Strikethrough, Code), the
+ * with the selection's first line. Rows: the block style (Text, Heading 1-4,
+ * Quote, Bulleted list, Numbered list: Riddled's row, frame sheet-06 tile 9), the marks (Bold, Italic, Underline, Strikethrough, Code), the
  * ink colours, then the actions: Think about this, Ask about this,
  * Visualize, Make flashcards. Formatting is his text (it saves like any
  * edit); the actions go to the thinking layer through the bridge.
@@ -18,15 +18,15 @@ import { type Editor } from "@tiptap/core";
 import { NodeSelection } from "@tiptap/pm/state";
 import { useEditorState } from "@tiptap/react";
 import { BubbleMenu, type BubbleMenuProps } from "@tiptap/react/menus";
-import { BoldIcon, CodeXmlIcon, Heading1Icon, Heading2Icon, ItalicIcon, StrikethroughIcon, TypeIcon, UnderlineIcon } from "lucide-react";
+import { BoldIcon, CodeXmlIcon, Heading1Icon, Heading2Icon, Heading3Icon, Heading4Icon, ItalicIcon, ListIcon, ListOrderedIcon, StrikethroughIcon, TextQuoteIcon, TypeIcon, UnderlineIcon, type LucideIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, type ReactNode } from "react";
 import { INK_COLORS, type InkColor } from "@/components/library/page-ink";
 import { selectedTextReference } from "@/components/library/page-toolbar";
 import type { NoteBridge, SelectionAction } from "./nb-plugins";
 import { useNotebook } from "./nb-shared";
 
-/** Gap from the column's right edge to the menu (frame inline-sketch-and-selection: menu x≈1229 in the viewport; our column ends at 1163). */
-export const MENU_GAP = 66;
+/** Gap from the column's right edge to the menu (frame inline-sketch-and-selection: menu x≈1229 in the viewport; our 690px column ends at 1177.5). */
+export const MENU_GAP = 51;
 /** The menu's top sits 7px above the selection's line box (frame: line ≈212, card ≈205); the text box starts 4px lower. */
 const MENU_RISE = 11;
 
@@ -41,7 +41,29 @@ export const ACTIONS: readonly { action: SelectionAction; label: string; hint?: 
 	{ action: "flashcards", label: "Make flashcards" },
 ];
 
-type Style = "paragraph" | "h1" | "h2" | "other";
+type Style = "paragraph" | "h1" | "h2" | "h3" | "h4" | "quote" | "bullet" | "ordered" | "other";
+
+type Chain = ReturnType<Editor["chain"]>;
+/** Row 1, in Riddled's order. Text lifts the block out of any list or quote. */
+const STYLES: readonly { style: Exclude<Style, "other">; label: string; Icon: LucideIcon; apply: (chain: Chain) => Chain }[] = [
+	{ style: "paragraph", label: "Text", Icon: TypeIcon, apply: (c) => c.clearNodes() },
+	{ style: "h1", label: "Heading 1", Icon: Heading1Icon, apply: (c) => c.setHeading({ level: 1 }) },
+	{ style: "h2", label: "Heading 2", Icon: Heading2Icon, apply: (c) => c.setHeading({ level: 2 }) },
+	{ style: "h3", label: "Heading 3", Icon: Heading3Icon, apply: (c) => c.setHeading({ level: 3 }) },
+	{ style: "h4", label: "Heading 4", Icon: Heading4Icon, apply: (c) => c.setHeading({ level: 4 }) },
+	{ style: "quote", label: "Quote", Icon: TextQuoteIcon, apply: (c) => c.toggleBlockquote() },
+	{ style: "bullet", label: "Bulleted list", Icon: ListIcon, apply: (c) => c.toggleBulletList() },
+	{ style: "ordered", label: "Numbered list", Icon: ListOrderedIcon, apply: (c) => c.toggleOrderedList() },
+];
+
+function blockStyle(e: Editor): Style {
+	for (const level of [1, 2, 3, 4] as const) if (e.isActive("heading", { level })) return `h${level}`;
+	if (e.isActive("heading")) return "other";
+	if (e.isActive("bulletList")) return "bullet";
+	if (e.isActive("orderedList")) return "ordered";
+	if (e.isActive("blockquote")) return "quote";
+	return e.isActive("paragraph") ? "paragraph" : "other";
+}
 
 /** Right of the column, level with the selection; with no room there, left of it, then under or over. */
 const MENU_OPTIONS: NonNullable<BubbleMenuProps["options"]> = {
@@ -86,7 +108,7 @@ export function SelectionMenu({ editor, bridge }: { editor: Editor; bridge: Note
 	const state = useEditorState({
 		editor,
 		selector: ({ editor: e }) => {
-			const style: Style = e.isActive("heading", { level: 1 }) ? "h1" : e.isActive("heading", { level: 2 }) ? "h2" : e.isActive("paragraph") ? "paragraph" : "other";
+			const style = blockStyle(e as Editor);
 			const color = e.getAttributes("inkColor").color as string | undefined;
 			return {
 				style,
@@ -210,9 +232,9 @@ export function SelectionMenu({ editor, bridge }: { editor: Editor; bridge: Note
 				}}
 			>
 				<div role="toolbar" aria-label="Text style" className="nb-sel-row nb-sel-styles">
-					<FormatButton label="Text" pressed={state.style === "paragraph"} className="nb-sel-style" onPress={() => chain().setParagraph().run()}><TypeIcon aria-hidden="true" /></FormatButton>
-					<FormatButton label="Heading 1" pressed={state.style === "h1"} className="nb-sel-style" onPress={() => chain().setHeading({ level: 1 }).run()}><Heading1Icon aria-hidden="true" /></FormatButton>
-					<FormatButton label="Heading 2" pressed={state.style === "h2"} className="nb-sel-style" onPress={() => chain().setHeading({ level: 2 }).run()}><Heading2Icon aria-hidden="true" /></FormatButton>
+					{STYLES.map(({ style, label, Icon, apply }) => (
+						<FormatButton key={style} label={label} pressed={state.style === style} className="nb-sel-style" onPress={() => apply(chain()).run()}><Icon aria-hidden="true" /></FormatButton>
+					))}
 				</div>
 				<div role="toolbar" aria-label="Format" className="nb-sel-row nb-sel-marks">
 					<FormatButton label="Bold" pressed={state.bold} onPress={() => chain().toggleBold().run()}><BoldIcon aria-hidden="true" /></FormatButton>

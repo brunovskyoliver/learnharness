@@ -232,6 +232,20 @@
 	text-decoration-color: var(--riddle-line);
 	text-decoration-style: dotted;
 }
+/* Riddled's resting line is 1px dotted (CSS l.3500); on a 2x screen its dots
+   blend into the thin, light, near-solid line the frames show. At 1x the dots
+   read as coarse dashes, so there the same look is drawn as a solid line at
+   about the dotted line's average ink. */
+@media (max-resolution: 1.5dppx) {
+	.nb-root .nb-anchor[data-state="open"]:not([data-active="true"]) {
+		text-decoration-style: solid;
+		text-decoration-color: color-mix(in srgb, var(--riddle-line) 60%, transparent);
+	}
+	.nb-root .nb-anchor[data-state="resolved"]:not([data-active="true"]) {
+		text-decoration-style: solid;
+		text-decoration-color: color-mix(in srgb, var(--riddle-line) 30%, transparent);
+	}
+}
 .nb-root .nb-anchor[data-active="true"] {
 	background: var(--riddle-wash);
 	box-shadow: -3px 0 0 var(--riddle-wash), 3px 0 0 var(--riddle-wash);
@@ -762,9 +776,12 @@
 	overflow-anchor: none;
 	padding: 103px 24px 0;
 }
+/* 690px: with our fonts every line of the frames' list items (margin-notes) and
+   inline reply (inline-sketch-and-selection) breaks where the frame breaks
+   (any width from 681 to 698 does; 660 broke four of the reply's seven lines). */
 .nb-root .nb-column {
 	position: relative;
-	max-width: 660px;
+	max-width: 690px;
 	margin: 0 auto;
 }
 
@@ -869,7 +886,7 @@
 	user-select: none;
 }
 .nb-root .nb-menu-item[data-highlighted] { background: var(--shelf); }
-.nb-root .nb-menu-item:focus-visible { outline: 2px solid var(--riddle-line); outline-offset: -2px; }
+.nb-root .nb-menu-item:focus-visible { outline: 2px solid var(--riddle-line); outline-offset: 2px; }
 .nb-root .nb-menu-check {
 	display: inline-grid;
 	place-items: center;
@@ -1394,7 +1411,7 @@
 .nb-root :is(.nb-note, .nb-inline)[data-faded="true"] { opacity: 0.38; }
 .nb-root .nb-note[data-state="open"],
 .nb-root .nb-inline[data-state="open"] { z-index: 1; }
-.nb-root :is(.nb-note, .nb-inline)[data-state="open"]:focus { outline: none; }
+.nb-root :is(.nb-note, .nb-inline)[data-state="open"]:focus:not(:focus-visible) { outline: none; }
 
 /* The collapsed thread is one button: its question, clamped, and the count. */
 .nb-root .nb-thread-open {
@@ -1655,7 +1672,7 @@
 	animation: 0.2s ease-out both nb-settle;
 }
 .nb-root .nb-sel-row { display: flex; align-items: center; }
-.nb-root .nb-sel-styles { gap: 0; padding-bottom: 10px; border-bottom: 1px solid var(--rule); }
+.nb-root .nb-sel-styles { justify-content: space-between; gap: 0; padding-bottom: 10px; border-bottom: 1px solid var(--rule); }
 .nb-root .nb-sel-marks { justify-content: space-between; margin-top: 7px; }
 .nb-root .nb-sel-inks { justify-content: space-between; margin-top: 5.5px; padding-bottom: 5.5px; border-bottom: 1px solid var(--rule); }
 .nb-root .nb-sel-format {
@@ -1673,8 +1690,10 @@
 .nb-root .nb-sel-format svg { width: 16px; height: 16px; stroke-width: 1.6; }
 .nb-root .nb-sel-format:hover { background: var(--shelf); color: var(--ink); }
 .nb-root .nb-sel-format[aria-pressed="true"] { background: var(--shelf); color: var(--ink); }
-.nb-root .nb-sel-style { width: 28px; }
-.nb-root .nb-sel-style svg { width: 17px; height: 17px; }
+/* Eight block styles across the card (frame sheet-06 tile 9: the filled T is ≈26px). */
+.nb-root .nb-sel-style { width: 26px; height: 26px; }
+.nb-root .nb-sel-style svg { width: 15px; height: 15px; }
+.nb-root .nb-sel-style:first-child svg { width: 16px; height: 16px; }
 /* The block style he is in: a filled ink square with a paper glyph. */
 .nb-root .nb-sel-style[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
 .nb-root .nb-sel-ink span { font-size: 14px; font-weight: 500; line-height: 1; }
@@ -2458,4 +2477,61 @@
 	width: 100vw;
 	height: 100dvh;
 	pointer-events: none;
+}
+
+/* ══ Phase 11: Links panel ══════════════════════════════════════════════════ */
+
+/* The note chat's lifted panel (§17), with the Links' sections in Notebook type. */
+.nb-root .nb-links { width: min(400px, 100vw); box-shadow: var(--lift), -1px 0 0 var(--rule); }
+.nb-root .nb-links-scroll { display: flex; flex-direction: column; gap: 24px; padding-top: 22px; }
+.nb-root .nb-links-section { display: flex; flex-direction: column; gap: 4px; }
+.nb-root .nb-links-label { margin: 0 0 4px; color: var(--faint); font-size: 12px; font-weight: 500; line-height: 16px; }
+.nb-root .nb-links-list { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.nb-root .nb-links-row {
+	display: flex;
+	width: 100%;
+	min-height: 36px;
+	flex-direction: column;
+	justify-content: center;
+	gap: 2px;
+	margin: 0 -8px;
+	padding: 6px 8px;
+	box-sizing: content-box;
+	border-radius: 8px;
+	color: var(--ink);
+	text-align: left;
+	transition: background-color 0.12s;
+}
+.nb-root button.nb-links-row:hover { background: var(--shelf); }
+.nb-root .nb-links-name { font-size: 14px; line-height: 20px; overflow-wrap: anywhere; }
+.nb-root .nb-links-meta { color: var(--graphite); font-size: 12.5px; line-height: 18px; overflow-wrap: anywhere; }
+.nb-root .nb-links-row[data-state="missing"] .nb-links-name,
+.nb-root .nb-links-row[data-state="deleted"] .nb-links-name { color: var(--graphite); }
+.nb-root .nb-links-empty { margin: 0; color: var(--graphite); font-size: 13px; line-height: 19px; }
+@media (pointer: coarse) {
+	.nb-root .nb-links-row { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.nb-root .nb-links-row { transition: none; }
+}
+
+/* ══ Phase 11: accessibility pass ═══════════════════════════════════════════ */
+
+/* Every scroller in Notebook hides its track (AGENTS.md "Scrolling"), display maths too
+   (Study's `.katex-display` asks for a thin bar). */
+.nb-root :is(.katex-display, pre, code, table, textarea) { scrollbar-width: none; }
+
+/* 44px targets on touch: every control the earlier phases left smaller. */
+@media (pointer: coarse) {
+	.nb-root :is(.nb-text-button, .nb-chat-link, .nb-chat-text-button, .nb-hint-link, .nb-thread-more-hover, .nb-sketch-larger, .nb-rev-link) {
+		display: inline-flex;
+		align-items: center;
+		min-height: 44px;
+	}
+	.nb-root :is(.nb-menu-item, .nb-side-row, .nb-sel-action, .nb-rev-row, .nb-rev-item) { min-height: 44px; }
+	.nb-root :is(.nb-stepper button, .nb-sketch-close) { min-width: 44px; min-height: 44px; }
+	/* The selection menu grows instead of shrinking its buttons. */
+	.nb-root .nb-sel-menu { width: auto; max-width: min(360px, calc(100vw - 16px)); }
+	.nb-root .nb-sel-row { flex-wrap: wrap; }
+	.nb-root .nb-sel-format { min-width: 44px; min-height: 44px; }
 }

@@ -390,7 +390,10 @@ function parseGeneration(body: unknown): CardGenerationSource | null {
 	const raw = (body ?? {}) as { kind?: unknown; itemId?: unknown; page?: unknown; text?: unknown; chatId?: unknown };
 	if (raw.kind === "page" && typeof raw.itemId === "string") return { kind: "page", itemId: raw.itemId };
 	if (raw.kind === "lesson" && typeof raw.chatId === "string") return { kind: "lesson", chatId: raw.chatId };
-	if (raw.kind === "passage" && typeof raw.itemId === "string" && Number.isInteger(raw.page) && (raw.page as number) >= 1 && typeof raw.text === "string") return { kind: "passage", itemId: raw.itemId, page: raw.page as number, text: raw.text };
+	if (raw.kind === "passage" && typeof raw.itemId === "string" && typeof raw.text === "string") {
+		if (raw.page === undefined) return { kind: "passage", itemId: raw.itemId, text: raw.text };
+		if (Number.isInteger(raw.page) && (raw.page as number) >= 1) return { kind: "passage", itemId: raw.itemId, page: raw.page as number, text: raw.text };
+	}
 	return null;
 }
 

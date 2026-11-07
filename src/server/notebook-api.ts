@@ -72,7 +72,7 @@ export function notebookSummaryResponse(): Promise<Response> {
 	});
 }
 
-/** PATCH /api/notebook/:pageId { mode?, instruction?, reviewerId? } */
+/** PATCH /api/notebook/:pageId { mode?, stampMode?, instruction?, reviewerId? } */
 export function notebookPatchResponse(request: Request, pageId: string): Promise<Response> {
 	return guarded(async () => {
 		if (!isNotebookId(pageId)) return badId();
@@ -183,6 +183,9 @@ export async function resolveNotebookNote(requested: string | undefined): Promis
 	let made = await stores.libraryStore.createPage(UNTITLED_NOTE, "", { author: "learner" });
 	if (isRefusal(made) && made.suggestedName) made = await stores.libraryStore.createPage(made.suggestedName, "", { author: "learner" });
 	if (isRefusal(made)) throw new Error(`[notebook] could not create a note: ${made.message}`);
+	// "New notes start in" applies to new notes only: the note keeps the mode it starts with.
+	const startMode = effectiveSettings().notebook.startMode;
+	await stores.notebookStore.update(made.item.id, (companion) => ({ companion: { ...companion, mode: companion.mode ?? startMode }, result: null }));
 	return to(made.item.id);
 }
 

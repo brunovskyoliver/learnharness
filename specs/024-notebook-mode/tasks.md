@@ -80,8 +80,8 @@ Format: `- [ ] T### [P?] [US?] description (paths)`. All Notebook CSS values com
 
 ## Phase 11: Polish and cross-cutting
 
-- [ ] T044 Links panel in Notebook styling (reuse the Links panel data); Make flashcards from selection and footer through feature 021's flow
-- [ ] T045 Accessibility pass: focus order, names, live regions, Escape order, focus trap/return, 44px coarse targets; Playwright `a11y.spec.ts` keyboard-only path through every scope item
+- [X] T044 Links panel in Notebook styling (reuse the Links panel data); Make flashcards from selection and footer through feature 021's flow
+- [X] T045 Accessibility pass: focus order, names, live regions, Escape order, focus trap/return, 44px coarse targets; Playwright `a11y.spec.ts` keyboard-only path through every scope item
 - [ ] T046 `scripts/notebook-compare.mjs` side-by-side screenshots vs reference frames; evidence to `~/agent-runs/2026-11-06-notebook-mode/`; list differences for owner approval
 - [ ] T047 Real-model pass per quickstart in both themes at 1440 and 390; record in progress.md
 - [ ] T048 DESIGN.md "Notebook" section (overrides Study ink inside the mode), PRODUCT.md paragraph, ROADMAP entry and dependency row (Playwright adopted for tests)

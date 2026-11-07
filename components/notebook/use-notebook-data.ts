@@ -49,15 +49,25 @@ export function useCompanion(pageId: string, startMode: NoteMode): CompanionView
 	const [companion, setCompanion] = useState<NoteCompanion | null>(null);
 	const [effective, setEffective] = useState<NoteMode | null>(null);
 	const request = useRef(0);
+	const startRef = useRef(startMode);
+	startRef.current = startMode;
+	// A note opened here for the first time keeps the start mode it opened with (one PATCH, once).
+	const stamped = useRef(false);
 	const load = useCallback(async () => {
 		const id = ++request.current;
 		try {
 			const response = await fetch(`/api/notebook/${encodeURIComponent(pageId)}`, { cache: "no-store" });
 			if (!response.ok) return;
-			const body = (await response.json()) as { companion: NoteCompanion; effective?: { mode?: NoteMode } };
+			const body = (await response.json()) as { companion: NoteCompanion; effective?: { mode?: NoteMode }; readOnly?: boolean };
 			if (id !== request.current) return;
 			setCompanion(body.companion);
 			setEffective(body.effective?.mode ?? null);
+			if (body.companion.mode === undefined && !body.readOnly && !stamped.current) {
+				stamped.current = true;
+				void stampMode(pageId, startRef.current).then((stored) => {
+					if (stored && id === request.current) setCompanion((current) => (current ? { ...current, mode: stored.mode ?? current.mode } : current));
+				});
+			}
 		} catch {
 			/* the toolbar keeps the start mode until the next event */
 		}
@@ -91,4 +101,19 @@ export function useCompanion(pageId: string, startMode: NoteMode): CompanionView
 
 	const reload = useCallback(() => { void load(); }, [load]);
 	return { companion, mode: companion?.mode ?? effective ?? startMode, patch, reload };
+}
+
+/** Gives a note without a mode the start mode (the server keeps a mode already there); the stored companion, or null. */
+export async function stampMode(pageId: string, mode: NoteMode): Promise<NoteCompanion | null> {
+	try {
+		const response = await fetch(`/api/notebook/${encodeURIComponent(pageId)}`, {
+			method: "PATCH",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ stampMode: mode }),
+		});
+		if (!response.ok) return null;
+		return ((await response.json()) as { companion: NoteCompanion }).companion;
+	} catch {
+		return null;
+	}
 }

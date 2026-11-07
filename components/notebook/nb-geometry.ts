@@ -9,8 +9,9 @@
 
 /** Margin note type (§8, measured ≈): 16px serif on a 23.5px line. */
 export const NOTE_LINE = 23.5;
-/** A note's full width at most (§8 measured ≈376px; at 15px our Newsreader needs 384px to break lines where the frame does). */
-export const NOTE_WIDTH = 384;
+/** A note's full width at most (§8 measured ≈376px). At 15px our Newsreader breaks all eleven lines of the
+ *  frame's three left notes where the frame does at 385.1-388.4px (phase 11 measure; 384 broke "…employers use"). */
+export const NOTE_WIDTH = 386;
 /** An open thread's measure (§8.1, frame margin-thread: x 156-566, the same right edge as collapsed). */
 export const EXPANDED_WIDTH = 410;
 /** Narrower than this and a margin is too tight for notes. */

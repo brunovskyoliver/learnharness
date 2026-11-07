@@ -16,7 +16,11 @@ export function parseMakeParam(value: string | null, stored: () => string | null
 	if (value === "passage") {
 		try {
 			const passage = JSON.parse(stored() ?? "null") as { itemId?: unknown; page?: unknown; text?: unknown } | null;
-			if (typeof passage?.itemId === "string" && typeof passage.page === "number" && typeof passage.text === "string") return { kind: "passage", itemId: passage.itemId, page: passage.page, text: passage.text };
+			if (typeof passage?.itemId === "string" && typeof passage.text === "string") {
+				// A note's passage (Notebook) has no page; a PDF's has one.
+				if (passage.page === undefined) return { kind: "passage", itemId: passage.itemId, text: passage.text };
+				if (typeof passage.page === "number") return { kind: "passage", itemId: passage.itemId, page: passage.page, text: passage.text };
+			}
 		} catch { /* read as nothing to make cards from */ }
 	}
 	return null;

@@ -87,6 +87,8 @@ describe("Make flashcards", () => {
 		assert.deepEqual(parseMakeParam("page:lib_1", () => null), { kind: "page", itemId: "lib_1" });
 		assert.deepEqual(parseMakeParam("lesson:c1", () => null), { kind: "lesson", chatId: "c1" });
 		assert.deepEqual(parseMakeParam("passage", () => '{"itemId":"i","page":2,"text":"t"}'), { kind: "passage", itemId: "i", page: 2, text: "t" });
+		assert.deepEqual(parseMakeParam("passage", () => '{"itemId":"lib_n","text":"his words"}'), { kind: "passage", itemId: "lib_n", text: "his words" });
+		assert.equal(parseMakeParam("passage", () => '{"itemId":"i","page":"2","text":"t"}'), null);
 		assert.equal(parseMakeParam("passage", () => "not json"), null);
 		assert.equal(parseMakeParam("nope", () => null), null);
 	});

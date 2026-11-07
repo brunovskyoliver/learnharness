@@ -32,6 +32,16 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
 	);
 }
 
+/** Each section's empty sentence, shared with Notebook's Links panel. */
+export const CONNECTION_EMPTY = {
+	backlinks: "No page links here yet.",
+	links: (subject: "page" | "diagram") => (subject === "diagram" ? "Select a node and choose Link to link a note." : "Type [[ in the text to link a page."),
+	related: "Nothing related yet.",
+	lessons: (subject: "page" | "diagram") => `No lesson is tied to this ${subject}.`,
+	sourceGone: "A saved passage's session was deleted. The text stays here, and its source is gone.",
+	graph: (subject: "page" | "diagram") => `No graph idea relates to this ${subject} yet.`,
+} as const;
+
 const Empty = ({ children }: { children: ReactNode }) => <p className="px-2 text-sm text-ink-2">{children}</p>;
 const Name = ({ children }: { children: ReactNode }) => <span className="text-foreground [overflow-wrap:anywhere]">{children}</span>;
 const Meta = ({ children }: { children: ReactNode }) => <span className="text-muted-foreground [overflow-wrap:anywhere]">{children}</span>;
@@ -52,7 +62,7 @@ export function NoteConnectionsBody({ data, subject = "page", onOpenPage, onFoll
 	return (
 		<>
 			<Section title={`Links to this ${subject}`}>
-				{data.backlinks.length === 0 ? <Empty>No page links here yet.</Empty> : data.backlinks.map((row) => (
+				{data.backlinks.length === 0 ? <Empty>{CONNECTION_EMPTY.backlinks}</Empty> : data.backlinks.map((row) => (
 					<button key={row.id} type="button" className={ROW} data-testid="note-backlink" onClick={() => onOpenPage(row.id, row.name, row.kind)}>
 						<Name>{row.name}{row.archived ? " · archived" : ""}</Name>
 						<Meta>{row.kind === "diagram" ? `Diagram · ${row.snippet}` : row.snippet}</Meta>
@@ -60,7 +70,7 @@ export function NoteConnectionsBody({ data, subject = "page", onOpenPage, onFoll
 				))}
 			</Section>
 			<Section title={`Links from this ${subject}`}>
-				{data.links.length === 0 ? <Empty>{subject === "diagram" ? "Select a node and choose Link to link a note." : "Type [[ in the text to link a page."}</Empty> : data.links.map((row) => (
+				{data.links.length === 0 ? <Empty>{CONNECTION_EMPTY.links(subject)}</Empty> : data.links.map((row) => (
 					<button key={row.target} type="button" className={ROW} data-testid="note-link" data-state={row.resolution.state} onClick={() => onFollowLink(row)}>
 						<Name>{row.resolution.name ?? row.target}</Name>
 						{row.resolution.state === "missing" && <Meta>No such page yet</Meta>}
@@ -70,7 +80,7 @@ export function NoteConnectionsBody({ data, subject = "page", onOpenPage, onFoll
 				))}
 			</Section>
 			<Section title="Related notes">
-				{data.related.length === 0 ? <Empty>Nothing related yet.</Empty> : data.related.map((row) => (
+				{data.related.length === 0 ? <Empty>{CONNECTION_EMPTY.related}</Empty> : data.related.map((row) => (
 					<button key={row.id} type="button" className={ROW} data-testid="note-related" onClick={() => onOpenPage(row.id, row.name, row.kind)}>
 						<Name>{row.name}</Name>
 						<Meta>{row.kind === "diagram" ? `Diagram · ${row.reason}` : row.reason}</Meta>
@@ -78,9 +88,9 @@ export function NoteConnectionsBody({ data, subject = "page", onOpenPage, onFoll
 				))}
 			</Section>
 			<Section title="Lessons">
-				{data.sources.length === 0 && otherSessions.length === 0 ? <Empty>No lesson is tied to this {subject}.</Empty> : null}
+				{data.sources.length === 0 && otherSessions.length === 0 ? <Empty>{CONNECTION_EMPTY.lessons(subject)}</Empty> : null}
 				{data.sources.map((row) => row.gone ? (
-					<p key={`${row.chatId}/${row.messageId}`} className="px-2 py-1 text-sm text-ink-2" data-testid="note-source-gone">A saved passage&apos;s session was deleted. The text stays here, and its source is gone.</p>
+					<p key={`${row.chatId}/${row.messageId}`} className="px-2 py-1 text-sm text-ink-2" data-testid="note-source-gone">{CONNECTION_EMPTY.sourceGone}</p>
 				) : (
 					<button key={`${row.chatId}/${row.messageId}`} type="button" className={ROW} data-testid="note-source" onClick={() => onSource(row.href)}>
 						<Name>{row.title}</Name>
@@ -100,7 +110,7 @@ export function NoteConnectionsBody({ data, subject = "page", onOpenPage, onFoll
 				</Section>
 			)}
 			<Section title="Ideas in your graph">
-				{data.graph.length === 0 ? <Empty>No graph idea relates to this {subject} yet.</Empty> : data.graph.map((row) => {
+				{data.graph.length === 0 ? <Empty>{CONNECTION_EMPTY.graph(subject)}</Empty> : data.graph.map((row) => {
 					const body = (<><Name>{row.name}</Name><Meta>{row.statement}</Meta></>);
 					return row.href
 						? <button key={row.id} type="button" className={ROW} data-testid="note-graph" onClick={() => onSource(row.href!)}>{body}</button>
@@ -111,15 +121,8 @@ export function NoteConnectionsBody({ data, subject = "page", onOpenPage, onFoll
 	);
 }
 
-/** Fetched only while shown. Loading, failed and empty are distinct, and a failed refresh keeps the last list. */
-export function NoteConnectionsPanel({ pageId, subject, onOpenPage, onFollowLink, onSource, className }: {
-	pageId: string;
-	subject?: "page" | "diagram";
-	onOpenPage: (id: string, name: string, kind?: LibraryKind) => void;
-	onFollowLink: (row: NoteLinkRow) => void;
-	onSource: (href: string) => void;
-	className?: string;
-}) {
+/** A page's connections, read while the caller is shown (Study's pane, Notebook's Links panel): a failed refresh keeps the last list. */
+export function useNoteConnections(pageId: string): { data: NoteConnections | null; failed: boolean; refresh: () => Promise<void> } {
 	const [data, setData] = useState<NoteConnections | null>(null);
 	const [failed, setFailed] = useState(false);
 	const request = useRef(0);
@@ -139,6 +142,19 @@ export function NoteConnectionsPanel({ pageId, subject, onOpenPage, onFollowLink
 	useEffect(() => { void refresh(); }, [refresh]);
 	useServerEvent("library-changed", () => { void refresh(); });
 	useServerResync(() => { void refresh(); });
+	return { data, failed, refresh };
+}
+
+/** Fetched only while shown. Loading, failed and empty are distinct, and a failed refresh keeps the last list. */
+export function NoteConnectionsPanel({ pageId, subject, onOpenPage, onFollowLink, onSource, className }: {
+	pageId: string;
+	subject?: "page" | "diagram";
+	onOpenPage: (id: string, name: string, kind?: LibraryKind) => void;
+	onFollowLink: (row: NoteLinkRow) => void;
+	onSource: (href: string) => void;
+	className?: string;
+}) {
+	const { data, failed, refresh } = useNoteConnections(pageId);
 	return (
 		<aside aria-label="Links and sources" data-testid="note-connections" className={cn("flex flex-col gap-4", className)}>
 			{data

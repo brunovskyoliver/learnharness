@@ -224,7 +224,13 @@ export function parseCompanion(raw: unknown, pageId: string): CompanionParse {
 	return { ok: true, companion };
 }
 
-export interface CompanionPatch { mode?: NoteMode | null; instruction?: string; reviewerId?: string | null }
+export interface CompanionPatch {
+	mode?: NoteMode | null;
+	/** The mode a note takes when it has none yet ("New notes start in", stamped on a note's first open in Notebook); a mode already there stays. */
+	stampMode?: NoteMode;
+	instruction?: string;
+	reviewerId?: string | null;
+}
 
 /** PATCH /api/notebook/:pageId's body, or the reason it is refused (400).
  *  null clears mode (back to the start mode) or reviewer (back to Plain reader). */
@@ -234,6 +240,10 @@ export function parseCompanionPatch(raw: unknown): { ok: true; patch: CompanionP
 	if (raw.mode !== undefined) {
 		if (raw.mode !== null && !oneOf(raw.mode, MODES)) return { ok: false, error: 'mode must be "thinks", "ask" or null.' };
 		patch.mode = raw.mode as NoteMode | null;
+	}
+	if (raw.stampMode !== undefined) {
+		if (!oneOf(raw.stampMode, MODES)) return { ok: false, error: 'stampMode must be "thinks" or "ask".' };
+		patch.stampMode = raw.stampMode as NoteMode;
 	}
 	if (raw.instruction !== undefined) {
 		if (typeof raw.instruction !== "string" || raw.instruction.length > NOTEBOOK_LIMITS.instruction) return { ok: false, error: `instruction must be a string of at most ${NOTEBOOK_LIMITS.instruction} characters.` };
@@ -253,6 +263,7 @@ export function applyCompanionPatch(companion: NoteCompanion, patch: CompanionPa
 		if (patch.mode === null) delete next.mode;
 		else next.mode = patch.mode;
 	}
+	if (patch.stampMode !== undefined && next.mode === undefined) next.mode = patch.stampMode;
 	if (patch.instruction !== undefined) next.instruction = patch.instruction;
 	if (patch.reviewerId !== undefined) {
 		if (patch.reviewerId === null) delete next.reviewerId;

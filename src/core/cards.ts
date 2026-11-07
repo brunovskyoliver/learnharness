@@ -228,12 +228,14 @@ export const dueRowText = (due: number) => `${due} due`;
 
 /** A browser-side passage on its way to the Make flashcards panel. */
 export const CARD_PASSAGE_KEY = "lh:card-passage";
-export interface CardPassageHandoff { itemId: string; page: number; text: string }
+/** A PDF passage carries its page; a note's passage (Notebook's selection menu) has none. */
+export interface CardPassageHandoff { itemId: string; page?: number; text: string }
 
 /** What Make flashcards reads. */
 export type CardGenerationSource =
 	| { kind: "page"; itemId: string }
-	| { kind: "passage"; itemId: string; page: number; text: string }
+	/** `page` for a PDF passage; none for a passage of a Library page (feature 024). */
+	| { kind: "passage"; itemId: string; page?: number; text: string }
 	| { kind: "lesson"; chatId: string };
 
 export const CARD_GENERATION_MAX_CHARS = 30_000;
