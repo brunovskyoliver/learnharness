@@ -26,7 +26,7 @@ export type ReadingStatus =
 	| { state: "failed"; retry: () => void }
 	| null;
 
-export interface NotebookReviewerView { id: string; name: string; instructions: string }
+export interface NotebookReviewerView { id: string; name: string; instructions: string; seeded?: true }
 
 /** How the sidebar was opened: a hover-open closes when the pointer leaves. */
 export type SidebarOpen = { via: "click" | "hover" | "key"; search: boolean } | null;
@@ -37,6 +37,10 @@ export interface NotebookShared {
 	noteId: string;
 	startMode: NotebookStartMode;
 	reviewers: readonly NotebookReviewerView[];
+	/** Stores the whole reviewer list (PUT the notebook section); shown at once, false when it didn't save. */
+	saveReviewers: (next: readonly NotebookReviewerView[]) => Promise<boolean>;
+	/** Opens the Reviewers page (a dialog until Phase 10's settings modal holds it). */
+	openReviewers: () => void;
 	account: string | null;
 	preferences: NotebookPreferences;
 	/** Applies at once and saves the `notebook` settings section (Phase 10's settings modal). */
@@ -65,6 +69,8 @@ export const NotebookContext = createContext<NotebookShared>({
 	noteId: "",
 	startMode: "thinks",
 	reviewers: [],
+	saveReviewers: async () => false,
+	openReviewers: noop,
 	account: null,
 	preferences: { appearance: "system", textSize: "default", lettering: "serif", ink: "ink", pace: "regular", layout: "both" },
 	updatePreferences: noop,

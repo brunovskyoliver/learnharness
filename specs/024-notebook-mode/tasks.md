@@ -57,8 +57,8 @@ Format: `- [ ] T### [P?] [US?] description (paths)`. All Notebook CSS values com
 
 ## Phase 7: US5 Instructions and reviewers (P2)
 
-- [ ] T033 [US5] `instruction-line.tsx` (in place, Enter/blur save, Escape revert); reviewer picker in toolbar row; reviewers CRUD in settings modal (`reviewers.tsx`)
-- [ ] T034 [US5] Tests: request carries instruction + reviewer (agent test); Playwright `instructions.spec.ts`
+- [X] T033 [US5] `instruction-line.tsx` (in place, Enter/blur save, Escape revert); reviewer picker in toolbar row; reviewers CRUD in settings modal (`reviewers.tsx`)
+- [X] T034 [US5] Tests: request carries instruction + reviewer (agent test); Playwright `instructions.spec.ts`
 
 ## Phase 8: US6 Note chat (P2)
 

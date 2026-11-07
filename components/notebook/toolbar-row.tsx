@@ -9,6 +9,7 @@
  */
 import { CheckIcon, ChevronDownIcon, LightbulbIcon, MessageCircleIcon, MessageSquareTextIcon, PenLineIcon, ShareIcon } from "lucide-react";
 import { DropdownMenu } from "radix-ui";
+import type { Ref } from "react";
 import type { NoteMode } from "@/src/core";
 import type { NotebookReviewerView } from "./nb-shared";
 
@@ -30,10 +31,13 @@ export interface ToolbarRowProps {
 	reviewers: readonly NotebookReviewerView[];
 	reviewerId: string | undefined;
 	mode: NoteMode;
-	/** Shown in the row only while the note has no instruction (Phase 7 draws the line). */
+	/** The instruction line is showing (an instruction is set, or he is writing one): the row's button hides. */
 	hasInstruction: boolean;
 	container: HTMLElement | null;
+	instructionsRef?: Ref<HTMLButtonElement>;
 	onReviewer: (id: string) => void;
+	/** "Edit reviewers…": the Reviewers page. */
+	onEditReviewers: () => void;
 	onMode: (mode: NoteMode) => void;
 	onInstructions: () => void;
 	onExport: () => void;
@@ -49,7 +53,7 @@ function ReviewerDot() {
 	);
 }
 
-export function ToolbarRow({ reviewers, reviewerId, mode, hasInstruction, container, onReviewer, onMode, onInstructions, onExport, onChat }: ToolbarRowProps) {
+export function ToolbarRow({ reviewers, reviewerId, mode, hasInstruction, container, instructionsRef, onReviewer, onEditReviewers, onMode, onInstructions, onExport, onChat }: ToolbarRowProps) {
 	const reviewer = currentReviewer(reviewers, reviewerId);
 	return (
 		<div className="nb-toolbar" role="toolbar" aria-label="Note" data-testid="nb-toolbar">
@@ -75,12 +79,16 @@ export function ToolbarRow({ reviewers, reviewerId, mode, hasInstruction, contai
 								</DropdownMenu.RadioItem>
 							))}
 						</DropdownMenu.RadioGroup>
+						<DropdownMenu.Separator className="nb-menu-separator" />
+						<DropdownMenu.Item className="nb-menu-item nb-menu-plain" data-testid="nb-edit-reviewers" onSelect={onEditReviewers}>
+							Edit reviewers…
+						</DropdownMenu.Item>
 					</DropdownMenu.Content>
 				</DropdownMenu.Portal>
 			</DropdownMenu.Root>
 
 			{!hasInstruction && (
-				<button type="button" className="nb-tool nb-tool-instructions" data-testid="nb-instructions" onClick={onInstructions}>
+				<button ref={instructionsRef} type="button" className="nb-tool nb-tool-instructions" data-testid="nb-instructions" onClick={onInstructions}>
 					<PenLineIcon className="nb-tool-icon" aria-hidden="true" />
 					<span>Instructions</span>
 				</button>

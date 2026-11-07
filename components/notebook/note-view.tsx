@@ -14,6 +14,7 @@ import { isUnsent } from "@/components/library/page-draft";
 import { useNoteLinks } from "@/components/library/use-note-links";
 import { usePageDraft } from "@/components/library/use-page-draft";
 import { notebookHref, type NoteMode, type WikiResolution } from "@/src/core";
+import { InstructionLine, type InstructionHandle } from "./instruction-line";
 import { renameNote } from "./nb-actions";
 import { NoteBridge } from "./nb-plugins";
 import { isUntitledName, useNotebook } from "./nb-shared";
@@ -150,6 +151,17 @@ export function NoteView({ note }: { note: { id: string; name: string } }) {
 	const [deleted, setDeleted] = useState(false);
 	const [bridge] = useState(() => new NoteBridge());
 	const [column, setColumn] = useState<HTMLDivElement | null>(null);
+	const instruction = useRef<InstructionHandle>(null);
+	const instructionsButton = useRef<HTMLButtonElement>(null);
+	const [instructionShown, setInstructionShown] = useState(false);
+	const [refocusInstructions, setRefocusInstructions] = useState(0);
+	// The button comes back a render after the line hides: focus it once it is there.
+	const refocused = useRef(0);
+	useEffect(() => {
+		if (!refocusInstructions || refocused.current === refocusInstructions || !instructionsButton.current) return;
+		refocused.current = refocusInstructions;
+		instructionsButton.current.focus();
+	}, [refocusInstructions, instructionShown]);
 
 	// The live name: the Library list follows renames made anywhere.
 	const listed = nb.library?.items.find((item) => item.id === note.id);
@@ -162,17 +174,29 @@ export function NoteView({ note }: { note: { id: string; name: string } }) {
 					reviewers={nb.reviewers}
 					reviewerId={companion?.reviewerId}
 					mode={mode}
-					hasInstruction={Boolean(companion?.instruction)}
+					hasInstruction={instructionShown}
 					container={nb.root}
+					instructionsRef={instructionsButton}
 					onReviewer={(id) => void patch({ reviewerId: id })}
+					onEditReviewers={nb.openReviewers}
 					onMode={(next: NoteMode) => void patch({ mode: next })}
-					// TODO(024 Phase 7): open the instruction line in place.
-					onInstructions={() => {}}
+					onInstructions={() => instruction.current?.open()}
 					// TODO(024 Phase 9): open the Export dialog.
 					onExport={() => {}}
 					// TODO(024 Phase 8): open the note chat.
 					onChat={() => {}}
 				/>
+				{companion && (
+					<InstructionLine
+						ref={instruction}
+						value={companion.instruction}
+						readOnly={deleted}
+						onSave={(text) => void patch({ instruction: text })}
+						onEnter={() => title.current?.focusEnd()}
+						onClosed={() => setRefocusInstructions((n) => n + 1)}
+						onShown={setInstructionShown}
+					/>
+				)}
 				<TitleField
 					ref={title}
 					name={name}

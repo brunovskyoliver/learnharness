@@ -25,7 +25,7 @@ async function NotebookPage({ params }: { params: Promise<{ id?: string[] }> }) 
 			fontClasses={notebookFontClasses}
 			preferences={{ appearance: notebook.appearance, textSize: notebook.textSize, lettering: notebook.lettering, ink: notebook.ink, pace: notebook.pace, layout: notebook.layout }}
 			startMode={notebook.startMode}
-			reviewers={notebook.reviewers.map((r) => ({ id: r.id, name: r.name, instructions: r.instructions }))}
+			reviewers={notebook.reviewers.map((r) => ({ id: r.id, name: r.name, instructions: r.instructions, ...(r.seeded ? { seeded: true as const } : {}) }))}
 			lastNoteId={notebook.lastNoteId}
 			account={hosted ? await signedInEmail() : null}
 		/>

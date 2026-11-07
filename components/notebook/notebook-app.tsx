@@ -17,6 +17,7 @@ import { isMod, NotebookContext, useIsMac, type NotebookPreferences, type Notebo
 import { MenuGlyph, Wordmark } from "./chrome";
 import { NoteView } from "./note-view";
 import { OverlaySidebar } from "./overlay-sidebar";
+import { ReviewersDialog } from "./reviewers";
 import { useLibraryList } from "./use-notebook-data";
 
 export type { NotebookPreferences } from "./nb-shared";
@@ -78,6 +79,22 @@ export function NotebookApp({ note, fontClasses, preferences, startMode = "think
 			console.error("[notebook] could not save the reading settings");
 		});
 	}, []);
+	// The reviewer list lives here: the picker and the Reviewers page show a change at once.
+	const [reviewerList, setReviewerList] = useState<readonly NotebookReviewerView[]>(reviewers);
+	const incomingReviewers = JSON.stringify(reviewers);
+	useEffect(() => { setReviewerList(JSON.parse(incomingReviewers) as NotebookReviewerView[]); }, [incomingReviewers]);
+	// Writes go one after another, so the last list he made is the one stored.
+	const reviewerWrites = useRef<Promise<boolean>>(Promise.resolve(true));
+	const saveReviewers = useCallback((next: readonly NotebookReviewerView[]) => {
+		setReviewerList(next);
+		const list = next.map((r) => ({ id: r.id, name: r.name, instructions: r.instructions, ...(r.seeded ? { seeded: true as const } : {}) }));
+		reviewerWrites.current = reviewerWrites.current.then(() => writeSettingsKey("notebook", { reviewers: list }).catch(() => false));
+		return reviewerWrites.current;
+	}, []);
+	const [reviewersOpen, setReviewersOpen] = useState(false);
+	// A menu item opens it: the menu gives the focus back first, so closing returns it there.
+	const openReviewers = useCallback(() => { window.setTimeout(() => setReviewersOpen(true), 0); }, []);
+
 	const openSidebar = useCallback((via: "click" | "hover" | "key", search = false) => setSidebar({ via, search }), []);
 	const closeSidebar = useCallback(() => setSidebar(null), []);
 
@@ -114,10 +131,10 @@ export function NotebookApp({ note, fontClasses, preferences, startMode = "think
 	};
 
 	const shared = useMemo<NotebookShared>(() => ({
-		root, mac, noteId: note.id, startMode, reviewers, account, preferences: prefs, updatePreferences,
+		root, mac, noteId: note.id, startMode, reviewers: reviewerList, saveReviewers, openReviewers, account, preferences: prefs, updatePreferences,
 		sidebar, openSidebar, closeSidebar, saveStatus, setSaveStatus, library, libraryFailed, refreshLibrary,
 		reading, setReading, announce,
-	}), [root, mac, note.id, startMode, reviewers, account, prefs, updatePreferences, sidebar, openSidebar, closeSidebar, saveStatus, library, libraryFailed, refreshLibrary, reading, announce]);
+	}), [root, mac, note.id, startMode, reviewerList, saveReviewers, openReviewers, account, prefs, updatePreferences, sidebar, openSidebar, closeSidebar, saveStatus, library, libraryFailed, refreshLibrary, reading, announce]);
 
 	return (
 		<NotebookContext.Provider value={shared}>
@@ -152,6 +169,7 @@ export function NotebookApp({ note, fontClasses, preferences, startMode = "think
 				<div className="nb-sheet" data-aside={sidebar ? "" : undefined} inert={sidebar ? true : undefined}>
 					<NoteView key={note.id} note={note} />
 				</div>
+				<ReviewersDialog open={reviewersOpen} onOpenChange={setReviewersOpen} />
 				<CornerHint />
 				<p className="nb-sr-only" aria-live="polite" data-testid="nb-live"><span key={spoken.n}>{spoken.text}</span></p>
 			</div>

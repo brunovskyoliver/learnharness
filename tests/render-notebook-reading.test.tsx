@@ -12,7 +12,7 @@ import { NotebookContext, type NotebookShared, type ReadingStatus } from "../com
 import { DETACHED_LINE } from "../components/notebook/margin.tsx";
 
 const base = (reading: ReadingStatus, mac = true): NotebookShared => ({
-	root: null, mac, noteId: "lib_a", startMode: "thinks", reviewers: [], account: null,
+	root: null, mac, noteId: "lib_a", startMode: "thinks", reviewers: [], saveReviewers: async () => true, openReviewers: () => {}, account: null,
 	preferences: { appearance: "light", textSize: "default", lettering: "serif", ink: "ink", pace: "regular", layout: "both" },
 	updatePreferences: () => {}, sidebar: null, openSidebar: () => {}, closeSidebar: () => {}, saveStatus: null, setSaveStatus: () => {},
 	library: null, libraryFailed: false, refreshLibrary: async () => {}, reading, setReading: () => {}, announce: () => {},

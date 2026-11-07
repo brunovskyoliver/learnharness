@@ -16,7 +16,7 @@ delete process.env.LH_NOTEBOOK_FAUX;
 const { runAsTenant } = await import("../config.ts");
 const { stores } = await import("../src/server/stores.ts");
 const nb = await import("../src/server/notebook.ts");
-const { notebookModelOverride, fauxNotebookEngine } = await import("../src/agent/subagents/notebook.ts");
+const { notebookModelOverride, fauxNotebookEngine, FAUX_SKETCH } = await import("../src/agent/subagents/notebook.ts");
 const { activityFeed } = await import("../src/server/observability.ts");
 const { subscribe } = await import("../src/core/events.ts");
 const { isRefusal } = await import("../src/core/library.ts");
@@ -269,6 +269,61 @@ describe("replies and chat", () => {
 		});
 		const messages = (await companion(id)).threads[0]!.messages;
 		assert.deepEqual(messages.map((m) => [m.author, m.text, m.state ?? "ok"]), [["ai", "Why tea?", "ok"], ["user", "Because it cools.", "ok"], ["ai", "Heat leaves.", "ok"]]);
+	}));
+});
+
+describe("instructions and reviewers (US5)", () => {
+	type Seen = { system: string; messages: string };
+	/** An engine that records what each call was given, then answers `reply`. */
+	const capturing = (seen: Seen[], reply: () => ReturnType<typeof fauxAssistantMessage>): Engine => scripted((ctx: { systemPrompt?: string; messages: unknown[] }) => {
+		// The engine may carry the system prompt as its own field or as the leading system message.
+		const leading = (ctx.messages[0] as { role?: string; content?: unknown } | undefined);
+		const system = ctx.systemPrompt ?? (leading?.role === "system" ? (typeof leading.content === "string" ? leading.content : JSON.stringify(leading.content)) : "");
+		seen.push({ system, messages: JSON.stringify(ctx.messages.slice(leading?.role === "system" ? 1 : 0)) });
+		return reply();
+	});
+	const anchor = { quote: "a cup of tea", prefix: "system. So ", suffix: " cools down." };
+	const tool = (name: string, args: Record<string, unknown>) => () => fauxAssistantMessage([fauxToolCall(name, args as never, { id: "s" })], { stopReason: "toolUse" });
+
+	it("read, think, visualize, reply and chat all carry his instruction and the note's reviewer", () => fresh(async () => {
+		writeSettings({ version: 1, notebook: { reviewers: [
+			{ id: "plain", name: "Plain reader", instructions: "", seeded: true },
+			{ id: "rev_quiz", name: "Quizmaster", instructions: "Asks for one worked example every time." },
+		] } });
+		const id = await page();
+		await stores.notebookStore.update(id, (c) => {
+			c.instruction = "Only hints, never the full answer.";
+			c.reviewerId = "rev_quiz";
+			c.threads.push({ id: "thr_x", anchor, placement: "margin", side: "right", status: "open", origin: "ask", createdAt: "2026-11-06T10:00:00.000Z", updatedAt: "2026-11-06T10:00:00.000Z", messages: [{ id: "m_user", author: "user", text: "Why does it cool?", at: "2026-11-06T10:00:00.000Z" }] });
+			return { companion: c, result: null };
+		});
+		const runs: [string, Record<string, unknown>, () => ReturnType<typeof fauxAssistantMessage>][] = [
+			["read", { kind: "read", text: NOTE, auto: true }, tool("submit_read", { action: "silent" })],
+			["think", { kind: "think", text: NOTE, anchor }, tool("submit_remark", { text: "Always?", placement: "margin" })],
+			["visualize", { kind: "visualize", text: NOTE, anchor }, tool("submit_sketch", { sketch: FAUX_SKETCH })],
+			["reply", { kind: "reply", text: NOTE, threadId: "thr_x" }, () => fauxAssistantMessage("Heat leaves.")],
+			["chat", { kind: "chat", text: NOTE, message: "What have we worked out?" }, () => fauxAssistantMessage("Two things.")],
+		];
+		for (const [kind, body, reply] of runs) {
+			const seen: Seen[] = [];
+			await withEngine(capturing(seen, reply), async () => {
+				const runId = await start(id, body);
+				await nb.notebookRunIdle();
+				assert.equal(nb.notebookRun(runId)?.status === "failed", false, `${kind} ran`);
+			});
+			assert.ok(seen.length >= 1, `${kind} called the model`);
+			for (const call of seen) {
+				assert.match(call.system, /<instructions>\nOnly hints, never the full answer\.\n<\/instructions>/, `${kind}: his instruction`);
+				assert.match(call.system, /You read as the Quizmaster: Asks for one worked example every time\./, `${kind}: the reviewer`);
+			}
+		}
+
+		// A reviewer that no longer exists reads as Plain reader: no reviewer line.
+		await stores.notebookStore.update(id, (c) => ({ companion: { ...c, reviewerId: "rev_gone" }, result: null }));
+		const seen: Seen[] = [];
+		await withEngine(capturing(seen, tool("submit_read", { action: "silent" })), async () => { await start(id, { kind: "read", text: NOTE, auto: true }); await nb.notebookRunIdle(); });
+		assert.doesNotMatch(seen[0]!.system, /You read as/);
+		assert.match(seen[0]!.system, /Only hints/);
 	}));
 });
 

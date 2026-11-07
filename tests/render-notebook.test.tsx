@@ -19,7 +19,7 @@ const reviewers = [
 	{ id: "examiner", name: "Examiner", instructions: "Reads like the person grading this.\nAnd more." },
 ];
 const toolbar = (over: Partial<ToolbarRowProps> = {}) => renderToStaticMarkup(
-	<ToolbarRow reviewers={reviewers} reviewerId={undefined} mode="thinks" hasInstruction={false} container={null} onReviewer={noop} onMode={noop} onInstructions={noop} onExport={noop} onChat={noop} {...over} />,
+	<ToolbarRow reviewers={reviewers} reviewerId={undefined} mode="thinks" hasInstruction={false} container={null} onReviewer={noop} onEditReviewers={noop} onMode={noop} onInstructions={noop} onExport={noop} onChat={noop} {...over} />,
 );
 const page = (over: Partial<LibraryItem> = {}): LibraryItem => ({
 	id: "lib_a", name: "YouTube Ideas", kind: "page", size: 10,

@@ -1827,3 +1827,167 @@
 	.nb-root :is(.nb-sel-menu, .nb-sketch-note, .nb-sketch-backdrop, .nb-sketch-card, .nb-sketching-blot) { animation: none; }
 	.nb-root .nb-drawing-picture * { animation: none !important; stroke-dashoffset: 0 !important; }
 }
+
+/* ══ Phase 7 (US5): instructions and reviewers ══════════════════════════════ */
+
+/* 6: the instruction line, between the toolbar row and the title. The label
+   sits on the text's first baseline; long instructions wrap under themselves. */
+.nb-root .nb-instruction {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 2px 12px;
+	margin-top: 19px;
+}
+.nb-root .nb-instruction-label {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	gap: 6px;
+	color: var(--faint);
+	font-family: var(--nb-sans);
+	font-size: 13px;
+	line-height: 20px;
+	cursor: text;
+}
+.nb-root .nb-instruction-text {
+	display: block;
+	min-width: min(260px, 100%);
+	flex: 1 1 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	overflow: hidden;
+	resize: none;
+	background: transparent;
+	color: var(--graphite);
+	caret-color: var(--ink);
+	font-size: 16.5px;
+	line-height: 1.6;
+	outline: none;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+.nb-root .nb-instruction-text::placeholder { color: var(--faint); opacity: 1; }
+.nb-root .nb-instruction-text:focus-visible { outline: none; }
+.nb-root .nb-instruction:focus-within .nb-instruction-label { color: var(--graphite); }
+/* The line takes the title's place under the row: the title moves up to it. */
+.nb-root .nb-instruction + .nb-title { margin-top: 20px; }
+
+.nb-root .nb-menu-separator { height: 1px; margin: 5px 6px; background: var(--rule); }
+.nb-root .nb-menu-plain { padding-left: 30px; color: var(--graphite); }
+.nb-root .nb-menu-plain[data-highlighted] { color: var(--ink); }
+
+/* A lifted dialog over the page (settings backdrop: ink 34%, dark black 60%). */
+.nb-root .nb-dialog-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 80;
+	display: grid;
+	place-items: center;
+	padding: 16px;
+	background: #1d1c1a57;
+	animation: 0.2s ease-out both nb-fade-in;
+}
+.nb-root[data-nb-theme="dark"] .nb-dialog-backdrop { background: #0009; }
+@media (prefers-color-scheme: dark) {
+	.nb-root[data-nb-theme="system"] .nb-dialog-backdrop { background: #0009; }
+}
+.nb-root .nb-dialog {
+	position: relative;
+	width: min(560px, calc(100vw - 32px));
+	max-height: min(720px, calc(100dvh - 32px));
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	padding: 28px 28px 24px;
+	border-radius: 16px;
+	background: var(--paper);
+	box-shadow: var(--lift);
+	color: var(--ink);
+	font-family: var(--nb-sans);
+	animation: 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both nb-menu-in;
+}
+.nb-root .nb-dialog:focus { outline: none; }
+.nb-root .nb-dialog-close {
+	position: absolute;
+	top: 18px;
+	right: 18px;
+	display: grid;
+	place-items: center;
+	width: 32px;
+	height: 32px;
+	border-radius: 999px;
+	color: var(--faint);
+	transition: color 0.15s, background-color 0.15s;
+}
+.nb-root .nb-dialog-close:hover { background: var(--shelf); color: var(--ink); }
+
+/* The Reviewers page (19: heading ≈19px 500, rows 13.5/12px, cards ring 1px rule). */
+.nb-root .nb-rev-title { margin: 0; color: var(--ink); font-size: 19px; font-weight: 500; line-height: 1.3; }
+.nb-root .nb-rev-lede { margin: 6px 40px 20px 0; color: var(--faint); font-size: 12.5px; line-height: 1.45; }
+.nb-root .nb-rev-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.nb-root .nb-rev-item { border-radius: 10px; box-shadow: 0 0 0 1px var(--rule); transition: box-shadow 0.15s; }
+.nb-root .nb-rev-item:hover { box-shadow: 0 0 0 1px var(--faint); }
+.nb-root .nb-rev-item[data-open] { box-shadow: 0 0 0 1.5px var(--ink); }
+.nb-root .nb-rev-row {
+	display: flex;
+	width: 100%;
+	flex-direction: column;
+	gap: 2px;
+	padding: 11px 14px;
+	border-radius: 10px;
+	text-align: left;
+}
+.nb-root .nb-rev-name { color: var(--ink); font-size: 13.5px; line-height: 1.35; }
+.nb-root .nb-rev-first {
+	overflow: hidden;
+	color: var(--graphite);
+	font-size: 12px;
+	line-height: 1.45;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+.nb-root .nb-rev-item[data-open] .nb-rev-first { display: none; }
+.nb-root .nb-rev-editor { display: flex; flex-direction: column; gap: 6px; padding: 0 14px 12px; }
+.nb-root .nb-rev-label { margin-top: 4px; color: var(--faint); font-size: 12px; line-height: 1.4; }
+.nb-root .nb-rev-input {
+	width: 100%;
+	padding: 7px 10px;
+	border: 0;
+	border-radius: 8px;
+	background: var(--shelf);
+	color: var(--ink);
+	font-family: var(--nb-sans);
+	font-size: 13.5px;
+	line-height: 1.45;
+	outline: none;
+}
+.nb-root .nb-rev-input::placeholder { color: var(--faint); opacity: 1; }
+.nb-root .nb-rev-input:focus-visible { box-shadow: 0 0 0 2px var(--riddle-line); }
+.nb-root .nb-rev-area { min-height: 72px; overflow: hidden; resize: none; }
+.nb-root .nb-rev-actions { display: flex; justify-content: flex-end; margin-top: 2px; }
+.nb-root .nb-rev-text-button { color: var(--faint); font-size: 12.5px; line-height: 1.4; transition: color 0.15s; }
+.nb-root .nb-rev-text-button:hover { color: var(--ink); }
+.nb-root .nb-rev-link { color: var(--ink); text-decoration: underline; text-decoration-color: var(--riddle-line); text-underline-offset: 3px; }
+.nb-root .nb-rev-status { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 12px 2px 0; color: var(--graphite); font-size: 12.5px; line-height: 1.4; }
+.nb-root .nb-rev-error { color: var(--text-red); }
+.nb-root .nb-rev-new {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	margin-top: 16px;
+	padding: 4px 2px;
+	color: var(--graphite);
+	font-size: 13.5px;
+	transition: color 0.15s;
+}
+.nb-root .nb-rev-new:hover { color: var(--ink); }
+.nb-root .nb-rev-new svg { width: 13px; height: 13px; stroke-width: 1.6; }
+
+@media (pointer: coarse) {
+	.nb-root :is(.nb-rev-text-button, .nb-rev-new, .nb-dialog-close) { min-height: 44px; min-width: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.nb-root :is(.nb-dialog-backdrop, .nb-dialog) { animation: none; }
+	.nb-root .nb-rev-item { transition: none; }
+}
