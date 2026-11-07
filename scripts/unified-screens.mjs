@@ -466,7 +466,7 @@ const SHOTS_LIST = [
 	{ name: "card-editor", route: "/review", steps: "Review → New card", run: async (page) => { await click(page, [byRole("button", /new card/i)], "New card"); await pick(page, [byRole("dialog")], "the card editor"); await settle(page); } },
 	{ name: "empty-review", route: "/review?view=deleted", steps: "Review → Deleted (empty)", run: async (page) => { await settle(page, 800); } },
 	{ name: "empty-library-search", route: "/library", steps: "Library search \"zzzz-no-match\"", run: async (page) => { const box = await pick(page, [byRole("searchbox", /library/i), byRole("searchbox")], "Library search"); await box.fill("zzzz-no-match"); await pick(page, [byText(/nothing matched|no match/i)], "the empty result"); await settle(page); } },
-	...["Providers", "Agent", "Appearance", "Graph", "Keyboard", "General"].map((category) => ({
+	...["Customize", "Reviewers", "Providers", "Agent", "Graph", "Keyboard", "General"].map((category) => ({
 		name: `settings-${category.toLowerCase()}`, route: "/library", steps: `sidebar → Settings → ${category} (from /library)`, run: async (page, { phone }) => {
 			await openSettings(page, phone);
 			const dialog = page.getByRole("dialog").last();

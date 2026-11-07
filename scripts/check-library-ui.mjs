@@ -807,11 +807,12 @@ async function checkSettings(width) {
 		await page.waitForSelector(id("settings-nav-agent"), { visible: true });
 		assert.ok(await page.$(id("settings-dialog")), "the first Escape only clears the search");
 		// Jump: section changes and the row's control holds focus.
-		await type("font");
-		await page.waitForSelector(id("settings-result-font"), { visible: true });
-		await page.click(id("settings-result-font"));
-		await page.waitForSelector(id("row-font"), { visible: true });
-		await page.waitForFunction(() => document.activeElement?.matches('[data-testid="font-trigger"]'));
+		// Feature 025: the theme lives in Customize; the jump lands on its chosen card.
+		await type("dark");
+		await page.waitForSelector(id("settings-result-theme"), { visible: true });
+		await page.click(id("settings-result-theme"));
+		await page.waitForSelector(id("nb-set-appearance"), { visible: true });
+		await page.waitForFunction(() => document.activeElement?.matches('[data-testid^="nb-set-appearance-"][aria-checked="true"]'));
 		await type("thinking");
 		await page.click(id("settings-result-slot-vision"));
 		await page.waitForFunction(() => document.activeElement?.matches('[data-testid="slot-model-vision"]'));

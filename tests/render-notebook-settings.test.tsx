@@ -7,7 +7,7 @@ import { describe, it } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DEFAULT_PREFERENCES, type NotebookPreferences } from "../components/notebook/nb-shared.tsx";
 import { dropAlpha, makeDrop } from "../components/notebook/pointer-ink.tsx";
-import { AppearanceThumb, CustomizePage, LayoutThumb, NOT_SAVED_LINE, SECTION_LABELS } from "../components/notebook/settings-modal.tsx";
+import { AppearanceThumb, CustomizePage, IN_NOTEBOOK_LABEL, LayoutThumb, NOT_SAVED_LINE, SECTION_LABELS } from "../components/notebook/settings-modal.tsx";
 
 const noop = () => {};
 const page = (over: Partial<NotebookPreferences> = {}, failed = false) =>
@@ -28,10 +28,10 @@ function group(html: string, field: string): [string, boolean][] {
 }
 
 describe("settings: Customize", () => {
-	it("has the title and every section in the contract's order", () => {
+	it("has the title, the shared Appearance first, then Notebook's own options under \"In Notebook\" (feature 025)", () => {
 		const words = text(page());
 		assert.ok(words.startsWith(" Customize ") || words.startsWith("Customize "));
-		const order = [SECTION_LABELS.startMode, "Ink from the pointer", SECTION_LABELS.pace, SECTION_LABELS.layout, SECTION_LABELS.appearance, SECTION_LABELS.textSize, SECTION_LABELS.lettering, SECTION_LABELS.ink];
+		const order = [SECTION_LABELS.appearance, SECTION_LABELS.textSize, SECTION_LABELS.lettering, SECTION_LABELS.ink, IN_NOTEBOOK_LABEL, SECTION_LABELS.startMode, "Ink from the pointer", SECTION_LABELS.pace, SECTION_LABELS.layout];
 		let at = -1;
 		for (const label of order) {
 			const next = words.indexOf(label);
@@ -87,11 +87,17 @@ describe("settings: Customize", () => {
 		assert.ok(html.includes("background:var(--text-blue)") && html.includes("color:var(--riddle-ink)"));
 	});
 
-	it("a failed save says so, with Try again", () => {
+	it("a failed save says so, with Try again, pinned at the top of the page", () => {
 		assert.ok(!page().includes("nb-settings-problem"));
 		const html = page({}, true);
 		assert.match(html, /role="alert" data-testid="nb-settings-problem"/);
 		assert.ok(text(html).includes(NOT_SAVED_LINE) && text(html).includes("Try again"));
+		assert.ok(html.indexOf("nb-settings-problem") < html.indexOf('data-testid="nb-set-appearance"'), "above the first group");
+	});
+
+	it("every group is a settings search and deep-link target", () => {
+		const rows = [...page().matchAll(/data-settings-row="([^"]+)"/g)].map((m) => m[1]);
+		assert.deepEqual(rows, ["theme", "text-size", "lettering", "ink", "start-mode", "pointer-ink", "pace", "layout"]);
 	});
 
 	it("thumbnails are drawn, not pictures", () => {

@@ -58,11 +58,11 @@ Inputs: spec.md, plan.md, research.md (R1-R16), data-model.md, contracts/ui-cont
 
 ## Phase 6: Settings
 
-- [ ] T040 `components/paper/settings-shell.tsx` (from settings-modal: Radix Dialog + vertical Tabs, 840×704, nav, search field at the nav top) and `components/paper/option-cards.tsx` (exported `OptionCardGroup`/`OptionCard`, thumbnails); Notebook's SettingsModal uses them.
-- [ ] T041 One `SettingsDialogProvider` for both modes rendering the shell; nav: Customize (shared appearance: theme, text size, lettering, AI ink; plus Notebook's start mode, pointer ink, pace, layout — labelled as Notebook's), Reviewers, Providers, Agent, Graph, Keyboard, General; search across all rows (settings-index) with the same land-and-highlight; deep links (`open(section,row)`; map Notebook's `"models"` calls to `agent`); Electron `lh:open-settings` → General.
-- [ ] T042 Study section bodies (`keys-section`, `agent-section`, `model-menu`, `graph-display-section`, `keyboard-section`, `update-settings`, `controls.tsx`, `toggle.tsx`, connection dialogs) restyled: rows as Notebook settings labels + controls, toggles as `.nb-switch`, choices as option cards or `.nb-menu` selects, failure line pinned at top with Try again.
-- [ ] T043 Retire Study's Appearance section (background, font, size, heading weight, emphasis colours); Graph section stays (its graph toggles move under "Graph").
-- [ ] T044 Tests: settings render tests, settings-index test, e2e sidebar-settings (Notebook) green, new Study settings e2e in phase 10.
+- [X] T040 `components/paper/settings-shell.tsx` (from settings-modal: Radix Dialog + vertical Tabs, 840×704, nav, search field at the nav top) and `components/paper/option-cards.tsx` (exported `OptionCardGroup`/`OptionCard`, thumbnails); Notebook's SettingsModal uses them.
+- [X] T041 One `SettingsDialogProvider` for both modes rendering the shell; nav: Customize (shared appearance: theme, text size, lettering, AI ink; plus Notebook's start mode, pointer ink, pace, layout — labelled as Notebook's), Reviewers, Providers, Agent, Graph, Keyboard, General; search across all rows (settings-index) with the same land-and-highlight; deep links (`open(section,row)`; map Notebook's `"models"` calls to `agent`); Electron `lh:open-settings` → General.
+- [X] T042 Study section bodies (`keys-section`, `agent-section`, `model-menu`, `graph-display-section`, `keyboard-section`, `update-settings`, `controls.tsx`, `toggle.tsx`, connection dialogs) restyled: rows as Notebook settings labels + controls, toggles as `.nb-switch`, choices as option cards or `.nb-menu` selects, failure line pinned at top with Try again.
+- [X] T043 Retire Study's Appearance section (background, font, size, heading weight, emphasis colours); Graph section stays (its graph toggles move under "Graph").
+- [X] T044 Tests: settings render tests, settings-index test, e2e sidebar-settings (Notebook) green, new Study settings e2e in phase 10.
 
 ## Phase 7: Library and notes
 

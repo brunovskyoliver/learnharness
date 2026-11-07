@@ -75,14 +75,15 @@ async function begin() { await click(byTest("chatgpt-login")); await click(byTes
 async function confirmDisconnect() { await click(byTest("chatgpt-disconnect")); await click(byTest("chatgpt-confirm-disconnect")); }
 afterEach(async () => { await act(async () => root?.unmount()); host?.remove(); root = undefined; host = undefined; delete window.lh; globalThis.fetch = originalFetch; });
 
-test("Providers is the first/default page; General is last and other pages keep relative order", () => {
+test("Providers is Study's first/default page; General is last and other pages keep relative order", () => {
  const html = renderToStaticMarkup(<SettingsDialogBody onClose={() => {}} />);
- const ids = [...html.matchAll(/data-testid="settings-nav-([^"]+)"/g)].map((m) => m[1]);
- assert.deepEqual(ids, ["keys", "agent", "appearance", "graph", "keyboard", "general"]);
- assert.match(html, /settings-nav-keys[^>]*aria-current="true"/); assert.match(html, />Providers<\/button>/);
+ const ids = [...html.matchAll(/data-testid="(?:nb-)?settings-nav-([^"]+)"/g)].map((m) => m[1]);
+ // Feature 025: Customize and Reviewers lead the one modal; Study's Appearance is folded into Customize.
+ assert.deepEqual(ids, ["customize", "reviewers", "keys", "agent", "graph", "keyboard", "general"]);
+ assert.match(html, /aria-selected="true"[^>]*data-testid="settings-nav-keys"|data-testid="settings-nav-keys"[^>]*aria-selected="true"/); assert.match(html, />Providers<\/button>/);
  assert.doesNotMatch(html, />Model providers<\/button>/);
  const hosted = renderToStaticMarkup(<SettingsDialogBody onClose={() => {}} />);
- assert.deepEqual([...hosted.matchAll(/data-testid="settings-nav-([^"]+)"/g)].map((m) => m[1]), ["keys", "agent", "appearance", "graph", "keyboard", "general"], "hosted has no Files section (feature 009)");
+ assert.deepEqual([...hosted.matchAll(/data-testid="(?:nb-)?settings-nav-([^"]+)"/g)].map((m) => m[1]), ["customize", "reviewers", "keys", "agent", "graph", "keyboard", "general"], "hosted has no Files section (feature 009)");
 });
 
 test("Providers has exactly four ordered sections; unknown variables stay masked/read-only at the end of Model API keys", async () => {

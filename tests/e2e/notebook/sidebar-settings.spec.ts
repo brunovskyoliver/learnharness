@@ -175,14 +175,15 @@ test.describe("Notebook: sidebar and settings", () => {
 		const settings = page.getByTestId("nb-settings");
 		await expect(settings).toBeVisible();
 		await expect(settings.getByTestId("nb-settings-nav-customize")).toHaveAttribute("aria-selected", "true");
-		// Study's own settings dialog stays shut.
-		await expect(page.getByTestId("settings-dialog")).toHaveCount(0);
+		// One settings modal for both modes (feature 025): no second dialog opens with it.
+		await expect(page.getByTestId("nb-settings")).toHaveCount(1);
+		await expect(page.getByTestId("settings-dialog")).toHaveCount(1);
 		await page.keyboard.press("Escape");
 		await expect(settings).toBeHidden();
 
 		await page.keyboard.press("Control+Shift+O");
 		await expect(page).not.toHaveURL(/\/notebook/, { timeout: 60_000 });
-		// In Study, Mod+, is Study's (Notebook's modal is gone with its route).
+		// The modal stays shut across the switch (it opens again only when asked).
 		await expect(page.getByTestId("nb-settings")).toHaveCount(0);
 	});
 
@@ -321,10 +322,15 @@ test.describe("Notebook: sidebar and settings", () => {
 		await page.keyboard.press("Tab");
 		await expect(dialog.getByTestId("nb-settings-close")).toBeFocused();
 		await page.keyboard.press("Tab");
+		// Feature 025: the shared Appearance comes first, Notebook's own options after it.
+		const light = dialog.getByTestId("nb-set-appearance-light");
+		await expect(light).toBeFocused();
+		const outline = await light.evaluate((el) => getComputedStyle(el).outlineStyle);
+		expect(outline).toBe("solid");
+		// Text size, lettering and ink, then "New notes start in".
+		for (let i = 0; i < 4; i++) await page.keyboard.press("Tab");
 		const thinks = dialog.getByTestId("nb-set-startMode-thinks");
 		await expect(thinks).toBeFocused();
-		const outline = await thinks.evaluate((el) => getComputedStyle(el).outlineStyle);
-		expect(outline).toBe("solid");
 		await page.keyboard.press("ArrowRight");
 		await expect(dialog.getByTestId("nb-set-startMode-ask")).toBeFocused();
 		await expect(dialog.getByTestId("nb-set-startMode-ask")).toHaveAttribute("aria-checked", "true");

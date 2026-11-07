@@ -15,7 +15,10 @@ const dom = parseHTML("<html><body></body></html>");
 Object.assign(globalThis, { window: dom.window, document: dom.document, Node: dom.window.Node, Element: dom.window.Element, HTMLElement: dom.window.HTMLElement, CustomEvent: dom.window.CustomEvent, MutationObserver: dom.window.MutationObserver,
 	requestAnimationFrame: (callback: FrameRequestCallback) => setTimeout(() => callback(performance.now()), 0), cancelAnimationFrame: clearTimeout });
 const { AgentSection } = await import("../components/settings/agent-section.tsx");
-const { AppearanceSection, GraphSection } = await import("../components/settings/appearance-section.tsx");
+const { GraphSection } = await import("../components/settings/graph-section.tsx");
+const { CustomizePage } = await import("../components/notebook/settings-modal.tsx");
+const { ReviewersPage } = await import("../components/notebook/reviewers.tsx");
+const { DEFAULT_PREFERENCES } = await import("../components/notebook/nb-shared.tsx");
 const { GraphDisplayControls } = await import("../components/settings/graph-display-section.tsx");
 const { KeyboardSection } = await import("../components/settings/keyboard-section.tsx");
 const { KeysSection } = await import("../components/settings/keys-section.tsx");
@@ -53,7 +56,8 @@ async function renderedRows(desktop: boolean): Promise<Record<SettingsIndexSecti
 	const rows = {
 		keys: await clientRows(<KeysSection />),
 		agent: rowsOf(renderToStaticMarkup(<AgentSection agent={undefined} models={undefined} graph={undefined} compaction={undefined} onSectionChange={noop} onModelsChange={noop} onCompactionChange={noop} />)),
-		appearance: rowsOf(renderToStaticMarkup(<AppearanceSection appearance={undefined} onSectionChange={noop} />)),
+		customize: rowsOf(renderToStaticMarkup(<CustomizePage preferences={DEFAULT_PREFERENCES} failed={false} onChange={noop} onRetry={noop} />)),
+		reviewers: rowsOf(renderToStaticMarkup(<ReviewersPage reviewers={[]} onSave={async () => true} />)),
 		graph: [
 			...rowsOf(renderToStaticMarkup(<GraphSection graph={undefined} onSectionChange={noop} />)),
 			...rowsOf(renderToStaticMarkup(<GraphDisplayControls settings={DEFAULT_RENDER_SETTINGS} changeSettings={noop} />)),
@@ -91,11 +95,15 @@ describe("the index does not drift from the rows", () => {
 
 describe("searchSettings", () => {
 	const local = { hosted: false, desktop: false };
-	it('"thinking" and "font" find rows, not just category names', () => {
+	it('"thinking" and "dark" find rows, not just category names', () => {
 		const thinking = searchSettings("thinking", local).map((entry) => entry.row);
 		for (const row of ["slot-strong", "slot-cheap", "slot-vision", "kbd-cycle-thinking"]) assert.ok(thinking.includes(row), row);
-		const font = searchSettings("font", local).map((entry) => entry.row);
-		assert.deepEqual(font.slice(0, 2).sort(), ["font", "prose-size"]);
+		assert.equal(searchSettings("dark", local)[0]?.row, "theme", "the theme lives in Customize");
+		assert.ok(searchSettings("pace", local).some((entry) => entry.section === "customize" && entry.row === "pace"));
+		assert.ok(searchSettings("reviewer", local).some((entry) => entry.section === "reviewers"));
+	});
+	it("the retired Appearance rows are gone from the index", () => {
+		for (const row of ["background", "font", "prose-size", "heading-weight", "bold-color", "italic-color"]) assert.ok(!SETTINGS_INDEX.some((entry) => entry.row === row), row);
 	});
 	it("matches hints as well as names", () => {
 		assert.ok(searchSettings("wolfram", local).some((entry) => entry.row === "tool-math_check"));

@@ -1978,6 +1978,7 @@ html.lh-paper {
 .lh-paper .nb-pill[aria-disabled="true"] { opacity: 0.6; cursor: progress; }
 
 @media (max-width: 479px) {
+	.lh-paper .nb-set-grid[data-testid="nb-set-layout"] { grid-template-columns: 1fr; }
 	.lh-paper .nb-export-formats { grid-template-columns: 1fr; }
 	.lh-paper .nb-export-formats .nb-option-card { min-height: 0; }
 }
@@ -2041,17 +2042,22 @@ html.lh-paper {
 	background-size: 180px 180px;
 }
 .lh-paper .nb-settings:focus { outline: none; }
+.lh-paper .nb-settings-frame { display: flex; width: 100%; min-width: 0; min-height: 0; }
 .lh-paper .nb-settings-body { display: flex; width: 100%; min-height: 0; }
+/* The nav column: the search on top (feature 025), then the tabs or the search's results. */
 .lh-paper .nb-settings-nav {
 	display: flex;
 	flex: none;
 	width: 216px;
+	min-height: 0;
 	flex-direction: column;
-	gap: 3px;
+	gap: 14px;
 	padding: 20px 12px;
 	background: var(--shelf);
 	box-shadow: 1px 0 0 var(--rule);
 }
+.lh-paper .nb-settings-tablist { display: flex; flex-direction: column; gap: 3px; }
+.lh-paper .nb-settings-tablist[hidden] { display: none; }
 .lh-paper .nb-settings-tab {
 	display: flex;
 	min-height: 36px;
@@ -2134,17 +2140,235 @@ html.lh-paper {
 
 .lh-paper .nb-set-problem {
 	position: sticky;
-	bottom: -40px;
+	top: -34px;
+	z-index: 1;
 	display: flex;
 	flex-wrap: wrap;
 	align-items: baseline;
 	gap: 4px 12px;
-	margin: 28px 0 0;
-	padding: 12px 0;
+	margin: -18px -8px 18px;
+	padding: 16px 8px 12px;
 	background: var(--paper);
+	box-shadow: 0 1px 0 var(--rule);
 	color: var(--ink);
 	font-size: var(--text-meta);
 	line-height: 1.4;
+}
+
+/* Feature 025 (T041-T042): the search in the nav and Study's pages in the modal's language. */
+.lh-paper .nb-settings-search {
+	display: flex;
+	flex: none;
+	align-items: center;
+	gap: 8px;
+	min-height: 34px;
+	margin: 0 4px;
+	box-shadow: inset 0 -1px 0 var(--rule);
+	color: var(--faint);
+	transition: box-shadow 0.15s;
+}
+.lh-paper .nb-settings-search:focus-within { box-shadow: inset 0 -1px 0 var(--ink); }
+.lh-paper .nb-settings-search-icon { flex: none; width: 14px; height: 14px; }
+.lh-paper .nb-settings-search-input {
+	min-width: 0;
+	flex: 1;
+	background: none;
+	color: var(--ink);
+	font-family: var(--nb-sans);
+	font-size: var(--text-ui);
+	line-height: 1.35;
+	outline: none;
+}
+.lh-paper .nb-settings-search-input::placeholder { color: var(--faint); opacity: 1; }
+.lh-paper .nb-settings-search-input::-webkit-search-cancel-button { display: none; }
+.lh-paper .nb-settings-results {
+	display: flex;
+	min-height: 0;
+	flex-direction: column;
+	gap: 14px;
+	margin: 0 -4px;
+	padding: 2px 4px;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+}
+.lh-paper .nb-settings-results-group { display: flex; flex-direction: column; gap: 2px; }
+.lh-paper .nb-settings-results-head { margin: 0; padding: 0 12px 4px; color: var(--faint); font-size: var(--text-xs); font-weight: 500; line-height: 16px; }
+.lh-paper .nb-settings-result {
+	display: flex;
+	min-height: 36px;
+	flex-direction: column;
+	justify-content: center;
+	gap: 1px;
+	padding: 6px 12px;
+	border-radius: 8px;
+	color: var(--ink);
+	text-align: left;
+	transition: background-color 0.15s;
+}
+.lh-paper .nb-settings-result:hover { background: var(--paper); }
+.lh-paper .nb-settings-result:focus-visible { outline-offset: -2px; }
+.lh-paper .nb-settings-result-label { font-size: var(--text-md); line-height: 1.3; }
+.lh-paper .nb-settings-result-hint { overflow: hidden; color: var(--faint); font-size: var(--text-meta); line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.lh-paper .nb-settings-results-empty { margin: 0; padding: 0 12px; color: var(--faint); font-size: var(--text-meta); line-height: 1.45; }
+
+/* The small label over Notebook's own options in Customize. */
+.lh-paper .nb-set-mode-label { margin: 44px 0 0; padding-top: 18px; box-shadow: inset 0 1px 0 var(--rule); color: var(--faint); font-size: var(--text-xs); font-weight: 500; line-height: 16px; }
+.lh-paper .nb-set-mode-label + .nb-set-section { margin-top: 18px; }
+
+/* Study's pages: a title, an optional quiet line, groups of rows in a rule-edged card. */
+.lh-paper .nb-set-page-hint { margin: -22px 40px 26px 0; color: var(--faint); font-size: var(--text-meta); line-height: 18px; }
+.lh-paper .nb-set-groups { display: flex; flex-direction: column; gap: 36px; }
+.lh-paper .nb-set-group { scroll-margin-top: 16px; }
+.lh-paper .nb-set-rows {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	padding: 2px 16px;
+	border-radius: 10px;
+	box-shadow: 0 0 0 1px var(--rule);
+	container: set-rows / inline-size;
+}
+.lh-paper .nb-set-row {
+	display: flex;
+	min-height: 48px;
+	flex-direction: column;
+	align-items: stretch;
+	justify-content: center;
+	gap: 10px;
+	padding: 12px 0;
+	border-radius: 8px;
+	scroll-margin-top: 16px;
+	transition: background-color 0.16s;
+}
+.lh-paper .nb-set-row-text { display: flex; min-width: 0; flex: 1 1 auto; flex-direction: column; gap: 3px; }
+.lh-paper .nb-set-row-label, .lh-paper .nb-set-row-hint { max-width: 46ch; }
+.lh-paper .nb-set-row-label { width: auto; color: var(--ink); font-size: var(--text-md); font-weight: 500; line-height: 18px; opacity: 1; }
+.lh-paper .nb-set-row-hint { margin: 0; color: var(--faint); font-size: var(--text-meta); line-height: 18px; text-wrap: pretty; }
+.lh-paper .nb-set-row[data-disabled] :is(.nb-set-row-label, .nb-set-row-hint) { color: var(--faint); opacity: 1; }
+.lh-paper .nb-set-row-control { display: flex; width: 100%; min-width: 0; flex-wrap: wrap; align-items: center; gap: 8px; }
+.lh-paper .nb-set-row-control > :is(input, select) { max-width: 100%; }
+/* A lone switch stays beside its label at every width. */
+.lh-paper .nb-set-row:has(> .nb-set-row-control > .nb-switch:only-child) { flex-direction: row; align-items: center; justify-content: space-between; gap: 16px; }
+.lh-paper .nb-set-row:has(> .nb-set-row-control > .nb-switch:only-child) > .nb-set-row-control { width: auto; flex: none; }
+@container set-rows (min-width: 32rem) {
+	.lh-paper .nb-set-row { flex-direction: row; align-items: center; justify-content: space-between; gap: 24px; }
+	.lh-paper .nb-set-row-control { width: auto; max-width: 60%; flex: none; justify-content: flex-end; }
+}
+/* A landed search result: a brief shelf step (research R12). */
+.lh-paper [data-settings-jump] { background: var(--shelf); }
+
+/* Finite choices and fields on the rows: a rule-ringed box (menus open as .nb-menu); single-line inputs are reply-line fields. */
+.lh-paper .nb-set-select,
+.lh-paper .nb-set-trigger {
+	display: inline-flex;
+	height: 32px;
+	min-width: 0;
+	align-items: center;
+	gap: 8px;
+	padding: 0 10px;
+	border-radius: 8px;
+	background: var(--paper);
+	box-shadow: 0 0 0 1px var(--rule);
+	color: var(--ink);
+	font-family: var(--nb-sans);
+	font-size: var(--text-ui);
+	text-align: left;
+	transition: box-shadow 0.15s;
+}
+.lh-paper :is(.nb-set-select, .nb-set-trigger):hover:not(:disabled) { box-shadow: 0 0 0 1px var(--faint); }
+.lh-paper :is(.nb-set-select, .nb-set-trigger)[aria-expanded="true"] { box-shadow: 0 0 0 1.5px var(--ink); }
+.lh-paper :is(.nb-set-select, .nb-set-trigger):disabled { color: var(--faint); cursor: not-allowed; }
+.lh-paper .nb-set-trigger-chevron { flex: none; width: 14px; height: 14px; color: var(--faint); }
+.lh-paper .nb-set-input {
+	width: 100%;
+	height: 32px;
+	padding: 0 2px;
+	background: none;
+	box-shadow: inset 0 -1px 0 var(--rule);
+	color: var(--ink);
+	font-family: var(--nb-sans);
+	font-size: var(--text-ui);
+	outline: none;
+	transition: box-shadow 0.15s;
+}
+.lh-paper .nb-set-input::placeholder { color: var(--faint); opacity: 1; }
+.lh-paper .nb-set-input:focus { box-shadow: inset 0 -1.5px 0 var(--riddle); }
+.lh-paper .nb-set-input.nb-set-mono { font-family: var(--nb-mono); font-size: var(--text-xs); }
+/* A two-way choice on a row: Notebook's pill row (the chosen one a 1.5px ink ring). */
+.lh-paper .nb-set-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.lh-paper .nb-set-pill {
+	min-height: 30px;
+	padding: 0 12px;
+	border-radius: 999px;
+	box-shadow: 0 0 0 1px var(--rule);
+	color: var(--graphite);
+	font-size: var(--text-meta);
+	font-weight: 500;
+	transition: box-shadow 0.15s, color 0.15s;
+}
+.lh-paper .nb-set-pill:hover { color: var(--ink); box-shadow: 0 0 0 1px var(--faint); }
+.lh-paper .nb-set-pill[aria-checked="true"] { color: var(--ink); box-shadow: 0 0 0 1.5px var(--ink); }
+/* Text actions on rows (Change, Remove, Rebind, Reset…): faint, ink on hover. */
+.lh-paper .nb-set-text-button { color: var(--faint); font-size: var(--text-meta); line-height: 1.4; transition: color 0.15s; }
+.lh-paper .nb-set-text-button:hover:not(:disabled) { color: var(--ink); }
+.lh-paper .nb-set-text-button:disabled { cursor: not-allowed; }
+.lh-paper .nb-set-text-button-ink { color: var(--ink); text-decoration: underline; text-decoration-color: var(--riddle-line); text-underline-offset: 3px; }
+.lh-paper .nb-set-kbd { padding: 1px 6px; border-radius: 6px; box-shadow: 0 0 0 1px var(--rule); color: var(--ink); font-family: var(--nb-sans); font-size: var(--text-meta); }
+.lh-paper .nb-set-display { padding: 14px 0; }
+.lh-paper .nb-set-text-button-ink:disabled { color: var(--faint); text-decoration: none; }
+.lh-paper .nb-set-text-button-danger:hover:not(:disabled) { color: var(--text-red); }
+.lh-paper .nb-set-sublabel { margin: 0 0 4px; color: var(--ink); font-size: var(--text-ui); font-weight: 500; line-height: 18px; }
+.lh-paper .nb-set-caption-line { margin: 0 0 4px; color: var(--faint); font-size: var(--text-xs); line-height: 16px; }
+.lh-paper .nb-set-status { margin: 0; color: var(--faint); font-size: var(--text-meta); line-height: 1.4; }
+.lh-paper .nb-set-textarea {
+	display: block;
+	width: 100%;
+	height: 96px;
+	padding: 8px 10px;
+	border-radius: 8px;
+	background: var(--paper);
+	box-shadow: 0 0 0 1px var(--rule);
+	color: var(--ink);
+	font-family: var(--nb-sans);
+	font-size: var(--text-ui);
+	line-height: 1.45;
+	resize: vertical;
+	outline: none;
+}
+.lh-paper .nb-set-textarea::placeholder { color: var(--faint); opacity: 1; }
+.lh-paper .nb-set-textarea:focus { box-shadow: 0 0 0 1px var(--ink); }
+.lh-paper .nb-set-textarea-source { background: var(--shelf); color: var(--graphite); box-shadow: none; }
+/* The graph display panel: label left, control right; sliders in ink. */
+.lh-paper .nb-set-display-row { display: flex; min-height: 32px; align-items: center; justify-content: space-between; gap: 12px; color: var(--graphite); font-size: var(--text-ui); scroll-margin-top: 16px; border-radius: 8px; }
+.lh-paper .nb-set-display-row[data-disabled] { color: var(--faint); }
+.lh-paper .nb-set-slider { display: flex; flex-direction: column; gap: 4px; scroll-margin-top: 16px; border-radius: 8px; }
+.lh-paper .nb-set-slider-head { display: flex; align-items: center; justify-content: space-between; color: var(--graphite); font-size: var(--text-ui); }
+.lh-paper .nb-set-slider[data-disabled] .nb-set-slider-head { color: var(--faint); }
+.lh-paper .nb-set-range { width: 100%; height: 6px; accent-color: var(--ink); }
+.lh-paper .nb-set-range:disabled { accent-color: var(--faint); cursor: not-allowed; }
+
+/* A failed save: pinned under the page title while the page scrolls; a failed load in place. */
+.lh-paper .nb-set-pinned { position: sticky; top: -34px; z-index: 1; margin: -18px -8px 18px; padding: 16px 8px 12px; background: var(--paper); box-shadow: 0 1px 0 var(--rule); }
+.lh-paper .nb-set-failure { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; color: var(--ink); font-size: var(--text-meta); line-height: 1.4; }
+.lh-paper .nb-set-failure-line { min-width: 0; flex: 1 1 12rem; margin: 0; }
+.lh-paper .nb-set-failure-actions { display: flex; flex-wrap: wrap; align-items: baseline; gap: 14px; }
+.lh-paper .nb-set-failure-detail { width: 100%; margin: 0; color: var(--graphite); font-family: var(--nb-mono); font-size: var(--text-xs); overflow-wrap: anywhere; white-space: pre-wrap; }
+.lh-paper .nb-set-skeleton .nb-set-row { flex-direction: row; align-items: center; justify-content: space-between; }
+
+/* The switch, locked: the rule track and a faint knob; the cursor says why. */
+.lh-paper .nb-switch:disabled { cursor: not-allowed; background: var(--shelf); box-shadow: inset 0 0 0 1px var(--rule); }
+.lh-paper .nb-switch:disabled .nb-switch-thumb { background: var(--faint); box-shadow: none; }
+.lh-paper .nb-switch-thumb[data-icon] { display: flex; align-items: center; justify-content: center; color: var(--ink); }
+.lh-paper .nb-switch-thumb[data-icon] > svg { width: 12px; height: 12px; }
+
+@media (pointer: coarse) {
+	.lh-paper :is(.nb-set-select, .nb-set-trigger, .nb-set-input, .nb-set-pill, .nb-settings-result) { min-height: 44px; }
+	.lh-paper .nb-set-text-button { min-height: 44px; }
+	.lh-paper :is(.nb-set-display-row, .nb-set-range) { min-height: 44px; }
+	.lh-paper .nb-settings-search { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.lh-paper :is(.nb-settings-search, .nb-settings-result, .nb-set-row, .nb-set-select, .nb-set-trigger, .nb-set-input, .nb-set-pill, .nb-set-text-button) { transition: none; }
 }
 
 /* Below 768px: full screen, the nav a row across the top. */
@@ -2152,9 +2376,14 @@ html.lh-paper {
 	.lh-paper .nb-dialog-backdrop:has(.nb-settings) { padding: 0; }
 	.lh-paper .nb-settings { width: 100vw; height: 100dvh; border-radius: 0; }
 	.lh-paper .nb-settings-body { flex-direction: column; }
-	.lh-paper .nb-settings-nav { width: auto; flex-direction: row; padding: 12px 56px 12px 16px; box-shadow: 0 1px 0 var(--rule); }
+	.lh-paper .nb-settings-nav { width: auto; gap: 8px; padding: 12px 16px 10px; box-shadow: 0 1px 0 var(--rule); }
+	/* The tabs: a row that scrolls sideways (its scrollbar hidden, as everywhere). */
+	.lh-paper .nb-settings-tablist { flex-direction: row; margin: 0 -16px; padding: 0 16px 2px; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+	.lh-paper .nb-settings-tablist::-webkit-scrollbar { display: none; }
+	.lh-paper .nb-settings-tab { flex: none; white-space: nowrap; }
+	.lh-paper .nb-settings-results { max-height: 40dvh; }
 	.lh-paper .nb-settings-page { padding: 24px 16px 32px; }
-	.lh-paper .nb-set-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	/* Three choices stay three across (no orphan card); the three layouts with their words stack below 480px. */
 	.lh-paper .nb-set-grid[data-testid="nb-set-ink"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 	.lh-paper .nb-settings-close { top: 10px; right: 10px; }
 }

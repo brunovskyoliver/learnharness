@@ -14,6 +14,7 @@ import { writeSettingsKey } from "@/components/interface-switch";
 import { usePaperAppearance } from "@/components/paper/appearance";
 import { EdgeStrip } from "@/components/paper/overlay-sidebar";
 import { SurfaceRootContext } from "@/components/paper/surface-root";
+import { useSettingsDialog } from "@/components/settings/settings-dialog";
 import type { SaveStatus } from "@/components/library/page-draft";
 import { CornerHint } from "./corner-hint";
 import { LinksPanel } from "./links-panel";
@@ -23,7 +24,6 @@ import { MenuGlyph, Wordmark } from "./chrome";
 import { NoteView } from "./note-view";
 import { OverlaySidebar } from "./overlay-sidebar";
 import { PointerInk } from "./pointer-ink";
-import { SettingsModal } from "./settings-modal";
 import { useLibraryList } from "./use-notebook-data";
 
 export type { NotebookPreferences } from "./nb-shared";
@@ -98,9 +98,15 @@ export function NotebookApp({ note, fontClasses = "", preferences, reviewers = [
 		const list = next.map((r) => ({ id: r.id, name: r.name, instructions: r.instructions, ...(r.seeded ? { seeded: true as const } : {}) }));
 		return queueWrite({ reviewers: list });
 	}, [queueWrite]);
-	const [settings, setSettings] = useState<SettingsTab | null>(null);
+	// Settings is the one modal both modes share (feature 025): it shows this note's live preferences and reviewers.
+	const settingsDialog = useSettingsDialog();
+	const { open: openDialog, registerNotebook, shown: settings } = settingsDialog;
+	useEffect(() => {
+		registerNotebook({ root, preferences: prefs, failed: preferencesFailed, update: updatePreferences, retry: retryPreferences, reviewers: reviewerList, saveReviewers });
+	}, [registerNotebook, root, prefs, preferencesFailed, updatePreferences, retryPreferences, reviewerList, saveReviewers]);
+	useEffect(() => () => registerNotebook(null), [registerNotebook]);
 	// From a menu item or a sidebar row: the menu gives the focus back first, so closing returns it there.
-	const openSettings = useCallback((tab: SettingsTab = "customize") => { window.setTimeout(() => setSettings(tab), 0); }, []);
+	const openSettings = useCallback((tab: SettingsTab = "customize") => { window.setTimeout(() => openDialog(tab), 0); }, [openDialog]);
 	const openReviewers = useCallback(() => openSettings("reviewers"), [openSettings]);
 	// The Links panel (sidebar footer): the sidebar closes and gives the focus to ☰, where it comes back after.
 	const [linksOpen, setLinksOpen] = useState(false);
@@ -149,7 +155,7 @@ export function NotebookApp({ note, fontClasses = "", preferences, reviewers = [
 			if (event.key === ",") {
 				// Mod+, Settings (Study's own Mod+, stays out of Notebook routes).
 				event.preventDefault();
-				setSettings("customize");
+				openDialog("customize");
 			} else if (event.key === "\\") {
 				event.preventDefault();
 				setSidebar((open) => (open ? null : { via: "key", search: false }));
@@ -160,7 +166,7 @@ export function NotebookApp({ note, fontClasses = "", preferences, reviewers = [
 		};
 		window.addEventListener("keydown", onKey);
 		return () => window.removeEventListener("keydown", onKey);
-	}, [mac, togglePlain, copyNote, openExport, settings]);
+	}, [mac, togglePlain, copyNote, openExport, settings, openDialog]);
 
 	const shared = useMemo<NotebookShared>(() => ({
 		root, mac, noteId: note.id, startMode: prefs.startMode, reviewers: reviewerList, saveReviewers, openReviewers, openSettings, openLinks, linksOpen, hosted, account,
@@ -204,7 +210,6 @@ export function NotebookApp({ note, fontClasses = "", preferences, reviewers = [
 				<div className="nb-sheet" data-aside={sidebar ? "" : undefined} inert={sidebar ? true : undefined}>
 					<NoteView key={note.id} note={note} />
 				</div>
-				<SettingsModal tab={settings} onTabChange={setSettings} />
 				<LinksPanel open={linksOpen} onOpenChange={setLinksOpen} pageId={note.id} noteName={library?.items.find((item) => item.id === note.id)?.name ?? note.name} returnFocus={menuButton} />
 				{prefs.pointerInk && <PointerInk />}
 				<CornerHint />

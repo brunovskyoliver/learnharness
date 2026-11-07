@@ -111,7 +111,7 @@ function KeyTableRow({
 		return (
 			<div data-testid={testid} data-settings-row={settingsRow} className="scroll-mt-4 rounded-md">
 				<div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md py-2" data-testid={`${testid}-editor`}>
-					<span className="shrink-0 font-sans text-sm text-ink">{label}</span>
+					<span className="nb-set-row-label shrink-0">{label}</span>
 					<input
 						type="text"
 						value={value}
@@ -126,14 +126,14 @@ function KeyTableRow({
 						autoFocus
 						autoComplete="off"
 						spellCheck={false}
-						className="h-7 min-w-40 flex-1 basis-40 rounded-md border border-rule bg-paper px-1.5 font-mono text-xs text-ink placeholder:text-faint pointer-coarse:h-11"
+						className="nb-set-input nb-set-mono min-w-40 flex-1 basis-40"
 					/>
 					<button
 						type="button"
 						onClick={() => void save()}
 						disabled={busy || !value.trim()}
 						data-testid={`${testid}-save`}
-						className="shrink-0 text-sm text-ink underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:text-faint disabled:no-underline pointer-coarse:min-h-11"
+						className="nb-set-text-button nb-set-text-button-ink shrink-0"
 					>
 						Save
 					</button>
@@ -142,7 +142,7 @@ function KeyTableRow({
 						onClick={onCancel}
 						disabled={busy}
 						data-testid={`${testid}-cancel`}
-						className="shrink-0 text-sm text-faint underline-offset-2 hover:text-ink hover:underline pointer-coarse:min-h-11"
+						className="shrink-0 nb-set-text-button"
 					>
 						Cancel
 					</button>
@@ -153,7 +153,7 @@ function KeyTableRow({
 							disabled={busy}
 							aria-label={`Delete ${label} key`}
 							data-testid={`${testid}-delete`}
-							className="shrink-0 text-sm text-faint underline-offset-2 hover:text-red hover:underline pointer-coarse:min-h-11"
+							className="shrink-0 nb-set-text-button nb-set-text-button-danger"
 						>
 							Delete
 						</button>
@@ -183,8 +183,8 @@ function KeyTableRow({
 						envOwned ? "cursor-default" : "cursor-pointer transition-colors hover:bg-shelf"
 					}`}
 				>
-					<span className="text-sm text-ink">{label}</span>
-					<span data-testid={`${testid}-status`} className="text-sm text-faint">
+					<span className="nb-set-row-label">{label}</span>
+					<span data-testid={`${testid}-status`} className="nb-set-row-hint">
 						{keyStatusLine(status)}
 					</span>
 				</button>
@@ -194,7 +194,7 @@ function KeyTableRow({
 						target="_blank"
 						rel="noreferrer"
 						aria-label={`Get a ${label} key (opens in a new tab)`}
-						className="mr-2 shrink-0 rounded-md text-sm text-graphite underline-offset-2 hover:text-ink hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center"
+						className="nb-set-text-button mr-2 inline-flex shrink-0 items-center"
 					>
 						key ↗
 					</a>
@@ -250,10 +250,10 @@ function AddProviderRow({
 				aria-expanded={open}
 				data-testid="add-provider"
 				onClick={() => setOpen((v) => !v)}
-				className="-mx-2 flex min-h-14 w-[calc(100%+1rem)] items-center justify-between gap-3 rounded-md px-2 py-2 text-left font-sans text-sm text-graphite transition-colors hover:bg-shelf hover:text-ink"
+				className="-mx-2 flex min-h-14 w-[calc(100%+1rem)] items-center justify-between gap-3 rounded-md px-2 py-2 text-left text-md font-medium text-graphite transition-colors hover:bg-shelf hover:text-ink"
 			>
 				<span>+ Add provider key</span>
-				{addable.length > 0 && <span className="text-sm">{addable.length} available</span>}
+				{addable.length > 0 && <span className="nb-set-row-hint">{addable.length} available</span>}
 			</button>
 			{open && (
 				<MenuShell
@@ -424,7 +424,7 @@ const { providerRows, toolRows, unknownRows, addable } = classifyKeys(statuses, 
 				)}
 				{adding && (
 					<div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md py-2" data-testid={`key-${adding.id}-editor`}>
-						<span className="shrink-0 font-sans text-sm text-ink">{adding.label}</span>
+						<span className="nb-set-row-label shrink-0">{adding.label}</span>
 						<AddProviderEditor provider={adding} onSave={(v) => void saveNewProvider(adding, v)} onCancel={() => setAdding(null)} error={addError} />
 					</div>
 				)}
@@ -495,14 +495,14 @@ function AddProviderEditor({
 				autoFocus
 						autoComplete="off"
 						spellCheck={false}
-						className="h-7 min-w-40 flex-1 basis-40 rounded-md border border-rule bg-paper px-1.5 font-mono text-xs text-ink placeholder:text-faint pointer-coarse:h-11"
+						className="nb-set-input nb-set-mono min-w-40 flex-1 basis-40"
 			/>
 			<button
 				type="button"
 				onClick={() => value.trim() && onSave(value)}
 				disabled={!value.trim()}
 				data-testid={`key-${provider.id}-save`}
-				className="shrink-0 text-sm text-ink underline-offset-2 hover:underline disabled:cursor-not-allowed disabled:text-faint disabled:no-underline pointer-coarse:min-h-11"
+				className="nb-set-text-button nb-set-text-button-ink shrink-0"
 			>
 				Save
 			</button>
@@ -510,7 +510,7 @@ function AddProviderEditor({
 				type="button"
 				onClick={onCancel}
 				data-testid={`key-${provider.id}-cancel`}
-				className="shrink-0 text-sm text-faint underline-offset-2 hover:text-ink hover:underline pointer-coarse:min-h-11"
+				className="shrink-0 nb-set-text-button"
 			>
 				Cancel
 			</button>

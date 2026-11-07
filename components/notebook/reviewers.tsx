@@ -174,7 +174,7 @@ export function ReviewersPage({ reviewers, onSave }: {
 	};
 
 	return (
-		<section className="nb-rev" aria-labelledby="nb-rev-title" data-testid="nb-reviewers">
+		<section className="nb-rev" aria-labelledby="nb-rev-title" data-testid="nb-reviewers" data-settings-row="reviewers">
 			<h2 id="nb-rev-title" className="nb-rev-title">Reviewers</h2>
 			<p className="nb-rev-lede">Whose eyes a note is read with. Each note picks one from the row above its title.</p>
 			<ul className="nb-rev-list" aria-label="Reviewers">
@@ -213,7 +213,7 @@ export function ReviewersPage({ reviewers, onSave }: {
 				</p>
 			)}
 			{failed && <p className="nb-rev-status nb-rev-error" role="alert">{NOT_SAVED_LINE}</p>}
-			<button ref={newButton} type="button" className="nb-rev-new" data-testid="nb-reviewer-new" onClick={add}>
+			<button ref={newButton} type="button" className="nb-rev-new" data-testid="nb-reviewer-new" data-settings-row="new-reviewer" onClick={add}>
 				<PlusIcon aria-hidden="true" />
 				<span>New reviewer</span>
 			</button>

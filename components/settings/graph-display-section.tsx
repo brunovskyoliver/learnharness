@@ -32,9 +32,8 @@ import {
 	toSliderPosition,
 	type GraphRenderSettings,
 } from "@/src/core";
-import { cn } from "@/lib/utils";
 import { notifySettingsSaved } from "@/components/settings-signal";
-import { SettingsFailure } from "./controls.tsx";
+import { SettingsFailure, Toggle } from "./controls.tsx";
 import { displayRowId } from "./settings-index";
 
 /**
@@ -126,8 +125,8 @@ function SettingSlider({
 	disabled?: boolean;
 }) {
 	return (
-		<label data-settings-row={displayRowId(label)} className="flex scroll-mt-4 flex-col gap-1 rounded-md">
-			<span className={cn("flex items-center justify-between text-sm", disabled ? "text-faint" : "text-graphite")}>
+		<label data-settings-row={displayRowId(label)} className="nb-set-slider" data-disabled={disabled ? "" : undefined}>
+			<span className="nb-set-slider-head">
 				{label}
 				<span className="tabular-nums">{display ?? value}</span>
 			</span>
@@ -139,7 +138,7 @@ function SettingSlider({
 				value={value}
 				disabled={disabled}
 				onChange={(e) => onChange(Number(e.target.value))}
-				className={cn("h-1.5 w-full accent-graphite pointer-coarse:h-11", disabled && "cursor-not-allowed accent-faint")}
+				className="nb-set-range"
 			/>
 		</label>
 	);
@@ -220,22 +219,21 @@ export function GraphDisplayControls({
 		    the whole build (splat/blur/readback/blit), not just
 		    the paint. */}
 		<div className="mt-3 flex flex-col gap-3">
-			<h4 className="text-sm font-medium text-ink">
+			<h4 className="nb-set-sublabel">
 				Regions
 			</h4>
-			<label data-settings-row={displayRowId("Background colors")} className="flex scroll-mt-4 cursor-pointer items-center justify-between rounded-md text-sm text-graphite pointer-coarse:min-h-11">
+			<div data-settings-row={displayRowId("Background colors")} className="nb-set-display-row">
 				<span>Background colors</span>
-				<input
-					type="checkbox"
+				<Toggle
 					checked={settings.regions.enabled}
-					onChange={(e) =>
+					label="Background colors"
+					onChange={(on) =>
 						changeSettings((cur) => ({
 							...cur,
-							regions: { ...cur.regions, enabled: e.target.checked },
+							regions: { ...cur.regions, enabled: on },
 						}))}
-						className="accent-ink"
 				/>
-			</label>
+			</div>
 			<SettingSlider
 				label="Dilation"
 				disabled={!regionTuning.enabled}
@@ -281,12 +279,13 @@ export function GraphDisplayControls({
 			/>
 			<label
 				data-settings-row={displayRowId("Bitmap resolution")}
-				className={cn("flex scroll-mt-4 items-center justify-between gap-2 rounded-md text-sm", regionTuning.enabled ? "text-graphite" : "text-faint")}
+				className="nb-set-display-row"
+				data-disabled={regionTuning.enabled ? undefined : ""}
 			>
 				<span>Bitmap resolution</span>
 				<select
 					disabled={!regionTuning.enabled}
-					className={cn("rounded-md border border-rule bg-paper px-1.5 py-0.5 text-sm tabular-nums pointer-coarse:min-h-11", regionTuning.enabled ? "text-ink" : "cursor-not-allowed text-faint")}
+					className="nb-set-select tabular-nums"
 					value={regionTuning.bitmap}
 					onChange={(e) =>
 						changeSettings((cur) => ({
@@ -307,15 +306,14 @@ export function GraphDisplayControls({
 			    the Background colors switch above — labels follow
 			    their own clusterLabels toggle. Size is screen px
 			    (constant at any zoom, unlike node labels). */}
-			<label data-settings-row={displayRowId("Cluster labels")} className="flex scroll-mt-4 cursor-pointer items-center justify-between rounded-md text-sm text-graphite pointer-coarse:min-h-11">
+			<div data-settings-row={displayRowId("Cluster labels")} className="nb-set-display-row">
 				<span>Cluster labels</span>
-				<input
-					type="checkbox"
+				<Toggle
 					checked={settings.clusterLabels}
-					onChange={(e) => changeSettings((cur) => ({ ...cur, clusterLabels: e.target.checked }))}
-					className="accent-ink"
+					label="Cluster labels"
+					onChange={(on) => changeSettings((cur) => ({ ...cur, clusterLabels: on }))}
 				/>
-			</label>
+			</div>
 			<SettingSlider
 				label="Cluster label size"
 				disabled={!settings.clusterLabels}
@@ -342,7 +340,7 @@ export function GraphDisplayControls({
 		    Order (user 2026-09-17): general forces first; depth
 		    anchor + its gray-out-able controls last. */}
 		<div className="mt-3 flex flex-col gap-3">
-			<h4 className="text-sm font-medium text-ink">
+			<h4 className="nb-set-sublabel">
 				Physics
 			</h4>
 			<SettingSlider
@@ -427,10 +425,10 @@ export function GraphDisplayControls({
 			    forces first, then the mode + its conditional
 			    controls at the very bottom — the grayed group reads
 			    as a self-contained sub-section. */}
-			<label data-settings-row={displayRowId("Depth anchor")} className="flex scroll-mt-4 items-center justify-between gap-2 rounded-md text-sm text-graphite">
+			<label data-settings-row={displayRowId("Depth anchor")} className="nb-set-display-row">
 				Depth anchor
 				<select
-					className="rounded-md border border-rule bg-paper px-1 py-0.5 text-sm text-ink pointer-coarse:min-h-11"
+					className="nb-set-select"
 					value={physicsTuning.depthMode}
 					onChange={(e) =>
 						changeSettings((cur) => ({

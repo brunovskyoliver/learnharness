@@ -1,13 +1,10 @@
 /**
- * The settings wave's pure layers (thin settings wave): the appearance →
- * CSS-variable mapping (the section must actually DO something), the
- * dark-curve background derivation, the agent section's compose helpers
+ * The settings wave's pure layers (thin settings wave): the agent section's compose helpers
  * (the replace-whole PUT discipline), and the keyboard overrides map.
  */
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { appearanceVars, derivedPalette, resolveAppearance, staleVarNames } from "../components/settings/appearance.tsx";
 import {
 	PROMPT_IN_USE_HINT,
 	composePromptSwitch,
@@ -22,126 +19,6 @@ import { classifyKeys, keyStatusLine, type ProviderKeyInfo } from "../components
 import type { AgentSettings, AuthKeyStatus, ModelsSettings } from "../src/core";
 import { slotsConfigured } from "../src/core";
 import { setupStage } from "../components/setup-dialog.tsx";
-
-describe("resolveAppearance — delta over factory", () => {
-	it("absent everything = the factory view", () => {
-		const a = resolveAppearance(undefined);
-		assert.equal(a.mode, "dark");
-		assert.equal(a.background, null);
-		assert.equal(a.fontFamily, null);
-		assert.equal(a.proseFontSize, 17);
-		assert.equal(a.sessionNameSerif, false);
-		assert.deepEqual(a.mdRendering, { headingWeight: 700, boldColor: null, italicColor: null });
-	});
-
-	it("explicit deltas win field-by-field", () => {
-		const a = resolveAppearance({ proseFontSize: 20, fontFamily: "Iowan Old Style" });
-		assert.equal(a.proseFontSize, 20);
-		assert.equal(a.fontFamily, "Iowan Old Style");
-		assert.equal(a.background, null);
-	});
-});
-
-describe("derivedPalette — the dark curve keeps today's relationships", () => {
-	it("the factory background reproduces today's palette EXACTLY", () => {
-		assert.deepEqual(derivedPalette("#141414"), {
-			"--background": "#141414",
-			"--card": "#1c1c1c",
-			"--popover": "#1c1c1c",
-			"--secondary": "#1c1c1c",
-			"--muted": "#1c1c1c",
-			"--accent": "#2a2a2a",
-			"--border": "#434343",
-			"--input": "#434343",
-			"--primary-foreground": "#141414",
-		});
-	});
-
-	it("an off-factory background shifts every surface with it (clamped at 255)", () => {
-		const p = derivedPalette("#f0f0f0");
-		assert.equal(p["--background"], "#f0f0f0");
-		assert.equal(p["--card"], "#f8f8f8"); // 240 + 8 per channel
-		assert.equal(p["--border"], "#ffffff", "240 + 47 clamps to 255 on every channel");
-	});
-
-	it("3-digit hex expands", () => {
-		assert.equal(derivedPalette("#abc")["--card"], "#b2c3d4"); // aa bb cc each +8
-	});
-});
-
-describe("appearanceVars — the mapping the provider applies", () => {
-	it("factory appearance: only the always-applied tokens move", () => {
-		const vars = appearanceVars(resolveAppearance(undefined));
-		assert.equal(vars["--lh-prose-size"], "17px");
-		assert.equal(vars["--lh-heading-weight"], "700");
-		assert.equal(vars["--font-prose"], undefined, "no font override at factory");
-		assert.equal(vars["--font-title"], undefined, "factory titles keep the Newsreader stylesheet face");
-		assert.equal(vars["--background"], undefined, "factory palette untouched");
-		assert.equal(vars["--lh-ink-strong"], undefined, "default ink");
-	});
-
-	it("full delta: every knob lands on its token", () => {
-		const vars = appearanceVars(
-			resolveAppearance({
-				background: "#101820",
-				fontFamily: "Georgia",
-				proseFontSize: 18,
-				sessionNameSerif: false,
-				mdRendering: { headingWeight: 700, boldColor: "#ff0000", italicColor: "#00ff00" },
-			}),
-		);
-		assert.equal(vars["--background"], "#101820");
-		assert.equal(vars["--card"], "#182028", "raised +8 per channel: 10→18, 18→20, 20→28");
-		assert.equal(vars["--font-prose"], `"Georgia", var(--font-sans3), ui-sans-serif, system-ui, sans-serif`);
-		assert.equal(vars["--lh-prose-size"], "18px");
-		assert.equal(vars["--font-title"], "var(--font-prose)", "an explicit reading font applies to titles");
-		assert.equal(vars["--lh-heading-weight"], "700");
-		assert.equal(vars["--lh-ink-strong"], "#ff0000");
-		assert.equal(vars["--lh-ink-italic"], "#00ff00");
-	});
-
-	it("sessionNameSerif false alone: the legacy flag moves nothing", () => {
-		const vars = appearanceVars(resolveAppearance({ sessionNameSerif: false }));
-		assert.equal(vars["--font-title"], undefined);
-		assert.equal(Object.keys(vars).length, 3, "prose-size, heading-weight, font-ui");
-	});
-});
-
-describe("staleVarNames — the removal half of application (owner repro: resets never reverted)", () => {
-	it("a full delta applied, then factory: every delta-only name goes stale", () => {
-		const fullDelta = appearanceVars(
-			resolveAppearance({
-				background: "#101820",
-				fontFamily: "Georgia",
-				sessionNameSerif: false,
-				mdRendering: { headingWeight: 700, boldColor: "#ff0000", italicColor: "#00ff00" },
-			}),
-		);
-		const applied = Object.keys(fullDelta);
-		const factory = appearanceVars(resolveAppearance(undefined));
-		const stale = staleVarNames(applied, factory);
-		assert.ok(stale.includes("--background"));
-		assert.ok(stale.includes("--font-prose"));
-		assert.ok(stale.includes("--font-title"), "clearing the reading font returns titles to the stylesheet face");
-		assert.ok(stale.includes("--lh-ink-strong"));
-		assert.ok(stale.includes("--lh-ink-italic"));
-		assert.ok(!stale.includes("--lh-prose-size"), "always-applied tokens never go stale");
-		assert.ok(!stale.includes("--lh-heading-weight"), "always-applied tokens never go stale");
-	});
-
-	it("an empty background commit (null = factory) frees the palette vars", () => {
-		const withBg = appearanceVars(resolveAppearance({ background: "#101010" }));
-		const emptied = appearanceVars(resolveAppearance({ background: null }));
-		const stale = staleVarNames(Object.keys(withBg), emptied);
-		assert.ok(stale.includes("--background"));
-		assert.ok(stale.includes("--card"), "the derived palette follows the background out");
-		assert.equal(emptied["--background"], undefined);
-	});
-
-	it("no previous applications → nothing stale", () => {
-		assert.deepEqual(staleVarNames([], appearanceVars(resolveAppearance(undefined))), []);
-	});
-});
 
 describe("agent section compose helpers — the replace-whole PUT body", () => {
 	it("composeTool carries the rest of the section verbatim", () => {

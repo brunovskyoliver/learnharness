@@ -1,13 +1,10 @@
 [
-	{"file": "components/ai-elements/message.tsx", "pattern": "\"editor\\.(background|foreground)\"|settings: \\{ foreground: \"#[0-9a-f]{6}\" \\}", "reason": "Shiki syntax-highlight theme: code token colours are data (T056 derives the pair from paper tokens)"},
-	{"file": "components/clerk-appearance.ts", "pattern": "^\\s*color[A-Za-z]+: \"#[0-9a-f]{6}\",$", "reason": "Clerk appearance variables need literal colours (Clerk computes shades from them); T060 moves them to paper values"},
-	{"file": "components/graph-canvas.ts", "pattern": "return `rgba\\(\\$\\{r\\}, \\$\\{g\\}, \\$\\{b\\}, \\$\\{alpha\\}\\)`", "reason": "Canvas helper: a token colour read from CSS as #rrggbb, re-emitted with alpha for the 2D context"},
-	{"file": "components/graph-canvas.ts", "pattern": "Style = `hsla\\(\\$\\{(rm\\.)?hue\\}", "reason": "Knowledge-graph cluster colours: one hue per cluster, a data series"},
-	{"file": "components/graph-view.tsx", "pattern": "\"#888888\"", "reason": "Canvas fallback when a token cannot be read (no 2D context in tests); the graph paints token colours otherwise"},
-	{"file": "components/library/pdf-reader.css", "pattern": "\\.lh-pdf-(page|text|mark|cite)", "reason": "PDF page and marks: the page stays white (document data) and highlights are PDF marks drawn with multiply"},
-	{"file": "components/notebook/pointer-ink.tsx", "pattern": "let ink = \"#1d1c1a\";", "reason": "Pointer-ink canvas: start colour before --ink is read from the computed style (paper light ink)"},
-	{"file": "components/notebook/settings-modal.tsx", "pattern": "^\\s*(light|dark): \\{ paper: \"#", "reason": "Theme thumbnails: each preview draws its own theme's colours whatever the current theme (a palette, not chrome)"},
-	{"file": "components/settings/appearance-vars.ts", "pattern": "vars\\[\"--(primary|font-prose|font-title|font-ui)\"\\]", "reason": "Study's retired appearance writer: old variable names as string keys; not mounted since phase 1, deleted with the Appearance section in T043"},
-	{"file": "components/settings/appearance-section.tsx", "pattern": "DEFAULT_READING_FONT = \"Source Sans 3\"|placeholder=\"#000000\"", "reason": "Study's retired Appearance section (stored font name default, colour field placeholder text); deleted in T043"},
-	{"file": "components/settings/model-menu.tsx", "pattern": "\"Source Sans 3\"", "reason": "FontMenuList, used only by the retired Appearance section: the stored default family's name; deleted in T043"}
+	{"file":"components/ai-elements/message.tsx","pattern":"\"editor\\.(background|foreground)\"|settings: \\{ foreground: \"#[0-9a-f]{6}\" \\}","reason":"Shiki syntax-highlight theme: code token colours are data (T056 derives the pair from paper tokens)"},
+	{"file":"components/clerk-appearance.ts","pattern":"^\\s*color[A-Za-z]+: \"#[0-9a-f]{6}\",$","reason":"Clerk appearance variables need literal colours (Clerk computes shades from them); T060 moves them to paper values"},
+	{"file":"components/graph-canvas.ts","pattern":"return `rgba\\(\\$\\{r\\}, \\$\\{g\\}, \\$\\{b\\}, \\$\\{alpha\\}\\)`","reason":"Canvas helper: a token colour read from CSS as #rrggbb, re-emitted with alpha for the 2D context"},
+	{"file":"components/graph-canvas.ts","pattern":"Style = `hsla\\(\\$\\{(rm\\.)?hue\\}","reason":"Knowledge-graph cluster colours: one hue per cluster, a data series"},
+	{"file":"components/graph-view.tsx","pattern":"\"#888888\"","reason":"Canvas fallback when a token cannot be read (no 2D context in tests); the graph paints token colours otherwise"},
+	{"file":"components/library/pdf-reader.css","pattern":"\\.lh-pdf-(page|text|mark|cite)","reason":"PDF page and marks: the page stays white (document data) and highlights are PDF marks drawn with multiply"},
+	{"file":"components/notebook/pointer-ink.tsx","pattern":"let ink = \"#1d1c1a\";","reason":"Pointer-ink canvas: start colour before --ink is read from the computed style (paper light ink)"},
+	{"file":"components/paper/option-cards.tsx","pattern":"^\\s*(light|dark): \\{ paper: \"#","reason":"Theme thumbnails: each preview draws its own theme's colours whatever the current theme (a palette, not chrome)"}
 ]

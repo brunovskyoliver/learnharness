@@ -11,37 +11,43 @@
 
 import { createContext, useContext, useId, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { SettingsTitle } from "@/components/paper/settings-shell";
 import { Field, FieldContent, FieldDescription, FieldGroup, FieldTitle } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const RowControlContext = createContext<string | undefined>(undefined);
 
-/** A section heading and grouped controls. */
+/** A page of the settings modal: its title (the dialog's title), an optional
+ *  quiet line, the failure line pinned under the title, and its groups. */
 export function SettingsSection({
 	title,
 	hint,
+	alert,
 	children,
 	testid,
 }: {
 	title: string;
 	/** One quiet line under the header — only where it earns its place. */
 	hint?: string;
+	/** A failed save, pinned at the top of the page while it scrolls. */
+	alert?: ReactNode;
 	children: React.ReactNode;
 	testid?: string;
 }) {
 	return (
-		<section data-testid={testid} className="mx-auto w-full max-w-5xl px-5 py-6 sm:px-8 sm:py-8">
-
-			<h2 className="mb-5 tracking-title text-xl font-medium">{title}</h2>
-			{hint && <p className="mb-4 text-sm text-faint">{hint}</p>}
-			<FieldGroup className="gap-5">{children}</FieldGroup>
+		<section data-testid={testid} className="nb-set-study">
+			<SettingsTitle>{title}</SettingsTitle>
+			{hint && <p className="nb-set-page-hint">{hint}</p>}
+			{alert}
+			<FieldGroup className="nb-set-groups">{children}</FieldGroup>
 		</section>
 	);
 }
 
 /** A labeled sub-group inside a section (owner, 2026-09-20: clear
- *  separation — Models / Tools / Prompts read as three blocks). */
+ *  separation — Models / Tools / Prompts read as three blocks). In the
+ *  modal's language: the label as a settings label, the rows in one card
+ *  with the rule edge (feature 025). */
 export function SettingsGroup({
 	label,
 	children,
@@ -56,15 +62,15 @@ export function SettingsGroup({
 	rowId?: string;
 }) {
 	return (
-		<div data-testid={testid} data-settings-row={rowId} className="mt-3 scroll-mt-4 first:mt-0">
-			{label && <h3 className="mb-3 tracking-title text-lg font-medium">{label}</h3>}
-			<FieldGroup className="gap-0 rounded-lg bg-shelf px-4">{children}</FieldGroup>
+		<div data-testid={testid} data-settings-row={rowId} className="nb-set-group">
+			{label && <h3 className="nb-set-label">{label}</h3>}
+			<FieldGroup className="nb-set-rows">{children}</FieldGroup>
 		</div>
 	);
 }
 
-/** One label + one control. Label left (with optional muted hint), control
- *  right — the settings row shape. */
+/** One label + one control. Label left (with optional quiet hint), control
+ *  right; below the card's 32rem the control stacks under the label. */
 export function SettingsRow({
 	label,
 	hint,
@@ -85,13 +91,13 @@ export function SettingsRow({
 }) {
 	const id = useId();
 	return (
-		<Field orientation="horizontal" data-testid={testid} aria-labelledby={`${id}-label`} data-disabled={dimmed || undefined} data-settings-row={rowId} className="flex scroll-mt-4 flex-col items-stretch gap-3 rounded-md py-4 @lg/field-group:flex-row @lg/field-group:items-center @lg/field-group:has-[>[data-slot=field-content]]:items-center @lg/field-group:justify-between @lg/field-group:gap-6">
-			<FieldContent className="min-w-0 flex-1">
-				<FieldTitle id={`${id}-label`} className={cn("text-sm font-normal group-data-[disabled=true]/field:opacity-100", dimmed && "text-faint")}>{label}</FieldTitle>
-				{hint && <FieldDescription className="text-sm">{hint}</FieldDescription>}
+		<Field orientation="horizontal" data-testid={testid} aria-labelledby={`${id}-label`} data-disabled={dimmed || undefined} data-settings-row={rowId} className="nb-set-row">
+			<FieldContent className="nb-set-row-text">
+				<FieldTitle id={`${id}-label`} className={cn("nb-set-row-label", dimmed && "text-faint")}>{label}</FieldTitle>
+				{hint && <FieldDescription className="nb-set-row-hint">{hint}</FieldDescription>}
 			</FieldContent>
 			<RowControlContext.Provider value={id}>
-				<div className="flex w-full min-w-0 flex-wrap items-center gap-2 @lg/field-group:w-64 @lg/field-group:shrink-0 @lg/field-group:justify-end [&>input]:max-w-full [&>select]:max-w-full">{children}</div>
+				<div className="nb-set-row-control">{children}</div>
 			</RowControlContext.Provider>
 		</Field>
 	);
@@ -124,10 +130,7 @@ export function ThinSelect({
 			data-testid={testid}
 			disabled={disabled}
 			onChange={(e) => onChange(e.target.value)}
-			className={cn(
-				"h-9 rounded-md border border-rule bg-paper px-2.5 font-sans text-sm text-ink pointer-coarse:h-11",
-				disabled && "cursor-not-allowed text-faint",
-			)}
+			className="nb-set-select"
 		>
 			{children}
 		</select>
@@ -186,12 +189,13 @@ export function CommitInput({
 					e.currentTarget.blur();
 				}
 			}}
-			className="h-9 w-full rounded-md border border-rule bg-paper px-3 font-sans text-sm text-ink placeholder:text-faint pointer-coarse:h-11"
+			className="nb-set-input"
 		/>
 	);
 }
 
-/** A failed load or save: plain words, Try again, and the raw detail on demand. */
+/** A failed load or save: plain words in ink, Show details for the raw
+ *  reason and Try again, as text buttons (ui-contract "Errors"). */
 export function SettingsFailure({
 	message,
 	detail,
@@ -211,38 +215,35 @@ export function SettingsFailure({
 }) {
 	const [open, setOpen] = useState(false);
 	return (
-		<div role="alert" data-testid={testid} className={cn("flex flex-col gap-1 rounded-md bg-shelf px-3 py-2 text-sm", className)}>
-			<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-				<p className="min-w-0 flex-1 basis-48 text-red">{message}</p>
-				<span className="flex items-center gap-1">
-					{detail && (
-						<Button type="button" size="sm" variant="ghost" aria-expanded={open} data-testid={detailsTestid} className="pointer-coarse:min-h-11" onClick={() => setOpen((on) => !on)}>
-							{open ? "Hide details" : "Show details"}
-						</Button>
-					)}
-					{onRetry && (
-						<Button type="button" size="sm" variant="outline" data-testid={retryTestid} className="pointer-coarse:min-h-11" onClick={onRetry}>
-							Try again
-						</Button>
-					)}
-				</span>
-			</div>
-			{open && detail && <p className="break-words font-mono text-xs text-graphite">{detail}</p>}
+		<div role="alert" data-testid={testid} className={cn("nb-set-failure", className)}>
+			<p className="nb-set-failure-line">{message}</p>
+			<span className="nb-set-failure-actions">
+				{detail && (
+					<button type="button" aria-expanded={open} data-testid={detailsTestid} className="nb-set-text-button" onClick={() => setOpen((on) => !on)}>
+						{open ? "Hide details" : "Show details"}
+					</button>
+				)}
+				{onRetry && (
+					<button type="button" data-testid={retryTestid} className="nb-set-text-button nb-set-text-button-ink" onClick={onRetry}>
+						Try again
+					</button>
+				)}
+			</span>
+			{open && detail && <p className="nb-set-failure-detail">{detail}</p>}
 		</div>
 	);
 }
 
-/** In-place loading rows, shaped like a group; the words stay for readers. */
+/** In-place loading rows, shaped like a group (shelf bars, no pulse under reduced motion); the words stay for readers. */
 export function SettingsRowsSkeleton({ label, rows = 4 }: { label: string; rows?: number }) {
 	return (
-		<div role="status" data-testid="settings-skeleton" className="flex flex-col gap-3">
+		<div role="status" data-testid="settings-skeleton" className="nb-set-skeleton">
 			<span className="sr-only">{label}</span>
-			<Skeleton aria-hidden="true" className="h-6 w-32 bg-shelf motion-reduce:animate-none" />
-			<div aria-hidden="true" className="flex flex-col gap-5 rounded-lg bg-shelf p-4">
+			<div aria-hidden="true" className="nb-set-rows">
 				{Array.from({ length: rows }, (_, row) => (
-					<div key={row} className="flex items-center justify-between gap-6">
+					<div key={row} className="nb-set-row">
 						<Skeleton className="h-4 w-2/5 motion-reduce:animate-none" />
-						<Skeleton className="h-9 w-24 motion-reduce:animate-none sm:w-48" />
+						<Skeleton className="h-8 w-24 motion-reduce:animate-none sm:w-48" />
 					</div>
 				))}
 			</div>

@@ -288,7 +288,7 @@ describe("Settings integration", () => {
 		const host = await mount(<SettingsDialogProvider><span>app</span></SettingsDialogProvider>);
 		assert.equal(q(document, "settings-dialog"), null);
 		await b.open();
-		assert.equal(q(document, "settings-nav-general")!.getAttribute("aria-current"), "true");
+		assert.equal(q(document, "settings-nav-general")!.getAttribute("aria-selected"), "true");
 		assert.ok(q(document, "row-version")); assert.equal(b.calls.check, 0);
 		assert.ok(host.textContent!.includes("app"));
 	});
