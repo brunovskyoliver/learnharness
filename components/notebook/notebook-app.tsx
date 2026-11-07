@@ -1,16 +1,17 @@
 "use client";
 
 /**
- * Notebook's root (feature 024, US1). The `.nb-root` wrapper carries the
- * theme, text size, lettering and ink attributes and the route's font
- * variables; inside it sit the fixed paper grain, the top-left menu and
+ * Notebook's root (feature 024, US1). The `.nb-root` wrapper mirrors the
+ * shared Appearance (feature 025: theme, text size, lettering and ink live on
+ * <html> through components/paper/appearance.tsx) as data-nb-* attributes;
+ * inside it sit the fixed paper grain, the top-left menu and
  * wordmark, the overlay sidebar, the page sheet with the note, and the
  * corner hint. Opening a note remembers it as the one Notebook reopens
  * (`notebook.lastNoteId`).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { flushSync } from "react-dom";
 import { writeSettingsKey } from "@/components/interface-switch";
+import { usePaperAppearance } from "@/components/paper/appearance";
 import type { SaveStatus } from "@/components/library/page-draft";
 import { CornerHint } from "./corner-hint";
 import { LinksPanel } from "./links-panel";
@@ -31,32 +32,12 @@ export const PLAIN_OFF_TEXT = "The notes are back.";
 
 /** Hovering the left edge this long opens the sidebar (ui-contract.md). */
 const EDGE_HOVER_MS = 250;
-const DARK = "(prefers-color-scheme: dark)";
 
-/** "system" until mounted (CSS follows the OS then), afterwards the resolved theme, following changes. */
-function useResolvedTheme(appearance: NotebookPreferences["appearance"]): "light" | "dark" | "system" {
-	const [systemDark, setSystemDark] = useState<boolean | null>(null);
-	useEffect(() => {
-		const query = window.matchMedia(DARK);
-		const sync = () => setSystemDark(query.matches);
-		sync();
-		query.addEventListener("change", sync);
-		return () => query.removeEventListener("change", sync);
-	}, []);
-	if (appearance !== "system") return appearance;
-	return systemDark === null ? "system" : systemDark ? "dark" : "light";
-}
-
-/** Riddled cross-fades a theme change (view transition, 350ms in notebook.css); not under reduced motion. */
-function withThemeFade(apply: () => void): void {
-	const start = (document as Document & { startViewTransition?: (update: () => void) => unknown }).startViewTransition;
-	if (typeof start !== "function" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) { apply(); return; }
-	start.call(document, () => flushSync(apply));
-}
-
-export function NotebookApp({ note, fontClasses, preferences, reviewers = [], lastNoteId, account = null, hosted = false }: {
+export function NotebookApp({ note, fontClasses = "", preferences, reviewers = [], lastNoteId, account = null, hosted = false }: {
 	note: { id: string; name: string };
-	fontClasses: string;
+	/** Unused since feature 025 (the faces sit on <html>); kept for tests. */
+	fontClasses?: string;
+	/** Notebook's own preferences; theme, text size, lettering and ink come from the shared Appearance. */
 	preferences: NotebookPreferences;
 	reviewers?: readonly NotebookReviewerView[];
 	lastNoteId: string | null | undefined;
@@ -65,11 +46,14 @@ export function NotebookApp({ note, fontClasses, preferences, reviewers = [], la
 }) {
 	const mac = useIsMac();
 	const [root, setRoot] = useState<HTMLDivElement | null>(null);
-	const [prefs, setPrefs] = useState(preferences);
+	const paper = usePaperAppearance();
+	const [ownPrefs, setPrefs] = useState(preferences);
 	// A new server render (navigation, refresh) brings the stored values.
 	const incoming = JSON.stringify(preferences);
 	useEffect(() => { setPrefs(JSON.parse(incoming) as NotebookPreferences); }, [incoming]);
-	const theme = useResolvedTheme(prefs.appearance);
+	const look = paper.appearance;
+	const prefs = useMemo<NotebookPreferences>(() => ({ ...ownPrefs, appearance: look.theme, textSize: look.textSize, lettering: look.lettering, ink: look.ink }), [ownPrefs, look]);
+	const theme = paper.resolvedTheme;
 	const [sidebar, setSidebar] = useState<SidebarOpen>(null);
 	const [saveStatus, setSaveStatus] = useState<SaveStatus | null>(null);
 	const [reading, setReading] = useState<ReadingStatus>(null);
@@ -87,14 +71,8 @@ export function NotebookApp({ note, fontClasses, preferences, reviewers = [], la
 		});
 	}, [note.id, lastNoteId]);
 
-	// Every write of the notebook section goes one after another (each reads the
-	// stored section and puts it back changed), so none undoes another.
-	const notebookWrites = useRef<Promise<unknown>>(Promise.resolve());
-	const queueWrite = useCallback((patch: Record<string, unknown>): Promise<boolean> => {
-		const next = notebookWrites.current.then(() => writeSettingsKey("notebook", patch).catch(() => false));
-		notebookWrites.current = next;
-		return next;
-	}, []);
+	// Every write of the notebook section goes one after another, through the shared queue.
+	const { queueWrite, apply: applyAppearance } = paper;
 	const prefsRef = useRef(prefs);
 	prefsRef.current = prefs;
 	const [preferencesFailed, setPreferencesFailed] = useState(false);
@@ -105,11 +83,12 @@ export function NotebookApp({ note, fontClasses, preferences, reviewers = [], la
 		return ok;
 	}, [queueWrite]);
 	const updatePreferences = useCallback((patch: Partial<NotebookPreferences>) => {
-		const apply = () => setPrefs((current) => ({ ...current, ...patch }));
-		if (patch.appearance && patch.appearance !== prefsRef.current.appearance) withThemeFade(apply);
-		else apply();
+		const { appearance: theme, textSize, lettering, ink } = patch;
+		const sharedPatch = Object.fromEntries(Object.entries({ theme, textSize, lettering, ink }).filter(([, v]) => v !== undefined));
+		// The shared fields show on <html> (a theme change cross-fades); the rest in this state, in the same update.
+		applyAppearance(sharedPatch, () => setPrefs((current) => ({ ...current, ...patch })));
 		return savePreferences(patch);
-	}, [savePreferences]);
+	}, [savePreferences, applyAppearance]);
 	// Try again: everything he chose here, as it stands now.
 	const retryPreferences = useCallback(() => savePreferences(prefsRef.current), [savePreferences]);
 	// The reviewer list lives here: the picker and the Reviewers page show a change at once.
@@ -212,7 +191,7 @@ export function NotebookApp({ note, fontClasses, preferences, reviewers = [], la
 		<NotebookContext.Provider value={shared}>
 			<div
 				ref={setRoot}
-				className={`nb-root ${fontClasses}`}
+				className={fontClasses ? `nb-root ${fontClasses}` : "nb-root"}
 				data-testid="notebook-root"
 				data-nb-theme={theme}
 				data-nb-text-size={prefs.textSize}

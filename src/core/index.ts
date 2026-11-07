@@ -90,6 +90,8 @@ export * from "./settings.ts";
 // shape its success line describes, hence this type-only re-export.
 export type { ChatDeleteMode, ChatDeletionStats } from "./graph-deletion.ts";
 export * from "./settings-resolution.ts";
+// appearance.ts (feature 025): the shared Appearance resolution (pure).
+export * from "./appearance.ts";
 export * from "./search.ts"; // search port (search wave, 2026-09-20)
 export * from "./session-find.ts";
 export { messageAnchorId, messageIdFromHash, propositionSessionHref } from "./message-links.ts";

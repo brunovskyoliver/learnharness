@@ -86,6 +86,8 @@ declare global {
 			checkForUpdates?: () => Promise<void>;
 			installUpdate?: () => void;
 			onOpenSettings?: (cb: (section: string) => void) => () => void;
+			/** Window chrome follows the paper (feature 025, R15): background and title-bar symbol colours, #rrggbb. */
+			setChrome?: (colors: { background: string; symbol: string }) => void;
 		};
 	}
 }

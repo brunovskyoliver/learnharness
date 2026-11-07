@@ -214,11 +214,14 @@ export function DemoFrame({
 			const vars = demoAppearanceVars((name) => styles.getPropertyValue(name), appearance.fontFamily);
 			iframeRef.current?.contentWindow?.postMessage({ type: "lh-demo-theme", vars }, "*");
 		};
+		// The paper theme lives on <html> (feature 025); "system" follows the OS.
 		const observer = new MutationObserver(sendAppearance);
-		observer.observe(document.documentElement, { attributes: true, attributeFilter: ["style", "class"] });
+		observer.observe(document.documentElement, { attributes: true, attributeFilter: ["style", "class", "data-theme", "data-ink"] });
+		const scheme = typeof window.matchMedia === "function" ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+		scheme?.addEventListener("change", sendAppearance);
 		iframeRef.current?.addEventListener("load", sendAppearance);
 		sendAppearance();
-		return () => { observer.disconnect(); iframeRef.current?.removeEventListener("load", sendAppearance); };
+		return () => { observer.disconnect(); scheme?.removeEventListener("change", sendAppearance); iframeRef.current?.removeEventListener("load", sendAppearance); };
 	}, [appearance.fontFamily]);
 	// Brightness inversion (owner, 2026-10-07): the switch state PERSISTS on
 	// the steer record (details.ui.inverted) — seeded here, written through

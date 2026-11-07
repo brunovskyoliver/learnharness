@@ -84,8 +84,8 @@ import { Hint } from "@/components/ui/hint";
 import { DEFAULT_RENDER_SETTINGS, sanitizeRenderSettings } from "@/src/core";
 
 /** The uniform node look (no state classes — canvas wants hex, not oklch):
- *  the accent color, until the state model lands. */
-const NODE_COLOR_TOKEN = "--primary";
+ *  the paper's ink (feature 025), until the state model lands. */
+const NODE_COLOR_TOKEN = "--ink";
 
 /** Per-device graph camera persistence (zoom+pan view state). v1 in the
  *  key: the stored shape is the renderer's d3 transform {k, x, y}. */
@@ -990,22 +990,26 @@ export function GraphView({
 			clusters: snapshot.clusters.map((c) => ({ id: c.id, label: c.label, members: c.members })),
 			colors: {
 				node: tokenHex(NODE_COLOR_TOKEN),
-				edge: tokenHex("--ring"),
-				label: tokenHex("--muted-foreground"),
-				hoverText: tokenHex("--foreground"),
+				edge: tokenHex("--nb-focus"),
+				label: tokenHex("--faint"),
+				hoverText: tokenHex("--ink"),
 			},
 			// Match the app typography (Geist via the body's stack).
 			fontFamily: getComputedStyle(document.body).fontFamily,
 		});
 		// Update paint and typography without resetting the live simulation.
-		const observer = new MutationObserver(() => renderer.setTheme({
+		const retheme = () => renderer.setTheme({
 			node: tokenHex(NODE_COLOR_TOKEN),
-			edge: tokenHex("--ring"),
-			label: tokenHex("--muted-foreground"),
-			hoverText: tokenHex("--foreground"),
-		}, getComputedStyle(document.body).fontFamily));
-		observer.observe(document.documentElement, { attributes: true, attributeFilter: ["style", "class"] });
-		return () => observer.disconnect();
+			edge: tokenHex("--nb-focus"),
+			label: tokenHex("--faint"),
+			hoverText: tokenHex("--ink"),
+		}, getComputedStyle(document.body).fontFamily);
+		// The paper theme and ink live on <html> (feature 025); "system" follows the OS.
+		const observer = new MutationObserver(retheme);
+		observer.observe(document.documentElement, { attributes: true, attributeFilter: ["style", "class", "data-theme", "data-ink"] });
+		const scheme = typeof window.matchMedia === "function" ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+		scheme?.addEventListener("change", retheme);
+		return () => { observer.disconnect(); scheme?.removeEventListener("change", retheme); };
 	}, [snapshot, isEmpty, layoutSnapshot, rendererEpoch]);
 
 	// Feed #2 — settings: just marks the frame dirty. No rebuild, no

@@ -1,6 +1,7 @@
 /**
  * Feature 024: Notebook contrast (owner, 2026-11-07: "Raise to pass").
- * Reads the theme tokens from notebook.css and checks WCAG 2 contrast:
+ * Reads the theme tokens from app/paper.css (feature 025: the paper system
+ * for the whole app; the note page's rules from notebook.css) and checks WCAG 2 contrast:
  * faint and gray text 4.5:1, the focus ring 3:1, on paper and on shelf,
  * in light, dark and system-dark.
  */
@@ -9,7 +10,8 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { EXPORT_PALETTE } from "../src/core/notebook-export.ts";
 
-const css = readFileSync(new URL("../app/(app)/notebook/notebook.css", import.meta.url), "utf8");
+// The shared system first, then the note page (the slash menus, .nb-root focus).
+const css = readFileSync(new URL("../app/paper.css", import.meta.url), "utf8") + readFileSync(new URL("../app/(app)/notebook/notebook.css", import.meta.url), "utf8");
 
 /** The `{ … }` body of the first rule whose selector text ends with `selector`. */
 function block(selector: string): string {
@@ -26,9 +28,9 @@ function tokens(body: string): Record<string, string> {
 }
 
 const THEMES = {
-	light: tokens(block('.nb-root[data-nb-theme="light"]')),
-	dark: tokens(block('.nb-root[data-nb-theme="dark"]')),
-	"system dark": tokens(block('.nb-root[data-nb-theme="system"]')),
+	light: tokens(block('html.lh-paper[data-theme="light"]')),
+	dark: tokens(block('html.lh-paper[data-theme="dark"]')),
+	"system dark": tokens(block('html.lh-paper[data-theme="system"]')),
 };
 
 const channel = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
@@ -82,7 +84,7 @@ describe("notebook contrast", () => {
 	});
 
 	const AI_INKS = ["riddle-ink", "text-blue", "text-green", "text-red", "text-purple", "text-brown", "text-orange"];
-	const SELECTORS = { light: '.nb-root[data-nb-theme="light"]', dark: '.nb-root[data-nb-theme="dark"]', "system dark": '.nb-root[data-nb-theme="system"]' } as const;
+	const SELECTORS = { light: 'html.lh-paper[data-theme="light"]', dark: 'html.lh-paper[data-theme="dark"]', "system dark": 'html.lh-paper[data-theme="system"]' } as const;
 	/** The ink setting's name, and the colour token it maps --riddle to (§1.2). */
 	const INK_SETTINGS = { ink: "riddle-ink", blue: "text-blue", green: "text-green", red: "text-red", purple: "text-purple", brown: "text-brown", orange: "text-orange" } as const;
 	const num = (theme: keyof typeof THEMES, name: string): number => {
@@ -144,7 +146,7 @@ describe("notebook contrast", () => {
 
 	it("each ink setting picks its own fade", () => {
 		for (const [setting, token] of Object.entries(INK_SETTINGS)) {
-			assert.ok(css.includes(`.nb-root[data-nb-ink="${setting}"] { --riddle: var(--${token}); --nb-faded: var(--nb-faded-${setting}); }`), setting);
+			assert.ok(css.includes(`html.lh-paper[data-ink="${setting}"] { --riddle: var(--${token}); --nb-faded: var(--nb-faded-${setting}); }`), setting);
 		}
 	});
 
@@ -168,7 +170,7 @@ describe("notebook contrast", () => {
 
 	it("touch: taps act at once with a paper-toned tint; the running cost keeps fixed-width digits", () => {
 		assert.match(css, /touch-action: manipulation;\s*-webkit-tap-highlight-color: color-mix\(in srgb, var\(--ink\) 8%, transparent\)/);
-		assert.match(block(".nb-root .nb-corner-hint"), /font-variant-numeric: tabular-nums/);
+		assert.match(block(".lh-paper .nb-corner-hint"), /font-variant-numeric: tabular-nums/);
 	});
 
 	it("exports use the light faint and gray", () => {

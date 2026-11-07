@@ -24,7 +24,7 @@
  *     would shadow every settings-page key change until restart.
  */
 
-const { app, BrowserWindow, Menu, ipcMain, session, shell } = require("electron");
+const { app, BrowserWindow, Menu, ipcMain, nativeTheme, session, shell } = require("electron");
 const { createChatGPT, fileStore } = require("./chatgpt.cjs");
 const { attachChatGPTChild, trustedSender, chatGPTControl } = require("./chatgpt-ipc.cjs");
 const { createSubscriptions, loadSubscriptionSDK } = require("./subscriptions.cjs");
@@ -37,6 +37,22 @@ const fs = require("node:fs");
 const http = require("node:http");
 const net = require("node:net");
 const path = require("node:path");
+
+/** The paper's window colours (app/paper.css: --paper and --ink). */
+const PAPER_CHROME = Object.freeze({
+	light: Object.freeze({ background: "#f8f7f4", symbol: "#1d1c1a" }),
+	dark: Object.freeze({ background: "#1a1a19", symbol: "#e9e7e2" }),
+});
+function paperChrome(dark) {
+	return dark ? PAPER_CHROME.dark : PAPER_CHROME.light;
+}
+/** The renderer's chrome colours, or null unless both are #rrggbb. */
+function validChrome(colors) {
+	const hex = /^#[0-9a-f]{6}$/i;
+	if (!colors || typeof colors !== "object") return null;
+	const { background, symbol } = colors;
+	return typeof background === "string" && hex.test(background) && typeof symbol === "string" && hex.test(symbol) ? { background, symbol } : null;
+}
 
 // Mirrors SIDEBAR_AUTOCLOSE in components/sidebar.tsx — keep in sync (the
 // renderer owns the number; this is the IPC widen target).
@@ -287,6 +303,9 @@ function killServer() {
  *  - will-navigate pinned to the app origin; window.open always denied —
  *    external links go to the real browser via shell.openExternal. */
 function createWindow(url) {
+	// The paper (feature 025, R15): the window opens on the OS's light or dark
+	// paper, and the renderer's "lh:set-chrome" moves it with the chosen theme.
+	const chrome = paperChrome(Boolean(nativeTheme?.shouldUseDarkColors));
 	const win = new BrowserWindow({
 		width: 1440,
 		height: 900,
@@ -308,7 +327,7 @@ function createWindow(url) {
 				// height. Do not force the zoom-invariant native overlay to match
 				// the renderer's 60 CSS px bar: zooming out would cover its border.
 				// The renderer reserves the actual width via env(titlebar-area-*).
-				titleBarOverlay: { color: "#141414", symbolColor: "#e5e5e5" },
+				titleBarOverlay: { color: chrome.background, symbolColor: chrome.symbol },
 				// Keep the custom bar alone; Alt reveals the native menu.
 				autoHideMenuBar: true,
 			}),
@@ -323,10 +342,10 @@ function createWindow(url) {
 		// the native window surface changes size before Chromium's compositor
 		// has a frame at the new size, and the gap shows the window's NATIVE
 		// background — Electron's default is white, glaring on a dark app.
-		// The app background (#141414) fills the lag instead. `show: false` +
+		// The paper's background fills the lag instead. `show: false` +
 		// ready-to-show is the same treatment for first paint: the window
 		// appears only once the page has actually rendered.
-		backgroundColor: "#141414",
+		backgroundColor: chrome.background,
 		show: false,
 		// Narrow-window behavior (owner, 2026-09-17): 640px is the floor —
 		// below it even a wrapped chrome row gets cramped and the chat header
@@ -734,6 +753,16 @@ async function main() {
 	// The renderer's first paint can race did-finish-load — it asks for
 	// the current factor itself (mirrors "lh:zoom" pushes).
 	ipcMain.handle("lh:zoom:get", (event) => BrowserWindow.fromWebContents(event.sender)?.webContents.getZoomFactor() ?? 1);
+	// The window chrome follows the paper theme (feature 025, R15): only #rrggbb
+	// from the app's own windows; the overlay exists on win32/linux only.
+	ipcMain.on("lh:set-chrome", (event, colors) => {
+		const win = BrowserWindow.fromWebContents(event.sender);
+		if (!win || !trustedAppWindows.has(win) || !trustedSender(event, new URL(url).origin, BrowserWindow)) return;
+		const valid = validChrome(colors);
+		if (!valid) return;
+		win.setBackgroundColor(valid.background);
+		if (process.platform !== "darwin") win.setTitleBarOverlay?.({ color: valid.background, symbolColor: valid.symbol });
+	});
 	ipcMain.on("lh:expand-window", (event) => {
 		const win = BrowserWindow.fromWebContents(event.sender);
 		if (!win) return;
