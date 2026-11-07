@@ -11,6 +11,8 @@ import type { LibraryList } from "./use-notebook-data";
 import type { NotebookAppearance, NotebookInk, NotebookLayout, NotebookLettering, NotebookPace, NotebookStartMode, NotebookTextSize } from "@/src/core";
 
 export interface NotebookPreferences {
+	startMode: NotebookStartMode;
+	pointerInk: boolean;
 	appearance: NotebookAppearance;
 	textSize: NotebookTextSize;
 	lettering: NotebookLettering;
@@ -28,6 +30,9 @@ export type ReadingStatus =
 
 export interface NotebookReviewerView { id: string; name: string; instructions: string; seeded?: true }
 
+/** The settings modal's two pages (ui-contract "Settings modal" nav). */
+export type SettingsTab = "customize" | "reviewers";
+
 /** How the sidebar was opened: a hover-open closes when the pointer leaves. */
 export type SidebarOpen = { via: "click" | "hover" | "key"; search: boolean } | null;
 
@@ -39,12 +44,25 @@ export interface NotebookShared {
 	reviewers: readonly NotebookReviewerView[];
 	/** Stores the whole reviewer list (PUT the notebook section); shown at once, false when it didn't save. */
 	saveReviewers: (next: readonly NotebookReviewerView[]) => Promise<boolean>;
-	/** Opens the Reviewers page (a dialog until Phase 10's settings modal holds it). */
+	/** Opens the settings modal on its Reviewers page. */
 	openReviewers: () => void;
+	/** Opens the settings modal (Mod+,), on Customize unless told otherwise. */
+	openSettings: (tab?: SettingsTab) => void;
+	/**
+	 * Links (sidebar footer): the hook Phase 11's Links panel takes over.
+	 * Until then it only closes the sidebar (TODO phase 11, T044).
+	 */
+	openLinks: () => void;
+	/** Hosted (signed-in) mode: the footer offers Sign out. */
+	hosted: boolean;
 	account: string | null;
 	preferences: NotebookPreferences;
-	/** Applies at once and saves the `notebook` settings section (Phase 10's settings modal). */
-	updatePreferences: (patch: Partial<NotebookPreferences>) => void;
+	/** Applies at once and saves the `notebook` settings section; false when the save failed. */
+	updatePreferences: (patch: Partial<NotebookPreferences>) => Promise<boolean>;
+	/** The last preferences save failed (the settings modal says so with Try again). */
+	preferencesFailed: boolean;
+	/** Saves the preferences as they stand again. */
+	retryPreferences: () => Promise<boolean>;
 	sidebar: SidebarOpen;
 	openSidebar: (via: "click" | "hover" | "key", search?: boolean) => void;
 	closeSidebar: () => void;
@@ -74,7 +92,11 @@ export interface NoteCommands { copy: () => void; openExport: () => void }
 
 const noop = () => {};
 
-export const NotebookContext = createContext<NotebookShared>({
+/** The factory preferences (data-model.md "notebook"). */
+export const DEFAULT_PREFERENCES: NotebookPreferences = { startMode: "thinks", pointerInk: false, appearance: "system", textSize: "default", lettering: "serif", ink: "ink", pace: "regular", layout: "both" };
+
+/** What a part sees outside NotebookApp (and what render tests start from). */
+export const DEFAULT_SHARED: NotebookShared = {
 	root: null,
 	mac: false,
 	noteId: "",
@@ -82,9 +104,14 @@ export const NotebookContext = createContext<NotebookShared>({
 	reviewers: [],
 	saveReviewers: async () => false,
 	openReviewers: noop,
+	openSettings: noop,
+	openLinks: noop,
+	hosted: false,
 	account: null,
-	preferences: { appearance: "system", textSize: "default", lettering: "serif", ink: "ink", pace: "regular", layout: "both" },
-	updatePreferences: noop,
+	preferences: DEFAULT_PREFERENCES,
+	updatePreferences: async () => false,
+	preferencesFailed: false,
+	retryPreferences: async () => false,
 	sidebar: null,
 	openSidebar: noop,
 	closeSidebar: noop,
@@ -101,7 +128,9 @@ export const NotebookContext = createContext<NotebookShared>({
 	copyNote: noop,
 	openExport: noop,
 	noteCommands: { current: null },
-});
+};
+
+export const NotebookContext = createContext<NotebookShared>(DEFAULT_SHARED);
 
 export const useNotebook = () => useContext(NotebookContext);
 

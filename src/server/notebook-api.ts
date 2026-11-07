@@ -61,6 +61,17 @@ export function notebookReadResponse(pageId: string): Promise<Response> {
 	});
 }
 
+/** GET /api/notebook/summary: { openThreads: { [pageId]: count } } for live pages with open threads (the sidebar's dots). */
+export function notebookSummaryResponse(): Promise<Response> {
+	return guarded(async () => {
+		const counts = await stores.notebookStore.openThreadCounts();
+		const live = new Set((await stores.libraryStore.list()).filter((item) => item.kind === "page" && !item.archivedAt).map((item) => item.id));
+		const openThreads: Record<string, number> = {};
+		for (const [pageId, count] of Object.entries(counts)) if (live.has(pageId)) openThreads[pageId] = count;
+		return json({ openThreads });
+	});
+}
+
 /** PATCH /api/notebook/:pageId { mode?, instruction?, reviewerId? } */
 export function notebookPatchResponse(request: Request, pageId: string): Promise<Response> {
 	return guarded(async () => {

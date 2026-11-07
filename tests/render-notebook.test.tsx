@@ -9,7 +9,7 @@ import { CloseGlyph, MenuGlyph, Wordmark } from "../components/notebook/chrome.t
 import { isUntitledName, keyLabel, saveStateLine } from "../components/notebook/nb-shared.tsx";
 import { bodyPlaceholder } from "../components/notebook/note-editor.tsx";
 import { titleText, TitleField } from "../components/notebook/note-view.tsx";
-import { findNotes, notePages, SidebarBody, type SidebarBodyProps } from "../components/notebook/overlay-sidebar.tsx";
+import { ariaKeys, findNotes, notePages, SidebarBody, type SidebarBodyProps } from "../components/notebook/overlay-sidebar.tsx";
 import { currentReviewer, MODE_DESCRIPTION, MODE_LABEL, ToolbarRow, type ToolbarRowProps } from "../components/notebook/toolbar-row.tsx";
 import type { LibraryFolder, LibraryItem } from "../src/core/index.ts";
 
@@ -26,6 +26,7 @@ const page = (over: Partial<LibraryItem> = {}): LibraryItem => ({
 	createdAt: "2026-11-06T10:00:00.000Z", updatedAt: "2026-11-06T10:00:00.000Z", origin: { type: "learner" }, ...over,
 });
 const folder = (over: Partial<LibraryFolder> = {}): LibraryFolder => ({ id: "fld_1", name: "Courses", parentId: null, createdAt: "2026-11-06T10:00:00.000Z", updatedAt: "2026-11-06T10:00:00.000Z", ...over });
+const actions = { onCopy: noop, onExport: noop, onTogglePlain: noop, onSettings: noop, onReviewers: noop, onFlashcards: noop, onLinks: noop, onSwitchToStudy: noop };
 const sidebar = (over: Partial<SidebarBodyProps> = {}) => renderToStaticMarkup(
 	<SidebarBody
 		items={[page(), page({ id: "lib_b", name: "Journal", updatedAt: "2026-11-06T12:00:00.000Z" }), page({ id: "lib_c", name: "syllabus.pdf", kind: "pdf" })]}
@@ -42,7 +43,7 @@ const sidebar = (over: Partial<SidebarBodyProps> = {}) => renderToStaticMarkup(
 		onOpen={noop}
 		onNewNote={noop}
 		onNewFolder={noop}
-		onSwitchToStudy={noop}
+		actions={actions}
 		onClose={noop}
 		{...over}
 	/>,
@@ -145,6 +146,42 @@ describe("the overlay sidebar", () => {
 		assert.equal(notePages([page({ archivedAt: "2026-11-06T00:00:00.000Z" })]).length, 0);
 		const html = sidebar({ items, query: "notes" });
 		assert.ok(text(html).includes("Physics notes") && !/>\s*Physics\s*</.test(html));
+	});
+	it("the footer lists every action in the contract's order, shortcuts right-aligned for the platform", () => {
+		const footer = (html: string) => text(html.slice(html.indexOf('aria-label="Notebook"')));
+		const mac = footer(sidebar());
+		const order = ["Copy this note", "Export this note", "Just my words", "Settings", "Reviewers", "Make flashcards", "Links", "Switch to Study"];
+		let at = -1;
+		for (const label of order) {
+			const next = mac.indexOf(label);
+			assert.ok(next > at, label);
+			at = next;
+		}
+		for (const keys of ["⌘⇧C", "⌘⇧E", "⌘⇧H", "⌘,", "⌘⇧O"]) assert.ok(mac.includes(keys), keys);
+		const other = footer(sidebar({ mac: false }));
+		for (const keys of ["Ctrl+Shift+C", "Ctrl+Shift+E", "Ctrl+Shift+H", "Ctrl+,", "Ctrl+Shift+O"]) assert.ok(other.includes(keys), keys);
+		const html = sidebar();
+		assert.match(html, /aria-keyshortcuts="Meta\+Shift\+C"[^>]*>.*?Copy this note/);
+		assert.match(sidebar({ mac: false }), /aria-keyshortcuts="Control\+,"/);
+		assert.ok(html.includes('<kbd class="nb-side-kbd" aria-hidden="true">⌘⇧C</kbd>'));
+		// Reviewers, Make flashcards and Links have no shortcut.
+		assert.match(html, /data-testid="nb-side-reviewers"><span>Reviewers<\/span><\/button>/);
+		assert.equal(ariaKeys("mod+shift+h", true), "Meta+Shift+H");
+	});
+	it("Just my words shows when it is on; Sign out only when hosted", () => {
+		assert.match(sidebar(), /data-testid="nb-side-plain" aria-pressed="false"/);
+		const on = sidebar({ plain: true });
+		assert.match(on, /data-testid="nb-side-plain" aria-pressed="true"/);
+		assert.ok(on.includes("nb-side-check"));
+		const rows = (html: string) => (html.slice(html.indexOf('aria-label="Notebook"')).match(/<li>/g) ?? []).length;
+		assert.equal(rows(sidebar()), 8);
+		assert.equal(rows(sidebar({ hosted: true })), 9);
+	});
+	it("a note with open threads shows the dot, named for screen readers", () => {
+		const html = sidebar({ openThreads: { lib_b: 2, lib_a: 1 } });
+		assert.equal((html.match(/data-testid="nb-side-dot"/g) ?? []).length, 2);
+		assert.ok(text(html).includes(", 2 open threads") && text(html).includes(", 1 open thread"));
+		assert.ok(!sidebar().includes("nb-side-dot"));
 	});
 	it("words the save states as the contract does", () => {
 		assert.equal(saveStateLine("saved"), "All notes saved");

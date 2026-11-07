@@ -9,15 +9,31 @@
  * menu button; Escape, ✕ and a click on the page close it, and so does
  * the pointer leaving it after a hover-open.
  */
-import { ChevronRightIcon, FileTextIcon, FolderIcon, FolderPlusIcon, PlusIcon, SearchIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, FileTextIcon, FolderIcon, FolderPlusIcon, PlusIcon, SearchIcon } from "lucide-react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { Dialog } from "radix-ui";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { switchInterface } from "@/components/interface-switch";
 import { notebookHref, type LibraryFolder, type LibraryItem } from "@/src/core";
-import { createFolder, createNote } from "./nb-actions";
+import { createFolder, createNote, flashcardsHref } from "./nb-actions";
 import { keyLabel, saveStateLine, useNotebook } from "./nb-shared";
 import { CloseGlyph, Wordmark } from "./chrome";
+
+/** Hosted only, on demand: the Clerk SDK stays out of local mode. */
+const SignOutRow = dynamic(() => import("./sign-out-row"), { ssr: false });
+
+/** The footer's actions (ui-contract "Overlay sidebar" table), in order. */
+export interface FooterActions {
+	onCopy: () => void;
+	onExport: () => void;
+	onTogglePlain: () => void;
+	onSettings: () => void;
+	onReviewers: () => void;
+	onFlashcards: () => void;
+	onLinks: () => void;
+	onSwitchToStudy: () => void;
+}
 
 /** Live pages, newest first. */
 export function notePages(items: readonly LibraryItem[]): LibraryItem[] {
@@ -47,23 +63,54 @@ export interface SidebarBodyProps {
 	onOpen: (id: string) => void;
 	onNewNote: () => void;
 	onNewFolder: () => void;
-	onSwitchToStudy: () => void;
 	onClose: () => void;
+	/** Open threads per page id (the dot after a note's name). */
+	openThreads?: Readonly<Record<string, number>>;
+	/** Just my words is on (its row shows it). */
+	plain?: boolean;
+	/** Hosted mode: Sign out ends the footer. */
+	hosted?: boolean;
+	actions: FooterActions;
 	searchRef?: RefObject<HTMLInputElement | null>;
 }
 
-function NoteRow({ item, current, onOpen }: { item: LibraryItem; current: boolean; onOpen: (id: string) => void }) {
+const threadsLine = (n: number) => (n === 1 ? ", 1 open thread" : `, ${n} open threads`);
+
+function NoteRow({ item, current, open, onOpen }: { item: LibraryItem; current: boolean; open: number; onOpen: (id: string) => void }) {
 	return (
 		<li>
 			<button type="button" className="nb-side-row nb-side-note" aria-current={current ? "page" : undefined} data-testid="nb-side-note" onClick={() => onOpen(item.id)}>
 				<FileTextIcon className="nb-side-icon" aria-hidden="true" />
 				<span className="nb-side-name">{item.name}</span>
+				{open > 0 && (
+					<>
+						<span className="nb-side-dot" aria-hidden="true" data-testid="nb-side-dot" />
+						<span className="nb-sr-only">{threadsLine(open)}</span>
+					</>
+				)}
 			</button>
 		</li>
 	);
 }
 
-function FolderRow({ folder, folders, pages, currentId, onOpen }: { folder: LibraryFolder; folders: readonly LibraryFolder[]; pages: readonly LibraryItem[]; currentId: string; onOpen: (id: string) => void }) {
+/** "mod+shift+c" as aria-keyshortcuts wants it: Meta+Shift+C on a Mac, Control+Shift+C elsewhere. */
+export const ariaKeys = (binding: string, mac: boolean): string =>
+	binding.split("+").map((part) => (part === "mod" ? (mac ? "Meta" : "Control") : part === "shift" ? "Shift" : part === "alt" ? "Alt" : part.toUpperCase())).join("+");
+
+/** One footer action: its words, then its shortcut hint right-aligned in faint ink. */
+function FooterRow({ label, binding, mac, testId, pressed, onClick }: { label: string; binding?: string; mac: boolean; testId: string; pressed?: boolean; onClick: () => void }) {
+	return (
+		<li>
+			<button type="button" className="nb-side-row nb-side-footer-action" data-testid={testId} aria-pressed={pressed} aria-keyshortcuts={binding ? ariaKeys(binding, mac) : undefined} onClick={onClick}>
+				<span>{label}</span>
+				{pressed && <CheckIcon className="nb-side-icon nb-side-check" aria-hidden="true" />}
+				{binding && <kbd className="nb-side-kbd" aria-hidden="true">{keyLabel(binding, mac)}</kbd>}
+			</button>
+		</li>
+	);
+}
+
+function FolderRow({ folder, folders, pages, currentId, openThreads, onOpen }: { folder: LibraryFolder; folders: readonly LibraryFolder[]; pages: readonly LibraryItem[]; currentId: string; openThreads: Readonly<Record<string, number>>; onOpen: (id: string) => void }) {
 	const holds = (id: string): boolean => pages.some((p) => p.id === currentId && p.folderId === id) || folders.some((f) => f.parentId === id && holds(f.id));
 	const [open, setOpen] = useState(() => holds(folder.id));
 	const children = folders.filter((f) => f.parentId === folder.id && !f.archivedAt);
@@ -77,8 +124,8 @@ function FolderRow({ folder, folders, pages, currentId, onOpen }: { folder: Libr
 			</button>
 			{open && (children.length > 0 || notes.length > 0) && (
 				<ul className="nb-side-list nb-side-nested" aria-label={folder.name}>
-					{children.map((child) => <FolderRow key={child.id} folder={child} folders={folders} pages={pages} currentId={currentId} onOpen={onOpen} />)}
-					{notes.map((item) => <NoteRow key={item.id} item={item} current={item.id === currentId} onOpen={onOpen} />)}
+					{children.map((child) => <FolderRow key={child.id} folder={child} folders={folders} pages={pages} currentId={currentId} openThreads={openThreads} onOpen={onOpen} />)}
+					{notes.map((item) => <NoteRow key={item.id} item={item} current={item.id === currentId} open={openThreads[item.id] ?? 0} onOpen={onOpen} />)}
 				</ul>
 			)}
 		</li>
@@ -86,7 +133,9 @@ function FolderRow({ folder, folders, pages, currentId, onOpen }: { folder: Libr
 }
 
 /** The sidebar's contents, without the dialog around them (render tests use this). */
-export function SidebarBody({ items, folders, failed, currentId, query, mac, account, saveLine, error, onQuery, onSubmitQuery, onOpen, onNewNote, onNewFolder, onSwitchToStudy, onClose, searchRef }: SidebarBodyProps) {
+const NO_THREADS: Readonly<Record<string, number>> = {};
+
+export function SidebarBody({ items, folders, failed, currentId, query, mac, account, saveLine, error, onQuery, onSubmitQuery, onOpen, onNewNote, onNewFolder, onClose, openThreads = NO_THREADS, plain = false, hosted = false, actions, searchRef }: SidebarBodyProps) {
 	const pages = useMemo(() => (items ? notePages(items) : []), [items]);
 	const searching = query.trim().length > 0;
 	const found = useMemo(() => (items && searching ? findNotes(items, query) : []), [items, query, searching]);
@@ -128,12 +177,12 @@ export function SidebarBody({ items, folders, failed, currentId, query, mac, acc
 				{failed && !items && <p role="status" className="nb-side-status">Your Library could not be loaded.</p>}
 				{searching ? (
 					<ul className="nb-side-list" aria-label="Matching notes" data-testid="nb-side-results">
-						{found.map((item) => <NoteRow key={item.id} item={item} current={item.id === currentId} onOpen={onOpen} />)}
+						{found.map((item) => <NoteRow key={item.id} item={item} current={item.id === currentId} open={openThreads[item.id] ?? 0} onOpen={onOpen} />)}
 					</ul>
 				) : (
 					<ul className="nb-side-list" aria-label="Notes" data-testid="nb-side-notes">
-						{topFolders.map((folder) => <FolderRow key={folder.id} folder={folder} folders={folders} pages={pages} currentId={currentId} onOpen={onOpen} />)}
-						{loose.map((item) => <NoteRow key={item.id} item={item} current={item.id === currentId} onOpen={onOpen} />)}
+						{topFolders.map((folder) => <FolderRow key={folder.id} folder={folder} folders={folders} pages={pages} currentId={currentId} openThreads={openThreads} onOpen={onOpen} />)}
+						{loose.map((item) => <NoteRow key={item.id} item={item} current={item.id === currentId} open={openThreads[item.id] ?? 0} onOpen={onOpen} />)}
 					</ul>
 				)}
 				<button type="button" className="nb-side-row nb-side-action nb-side-faint" data-testid="nb-new-folder" onClick={onNewFolder}>
@@ -146,12 +195,15 @@ export function SidebarBody({ items, folders, failed, currentId, query, mac, acc
 				{account && <p className="nb-side-account" data-testid="nb-side-account">{account}</p>}
 				<p className="nb-side-saved" role="status" aria-live="polite" data-testid="nb-save-state">{saveLine}</p>
 				<ul className="nb-side-actions" aria-label="Notebook">
-					<li>
-						<button type="button" className="nb-side-row nb-side-footer-action" data-testid="nb-switch-to-study" onClick={onSwitchToStudy}>
-							<span>Switch to Study</span>
-							<kbd className="nb-side-kbd">{keyLabel("mod+shift+o", mac)}</kbd>
-						</button>
-					</li>
+					<FooterRow label="Copy this note" binding="mod+shift+c" mac={mac} testId="nb-side-copy" onClick={actions.onCopy} />
+					<FooterRow label="Export this note" binding="mod+shift+e" mac={mac} testId="nb-side-export" onClick={actions.onExport} />
+					<FooterRow label="Just my words" binding="mod+shift+h" mac={mac} testId="nb-side-plain" pressed={plain} onClick={actions.onTogglePlain} />
+					<FooterRow label="Settings" binding="mod+," mac={mac} testId="nb-side-settings" onClick={actions.onSettings} />
+					<FooterRow label="Reviewers" mac={mac} testId="nb-side-reviewers" onClick={actions.onReviewers} />
+					<FooterRow label="Make flashcards" mac={mac} testId="nb-side-flashcards" onClick={actions.onFlashcards} />
+					<FooterRow label="Links" mac={mac} testId="nb-side-links" onClick={actions.onLinks} />
+					<FooterRow label="Switch to Study" binding="mod+shift+o" mac={mac} testId="nb-switch-to-study" onClick={actions.onSwitchToStudy} />
+					{hosted && <li><SignOutRow className="nb-side-row nb-side-footer-action" /></li>}
 				</ul>
 			</div>
 		</>
@@ -167,6 +219,17 @@ export function OverlaySidebar({ returnFocus }: { returnFocus: RefObject<HTMLBut
 	const before = useRef<Element | null>(null);
 	const open = nb.sidebar !== null;
 	const hover = nb.sidebar?.via === "hover";
+	// The dots: which notes have open threads, read each time the sidebar opens.
+	const [openThreads, setOpenThreads] = useState<Readonly<Record<string, number>>>({});
+	useEffect(() => {
+		if (!open) return;
+		let live = true;
+		fetch("/api/notebook/summary", { cache: "no-store" })
+			.then((response) => (response.ok ? response.json() : null))
+			.then((body: { openThreads?: Record<string, number> } | null) => { if (live && body?.openThreads) setOpenThreads(body.openThreads); })
+			.catch(() => { /* no dots; the notes still open */ });
+		return () => { live = false; };
+	}, [open]);
 
 	// Mod+K while open moves to the search too.
 	const wantsSearch = nb.sidebar?.search ?? false;
@@ -243,9 +306,21 @@ export function OverlaySidebar({ returnFocus }: { returnFocus: RefObject<HTMLBut
 							if ("error" in made) setError(made.error);
 							else void nb.refreshLibrary();
 						}}
-						onSwitchToStudy={() => {
-							nb.closeSidebar();
-							void switchInterface("study", (href) => router.push(href));
+						openThreads={openThreads}
+						plain={nb.plain}
+						hosted={nb.hosted}
+						actions={{
+							onCopy: nb.copyNote,
+							onExport: () => { nb.closeSidebar(); nb.openExport(); },
+							onTogglePlain: nb.togglePlain,
+							onSettings: () => nb.openSettings("customize"),
+							onReviewers: () => nb.openSettings("reviewers"),
+							onFlashcards: () => { nb.closeSidebar(); router.push(flashcardsHref(nb.noteId)); },
+							onLinks: nb.openLinks,
+							onSwitchToStudy: () => {
+								nb.closeSidebar();
+								void switchInterface("study", (href) => router.push(href));
+							},
 						}}
 						onClose={nb.closeSidebar}
 						searchRef={search}

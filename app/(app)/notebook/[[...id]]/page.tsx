@@ -23,11 +23,11 @@ async function NotebookPage({ params }: { params: Promise<{ id?: string[] }> }) 
 		<NotebookApp
 			note={resolved.note}
 			fontClasses={notebookFontClasses}
-			preferences={{ appearance: notebook.appearance, textSize: notebook.textSize, lettering: notebook.lettering, ink: notebook.ink, pace: notebook.pace, layout: notebook.layout }}
-			startMode={notebook.startMode}
+			preferences={{ startMode: notebook.startMode, pointerInk: notebook.pointerInk, appearance: notebook.appearance, textSize: notebook.textSize, lettering: notebook.lettering, ink: notebook.ink, pace: notebook.pace, layout: notebook.layout }}
 			reviewers={notebook.reviewers.map((r) => ({ id: r.id, name: r.name, instructions: r.instructions, ...(r.seeded ? { seeded: true as const } : {}) }))}
 			lastNoteId={notebook.lastNoteId}
 			account={hosted ? await signedInEmail() : null}
+			hosted={hosted}
 		/>
 	);
 }

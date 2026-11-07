@@ -8,15 +8,13 @@
  * change stores the whole list in `notebook.reviewers` (PUT the notebook
  * settings section, through `onSave`).
  *
- * Standalone so Phase 10's settings modal can hold it under its
- * "Reviewers" nav; until then `ReviewersDialog` shows it over the page.
+ * The settings modal shows it under its "Reviewers" nav.
  */
 import { nanoid } from "nanoid";
-import { PlusIcon, XIcon } from "lucide-react";
-import { Dialog } from "radix-ui";
+import { PlusIcon } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { NOTEBOOK_REVIEWER_INSTRUCTIONS_MAX, NOTEBOOK_REVIEWER_NAME_MAX } from "@/src/core";
-import { useNotebook, type NotebookReviewerView } from "./nb-shared";
+import type { NotebookReviewerView } from "./nb-shared";
 
 /** A pause in typing this long saves; leaving a field saves at once. */
 const SAVE_DELAY_MS = 700;
@@ -220,38 +218,5 @@ export function ReviewersPage({ reviewers, onSave }: {
 				<span>New reviewer</span>
 			</button>
 		</section>
-	);
-}
-
-/** The Reviewers page over the page, until Phase 10's settings modal holds it. Focus returns where it was. */
-export function ReviewersDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
-	const nb = useNotebook();
-	const before = useRef<Element | null>(null);
-	return (
-		<Dialog.Root open={open} onOpenChange={onOpenChange}>
-			<Dialog.Portal container={nb.root ?? undefined}>
-				<Dialog.Overlay className="nb-dialog-backdrop" data-testid="nb-reviewers-backdrop">
-					<Dialog.Content
-						className="nb-dialog nb-rev-dialog"
-						data-testid="nb-reviewers-dialog"
-						aria-describedby={undefined}
-						onOpenAutoFocus={() => { before.current = document.activeElement; }}
-						onCloseAutoFocus={(event) => {
-							const back = before.current;
-							if (back instanceof HTMLElement && back.isConnected && back !== document.body) {
-								event.preventDefault();
-								back.focus();
-							}
-						}}
-					>
-						<Dialog.Title className="nb-sr-only">Reviewers</Dialog.Title>
-						<Dialog.Close className="nb-dialog-close" aria-label="Close">
-							<XIcon aria-hidden="true" size={16} strokeWidth={1.6} />
-						</Dialog.Close>
-						<ReviewersPage reviewers={nb.reviewers} onSave={nb.saveReviewers} />
-					</Dialog.Content>
-				</Dialog.Overlay>
-			</Dialog.Portal>
-		</Dialog.Root>
 	);
 }

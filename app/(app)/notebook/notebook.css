@@ -1893,21 +1893,6 @@
 @media (prefers-color-scheme: dark) {
 	.nb-root[data-nb-theme="system"] .nb-dialog-backdrop { background: #0009; }
 }
-.nb-root .nb-dialog {
-	position: relative;
-	width: min(560px, calc(100vw - 32px));
-	max-height: min(720px, calc(100dvh - 32px));
-	overflow-y: auto;
-	overscroll-behavior: contain;
-	padding: 28px 28px 24px;
-	border-radius: 16px;
-	background: var(--paper);
-	box-shadow: var(--lift);
-	color: var(--ink);
-	font-family: var(--nb-sans);
-	animation: 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both nb-menu-in;
-}
-.nb-root .nb-dialog:focus { outline: none; }
 .nb-root .nb-dialog-close {
 	position: absolute;
 	top: 18px;
@@ -1988,7 +1973,7 @@
 	.nb-root :is(.nb-rev-text-button, .nb-rev-new, .nb-dialog-close) { min-height: 44px; min-width: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
-	.nb-root :is(.nb-dialog-backdrop, .nb-dialog) { animation: none; }
+	.nb-root .nb-dialog-backdrop { animation: none; }
 	.nb-root .nb-rev-item { transition: none; }
 }
 
@@ -2285,4 +2270,192 @@
 @media (prefers-reduced-motion: reduce) {
 	.nb-root .nb-export { animation: none; }
 	.nb-root :is(.nb-option-card, .nb-switch, .nb-switch-thumb, .nb-pill, .nb-export-cancel) { transition: none; }
+}
+
+/* ══ Phase 10 (US8): sidebar footer, settings, pointer ink ══════════════════ */
+
+/* 18: the sidebar scrolls as a whole when the window is too short for the footer. */
+.nb-root .nb-sidebar { overflow-y: auto; overscroll-behavior: contain; }
+.nb-root .nb-side-scroll { min-height: 140px; }
+.nb-root .nb-side-dot {
+	flex: none;
+	width: 5px;
+	height: 5px;
+	margin-left: -2px;
+	border-radius: 999px;
+	background: var(--faint);
+}
+.nb-root .nb-side-footer-action { gap: 8px; }
+.nb-root .nb-side-check { width: 12px; height: 12px; color: var(--ink); stroke-width: 2; }
+.nb-root .nb-side-footer-action[aria-pressed="true"] { color: var(--ink); }
+
+/* 1.1: a theme change cross-fades (Riddled: view transition, 350ms). */
+::view-transition-old(root),
+::view-transition-new(root) { animation-duration: 0.35s; }
+
+/* 19: the settings modal, ≈840 × 704, radius 16, lifted paper; the nav ≈216px on the shelf. */
+.nb-root .nb-settings {
+	position: relative;
+	display: flex;
+	width: min(840px, calc(100vw - 32px));
+	height: min(704px, calc(100dvh - 32px));
+	overflow: hidden;
+	border-radius: 16px;
+	box-shadow: var(--lift);
+	color: var(--ink);
+	font-family: var(--nb-sans);
+	isolation: isolate;
+	animation: 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both nb-menu-in;
+}
+.nb-root .nb-settings::before,
+.nb-root .nb-settings::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	pointer-events: none;
+}
+.nb-root .nb-settings::before { background-color: var(--paper); }
+.nb-root .nb-settings::after {
+	opacity: var(--grain-opacity);
+	mix-blend-mode: var(--texture-blend);
+	background-image: var(--nb-grain);
+	background-size: 180px 180px;
+}
+.nb-root .nb-settings:focus { outline: none; }
+.nb-root .nb-settings-body { display: flex; width: 100%; min-height: 0; }
+.nb-root .nb-settings-nav {
+	display: flex;
+	flex: none;
+	width: 216px;
+	flex-direction: column;
+	gap: 3px;
+	padding: 20px 12px;
+	background: var(--shelf);
+	box-shadow: 1px 0 0 var(--rule);
+}
+.nb-root .nb-settings-tab {
+	display: flex;
+	min-height: 36px;
+	align-items: center;
+	padding: 0 12px;
+	border-radius: 8px;
+	color: var(--graphite);
+	font-size: 14px;
+	line-height: 1.3;
+	text-align: left;
+	transition: background-color 0.15s, color 0.15s;
+}
+.nb-root .nb-settings-tab:hover { color: var(--ink); }
+.nb-root .nb-settings-tab[data-state="active"] { background: var(--paper); color: var(--ink); box-shadow: 0 0 0 1px color-mix(in srgb, var(--rule) 60%, transparent); }
+.nb-root .nb-settings-page {
+	position: relative;
+	min-width: 0;
+	flex: 1;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	padding: 34px 36px 40px 34px;
+}
+/* The page is a tab panel (focusable): its ring sits inside the card. */
+.nb-root .nb-settings-page:focus-visible { outline-offset: -4px; border-radius: 0 12px 12px 0; }
+.nb-root .nb-settings-page[data-state="inactive"] { display: none; }
+.nb-root .nb-settings-close { top: 16px; right: 16px; z-index: 1; }
+.nb-root .nb-settings-title { margin: 0 40px 30px 0; color: var(--ink); font-size: 19px; font-weight: 500; line-height: 26px; }
+.nb-root .nb-settings-page .nb-rev-title { line-height: 26px; }
+
+.nb-root .nb-set-section + .nb-set-section,
+.nb-root .nb-set-toggle + .nb-set-section { margin-top: 36px; }
+.nb-root .nb-set-label { margin: 0 0 14px; color: var(--ink); font-size: 14px; font-weight: 500; line-height: 18px; }
+.nb-root .nb-set-grid { display: grid; grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); gap: 10px; }
+.nb-root .nb-set-card { min-height: 82px; gap: 3px; padding: 12px; }
+.nb-root .nb-set-card .nb-option-description { font-size: 12.5px; line-height: 18px; }
+.nb-root .nb-set-hint { margin: 8px 0 0; color: var(--faint); font-size: 12.5px; line-height: 16px; }
+.nb-root .nb-set-toggle {
+	min-height: 68px;
+	margin-top: 36px;
+	flex-direction: row;
+	align-items: center;
+	gap: 16px;
+	padding: 13px 15px 13px 16px;
+}
+.nb-root .nb-set-toggle-text { display: flex; min-width: 0; flex: 1 1 auto; flex-direction: column; gap: 3px; cursor: pointer; }
+.nb-root .nb-set-toggle .nb-option-description { font-size: 12.5px; line-height: 18px; }
+
+/* Thumbnails: a greyscale mini page on the shelf (layouts) or a mini toolbar (appearance). */
+.nb-root .nb-set-thumb-card { padding: 10px 12px 12px; }
+.nb-root .nb-thumb-frame { display: block; width: 100%; margin-bottom: 10px; border-radius: 6px; background: var(--shelf); }
+.nb-root .nb-thumb { display: block; width: 100%; height: auto; }
+.nb-root .nb-thumb-layout { aspect-ratio: 158 / 96; }
+.nb-root .nb-thumb-text { fill: var(--rule); }
+.nb-root .nb-thumb-head { fill: var(--faint); }
+.nb-root .nb-thumb-note { fill: var(--ink); }
+.nb-root .nb-thumb-tick { fill: none; stroke: var(--faint); stroke-width: 1; stroke-linecap: round; }
+.nb-root .nb-thumb-ring { fill: none; stroke: var(--ink); stroke-width: 1.1; }
+.nb-root .nb-thumb-card { fill: var(--paper); }
+.nb-root .nb-set-appearance { min-height: 0; padding: 10px 10px 10px; gap: 8px; }
+.nb-root .nb-thumb-appearance { aspect-ratio: 158 / 60; }
+.nb-root .nb-set-caption { color: var(--graphite); font-size: 12px; line-height: 16px; }
+.nb-root .nb-set-appearance .nb-set-caption { padding-left: 2px; }
+
+/* Text size and lettering: the sample in its size or face, the name under it. */
+.nb-root .nb-set-sample-card { min-height: 82px; justify-content: center; gap: 6px; padding: 14px 16px; }
+.nb-root .nb-set-sample { color: var(--ink); line-height: 1.2; }
+.nb-root .nb-set-sample[data-size="small"] { font-size: 15px; }
+.nb-root .nb-set-sample[data-size="default"] { font-size: 16px; }
+.nb-root .nb-set-sample[data-size="large"] { font-size: 18px; }
+.nb-root .nb-set-letter { color: var(--riddle); font-size: 17px; line-height: 1.25; }
+.nb-root .nb-set-letter[data-lettering="serif"] { font-family: var(--nb-font-voice); font-variation-settings: "opsz" 14; font-weight: 420; letter-spacing: 0.004em; }
+.nb-root .nb-set-letter[data-lettering="plain"] { font-family: var(--nb-sans); letter-spacing: -0.004em; }
+.nb-root .nb-set-sample-card .nb-set-caption { color: var(--faint); font-size: 11.5px; }
+
+/* Ink swatches: seven small cards, a dot and its name in that ink. */
+.nb-root .nb-set-grid[data-testid="nb-set-ink"] { gap: 8px; }
+.nb-root .nb-set-swatch { min-height: 66px; align-items: center; justify-content: center; gap: 8px; padding: 10px 4px; }
+.nb-root .nb-set-swatch-dot { width: 10px; height: 10px; border-radius: 999px; }
+.nb-root .nb-set-swatch-name { font-size: 12px; line-height: 16px; }
+
+.nb-root .nb-set-problem {
+	position: sticky;
+	bottom: -40px;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 4px 12px;
+	margin: 28px 0 0;
+	padding: 12px 0;
+	background: var(--paper);
+	color: var(--ink);
+	font-size: 12.5px;
+	line-height: 1.4;
+}
+
+/* Below 768px: full screen, the nav a row across the top. */
+@media (max-width: 767px) {
+	.nb-root .nb-dialog-backdrop:has(.nb-settings) { padding: 0; }
+	.nb-root .nb-settings { width: 100vw; height: 100dvh; border-radius: 0; }
+	.nb-root .nb-settings-body { flex-direction: column; }
+	.nb-root .nb-settings-nav { width: auto; flex-direction: row; padding: 12px 56px 12px 16px; box-shadow: 0 1px 0 var(--rule); }
+	.nb-root .nb-settings-page { padding: 24px 16px 32px; }
+	.nb-root .nb-set-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.nb-root .nb-set-grid[data-testid="nb-set-ink"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+	.nb-root .nb-settings-close { top: 10px; right: 10px; }
+}
+@media (pointer: coarse) {
+	.nb-root .nb-settings-tab { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.nb-root .nb-settings { animation: none; }
+	.nb-root .nb-settings-tab { transition: none; }
+	::view-transition-old(root),
+	::view-transition-new(root) { animation: none; }
+}
+
+/* 21: the pointer's ink, under the page's words (Riddled z-[5]). */
+.nb-root .nb-pointer-ink {
+	position: fixed;
+	inset: 0;
+	z-index: 5;
+	width: 100vw;
+	height: 100dvh;
+	pointer-events: none;
 }

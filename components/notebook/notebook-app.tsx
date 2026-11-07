@@ -9,16 +9,17 @@
  * (`notebook.lastNoteId`).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { writeSettingsKey } from "@/components/interface-switch";
 import type { SaveStatus } from "@/components/library/page-draft";
-import type { NotebookStartMode } from "@/src/core";
 import { CornerHint } from "./corner-hint";
 import { readJustMyWords, writeJustMyWords } from "./nb-actions";
-import { isMod, NotebookContext, useIsMac, type NoteCommands, type NotebookPreferences, type NotebookReviewerView, type NotebookShared, type ReadingStatus, type SidebarOpen } from "./nb-shared";
+import { isMod, NotebookContext, useIsMac, type NoteCommands, type NotebookPreferences, type NotebookReviewerView, type NotebookShared, type ReadingStatus, type SettingsTab, type SidebarOpen } from "./nb-shared";
 import { MenuGlyph, Wordmark } from "./chrome";
 import { NoteView } from "./note-view";
 import { OverlaySidebar } from "./overlay-sidebar";
-import { ReviewersDialog } from "./reviewers";
+import { PointerInk } from "./pointer-ink";
+import { SettingsModal } from "./settings-modal";
 import { useLibraryList } from "./use-notebook-data";
 
 export type { NotebookPreferences } from "./nb-shared";
@@ -45,14 +46,21 @@ function useResolvedTheme(appearance: NotebookPreferences["appearance"]): "light
 	return systemDark === null ? "system" : systemDark ? "dark" : "light";
 }
 
-export function NotebookApp({ note, fontClasses, preferences, startMode = "thinks", reviewers = [], lastNoteId, account = null }: {
+/** Riddled cross-fades a theme change (view transition, 350ms in notebook.css); not under reduced motion. */
+function withThemeFade(apply: () => void): void {
+	const start = (document as Document & { startViewTransition?: (update: () => void) => unknown }).startViewTransition;
+	if (typeof start !== "function" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) { apply(); return; }
+	start.call(document, () => flushSync(apply));
+}
+
+export function NotebookApp({ note, fontClasses, preferences, reviewers = [], lastNoteId, account = null, hosted = false }: {
 	note: { id: string; name: string };
 	fontClasses: string;
 	preferences: NotebookPreferences;
-	startMode?: NotebookStartMode;
 	reviewers?: readonly NotebookReviewerView[];
 	lastNoteId: string | null | undefined;
 	account?: string | null;
+	hosted?: boolean;
 }) {
 	const mac = useIsMac();
 	const [root, setRoot] = useState<HTMLDivElement | null>(null);
@@ -78,27 +86,46 @@ export function NotebookApp({ note, fontClasses, preferences, startMode = "think
 		});
 	}, [note.id, lastNoteId]);
 
-	const updatePreferences = useCallback((patch: Partial<NotebookPreferences>) => {
-		setPrefs((current) => ({ ...current, ...patch }));
-		void writeSettingsKey("notebook", patch).catch(() => {
-			console.error("[notebook] could not save the reading settings");
-		});
+	// Every write of the notebook section goes one after another (each reads the
+	// stored section and puts it back changed), so none undoes another.
+	const notebookWrites = useRef<Promise<unknown>>(Promise.resolve());
+	const queueWrite = useCallback((patch: Record<string, unknown>): Promise<boolean> => {
+		const next = notebookWrites.current.then(() => writeSettingsKey("notebook", patch).catch(() => false));
+		notebookWrites.current = next;
+		return next;
 	}, []);
+	const prefsRef = useRef(prefs);
+	prefsRef.current = prefs;
+	const [preferencesFailed, setPreferencesFailed] = useState(false);
+	const savePreferences = useCallback(async (patch: Partial<NotebookPreferences>) => {
+		const ok = await queueWrite(patch);
+		if (!ok) console.error("[notebook] could not save the reading settings");
+		setPreferencesFailed(!ok);
+		return ok;
+	}, [queueWrite]);
+	const updatePreferences = useCallback((patch: Partial<NotebookPreferences>) => {
+		const apply = () => setPrefs((current) => ({ ...current, ...patch }));
+		if (patch.appearance && patch.appearance !== prefsRef.current.appearance) withThemeFade(apply);
+		else apply();
+		return savePreferences(patch);
+	}, [savePreferences]);
+	// Try again: everything he chose here, as it stands now.
+	const retryPreferences = useCallback(() => savePreferences(prefsRef.current), [savePreferences]);
 	// The reviewer list lives here: the picker and the Reviewers page show a change at once.
 	const [reviewerList, setReviewerList] = useState<readonly NotebookReviewerView[]>(reviewers);
 	const incomingReviewers = JSON.stringify(reviewers);
 	useEffect(() => { setReviewerList(JSON.parse(incomingReviewers) as NotebookReviewerView[]); }, [incomingReviewers]);
-	// Writes go one after another, so the last list he made is the one stored.
-	const reviewerWrites = useRef<Promise<boolean>>(Promise.resolve(true));
 	const saveReviewers = useCallback((next: readonly NotebookReviewerView[]) => {
 		setReviewerList(next);
 		const list = next.map((r) => ({ id: r.id, name: r.name, instructions: r.instructions, ...(r.seeded ? { seeded: true as const } : {}) }));
-		reviewerWrites.current = reviewerWrites.current.then(() => writeSettingsKey("notebook", { reviewers: list }).catch(() => false));
-		return reviewerWrites.current;
-	}, []);
-	const [reviewersOpen, setReviewersOpen] = useState(false);
-	// A menu item opens it: the menu gives the focus back first, so closing returns it there.
-	const openReviewers = useCallback(() => { window.setTimeout(() => setReviewersOpen(true), 0); }, []);
+		return queueWrite({ reviewers: list });
+	}, [queueWrite]);
+	const [settings, setSettings] = useState<SettingsTab | null>(null);
+	// From a menu item or a sidebar row: the menu gives the focus back first, so closing returns it there.
+	const openSettings = useCallback((tab: SettingsTab = "customize") => { window.setTimeout(() => setSettings(tab), 0); }, []);
+	const openReviewers = useCallback(() => openSettings("reviewers"), [openSettings]);
+	// TODO(phase 11, T044): the Links panel opens here.
+	const openLinks = useCallback(() => setSidebar(null), []);
 
 	// Just my words: read after mount (the server can't see this browser's choice).
 	const [plain, setPlain] = useState(false);
@@ -127,6 +154,8 @@ export function NotebookApp({ note, fontClasses, preferences, startMode = "think
 	useEffect(() => {
 		const onKey = (event: KeyboardEvent) => {
 			if (event.defaultPrevented || event.isComposing || !isMod(event, mac)) return;
+			// The settings modal is the top layer: nothing opens behind it.
+			if (settings) return;
 			if (event.shiftKey) {
 				// Mod+Shift+H Just my words, Mod+Shift+C Copy this note, Mod+Shift+E Export (ui-contract "Overlay sidebar").
 				const key = event.code === "KeyH" ? "h" : event.code === "KeyC" ? "c" : event.code === "KeyE" ? "e" : event.key.toLowerCase();
@@ -135,7 +164,11 @@ export function NotebookApp({ note, fontClasses, preferences, startMode = "think
 				else if (key === "e") { event.preventDefault(); openExport(); }
 				return;
 			}
-			if (event.key === "\\") {
+			if (event.key === ",") {
+				// Mod+, Settings (Study's own Mod+, stays out of Notebook routes).
+				event.preventDefault();
+				setSettings("customize");
+			} else if (event.key === "\\") {
 				event.preventDefault();
 				setSidebar((open) => (open ? null : { via: "key", search: false }));
 			} else if (event.key.toLowerCase() === "k") {
@@ -145,7 +178,7 @@ export function NotebookApp({ note, fontClasses, preferences, startMode = "think
 		};
 		window.addEventListener("keydown", onKey);
 		return () => window.removeEventListener("keydown", onKey);
-	}, [mac, togglePlain, copyNote, openExport]);
+	}, [mac, togglePlain, copyNote, openExport, settings]);
 
 	useEffect(() => () => { if (edgeTimer.current) window.clearTimeout(edgeTimer.current); }, []);
 	// A real pointer movement on the strip starts the wait: the browser's synthetic "over" at (0, 0)
@@ -164,10 +197,11 @@ export function NotebookApp({ note, fontClasses, preferences, startMode = "think
 	};
 
 	const shared = useMemo<NotebookShared>(() => ({
-		root, mac, noteId: note.id, startMode, reviewers: reviewerList, saveReviewers, openReviewers, account, preferences: prefs, updatePreferences,
+		root, mac, noteId: note.id, startMode: prefs.startMode, reviewers: reviewerList, saveReviewers, openReviewers, openSettings, openLinks, hosted, account,
+		preferences: prefs, updatePreferences, preferencesFailed, retryPreferences,
 		sidebar, openSidebar, closeSidebar, saveStatus, setSaveStatus, library, libraryFailed, refreshLibrary,
 		reading, setReading, announce, plain, togglePlain, copyNote, openExport, noteCommands,
-	}), [root, mac, note.id, startMode, reviewerList, saveReviewers, openReviewers, account, prefs, updatePreferences, sidebar, openSidebar, closeSidebar, saveStatus, library, libraryFailed, refreshLibrary, reading, announce, plain, togglePlain, copyNote, openExport]);
+	}), [root, mac, note.id, reviewerList, saveReviewers, openReviewers, openSettings, openLinks, hosted, account, prefs, updatePreferences, preferencesFailed, retryPreferences, sidebar, openSidebar, closeSidebar, saveStatus, library, libraryFailed, refreshLibrary, reading, announce, plain, togglePlain, copyNote, openExport]);
 
 	return (
 		<NotebookContext.Provider value={shared}>
@@ -203,7 +237,8 @@ export function NotebookApp({ note, fontClasses, preferences, startMode = "think
 				<div className="nb-sheet" data-aside={sidebar ? "" : undefined} inert={sidebar ? true : undefined}>
 					<NoteView key={note.id} note={note} />
 				</div>
-				<ReviewersDialog open={reviewersOpen} onOpenChange={setReviewersOpen} />
+				<SettingsModal tab={settings} onTabChange={setSettings} />
+				{prefs.pointerInk && <PointerInk />}
 				<CornerHint />
 				<p className="nb-sr-only" aria-live="polite" data-testid="nb-live"><span key={spoken.n}>{spoken.text}</span></p>
 			</div>

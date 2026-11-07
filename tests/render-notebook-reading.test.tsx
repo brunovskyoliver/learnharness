@@ -8,15 +8,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { InkDot, ReadingMarks } from "../components/notebook/blot.tsx";
 import { CornerHint, costLabel, refusalLine } from "../components/notebook/corner-hint.tsx";
 import { InkText } from "../components/notebook/ink-text.tsx";
-import { NotebookContext, type NotebookShared, type ReadingStatus } from "../components/notebook/nb-shared.tsx";
+import { DEFAULT_SHARED, NotebookContext, type NotebookShared, type ReadingStatus } from "../components/notebook/nb-shared.tsx";
 import { DETACHED_LINE } from "../components/notebook/margin.tsx";
 
 const base = (reading: ReadingStatus, mac = true): NotebookShared => ({
-	root: null, mac, noteId: "lib_a", startMode: "thinks", reviewers: [], saveReviewers: async () => true, openReviewers: () => {}, account: null,
-	preferences: { appearance: "light", textSize: "default", lettering: "serif", ink: "ink", pace: "regular", layout: "both" },
-	updatePreferences: () => {}, sidebar: null, openSidebar: () => {}, closeSidebar: () => {}, saveStatus: null, setSaveStatus: () => {},
-	library: null, libraryFailed: false, refreshLibrary: async () => {}, reading, setReading: () => {}, announce: () => {},
-	plain: false, togglePlain: () => {}, copyNote: () => {}, openExport: () => {}, noteCommands: { current: null },
+	...DEFAULT_SHARED, mac, noteId: "lib_a", preferences: { ...DEFAULT_SHARED.preferences, appearance: "light" }, reading,
 });
 const hint = (reading: ReadingStatus, mac = true) => renderToStaticMarkup(<NotebookContext.Provider value={base(reading, mac)}><CornerHint /></NotebookContext.Provider>);
 

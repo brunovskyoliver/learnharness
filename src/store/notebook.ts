@@ -92,6 +92,39 @@ async function write(companion: NoteCompanion): Promise<void> {
 	setAsidePages().delete(companion.pageId);
 }
 
+/**
+ * How many open threads each note has, from the companion files alone
+ * (the sidebar's dots). Read-only and lock-free: files are replaced by
+ * rename, so a read sees a whole one. Damaged, newer-version and stray
+ * files are skipped here (the note's own read sets a damaged one aside).
+ * Notes with none are left out.
+ */
+async function openThreadCounts(): Promise<Record<string, number>> {
+	const names = await fs.readdir(dir()).catch((err) => {
+		if ((err as NodeJS.ErrnoException)?.code === "ENOENT") return [] as string[];
+		throw err;
+	});
+	const counts: Record<string, number> = {};
+	await Promise.all(names.map(async (name) => {
+		const match = /^([A-Za-z0-9_-]+)\.json$/.exec(name);
+		if (!match) return;
+		const pageId = match[1]!;
+		const raw = await fs.readFile(path.join(dir(), name), "utf8").catch(() => null);
+		if (raw === null) return;
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(raw);
+		} catch {
+			return;
+		}
+		const result = parseCompanion(parsed, pageId);
+		if (!result.ok) return;
+		const open = result.companion.threads.filter((thread) => thread.status === "open").length;
+		if (open > 0) counts[pageId] = open;
+	}));
+	return counts;
+}
+
 /** What an update callback answers: the next companion, or a refusal that writes nothing. */
 export type CompanionChange<R> = { companion: NoteCompanion; result: R } | { refused: string; status: number };
 
@@ -108,6 +141,7 @@ export const notebookStore = {
 		return { result: outcome.result, companion: outcome.companion };
 	}),
 	remove: (pageId: string) => withLock(() => removeCompanionFile(pageId)),
+	openThreadCounts,
 };
 
 export type NotebookStore = typeof notebookStore;

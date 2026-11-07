@@ -7,6 +7,8 @@ All routes wrapped in `withTenant`; JSON; ids `^[A-Za-z0-9_-]+$`. Errors `{error
 - `GET /api/notebook/:pageId` → `{ companion: NoteCompanion, effective: { mode }, readOnly?: "future-version" | null, setAside?: boolean }`. 404 if the page is not a live or trashed page.
 - `PATCH /api/notebook/:pageId` `{ mode?, instruction?, reviewerId? }` → `{ companion }`.
 
+- `GET /api/notebook/summary` → `{ openThreads: { [pageId]: number } }`: live pages whose companion has open threads, with the count (the sidebar's dots; phase 10). Read-only: damaged or newer-version files are skipped, not set aside.
+
 ## Threads
 
 - `POST /api/notebook/:pageId/threads` `{ anchor, origin: "ask", text }` → `{ thread }` (his question appended write-ahead; then he starts a `reply` run).

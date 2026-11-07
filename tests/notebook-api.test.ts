@@ -13,7 +13,7 @@ process.env.LH_NOTEBOOK_FAUX = "1";
 const { PATHS } = await import("../config.ts");
 const { stores } = await import("../src/server/stores.ts");
 const { isRefusal } = await import("../src/core/library.ts");
-const { resolveNotebookNote, UNTITLED_NOTE } = await import("../src/server/notebook-api.ts");
+const { notebookSummaryResponse, resolveNotebookNote, UNTITLED_NOTE } = await import("../src/server/notebook-api.ts");
 const { notebookRunIdle } = await import("../src/server/notebook.ts");
 const { writeSettings } = await import("../src/store/settings.ts");
 const companionRoute = await import("../app/api/notebook/[pageId]/route.ts");
@@ -22,6 +22,7 @@ const threadRoute = await import("../app/api/notebook/[pageId]/threads/[threadId
 const messagesRoute = await import("../app/api/notebook/[pageId]/threads/[threadId]/messages/route.ts");
 const runsRoute = await import("../app/api/notebook/[pageId]/runs/route.ts");
 const streamRoute = await import("../app/api/notebook/runs/[runId]/stream/route.ts");
+const summaryRoute = await import("../app/api/notebook/summary/route.ts");
 const abortRoute = await import("../app/api/activity/abort/route.ts");
 const activityRoute = await import("../app/api/activity/route.ts");
 after(() => { delete process.env.LH_NOTEBOOK_FAUX; fs.rmSync(dir, { recursive: true, force: true }); });
@@ -152,6 +153,53 @@ describe("runs, stream and stop", () => {
 		const read = await ok(await companionRoute.GET(req("GET"), ctx({ pageId: id })));
 		assert.equal(read.companion.chat[0].text, "What should I do next?");
 		assert.equal(read.companion.chat[1].state, "stopped");
+	});
+});
+
+describe("summary (the sidebar's open-thread dots)", () => {
+	const seed = (pageId: string, statuses: string[]) => {
+		const dir = path.join(PATHS.library, "notebook");
+		fs.mkdirSync(dir, { recursive: true });
+		const threads = statuses.map((status, i) => ({
+			id: `thr_${i}`, anchor: { quote: "tea", prefix: "", suffix: "" }, placement: "margin", side: "right", status, origin: "read",
+			createdAt: "2026-11-06T10:00:00.000Z", updatedAt: "2026-11-06T10:00:00.000Z",
+			messages: [{ id: `msg_${i}`, author: "ai", text: "Why?", at: "2026-11-06T10:00:00.000Z" }],
+		}));
+		fs.writeFileSync(path.join(dir, `${pageId}.json`), JSON.stringify({ v: 1, pageId, instruction: "", threads, chat: [] }));
+	};
+
+	it("counts open threads per live page from the companion files; skips the rest without touching them", async () => {
+		// The route (withTenant) answers in local mode.
+		assert.ok("openThreads" in (await ok(await summaryRoute.GET())));
+		// Tenants of their own, through the handler the route wraps.
+		const { runAsTenant } = await import("../config.ts");
+		process.env.LH_HOSTED = "1";
+		try {
+			await runAsTenant("nb-summary", async () => {
+				assert.deepEqual(await ok(await notebookSummaryResponse()), { openThreads: {} });
+				const busy = await page("Busy");
+				const quiet = await page("Quiet");
+				const binned = await page("Binned");
+				seed(busy, ["open", "resolved", "open", "dismissed"]);
+				seed(quiet, ["resolved", "dismissed"]);
+				seed(binned, ["open"]);
+				assert.ok(!isRefusal((await stores.libraryStore.trashItem(binned))!));
+				const dir = path.join(PATHS.library, "notebook");
+				fs.writeFileSync(path.join(dir, "lib_broken.json"), "{not json");
+				fs.writeFileSync(path.join(dir, `${quiet}.damaged-2026.json`), "{}");
+				fs.writeFileSync(path.join(dir, "lib_future.json"), JSON.stringify({ v: 99, pageId: "lib_future" }));
+				const body = await ok(await notebookSummaryResponse());
+				assert.deepEqual(body, { openThreads: { [busy]: 2 } });
+				// Read-only: a damaged file is left where it is (the note's own read sets it aside).
+				assert.ok(fs.existsSync(path.join(dir, "lib_broken.json")));
+			});
+			// Another tenant sees none of it.
+			await runAsTenant("nb-summary-other", async () => {
+				assert.deepEqual(await ok(await notebookSummaryResponse()), { openThreads: {} });
+			});
+		} finally {
+			delete process.env.LH_HOSTED;
+		}
 	});
 });
 

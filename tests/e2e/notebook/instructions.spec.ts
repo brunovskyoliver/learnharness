@@ -128,8 +128,10 @@ test.describe("Notebook: instructions and reviewers", () => {
 		const picker = page.getByTestId("nb-reviewer-picker");
 		await picker.click();
 		await page.getByTestId("nb-edit-reviewers").click();
-		const dialog = page.getByTestId("nb-reviewers-dialog");
+		// "Edit reviewers…" opens Settings on its Reviewers page.
+		const dialog = page.getByTestId("nb-settings");
 		await expect(dialog).toBeVisible();
+		await expect(dialog.getByTestId("nb-settings-nav-reviewers")).toHaveAttribute("aria-selected", "true");
 		await expect(dialog.getByTestId("nb-reviewer-row")).toHaveCount(5);
 		await expect(dialog.getByTestId("nb-reviewer-row").nth(1)).toContainText("Reads like the person grading this.");
 

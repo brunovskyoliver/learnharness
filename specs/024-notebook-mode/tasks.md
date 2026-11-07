@@ -73,10 +73,10 @@ Format: `- [ ] T### [P?] [US?] description (paths)`. All Notebook CSS values com
 
 ## Phase 10: US8 Sidebar and settings complete (P2)
 
-- [ ] T040 [US8] Sidebar footer actions with shortcuts, Links and Make flashcards doors, Switch to Study, Sign out (hosted)
-- [ ] T041 [US8] `settings-modal.tsx`: option cards, layout/appearance thumbnails, text size, lettering, ink swatches, live apply and persist
-- [ ] T042 [US8] `pointer-ink.tsx` (off by default; ink-drip/ink-dry; reduced motion off)
-- [ ] T043 [US8] Tests: render for settings; Playwright `sidebar-settings.spec.ts` (every action by click and shortcut; every setting applies and persists)
+- [X] T040 [US8] Sidebar footer actions with shortcuts, Links and Make flashcards doors, Switch to Study, Sign out (hosted)
+- [X] T041 [US8] `settings-modal.tsx`: option cards, layout/appearance thumbnails, text size, lettering, ink swatches, live apply and persist
+- [X] T042 [US8] `pointer-ink.tsx` (off by default; ink-drip/ink-dry; reduced motion off)
+- [X] T043 [US8] Tests: render for settings; Playwright `sidebar-settings.spec.ts` (every action by click and shortcut; every setting applies and persists)
 
 ## Phase 11: Polish and cross-cutting
 
