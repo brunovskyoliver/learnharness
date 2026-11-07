@@ -8,11 +8,9 @@
  * the full list of Notebook runs in a small lifted popover. A refusal (no
  * model, no key) or a failed read says so here, not in a toast.
  */
-import { Popover } from "radix-ui";
-import { useState } from "react";
 import { useActivity } from "@/components/activity-dock";
+import { CornerHint as PaperCornerHint, costLabel } from "@/components/paper/corner-hint";
 import { useSettingsDialog } from "@/components/settings/settings-dialog";
-import { formatUsd } from "@/components/usage-format";
 import { AUTH_PROVIDER_KEYS } from "@/src/core";
 import { stopRun } from "./nb-actions";
 import { keyLabel, useNotebook, type ReadingStatus } from "./nb-shared";
@@ -22,7 +20,7 @@ const PHASE_WORD: Record<"reading" | "writing" | "drawing", string> = { reading:
 const KIND_PHASE: Record<string, "reading" | "writing" | "drawing"> = { read: "reading", think: "reading", ask: "reading", reply: "writing", chat: "writing", visualize: "drawing" };
 const KIND_ROW: Record<string, string> = { read: "Reading", think: "Thinking", ask: "Thinking", reply: "Replying", visualize: "Drawing", chat: "Chat" };
 
-export const costLabel = (cost: number | null | undefined): string => (cost === null || cost === undefined ? "cost not known" : formatUsd(cost));
+export { costLabel } from "@/components/paper/corner-hint";
 
 export function refusalLine(status: Extract<NonNullable<ReadingStatus>, { state: "refused" }>): string {
 	if (status.reason === "models") return "No model set up.";
@@ -51,7 +49,6 @@ export function CornerHint() {
 	const nb = useNotebook();
 	const { feed } = useActivity();
 	const { open: openSettings } = useSettingsDialog();
-	const [listOpen, setListOpen] = useState(false);
 	const runs = feed.notebookRuns ?? [];
 	const status = nb.reading;
 
@@ -62,23 +59,9 @@ export function CornerHint() {
 	const phase = own?.phase ?? (other ? KIND_PHASE[other.kind] ?? "reading" : null);
 	const cost = runs.find((r) => r.id === runId)?.costUsd ?? null;
 
-	let body: React.ReactNode;
-	if (runId && phase) {
-		body = (
-			<span className="nb-hint-running" data-testid="nb-hint-running">
-				<Popover.Trigger asChild>
-					<button type="button" className="nb-hint-button" data-testid="nb-hint-activity" aria-haspopup="dialog">
-						<span>{PHASE_WORD[phase]}</span>
-						<span aria-hidden="true"> · </span>
-						<span data-testid="nb-hint-cost">{costLabel(cost)}</span>
-					</button>
-				</Popover.Trigger>
-				<span aria-hidden="true"> · </span>
-				<button type="button" className="nb-hint-button" data-testid="nb-hint-stop" onClick={() => void stopRun(runId)}>Stop</button>
-			</span>
-		);
-	} else if (status?.state === "refused") {
-		body = (
+	let notice: React.ReactNode = null;
+	if (status?.state === "refused") {
+		notice = (
 			<span data-testid="nb-hint-refused">
 				{refusalLine(status)}
 				{status.reason === "models" && (
@@ -90,7 +73,7 @@ export function CornerHint() {
 			</span>
 		);
 	} else if (status?.state === "failed") {
-		body = (
+		notice = (
 			<span data-testid="nb-hint-failed">
 				That didn’t come through.{" "}
 				<button type="button" className="nb-hint-button nb-hint-link" onClick={status.retry}>Try again</button>
@@ -98,21 +81,16 @@ export function CornerHint() {
 		);
 	} else if (nb.plain) {
 		// Just my words: say why the notes are gone, while they are.
-		body = <span className="nb-hint-plain" data-testid="nb-hint-plain">Just your words. The notes are hidden, not gone.</span>;
-	} else {
-		body = <span className="nb-hint-idle">{`${keyLabel("mod+k", nb.mac)} finds a note`}</span>;
+		notice = <span className="nb-hint-plain" data-testid="nb-hint-plain">Just your words. The notes are hidden, not gone.</span>;
 	}
 
 	return (
-		<Popover.Root open={listOpen} onOpenChange={setListOpen}>
-			<Popover.Anchor asChild>
-				<div className="nb-corner-hint" data-testid="nb-corner-hint" data-state={runId ? "running" : status?.state ?? "idle"}>{body}</div>
-			</Popover.Anchor>
-			<Popover.Portal container={nb.root ?? undefined}>
-				<Popover.Content className="nb-activity" side="top" align="end" sideOffset={8} data-testid="nb-activity">
-					<RunRows runs={runs} />
-				</Popover.Content>
-			</Popover.Portal>
-		</Popover.Root>
+		<PaperCornerHint
+			running={runId && phase ? { word: PHASE_WORD[phase], cost: costLabel(cost), onStop: () => void stopRun(runId) } : null}
+			notice={notice}
+			state={runId ? "running" : status?.state ?? "idle"}
+			idle={`${keyLabel("mod+k", nb.mac)} finds a note`}
+			list={<RunRows runs={runs} />}
+		/>
 	);
 }

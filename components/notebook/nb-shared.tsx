@@ -5,7 +5,7 @@
  * dialogs portal into it so they keep the Notebook tokens), the platform's
  * key glyphs, the sidebar's open state and the note's save state.
  */
-import { createContext, useContext, useRef, useSyncExternalStore, type FocusEvent as ReactFocusEvent, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { createContext, useContext } from "react";
 import type { SaveStatus } from "@/components/library/page-draft";
 import type { LibraryList } from "./use-notebook-data";
 import type { NotebookAppearance, NotebookInk, NotebookLayout, NotebookLettering, NotebookPace, NotebookStartMode, NotebookTextSize } from "@/src/core";
@@ -134,58 +134,8 @@ export const NotebookContext = createContext<NotebookShared>(DEFAULT_SHARED);
 
 export const useNotebook = () => useContext(NotebookContext);
 
-const MAC = /Mac|iPhone|iPad|iPod/;
-const subscribeNever = () => noop;
-
-/** True on Apple platforms. The server and the first paint say false. */
-export function useIsMac(): boolean {
-	return useSyncExternalStore(subscribeNever, () => MAC.test(navigator.platform || navigator.userAgent), () => false);
-}
-
-/** "mod+shift+o" as ⌘⇧O on a Mac and Ctrl+Shift+O elsewhere. */
-export function keyLabel(binding: string, mac: boolean): string {
-	const parts = binding.split("+");
-	const key = parts.pop() ?? "";
-	const glyph = key === "\\" ? "\\" : key === "," ? "," : key.toUpperCase();
-	if (mac) {
-		const marks: Record<string, string> = { mod: "⌘", alt: "⌥", shift: "⇧" };
-		return parts.map((p) => marks[p] ?? "").join("") + glyph;
-	}
-	const words: Record<string, string> = { mod: "Ctrl", alt: "Alt", shift: "Shift" };
-	return [...parts.map((p) => words[p] ?? p), glyph].join("+");
-}
-
-/** The sidebar's save line (ui-contract.md "Overlay sidebar"). */
-export function saveStateLine(status: SaveStatus | null): string {
-	if (status === "saving") return "Saving…";
-	if (status === "failed") return "Not saved. Your text is kept in this browser.";
-	return "All notes saved";
-}
-
-/** Ctrl on other platforms, Cmd on a Mac; never with Alt. */
-export const isMod = (event: KeyboardEvent | ReactKeyboardEvent, mac: boolean): boolean => (mac ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey) && !event.altKey;
+export { isMod, keyLabel, saveStateLine, useArrowChoice, useIsMac } from "@/components/paper/shared";
 
 /** Names the Library gives a new note; the title shows them as its placeholder. */
 export const UNTITLED_NOTE = "Untitled note";
 export const isUntitledName = (name: string): boolean => /^Untitled note( \(\d+\))?$/.test(name);
-
-/**
- * A radio group of cards where an arrow key moves and chooses (WAI-ARIA
- * radio). Radix moves the focus a tick after the keydown and forgets the
- * arrow on keyup, so a quick press (or a fast typist) could land without
- * choosing; these handlers keep the arrow until the focus it caused
- * arrives. Spread them on `RadioGroup.Root`.
- */
-export function useArrowChoice<T extends string>(value: T, onChange: (value: T) => void) {
-	const arrowed = useRef(false);
-	return {
-		onKeyDownCapture: (event: ReactKeyboardEvent) => { arrowed.current = event.key.startsWith("Arrow"); },
-		onPointerDownCapture: () => { arrowed.current = false; },
-		onFocusCapture: (event: ReactFocusEvent) => {
-			const next = (event.target as HTMLElement).getAttribute("value");
-			const byArrow = arrowed.current;
-			arrowed.current = false;
-			if (byArrow && next && next !== value) onChange(next as T);
-		},
-	};
-}

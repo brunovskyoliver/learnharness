@@ -28,11 +28,14 @@ export async function checkSessionStateUi(page, base, firstId, secondId, questio
 	};
 	const open = async (id) => {
 		await page.goto(`${base}/chat/${id}`, { waitUntil: "domcontentloaded" });
-		await page.waitForSelector('[data-testid="session-row"]');
+		await page.waitForSelector('[aria-label="Open sidebar"]');
 		await main();
 		await wait(2200);
 	};
 	const switchTo = async (id) => {
+		// Feature 025: sessions are listed in the overlay sidebar.
+		if (!(await page.$('[data-testid="nb-sidebar"]'))) await page.click('[aria-label="Open sidebar"]');
+		await page.waitForSelector('[data-testid="session-row"]', { visible: true });
 		const rows = await page.$$('[data-testid="session-row"], [data-testid="session-row-kbd"]');
 		for (const row of rows) {
 			if ((await row.evaluate((node, id) => node.dataset.sessionId === id || node.title.startsWith(`${id}\n`), id))) { await row.click(); break; }
@@ -129,7 +132,7 @@ export async function checkSessionStateUi(page, base, firstId, secondId, questio
 	await page.setViewport({ width: 375, height: 900 }); await wait(100);
 	await page.waitForFunction(() => {
 		const button = document.querySelector('[aria-label="Open sidebar"]');
-		if (!button || button.getAttribute("aria-hidden") === "true") return false;
+		if (!button || !button.checkVisibility({ visibilityProperty: true })) return false;
 		const box = button.getBoundingClientRect();
 		return button.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2));
 	});

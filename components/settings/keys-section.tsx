@@ -260,7 +260,7 @@ function AddProviderRow({
 					anchorRef={anchorRef}
 					testid="add-provider-menu"
 					preferredSide="down"
-					menuClass="flex w-72 max-w-[calc(100vw-2rem)] flex-col rounded-xl bg-paper shadow-lift p-2 text-sm"
+					menuClass="flex w-72 max-w-[calc(100vw-2rem)] flex-col text-sm"
 				>
 					{/* Close on pick (owner, fix wave): a chosen provider ends
 					    the dropdown — the paste row is the next step. */}

@@ -18,8 +18,9 @@
  *   not per-child discipline; manual lh-no-drag is only for clickable
  *   non-natives (spans/divs with onClick).
  * - select-none — dragging never highlights the title.
- * - SidebarToggle FIRST — the sidebar reopen when closed, with its
- *   Electron traffic-light gutter (lh-closed-toggle).
+ * - SidebarToggle FIRST — Notebook's ☰ and the wordmark (feature 025,
+ *   R6/R7), with the Electron traffic-light gutter (lh-closed-toggle).
+ * - No fill: the band is the paper and its grain (feature 025, R7).
  * - px-3, gap-3 rhythm.
  *
  * The consumer brings the breadcrumb title (text-sm font-medium, ui-v2) and
@@ -61,7 +62,7 @@ export function TopBar({
 		<>
 		<header
 			onMouseDown={onMouseDown}
-			className={`${drag ? "lh-drag " : ""}lh-wco-gutter flex h-13 shrink-0 select-none items-center gap-3 bg-paper px-3`}
+			className={`${drag ? "lh-drag " : ""}lh-wco-gutter flex h-13 shrink-0 select-none items-center gap-3 px-3 text-sm`}
 		>
 			<SidebarToggle shellMobile={shellMobileNavigation} />
 			{children}

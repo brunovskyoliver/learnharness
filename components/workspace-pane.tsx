@@ -16,8 +16,10 @@ function clampWidth(width: number, area: number): number {
 	return Math.round(Math.min(Math.max(width, MIN_WIDTH), max));
 }
 
-/** The column beside the lesson that a demo or a page sits in: resize handle and
- *  saved width. The width is shared, so swapping contents never moves the edge. */
+/** The column beside the lesson that a demo or a page sits in: a paper panel
+ *  with the grain (feature 025, R11), its edge the rule hairline that is also
+ *  the resize handle (arrows by keyboard, double-click resets), and the saved
+ *  width. The width is shared, so swapping contents never moves the edge. */
 export function WorkspacePane({ label, resizeLabel, testId, className, rootRef, onKeyDownCapture, onKeyDown, children }: {
 	label: string;
 	resizeLabel: string;
@@ -94,7 +96,7 @@ export function WorkspacePane({ label, resizeLabel, testId, className, rootRef, 
 			onKeyDownCapture={onKeyDownCapture}
 			onKeyDown={onKeyDown}
 			style={{ "--lh-demo-w": `${clampWidth(width, typeof window === "undefined" ? 1440 : area())}px` } as React.CSSProperties}
-			className={cn("relative flex min-h-0 shrink-0 flex-col bg-paper md:h-full md:w-[var(--lh-demo-w)]", className)}
+			className={cn("lh-paper-panel relative flex min-h-0 shrink-0 flex-col md:h-full md:w-[var(--lh-demo-w)]", className)}
 		>
 			<div
 				role="separator"

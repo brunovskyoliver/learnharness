@@ -1147,7 +1147,7 @@ export function GraphView({
 					anchorRef={ctxAnchorRef}
 					testid="node-context-menu"
 					preferredSide="down"
-					menuClass="flex w-fit flex-col gap-0.5 rounded-lg border bg-shelf p-2 text-sm "
+					menuClass="flex w-fit flex-col gap-0.5 text-sm"
 				>
 					<button
 						type="button"

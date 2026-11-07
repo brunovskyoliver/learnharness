@@ -203,7 +203,7 @@ export function SetupKeysBody({
 							testid="setup-key-provider-menu"
 							preferredSide="down"
 							align="left"
-							menuClass="flex w-[22rem] flex-col rounded-lg border border-rule bg-shelf p-2 text-sm "
+							menuClass="flex w-[22rem] flex-col text-sm"
 						>
 							<ProviderMenuList providers={providers ?? []} onPick={onPick} />
 						</MenuShell>
@@ -568,7 +568,7 @@ export function SetupDialog({
 													testid={`setup-menu-${slot}`}
 													preferredSide="down"
 													align="left"
-													menuClass="flex w-[22rem] flex-col rounded-lg border border-rule bg-shelf p-2 text-sm "
+													menuClass="flex w-[22rem] flex-col text-sm"
 												>
 													<ModelMenuList
 														models={catalog}
@@ -614,7 +614,7 @@ export function SetupDialog({
 													testid={`setup-thinking-menu-${slot}`}
 													preferredSide="down"
 													align="left"
-													menuClass="flex w-44 flex-col gap-0.5 rounded-lg border border-rule bg-shelf p-2 text-sm "
+													menuClass="flex w-44 flex-col gap-0.5 text-sm"
 												>
 													<ThinkingMenuList
 														levels={levelsForEntry.map(String)}

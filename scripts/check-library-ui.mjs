@@ -273,12 +273,10 @@ async function checkWidth(width) {
 	assert.deepEqual(await readdir(files), []);
 	await page.waitForFunction(() => document.body.innerText.includes("Nothing here yet."));
 
-	// The sidebar reaches the view at this width.
-	if (mobile) {
-		await page.click('[aria-label="Open sidebar"]');
-		await page.waitForSelector('[data-testid="sidebar-library"]', { visible: true });
-		await shot(page, "sidebar");
-	}
+	// The sidebar (feature 025: the overlay at every width) reaches the view.
+	await page.click('[aria-label="Open sidebar"]');
+	await page.waitForSelector('[data-testid="sidebar-library"]', { visible: true });
+	if (mobile) await shot(page, "sidebar");
 	const link = await page.$eval('[data-testid="sidebar-library"]', (el) => [el.getAttribute("href"), el.getAttribute("aria-current"), el.textContent.trim()]);
 	assert.deepEqual(link, ["/library", "page", "Library"]);
 	assert.deepEqual(errors, [], `${width}px: no browser exceptions`);
@@ -781,7 +779,7 @@ async function checkSettings(width) {
 	const id = (name) => `[data-testid="${name}"]`;
 	const openSettings = async () => {
 		await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
-		if (phone) { await live(page, '[aria-label="Open sidebar"]'); for (let i = 0; i < 30 && !(await page.$("[data-mobile-navigation]")); i++) { await page.click('[aria-label="Open sidebar"]'); await pause(300); } }
+		await live(page, '[aria-label="Open sidebar"]'); for (let i = 0; i < 30 && !(await page.$('[data-testid="nb-sidebar"]')); i++) { await page.click('[aria-label="Open sidebar"]'); await pause(300); }
 		await live(page, id("settings-entry"));
 		await page.click(id("settings-entry"));
 		await page.waitForSelector(id("settings-dialog"), { visible: true });

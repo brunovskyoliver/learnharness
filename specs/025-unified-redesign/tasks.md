@@ -25,16 +25,16 @@ Inputs: spec.md, plan.md, research.md (R1-R16), data-model.md, contracts/ui-cont
 
 ## Phase 3: Shell
 
-- [ ] T016 `components/paper/surface-root.tsx` + `components/paper/chrome.tsx` (MenuGlyph, CloseGlyph, Wordmark with `href`), `components/paper/shared.ts` (useArrowChoice, useIsMac, keyLabel, isMod, saveStateLine); Notebook files import from there.
-- [ ] T017 `components/paper/overlay-sidebar.tsx`: shell (Radix Dialog, dim, ✕, Escape, outside click, hover-open from the left-edge strip with 024's rules, focus return) + `SidebarBody` taking `search`, `primary actions`, `sections`, `rows`, `footer` as props; Notebook's overlay-sidebar.tsx becomes a thin filler (its tests stay green).
-- [ ] T018 `components/sidebar.tsx` AppShell for Study: top-left chrome, hover strip, the overlay sidebar filled with Study's body (R6: search, New menu, filters, Library tree, Review, date shelves, rows with bulb waiting dot and running indicator, footer); remove the persistent `SessionsSidebar` column, its resize handle and bootstrap script; phone `mobile-sidebar.tsx` replaced by the same overlay; keyboard shortcut to toggle (Mod+\ and Study's existing binding).
-- [ ] T019 [P] `components/top-bar.tsx` restyle (R7), 52px band and drag regions intact; window controls overlay gutter intact.
-- [ ] T020 [P] Tabs (workspace tabs component) restyle (R7), 36/48px heights kept.
-- [ ] T021 [P] Command palette dialog restyle (contract), behaviour unchanged.
-- [ ] T022 [P] `components/menu-shell.tsx`, tooltips, popovers → `.nb-menu` look; Escape order intact.
-- [ ] T023 `components/paper/corner-hint.tsx` lifted from Notebook (props: status, runs, idle line, stop); `components/activity-dock.tsx` renders Study's feed through it (R13): running · cost · Stop, popover list with abort and links (Drafts etc.), failures; Notebook's corner hint uses the same component.
-- [ ] T024 Right pane (`components/workspace-pane.tsx`, `components/workspace/*`, context view) as a paper panel (R11), resize handle = rule hairline (brightens to graphite on hover, `--nb-focus` on keyboard focus).
-- [ ] T025 Update shell tests and regressions: `scripts/smoke-sidebar-ui.mjs`, `check-workspace-ui.mjs`, render tests for sidebar/palette/tabs; e2e notebook green.
+- [X] T016 `components/paper/surface-root.tsx` + `components/paper/chrome.tsx` (MenuGlyph, CloseGlyph, Wordmark with `href`), `components/paper/shared.ts` (useArrowChoice, useIsMac, keyLabel, isMod, saveStateLine); Notebook files import from there.
+- [X] T017 `components/paper/overlay-sidebar.tsx`: shell (Radix Dialog, dim, ✕, Escape, outside click, hover-open from the left-edge strip with 024's rules, focus return) + `SidebarBody` taking `search`, `primary actions`, `sections`, `rows`, `footer` as props; Notebook's overlay-sidebar.tsx becomes a thin filler (its tests stay green).
+- [X] T018 `components/sidebar.tsx` AppShell for Study: top-left chrome, hover strip, the overlay sidebar filled with Study's body (R6: search, New menu, filters, Library tree, Review, date shelves, rows with bulb waiting dot and running indicator, footer); remove the persistent `SessionsSidebar` column, its resize handle and bootstrap script; phone `mobile-sidebar.tsx` replaced by the same overlay; keyboard shortcut to toggle (Mod+\ and Study's existing binding).
+- [X] T019 [P] `components/top-bar.tsx` restyle (R7), 52px band and drag regions intact; window controls overlay gutter intact.
+- [X] T020 [P] Tabs (workspace tabs component) restyle (R7), 36/48px heights kept.
+- [X] T021 [P] Command palette dialog restyle (contract), behaviour unchanged.
+- [X] T022 [P] `components/menu-shell.tsx`, tooltips, popovers → `.nb-menu` look; Escape order intact.
+- [X] T023 `components/paper/corner-hint.tsx` lifted from Notebook (props: status, runs, idle line, stop); `components/activity-dock.tsx` renders Study's feed through it (R13): running · cost · Stop, popover list with abort and links (Drafts etc.), failures; Notebook's corner hint uses the same component.
+- [X] T024 Right pane (`components/workspace-pane.tsx`, `components/workspace/*`, context view) as a paper panel (R11), resize handle = rule hairline (brightens to graphite on hover, `--nb-focus` on keyboard focus).
+- [X] T025 Update shell tests and regressions: `scripts/smoke-sidebar-ui.mjs`, `check-workspace-ui.mjs`, render tests for sidebar/palette/tabs; e2e notebook green.
 
 ## Phase 4: Lesson transcript
 

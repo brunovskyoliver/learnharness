@@ -271,7 +271,7 @@ export function MenuShell({
 				data-testid={testid}
 				data-lh-menu=""
 				style={{ position: "fixed", left: 0, top: 0, visibility: "hidden", maxWidth: `calc(100vw - ${EDGE * 2}px)` }}
-				className={menuClass}
+				className={`nb-menu ${menuClass}`}
 			>
 				{children}
 			</div>,
@@ -293,7 +293,7 @@ export function MenuShell({
 			// default blue ring around it must not draw (owner, polish
 			// round). Arrow cycling moves DOM focus to the buttons, which
 			// carry their own hover/highlight; the ring is pure noise.
-			className={`${menuClass} outline-none`}
+			className={`nb-menu ${menuClass} outline-none`}
 		>
 			{children}
 		</div>,

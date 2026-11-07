@@ -40,11 +40,10 @@ describe("RenameRow — the inline rename surface", () => {
 		assert.ok(html.includes(`value="${chat.title}"`));
 		// the meta line rides along (row never changes height mid-edit)
 		assert.ok(html.includes("session-rename-row"));
-		// NOTHING MOVES (ui-v2 slim rows): the glyph slot stays, so the draft
-		// sits at the idle row's title x with no padding of its own.
-		assert.ok(html.includes("size-4 shrink-0"), "the glyph slot keeps the title x");
-		const input = html.split('data-testid="session-rename-input"')[1]?.split("/>")[0] ?? "";
-		assert.ok(input.includes("px-0"), "input carries no left padding");
+		// NOTHING MOVES: the same overlay-sidebar row with the icon slot kept, so
+		// the draft sits at the idle row's title x (feature 025; its CSS gives
+		// the input no padding of its own, app/paper.css .nb-side-rename).
+		assert.match(html, /class="nb-side-row nb-side-session nb-side-rename"><span class="nb-side-icon" aria-hidden="true">/, "the icon slot keeps the title x");
 	});
 });
 

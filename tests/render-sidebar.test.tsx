@@ -65,9 +65,9 @@ describe("SessionRow", () => {
 		}
 	});
 
-	it("a pending question shows the amber waiting dot (feature 002), never the old ? icon", () => {
+	it("a pending question shows the bulb waiting dot (feature 002, 025 Q4), never the old ? icon", () => {
 		const html = render(item({ phase: "teach", pendingQuestion: true }));
-		assert.match(html, /<span role="img" aria-label="Waiting for you" data-testid="waiting-dot" class="[^"]*rounded-full bg-bulb/);
+		assert.match(html, /<span role="img" aria-label="Waiting for you" data-testid="waiting-dot" class="nb-side-waiting"/);
 		assert.ok(!html.includes("lucide-message-circle-question"), "the repeated ? icon is gone");
 		assert.ok(!html.includes("braille-spinner"), "motion is reserved for working");
 		assert.ok(html.includes("Waiting for input"), "the meta line's text");
@@ -83,8 +83,8 @@ describe("SessionRow", () => {
 
 	it("titles wrap in full instead of truncating (feature 002)", () => {
 		const html = render(item({ title: "Gradient descent and choosing a learning rate for a noisy loss surface" }));
-		assert.match(html, /<span class="min-w-0 flex-1 break-words py-2 leading-5">Gradient descent and choosing a learning rate for a noisy loss surface<\/span>/);
-		assert.match(html, /min-h-9/);
+		assert.match(html, /<span class="nb-side-title">Gradient descent and choosing a learning rate for a noisy loss surface<\/span>/);
+		assert.match(html, /class="nb-side-row nb-side-session"/, "the overlay sidebar's row (feature 025)");
 		assert.doesNotMatch(html, /class="[^"]*\btruncate\b[^"]*">Gradient/);
 	});
 
@@ -140,9 +140,10 @@ describe("SessionRow", () => {
 		assert.doesNotMatch(html, /Waiting for input/);
 	});
 
-	it("active row is visually marked by the background alone (owner, round 5: no weight change)", () => {
+	it("active row is marked by aria-current, which the shelf background follows (owner, round 5: no weight change)", () => {
 		const html = render(item({}), true);
-		assert.ok(html.includes("bg-shelf"), "active background");
+		assert.ok(html.includes('aria-current="page"'), "active state (app/paper.css paints it on the shelf)");
+		assert.ok(!render(item({})).includes("aria-current"));
 		assert.ok(!html.includes("font-medium"), "weight is not a second channel doing the same job");
 	});
 });

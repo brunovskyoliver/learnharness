@@ -31,14 +31,14 @@ export function TabStripView({ tabs, selectedId, shownIds, pendingId, focusId, o
 }) {
 	const stop = tabs.some((tab) => tab.id === focusId) ? focusId : selectedId ?? tabs[0]?.id ?? null;
 	return (
-		<div data-workspace-tabs="" data-testid="workspace-tabs" className={cn("flex h-9 shrink-0 items-stretch gap-1 bg-paper px-3 pb-1 pointer-coarse:h-12 pointer-coarse:pb-0", className)}>
-			<div ref={listRef} role="tablist" aria-label="Open items" aria-orientation="horizontal" onKeyDownCapture={onKeyDown} className="flex min-w-0 flex-1 items-stretch gap-0.5 overflow-x-auto p-px">
+		<div data-workspace-tabs="" data-testid="workspace-tabs" className={cn("flex h-9 shrink-0 items-stretch gap-1 px-3 pb-1 pointer-coarse:h-12 pointer-coarse:pb-0", className)}>
+			<div ref={listRef} role="tablist" aria-label="Open items" aria-orientation="horizontal" onKeyDownCapture={onKeyDown} className="flex min-w-0 flex-1 items-stretch gap-[21px] overflow-x-auto p-px">
 				{tabs.map((tab) => {
 					const Icon = tab.itemKind === "diagram" ? NetworkIcon : TAB_ICON[tab.kind];
 					const selected = tab.id === selectedId;
 					const shown = shownIds.includes(tab.id);
 					return (
-						<div key={tab.id} data-tab-row="" className={cn("flex max-w-52 shrink-0 items-center rounded-md transition-colors", selected ? "bg-shelf text-ink" : shown ? "bg-shelf text-ink" : "text-graphite hover:bg-shelf")}>
+						<div key={tab.id} data-tab-row="" data-selected={selected || undefined} className={cn("lh-tab group/tab relative flex max-w-52 shrink-0 items-center transition-colors", selected || shown ? "text-ink" : "text-faint hover:text-ink")}>
 							<button
 								type="button"
 								role="tab"
@@ -51,9 +51,9 @@ export function TabStripView({ tabs, selectedId, shownIds, pendingId, focusId, o
 								data-testid="workspace-tab"
 								onFocus={() => onFocusId?.(tab.id)}
 								onClick={() => onActivate(tab)}
-								className="flex h-full min-w-0 flex-1 items-center gap-1.5 rounded-md pl-2 pr-1 text-sm"
+								className="relative flex h-full min-w-0 flex-1 items-center gap-1.5 rounded-md pr-1 text-sm"
 							>
-								{tab.id === pendingId ? <span className="flex size-4 shrink-0 items-center justify-center text-faint"><BrailleSpinner /></span> : <Icon className="ui-icon shrink-0 text-faint" aria-hidden="true" />}
+								{tab.id === pendingId ? <span className="flex size-4 shrink-0 items-center justify-center text-faint"><BrailleSpinner /></span> : <Icon className="size-3.5 shrink-0 text-faint" aria-hidden="true" />}
 								<span className="min-w-0 truncate">{tab.title}</span>
 							</button>
 							<button
@@ -62,7 +62,7 @@ export function TabStripView({ tabs, selectedId, shownIds, pendingId, focusId, o
 								aria-label={`Close ${tab.title}`}
 								data-testid="workspace-tab-close"
 								onClick={() => onClose(tab)}
-								className="mr-0.5 flex size-6 shrink-0 items-center justify-center rounded-md text-faint hover:bg-shelf hover:text-ink pointer-coarse:size-11"
+								className="flex size-6 shrink-0 items-center justify-center rounded-md text-faint opacity-0 transition-opacity hover:bg-shelf hover:text-ink focus-visible:opacity-100 group-hover/tab:opacity-100 group-focus-within/tab:opacity-100 pointer-coarse:size-11 pointer-coarse:opacity-100"
 							>
 								<XIcon className="size-3.5" aria-hidden="true" />
 							</button>

@@ -830,7 +830,7 @@ dimmed={!anyKey}
 										preferredSide="down"
 											anchorTestid="search-engine-trigger"
 										testid="search-engine-menu"
-										menuClass="flex w-44 flex-col gap-0.5 rounded-xl bg-paper shadow-lift p-2 text-sm"
+										menuClass="flex w-44 flex-col gap-0.5 text-sm"
 									>
 										{engineOption("auto", "Automatic", engine === null, null, () => {
 											onSectionChange(composeSearchEngine(agent, null));

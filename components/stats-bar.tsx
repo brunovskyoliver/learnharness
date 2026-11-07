@@ -163,7 +163,7 @@ export function StatsBarDetails({
 						focusOnOpen={false}
 						onPointerEnter={peek}
 						onPointerLeave={unpeek}
-						menuClass="w-64 rounded-xl border bg-paper shadow-lift p-3 text-sm"
+						menuClass="nb-menu-roomy w-64 text-sm"
 					>
 						{/* Summary only (ui-v2): context, turns, tokens, usage. */}
 						<div className="mb-1.5 flex items-baseline justify-between gap-2">

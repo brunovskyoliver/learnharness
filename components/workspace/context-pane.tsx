@@ -43,7 +43,7 @@ function Shell({ title, children }: { title: string; children: ReactNode }) {
 								Back to chat
 							</button>
 						)}
-						<h2 className="min-w-0 flex-1 truncate text-md font-medium">{title}</h2>
+						<h2 className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{title}</h2>
 						{!phone && (
 							<button type="button" aria-label={`Close ${title}`} data-testid="context-pane-close" onClick={workspace?.closeContext} className="ui-icon-button text-faint hover:bg-shelf hover:text-ink">
 								<XIcon className="ui-icon" />

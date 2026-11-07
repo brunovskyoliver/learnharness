@@ -67,6 +67,8 @@ async function checkDesktop() {
 	await page.goto(`${base}/chat/tab-one`, { waitUntil: "domcontentloaded" });
 	await waitTabs(page, 1);
 	assert.equal(await selectedTab(page), "Vectors lesson");
+	await page.click('[aria-label="Open sidebar"]');
+	await page.waitForSelector('[data-session-id="tab-two"]', { visible: true });
 	await page.click('[data-session-id="tab-two"]');
 	await waitTabs(page, 2);
 	await page.waitForFunction(() => location.pathname === "/chat/tab-two");
@@ -187,7 +189,9 @@ async function checkDesktop() {
 	assert.equal(await page.$(palette), null, "Mod+Shift+K is not the palette");
 	console.log("PASS the model selector's event fires on Ctrl+Shift+K");
 
-	// The sidebar: lessons and practice narrow the list; the Library opens its tree.
+	// The sidebar (feature 025: the overlay): lessons and practice narrow the list; the Library opens its tree.
+	await page.click('[aria-label="Open sidebar"]');
+	await page.waitForSelector('[data-testid="nb-sidebar"] [data-testid="sidebar-practice"]', { visible: true });
 	await page.click('[data-testid="sidebar-practice"]');
 	await page.waitForFunction(() => document.querySelectorAll('[data-testid="session-row"]').length === 1);
 	assert.equal(await page.$eval('[data-testid="sidebar-practice"]', (el) => el.getAttribute("aria-pressed")), "true");
@@ -208,10 +212,11 @@ async function checkDesktop() {
 	await page.keyboard.press("ArrowRight");
 	await page.waitForSelector('[data-testid="sidebar-folder"]');
 	await page.focus('[data-testid="sidebar-folder"]');
+	await shot(page, "sidebar-tree-1440");
 	await page.keyboard.press("Enter");
 	await page.waitForFunction((id) => location.search.includes(id), {}, folder.id);
-	console.log("PASS sidebar entries, folder tree and its keyboard");
-	await shot(page, "sidebar-tree-1440");
+	await page.waitForFunction(() => !document.querySelector('[data-testid="nb-sidebar"]'));
+	console.log("PASS sidebar entries, folder tree and its keyboard; a navigation closes the overlay");
 
 	// Right pane: collapse keeps the page, and the width; context shows with nothing open.
 	await page.goto(`${base}/chat/tab-one`, { waitUntil: "domcontentloaded" });
@@ -318,12 +323,12 @@ async function checkNarrow(width) {
 	await shot(page, `session-${width}`);
 
 	// The palette through its touch path, from the sidebar overlay.
-	await page.evaluate(() => document.querySelector('[aria-label="Open sidebar"]').click());
-	await page.waitForSelector('[data-mobile-navigation] [data-testid="sidebar-lessons"]');
+	await page.evaluate(() => [...document.querySelectorAll('[aria-label="Open sidebar"]')].find((el) => el.checkVisibility({ visibilityProperty: true })).click());
+	await page.waitForSelector('[data-testid="nb-sidebar"] [data-testid="sidebar-lessons"]');
 	await shot(page, `sidebar-${width}`);
 	await page.evaluate(() => document.querySelector('[data-testid="command-palette-entry"]').click());
 	await page.waitForSelector(paletteInput);
-	await page.waitForFunction(() => !document.querySelector("[data-mobile-navigation]"));
+	await page.waitForFunction(() => !document.querySelector('[data-testid="nb-sidebar"]'));
 	const panel = await page.$eval(palette, (el) => { const box = el.getBoundingClientRect(); return { left: box.left, right: box.right }; });
 	assert.ok(panel.left >= 0 && panel.right <= width, `palette fits ${JSON.stringify(panel)}`);
 	const option = await page.$eval('[data-testid="command-palette-option"]', (el) => el.getBoundingClientRect().height);
@@ -367,7 +372,7 @@ try {
 		if (!ready) await pause(250);
 	}
 	assert.ok(ready, "isolated server starts");
-	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true });
+	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true, args: ["--no-sandbox"] });
 	await checkDesktop();
 	for (const width of [390, 320]) await checkNarrow(width);
 	assert.equal(submissions, 0, "no model request was attempted");

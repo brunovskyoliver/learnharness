@@ -12,6 +12,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { writeSettingsKey } from "@/components/interface-switch";
 import { usePaperAppearance } from "@/components/paper/appearance";
+import { EdgeStrip } from "@/components/paper/overlay-sidebar";
+import { SurfaceRootContext } from "@/components/paper/surface-root";
 import type { SaveStatus } from "@/components/library/page-draft";
 import { CornerHint } from "./corner-hint";
 import { LinksPanel } from "./links-panel";
@@ -29,9 +31,6 @@ export type { NotebookPreferences } from "./nb-shared";
 /** Just my words' confirmation (ui-contract "Overlay sidebar"); turning it off says the notes are back. */
 export const PLAIN_ON_TEXT = "Just your words. The notes are hidden, not gone.";
 export const PLAIN_OFF_TEXT = "The notes are back.";
-
-/** Hovering the left edge this long opens the sidebar (ui-contract.md). */
-const EDGE_HOVER_MS = 250;
 
 export function NotebookApp({ note, fontClasses = "", preferences, reviewers = [], lastNoteId, account = null, hosted = false }: {
 	note: { id: string; name: string };
@@ -62,7 +61,6 @@ export function NotebookApp({ note, fontClasses = "", preferences, reviewers = [
 	const announce = useCallback((text: string) => setSpoken((s) => ({ text, n: s.n + 1 })), []);
 	const { list: library, failed: libraryFailed, refresh: refreshLibrary } = useLibraryList();
 	const menuButton = useRef<HTMLButtonElement>(null);
-	const edgeTimer = useRef<number | null>(null);
 
 	useEffect(() => {
 		if (lastNoteId === note.id) return;
@@ -164,22 +162,6 @@ export function NotebookApp({ note, fontClasses = "", preferences, reviewers = [
 		return () => window.removeEventListener("keydown", onKey);
 	}, [mac, togglePlain, copyNote, openExport, settings]);
 
-	useEffect(() => () => { if (edgeTimer.current) window.clearTimeout(edgeTimer.current); }, []);
-	// A real pointer movement on the strip starts the wait: the browser's synthetic "over" at (0, 0)
-	// when a page loads under a resting (or absent) pointer must not open the sidebar.
-	const edgeEnter = (event: React.PointerEvent) => {
-		if (event.pointerType !== "mouse" || !window.matchMedia("(pointer: fine)").matches) return;
-		if (edgeTimer.current) return;
-		edgeTimer.current = window.setTimeout(() => {
-			edgeTimer.current = null;
-			setSidebar((open) => open ?? { via: "hover", search: false });
-		}, EDGE_HOVER_MS);
-	};
-	const edgeLeave = () => {
-		if (edgeTimer.current) window.clearTimeout(edgeTimer.current);
-		edgeTimer.current = null;
-	};
-
 	const shared = useMemo<NotebookShared>(() => ({
 		root, mac, noteId: note.id, startMode: prefs.startMode, reviewers: reviewerList, saveReviewers, openReviewers, openSettings, openLinks, linksOpen, hosted, account,
 		preferences: prefs, updatePreferences, preferencesFailed, retryPreferences,
@@ -189,6 +171,7 @@ export function NotebookApp({ note, fontClasses = "", preferences, reviewers = [
 
 	return (
 		<NotebookContext.Provider value={shared}>
+		<SurfaceRootContext.Provider value={root}>
 			<div
 				ref={setRoot}
 				className={fontClasses ? `nb-root ${fontClasses}` : "nb-root"}
@@ -216,7 +199,7 @@ export function NotebookApp({ note, fontClasses = "", preferences, reviewers = [
 					</button>
 					<Wordmark noteId={note.id} />
 				</header>
-				<div className="nb-edge" aria-hidden="true" data-testid="nb-edge" onPointerMove={edgeEnter} onPointerLeave={edgeLeave} />
+				<EdgeStrip onOpen={() => setSidebar((open) => open ?? { via: "hover", search: false })} />
 				<OverlaySidebar returnFocus={menuButton} />
 				<div className="nb-sheet" data-aside={sidebar ? "" : undefined} inert={sidebar ? true : undefined}>
 					<NoteView key={note.id} note={note} />
@@ -227,6 +210,7 @@ export function NotebookApp({ note, fontClasses = "", preferences, reviewers = [
 				<CornerHint />
 				<p className="nb-sr-only" aria-live="polite" data-testid="nb-live"><span key={spoken.n}>{spoken.text}</span></p>
 			</div>
+		</SurfaceRootContext.Provider>
 		</NotebookContext.Provider>
 	);
 }

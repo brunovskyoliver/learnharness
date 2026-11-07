@@ -903,6 +903,59 @@ html.lh-paper {
 	user-select: none;
 }
 
+/* ── 4 Top-left menu and wordmark (both modes since feature 025) ─────────── */
+
+.lh-paper .nb-menu-button {
+	display: inline-grid;
+	place-items: center;
+	width: 32px;
+	height: 32px;
+	border-radius: 8px;
+	color: var(--graphite);
+	transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.lh-paper .nb-menu-button:hover { background: var(--shelf); color: var(--ink); }
+.lh-paper .nb-menu-glyph { display: block; }
+.lh-paper .nb-wordmark {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	position: relative;
+	top: -1.5px;
+	margin-left: 5px;
+	padding: 4px 6px 4px 0;
+	border-radius: 6px;
+	color: var(--ink);
+	font-family: var(--nb-sans);
+	font-size: var(--text-wordmark);
+	font-weight: 600;
+	letter-spacing: -0.012em;
+	line-height: 1;
+	text-decoration: none;
+	white-space: nowrap;
+}
+.lh-paper .nb-wordmark-mark { width: 15px; height: 15px; flex: none; }
+/* LhMark's ring and dot take the ink (components/lh-mark.tsx). */
+
+/* The hover strip at the left edge (fine pointers only, components/paper/overlay-sidebar.tsx). */
+.lh-paper .nb-edge {
+	position: fixed;
+	top: 0;
+	bottom: 0;
+	left: 0;
+	z-index: 19;
+	width: 12px;
+}
+@media (pointer: coarse) { .lh-paper .nb-edge { display: none; } }
+
+@media (pointer: coarse) {
+	.lh-paper .nb-menu-button { width: 44px; height: 44px; }
+	.lh-paper .nb-wordmark { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.lh-paper .nb-menu-button { transition: none; }
+}
+
 /* ── 18 Overlay sidebar ─────────────────────────────────────────────────── */
 
 .lh-paper .nb-side-dim {
@@ -2165,4 +2218,148 @@ html.lh-paper {
 		min-height: 44px;
 	}
 	.lh-paper :is(.nb-stepper button, .nb-sketch-close) { min-width: 44px; min-height: 44px; }
+}
+
+/* ══ Feature 025: Study on the shared chrome ════════════════════════════════
+ * The overlay sidebar's Study body (R6), the menu shell on the menu look
+ * (T022), the right pane as a paper panel (R11). Same tokens and rhythm as
+ * Notebook's rows above. */
+
+/* Study's page does not move aside: a paper wash stands in for Notebook's 50% fade. */
+.lh-paper .nb-side-dim[data-dim] {
+	background: color-mix(in srgb, var(--paper) 50%, transparent);
+	animation: 0.18s ease-out both nb-side-in;
+}
+.lh-paper :is(.nb-side-nav, .nb-side-sessions) .nb-side-row:is([aria-current="page"], [aria-pressed="true"]) { background: var(--shelf); color: var(--ink); }
+.lh-paper .nb-side-row[data-kbd] { background: var(--shelf); color: var(--ink); outline: 2px solid var(--nb-focus); outline-offset: -2px; }
+.lh-paper .nb-side-filter {
+	display: inline-grid;
+	place-items: center;
+	width: 24px;
+	height: 24px;
+	flex: none;
+	margin-right: -4px;
+	border-radius: 6px;
+	color: var(--faint);
+	transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.lh-paper .nb-side-filter:hover { color: var(--ink); }
+.lh-paper .nb-side-filter[data-active] { color: var(--ink); }
+.lh-paper .nb-side-filter[data-active] .nb-side-icon { color: var(--ink); }
+.lh-paper .nb-side-nav { gap: 3px; }
+.lh-paper .nb-side-count { margin-left: auto; color: var(--faint); font-size: var(--text-xs); font-variant-numeric: tabular-nums; }
+.lh-paper .nb-side-expander {
+	display: inline-grid;
+	place-items: center;
+	width: 22px;
+	flex: none;
+	border-radius: 6px;
+	color: var(--faint);
+}
+.lh-paper button.nb-side-expander:hover { background: var(--shelf); color: var(--ink); }
+.lh-paper .nb-side-expander-end { width: 28px; }
+.lh-paper .nb-side-expander .nb-side-chevron { margin-right: 0; }
+.lh-paper .nb-side-chevron[data-open] { transform: rotate(90deg); }
+.lh-paper .nb-side-tree { gap: 2px; margin: 1px 0 2px; padding-left: 14px; }
+.lh-paper .nb-side-folder-link { min-width: 0; flex: 1; min-height: 28px; gap: 9px; }
+.lh-paper .nb-side-indent { margin-left: 21px; }
+.lh-paper .nb-side-sessions { display: flex; flex-direction: column; gap: 2px; margin-top: 22px; }
+.lh-paper .nb-side-shelf {
+	display: flex;
+	align-items: baseline;
+	gap: 8px;
+	padding: 14px 7px 4px;
+	color: var(--faint);
+	font-size: var(--text-xs);
+	line-height: 1.4;
+}
+.lh-paper .nb-side-shelf:first-child { padding-top: 0; }
+.lh-paper .nb-side-session { align-items: flex-start; gap: 9px; padding-block: 6px; }
+.lh-paper .nb-side-session > .nb-side-icon { margin-top: 2.5px; }
+.lh-paper .nb-side-title { min-width: 0; flex: 1; overflow-wrap: anywhere; }
+.lh-paper .nb-side-waiting { flex: none; width: 6px; height: 6px; margin-top: 6px; border-radius: 999px; background: var(--bulb); }
+.lh-paper .nb-side-status-glyph { display: inline-flex; flex: none; color: var(--faint); font-size: var(--text-xs); }
+.lh-paper .nb-side-time { flex: none; color: var(--faint); font-size: var(--text-xs); line-height: 1.5; font-variant-numeric: tabular-nums; }
+.lh-paper .nb-side-rename { background: var(--shelf); }
+.lh-paper .nb-side-rename input {
+	min-width: 0;
+	flex: 1;
+	height: 18px;
+	border: 0;
+	padding: 0;
+	background: transparent;
+	color: var(--ink);
+	outline: none;
+	font-size: var(--text-ui);
+}
+.lh-paper .nb-side-status p { margin: 0; }
+@media (pointer: coarse) {
+	.lh-paper .nb-side-filter { width: 44px; height: 44px; margin-right: -7px; }
+	.lh-paper .nb-side-expander { min-width: 44px; }
+	.lh-paper .nb-side-session { align-items: center; }
+	.lh-paper .nb-side-session > .nb-side-icon { margin-top: 0; }
+	.lh-paper .nb-side-waiting { margin-top: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.lh-paper .nb-side-dim[data-dim] { animation: none; }
+	.lh-paper .nb-side-filter { transition: none; }
+}
+
+/* Study's ✕ takes the ☰'s place in its 52px band (Notebook's head matches Notebook's fixed header). */
+.lh-paper .nb-side-dim[data-dim] + .nb-sidebar { overflow-x: hidden; }
+.lh-paper .nb-side-dim[data-dim] + .nb-sidebar .nb-side-head { height: 52px; padding: 0 0 0 12px; }
+/* In the Mac window the traffic lights sit where the ✕ would. */
+.lh-electron[data-lh-platform="darwin"] .nb-side-dim[data-dim] + .nb-sidebar .nb-side-head { padding-left: calc(92px / var(--lh-zoom, 1)); }
+
+/* Study's top bands: the ☰ and wordmark lead every band (R7). */
+.lh-paper .lh-study-chrome .nb-wordmark { top: 0; }
+/* On a phone a band with a title keeps its room for the title: the ☰ stays, the wordmark goes (the sidebar shows it). */
+@media (max-width: 639px) {
+	.lh-paper :is(header:has(> .lh-study-chrome + *), [data-mobile-chat-navigation]) .lh-study-wordmark { display: none; }
+}
+
+/* Workspace tabs (R7): toolbar-row type, the selected one in ink with a 1.5px ink underline, no fills. */
+.lh-paper .lh-tab[data-selected] > [role="tab"]::after {
+	content: "";
+	position: absolute;
+	right: 4px;
+	bottom: 2px;
+	left: 0;
+	height: 1.5px;
+	border-radius: 1px;
+	background: var(--ink);
+	pointer-events: none;
+}
+@media (pointer: coarse) { .lh-paper .lh-tab[data-selected] > [role="tab"]::after { bottom: 6px; } }
+
+/* Menu shell menus take the menu look; each site keeps its width (T022). */
+.lh-paper [data-lh-menu].nb-menu { min-width: 0; max-height: none; }
+.lh-paper .nb-menu-roomy { padding: 12px; }
+.lh-paper [data-lh-menu] button.nb-menu-item { width: 100%; text-align: left; }
+.lh-paper [data-lh-menu] .nb-menu-item:is(:hover, :focus-visible) { background: var(--shelf); }
+.lh-paper [data-lh-menu] .nb-menu-item:focus-visible { outline-offset: -2px; }
+.lh-paper [data-lh-menu] .nb-menu-label { display: block; }
+
+/* The corner hint's activity list (R13): Study's rows sit in the same popover. */
+.lh-paper .nb-activity [data-testid="activity-section"] { min-width: 260px; }
+.lh-paper .nb-activity-row .nb-hint-button { padding: 0; font: inherit; cursor: pointer; }
+.lh-paper .nb-activity-row .nb-hint-button:disabled { cursor: default; color: var(--faint); text-decoration: none; }
+
+/* The right pane (R11): a paper panel with the grain, its edge the rule hairline. */
+.lh-paper .lh-paper-panel { isolation: isolate; }
+.lh-paper .lh-paper-panel::before,
+.lh-paper .lh-paper-panel::after {
+	content: "";
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	pointer-events: none;
+}
+.lh-paper .lh-paper-panel::before { background-color: var(--paper); }
+.lh-paper .lh-paper-panel::after {
+	opacity: var(--grain-opacity);
+	mix-blend-mode: var(--texture-blend);
+	background-image: var(--nb-grain);
+	background-size: 180px 180px;
+	background-attachment: fixed;
 }

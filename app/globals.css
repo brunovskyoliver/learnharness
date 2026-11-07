@@ -662,8 +662,6 @@ body {
 /* Cards and composer share a 52rem shell. Assistant prose uses a 76ch
    reading column inside it; demos and visuals can use the full shell. */
 :root {
-	/* Adjacent panes share the canvas; raised and hover roles stay distinct. */
-	--lh-sidebar: var(--paper);
 	--lh-measure: 52rem;
 	--lh-wide: 52rem;
 }
@@ -1311,23 +1309,16 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 @media (pointer: coarse) {
 	[data-testid="settings-dialog"] :is(input:not([type="checkbox"]):not([type="range"]), select, button:not([role="switch"])) { min-height: 44px; }
 	[data-testid="chain-table"] button { min-height: 44px; }
-	[data-testid="activity-section"] button { min-width: 44px; min-height: 44px; }
 	[data-testid="mermaid-overlay"] button { min-width: 44px; min-height: 44px; }
 	.graph-chrome-fade-in :is(button, input) { min-height: 44px; }
 	.graph-chrome-fade-in button { min-width: 44px; }
 	[data-testid="demos-chip"], [data-testid="plan-chip"],
 	[data-testid="kind-filter"], [data-testid="new-session-practice"],
-	[data-testid="new-session"], [data-testid="settings-entry"],
-	[data-testid="import-notes"], [aria-label="Close sidebar"],
-	.sidebar-toggle-slot button { min-width: 44px; min-height: 44px; }
-	.sidebar-toggle-slot { height: 44px; }
-	.sidebar-toggle-slot.lh-closed-toggle { width: 44px; }
+	[data-testid="import-notes"] { min-width: 44px; min-height: 44px; }
 	[data-testid="lesson-question"] [data-kbdrow],
-	[data-testid="setup-cta"], [data-testid="setup-cta-keys"],
-	[data-testid="session-row"], [data-testid="session-row-kbd"] { min-height: 44px; }
+	[data-testid="setup-cta"], [data-testid="setup-cta-keys"] { min-height: 44px; }
 
 }
-[data-testid="activity-section"] > div > span[aria-hidden="true"] { background: transparent; }
 
 @keyframes lh-text-shimmer {
   from { background-position: 100% center; }
@@ -1338,10 +1329,6 @@ div.lh-math-source > .lh-math-input { width: 100%; }
   .lh-text-shimmer { animation: none; }
 }
 
-/* Server-rendered desktop navigation stays useful before its client code arrives. */
-@media (max-width: 927px) {
-  [data-sidebar-bootstrap] { width: 0 !important; visibility: hidden; }
-}
 
 /* Feature 008: ink focus stays local to its rows and settings controls. */
 [data-testid="lookup-row"],
@@ -1359,11 +1346,11 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 }
 
 /* The divider between a sidebar and the content, with its grip (owner, 2026-10-31). */
+/* The right pane's edge (feature 025, R11): the rule hairline, graphite on hover or drag, the focus colour from the keyboard. */
 .lh-pane-divider::before { content: ""; position: absolute; inset-block: 0; inset-inline-start: var(--lh-divider-at, 50%); width: 1px; background: var(--rule); transition: background-color 160ms; }
-.lh-pane-divider::after { content: ""; position: absolute; top: 50%; inset-inline-start: var(--lh-divider-at, 50%); width: 9px; height: 16px; transform: translate(-4px, -50%); background: var(--paper) repeating-linear-gradient(to bottom, var(--faint) 0 1px, transparent 1px 5px) center / 7px 16px no-repeat; transition: background-color 160ms; }
-.lh-pane-divider:hover::before, .lh-pane-divider[data-dragging]::before { background: var(--faint); }
+.lh-pane-divider:hover::before, .lh-pane-divider[data-dragging]::before { background: var(--graphite); }
 .lh-pane-divider:focus-visible::before { background: var(--nb-focus); width: 2px; }
-@media (prefers-reduced-motion: reduce) { .lh-pane-divider::before, .lh-pane-divider::after { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .lh-pane-divider::before { transition: none; } }
 
 /* Long sessions (transcript-scroll-jank): the browser skips rendering rows and
    answer parts away from the viewport; they stay in the DOM for find and anchors.

@@ -2,15 +2,13 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { BookOpenIcon, ChevronDownIcon, ChevronRightIcon, DumbbellIcon, FolderIcon, LibraryIcon, RepeatIcon } from "lucide-react";
+import { BookOpenIcon, ChevronRightIcon, DumbbellIcon, FolderIcon, LibraryIcon, RepeatIcon } from "lucide-react";
 import { Suspense, useMemo } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
 import { folderTreeRows, type FolderTreeRow, type LibraryFolder } from "@/src/core";
 import { useLibrarySnapshot } from "./library-snapshot";
 import { useWorkspace } from "./workspace-context";
 
-const ROW = "flex h-9 items-center gap-2 rounded-md px-2.5 text-md transition-colors hover:bg-shelf pointer-coarse:h-11";
 const folderHref = (id: string) => `/library?folder=${encodeURIComponent(id)}`;
 
 /** The tree's rows, pure for render tests. One stop, the current folder or the
@@ -18,20 +16,20 @@ const folderHref = (id: string) => `/library?folder=${encodeURIComponent(id)}`;
 export function FolderTreeView({ rows, currentId, onToggle, onNavigate }: { rows: readonly FolderTreeRow[]; currentId: string | null; onToggle: (id: string, open?: boolean) => void; onNavigate?: () => void }) {
 	const stop = rows.some((row) => row.folder.id === currentId) ? currentId : rows[0]?.folder.id;
 	return (
-		<ul role="tree" aria-label="Library folders" data-testid="sidebar-folder-tree" className="flex max-h-[30dvh] flex-col gap-px overflow-y-auto">
+		<ul role="tree" aria-label="Library folders" data-testid="sidebar-folder-tree" className="nb-side-list nb-side-tree">
 			{rows.map((row) => (
-				<li key={row.folder.id} role="none" className="flex items-stretch" style={{ paddingInlineStart: `${row.depth * 0.75}rem` }}>
+				<li key={row.folder.id} role="none" className="flex items-stretch" style={{ paddingInlineStart: `${(row.depth - 1) * 14}px` }}>
 					{row.hasChildren ? (
 						<button
 							type="button"
 							tabIndex={-1}
 							aria-label={`${row.expanded ? "Hide" : "Show"} folders in ${row.folder.name}`}
 							onClick={() => onToggle(row.folder.id)}
-							className="flex w-6 shrink-0 items-center justify-center rounded-md text-faint hover:bg-shelf pointer-coarse:w-11"
+							className="nb-side-expander"
 						>
-							{row.expanded ? <ChevronDownIcon className="size-3.5" aria-hidden="true" /> : <ChevronRightIcon className="size-3.5" aria-hidden="true" />}
+							<ChevronRightIcon className="nb-side-icon nb-side-chevron" data-open={row.expanded || undefined} aria-hidden="true" />
 						</button>
-					) : <span className="w-6 shrink-0 pointer-coarse:w-11" aria-hidden="true" />}
+					) : <span className="nb-side-expander" aria-hidden="true" />}
 					<Link
 						href={folderHref(row.folder.id)}
 						role="treeitem"
@@ -44,10 +42,10 @@ export function FolderTreeView({ rows, currentId, onToggle, onNavigate }: { rows
 						data-folder-id={row.folder.id}
 						data-testid="sidebar-folder"
 						onClick={onNavigate}
-						className={cn("flex min-h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-shelf pointer-coarse:min-h-11", row.folder.id === currentId ? "bg-shelf text-ink" : "text-graphite")}
+						className="nb-side-row nb-side-folder-link"
 					>
-						<FolderIcon className="ui-icon shrink-0 text-faint" aria-hidden="true" />
-						<span className="min-w-0 break-words">{row.folder.name}</span>
+						<FolderIcon className="nb-side-icon" aria-hidden="true" />
+						<span className="nb-side-title">{row.folder.name}</span>
 					</Link>
 				</li>
 			))}
@@ -63,16 +61,16 @@ function LibraryFolders({ onNavigate, currentId }: { onNavigate?: () => void; cu
 	const rows = useMemo(() => withOpenPath(folders, currentId, expanded), [folders, currentId, expanded]);
 	if (failed) {
 		return (
-			<div role="status" className="px-2.5 py-1 text-sm text-faint">
+			<div role="status" className="nb-side-status">
 				<p>Folders could not be loaded.</p>
-				<button type="button" className="prompt-secondary mt-1" onClick={retry}>Try again</button>
+				<button type="button" className="nb-text-button" onClick={retry}>Try again</button>
 			</div>
 		);
 	}
 	if (items === null) {
-		return <div role="status" aria-label="Loading folders" className="flex flex-col gap-1 px-2.5 py-1"><Skeleton className="h-6 w-4/5" /><Skeleton className="h-6 w-3/5" /></div>;
+		return <div role="status" aria-label="Loading folders" className="flex flex-col gap-2 py-1 pl-[21px] pr-[7px]"><Skeleton className="h-4 w-4/5" /><Skeleton className="h-4 w-3/5" /></div>;
 	}
-	if (rows.length === 0) return <p className="px-2.5 py-1 text-sm text-faint">No folders yet.</p>;
+	if (rows.length === 0) return <p className="nb-side-status nb-side-indent">No folders yet.</p>;
 	return <FolderTreeView rows={rows} currentId={currentId} onToggle={workspace?.toggleFolder ?? (() => {})} onNavigate={onNavigate} />;
 }
 
@@ -155,29 +153,28 @@ export function SidebarNav({ pathname, kindFilter, onKindFilter, lessonCount, pr
 	const workspace = useWorkspace();
 	const toggle = (kind: "teach" | "practice") => onKindFilter(kindFilter === kind ? "all" : kind);
 	const libraryOpen = workspace?.libraryOpen ?? false;
-	const entryClass = (active: boolean) => cn(ROW, active ? "bg-shelf text-ink" : "text-graphite");
 	return (
-		<nav aria-label="Workspace" data-testid="sidebar-nav" data-sidebar-nav="" className="flex shrink-0 flex-col gap-px px-2 pb-1" onKeyDownCapture={(event) => onNavKeyDown(event, workspace?.toggleFolder ?? (() => {}), { open: libraryOpen, toggle: workspace?.toggleLibrary ?? (() => {}) })}>
-			<button type="button" data-nav-entry="" data-testid="sidebar-lessons" aria-pressed={kindFilter === "teach"} onClick={() => toggle("teach")} className={cn(entryClass(kindFilter === "teach"), "w-full text-left")}>
-				<BookOpenIcon className="size-[15px] shrink-0" aria-hidden="true" />
+		<nav aria-label="Workspace" data-testid="sidebar-nav" data-sidebar-nav="" className="nb-side-list nb-side-nav" onKeyDownCapture={(event) => onNavKeyDown(event, workspace?.toggleFolder ?? (() => {}), { open: libraryOpen, toggle: workspace?.toggleLibrary ?? (() => {}) })}>
+			<button type="button" data-nav-entry="" data-testid="sidebar-lessons" aria-pressed={kindFilter === "teach"} onClick={() => toggle("teach")} className="nb-side-row">
+				<BookOpenIcon className="nb-side-icon" aria-hidden="true" />
 				<span className="min-w-0 flex-1">Lessons</span>
-				{lessonCount !== null && <span className="text-sm tabular-nums text-faint">{lessonCount}</span>}
+				{lessonCount !== null && <span className="nb-side-count">{lessonCount}</span>}
 			</button>
-			<button type="button" data-nav-entry="" data-testid="sidebar-practice" aria-pressed={kindFilter === "practice"} onClick={() => toggle("practice")} className={cn(entryClass(kindFilter === "practice"), "w-full text-left")}>
-				<DumbbellIcon className="size-[15px] shrink-0" aria-hidden="true" />
+			<button type="button" data-nav-entry="" data-testid="sidebar-practice" aria-pressed={kindFilter === "practice"} onClick={() => toggle("practice")} className="nb-side-row">
+				<DumbbellIcon className="nb-side-icon" aria-hidden="true" />
 				<span className="min-w-0 flex-1">Practice</span>
-				{practiceCount !== null && <span className="text-sm tabular-nums text-faint">{practiceCount}</span>}
+				{practiceCount !== null && <span className="nb-side-count">{practiceCount}</span>}
 			</button>
-			<div className="flex items-stretch gap-px">
+			<div className="flex items-stretch gap-0.5">
 				<Link
 					href="/library"
 					data-nav-entry=""
 					data-testid="sidebar-library"
 					aria-current={pathname === "/library" ? "page" : undefined}
 					onClick={onNavigate}
-					className={cn(entryClass(pathname === "/library"), "min-w-0 flex-1")}
+					className="nb-side-row min-w-0 flex-1"
 				>
-					<LibraryIcon className="size-[15px] shrink-0" aria-hidden="true" />
+					<LibraryIcon className="nb-side-icon" aria-hidden="true" />
 					Library
 				</Link>
 				<button
@@ -186,9 +183,9 @@ export function SidebarNav({ pathname, kindFilter, onKindFilter, lessonCount, pr
 					aria-label={libraryOpen ? "Hide Library folders" : "Show Library folders"}
 					data-testid="sidebar-library-toggle"
 					onClick={workspace?.toggleLibrary}
-					className="flex w-8 shrink-0 items-center justify-center rounded-md text-faint transition-colors hover:bg-shelf hover:text-ink pointer-coarse:w-11"
+					className="nb-side-expander nb-side-expander-end"
 				>
-					{libraryOpen ? <ChevronDownIcon className="size-3.5" aria-hidden="true" /> : <ChevronRightIcon className="size-3.5" aria-hidden="true" />}
+					<ChevronRightIcon className="nb-side-icon nb-side-chevron" data-open={libraryOpen || undefined} aria-hidden="true" />
 				</button>
 			</div>
 			{libraryOpen && (
@@ -196,8 +193,8 @@ export function SidebarNav({ pathname, kindFilter, onKindFilter, lessonCount, pr
 					<CurrentFolder>{(currentId) => <LibraryFolders currentId={pathname === "/library" ? currentId : null} onNavigate={onNavigate} />}</CurrentFolder>
 				</Suspense>
 			)}
-			<Link href="/review" data-nav-entry="" data-testid="sidebar-review" aria-current={pathname === "/review" ? "page" : undefined} onClick={onNavigate} className={entryClass(pathname === "/review")}>
-				<RepeatIcon className="size-[15px] shrink-0" aria-hidden="true" />
+			<Link href="/review" data-nav-entry="" data-testid="sidebar-review" aria-current={pathname === "/review" ? "page" : undefined} onClick={onNavigate} className="nb-side-row">
+				<RepeatIcon className="nb-side-icon" aria-hidden="true" />
 				Review
 			</Link>
 		</nav>

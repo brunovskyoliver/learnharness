@@ -237,7 +237,7 @@ export function AppearanceSection({
 							preferredSide="down"
 							anchorTestid="font-trigger"
 							testid="font-menu"
-							menuClass="flex w-[18rem] max-w-[calc(100vw-2rem)] flex-col gap-0.5 rounded-xl bg-paper shadow-lift p-2 text-sm"
+							menuClass="flex w-[18rem] max-w-[calc(100vw-2rem)] flex-col gap-0.5 text-sm"
 						>
 							<FontMenuList
 								families={localFonts === undefined ? undefined : (localFonts ?? [...CURATED_FALLBACK_FONTS])}

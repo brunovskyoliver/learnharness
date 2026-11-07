@@ -34,7 +34,8 @@ test.describe("Notebook: a note on paper", () => {
 	test("write, reload, read it in Study, switch back", async ({ page, request }) => {
 		await page.setViewportSize({ width: 1440, height: 962 });
 		await page.goto("/library");
-		await expect(page.getByTestId("switch-to-notebook")).toBeVisible();
+		// Study's chrome is ready (feature 025: the sidebar is an overlay, opened from ☰).
+		await expect(page.getByRole("button", { name: "Open sidebar" })).toBeVisible();
 
 		// Study → Notebook with the one shortcut.
 		await page.keyboard.press(`${MOD}+Shift+O`);

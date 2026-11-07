@@ -54,7 +54,8 @@ export function KeyboardShortcuts() {
 	const [cheatOpen, setCheatOpen] = useState(false);
 	const { open: openSettings } = useSettingsDialog();
 	const sidebar = useSidebar();
-	const openSettingsFromKeyboard = () => { if (sidebar.overlay) sidebar.close(); openSettings(); };
+	// The sidebar gives its focus back before the settings open over the page.
+	const openSettingsFromKeyboard = () => { if (!sidebar.open) { openSettings(); return; } sidebar.close(); requestAnimationFrame(() => openSettings()); };
 
 	// Router + cheat + settings state inside a ref so the keydown listener
 	// (attached once) never goes stale.
