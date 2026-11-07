@@ -1,0 +1,68 @@
+{
+	"pairs": {
+		"margin-notes": [
+			"By design (ui-contract): our wordmark and name instead of \"riddled.\"; toolbar reads \"Plain reader\", \"Instructions\", \"Export\" (Riddled: \"Riddled\", \"Tell Riddled\", \"Share\") and ends in the chat button.",
+			"Linux text ≈3% wider: list item 2 still breaks after \"replaced and\", but the first left note needs 7 lines where the frame has 6, so its 6-line clamp drops \"assignments.\"; the second and fourth notes break one word earlier in places.",
+			"From the instruction line down our page sits ≈2-5 px lower (title +2, list +5).",
+			"Hovering the first note shows its faint tether in ours; the frame shows none at that moment.",
+			"The right note's text is seeded from margin-thread (the frame's own words are cut off at the still's edge)."
+		],
+		"margin-thread": [
+			"Open thread: every message, the Write back line and Resolve · Dismiss · ⋯ sit where the frame has them; ours ≈5 px lower.",
+			"Linux wrap: the first message breaks \"college / could\" one word earlier; the AI reply and his reply break as in the frame.",
+			"Toolbar strings as in margin-notes (by design)."
+		],
+		"inline-sketch-and-selection": [
+			"The inline reply re-wraps (7 lines both, different breaks): Linux width, plus ≈6% the font alone does not explain (open: the frame's reply may keep ≈20 px clear on its right).",
+			"Sketch: our grid lines and arrows are darker and heavier than the frame's; numbers, captions, stepper and See it larger line up.",
+			"Selection menu ≈7 px further right; its actions read Think about this / Ask about this / Visualize / Make flashcards (ui-contract) where Riddled has Riddle this / Ask Riddled / Visualize.",
+			"Toolbar strings as in margin-notes (by design)."
+		],
+		"note-chat-panel": [
+			"Panel header \"This note\" (Riddled: \"Riddled\") and our context line \"Read the whole note and 1 thread.\" under the opening (ui-contract).",
+			"Page slides and fades as in the frame; our sketch grid is darker (as above); inline reply re-wraps (Linux width)."
+		],
+		"sidebar-and-settings": [
+			"By design (ui-contract): footer rows Copy this note, Export this note, Just my words, Settings, Reviewers, Make flashcards, Links, Switch to Study (Riddled: Customize Riddled, Riddlers, Profile, Billing, Sign out, an account email); settings nav Customize / Reviewers only; title \"Customize\"; card descriptions are ours.",
+			"Owner look: in the frame the settings backdrop also dims the open sidebar; ours leaves the sidebar undimmed beside the dimmed page.",
+			"Long note names truncate a few characters later (\"Longest Com…\" vs \"Longest C…\").",
+			"Fixed in this pass: hovering the chosen card hid its 1.5 px ink ring (the frame's pointer rests on \"Thinks with you\")."
+		],
+		"export-dialog": [
+			"By design (ui-contract): \"Include the notes\" and our card and switch descriptions (Riddled: \"Include the riddles\", \"…another AI included.\").",
+			"Size, radius, cards, switch and pill match within the tile's resolution (2.4x scaled contact sheet)."
+		],
+		"settings-bottom": [
+			"By design (ui-contract): \"Lettering\" / \"Ink colour\" and the samples \"Does this hold?\" with \"Its own hand\" / \"Same as yours\" (Riddled: \"Riddled's lettering\", \"Riddled's colour\", \"Does this still hold?\", \"Riddled's own\" / \"Like your notes\").",
+			"Appearance, text size and ink swatches match the tile; our labels are slightly brighter (the tile is a compressed thumbnail)."
+		],
+		"dark-appearance": [
+			"Tokens match the dark tile (paper, shelf, rule, ink); the tile is a 2.4x scaled thumbnail with the presenter's camera over its top right.",
+			"As in sidebar-and-settings: the frame dims the sidebar under the modal, ours does not."
+		]
+	},
+	"motion": {
+		"live-read": [
+			"He stops typing; ≈3.9 s later the pencil underline draws under the passage being read, the reading blot breathes, and at ≈6 s the question inks in word by word in the margin with its tether (faux model, Regular pace 1600 ms + 700 ms think).",
+			"Reduced: the underline and note appear finished, no stroke draw or word stagger."
+		],
+		"tether-draw": [
+			"Opening a note draws its tether: tie then spine (≈0.56 s + 0.7 s). Reduced: drawn at once."
+		],
+		"thread-unfold": [
+			"The thread unfolds in place (.34 s), the others fade to .38. Reduced: opens at once."
+		],
+		"sketch-draw-in": [
+			"Visualize → \"Here it is, one step at a time.\" inks in, then the drawing plays its four steps (grid, cells, arrows) on its own once. Reduced: the steps change without strokes drawing."
+		],
+		"chat-panel-open": [
+			"The panel slides in (.28 s) while the page slides 210 px left and fades to .5. Reduced: both at once."
+		],
+		"sidebar-open": [
+			"The sidebar slides in (.18 s) and the page slides aside and fades; the notes keep their sides (fixed in this pass: right notes used to jump into the left margin). Reduced: at once."
+		],
+		"theme-cross-fade": [
+			"Light → Dark cross-fades over .35 s (view transition). Reduced: instant."
+		]
+	}
+}
