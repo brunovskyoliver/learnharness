@@ -12,14 +12,14 @@ const render = (tool: string, output: unknown, extra: Record<string, unknown> = 
 const documentOf = (html: string) => parseHTML(html).document;
 
 describe("LookupRow", () => {
-	it("uses the identical math-check row skeleton and leaves details selectable", () => {
+	it("uses the identical math-check row skeleton (feature 025's quiet row) and leaves details selectable", () => {
 		const doc = documentOf(render("hub_model", model));
 		assert.equal(doc.querySelector("details")?.className, "group lh-reading my-1");
-		assert.equal(doc.querySelector("summary")?.className, "flex cursor-pointer select-none list-none items-center gap-2 text-sm text-faint [&::-webkit-details-marker]:hidden");
-		assert.equal(doc.querySelector("details > div")?.className, "mt-2 space-y-2 rounded-lg border bg-shelf p-3 text-sm");
-		assert.equal(doc.querySelectorAll(".select-none").length, 1);
-		assert.ok(doc.querySelector("summary svg")?.classList.contains("size-3"));
-		assert.ok(doc.querySelector("summary svg")?.classList.contains("opacity-50"));
+		// .lh-quiet-summary is the unselectable headline (app/globals.css); the panel stays selectable.
+		assert.equal(doc.querySelector("summary")?.className, "lh-quiet-summary");
+		assert.equal(doc.querySelector("details > div")?.className, "lh-quiet-panel space-y-2");
+		assert.equal(doc.querySelectorAll(".select-none").length, 0);
+		assert.ok(doc.querySelector("summary svg")?.classList.contains("lh-quiet-chevron"));
 	});
 	it("uses the approved source headlines", () => {
 		for (const [tool, output, expected] of [

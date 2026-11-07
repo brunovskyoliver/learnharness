@@ -38,15 +38,15 @@ Inputs: spec.md, plan.md, research.md (R1-R16), data-model.md, contracts/ui-cont
 
 ## Phase 4: Lesson transcript
 
-- [ ] T026 Assistant prose in the voice (R9): `.lh-prose` inside assistant messages takes `.nb-voice` treatment and size/leading; headings, lists, blockquotes, tables, code, math restyled in paper; links ink with 40% underline.
-- [ ] T027 Learner turn without bubble (R9): `user-message` block sans graphite, faint "You" meta line; sent-passage and reference rows restyled.
-- [ ] T028 Ink-in streaming: rehype plugin `components/paper/rehype-ink-words.ts` wrapping words in the streaming message's last block in `span.nb-ink-word` with the stagger (`inkStepMs`); only while that message streams; reduced motion → plain; test that settled messages emit no `nb-ink-word` and the streaming one does, and that re-render keeps earlier spans (render test on two successive inputs).
-- [ ] T029 [P] Quiet rows (R10): tool card, math check row, lookup rows, page/library rows, held-edit row, tokenize row; strings unchanged.
-- [ ] T030 [P] Thinking block and phase heads (R10); thinking placeholder uses Notebook's breathing blot.
-- [ ] T031 [P] Turn rail, compaction divider, system lines, queued steers restyled.
-- [ ] T032 [P] Demo card chrome (title row, expand/brightness/download icons), plan block and plan window, course list, mermaid frame and quick plot frame per R12.
-- [ ] T033 Lesson column measure 660px at ≥768 and phone gutters; `--lh-measure` updated; tables shrink rule kept.
-- [ ] T034 Tests: render tests for message/user turn; `scripts/check-streaming-ui.mjs`, `check-transcript-scroll-ui.mjs` updated if they assert classes.
+- [X] T026 Assistant prose in the voice (R9): `.lh-prose` inside assistant messages takes `.nb-voice` treatment and size/leading; headings, lists, blockquotes, tables, code, math restyled in paper; links ink with 40% underline.
+- [X] T027 Learner turn without bubble (R9): `user-message` block sans graphite, faint "You" meta line; sent-passage and reference rows restyled.
+- [X] T028 Ink-in streaming: rehype plugin `components/paper/rehype-ink-words.ts` wrapping words in the streaming message's last block in `span.nb-ink-word` with the stagger (`inkStepMs`); only while that message streams; reduced motion → plain; test that settled messages emit no `nb-ink-word` and the streaming one does, and that re-render keeps earlier spans (render test on two successive inputs).
+- [X] T029 [P] Quiet rows (R10): tool card, math check row, lookup rows, page/library rows, held-edit row, tokenize row; strings unchanged.
+- [X] T030 [P] Thinking block and phase heads (R10); thinking placeholder uses Notebook's breathing blot.
+- [X] T031 [P] Turn rail, compaction divider, system lines, queued steers restyled.
+- [X] T032 [P] Demo card chrome (title row, expand/brightness/download icons), plan block and plan window, course list, mermaid frame and quick plot frame per R12.
+- [X] T033 Lesson column measure 660px at ≥768 and phone gutters; `--lh-measure` updated; tables shrink rule kept.
+- [X] T034 Tests: render tests for message/user turn; `scripts/check-streaming-ui.mjs`, `check-transcript-scroll-ui.mjs` updated if they assert classes.
 
 ## Phase 5: Checks as margin threads
 

@@ -14,5 +14,7 @@ export function PlotCard({ part }: ArtifactPartProps) {
 	const plot = part as LhViewPart;
 	const artifact = plotArtifactOf(plot);
 	if (!artifact) return <ToolCallCard part={part} />;
-	return <DemoOutputCard output={{ title: artifact.title, html: artifact.html, tested: true }} messageId={plot.resultMessageId} initialInverted={artifact.inverted} />;
+	// A quick plot takes Notebook's sketch frame (feature 025, R12): its title in
+	// the voice, no card edge, no stepper. ML panels keep the demo card's head.
+	return <DemoOutputCard output={{ title: artifact.title, html: artifact.html, tested: true }} messageId={plot.resultMessageId} initialInverted={artifact.inverted} look={plot.type === "tool-plot" ? "sketch" : "card"} />;
 }

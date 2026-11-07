@@ -44,7 +44,7 @@ export function PdfBriefCard({ output }: { output: unknown }) {
 	const result = output as PdfResult | undefined;
 	if (!result || typeof result.brief !== "string") {
 		return (
-			<div className="rounded-lg border bg-shelf p-4 text-sm text-faint">
+			<div className="rounded-lg bg-shelf p-4 text-sm text-faint">
 				PDF reading completed, but the result could not be displayed.
 			</div>
 		);
@@ -56,7 +56,7 @@ export function PdfBriefCard({ output }: { output: unknown }) {
 	const readList = result.pagesRead ?? result.pagesConsulted ?? [];
 	const consultedList = result.pagesConsulted ?? [];
 	return (
-		<div className="rounded-lg border bg-shelf p-4 text-ink" data-testid="pdf-brief-card">
+		<div className="rounded-lg bg-shelf p-4 text-ink" data-testid="pdf-brief-card">
 			<div className="mb-1 flex items-center gap-2 text-sm font-medium text-faint">
 				PDF brief
 				{failed && <span className="rounded bg-red/15 px-1.5 py-0.5 text-red">failed</span>}
@@ -86,7 +86,7 @@ export function ResearchBriefCard({ output }: { output: unknown }) {
 	const result = output as ResearchResult | undefined;
 	if (!result || typeof result.brief !== "string") {
 		return (
-			<div className="rounded-lg border bg-shelf p-4 text-sm text-faint">
+			<div className="rounded-lg bg-shelf p-4 text-sm text-faint">
 				Research completed, but the result could not be displayed.
 			</div>
 		);
@@ -96,7 +96,7 @@ export function ResearchBriefCard({ output }: { output: unknown }) {
 	const reason = failed ? result.brief.replace(/^Research failed:?\s*/, "") : result.brief;
 	const body = failed && reason ? reason[0]!.toUpperCase() + reason.slice(1) : result.brief;
 	return (
-		<div className="rounded-lg border bg-shelf p-4 text-ink" data-testid="research-brief-card">
+		<div className="rounded-lg bg-shelf p-4 text-ink" data-testid="research-brief-card">
 			<div className="mb-1 flex items-center gap-2 text-sm font-medium text-faint">
 				{failed ? "Research" : "Research brief"}
 				{failed && <span className="rounded bg-red/15 px-1.5 py-0.5 text-red">failed</span>}

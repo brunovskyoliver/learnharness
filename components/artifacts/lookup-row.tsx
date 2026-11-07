@@ -42,11 +42,11 @@ export function LookupRow({ part }: ArtifactPartProps) {
 	if ((!d && !failed) || (failed && !failureHeadline)) return <ToolCallCard part={part} />;
 	return (
 		<SessionDetails stateKey={`tool/${p.toolCallId}`} data-testid="lookup-row" data-tool={tool} className="group lh-reading my-1">
-			<summary className="flex cursor-pointer select-none list-none items-center gap-2 text-sm text-faint [&::-webkit-details-marker]:hidden">
+			<summary className="lh-quiet-summary">
 				<span className={`font-medium ${failed ? "text-red" : ""}`}>{failed ? failureHeadline : lookupHeadline(d!)}</span>
-				<ChevronRight className="size-3 shrink-0 opacity-50 transition-transform group-open:rotate-90" aria-hidden="true" />
+				<ChevronRight className="lh-quiet-chevron" aria-hidden="true" />
 			</summary>
-			<div className="mt-2 space-y-2 rounded-lg border bg-shelf p-3 text-sm">
+			<div className="lh-quiet-panel space-y-2">
 				{failed && typeof p.errorText === "string" && <Row label="Error" mono={false}><span className="text-red">{p.errorText}</span></Row>}
 				{d && "encoding" in d && <>
 					{typeof (p.input as { text?: unknown } | undefined)?.text === "string" && <Row label="Text" mono={false}><span className="whitespace-pre-wrap">{(p.input as { text: string }).text}</span></Row>}

@@ -62,7 +62,7 @@ describe("MathCheckCard", () => {
 		const html = render(part({ state: "output-error", output: undefined, errorText: "The Wolfram check is unavailable: fetch failed." }));
 		assert.match(html, /<details[^>]*class="[^"]*\blh-reading\b/);
 		assert.ok(!/<details[^>]*class="[^"]*select-none/.test(html), "only the summary is unselectable");
-		assert.match(html, /<summary[^>]*class="[^"]*select-none/);
+		assert.match(html, /<summary[^>]*class="lh-quiet-summary"/, "the quiet row headline (user-select: none in app/globals.css)");
 		assert.ok(!/font-mono[^>]*>[^<]*<span class="text-red">The Wolfram check is unavailable/.test(html), "the reason is not mono");
 		assert.match(html, /<div class=""><span class="text-red">The Wolfram check is unavailable/);
 	});

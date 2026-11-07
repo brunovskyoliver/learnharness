@@ -192,6 +192,8 @@ export async function checkTurnNavigationUi(page, base, quizChatId, completedCha
 			return {
 				buttons: document.querySelectorAll('[aria-label="Scroll to latest"]').length,
 				background: getComputedStyle(band).backgroundColor,
+				// The paper ground (feature 025): the token as the body paints it.
+				paper: getComputedStyle(document.body).backgroundColor,
 				height: Math.round(b.height),
 				contains: b.left <= r.left && b.right >= r.right && b.top <= r.top && b.bottom >= r.bottom,
 				fullWidth: Math.round(b.left) <= 0 && Math.round(b.right) >= innerWidth - 1,
@@ -200,7 +202,7 @@ export async function checkTurnNavigationUi(page, base, quizChatId, completedCha
 			};
 		});
 		assert.equal(band.buttons, 1, "exactly one scroll-to-latest button");
-		assert.equal(band.background, "rgb(11, 11, 10)", "the band is the opaque ground, so no text shows under the button");
+		assert.equal(band.background, band.paper, "the band is the opaque ground, so no text shows under the button");
 		assert.equal(band.height, 48);
 		assert.ok(band.contains && band.fullWidth && band.onTop && band.aboveShell, `the button sits in its band above the prompt bar: ${JSON.stringify(band)}`);
 		await page.click('[aria-label="Scroll to latest"]');

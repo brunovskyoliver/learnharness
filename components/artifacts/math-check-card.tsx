@@ -77,12 +77,12 @@ export function MathCheckCard({ part }: ArtifactPartProps) {
 			data-outcome={failed ? "failed" : d?.outcome ?? "unfinished"}
 			className="group lh-reading my-1"
 		>
-			<summary className="flex cursor-pointer select-none list-none items-center gap-2 text-sm text-faint [&::-webkit-details-marker]:hidden">
+			<summary className="lh-quiet-summary">
 				{agreed && <Check className="size-3.5 shrink-0" aria-hidden="true" />}
 				<span className={`font-medium ${failed ? "text-red" : ""}`}>{headline(failed, d)}</span>
-				<ChevronRight className="size-3 shrink-0 opacity-50 transition-transform group-open:rotate-90" aria-hidden="true" />
+				<ChevronRight className="lh-quiet-chevron" aria-hidden="true" />
 			</summary>
-			<div className="mt-2 space-y-2 rounded-lg border bg-shelf p-3 text-sm">
+			<div className="lh-quiet-panel space-y-2">
 				{visibility.expressionsHidden ? (
 					<p className="text-faint">Expressions shown after the problem is concluded.</p>
 				) : (

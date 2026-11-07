@@ -7,7 +7,9 @@ import { cn } from "@/lib/utils";
 
 /** Keep response copying scoped to the prose source, outside rendered math,
  * code controls, reasoning, and tool cards. Reserve the action's space so
- * hovering never moves the lesson. */
+ * hovering never moves the lesson. The tutor's words are in the voice
+ * (feature 025, research R9: `.nb-voice` + `.lh-voice`) and ink in while
+ * they stream. */
 export const AssistantResponse = memo(function AssistantResponse({
 	source,
 	streaming = false,
@@ -16,7 +18,7 @@ export const AssistantResponse = memo(function AssistantResponse({
 }: HTMLAttributes<HTMLDivElement> & { source: string; streaming?: boolean }) {
 	return (
 		<div className={cn("group/response lh-bleed lh-reading", className)} {...props}>
-			<MessageResponse streaming={streaming}>{source}</MessageResponse>
+			<MessageResponse className="nb-voice lh-voice" streaming={streaming} inkIn>{source}</MessageResponse>
 			{source.trim() && (
 				<div
 					data-testid="response-actions"

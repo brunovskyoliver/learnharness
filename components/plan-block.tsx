@@ -888,7 +888,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 					onClick={onClose}
 					aria-label="Close"
 					data-testid="plan-popup-close"
-					className="ml-auto rounded-lg p-1.5 text-faint transition-colors hover:bg-shelf hover:text-ink"
+					className="ml-auto rounded-full p-1.5 text-faint transition-colors hover:text-ink"
 				>
 					<XIcon className="size-4" />
 				</button>
@@ -900,7 +900,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 			<div
 				ref={viewportRef}
 				className={cn(
-					"relative touch-none overflow-hidden rounded-lg border bg-paper select-none",
+					"relative touch-none overflow-hidden rounded-lg bg-shelf select-none",
 					hasCourse ? "h-[60vh] min-h-[280px] shrink-0" : "min-h-0 flex-1",
 					atFloor ? "cursor-default" : "cursor-grab",
 				)}
@@ -945,7 +945,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 									type="button"
 									aria-label="Zoom out"
 									onClick={() => stepZoom(1 / 1.25)}
-									className="pointer-events-auto flex size-7 items-center justify-center rounded-md border border-rule/70 bg-shelf text-faint transition-colors hover:bg-shelf hover:text-ink"
+									className="pointer-events-auto flex size-7 items-center justify-center rounded-md bg-paper text-faint shadow-lift transition-colors hover:text-ink pointer-coarse:size-11"
 								>
 									<MinusIcon className="size-3.5" />
 								</button>
@@ -956,7 +956,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 									aria-label="Fit plan to screen"
 									onClick={fitView}
 									data-testid="plan-popup-fit"
-									className="pointer-events-auto flex size-7 items-center justify-center rounded-md border border-rule/70 bg-shelf text-faint transition-colors hover:bg-shelf hover:text-ink"
+									className="pointer-events-auto flex size-7 items-center justify-center rounded-md bg-paper text-faint shadow-lift transition-colors hover:text-ink pointer-coarse:size-11"
 								>
 									<MaximizeIcon className="size-3.5" />
 								</button>
@@ -966,7 +966,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 									type="button"
 									aria-label="Zoom in"
 									onClick={() => stepZoom(1.25)}
-									className="pointer-events-auto flex size-7 items-center justify-center rounded-md border border-rule/70 bg-shelf text-faint transition-colors hover:bg-shelf hover:text-ink"
+									className="pointer-events-auto flex size-7 items-center justify-center rounded-md bg-paper text-faint shadow-lift transition-colors hover:text-ink pointer-coarse:size-11"
 								>
 									<PlusIcon className="size-3.5" />
 								</button>

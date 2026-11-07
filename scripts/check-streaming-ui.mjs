@@ -111,6 +111,11 @@ export async function checkStreamingUi(page, base, record) {
 	await page.waitForFunction(() => window.streamScroller.scrollHeight - window.streamScroller.clientHeight - window.streamScroller.scrollTop < 2);
 	await begin("stream_reading_2");
 	await write("Another completed paragraph.\n\nA final unfinished paragraph");
+	// Ink-in (feature 025, T028): the streaming reply's last block inks in word
+	// by word; a settled reply carries no ink spans, so history never animates.
+	assert.deepEqual(await page.$$eval('[data-source-message-id="stream_reading_2"] .nb-ink-word', (spans) => spans.map((s) => s.textContent)), ["Another ", "completed ", "paragraph."]);
+	assert.equal(await page.$('[data-source-message-id="stream_reading_1"] .nb-ink-word'), null, "settled replies never ink in");
+	assert.equal(await page.$eval('[data-source-message-id="stream_reading_2"] .lh-prose', (el) => /newsreader/i.test(getComputedStyle(el).fontFamily)), true, "tutor prose is in the voice");
 	await wait(350);
 	const beforeWheel = await scrollerPosition();
 	const bounds = await page.evaluate(() => { const box = window.streamScroller.getBoundingClientRect(); return { x: box.left + box.width / 2, y: box.top + 80 }; });
@@ -123,5 +128,6 @@ export async function checkStreamingUi(page, base, record) {
 	await wait(500);
 	const after = await scrollerPosition();
 	assert.ok(Math.abs(after - before) <= 1, `completion preserves a reader's position: ${before} -> ${after}`);
-	console.log("PASS completion leaves earlier reading undisturbed");
+	assert.equal(await page.$('[data-source-message-id="stream_reading_2"] .nb-ink-word'), null, "a reply drops its ink spans once settled");
+	console.log("PASS completion leaves earlier reading undisturbed; ink-in only while streaming");
 }

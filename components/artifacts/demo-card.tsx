@@ -133,10 +133,13 @@ export function DemoOutputCard({
 	output,
 	messageId,
 	initialInverted = false,
+	look = "card",
 }: {
 	output: unknown;
 	messageId?: string;
 	initialInverted?: boolean;
+	/** "sketch": a quick plot's title in the voice, Notebook's sketch frame (feature 025, R12). */
+	look?: "card" | "sketch";
 }) {
 	const result = output as DemoResult | undefined;
 	if (!result || typeof result.html !== "string" || typeof result.title !== "string") {
@@ -159,7 +162,7 @@ export function DemoOutputCard({
 		);
 	}
 	return (
-		<DemoFrame title={result.title} html={result.html} messageId={messageId} initialInverted={initialInverted} />
+		<DemoFrame title={result.title} html={result.html} messageId={messageId} initialInverted={initialInverted} look={look} />
 	);
 }
 
@@ -169,6 +172,7 @@ export function DemoFrame({
 	messageId,
 	initialInverted = false,
 	variant = "card",
+	look = "card",
 }: {
 	title: string;
 	html: string;
@@ -176,6 +180,8 @@ export function DemoFrame({
 	initialInverted?: boolean;
 	/** "panel": the side panel supplies its own header; no card frame. */
 	variant?: "card" | "panel";
+	/** "sketch": the title in the voice at 19px, as Notebook's sketch block (feature 025, R12). */
+	look?: "card" | "sketch";
 }) {
 	const actions = useContext(ChatActionsContext);
 	const panel = useDemoPanel();
@@ -363,8 +369,11 @@ export function DemoFrame({
 				onKeyDown={(e) => { if (focused) e.stopPropagation(); if (e.key === "Escape" && focused) { e.preventDefault(); e.stopPropagation(); const menu = (e.target as HTMLElement).closest("details[open]"); if (menu) menu.removeAttribute("open"); else setFocused(false); } }}
 				className={`demo-live ${focused ? "demo-live-focus" : inWorkspace ? "demo-live-workspace" : "demo-live-inline"}`}
 				style={bounds ? { left: bounds.left, top: bounds.top, width: bounds.width, height: bounds.height } : undefined}>
-				{inWorkspace && !focused && actionsTarget ? createPortal(controls, actionsTarget) : <div className="flex shrink-0 items-center justify-between gap-2 pb-2">
-					<span className="min-w-0 truncate text-sm font-medium">{title}</span>{controls}
+				{inWorkspace && !focused && actionsTarget ? createPortal(controls, actionsTarget) : <div className={`flex shrink-0 justify-between gap-2 ${look === "sketch" && !focused ? "demo-sketch-head items-start pb-3" : "items-center pb-2"}`}>
+					{look === "sketch" && !focused
+						? <span className="nb-voice nb-sketch-title min-w-0">{title}</span>
+						: <span className="min-w-0 truncate text-sm font-medium">{title}</span>}
+					{controls}
 				</div>}
 				{frame}
 			</dialog>

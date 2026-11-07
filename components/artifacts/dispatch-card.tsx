@@ -51,7 +51,7 @@ export function DispatchCard({ toolCallId, kind }: { toolCallId: string; kind: J
 	const failed = job.status === "error";
 	return (
 		<div
-			className="flex items-center gap-2 text-sm text-faint"
+			className="lh-quiet-line"
 			data-testid="dispatch-settled"
 		>
 			{failed ? <XIcon className="size-3.5 text-red" /> : <CheckIcon className="size-3.5" />}
@@ -66,7 +66,7 @@ function DispatchRefusedCard({ label, line, button }: { label: string; line: str
 	const ctx = useContext(ChatActionsContext);
 	return (
 		<div
-			className="flex items-center gap-2 text-sm text-faint"
+			className="lh-quiet-line"
 			data-testid="dispatch-refused"
 		>
 			<SettingsIcon className="size-3.5" />
@@ -99,7 +99,7 @@ function DispatchActivityCard({ job, label }: { job: JobRecord | null; label: st
 	const activity = activityText(job?.activity);
 	return (
 		<div
-			className="rounded-lg border bg-shelf p-4 text-ink"
+			className="rounded-lg bg-shelf p-4 text-ink"
 			data-testid="dispatch-card"
 		>
 			<div className="flex items-center gap-2 text-sm font-medium text-faint">

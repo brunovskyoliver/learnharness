@@ -23,7 +23,7 @@ function currentLibraryIds(): Promise<Set<string> | null> {
 	return liveIds.ids;
 }
 
-const LINK = "text-ink underline decoration-ink/40 underline-offset-2 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center";
+const LINK = "text-ink underline decoration-ink/40 underline-offset-[3px] hover:decoration-ink pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center";
 
 export function ReferenceRow({ reference, deleted = false }: { reference: LibraryReference; deleted?: boolean }) {
 	const { open } = useSettingsDialog();
@@ -33,7 +33,7 @@ export function ReferenceRow({ reference, deleted = false }: { reference: Librar
 	const inPane = available && !!pane && opensInPane(reference.kind);
 	const inTab = available && !inPane && reference.kind !== "page";
 	return (
-		<li data-testid="reference-row" className="text-sm text-graphite [overflow-wrap:anywhere]">
+		<li data-testid="reference-row" className="text-meta text-faint [overflow-wrap:anywhere]">
 			{prefix}
 			{inPane ? (
 				<button type="button" aria-label={`Open ${reference.name}`} className={LINK} onClick={() => pane.open({ id: reference.itemId, name: reference.name, kind: reference.kind, size: reference.size ?? 0 })}>{reference.name}</button>

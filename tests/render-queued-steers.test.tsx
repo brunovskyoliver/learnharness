@@ -32,7 +32,7 @@ describe("QueuedSteersBody (the quiet queue above the composer)", () => {
 		const html = renderToStaticMarkup(<QueuedSteersBody steers={[{ id: "steer_a", text: "Can you show it on a plot?" }]} onRemove={() => {}} />);
 		assert.match(html, /<button type="button" aria-label="Remove queued message: Can you show it on a plot\?" data-testid="queued-steer-remove"/);
 		assert.match(html, /pointer-coarse:size-11/);
-		assert.match(html, /text-graphite transition-colors hover:bg-shelf hover:text-ink/);
+		assert.match(html, /text-faint transition-colors hover:text-ink/);
 	});
 
 	it("Already sent: no remove control, the row waits for its card; Could not remove: the × retries", () => {

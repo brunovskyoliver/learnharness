@@ -42,11 +42,11 @@ export function CourseList({ messages }: { messages: readonly PopupMessage[] }) 
 				{course.items.map((item, i) => {
 					const topics = item.topics.map((t) => titleOf.get(t)).filter((t): t is string => t !== undefined);
 					return (
-						<li key={i} data-testid="course-item" data-state={coverage[i]} className="flex flex-col gap-0.5 rounded-lg bg-shelf px-3 py-2 sm:flex-row sm:items-baseline sm:gap-3">
-							<span className="text-sm font-medium text-faint sm:w-24 sm:shrink-0">{COURSE_KIND_LABELS[item.kind]}</span>
+						<li key={i} data-testid="course-item" data-state={coverage[i]} className="flex flex-col gap-0.5 rounded-lg bg-shelf px-3.5 py-2.5 sm:flex-row sm:items-baseline sm:gap-3">
+							<span className="text-meta text-faint sm:w-24 sm:shrink-0">{COURSE_KIND_LABELS[item.kind]}</span>
 							<span className="min-w-0 flex-1">
 								<span className="block text-md text-ink">{item.url ? <ExternalLink href={item.url}>{item.title}</ExternalLink> : item.title}</span>
-								{topics.length > 0 && <span className="block text-sm text-faint">Topics: {topics.join(", ")}</span>}
+								{topics.length > 0 && <span className="block text-meta text-faint">Topics: {topics.join(", ")}</span>}
 							</span>
 							<span className={coverage[i] === "covered" ? "text-sm font-medium text-ink" : "text-sm text-faint"}>{STATE_TEXT[coverage[i]!]}</span>
 						</li>
@@ -59,7 +59,7 @@ export function CourseList({ messages }: { messages: readonly PopupMessage[] }) 
 
 function ExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
 	return (
-		<a href={href} target="_blank" rel="noopener noreferrer" className="underline decoration-faint/60 underline-offset-2 hover:decoration-ink">
+		<a href={href} target="_blank" rel="noopener noreferrer" className="underline decoration-ink/40 underline-offset-[3px] hover:decoration-ink">
 			{children}
 		</a>
 	);

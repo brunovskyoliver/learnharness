@@ -16,6 +16,7 @@ import {
 } from "@/components/ai-elements/conversation";
 import { Message, MessageContent } from "@/components/ai-elements/message";
 import { AssistantResponse } from "@/components/assistant-response";
+import { InkWait } from "@/components/paper/blot";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { BrailleSpinner } from "@/components/braille-spinner";
@@ -57,7 +58,7 @@ import { DemoPanel } from "@/components/artifacts/demo-panel";
 import { PagePaneSlot, usePagePane } from "@/components/library/page-pane-context";
 import { SessionContextSlot } from "@/components/workspace/context-slot";
 import { TranscriptPassages } from "@/components/transcript-passages";
-import { UserTurnText } from "@/components/user-turn-text";
+import { UserTurn } from "@/components/user-turn-text";
 import { useWorkspace } from "@/components/workspace/workspace-context";
 import { isShownPageFailure } from "@/components/library/page-row";
 import { DemoPanelContext, sessionDemos, type DemoPanelApi } from "@/components/artifacts/demo-panel-context";
@@ -108,14 +109,12 @@ import { TranscriptArrivalScript, TranscriptBackfillSentinel, TranscriptRenderSk
 
 const MermaidOverlay = dynamic(() => import("@/components/session-overlay").then((module) => module.MermaidOverlay), { ssr: false });
 
-/** One width for everything: transcript, cards, and the bottom blob share this column. */
 /**
- * Width tokens: the teaching PROSE caps at the --lh-measure (~72ch; polish
- * pass 2026-10-26 superseded the wave-5 full-bleed ruling) with a px-6 margin; the composer/question DOCK is
- * deliberately narrower (~46rem centered) per the reference. Same ELEMENT,
- * same place — width polish only.
+ * One width for the transcript: Notebook's 660px column (--lh-measure,
+ * feature 025 T033) with 24px margins, 22px on phones. The composer/question
+ * DOCK keeps its own width (phase 5 moves checks beside the column).
  */
-const COLUMN = "mx-auto w-full max-w-[calc(var(--lh-measure)+3rem)] px-6";
+const COLUMN = "mx-auto w-full max-w-[calc(var(--lh-measure)+3rem)] px-[22px] sm:px-6";
 const DOCK = "mx-auto w-full max-w-[52rem] px-4";
 // The dock overlay's gradient band (h-24) — part of the reserved tail.
 const GRADIENT_H = 0;
@@ -175,7 +174,7 @@ function SystemLine({ children, testId }: { children: React.ReactNode; testId?: 
 	return (
 		<div
 			data-testid={testId}
-			className="flex items-center justify-center gap-1.5 py-1 text-sm text-faint"
+			className="lh-reading lh-quiet-line py-1"
 		>
 			{children}
 		</div>
@@ -183,7 +182,7 @@ function SystemLine({ children, testId }: { children: React.ReactNode; testId?: 
 }
 
 /** The live wait row (polish pass 2026-10-26): the one moment the
- * learner waits, so it counts. Elapsed seconds appear after the first
+ * learner waits, so it counts. Notebook's breathing blot (feature 025, R10). Elapsed seconds appear after the first
  * second; the clock restarts whenever the row remounts (a new turn). */
 function ThinkingPlaceholder() {
 	const [start] = useState(() => Date.now());
@@ -194,9 +193,9 @@ function ThinkingPlaceholder() {
 	}, []);
 	const seconds = Math.floor((now - start) / 1000);
 	return (
-		<span data-testid="thinking-placeholder" className="flex items-center gap-2 font-sans text-sm font-medium text-faint">
-			<BrailleSpinner label="Thinking" />
-			<Shimmer duration={1}>THINKING…</Shimmer>
+		<span data-testid="thinking-placeholder" className="lh-reading lh-quiet-line">
+			<InkWait label="Thinking" />
+			<Shimmer duration={1} className="text-meta">THINKING…</Shimmer>
 			{seconds > 0 && <span className="tabular-nums normal-case text-faint">{seconds}s</span>}
 		</span>
 	);
@@ -1484,38 +1483,12 @@ function ChatView({
 										<PhaseDivider key={`teach-${m.id || `m-${mi}`}`} phase="teach" />
 									) : null}
 									{m.role === "user" ? (
-										/* THE DOCUMENT ROW (owner round, 2026-10-05): no right-aligned
-										    bubble — the transcript reads as a document. User text is a
-										    full-width quote block: muted "You" label, muted rail,
-										    FULL-opacity text (learner words are content, not whisper).
-										    Distinguished from user thinking at a glance: thinking is
-										    collapsed + 50% italic; this is upright and present.
-										    User text renders plain — the model's LaTeX pipeline is not
-										    applied to learner-authored text ($ stays $, no surprises).
-										    Rendered WITHOUT the Message wrapper — that is the bubble. */
-											<div
-										data-testid="user-message"
-										/* THE DOCUMENT, ALL-IN (owner rounds two+three, 2026-10-07):
-										    no chat side — the user message is a full-width card-color
-										    BAND, the IDENTICAL geometry as the thinking rows: 5px band
-										    padding, the left gap matches it, the rail fills the 3ch
-										    inset (the band is the authorship mark against the agent's
-										    transparent prose). The "You" label stays — one register
-										    with the thinking labels. No rail (polish pass 2026-10-26):
-										    the band alone marks authorship; text keeps the 3ch inset. */
-										className="lh-reading my-2 rounded-lg bg-shelf px-4 py-3 font-sans text-sm"
-									>
-												{/* The rail GROUPS (owner round 4, 2026-10-05): the YOU heading
-												    sits INSIDE the rail, same mono-xs register and same 1ch
-												    rail as the thinking rows — one quote geometry. */}
-												<div className="mb-1 font-medium text-faint">You</div>
-												{m.parts.map((part, pi) => part.type === "data-library-references" ? (
-													<ReferencesCard key={pi} references={(part.data as { references: LibraryReference[] }).references} />
-												) : null)}
-												<div className="lh-prose whitespace-pre-wrap text-ink">
-													<UserTurnText text={m.parts.filter((p) => p.type === "text").map((p) => p.text).join("\n")} />
-												</div>
-											</div>
+										<UserTurn
+											text={m.parts.filter((p) => p.type === "text").map((p) => p.text).join("\n")}
+											before={m.parts.map((part, pi) => part.type === "data-library-references" ? (
+												<ReferencesCard key={pi} references={(part.data as { references: LibraryReference[] }).references} />
+											) : null)}
+										/>
 									) : (
 									<Message from="assistant" className="max-w-full">
 									<MessageContent className="w-full">
@@ -1655,9 +1628,9 @@ function ChatView({
 						    the THINKING placeholder by construction (the gate sits
 						    BEFORE beginTurn; the settle kick runs after endTurn). */}
 							{compacting && (
-								<span className="flex items-center gap-2 font-sans text-sm font-medium text-faint">
+								<span className="lh-reading lh-quiet-line">
 									<BrailleSpinner label="Compacting context" />
-									<Shimmer duration={1}>COMPACTING CONTEXT…</Shimmer>
+									<Shimmer duration={1} className="text-meta">COMPACTING CONTEXT…</Shimmer>
 								</span>
 							)}
 							{(status === "submitted" || turnInFlight) && (

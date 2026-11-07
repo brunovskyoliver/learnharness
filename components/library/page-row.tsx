@@ -34,8 +34,8 @@ export function PageRow({ part }: ArtifactPartProps) {
 	const errored = p.state === "output-error";
 	if (p.state !== "output-available" && !errored) {
 		return (
-			<div role="status" data-testid="page-row-running" className="lh-reading my-1 flex items-center gap-2 text-sm text-faint">
-				<LoaderCircleIcon className="size-3.5 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+			<div role="status" data-testid="page-row-running" className="lh-reading lh-quiet-line my-1">
+				<LoaderCircleIcon className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
 				{toolActivityLabel(tool)}
 			</div>
 		);
@@ -49,11 +49,11 @@ export function PageRow({ part }: ArtifactPartProps) {
 	const open = (history: boolean) => pane?.open({ id: target!.id, name: target!.name, kind: target!.kind as "page", size: target!.size, ...(history ? { history: true } : {}) });
 	return (
 		<SessionDetails stateKey={`tool/${p.toolCallId}`} initialOpen={!!proposal} data-testid="page-row" data-tool={tool} className="group lh-reading my-1">
-			<summary className="flex cursor-pointer select-none list-none items-center gap-2 text-sm text-faint [&::-webkit-details-marker]:hidden">
+			<summary className="lh-quiet-summary">
 				<span className={`font-medium [overflow-wrap:anywhere] ${bad ? "text-red" : ""}`}>{pageRowHeadline(tool, d)}</span>
-				<ChevronRight className="size-3 shrink-0 opacity-50 transition-transform group-open:rotate-90" aria-hidden="true" />
+				<ChevronRight className="lh-quiet-chevron" aria-hidden="true" />
 			</summary>
-			<div className="mt-2 flex flex-col gap-2 rounded-lg bg-shelf p-3 text-sm">
+			<div className="lh-quiet-panel flex flex-col gap-2">
 				{reason && <p className="text-red">{reason}</p>}
 				{proposal && (
 					<div className="flex flex-wrap gap-3">

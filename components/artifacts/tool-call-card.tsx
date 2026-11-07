@@ -95,14 +95,14 @@ export function ToolCallCard({ part }: ArtifactPartProps) {
 			data-tool={tool}
 			className="group lh-reading my-1"
 		>
-			<summary className="flex cursor-pointer select-none list-none items-center gap-2 text-sm text-faint [&::-webkit-details-marker]:hidden">
+			<summary className="lh-quiet-summary">
 				<span className={`font-medium ${failed ? "text-red" : ""}`}>
 					{(failed ? FAILED_LABELS[tool] : undefined) ?? TOOL_LABELS[tool] ?? tool}
 				</span>
 				{arg && <span className="truncate">{arg}</span>}
-				<ChevronRight className="size-3 shrink-0 opacity-50 transition-transform group-open:rotate-90" />
+				<ChevronRight className="lh-quiet-chevron" aria-hidden="true" />
 			</summary>
-			<div className="mt-2 space-y-2 rounded-lg border bg-shelf p-3 text-sm">
+			<div className="lh-quiet-panel space-y-2">
 				{p.input != null && (
 					<div>
 						<div className="mb-1 font-medium text-faint">

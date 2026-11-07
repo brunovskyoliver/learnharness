@@ -39,7 +39,7 @@ export function SubagentSteerCard({ message }: { message: LhViewMessage }) {
 			| undefined;
 		if (aborted?.data) return <AbortedBadge kind={aborted.data.kind ?? "job"} />;
 		return (
-				<div className="rounded-lg border bg-shelf p-4 text-sm text-faint">
+				<div className="rounded-lg bg-shelf p-4 text-sm text-faint">
 				A sub-agent finished, but its result could not be displayed.
 			</div>
 		);
@@ -77,7 +77,7 @@ export function SubagentSteerCard({ message }: { message: LhViewMessage }) {
  * this just marks what happened. */
 function AbortedBadge({ kind }: { kind: string }) {
 	return (
-		<div data-testid="job-aborted-badge" className="flex items-center gap-2 text-sm text-faint">
+		<div data-testid="job-aborted-badge" className="lh-quiet-line">
 			<CircleX className="size-3.5" />
 			<span className="font-medium">{kind}</span>
 			<span>aborted by the learner</span>
@@ -89,13 +89,13 @@ function AbortedBadge({ kind }: { kind: string }) {
 function ImageAnswerRow({ result }: { result: ImageResult }) {
 	const failed = isSubagentFailure("image", result);
 	return (
-		<SessionDetails data-testid="image-answer-row" className="group w-full text-sm text-faint">
-			<summary className="flex cursor-pointer select-none list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
+		<SessionDetails data-testid="image-answer-row" className="group w-full">
+			<summary className="lh-quiet-summary">
 				{failed ? <CircleX className="size-3.5" /> : <CheckIcon className="size-3.5" />}
 				<span className="font-medium">Image</span>
 				<span className="min-w-0 [overflow-wrap:anywhere]">{failed ? "could not be read" : result.name}</span>
 			</summary>
-			<div className="mt-2 text-graphite">{failed ? result.answer.replace(/^Image failed:\s*/i, "") : result.answer}</div>
+			<div className="lh-quiet-panel text-graphite">{failed ? result.answer.replace(/^Image failed:\s*/i, "") : result.answer}</div>
 		</SessionDetails>
 	);
 }
@@ -109,8 +109,8 @@ function PdfCompleteBadge({ result }: { result: PdfResult }) {
 	// the ?? is runtime tolerance for pre-split persisted steers.
 	const readPages = result.pagesRead ?? result.pagesConsulted;
 	return (
-		<SessionDetails data-testid="pdf-complete-badge" className="group w-full text-sm text-faint">
-			<summary className="flex cursor-pointer select-none list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
+		<SessionDetails data-testid="pdf-complete-badge" className="group w-full">
+			<summary className="lh-quiet-summary">
 				<CheckIcon className="size-3.5" />
 				<span className="font-medium">PDF</span>
 				<span>reading complete</span>
@@ -119,8 +119,8 @@ function PdfCompleteBadge({ result }: { result: PdfResult }) {
 						· read {readPages.length} page{readPages.length === 1 ? "" : "s"}
 					</span>
 				)}
-				<span className="ml-1 text-sm text-faint group-open:hidden">view brief</span>
-				<span className="ml-1 hidden text-sm text-faint group-open:inline">hide brief</span>
+				<span className="ml-1 group-open:hidden">view brief</span>
+				<span className="ml-1 hidden group-open:inline">hide brief</span>
 			</summary>
 			<div className="mt-2">
 				<PdfBriefCard output={result} />
@@ -136,14 +136,14 @@ function PdfCompleteBadge({ result }: { result: PdfResult }) {
  * the artifact part in the record is the single source of truth. */
 function ResearchCompleteBadge({ result }: { result: ResearchResult }) {
 	return (
-		<SessionDetails data-testid="research-complete-badge" className="group w-full text-sm text-faint">
-			<summary className="flex cursor-pointer select-none list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
+		<SessionDetails data-testid="research-complete-badge" className="group w-full">
+			<summary className="lh-quiet-summary">
 				<CheckIcon className="size-3.5" />
 				<span className="font-medium">Research</span>
 				<span>complete</span>
 				{result.sources.length > 0 && <span>· {result.sources.length} sources</span>}
-				<span className="ml-1 text-sm text-faint group-open:hidden">view brief</span>
-				<span className="ml-1 hidden text-sm text-faint group-open:inline">hide brief</span>
+				<span className="ml-1 group-open:hidden">view brief</span>
+				<span className="ml-1 hidden group-open:inline">hide brief</span>
 			</summary>
 			<div className="mt-2">
 				<ResearchBriefCard output={result} />

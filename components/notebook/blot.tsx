@@ -8,19 +8,11 @@
  * (notebook.css), with reduced-motion fallbacks there.
  */
 import { useEffect, useState } from "react";
-import { blotPath, pencilStrokes, type PassageLine } from "./nb-geometry";
+import { BlotGlyph } from "../paper/blot";
+import { pencilStrokes, type PassageLine } from "./nb-geometry";
 
-const BLOT = blotPath();
-
-/** Our blot glyph in a 26-unit box centred on 0 (§4 box, our own shape). */
-export function BlotGlyph({ className = "nb-ink-dot-blot", size }: { className?: string; size?: number }) {
-	return (
-		<svg viewBox="-13 -13 26 26" className={className} width={size} height={size} aria-hidden="true" fill="currentColor">
-			<path d={BLOT.d} />
-			{BLOT.drops.map((d, i) => <circle key={i} cx={d.cx} cy={d.cy} r={d.r} />)}
-		</svg>
-	);
-}
+/** The blot glyph: lifted to components/paper/blot.tsx (feature 025). */
+export { BlotGlyph };
 
 /** JS keeps `is-fresh` this long (§10.1). */
 const FRESH_MS = 3600;

@@ -25,6 +25,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
   useMemo,
   useLayoutEffect,
   useRef,
@@ -32,9 +33,11 @@ import {
 } from "react";
 import remarkBreaks from "remark-breaks";
 import {
+  defaultRehypePlugins,
   Streamdown,
   type PluginConfig,
 } from "streamdown";
+import { inkWordsState, rehypeInkWords } from "@/components/paper/rehype-ink-words";
 import { mdComponents } from "@/components/md-blocks";
 import { completedMarkdownPrefix, repairMathForDisplay, transformMathDelimiters } from "@/src/core";
 
@@ -327,7 +330,12 @@ export const MessageBranchPage = ({
   );
 };
 
-export type MessageResponseProps = ComponentProps<typeof Streamdown> & { streaming?: boolean };
+export type MessageResponseProps = ComponentProps<typeof Streamdown> & {
+  streaming?: boolean;
+  /** Tutor prose (feature 025, research R9): while it streams, the last
+   *  block's new words ink in (components/paper/rehype-ink-words.ts). */
+  inkIn?: boolean;
+};
 
 // Type-only version skew: @streamdown/code bundles shiki@3 types while
 // streamdown@2.5 expects shiki@4 types. Both work at runtime (each ships its
@@ -374,7 +382,7 @@ export const streamdownPlugins = {
 } as unknown as PluginConfig;
 
 export const MessageResponse = memo(
-  ({ className, children, streaming = false, mode = "static", ...props }: MessageResponseProps) => {
+  ({ className, children, streaming = false, inkIn = false, mode = "static", ...props }: MessageResponseProps) => {
     // Legacy backslash delimiters are converted in a single linear scan;
     // native dollar math passes through to Streamdown unchanged. Incomplete
     // legacy spans are left for a later render when their closer arrives.
@@ -383,6 +391,17 @@ export const MessageResponse = memo(
         ? transformMathDelimiters(children)
         : children;
     const content = streaming && typeof normalized === "string" ? completedMarkdownPrefix(normalized) : normalized;
+
+    // One ink memory per reply, kept across its streaming renders; a settled
+    // reply passes no plugin, so Streamdown runs its defaults unchanged.
+    const inkId = useId();
+    const inkState = useRef<ReturnType<typeof inkWordsState> | null>(null);
+    const inking = streaming && inkIn;
+    if (inking) inkState.current ??= inkWordsState(inkId);
+    const rehypePlugins = useMemo(
+      () => (inking ? [...Object.values(defaultRehypePlugins), [rehypeInkWords, inkState.current!]] as ComponentProps<typeof Streamdown>["rehypePlugins"] : undefined),
+      [inking],
+    );
 
     // Wide display math shrinks to fit the column, down to 70% (ui-v2);
     // past that it scrolls. ponytail: runs per render, not on resize.
@@ -402,12 +421,16 @@ export const MessageResponse = memo(
           // Source Sans 3 + emphasis-color tokens on every markdown surface
           // (labels stay JetBrains Mono). Unlayered plain CSS wins over text-sm.
           "lh-prose size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+          // Streamdown's memo ignores rehypePlugins: the class change makes the
+          // settle render drop the ink spans even when the text is unchanged.
+          inking && "lh-inking",
           className
         )}
         components={mdComponents}
         plugins={streamdownPlugins}
         mode={streaming ? "static" : mode}
         parseIncompleteMarkdown={false}
+        {...(rehypePlugins ? { rehypePlugins } : {})}
         {...props}
         linkSafety={{ enabled: false }}
       >

@@ -192,8 +192,8 @@ export function readingHoldMs(lines: readonly PassageLine[]): number {
 	return Math.min((width / 650) * 1000, 1600) + 1300;
 }
 
-/** InkText's per-word delay step (§12): `min(70, 1800 / words)` ms. */
-export const inkStepMs = (words: number): number => (words <= 0 ? 0 : Math.min(70, 1800 / words));
+/** InkText's per-word delay step (§12): lifted to components/paper/rehype-ink-words.ts (feature 025). */
+export { inkStepMs } from "../paper/rehype-ink-words";
 
 /** Merges a range's client rects into visual lines (rects whose vertical centres overlap). */
 export function mergeLines(rects: readonly { left: number; right: number; top: number; bottom: number }[]): PassageLine[] {
@@ -214,27 +214,5 @@ export function mergeLines(rects: readonly { left: number; right: number; top: n
 	return lines.sort((a, b) => a.top - b.top);
 }
 
-/** Our ink blot (not Riddled's logo glyph): an irregular blob of 14 points
- *  joined by midpoint quadratics plus two droplets, in a 26-unit box
- *  centred on 0 (the §10.4 splash recipe with our own seed). */
-export function blotPath(seed = 2.4, radius = 7.4): { d: string; drops: { cx: number; cy: number; r: number }[] } {
-	const n = 14;
-	const pts = Array.from({ length: n }, (_, i) => {
-		const a = (i / n) * Math.PI * 2;
-		const rad = radius * (1 + 0.16 * Math.sin(3 * a + seed) + 0.09 * Math.sin(7 * a + 2.3 * seed));
-		return { x: Math.cos(a) * rad, y: Math.sin(a) * rad };
-	});
-	const mid = (a: { x: number; y: number }, b: { x: number; y: number }) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
-	const start = mid(pts[n - 1]!, pts[0]!);
-	let d = `M ${r(start.x)} ${r(start.y)}`;
-	for (let i = 0; i < n; i++) {
-		const p = pts[i]!, m = mid(p, pts[(i + 1) % n]!);
-		d += ` Q ${r(p.x)} ${r(p.y)} ${r(m.x)} ${r(m.y)}`;
-	}
-	const drops = [0, 1].map((i) => {
-		const a = 1.7 * seed + 1.33 * i + 0.9;
-		const dist = radius * (1.35 + 0.5 * Math.abs(Math.sin(seed + i)));
-		return { cx: r(Math.cos(a) * dist), cy: r(Math.sin(a) * dist), r: r(radius * (0.08 + 0.07 * Math.abs(Math.cos(3 * seed + i)))) };
-	});
-	return { d: `${d} Z`, drops };
-}
+/** Our ink blot: lifted to components/paper/blot.tsx (feature 025). */
+export { blotPath } from "../paper/blot";
