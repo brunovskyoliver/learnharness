@@ -282,3 +282,49 @@ Feature 022; decisions in [its spec](specs/022-diagrams/spec.md). Amber only on 
 ## Course track
 
 - The plan popup shows a "Course" section below the diagram when the lesson has a recorded syllabus (feature 006): the heading with the course title (linked) and "{covered} of {items} covered", then one raised 10px row per item in course order — kind (Lecture, Problem set, Notes, Reading) in muted meta, the title (linked, new tab, underlined), "Topics: …" in muted 14px, and the state ("Covered" in the ink, "Not yet" and "Not in this lesson's plan" muted). With a syllabus the popup scrolls and the diagram keeps 60vh (at least 280px). Home's lesson rows append " · Course: {covered} of {items} covered" to the progress line.
+
+## Notebook
+
+Feature 024, [specs/024-notebook-mode](specs/024-notebook-mode/spec.md). A second interface, a paper notebook after Riddled, approved by the owner for this mode only. These rules override Study ink, the type scale and the no-shadow rule **only inside Notebook mode** (`.nb-root`, `app/(app)/notebook/notebook.css`); Study is unchanged. Every string is in [ui-contract.md](specs/024-notebook-mode/contracts/ui-contract.md); every exact value, frame and source line in [visual-reference.md](specs/024-notebook-mode/contracts/visual-reference.md). Where a review tool disagrees with an exact Riddled value, the value wins.
+
+### Tokens
+
+- Light: paper `#f8f7f4`, shelf `#f1f0ec`, code `#ebe9e3`, ink `#1d1c1a`, graphite `#5c5953`, faint `#8e8a83`, rule `#dedbd4`, bulb `#d99a1e`. Dark: paper `#1a1a19`, shelf and code `#151514`, ink `#e9e7e2`, graphite `#a9a69e`, faint `#7a776f`, rule `#33322f`, bulb `#f2b84b`. System follows the OS; a change cross-fades.
+- The AI's ink (`--riddle`) is ink by default, or one of gray, brown, red, orange, green, blue, purple (`--text-*`, separate light and dark values). Its wash is ink at 5.5% (light) or 8% (dark), its line at 32% / 34%.
+- Faint is Riddled's and sits under 4.5:1 (3.2:1 light, 3.9:1 dark); it is kept for meta, hints and placeholders only, pending the owner (reviews.md).
+- Grain: a fixed SVG fractal-noise tile, 180px, over the paper: opacity .16 multiply (light), .4 soft-light (dark). Floating panels carry their own grain.
+- Lift: shadows are allowed here, on floating surfaces only (menus, selection menu, sidebar, chat, dialogs): `--lift` light `0 0 0 1px #1d1c1a12, 0 1px 1px #1d1c1a0a, 0 6px 16px -8px #1d1c1a29`, dark `0 0 0 1px #ffffff12, 0 8px 20px -8px #0009`.
+
+### Type
+
+- Instrument Sans (variable 400-700) for the UI and everything the learner writes. Newsreader 420, `opsz` 14, +.004em, for the AI's voice only; "Plain" lettering switches the voice to the sans.
+- Note size `--note-size` 16px (15 small, 18 large; 15.5/14.5/17 below 640px). Body 1.8 line height, −.004em; title 2.45× at 500, −.032em; H1 1.65em and H2 1.3em at 550; H3/H4 600; strong 620.
+- Margin notes 16px on 23.5px; inline replies 1.06× note size on 1.5; his replies sans 14.5px graphite; meta 12px faint; toolbar 13px faint.
+
+### Layout
+
+- Column 660px, centred, page padding 103px top. Linux sets the same fonts ≈3% wider than the macOS frames, so line breaks may differ from them; geometry follows the frames.
+- Margins: left notes right-aligned, 376px wide, text 59px and dot 36px left of the column; right notes 51px (dot) and 71px (text) right of it. An open thread is 410px and left-aligned. Notes stack 14px apart; below 768px every layout falls back to Marks only, opening inline.
+- Toolbar row above the title (reviewer, Instructions, mode, Export, chat), sticky at 26px, items 21px apart; the instruction line under it in the voice, graphite.
+- Top left: ☰ and the wordmark. Corner hint bottom right, 24px in and ≥16px up, 11px faint: the only place activity, refusals and failures show.
+- Sidebar: an overlay from the left, 288px (78vw max), the page slides aside and fades to .5. Chat 466px and Links 400px panels from the right, the page fades the same way. Settings 840 × 704, 16px radius; Export 504px, 12px radius; both centred with a dim.
+
+### Components
+
+- Margin thread: collapsed is one button (the question, clamped, and "{n} replies"); open shows every message (the AI in the voice, his in sans graphite), the reply-line field, Resolve · Dismiss · ⋯ at 12px faint; others fade to .38. A tether joins a displaced or open note to its passage.
+- Marks: the passage under a thread carries a 1px dotted `--riddle-line` (solid at 60% below 1.5 dppx); open adds the wash. Marks only shows a small "?" after the passage.
+- Inline reply: under its paragraph, 22px indent, an ink dot, the same thread states.
+- Sketch: title in the voice 19px, subtitle 13px faint, the SVG drawing step by step, a stepper ("‹ n/N › ↻") and See it larger.
+- Selection menu: a 236px card beside the column (12px radius, lift and rule): block row, ink row, then Think about this, Ask about this, Visualize, Make flashcards with their hints.
+- Option cards: 10px radius, rule edge, the chosen one a 1.5px ink ring; arrows move the choice. Switches are ink.
+- Reply-line field: no box, a 1px rule under it; on focus a 1.5px line in the AI's ink draws in from the left (.46s) and fades out to the right.
+
+### Motion
+
+- AI text inks in word by word (`nb-ink-word` .64s); new notes settle (.2s) and unfold (.34s); the reading underline draws in pencil (.8s), the blot splats (.46s) and dries (3.4s); the tether draws its tie (.56s) then spine (.7s); sketch strokes and steps draw in (.6-.9s). Menus .16s, sidebar .18s, dialogs .2s, chat .28s; theme cross-fade .35s (view transition). Easings are Riddled's (visual-reference §12-§23).
+- Reduced motion: every keyframe and transition above is off; strokes show finished, breathing marks rest at .7, the cross-fade is instant. State still changes.
+
+### Focus and scrolling
+
+- Focus is a 2px `--riddle-line` outline, offset 2px (inset where an edge would clip it). Text fields show their caret, no outline. Coarse pointers get 44px targets.
+- Every scroller in the mode hides its track and thumb, as everywhere else.
