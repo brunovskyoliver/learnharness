@@ -291,7 +291,7 @@ export const SEEDED_REVIEWERS: readonly Readonly<NotebookReviewer>[] = Object.fr
 	Object.freeze({
 		id: "examiner",
 		name: "Examiner",
-		instructions: "Reads like the person grading this. Asks what you'd be asked, never gives the answer.",
+		instructions: "Reads like the person grading this. Asks what you’d be asked, never gives the answer.",
 		seeded: true as const,
 	}),
 	Object.freeze({

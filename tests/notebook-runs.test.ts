@@ -242,7 +242,7 @@ describe("replies and chat", () => {
 		assert.equal((await companion(id)).chat[1]!.state, "failed");
 		const last = (await readStream(runId)).at(-1)!;
 		assert.equal(last.event, "failed");
-		assert.equal(last.data.error, "That didn't come through.");
+		assert.equal(last.data.error, "That didn’t come through.");
 	}));
 
 	it("Try again on a failed reply replaces that answer; his message stays; a running one refuses", () => fresh(async () => {

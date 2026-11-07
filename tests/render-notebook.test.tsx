@@ -53,7 +53,7 @@ const text = (html: string) => html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " "
 describe("Notebook chrome", () => {
 	it("the wordmark is ours and links to the note", () => {
 		const html = renderToStaticMarkup(<Wordmark noteId="lib_a" />);
-		assert.ok(html.includes("Brunovský&#x27;s study") || html.includes("Brunovský's study"));
+		assert.ok(html.includes("Brunovský’s study"));
 		assert.ok(html.includes('href="/notebook/lib_a"'));
 		assert.ok(!/riddled/i.test(html));
 	});

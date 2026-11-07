@@ -14,17 +14,17 @@
 		],
 		"inline-sketch-and-selection": [
 			"The inline reply re-wraps (7 lines both, different breaks): Linux width, plus ≈6% the font alone does not explain (open: the frame's reply may keep ≈20 px clear on its right).",
-			"Sketch: our grid lines and arrows are darker and heavier than the frame's; numbers, captions, stepper and See it larger line up.",
+			"Sketch: lines and arrows are §16.1's graphite at 1.2 (fixed: they were the AI ink at 1.6), grid rules --rule; numbers, captions, stepper and See it larger line up.",
 			"Selection menu ≈7 px further right; its actions read Think about this / Ask about this / Visualize / Make flashcards (ui-contract) where Riddled has Riddle this / Ask Riddled / Visualize.",
 			"Toolbar strings as in margin-notes (by design)."
 		],
 		"note-chat-panel": [
 			"Panel header \"This note\" (Riddled: \"Riddled\") and our context line \"Read the whole note and 1 thread.\" under the opening (ui-contract).",
-			"Page slides and fades as in the frame; our sketch grid is darker (as above); inline reply re-wraps (Linux width)."
+			"Page slides and fades as in the frame; inline reply re-wraps (Linux width)."
 		],
 		"sidebar-and-settings": [
 			"By design (ui-contract): footer rows Copy this note, Export this note, Just my words, Settings, Reviewers, Make flashcards, Links, Switch to Study (Riddled: Customize Riddled, Riddlers, Profile, Billing, Sign out, an account email); settings nav Customize / Reviewers only; title \"Customize\"; card descriptions are ours.",
-			"Owner look: in the frame the settings backdrop also dims the open sidebar; ours leaves the sidebar undimmed beside the dimmed page.",
+			"The settings backdrop dims the open sidebar as in the frame (sidebar 170 vs frame 172, page 171 vs 169, 8-bit grey; e2e asserts the backdrop covers the sidebar).",
 			"Long note names truncate a few characters later (\"Longest Com…\" vs \"Longest C…\").",
 			"Fixed in this pass: hovering the chosen card hid its 1.5 px ink ring (the frame's pointer rests on \"Thinks with you\")."
 		],
@@ -38,7 +38,7 @@
 		],
 		"dark-appearance": [
 			"Tokens match the dark tile (paper, shelf, rule, ink); the tile is a 2.4x scaled thumbnail with the presenter's camera over its top right.",
-			"As in sidebar-and-settings: the frame dims the sidebar under the modal, ours does not."
+			"The sidebar is dimmed under the modal as in the frame."
 		]
 	},
 	"motion": {

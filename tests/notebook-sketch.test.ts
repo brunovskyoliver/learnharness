@@ -81,6 +81,13 @@ describe("rendering", () => {
 		assert.doesNotMatch(svg, /opacity="0"/, "the default step is the last, so all show");
 	});
 
+	it("inks lines and arrows in graphite at 1.2 and grid rules in --rule (visual-reference §16.1, frame inline-sketch)", () => {
+		const svg = renderSketchSvg(sketch);
+		assert.match(svg, /fill="none" stroke="var\(--graphite\)" stroke-width="1.2"/);
+		assert.doesNotMatch(svg, /stroke="var\(--riddle\)"/);
+		assert.match(svg, /style="stroke:var\(--rule\);stroke-width:1px"/);
+	});
+
 	it("hides later steps, and clamps the step", () => {
 		const first = renderSketchSvg(sketch, { step: 0 });
 		assert.match(first, /<g data-step="1" opacity="0">/);

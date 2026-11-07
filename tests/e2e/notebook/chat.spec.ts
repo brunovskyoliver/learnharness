@@ -52,7 +52,7 @@ test.describe("Notebook: note chat", () => {
 		await expect.poll(async () => { const b = (await panel.boundingBox())!; return [Math.round(b.x), Math.round(b.width)]; }).toEqual([1199, 466]);
 		await expect(panel.getByRole("heading", { name: "This note" })).toBeVisible();
 		await expect(panel).toContainText(`On “${note.name}”`);
-		await expect(panel.getByTestId("nb-chat-opening")).toHaveText("I've read all of this note. Ask me anything about it.");
+		await expect(panel.getByTestId("nb-chat-opening")).toHaveText("I’ve read all of this note. Ask me anything about it.");
 		await expect(panel.getByTestId("nb-chat-context")).toHaveText("Read the whole note.");
 		await expect(panel.getByTestId("nb-chat-starter")).toHaveText(["What am I still getting wrong?", "What have we worked out so far?", "What should I do next?"]);
 		const field = panel.getByTestId("nb-chat-field");

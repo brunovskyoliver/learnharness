@@ -59,7 +59,7 @@ export const SKETCH_LIMITS = {
 
 export const SKETCH_ITEM_KINDS = ["grid", "text", "line", "arrow", "rect", "circle", "dot", "bar", "path"] as const satisfies readonly SketchItemKind[];
 
-export const SKETCH_FAILED_TEXT = "The drawing didn't come through.";
+export const SKETCH_FAILED_TEXT = "The drawing didn’t come through.";
 
 // ─── validation ──────────────────────────────────────────────────────────────
 
@@ -301,5 +301,5 @@ export function renderSketchSvg(sketch: Sketch, options: SketchRenderOptions = {
 		? `<text x="${n(sketch.w / 2)}" y="20" text-anchor="middle" font-size="17" style="font-family:${FONT_VOICE};fill:var(--ink)">${escapeXml(sketch.title)}</text>${sketch.subtitle ? `<text x="${n(sketch.w / 2)}" y="37" text-anchor="middle" font-size="11" style="font-family:${FONT_SANS};fill:var(--faint)">${escapeXml(sketch.subtitle)}</text>` : ""}`
 		: "";
 	const body = top ? `<g transform="translate(0 ${top})">${groups.join("")}</g>` : groups.join("");
-	return `<svg xmlns="http://www.w3.org/2000/svg" class="nb-drawing" viewBox="0 0 ${n(sketch.w)} ${n(sketch.h + top)}" role="img" aria-label="${escapeXml(sketchLabel(sketch))}" fill="none" stroke="var(--riddle)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${head}${body}</svg>`;
+	return `<svg xmlns="http://www.w3.org/2000/svg" class="nb-drawing" viewBox="0 0 ${n(sketch.w)} ${n(sketch.h + top)}" role="img" aria-label="${escapeXml(sketchLabel(sketch))}" fill="none" stroke="var(--graphite)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">${head}${body}</svg>`;
 }

@@ -214,7 +214,7 @@ export function runNotebookVisualize(input: RunInput & { passage: string }): Pro
 		// The first try and up to 2 retries (api.md).
 		maxTurns: 3,
 		onStep: (usage, model) => input.onUsage(usage, model),
-		neverSubmitted: "The drawing didn't come through.",
+		neverSubmitted: "The drawing didn’t come through.",
 	}).then((value) => ({ ...(value.text ? { text: value.text } : {}), sketch: value.sketch! }));
 }
 

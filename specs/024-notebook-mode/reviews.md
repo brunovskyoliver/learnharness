@@ -37,7 +37,7 @@ overlay-sidebar.tsx:82 - note rows were <button> + router.push → no Cmd/Ctrl-c
 notebook.css:133 - Study's html stays color-scheme dark and rubber-bands its dark canvas behind a light notebook → fixed: html:has(.nb-root) overscroll-behavior none (fine pointers) and color-scheme light for light/system-light
 notebook.css - `text-wrap: balance` not on the title → kept (Riddled sets none)
 ## components/notebook/*.tsx (copy)
-corner-hint.tsx:87, note-chat.tsx:241, thread.tsx:54, export-dialog.tsx:135, chrome.tsx:22 - straight apostrophes (Study's, it's) → kept: ui-contract strings verbatim; curly quotes need the contract changed (owner)
+corner-hint.tsx:87, note-chat.tsx:241, thread.tsx:54, export-dialog.tsx:135, chrome.tsx:22 - straight apostrophes (Study's, it's) → fixed after review at the owner's request: typographic ’ “ ” in every Notebook string and in ui-contract.md
 overlay-sidebar.tsx:156 - placeholder "Find or start a note" has no "…" → kept (Riddled's string)
 selection-menu, toolbar, footer - sentence case, not Title Case → kept (Riddled and ui-contract)
 ## components/notebook/sketch.tsx, inline-reply.tsx, note-chat.tsx, thread.tsx
@@ -62,6 +62,6 @@ selection-menu, toolbar, footer - sentence case, not Title Case → kept (Riddle
 | Focus ring 2.0:1 / 2.8:1 | impeccable | Kept by design (Riddled); owner approval needed |
 | Slash / [[ menu active row only a shelf fill | impeccable | Kept by design; owner decision |
 | Bounce easings (8) | impeccable detector | Kept by design (Riddled's curves) |
-| Straight apostrophes in strings | web-design-guidelines | Kept (ui-contract verbatim); owner |
+| Straight apostrophes in strings | web-design-guidelines | Fixed (owner asked): ’ in every Notebook string and ui-contract.md |
 | Placeholder without "…", sentence case, no text-wrap balance | web-design-guidelines | Kept by design (Riddled) |
 | No theme-color for Notebook | web-design-guidelines | Deferred (phones out of focus) |

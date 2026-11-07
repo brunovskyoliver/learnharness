@@ -138,7 +138,7 @@ export function useReading({ bridge, pageId, enabled, pace, seenHash, holdFor }:
 		failed: () => {
 			scheduler.setRunning(null);
 			setLive(null);
-			announce("That didn't come through.");
+			announce("That didn’t come through.");
 			setReading({ state: "failed", retry: () => scheduler.retry() });
 		},
 		stopped: () => { scheduler.setRunning(null); end(); },

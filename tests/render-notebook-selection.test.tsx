@@ -48,9 +48,9 @@ describe("the sketch (ui-contract \"Sketch\", §16)", () => {
 		assert.match(last, />4\/4</);
 	});
 
-	it("says a drawing that fails validation didn't come through", () => {
+	it("says a drawing that fails validation didn’t come through", () => {
 		const html = renderToStaticMarkup(<Sketch sketch={{ ...FAUX_SKETCH, items: [{ step: 9, kind: "dot", cx: 1, cy: 1 }] }} />);
-		assert.equal(html, '<p class="nb-sketch-failed" data-testid="nb-sketch-failed">The drawing didn&#x27;t come through.</p>');
+		assert.equal(html, '<p class="nb-sketch-failed" data-testid="nb-sketch-failed">The drawing didn’t come through.</p>');
 	});
 
 	it("remembers a drawing by a stable hash, and paces autoplay by its caption", () => {

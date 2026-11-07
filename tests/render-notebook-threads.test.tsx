@@ -86,7 +86,7 @@ describe("an open thread", () => {
 		const html = render(t, api({ openId: "thr_1", detail: () => "upstream 500" }));
 		assert.match(html, /data-state="failed"/);
 		assert.match(html, />Heat</);
-		assert.match(html, /That didn&#x27;t come through\./);
+		assert.match(html, /That didn’t come through\./);
 		assert.match(html, />Try again</);
 		assert.match(html, />Show details</);
 		// An answer whose run is gone reads as failed too.
@@ -109,7 +109,7 @@ describe("an open thread", () => {
 		assert.match(sent, />Try again</);
 		const refused = render(t, api({ openId: "thr_1", problem: () => ({ kind: "refused", reason: "models" }) }));
 		assert.match(refused, /No model set up\./);
-		assert.match(refused, /Open Study&#x27;s settings/);
+		assert.match(refused, /Open Study’s settings/);
 	});
 
 	it("inline threads open the same way under their block", () => {
@@ -126,7 +126,7 @@ describe("after Resolve or Dismiss", () => {
 		const t = thread([msg("m1", "ai", QUESTION)]);
 		const resolved = render(t, api({ leaving: () => ({ thread: t, status: "resolved" }) }));
 		assert.match(resolved, /data-state="gone"/);
-		assert.match(resolved, /Resolved\. It&#x27;s still in exports\./);
+		assert.match(resolved, /Resolved\. It’s still in exports\./);
 		assert.match(resolved, /data-nb-undo=""[^>]*>Undo</);
 		assert.match(render(t, api({ leaving: () => ({ thread: t, status: "dismissed" }) })), />Dismissed\.</);
 	});

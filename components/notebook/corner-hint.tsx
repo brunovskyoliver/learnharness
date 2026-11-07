@@ -84,7 +84,7 @@ export function CornerHint() {
 				{status.reason === "models" && (
 					<>
 						{" "}
-						<button type="button" className="nb-hint-button nb-hint-link" onClick={() => openSettings("models")}>Open Study&apos;s settings</button>
+						<button type="button" className="nb-hint-button nb-hint-link" onClick={() => openSettings("models")}>Open Study’s settings</button>
 					</>
 				)}
 			</span>
@@ -92,7 +92,7 @@ export function CornerHint() {
 	} else if (status?.state === "failed") {
 		body = (
 			<span data-testid="nb-hint-failed">
-				That didn&apos;t come through.{" "}
+				That didn’t come through.{" "}
 				<button type="button" className="nb-hint-button nb-hint-link" onClick={status.retry}>Try again</button>
 			</span>
 		);

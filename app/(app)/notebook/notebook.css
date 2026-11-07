@@ -586,8 +586,9 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 .nb-root .nb-sketch-dot { animation: 0.32s cubic-bezier(0.2, 0.9, 0.25, 1.2) both nb-sketch-dot; }
 .nb-root .nb-sketch-line {
 	fill: none;
-	stroke: var(--riddle);
-	stroke-width: 1.6px;
+	/* §16.1: drawing lines and arrows are graphite at 1.2 (grid rules set --rule inline). */
+	stroke: var(--graphite);
+	stroke-width: 1.2px;
 	stroke-linecap: round;
 	stroke-linejoin: round;
 	stroke-dasharray: 1;

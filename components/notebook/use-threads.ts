@@ -20,9 +20,9 @@ import { useNotebook } from "./nb-shared";
 /** The status line after Resolve or Dismiss stays this long with its Undo (ui-contract). */
 export const UNDO_MS = 6000;
 
-export const RESOLVED_LINE = "Resolved. It's still in exports.";
+export const RESOLVED_LINE = "Resolved. It’s still in exports.";
 export const DISMISSED_LINE = "Dismissed.";
-export const FAILED_LINE = "That didn't come through.";
+export const FAILED_LINE = "That didn’t come through.";
 export const STOPPED_LINE = "Stopped.";
 export const REPLY_READY = "Reply ready.";
 
@@ -350,7 +350,7 @@ export function useThreadsController({ bridge, pageId, threads, reload }: {
 			await navigator.clipboard.writeText(threadPlainText([...thread.messages, ...(sent[thread.id] ?? [])]));
 			announce("Copied.");
 		} catch {
-			announce("Couldn't copy.");
+			announce("Couldn’t copy.");
 		}
 	}, [sent, announce]);
 

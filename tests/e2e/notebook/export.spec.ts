@@ -157,7 +157,7 @@ test.describe("Notebook: Just my words and export", () => {
 		await expect(dialog.getByRole("radio")).toHaveText(["PDFTo read, print or send.", "WordTo keep editing in Word, Pages or Google Docs.", "MarkdownPlain text for anywhere."]);
 		await expect(dialog.getByTestId("nb-export-format-pdf")).toHaveAttribute("aria-checked", "true");
 		await expect(dialog.getByTestId("nb-export-include")).toHaveAttribute("aria-checked", "true");
-		await expect(dialog.getByText("Each one sits under the paragraph it's about, drawings too.")).toBeVisible();
+		await expect(dialog.getByText("Each one sits under the paragraph it’s about, drawings too.")).toBeVisible();
 		await expect(dialog.getByTestId("nb-export-run")).toHaveText("Export PDF");
 		// Selected card: a 1.5px ink ring, no fill.
 		expect(await dialog.getByTestId("nb-export-format-pdf").evaluate((el) => getComputedStyle(el).boxShadow)).toMatch(/1\.5px/);
@@ -219,7 +219,7 @@ test.describe("Notebook: Just my words and export", () => {
 		await page.getByTestId("nb-export").click();
 		const dialog = page.getByTestId("nb-export-dialog");
 		await dialog.getByTestId("nb-export-run").click();
-		await expect(dialog.getByTestId("nb-export-problem")).toContainText("The export didn't work.");
+		await expect(dialog.getByTestId("nb-export-problem")).toContainText("The export didn’t work.");
 		await dialog.getByRole("button", { name: "Show details" }).click();
 		await expect(dialog.getByTestId("nb-export-detail")).toHaveText("The PDF could not be made. printer on fire");
 		await expect(dialog).toBeVisible();

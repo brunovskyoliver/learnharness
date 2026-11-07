@@ -72,9 +72,9 @@ export async function startRead(pageId: string, text: string): Promise<StartRead
 		if (response.status === 202 && body.run) return { ok: { id: body.run.id } };
 		if (response.status === 503 && (body.reason === "models" || body.reason === "key")) return { refused: { reason: body.reason, ...(body.provider ? { provider: body.provider } : {}) } };
 		if (response.status === 404 || response.status === 409) return { skipped: true };
-		return { error: body.error ?? "That didn't come through." };
+		return { error: body.error ?? "That didn’t come through." };
 	} catch {
-		return { error: "That didn't come through." };
+		return { error: "That didn’t come through." };
 	}
 }
 
@@ -97,9 +97,9 @@ export async function postThreadMessage(pageId: string, threadId: string, text: 
 	try {
 		const response = await post(`${base(pageId, threadId)}/messages`, { text });
 		const body = (await response.json().catch(() => ({}))) as { message?: { id: string }; error?: string };
-		return response.ok && body.message ? { ok: { id: body.message.id } } : { error: body.error ?? "That didn't come through." };
+		return response.ok && body.message ? { ok: { id: body.message.id } } : { error: body.error ?? "That didn’t come through." };
 	} catch {
-		return { error: "That didn't come through." };
+		return { error: "That didn’t come through." };
 	}
 }
 
@@ -110,9 +110,9 @@ export async function startReply(pageId: string, threadId: string, text: string)
 		const body = (await response.json().catch(() => ({}))) as { run?: { id: string }; reason?: "models" | "key"; provider?: string; error?: string };
 		if (response.status === 202 && body.run) return { ok: { id: body.run.id } };
 		if (response.status === 503 && (body.reason === "models" || body.reason === "key")) return { refused: { reason: body.reason, ...(body.provider ? { provider: body.provider } : {}) } };
-		return { error: body.error ?? "That didn't come through." };
+		return { error: body.error ?? "That didn’t come through." };
 	} catch {
-		return { error: "That didn't come through." };
+		return { error: "That didn’t come through." };
 	}
 }
 
@@ -133,9 +133,9 @@ export async function postAskThread(pageId: string, anchor: ThreadAnchor, text: 
 	try {
 		const response = await post(`/api/notebook/${encodeURIComponent(pageId)}/threads`, { anchor, origin: "ask", text });
 		const body = (await response.json().catch(() => ({}))) as { thread?: NotebookThread; error?: string };
-		return response.ok && body.thread ? { ok: body.thread } : { error: body.error ?? "That didn't come through." };
+		return response.ok && body.thread ? { ok: body.thread } : { error: body.error ?? "That didn’t come through." };
 	} catch {
-		return { error: "That didn't come through." };
+		return { error: "That didn’t come through." };
 	}
 }
 
@@ -146,9 +146,9 @@ export async function startPassageRun(pageId: string, kind: "think" | "visualize
 		const body = (await response.json().catch(() => ({}))) as { run?: { id: string }; reason?: "models" | "key"; provider?: string; error?: string };
 		if (response.status === 202 && body.run) return { ok: { id: body.run.id } };
 		if (response.status === 503 && (body.reason === "models" || body.reason === "key")) return { refused: { reason: body.reason, ...(body.provider ? { provider: body.provider } : {}) } };
-		return { error: body.error ?? "That didn't come through." };
+		return { error: body.error ?? "That didn’t come through." };
 	} catch {
-		return { error: "That didn't come through." };
+		return { error: "That didn’t come through." };
 	}
 }
 
@@ -181,9 +181,9 @@ export async function startChat(pageId: string, text: string, send: { message: s
 		const body = (await response.json().catch(() => ({}))) as { run?: { id: string }; reason?: "models" | "key"; provider?: string; error?: string };
 		if (response.status === 202 && body.run) return { ok: { id: body.run.id } };
 		if (response.status === 503 && (body.reason === "models" || body.reason === "key")) return { refused: { reason: body.reason, ...(body.provider ? { provider: body.provider } : {}) } };
-		return { error: body.error ?? "That didn't come through." };
+		return { error: body.error ?? "That didn’t come through." };
 	} catch {
-		return { error: "That didn't come through." };
+		return { error: "That didn’t come through." };
 	}
 }
 
@@ -261,7 +261,7 @@ export async function exportNote(pageId: string, format: ExportFormat, includeAi
 		if (!response.ok) {
 			const body = (await response.json().catch(() => ({}))) as { error?: string; detail?: string };
 			const detail = [body.error, body.detail].filter(Boolean).join(" ");
-			return { error: "The export didn't work.", ...(detail ? { detail } : { detail: `The server answered ${response.status}.` }) };
+			return { error: "The export didn’t work.", ...(detail ? { detail } : { detail: `The server answered ${response.status}.` }) };
 		}
 		const blob = await response.blob();
 		const filename = dispositionName(response.headers.get("Content-Disposition"), `Note.${format}`);
@@ -278,6 +278,6 @@ export async function exportNote(pageId: string, format: ExportFormat, includeAi
 		return { ok: filename };
 	} catch (err) {
 		if (signal?.aborted) return { aborted: true };
-		return { error: "The export didn't work.", detail: err instanceof Error ? err.message : String(err) };
+		return { error: "The export didn’t work.", detail: err instanceof Error ? err.message : String(err) };
 	}
 }

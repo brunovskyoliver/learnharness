@@ -36,14 +36,14 @@ describe("corner hint", () => {
 	it("refused: says why, in the hint (no toast)", () => {
 		const models = hint({ state: "refused", reason: "models" });
 		assert.match(models, /No model set up\./);
-		assert.match(models, /Open Study&#x27;s settings/);
+		assert.match(models, /Open Study’s settings/);
 		assert.equal(refusalLine({ state: "refused", reason: "key", provider: "anthropic" }), "Your Anthropic key is missing");
 		assert.equal(refusalLine({ state: "refused", reason: "key", provider: "acme" }), "Your acme key is missing");
 	});
 
 	it("failed: says so, with Try again", () => {
 		const html = hint({ state: "failed", retry: () => {} });
-		assert.match(html, /That didn&#x27;t come through\./);
+		assert.match(html, /That didn’t come through\./);
 		assert.match(html, />Try again</);
 	});
 });

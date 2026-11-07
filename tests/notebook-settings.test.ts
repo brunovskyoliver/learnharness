@@ -27,7 +27,7 @@ describe("seeded reviewers", () => {
 				{
 					id: "examiner",
 					name: "Examiner",
-					instructions: "Reads like the person grading this. Asks what you'd be asked, never gives the answer.",
+					instructions: "Reads like the person grading this. Asks what you’d be asked, never gives the answer.",
 					seeded: true,
 				},
 				{

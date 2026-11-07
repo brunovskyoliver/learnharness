@@ -51,7 +51,7 @@ function ProblemLine({ problem, onRetry }: { problem: ThreadProblem; onRetry: ()
 		return (
 			<p className="nb-thread-line" role="status" data-testid="nb-thread-problem">
 				<span>{problem.reason === "models" ? "No model set up." : refusalLine({ state: "refused", reason: "key", ...(problem.provider ? { provider: problem.provider } : {}) })}</span>
-				{problem.reason === "models" && <button type="button" className="nb-thread-button nb-thread-link" onClick={() => openSettings("models")}>Open Study&apos;s settings</button>}
+				{problem.reason === "models" && <button type="button" className="nb-thread-button nb-thread-link" onClick={() => openSettings("models")}>Open Study’s settings</button>}
 				<button type="button" className="nb-thread-button nb-thread-link" onClick={onRetry}>Try again</button>
 			</p>
 		);

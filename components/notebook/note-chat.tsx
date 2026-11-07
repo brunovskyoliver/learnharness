@@ -26,7 +26,7 @@ import { currentReviewer } from "./toolbar-row";
 import { useRunStream } from "./use-run-stream";
 import { FAILED_LINE, STOPPED_LINE } from "./use-threads";
 
-export const CHAT_OPENING = "I've read all of this note. Ask me anything about it.";
+export const CHAT_OPENING = "I’ve read all of this note. Ask me anything about it.";
 export const CHAT_STARTERS = ["What am I still getting wrong?", "What have we worked out so far?", "What should I do next?"] as const;
 export const CHAT_PLACEHOLDER = "Ask about this note…";
 
@@ -238,7 +238,7 @@ export function NoteChat({ open, onOpenChange, pageId, noteName, companion, relo
 								{problem.kind === "refused" ? (
 									<>
 										<span>{problem.reason === "models" ? "No model set up." : refusalLine({ state: "refused", reason: "key", ...(problem.provider ? { provider: problem.provider } : {}) })}</span>
-										{problem.reason === "models" && <button type="button" className="nb-chat-link" onClick={() => openSettings("models")}>Open Study&apos;s settings</button>}
+										{problem.reason === "models" && <button type="button" className="nb-chat-link" onClick={() => openSettings("models")}>Open Study’s settings</button>}
 									</>
 								) : (
 									<>

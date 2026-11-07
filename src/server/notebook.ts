@@ -354,7 +354,7 @@ async function execute(live: Live, body: RunBody, note: string): Promise<void> {
 		}
 		const detail = err instanceof Error ? err.message : String(err);
 		console.error(`[notebook] ${run.kind} run failed:`, detail);
-		push(live, { event: "failed", data: { error: "That didn't come through.", detail } });
+		push(live, { event: "failed", data: { error: "That didn’t come through.", detail } });
 		settle(live, "failed", detail);
 	}
 }

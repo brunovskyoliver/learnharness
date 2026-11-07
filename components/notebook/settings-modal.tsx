@@ -68,7 +68,7 @@ export const SECTION_LABELS = {
 	lettering: "Lettering",
 	ink: "Ink colour",
 } as const;
-export const NOT_SAVED_LINE = "That change wasn't saved. It holds here until you reload.";
+export const NOT_SAVED_LINE = "That change wasn’t saved. It holds here until you reload.";
 
 /** The swatch colour of an AI ink (follows the theme's tokens). */
 const inkVar = (ink: NotebookInk) => (ink === "ink" ? "var(--riddle-ink)" : `var(--text-${ink})`);

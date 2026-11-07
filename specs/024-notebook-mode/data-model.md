@@ -101,7 +101,7 @@ SketchItem = { step: number (0-based, < steps.length) } & (
   | { kind: "path"; d: string }                                  // M L Q C Z only, ≤ 400 chars
 )
 ```
-Validation in `src/core/notebook-sketch.ts`: unknown kinds, out-of-box coordinates, bad steps → reject the sketch (the message keeps its text and says the drawing didn't come through).
+Validation in `src/core/notebook-sketch.ts`: unknown kinds, out-of-box coordinates, bad steps → reject the sketch (the message keeps its text and says the drawing didn’t come through).
 
 ## Run (server memory only)
 

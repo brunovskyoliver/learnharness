@@ -22,7 +22,7 @@ const SAVE_DELAY_MS = 700;
 const UNDO_MS = 6000;
 export const NEW_REVIEWER_NAME = "New reviewer";
 export const DELETED_LINE = "Reviewer deleted.";
-export const NOT_SAVED_LINE = "The reviewers couldn't be saved. Try again.";
+export const NOT_SAVED_LINE = "The reviewers couldn’t be saved. Try again.";
 
 const firstLine = (text: string) => text.split("\n").find((line) => line.trim())?.trim() ?? "";
 

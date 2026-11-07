@@ -193,7 +193,7 @@ test.describe("Notebook: margin threads", () => {
 		await opener(page, "thr_a").click();
 		await note(page, "thr_a").getByRole("button", { name: "Resolve" }).click();
 		const line = note(page, "thr_a").getByTestId("nb-thread-status");
-		await expect(line).toContainText("Resolved. It's still in exports.");
+		await expect(line).toContainText("Resolved. It’s still in exports.");
 		await expect(page.locator(".nb-anchor[data-thread='thr_a']")).toHaveCount(0);
 		await expect(line.getByRole("button", { name: "Undo" })).toBeFocused();
 		await expect.poll(async () => (await stored(request, id)).find((t) => t.id === "thr_a")!.status).toBe("resolved");

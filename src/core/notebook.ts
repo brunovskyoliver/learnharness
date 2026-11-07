@@ -118,7 +118,7 @@ export const utf8Bytes = (text: string): number => new TextEncoder().encode(text
 export const NOTEBOOK_LIMIT_TEXT = {
 	threads: `This note already has ${NOTEBOOK_LIMITS.threads} notes in its margins.`,
 	messages: `This thread already has ${NOTEBOOK_LIMITS.messagesPerThread} messages.`,
-	chat: `This note's chat already has ${NOTEBOOK_LIMITS.chat} messages.`,
+	chat: `This note’s chat already has ${NOTEBOOK_LIMITS.chat} messages.`,
 	messageBytes: "That message is too long.",
 } as const;
 

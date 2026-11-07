@@ -105,6 +105,12 @@ test.describe("Notebook: sidebar and settings", () => {
 		await expect(settings).toBeVisible();
 		await expect(settings.getByTestId("nb-settings-nav-customize")).toHaveAttribute("aria-selected", "true");
 		await expect(settings.getByRole("heading", { name: "Customize" })).toBeVisible();
+		// The backdrop dims the open sidebar too (frame sidebar-and-settings).
+		const over = await page.getByTestId("nb-sidebar").evaluate((side) => {
+			const box = side.getBoundingClientRect();
+			return document.elementFromPoint(box.left + 40, box.top + 120)?.getAttribute("data-testid");
+		});
+		expect(over).toBe("nb-settings-backdrop");
 		await page.keyboard.press("Escape");
 		await expect(settings).toBeHidden();
 		await expect(page.getByTestId("nb-side-settings")).toBeFocused();
@@ -345,7 +351,7 @@ test.describe("Notebook: sidebar and settings", () => {
 		await dialog.getByTestId("nb-set-textSize-small").click();
 		// It still applies here.
 		await expect(root(page)).toHaveAttribute("data-nb-text-size", "small");
-		await expect(dialog.getByTestId("nb-settings-problem")).toContainText("That change wasn't saved.");
+		await expect(dialog.getByTestId("nb-settings-problem")).toContainText("That change wasn’t saved.");
 		await page.unroute("**/api/settings/notebook");
 		await dialog.getByTestId("nb-settings-retry").click();
 		await expect(dialog.getByTestId("nb-settings-problem")).toHaveCount(0);

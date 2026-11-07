@@ -40,7 +40,7 @@ export function useSelectionRuns({ pageId, noteText, reload }: { pageId: string;
 		}
 		if ("refused" in outcome) setReading({ state: "refused", ...outcome.refused });
 		else {
-			announce("That didn't come through.");
+			announce("That didn’t come through.");
 			setReading({ state: "failed", retry: () => { setReading(null); void begin(kind, anchor); } });
 		}
 	}, [pageId, noteText, setReading, announce]);
@@ -53,7 +53,7 @@ export function useSelectionRuns({ pageId, noteText, reload }: { pageId: string;
 			setRuns((prev) => prev.map((r) => (r.key === key ? { ...r, threadId: landed } : r)));
 		} else setRuns((prev) => prev.filter((r) => r.key !== key));
 		if (outcome === "failed" && run) {
-			announce("That didn't come through.");
+			announce("That didn’t come through.");
 			setReading({ state: "failed", retry: () => { setReading(null); void start(run.kind, run.anchor); } });
 		}
 		reload();

@@ -132,7 +132,7 @@ export function ExportDialog({ open, onOpenChange, pageId, noteName, beforeExpor
 						<div className="nb-option-card nb-export-toggle">
 							<label htmlFor={switchId} className="nb-export-toggle-text">
 								<span className="nb-option-title">Include the notes</span>
-								<span id={hintId} className="nb-option-description">Each one sits under the paragraph it&apos;s about, drawings too.</span>
+								<span id={hintId} className="nb-option-description">Each one sits under the paragraph it’s about, drawings too.</span>
 							</label>
 							<Switch.Root
 								id={switchId}
@@ -148,7 +148,7 @@ export function ExportDialog({ open, onOpenChange, pageId, noteName, beforeExpor
 						{problem && (
 							<div className="nb-export-problem" role="alert" data-testid="nb-export-problem">
 								<p>
-									The export didn&apos;t work.{" "}
+									The export didn’t work.{" "}
 									{problem.detail && (
 										<button type="button" className="nb-text-button" aria-expanded={detailsShown} onClick={() => setDetailsShown((s) => !s)}>
 											{detailsShown ? "Hide details" : "Show details"}

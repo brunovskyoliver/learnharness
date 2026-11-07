@@ -7,7 +7,7 @@ Exact sizes, colours, timings and easings are in [visual-reference.md](visual-re
 | Element | Text / behaviour |
 | --- | --- |
 | Menu button | icon ☰, accessible name "Open notes" (✕ "Close notes" while open) |
-| Wordmark | our `LhMark` + "Brunovský's study" in Instrument Sans, links to the current note |
+| Wordmark | our `LhMark` + "Brunovský’s study" in Instrument Sans, links to the current note |
 | Toolbar row (above title, sticky) | reviewer picker "{reviewer name} ▾" · "Instructions" (pencil icon; hidden once an instruction exists, the line below shows instead) · mode "Thinks with you ▾" (bulb icon in `--bulb`) / "When you ask ▾" (speech icon) · "Export" (share-style icon) |
 | Chat button | at the toolbar row's end: icon only, name "Ask about this note" |
 | Mode menu | "Thinks with you" — "Reads along and speaks up when a line deserves a second look." · "When you ask" — "Stays quiet until you select something or open the chat." |
@@ -16,7 +16,7 @@ Exact sizes, colours, timings and easings are in [visual-reference.md](visual-re
 | Body placeholder | "Start writing. Type / for blocks." then second line "Nothing here is read until you pause." (When you ask: "Nothing here is read unless you ask.") |
 | Corner hint idle | "⌘K finds a note" (Ctrl on non-Mac) |
 | Corner hint running | "Reading…" / "Writing…" / "Drawing…" · "{cost}" or "cost not known" · "Stop" |
-| Corner hint refused | "No model set up. Open Study's settings" (link switches to Study settings) / "Your {provider} key is missing" |
+| Corner hint refused | "No model set up. Open Study’s settings" (link switches to Study settings) / "Your {provider} key is missing" |
 | Activity popover | rows "{Reading | Thinking | Replying | Drawing | Chat} · {note name} · {cost} · Stop" ; empty "Nothing running." |
 
 ## Reading and threads
@@ -28,11 +28,11 @@ Exact sizes, colours, timings and easings are in [visual-reference.md](visual-re
 | Margin question | AI lettering, word-by-word ink; tether draws from passage to note |
 | Collapsed thread | first message clamped; "{n} replies" / "1 reply" |
 | Expanded thread | full messages (his in Instrument Sans graphite, AI in lettering), field "Write back…", send arrow "Send", text buttons "Resolve", "Dismiss", "⋯" menu: "Copy text" |
-| Resolve | thread leaves the page; status line "Resolved. It's still in exports." with "Undo" for 6 s |
+| Resolve | thread leaves the page; status line "Resolved. It’s still in exports." with "Undo" for 6 s |
 | Dismiss | thread leaves the page; "Dismissed." with "Undo" for 6 s |
 | Marks only | "?" after the passage, name "Open question about “{first words}”" |
 | Detached | stacked at the top of the right margin with "The words this was about are gone." |
-| Failed run | in place: "That didn't come through." + "Try again" (explicit), "Show details" |
+| Failed run | in place: "That didn’t come through." + "Try again" (explicit), "Show details" |
 | Stopped | partial text kept, then "Stopped." |
 
 ## Selection menu
@@ -41,11 +41,11 @@ Row 1 (format): Text, Heading 1, Heading 2, Bold, Italic, Underline, Strikethrou
 
 ## Sketch
 
-Serif title, sans subtitle, the drawing, the step's big serif line (note), the caption on the left and the stepper on the right: "‹" "Previous step", "{i}/{n}", "›" "Next step", "↻" "Draw it again"; below "See it larger" opens a dialog (Escape closes, focus returns). Arrow keys step while the stepper has focus. Failed drawing: "The drawing didn't come through."
+Serif title, sans subtitle, the drawing, the step's big serif line (note), the caption on the left and the stepper on the right: "‹" "Previous step", "{i}/{n}", "›" "Next step", "↻" "Draw it again"; below "See it larger" opens a dialog (Escape closes, focus returns). Arrow keys step while the stepper has focus. Failed drawing: "The drawing didn’t come through."
 
 ## Note chat
 
-Panel header: dot + "This note", subline "On “{note name}”", close ✕ "Close chat". Opening line (AI lettering): "I've read all of this note. Ask me anything about it." Starters: "What am I still getting wrong?", "What have we worked out so far?", "What should I do next?" (fill the field; Enter sends). Field "Ask about this note…". Context label under the opening line, faint: "Read the whole note, {n} threads and your instructions." Escape closes.
+Panel header: dot + "This note", subline "On “{note name}”", close ✕ "Close chat". Opening line (AI lettering): "I’ve read all of this note. Ask me anything about it." Starters: "What am I still getting wrong?", "What have we worked out so far?", "What should I do next?" (fill the field; Enter sends). Field "Ask about this note…". Context label under the opening line, faint: "Read the whole note, {n} threads and your instructions." Escape closes.
 
 ## Overlay sidebar
 
@@ -80,11 +80,11 @@ Nav: "Customize", "Reviewers". Title "Customize".
 | Lettering | sample "Does this hold?" Serif — "Its own hand" · Plain — "Same as yours" |
 | Ink colour | Ink, Blue, Green, Red, Purple, Brown, Orange swatches |
 
-Reviewers page: list (name, first line of instructions), "New reviewer", edit in place (Name, "How should they read?" textarea), "Delete reviewer" with Undo. Seeded: Plain reader (no instructions), Examiner ("Reads like the person grading this. Asks what you'd be asked, never gives the answer."), Editor ("Cares about clarity and structure. Points at the sentence that loses the reader."), Sceptic ("Disagrees with your premise and makes you defend it."), Professor ("Checks the reasoning step by step and asks for the missing one.").
+Reviewers page: list (name, first line of instructions), "New reviewer", edit in place (Name, "How should they read?" textarea), "Delete reviewer" with Undo. Seeded: Plain reader (no instructions), Examiner ("Reads like the person grading this. Asks what you’d be asked, never gives the answer."), Editor ("Cares about clarity and structure. Points at the sentence that loses the reader."), Sceptic ("Disagrees with your premise and makes you defend it."), Professor ("Checks the reasoning step by step and asks for the missing one.").
 
 ## Export dialog
 
-Title "Export “{name}”". Cards: PDF — "To read, print or send." · Word — "To keep editing in Word, Pages or Google Docs." · Markdown — "Plain text for anywhere." Toggle "Include the notes" — "Each one sits under the paragraph it's about, drawings too." Buttons "Cancel" and solid "Export {PDF | Word | Markdown}". Running: "Exporting…"; failed: "The export didn't work." + "Show details".
+Title "Export “{name}”". Cards: PDF — "To read, print or send." · Word — "To keep editing in Word, Pages or Google Docs." · Markdown — "Plain text for anywhere." Toggle "Include the notes" — "Each one sits under the paragraph it’s about, drawings too." Buttons "Cancel" and solid "Export {PDF | Word | Markdown}". Running: "Exporting…"; failed: "The export didn’t work." + "Show details".
 
 ## Mode switch
 
