@@ -25,8 +25,9 @@ import { selectedTextReference } from "@/components/library/page-toolbar";
 import type { NoteBridge, SelectionAction } from "./nb-plugins";
 import { useNotebook } from "./nb-shared";
 
-/** Gap from the column's right edge to the menu (frame inline-sketch-and-selection: menu x≈1229 in the viewport; the 660px column ends at 1162.5). */
-export const MENU_GAP = 66;
+/** Gap from the column's right edge to the menu (frame inline-sketch-and-selection: the card at x 1228.5 in the
+ *  viewport; the 660px column, 5.5px left of centre as in the frames, ends at 1157). */
+export const MENU_GAP = 71.5;
 /** The menu's top sits this far above the selection's text box (frame inline-sketch-and-selection: the
  *  selected line's glyphs at y 218, the Text button's top at 212, rows at 266, 300, 341, 377, 412). */
 const MENU_RISE = 8;

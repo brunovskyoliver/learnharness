@@ -81,6 +81,49 @@ describe("notebook contrast", () => {
 		assert.match(rule, /outline:\s*2px solid var\(--nb-focus\)/);
 	});
 
+	const AI_INKS = ["riddle-ink", "text-blue", "text-green", "text-red", "text-purple", "text-brown", "text-orange"];
+	const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+	const hexOf = (c: number[]) => `#${c.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("")}`;
+	/** `ink` at `alpha` over `ground`, as the browser composites an element's opacity. */
+	const over = (ink: string, ground: string, alpha: number) => {
+		const a = rgb(ink), g = rgb(ground);
+		return hexOf(a.map((v, i) => v * alpha + (g[i] ?? 0) * (1 - alpha)));
+	};
+	const faded = (theme: keyof typeof THEMES): number => {
+		const selector = { light: '.nb-root[data-nb-theme="light"]', dark: '.nb-root[data-nb-theme="dark"]', "system dark": '.nb-root[data-nb-theme="system"]' }[theme];
+		const value = /--nb-faded:\s*([\d.]+)/.exec(block(selector))?.[1];
+		assert.ok(value, `${theme}: --nb-faded missing`);
+		return Number(value);
+	};
+
+	for (const theme of Object.keys(THEMES) as (keyof typeof THEMES)[]) {
+		const t = THEMES[theme];
+		it(`${theme}: every AI ink reaches 4.5:1 on paper and shelf, and on paper while faded`, () => {
+			const alpha = faded(theme);
+			assert.ok(alpha > 0 && alpha <= 1);
+			for (const name of AI_INKS) {
+				const ink = t[name];
+				assert.ok(ink, `${theme}: --${name} missing`);
+				for (const ground of ["paper", "shelf"]) {
+					const ratio = contrast(ink, t[ground]!);
+					assert.ok(ratio >= 4.5, `${theme}: --${name} ${ink} on --${ground} is ${ratio.toFixed(2)}:1`);
+				}
+				const ratio = contrast(over(ink, t.paper!, alpha), t.paper!);
+				assert.ok(ratio >= 4.5, `${theme}: --${name} ${ink} faded to ${alpha} on --paper is ${ratio.toFixed(2)}:1`);
+			}
+		});
+	}
+
+	it("the fade is the smallest step that passes (two decimals), and the faded rule uses it", () => {
+		for (const theme of ["light", "dark"] as const) {
+			const t = THEMES[theme], lower = Math.round((faded(theme) - 0.01) * 100) / 100;
+			const worst = Math.min(...AI_INKS.map((name) => contrast(over(t[name]!, t.paper!, lower), t.paper!)));
+			assert.ok(worst < 4.5, `${theme}: --nb-faded could be ${lower} (worst ${worst.toFixed(2)}:1)`);
+		}
+		assert.equal(faded("system dark"), faded("dark"));
+		assert.match(css, /\[data-faded="true"\] \{ opacity: var\(--nb-faded\); \}/);
+	});
+
 	it("a faded note reads at full strength once the keyboard reaches it", () => {
 		assert.match(css, /\[data-faded="true"\]:focus-within \{ opacity: 1; \}/);
 	});
@@ -93,5 +136,6 @@ describe("notebook contrast", () => {
 	it("exports use the light faint and gray", () => {
 		assert.equal(EXPORT_PALETTE.faint, THEMES.light.faint);
 		assert.equal(EXPORT_PALETTE["text-gray"], THEMES.light["text-gray"]);
+		for (const name of AI_INKS.filter((n) => n.startsWith("text-"))) assert.equal(EXPORT_PALETTE[name], THEMES.light[name], name);
 	});
 });

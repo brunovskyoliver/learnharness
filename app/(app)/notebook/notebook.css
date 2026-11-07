@@ -29,6 +29,7 @@
 	--riddle-wash: #1d1c1a0e;
 	--riddle-line: #1d1c1a52;
 	--nb-focus: #8c8a88; /* focus ring, ≥3:1 on paper and shelf (owner); Riddled used --riddle-line */
+	--nb-faded: 0.97; /* the other notes while a thread is open: every AI ink ≥4.5:1 on paper (owner); Riddled .38 */
 	--bulb: #d99a1e;
 	--lift: 0 0 0 1px #1d1c1a12, 0 1px 1px #1d1c1a0a, 0 6px 16px -8px #1d1c1a29;
 	--grain-opacity: 0.16;
@@ -37,7 +38,7 @@
 	--text-gray: #716d66; /* Riddled #858179; raised to 4.5:1 (owner) */
 	--text-brown: #8a5a3b;
 	--text-red: #b23b33;
-	--text-orange: #b5621f;
+	--text-orange: #a9580e; /* Riddled #b5621f; raised to 4.5:1 (owner) */
 	--text-green: #47763d;
 	--text-blue: #33689c;
 	--text-purple: #774f9c;
@@ -62,6 +63,7 @@
 	--riddle-wash: #e9e7e214;
 	--riddle-line: #e9e7e257;
 	--nb-focus: #676661; /* focus ring, ≥3:1 on paper and shelf (owner) */
+	--nb-faded: 0.82; /* every AI ink ≥4.5:1 on paper when faded (owner); Riddled .38 */
 	--bulb: #f2b84b;
 	--lift: 0 0 0 1px #ffffff12, 0 8px 20px -8px #0009;
 	--grain-opacity: 0.4;
@@ -92,6 +94,7 @@
 		--riddle-wash: #e9e7e214;
 		--riddle-line: #e9e7e257;
 		--nb-focus: #676661; /* focus ring, ≥3:1 on paper and shelf (owner) */
+		--nb-faded: 0.82; /* every AI ink ≥4.5:1 on paper when faded (owner); Riddled .38 */
 		--bulb: #f2b84b;
 		--lift: 0 0 0 1px #ffffff12, 0 8px 20px -8px #0009;
 		--grain-opacity: 0.4;
@@ -803,6 +806,12 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 	max-width: 660px;
 	margin: 0 auto;
 }
+/* The frames' column sits 5.5px left of centre (a scrollbar gutter reserved on the
+   recording machine; visual-reference §3.4). Ours keeps scrollbars hidden and moves the
+   column, and everything in it (toolbar row, instruction, title, notes, sketch), instead. */
+@media (min-width: 768px) {
+	.nb-root .nb-column { left: -5.5px; }
+}
 
 /* ── 5 Toolbar row ──────────────────────────────────────────────────────── */
 
@@ -1438,8 +1447,9 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 
 .nb-root .nb-note,
 .nb-root .nb-inline { transition: opacity 0.2s ease-out; }
-/* §8.1: the other notes fade while one is open (≈.35-.4). */
-.nb-root :is(.nb-note, .nb-inline)[data-faded="true"] { opacity: 0.38; }
+/* §8.1: the other notes fade while one is open (Riddled ≈.38). Raised so every AI ink still
+   reads at 4.5:1 on paper (owner, "Raise to pass"): --nb-faded .97 light, .82 dark. */
+.nb-root :is(.nb-note, .nb-inline)[data-faded="true"] { opacity: var(--nb-faded); }
 /* A faded note the keyboard reaches reads at full strength, as one under the pointer does. */
 .nb-root :is(.nb-note, .nb-inline)[data-faded="true"]:focus-within { opacity: 1; }
 .nb-root .nb-note[data-state="open"],

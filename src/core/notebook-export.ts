@@ -475,7 +475,7 @@ export const EXPORT_PALETTE: Readonly<Record<string, string>> = {
 	"text-gray": "#716d66",
 	"text-brown": "#8a5a3b",
 	"text-red": "#b23b33",
-	"text-orange": "#b5621f",
+	"text-orange": "#a9580e",
 	"text-green": "#47763d",
 	"text-blue": "#33689c",
 	"text-purple": "#774f9c",

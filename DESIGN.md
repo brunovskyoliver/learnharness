@@ -291,7 +291,7 @@ Feature 024, [specs/024-notebook-mode](specs/024-notebook-mode/spec.md). A secon
 
 - Light: paper `#f8f7f4`, shelf `#f1f0ec`, code `#ebe9e3`, ink `#1d1c1a`, graphite `#5c5953`, faint `#716d67`, rule `#dedbd4`, bulb `#d99a1e`, focus `#8c8a88`. Dark: paper `#1a1a19`, shelf and code `#151514`, ink `#e9e7e2`, graphite `#a9a69e`, faint `#858279`, rule `#33322f`, bulb `#f2b84b`, focus `#676661`. System follows the OS; a change cross-fades.
 - The AI's ink (`--riddle`) is ink by default, or one of gray, brown, red, orange, green, blue, purple (`--text-*`, separate light and dark values). Its wash is ink at 5.5% (light) or 8% (dark), its line at 32% / 34%.
-- Contrast passes WCAG AA (owner, 2026-11-07, "Raise to pass"): faint and the gray ink (`--text-gray` light `#716d66`, dark `#9a968e` unchanged) reach 4.5:1 on paper and on shelf in both themes; the focus ring (`--nb-focus`) reaches 3:1 on both. Only lightness moved from Riddled's values (faint `#8e8a83` / `#7a776f`, gray `#858179`); hue and warmth are kept. `tests/notebook-contrast.test.ts` reads the tokens from notebook.css and holds the thresholds.
+- Contrast passes WCAG AA (owner, 2026-11-07, "Raise to pass"): faint and the gray ink (`--text-gray` light `#716d66`, dark `#9a968e` unchanged) reach 4.5:1 on paper and on shelf in both themes; the focus ring (`--nb-focus`) reaches 3:1 on both. Every AI ink reaches 4.5:1 on paper and shelf (light orange `#a9580e`, Riddled `#b5621f` at 4.14:1), and still on paper while faded: the other notes fade to `--nb-faded` .97 (light) / .82 (dark), the smallest values that pass, instead of Riddled's .38. Only lightness moved from Riddled's values (faint `#8e8a83` / `#7a776f`, gray `#858179`, orange); hue and warmth are kept. `tests/notebook-contrast.test.ts` reads the tokens from notebook.css and holds the thresholds.
 - Grain: a fixed SVG fractal-noise tile, 180px, over the paper: opacity .16 multiply (light), .4 soft-light (dark). Floating panels carry their own grain.
 - Lift: shadows are allowed here, on floating surfaces only (menus, selection menu, sidebar, chat, dialogs): `--lift` light `0 0 0 1px #1d1c1a12, 0 1px 1px #1d1c1a0a, 0 6px 16px -8px #1d1c1a29`, dark `0 0 0 1px #ffffff12, 0 8px 20px -8px #0009`.
 
@@ -303,7 +303,7 @@ Feature 024, [specs/024-notebook-mode](specs/024-notebook-mode/spec.md). A secon
 
 ### Layout
 
-- Column 660px, centred, page padding 103px top. Linux sets the same fonts ≈3% wider than the macOS frames, so line breaks may differ from them; geometry follows the frames.
+- Column 660px, centred and then 5.5px left at ≥768px (the frames' page sits there, a scrollbar gutter on the recording machine; ours keeps scrollbars hidden), page padding 103px top. Everything in the column moves with it; the selection menu sits 71.5px right of it. Linux sets the same fonts ≈3% wider than the macOS frames, so line breaks may differ from them; geometry follows the frames.
 - Margins: left notes right-aligned, 376px wide, text 59px and dot 36px left of the column; right notes 51px (dot) and 71px (text) right of it. An open thread is 410px and left-aligned. Notes stack 14px apart; below 768px every layout falls back to Marks only, opening inline.
 - Toolbar row above the title (reviewer, Instructions, mode, Export, chat), sticky at 26px, items 21px apart; the instruction line under it in the voice, graphite.
 - Top left: ☰ and the wordmark. Corner hint bottom right, 24px in and ≥16px up, 11px faint: the only place activity, refusals and failures show.
@@ -311,7 +311,7 @@ Feature 024, [specs/024-notebook-mode](specs/024-notebook-mode/spec.md). A secon
 
 ### Components
 
-- Margin thread: collapsed is one button (the whole question, never clamped, and "{n} replies"); open shows every message (the AI in the voice, his in sans graphite), the reply-line field, Resolve · Dismiss · ⋯ at 12px faint; others fade to .38. A tether joins an open or fresh note to its passage; under the pointer a note shows the faint spine alone.
+- Margin thread: collapsed is one button (the whole question, never clamped, and "{n} replies"); open shows every message (the AI in the voice, his in sans graphite), the reply-line field, Resolve · Dismiss · ⋯ at 12px faint; others fade to `--nb-faded` (.97 light, .82 dark; Riddled .38, raised under the contrast ruling) and lift to full strength under the pointer or on focus. A tether joins an open or fresh note to its passage; under the pointer a note shows the faint spine alone.
 - Marks: the passage under a thread carries a 1px dotted `--riddle-line` (solid at 60% below 1.5 dppx); open adds the wash. Marks only shows a small "?" after the passage.
 - Inline reply: under its paragraph, 22px indent, an ink dot, the same thread states.
 - Sketch: title in the voice 19px, subtitle 13px faint, the SVG drawing step by step, a stepper ("‹ n/N › ↻") and See it larger.
