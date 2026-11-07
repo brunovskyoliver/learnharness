@@ -133,6 +133,15 @@
 	overscroll-behavior: none;
 	--note-size: 15.5px;
 }
+/* The document behind Notebook: no rubber band showing Study's dark canvas on
+   a trackpad, and native parts follow the paper (Study's :root is dark). */
+@media (pointer: fine) {
+	html:has(.nb-root) { overscroll-behavior: none; }
+}
+html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
+@media (prefers-color-scheme: light) {
+	html:has(.nb-root[data-nb-theme="system"]) { color-scheme: light; }
+}
 .nb-root[data-nb-text-size="small"] { --note-size: 14.5px; }
 .nb-root[data-nb-text-size="large"] { --note-size: 17px; }
 @media (min-width: 640px) {
@@ -1168,7 +1177,8 @@
 	text-align: left;
 	transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
-.nb-root button.nb-side-row:hover { background: var(--shelf); color: var(--ink); }
+.nb-root a.nb-side-row { text-decoration: none; }
+.nb-root :is(button, a).nb-side-row:hover { background: var(--shelf); color: var(--ink); }
 .nb-root .nb-side-icon { width: 13px; height: 13px; flex: none; stroke-width: 1.6; color: var(--faint); }
 .nb-root .nb-side-search { cursor: text; }
 .nb-root .nb-side-search:focus-within { background: var(--shelf); }
@@ -2213,7 +2223,9 @@
 }
 .nb-root button.nb-option-card { cursor: pointer; }
 .nb-root button.nb-option-card:hover { box-shadow: 0 0 0 1px var(--faint); }
-.nb-root .nb-option-card[data-state="checked"] { box-shadow: 0 0 0 1.5px var(--ink); }
+/* Hover never hides the chosen card's ring (frame sidebar-and-settings: pointer on the chosen card). */
+.nb-root .nb-option-card[data-state="checked"],
+.nb-root button.nb-option-card[data-state="checked"]:hover { box-shadow: 0 0 0 1.5px var(--ink); }
 .nb-root .nb-option-title { color: var(--ink); font-size: 13.5px; font-weight: 500; line-height: 18px; }
 .nb-root .nb-option-description { color: var(--graphite); font-size: 12px; line-height: 1.45; }
 

@@ -15,7 +15,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { EditorView } from "@tiptap/pm/view";
 import type { NotebookLayout, NotebookThread } from "@/src/core";
-import { drawnSide, EXPANDED_WIDTH, LEFT_TEXT_GAP, marginWidths, mergeLines, NOTE_LINE, NOTE_WIDTH, placeStack, RIGHT_TEXT_GAP, type PassageLine, type Side } from "./nb-geometry";
+import { drawnSide, EXPANDED_WIDTH, LEFT_TEXT_GAP, marginWidths, mergeLines, NOTE_LINE, NOTE_WIDTH, placeStack, RIGHT_TEXT_GAP, type MarginSpace, type PassageLine, type Side } from "./nb-geometry";
 import type { NoteBridge } from "./nb-plugins";
 import { Tether } from "./tether";
 import { Thread } from "./thread";
@@ -24,6 +24,18 @@ import { useThreads } from "./use-threads";
 export { DETACHED_LINE } from "./thread";
 
 /** A document range's visual lines in the column's coordinates. */
+/** The column's place for margin widths, without the slide of an open sidebar or chat panel
+ *  (`.nb-sheet` / `.nb-page` transforms): the notes move with the page, so the room beside the
+ *  column is the room it has at rest, and notes do not change sides while a panel opens. */
+export function columnSpace(column: HTMLElement, rect = column.getBoundingClientRect()): MarginSpace {
+	let shift = 0;
+	for (let el: HTMLElement | null = column.parentElement; el && !el.classList.contains("nb-root"); el = el.parentElement) {
+		const transform = getComputedStyle(el).transform;
+		if (transform && transform !== "none") shift += new DOMMatrixReadOnly(transform).m41;
+	}
+	return { columnLeft: rect.left - shift, columnWidth: rect.width, viewportWidth: document.documentElement.clientWidth };
+}
+
 export function rangeLines(view: EditorView, from: number, to: number, column: DOMRect): PassageLine[] {
 	try {
 		const size = view.state.doc.content.size;
@@ -121,7 +133,7 @@ export function Margin({ bridge, column, threads, layout, fresh, tick }: {
 		const view = bridge.view;
 		if (!view || view.isDestroyed || !column || layout === "marks") return;
 		const rect = column.getBoundingClientRect();
-		const space = { columnLeft: rect.left, columnWidth: rect.width, viewportWidth: document.documentElement.clientWidth };
+		const space = columnSpace(column, rect);
 		const widths = marginWidths(space);
 		const wide = marginWidths(space, EXPANDED_WIDTH);
 		const anchors = new Map((bridge.decor()?.anchors ?? []).map((a) => [a.id, a]));

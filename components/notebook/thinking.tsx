@@ -15,7 +15,7 @@ import type { EditorView } from "@tiptap/pm/view";
 import { anchorForSpan, effectiveLayout, firstWords, type NoteCompanion, type NoteMode, type NotebookLayout, type NotebookPace, type NotebookThread } from "@/src/core";
 import { ReadingMarks } from "./blot";
 import { InlineReplies } from "./inline-reply";
-import { Margin, rangeLines } from "./margin";
+import { columnSpace, Margin, rangeLines } from "./margin";
 import { marginWidths, readingHoldMs, type PassageLine } from "./nb-geometry";
 import { flashcardsHref, passageFlashcardsHref } from "./nb-actions";
 import { anchorRange, quoteRange, rangeText, type AnchorMark, type NoteBridge, type QuestionMark } from "./nb-plugins";
@@ -101,8 +101,7 @@ export function NoteThinking({ bridge, column, pageId, companion, reload, mode, 
 	const [noRoom, setNoRoom] = useState(false);
 	useLayoutEffect(() => {
 		if (!column) return;
-		const rect = column.getBoundingClientRect();
-		const widths = marginWidths({ columnLeft: rect.left, columnWidth: rect.width, viewportWidth: document.documentElement.clientWidth });
+		const widths = marginWidths(columnSpace(column));
 		setNoRoom(widths.left === null && widths.right === null);
 	}, [column, tick, width]);
 	const shownLayout: NotebookLayout = noRoom ? "marks" : effectiveLayout(layout, width);

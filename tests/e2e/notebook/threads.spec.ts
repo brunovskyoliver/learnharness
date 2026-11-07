@@ -261,6 +261,19 @@ test.describe("Notebook: margin threads", () => {
 		void id;
 	});
 
+	test("opening the sidebar slides the page but keeps every note on its side", async ({ page, request }) => {
+		await page.setViewportSize({ width: 1665, height: 962 });
+		await openSeeded(page, request, "Sidebar sides");
+		await expect(page.getByTestId("nb-margin-note")).toHaveCount(4, { timeout: 30_000 });
+		const sides = () => page.getByTestId("nb-margin-note").evaluateAll((els) => Object.fromEntries(els.map((el) => [(el as HTMLElement).dataset.thread, (el as HTMLElement).dataset.side])));
+		const before = await sides();
+		expect(before).toEqual({ thr_a: "left", thr_b: "right", thr_c: "left", thr_d: "left" });
+		await page.getByTestId("nb-menu-button").filter({ visible: true }).click();
+		await expect(page.getByTestId("nb-sidebar")).toBeVisible();
+		await page.waitForTimeout(600);
+		expect(await sides()).toEqual(before);
+	});
+
 	test("390 px wide: always marks, opening inline", async ({ page, request }) => {
 		await page.setViewportSize({ width: 390, height: 844 });
 		await openSeeded(page, request, "Phone");

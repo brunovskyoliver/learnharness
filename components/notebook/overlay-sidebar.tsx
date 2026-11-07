@@ -79,7 +79,18 @@ const threadsLine = (n: number) => (n === 1 ? ", 1 open thread" : `, ${n} open t
 function NoteRow({ item, current, open, onOpen }: { item: LibraryItem; current: boolean; open: number; onOpen: (id: string) => void }) {
 	return (
 		<li>
-			<button type="button" className="nb-side-row nb-side-note" aria-current={current ? "page" : undefined} data-testid="nb-side-note" onClick={() => onOpen(item.id)}>
+			{/* A link, so Cmd/Ctrl-click and middle-click open the note in a new tab; a plain click stays in place. */}
+			<a
+				href={notebookHref(item.id)}
+				className="nb-side-row nb-side-note"
+				aria-current={current ? "page" : undefined}
+				data-testid="nb-side-note"
+				onClick={(event) => {
+					if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+					event.preventDefault();
+					onOpen(item.id);
+				}}
+			>
 				<FileTextIcon className="nb-side-icon" aria-hidden="true" />
 				<span className="nb-side-name">{item.name}</span>
 				{open > 0 && (
@@ -88,7 +99,7 @@ function NoteRow({ item, current, open, onOpen }: { item: LibraryItem; current: 
 						<span className="nb-sr-only">{threadsLine(open)}</span>
 					</>
 				)}
-			</button>
+			</a>
 		</li>
 	);
 }
