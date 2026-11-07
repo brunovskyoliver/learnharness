@@ -53,18 +53,6 @@ export function PrimaryAction({
 	);
 }
 
-/** Zone 1: whose turn it is and what kind. Collapsed, the strip is the
- *  whole bar (the caller supplies the teaser and the action). */
-export function TurnStrip({ kind, children, className }: { kind?: string; children?: ReactNode; className?: string }) {
-	return (
-		<div data-testid="turn-strip" className={cn("turn-strip", className)}>
-			<span className="turn-label">Your turn</span>
-			{kind && <span className="turn-kind">{kind}</span>}
-			{children}
-		</div>
-	);
-}
-
 /** Zone 3: the answer field on the shell. Its placeholder says what to
  *  write (owner, 2026-10-28: no separate label). */
 export function AnswerWell({ children }: { children: ReactNode }) {

@@ -7,33 +7,14 @@
  * its lines and the breathing blot just after its end. All motion is CSS
  * (notebook.css), with reduced-motion fallbacks there.
  */
-import { useEffect, useState } from "react";
 import { BlotGlyph } from "../paper/blot";
 import { pencilStrokes, type PassageLine } from "./nb-geometry";
 
 /** The blot glyph: lifted to components/paper/blot.tsx (feature 025). */
 export { BlotGlyph };
 
-/** JS keeps `is-fresh` this long (§10.1). */
-const FRESH_MS = 3600;
-
-/** A note's dot. Fresh dots splat in, glint and drip, then dry to .45. */
-export function InkDot({ fresh = false, faint = false, className = "", style }: { fresh?: boolean; faint?: boolean; className?: string; style?: React.CSSProperties }) {
-	const [wet, setWet] = useState(fresh);
-	useEffect(() => {
-		if (!fresh) return;
-		setWet(true);
-		const timer = window.setTimeout(() => setWet(false), FRESH_MS);
-		return () => window.clearTimeout(timer);
-	}, [fresh]);
-	return (
-		<span className={`nb-ink-dot${wet ? " nb-fresh" : ""}${faint ? " nb-faint" : ""} ${className}`} style={style} aria-hidden="true" data-testid="nb-ink-dot">
-			<BlotGlyph />
-			{wet && <span className="nb-ink-sheen" />}
-			{wet && <span className="nb-ink-drip" />}
-		</span>
-	);
-}
+/** The dot: lifted to components/paper/ink-dot.tsx (feature 025). */
+export { InkDot } from "../paper/ink-dot";
 
 /**
  * The passage being read: the pencil underline (one stroke per line, or a

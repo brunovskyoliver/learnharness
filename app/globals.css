@@ -159,33 +159,6 @@
 	padding-left: 2px;
 }
 
-/* Zone 1: whose turn it is, and what kind. */
-.turn-strip {
-	display: flex;
-	min-height: 48px;
-	align-items: center;
-	gap: 10px;
-	padding: 0 8px 0 16px;
-}
-
-.turn-label {
-	flex-shrink: 0;
-	border-radius: var(--radius-sm);
-	background: color-mix(in srgb, var(--bulb) 14%, transparent);
-	padding: 2px 8px;
-	color: var(--bulb);
-	font-size: var(--text-sm);
-	font-weight: 600;
-	line-height: 1.4;
-}
-
-.turn-kind {
-	flex-shrink: 0;
-	color: var(--graphite);
-	font-size: var(--text-md);
-	font-weight: 500;
-}
-
 /* Zone 3: the answer field sits directly on the shell (owner, 2026-10-28:
    no inner box, no label). A placeholder says what to write; the caret
    marks the field itself. */
@@ -887,17 +860,8 @@ body {
 	animation: dock-variant-in 240ms cubic-bezier(0.33, 1, 0.68, 1);
 }
 
-@keyframes dock-outgoing {
-	from { opacity: 1; }
-	to { opacity: 0; }
-}
-
-.dock-outgoing {
-	animation: dock-outgoing 240ms cubic-bezier(0.33, 1, 0.68, 1);
-}
-
 @media (prefers-reduced-motion: reduce) {
-	.dock-variant, .dock-outgoing {
+	.dock-variant {
 		animation: none;
 	}
 }
@@ -1522,4 +1486,253 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 /* Reduced motion keeps the state change without the transition (DESIGN.md), everywhere. */
 @media (prefers-reduced-motion: reduce) {
 	*, *::before, *::after { transition: none !important; }
+}
+
+/* ── Check threads (feature 025, research R8) ───────────────────────────────
+   A waiting check or practice problem is Notebook's thread beside the tutor
+   paragraph it follows (.nb-note / .nb-inline, app/paper.css), holding the
+   answer form: choices as option cards, confidence as a pill row, "I don't
+   know" as a text button, the reply-line field and the ink pill. The column
+   moves left (--lh-check-shift, set by ChatView) when that makes room. */
+.lh-lesson-column {
+	margin-left: max(0px, calc((100% - var(--lh-measure) - 3rem) / 2 - var(--lh-check-shift, 0px)));
+	margin-right: auto;
+	transition: margin-left 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.lh-lesson-dock {
+	position: relative;
+	left: calc(-1 * var(--lh-check-shift, 0px));
+	transition: left 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.lh-check-margin {
+	position: absolute;
+	inset: 0;
+	z-index: 5;
+	pointer-events: none;
+}
+.lh-check-tether {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	pointer-events: none;
+}
+.lh-paper .nb-note.lh-check-note { pointer-events: auto; z-index: 1; }
+.lh-paper .nb-note.lh-check-note[data-state="open"] { padding-bottom: 14px; }
+/* Inline: in the transcript's flow under its paragraph (Notebook's is drawn over a spacer). */
+.lh-paper .nb-inline.lh-check-inline {
+	position: relative;
+	left: auto;
+	right: auto;
+	z-index: auto;
+}
+.lh-check-thread { text-align: left; }
+.lh-check-meta {
+	display: block;
+	color: var(--faint);
+	font-family: var(--nb-sans);
+	font-size: var(--text-xs);
+	line-height: 16px;
+	letter-spacing: 0;
+}
+/* "Your turn": the bulb, as Home and the sidebar's waiting dot (owner Q4). */
+.lh-check-turn { color: var(--bulb); font-weight: 600; }
+.lh-paper .lh-check-open { cursor: pointer; }
+.lh-paper .lh-check-open > .lh-check-meta { margin-bottom: 4px; }
+.lh-check-teaser {
+	display: -webkit-box;
+	overflow: hidden;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 4;
+	white-space: normal;
+}
+.lh-paper .lh-check-open > .lh-check-action {
+	display: inline-block;
+	margin-top: 8px;
+	color: var(--ink);
+	font-family: var(--nb-sans);
+	font-size: var(--text-meta);
+	font-weight: 500;
+	line-height: 16px;
+	text-decoration: underline;
+	text-decoration-color: var(--riddle-line);
+	text-underline-offset: 3px;
+}
+.lh-paper .lh-check-open:hover > .lh-check-action { text-decoration-color: currentColor; }
+.lh-check-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 24px;
+}
+.lh-check-head > .lh-check-meta { flex: 1; min-width: 0; }
+.lh-paper .lh-check-collapse {
+	display: inline-grid;
+	place-items: center;
+	width: 24px;
+	height: 24px;
+}
+.lh-paper .lh-check-collapse svg { width: 15px; height: 15px; }
+.lh-paper .lh-check-using { margin-top: 6px; }
+.lh-check-body { margin-top: 10px; }
+.lh-check-form { display: flex; flex-direction: column; gap: 14px; }
+/* A long question scrolls inside its own area, at most half the screen. */
+.lh-check-question {
+	max-height: 50dvh;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	scrollbar-width: none;
+	/* Room for the option cards' rings and focus outlines inside the scroll box. */
+	margin: -4px;
+	padding: 4px;
+}
+.lh-check-question::-webkit-scrollbar { display: none; }
+.lh-check-prompt {
+	color: var(--riddle);
+	font-size: calc(var(--note-size) * 1.06);
+	line-height: 1.55;
+	white-space: normal;
+}
+.lh-check-prompt .lh-prose { color: inherit; font-family: inherit; font-size: inherit; line-height: inherit; }
+.lh-check-hint,
+.lh-check-details { color: var(--graphite); font-family: var(--nb-sans); font-size: var(--text-md); line-height: 1.5; }
+.lh-check-hint { margin-bottom: 6px; font-size: var(--text-sm); font-weight: 500; }
+.lh-check-details { margin-top: 10px; --note-size: var(--text-md); }
+.lh-check-options { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; --note-size: var(--text-md); }
+.lh-paper .nb-option-card.lh-check-option {
+	min-height: 44px;
+	flex-direction: row;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 10px 14px;
+	color: var(--ink);
+	font-family: var(--nb-sans);
+	font-size: var(--text-md);
+	line-height: 22px;
+	cursor: pointer;
+}
+.lh-paper .nb-option-card.lh-check-option:hover { box-shadow: 0 0 0 1px var(--faint); }
+.lh-paper .nb-option-card.lh-check-option[data-state="checked"] { box-shadow: 0 0 0 1.5px var(--ink); }
+.lh-paper .nb-option-card.lh-check-option[data-walked]:not([data-state="checked"]) { background: var(--shelf); }
+.lh-paper .nb-option-card.lh-check-option:focus-visible { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
+.lh-check-option-description { color: var(--faint); font-size: var(--text-sm); }
+.lh-check-mark {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	justify-content: center;
+	width: 14px;
+	height: 14px;
+	margin-top: 4px;
+	border: 1.5px solid var(--faint);
+	color: var(--paper);
+	font-size: var(--text-2xs);
+	line-height: 1;
+}
+.lh-check-mark[data-checked] { border-color: var(--ink); background: var(--ink); box-shadow: inset 0 0 0 2px var(--paper); }
+.lh-check-mark.rounded-xs[data-checked] { box-shadow: none; }
+.lh-check-confidence {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 12px;
+	font-family: var(--nb-sans);
+}
+.lh-check-confidence-label { color: var(--graphite); font-size: var(--text-sm); font-weight: 500; }
+.lh-check-confidence-label[data-off] { color: var(--faint); }
+.lh-check-confidence-stops { display: flex; flex-wrap: wrap; gap: 6px; }
+.lh-check-confidence-stops[data-off] { pointer-events: none; opacity: 0.4; }
+.lh-check-stop {
+	min-height: 28px;
+	padding: 0 11px;
+	border-radius: 999px;
+	box-shadow: 0 0 0 1px var(--rule);
+	color: var(--graphite);
+	font-size: var(--text-meta);
+	font-weight: 500;
+	transition: box-shadow 0.15s, color 0.15s;
+}
+.lh-check-stop:hover:not(:disabled) { color: var(--ink); box-shadow: 0 0 0 1px var(--faint); }
+.lh-check-stop[aria-checked="true"] { color: var(--ink); box-shadow: 0 0 0 1.5px var(--ink); }
+.lh-check-stop:focus-visible { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
+.lh-check-dont-know {
+	min-height: 28px;
+	padding: 0 2px;
+	border-radius: 3px;
+	color: var(--graphite);
+	font-size: var(--text-meta);
+	font-weight: 500;
+	text-decoration: underline;
+	text-decoration-color: var(--rule);
+	text-underline-offset: 3px;
+	transition: color 0.15s;
+}
+.lh-check-dont-know:hover,
+.lh-check-dont-know[data-walked] { color: var(--ink); }
+.lh-check-dont-know[aria-pressed="true"] { color: var(--ink); text-decoration-color: currentColor; }
+.lh-check-dont-know:focus-visible { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
+.lh-check-answer { display: flex; flex-direction: column; gap: 12px; }
+.lh-paper .lh-check-field { border-bottom: 1px solid var(--rule); cursor: text; }
+.lh-check-input {
+	display: block;
+	width: 100%;
+	max-height: 40vh;
+	min-height: 28px;
+	margin: 0;
+	padding: 2px 0 6px;
+	border: 0;
+	background: none;
+	color: var(--ink);
+	caret-color: var(--ink);
+	font-family: var(--nb-sans);
+	font-size: var(--text-md);
+	line-height: 22px;
+	resize: none;
+	user-select: text;
+	overflow-y: auto;
+	outline: none;
+	scrollbar-width: none;
+}
+.lh-check-input::-webkit-scrollbar { display: none; }
+.lh-check-input::placeholder { color: var(--faint); opacity: 1; }
+.lh-check-actions { display: flex; align-items: center; justify-content: flex-end; gap: 18px; user-select: none; }
+.lh-paper .lh-check-skip { font-size: var(--text-meta); }
+.lh-paper .nb-pill.lh-check-submit:disabled { opacity: 0.45; cursor: default; }
+.lh-paper .nb-pill.lh-check-submit:focus-visible { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
+/* The question inks in once, on its first opening (block by block; R9's word ink is for streamed prose). */
+.lh-check-inking .lh-check-prompt > * > * { animation: 0.52s cubic-bezier(0.2, 0.7, 0.2, 1) both nb-ink-in; }
+.lh-check-inking .lh-check-prompt > * > :nth-child(2) { animation-delay: 0.12s; }
+.lh-check-inking .lh-check-prompt > * > :nth-child(3) { animation-delay: 0.24s; }
+.lh-check-inking .lh-check-prompt > * > :nth-child(n + 4) { animation-delay: 0.36s; }
+.lh-check-inking .lh-check-options > * { animation: 0.52s cubic-bezier(0.2, 0.7, 0.2, 1) 0.3s both nb-ink-in; }
+/* While a margin thread is shown, wide visuals and tables stop at the column's right
+   edge (they would run under the thread); visuals still widen to the left, as far as
+   the room left of the column allows. */
+[data-check-margin] .lh-breakout {
+	margin-left: max(calc(2 * min(0px, calc((100% - var(--lh-breakout-w)) / 2))), calc(var(--lh-check-shift, 0px) - (100cqw - var(--lh-measure)) / 2 + 3rem));
+	margin-right: 0;
+}
+[data-check-margin].lh-lesson-column .lh-bleed .lh-prose > .lh-table-bleed,
+[data-check-margin] .lh-bleed .lh-prose > .lh-table-bleed { margin-inline: 0; }
+/* A table in a check stays inside the thread (transcript tables bleed past the column). */
+.lh-bleed .lh-check-thread .lh-prose > .lh-table-bleed { margin-inline: 0; }
+/* The bottom bar's line in the composer's place. */
+.lh-check-pending-line {
+	min-height: 40px;
+	margin: 0;
+	padding: 12px 16px 2px;
+	color: var(--graphite);
+	font-size: var(--text-md);
+	line-height: 1.4;
+}
+@media (pointer: coarse) {
+	.lh-paper .lh-check-collapse,
+	.lh-check-stop,
+	.lh-check-dont-know { min-height: 44px; min-width: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.lh-lesson-column,
+	.lh-lesson-dock { transition: none; }
+	.lh-check-inking :is(.lh-check-prompt > * > *, .lh-check-options > *) { animation: none; }
+	.lh-check-stop,
+	.lh-check-dont-know { transition: none; }
 }

@@ -18,6 +18,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, it } from "node:test";
 
 import { PracticeDock } from "../components/practice-dock.tsx";
+import { CheckThread } from "../components/study/check-thread.tsx";
 import { ConcludeCard, ProblemCard, ThinkingCard } from "../components/practice-cards.tsx";
 import { GraphContextCard } from "../components/graph-context-card.tsx";
 import { newGraphContextMessage } from "../src/core/native-messages.ts";
@@ -44,14 +45,12 @@ describe("PracticeDock", () => {
 			<PracticeDock
 				problemCallId="call_p1"
 				statement="Prove the parity claim."
-				expanded={true}
-				onExpand={() => {}}
+				active
 				onSubmit={() => {}}
 			/>,
 		);
 		assert.match(html, /Prove the parity claim/);
-		assert.match(html, /overflow-y-auto/);
-		assert.match(html, /--dock-question-max-h,50dvh/, "question content stays within half the visual viewport");
+		assert.match(html, /data-testid="practice-problem-content" class="lh-check-question/, "the statement scrolls in its own area, at most half the screen (app/globals.css)");
 		assert.match(html, /Your thinking/);
 		assert.match(html, /data-testid="practice-send"/);
 		assert.ok(!html.includes("practice-nudge") && !html.includes("practice-commit"), "the two-lane buttons are gone");
@@ -60,16 +59,14 @@ describe("PracticeDock", () => {
 		assert.match(html, /disabled/);
 	});
 
-	it("collapsed: the summary opens details while the trace input stays mounted", () => {
+	it("collapsed: the thread's line opens it while the trace input stays mounted", () => {
 		const html = renderToStaticMarkup(
-			<PracticeDock
-				problemCallId="call_p1"
-				expanded={false}
-				onExpand={() => {}}
-				onSubmit={() => {}}
-			/>,
+			<CheckThread id="call_p1" kind="problem" label="Problem" teaser="" reveal={false} open={false} fresh={false} variant="inline" layer={null} lessonWidth={390} shift={0} anchorId={null} onOpen={() => {}} onClose={() => {}}>
+				<PracticeDock problemCallId="call_p1" active={false} onSubmit={() => {}} />
+			</CheckThread>,
 		);
 		assert.match(html, /data-testid="practice-dock-bar"/);
+		assert.match(html, /Open the active problem/);
 		assert.match(html, /Your thinking/);
 	});
 });

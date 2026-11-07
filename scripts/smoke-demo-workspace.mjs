@@ -38,7 +38,7 @@ try {
  server=spawn(process.execPath,['node_modules/next/dist/bin/next','dev','--hostname','127.0.0.1','--port',String(port)],{env:{...process.env,OPENROUTER_API_KEY:'test-key-never-used',NODE_OPTIONS:`--require ${guard}`,LH_HOSTED:'0',LH_DATA_DIR:data,LH_AUTH_FILE:path.join(data,'auth.json'),NEXT_TELEMETRY_DISABLED:'1'},stdio:['ignore','pipe','pipe']});
  let output='';for(const stream of [server.stdout,server.stderr])stream.on('data',c=>output=(output+c).slice(-5000));
  let ready=false;for(let i=0;i<120;i++){if(server.exitCode!==null)throw Error(output);try{if((await fetch(base+'/api/chats')).ok){ready=true;break}}catch{}await pause(250)}assert.ok(ready,output);
- browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true});
+ browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true,args:['--no-sandbox']});
  const page=await browser.newPage();page.setDefaultTimeout(15000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.setRequestInterception(true);page.on('request',r=>{if(r.method()==='POST' && new URL(r.url()).pathname==='/api/chat')r.abort();else r.continue()});
  await page.setViewport({width:1440,height:1000});await page.goto(base+'/chat/workspace-ui',{waitUntil:'networkidle2'});
@@ -56,7 +56,7 @@ try {
  assert.match(before,/Step1/);
  assert.equal(await page.$('[data-testid="reading-thinking-field"]'),null);
  await page.waitForSelector('[data-testid="teach-check-reveal"]',{visible:true});
- assert.equal(await page.$eval('[data-testid="lesson-question"]',e=>e.hidden),true,'question starts as a compact summary');
+ assert.equal(await page.$eval('[data-testid="lesson-question"]',e=>!!e.closest('[hidden]')),true,'question starts as a collapsed thread');
  await page.click('[data-testid="teach-check-reveal"]');
  await page.waitForSelector('[data-testid="lesson-question"]',{visible:true});
  await page.waitForSelector('.lesson-footer [data-testid="stats-model"]',{visible:true});
@@ -69,7 +69,8 @@ try {
  await page.waitForSelector('[data-testid="stats-detail"]',{hidden:true});
  assert.equal(await page.$('[data-testid="abort-turn-dialog"]'),null);
  const geometry=await page.evaluate(()=>{const dock=document.querySelector('.lesson-footer').getBoundingClientRect();const question=document.querySelector('[data-testid="lesson-question"]');let s=document.querySelector('[data-testid="lesson-content"]').parentElement;while(s&&!/auto|scroll/.test(getComputedStyle(s).overflowY))s=s.parentElement;return {dockHeight:dock.height,spacer:document.querySelector('[data-testid="dock-spacer"]').offsetHeight,questionInLesson:document.querySelector('[data-testid="lesson-content"]').contains(question),questionInDock:document.querySelector('[data-testid="dock-shell"]').contains(question),dockTop:dock.top,scrollBottom:s.getBoundingClientRect().bottom,body:document.body.scrollWidth,viewport:innerWidth};});
- assert.ok(geometry.scrollBottom>geometry.dockTop,JSON.stringify(geometry));assert.ok(geometry.spacer>=geometry.dockHeight-1);assert.equal(geometry.questionInLesson,false);assert.equal(geometry.questionInDock,true);assert.ok(geometry.body<=geometry.viewport);
+ assert.ok(geometry.scrollBottom>geometry.dockTop,JSON.stringify(geometry));assert.ok(geometry.spacer>=geometry.dockHeight-1);// Feature 025 (R8): with the demo beside the lesson there is no margin, so the check thread sits inline in the lesson.
+ assert.equal(geometry.questionInLesson,true);assert.equal(geometry.questionInDock,false);assert.ok(geometry.body<=geometry.viewport);
  const scrollTop = () => page.evaluate(() => {let s=document.querySelector('[data-testid="lesson-content"]').parentElement;while(s&&!/auto|scroll/.test(getComputedStyle(s).overflowY))s=s.parentElement;return s.scrollTop;});
  // Opening the floating question changes its measured reserve and animates the
  // lesson toward the bottom. Capture the focus anchor after that work settles,

@@ -58,7 +58,7 @@ try {
 	assert.ok(ready, `server starts: ${output}`);
 	browser = process.env.LH_BROWSER_URL
 		? await puppeteer.connect({ browserURL: process.env.LH_BROWSER_URL })
-		: await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true });
+		: await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true, args: ["--no-sandbox"] });
 	context = await browser.createBrowserContext();
 	await context.overridePermissions(base, ["clipboard-read", "clipboard-write"]);
 	const page = await context.newPage();
@@ -96,7 +96,11 @@ try {
 		console.log(JSON.stringify({ viewport: width, tables: rows }));
 		await capture(`table-${width}`);
 		if (width < 640) {
-			assert.ok(rows[0].content <= rows[0].available + 1, `three-column table fits at ${width}px`);
+			// Feature 025 (R8): the problem now sits in its inline thread (22px indent inside the
+			// 22px-gutter column), 254px wide at 320. There the three-column table keeps its 13px
+			// floor and scrolls inside its frame; from 390 it fits.
+			if (width >= 390) assert.ok(rows[0].content <= rows[0].available + 1, `three-column table fits at ${width}px`);
+			else assert.ok(rows[0].content <= rows[0].available + 1 || (rows[0].clip === "end" && rows[0].tabIndex === 0), `three-column table fits or scrolls at ${width}px`);
 			assert.ok(rows.every((r) => r.effectiveFont >= 13 - 0.01), "13px floor is preserved");
 			assert.equal(rows[2].zoom, 1, "small table is not shrunk");
 			assert.ok(Math.abs(rows[0].height - rows[0].scrollHeight) < 2, "scaled height takes no unscaled blank space");

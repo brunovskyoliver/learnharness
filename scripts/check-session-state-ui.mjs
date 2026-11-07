@@ -102,6 +102,8 @@ export async function checkSessionStateUi(page, base, firstId, secondId, questio
 	if (reveal) await reveal.click();
 	await wait(400);
 	await page.waitForSelector('[data-testid="question-dock"]');
+	// Feature 025 (R8): the question is answered in its thread beside the lesson.
+	assert.ok(await page.$eval('[data-testid="question-dock"]', (node) => !!node.closest('[data-testid="check-thread"]') && !node.closest('[data-testid="dock-shell"]')));
 	const options = await page.$$('[data-testid="question-dock"] button');
 	const option = await page.$('[data-testid="question-dock"] [data-kbdrow="0"]');
 	if (option) await option.click();
@@ -121,8 +123,10 @@ export async function checkSessionStateUi(page, base, firstId, secondId, questio
 		fields: [...document.querySelectorAll('[data-testid="question-dock"] textarea')].map((node) => node.value),
 		selected: [...document.querySelectorAll('[data-testid="question-dock"] [aria-checked="true"]')].map((node) => node.textContent),
 	})), questionBefore);
+	assert.equal(await page.$eval('[data-testid="question-dock"]', (node) => node.closest('[data-testid="check-thread"]')?.dataset.state), "open", "the revealed thread is still open after a switch");
 	await page.reload({ waitUntil: "domcontentloaded" }); await main(); await wait(2300);
 	assert.deepEqual(await page.$$eval('[data-testid="question-dock"] textarea', (nodes) => nodes.map((node) => node.value)), questionBefore.fields);
+	assert.equal(await page.$eval('[data-testid="question-dock"]', (node) => node.closest('[data-testid="check-thread"]')?.dataset.state), "open", "and after a reload");
 	console.log("PASS revealed question and unfinished answer survive switches and reload");
 	for (const width of [375, 800, 1600]) {
 		await page.setViewport({ width, height: 900 }); await wait(100);
