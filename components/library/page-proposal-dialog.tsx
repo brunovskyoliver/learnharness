@@ -135,7 +135,7 @@ export function PageProposalDialog({ proposalId, onClose, onAccepted, onRejected
 	return (
 		<Dialog open onOpenChange={(open) => { if (!open) { void flushEdit(); onClose(); } }}>
 			<DialogContent
-				className={editing ? "flex h-dvh max-h-dvh w-screen max-w-none translate-x-[-50%] flex-col gap-2 rounded-none border-0 bg-paper p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:max-w-none" : "flex max-h-[90dvh] flex-col gap-3 overflow-y-auto overscroll-contain rounded-xl border-0 bg-paper shadow-lift sm:max-w-xl"}
+				className={editing ? "flex h-dvh max-h-dvh w-screen max-w-none translate-x-[-50%] flex-col gap-2 rounded-none border-0 bg-paper p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:max-w-none" : "flex max-h-[90dvh] flex-col gap-3 overflow-y-auto overscroll-contain sm:max-w-xl"}
 				showCloseButton={!editing}
 				data-testid="page-proposal-dialog"
 				onEscapeKeyDown={(event) => {
@@ -148,9 +148,9 @@ export function PageProposalDialog({ proposalId, onClose, onAccepted, onRejected
 			>
 				{failure && !data ? (
 					<>
-						<DialogTitle className="text-md font-semibold">This proposal could not be loaded</DialogTitle>
-						<DialogDescription className="text-sm text-graphite">{failure}</DialogDescription>
-						<div className="flex gap-2"><button type="button" className="prompt-secondary" onClick={() => void load()}>Try again</button><button type="button" className="prompt-secondary" onClick={onClose}>Close</button></div>
+						<DialogTitle>This proposal could not be loaded</DialogTitle>
+						<DialogDescription>{failure}</DialogDescription>
+						<div className="flex justify-end gap-5"><button type="button" className="lh-text-action" onClick={() => void load()}>Try again</button><button type="button" className="lh-text-action" onClick={onClose}>Close</button></div>
 					</>
 				) : !data ? (
 					<>
@@ -160,15 +160,15 @@ export function PageProposalDialog({ proposalId, onClose, onAccepted, onRejected
 					</>
 				) : editing ? (
 					<>
-						<div className="flex flex-wrap items-center gap-2 pe-1">
+						<div className="flex flex-wrap items-center gap-x-5 gap-y-2 pe-1">
 							<div className="min-w-0 flex-[1_1_12rem]">
-								<DialogTitle className="truncate text-md font-medium">Editing the proposal: {name}</DialogTitle>
-								<DialogDescription className="text-sm text-faint" data-testid="page-proposal-edit-state">
+								<DialogTitle className="truncate text-md">Editing the proposal: {name}</DialogTitle>
+								<DialogDescription className="text-meta text-faint" data-testid="page-proposal-edit-state">
 									{editSave === "saving" ? "Saving…" : editSave === "failed" ? "Not saved." : "Your edits stay in the proposal until you accept."}
 								</DialogDescription>
 							</div>
-							<button type="button" className="prompt-secondary" data-testid="page-proposal-edit-done" onClick={leaveEditing}>Back to comparison</button>
-							<button type="button" className="prompt-primary" disabled={busy} data-testid="page-proposal-accept-edited" onClick={() => void accept()}>Accept</button>
+							<button type="button" className="lh-text-action" data-testid="page-proposal-edit-done" onClick={leaveEditing}>Back to comparison</button>
+							<button type="button" className="nb-pill" disabled={busy} data-testid="page-proposal-accept-edited" onClick={() => void accept()}>Accept</button>
 						</div>
 						{line && <p role="alert" className="text-sm text-red">{line}</p>}
 						<div className="flex min-h-0 flex-1 flex-col">
@@ -186,15 +186,15 @@ export function PageProposalDialog({ proposalId, onClose, onAccepted, onRejected
 					</>
 				) : (
 					<>
-						<DialogTitle className="pe-6 text-md font-semibold [overflow-wrap:anywhere]">Proposed change to {name}</DialogTitle>
-						<DialogDescription className="text-sm text-graphite">Nothing has changed. This page stays as it is unless you accept.{data.proposal.edited ? " You edited this proposal." : ""}</DialogDescription>
+						<DialogTitle className="pe-6 [overflow-wrap:anywhere]">Proposed change to {name}</DialogTitle>
+						<DialogDescription>Nothing has changed. This page stays as it is unless you accept.{data.proposal.edited ? " You edited this proposal." : ""}</DialogDescription>
 						{blocked ? <p role="status" className="text-sm text-graphite" data-testid="page-proposal-blocked">{blocked}</p> : rows === null ? <p className="text-sm text-graphite">Too long to compare here. Use Edit first to read it.</p> : <div data-testid="page-proposal-diff"><ChangeRows rows={rows} /></div>}
 						{line && <p role="alert" className="text-sm text-red" data-testid="page-proposal-line">{line}</p>}
-						<div className="flex flex-wrap justify-end gap-2">
-							{copyable && <button type="button" className="prompt-secondary" data-testid="page-proposal-copy" onClick={() => void navigator.clipboard.writeText(data.proposal.text).then(() => setCopied(true), () => setLine("The text could not be copied. Your browser refused."))}>{copied ? "Copied" : "Copy the proposed text"}</button>}
-							{data.proposal.status === "pending" && <button type="button" className="prompt-secondary" disabled={busy} data-testid="page-proposal-reject" onClick={() => void reject()}>Reject</button>}
-							{!blocked && <button type="button" className="prompt-secondary" disabled={busy} data-testid="page-proposal-edit" onClick={() => { setEditing(true); setEditSave("saved"); }}>Edit first</button>}
-							{!blocked && <button type="button" className="prompt-primary" disabled={busy} data-testid="page-proposal-accept" onClick={() => void accept()}>{busy ? "Accepting…" : "Accept"}</button>}
+						<div className="mt-1 flex flex-wrap items-center justify-end gap-x-5 gap-y-2">
+							{copyable && <button type="button" className="lh-text-action" data-testid="page-proposal-copy" onClick={() => void navigator.clipboard.writeText(data.proposal.text).then(() => setCopied(true), () => setLine("The text could not be copied. Your browser refused."))}>{copied ? "Copied" : "Copy the proposed text"}</button>}
+							{data.proposal.status === "pending" && <button type="button" className="lh-text-action" disabled={busy} data-testid="page-proposal-reject" onClick={() => void reject()}>Reject</button>}
+							{!blocked && <button type="button" className="lh-text-action" disabled={busy} data-testid="page-proposal-edit" onClick={() => { setEditing(true); setEditSave("saved"); }}>Edit first</button>}
+							{!blocked && <button type="button" className="nb-pill" disabled={busy} data-testid="page-proposal-accept" onClick={() => void accept()}>{busy ? "Accepting…" : "Accept"}</button>}
 						</div>
 					</>
 				)}

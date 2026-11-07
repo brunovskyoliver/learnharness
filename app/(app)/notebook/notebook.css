@@ -304,20 +304,6 @@
 	white-space: pre-line;
 	pointer-events: none;
 }
-/* Study's slash and [[ menus, as Notebook menus. */
-.nb-root :is([data-testid="page-slash-menu"], [data-testid="page-wiki-menu"]) {
-	z-index: 30;
-	padding: 5px;
-	border-radius: 12px;
-	background: var(--paper);
-	box-shadow: var(--lift);
-	color: var(--ink);
-	font-family: var(--nb-sans);
-	font-size: var(--text-ui);
-}
-.nb-root :is([data-testid="page-slash-menu"], [data-testid="page-wiki-menu"]) [role="option"] { min-height: 32px; border-radius: 8px; font-size: var(--text-ui); }
-.nb-root :is([data-testid="page-slash-menu"], [data-testid="page-wiki-menu"]) [aria-selected="true"] { background: var(--shelf); outline: 2px solid var(--nb-focus); outline-offset: -2px; }
-
 @media (max-width: 639px) {
 	.nb-root .nb-header { position: absolute; top: 12px; left: 8px; }
 	.nb-root .nb-page { padding: 76px 16px 0; }
@@ -362,74 +348,6 @@
 .nb-root .nb-prose .lh-ink[data-color="blue"] { color: var(--text-blue); }
 .nb-root .nb-prose .lh-ink[data-color="purple"] { color: var(--text-purple); }
 
-.nb-root .nb-sel-host { z-index: 60; }
-.nb-root .nb-sel-menu {
-	width: 236px;
-	padding: 7px 7px 10px;
-	border-radius: 12px;
-	background: var(--paper);
-	box-shadow: var(--lift), 0 0 0 1px var(--rule);
-	color: var(--ink);
-	font-family: var(--nb-sans);
-	animation: 0.2s ease-out both nb-settle;
-}
-.nb-root .nb-sel-row { display: flex; align-items: center; }
-/* Row tops from frame inline-sketch-and-selection: Text 212, B 266, the inks 300, actions 341, 377, 412. */
-.nb-root .nb-sel-styles { justify-content: space-between; gap: 0; padding-bottom: 8.5px; border-bottom: 1px solid var(--rule); }
-.nb-root .nb-sel-marks { justify-content: space-between; margin-top: 7px; }
-.nb-root .nb-sel-inks { justify-content: space-between; margin-top: 5.5px; padding-bottom: 6.5px; border-bottom: 1px solid var(--rule); }
-.nb-root .nb-sel-format {
-	display: grid;
-	place-items: center;
-	width: 30px;
-	height: 28px;
-	padding: 0;
-	border: 0;
-	border-radius: 6px;
-	background: none;
-	color: var(--graphite);
-	transition: color 0.15s, background-color 0.15s;
-}
-.nb-root .nb-sel-format svg { width: 16px; height: 16px; stroke-width: 1.6; }
-.nb-root .nb-sel-format:hover { background: var(--shelf); color: var(--ink); }
-.nb-root .nb-sel-format[aria-pressed="true"] { background: var(--shelf); color: var(--ink); }
-/* Eight block styles share the card's width with no gap (frame inline-sketch-and-selection: the filled T
-   spans x 1237-1264 and y 213-242, the H1 and H2 glyphs centre 27.75px apart). */
-.nb-root .nb-sel-style { flex: 1 1 0; min-width: 0; width: auto; height: 29.5px; }
-.nb-root .nb-sel-style svg { width: 15px; height: 15px; }
-.nb-root .nb-sel-style:first-child svg { width: 16px; height: 16px; }
-/* The block style he is in: a filled ink square with a paper glyph. */
-.nb-root .nb-sel-style[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
-.nb-root .nb-sel-ink span { font-size: var(--text-md); font-weight: 500; line-height: 1; }
-/* The frame shows no fill behind the current ink. */
-.nb-root .nb-sel-ink[aria-pressed="true"]:not(:hover) { background: none; }
-.nb-root .nb-sel-ink [data-ink="default"] { color: var(--ink); }
-.nb-root .nb-sel-ink [data-ink="gray"] { color: var(--text-gray); }
-.nb-root .nb-sel-ink [data-ink="brown"] { color: var(--text-brown); }
-.nb-root .nb-sel-ink [data-ink="red"] { color: var(--text-red); }
-.nb-root .nb-sel-ink [data-ink="orange"] { color: var(--text-orange); }
-.nb-root .nb-sel-ink [data-ink="green"] { color: var(--text-green); }
-.nb-root .nb-sel-ink [data-ink="blue"] { color: var(--text-blue); }
-.nb-root .nb-sel-ink [data-ink="purple"] { color: var(--text-purple); }
-.nb-root .nb-sel-actions { display: flex; flex-direction: column; padding-top: 4px; }
-.nb-root .nb-sel-action {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 10px;
-	height: 35.5px;
-	padding: 0 8px 0 10px;
-	border: 0;
-	border-radius: 7px;
-	background: none;
-	color: var(--ink);
-	text-align: left;
-	transition: background-color 0.12s;
-}
-.nb-root .nb-sel-action:hover { background: var(--shelf); }
-.nb-root .nb-sel-label { font-size: var(--text-select); line-height: 1; }
-.nb-root .nb-sel-hint { color: var(--faint); font-family: var(--nb-sans); font-size: var(--text-kbd); line-height: 1; white-space: nowrap; }
-
 /* Ask about this, before it is sent: the field and its hint. */
 .nb-root .nb-thread-hint {
 	margin: 8px 0 0;
@@ -441,7 +359,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.nb-root :is(.nb-sel-menu, .nb-sketch-note, .nb-sketch-backdrop, .nb-sketch-card, .nb-sketching-blot) { animation: none; }
+	.nb-root :is(.nb-sketch-note, .nb-sketch-backdrop, .nb-sketch-card, .nb-sketching-blot) { animation: none; }
 }
 
 /* ══ Phase 7 (US5): instructions and reviewers ══════════════════════════════ */
@@ -527,9 +445,5 @@
 	pointer-events: none;
 }
 @media (pointer: coarse) {
-	.nb-root :is(.nb-menu-item, .nb-side-row, .nb-sel-action, .nb-rev-row, .nb-rev-item) { min-height: 44px; }
-	/* The selection menu grows instead of shrinking its buttons. */
-	.nb-root .nb-sel-menu { width: auto; max-width: min(360px, calc(100vw - 16px)); }
-	.nb-root .nb-sel-row { flex-wrap: wrap; }
-	.nb-root .nb-sel-format { min-width: 44px; min-height: 44px; }
+	.nb-root :is(.nb-menu-item, .nb-side-row, .nb-rev-row, .nb-rev-item) { min-height: 44px; }
 }

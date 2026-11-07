@@ -1263,18 +1263,63 @@ body {
 .lh-page-editor li > p { margin: 0; }
 .lh-page-editor blockquote { color: var(--graphite); padding-left: 1em; }
 .lh-page-editor a { text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--ink) 40%, transparent); text-underline-offset: 3px; }
+/* Study's page body in Notebook's note type (feature 025 T046): Instrument Sans at
+   the note size on 1.8, Notebook's block rhythm, headings, quotes, code, tables and
+   callouts. Notebook's own editor carries .nb-prose instead of .lh-prose. */
+.lh-prose.lh-page-editor { padding: 18px 16px 30vh; color: var(--ink); caret-color: var(--ink); font-size: var(--note-size); line-height: 1.8; letter-spacing: -0.004em; font-kerning: normal; }
+.lh-prose.lh-page-editor > * + * { margin-top: 1.05em; }
+.lh-prose.lh-page-editor > :first-child { margin-top: 0; }
+.lh-prose.lh-page-editor :is(li, blockquote) > * + * { margin-top: 0.25em; }
+.lh-prose.lh-page-editor :is(ul, ol) { padding-left: 1.3em; }
+.lh-prose.lh-page-editor li + li { margin-top: 0.25em; }
+.lh-prose.lh-page-editor li::marker { color: var(--ink); }
+.lh-prose.lh-page-editor h1 { margin-top: 2.1em; line-height: 1.25; letter-spacing: -0.022em; }
+.lh-prose.lh-page-editor h2 { margin-top: 2em; line-height: 1.35; letter-spacing: -0.015em; }
+.lh-prose.lh-page-editor h3 { margin-top: 1.7em; font-size: 1.05em; }
+.lh-prose.lh-page-editor :is(h4, h5, h6) { margin-top: 1.5em; color: var(--graphite); }
+.lh-prose.lh-page-editor > :is(h1, h2, h3, h4, h5, h6):first-child { margin-top: 0; }
+.lh-prose.lh-page-editor blockquote { padding-left: 1.1em; border-left: 2px solid var(--ink); color: var(--graphite); }
+.lh-prose.lh-page-editor a { color: inherit; text-decoration-color: var(--riddle-line); }
+.lh-prose.lh-page-editor hr { margin: 2em 0; border: 0; border-top: 1px solid var(--rule); }
+.lh-prose.lh-page-editor :not(pre) > code { padding: 0.1em 0.32em; border-radius: 4px; background: color-mix(in srgb, var(--ink) 6%, transparent); font-family: var(--font-mono); font-size: 0.88em; }
+.lh-prose.lh-page-editor pre { padding: 0.85em 1em; border-radius: 8px; background: color-mix(in srgb, var(--ink) 5%, transparent); color: var(--ink); font-size: 0.86em; line-height: 1.55; }
+.lh-prose.lh-page-editor table { font-size: 0.94em; line-height: 1.55; }
+.lh-prose.lh-page-editor :is(th, td) { padding: 0.35em 0.65em; text-align: left; }
+.lh-prose.lh-page-editor th { font-weight: 600; }
+.lh-prose.lh-page-editor .selectedCell { background: var(--riddle-wash); }
+.lh-prose.lh-page-editor ul[data-type="taskList"] li > label { margin-top: calc((1.8em - 0.95em) / 2); }
+.lh-prose.lh-page-editor ul[data-type="taskList"] input[type="checkbox"] { width: 0.95em; height: 0.95em; }
+.lh-prose.lh-page-editor ul[data-type="taskList"] li[data-checked="true"] > div { color: var(--graphite); text-decoration: line-through; text-decoration-color: var(--faint); }
+.lh-prose.lh-page-editor .katex { font-size: 1.08em; color: var(--ink); }
+.lh-prose.lh-page-editor .tiptap-mathematics-render--editable:hover,
+.lh-prose.lh-page-editor .ProseMirror-selectednode.tiptap-mathematics-render { background: var(--riddle-wash); }
+.lh-prose.lh-page-editor .ProseMirror-selectednode { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
+.lh-prose.lh-page-editor .lh-callout { gap: 0.2em; padding: 0.75em 1em 0.85em; }
+.lh-prose.lh-page-editor .lh-callout-kind { height: 1.8em; font-weight: 550; letter-spacing: 0.02em; }
+.lh-prose.lh-page-editor .lh-callout-title { height: 1.8em; font-weight: 550; }
+.lh-prose.lh-page-editor :is(.lh-callout-body, .lh-collapsible-content) > * + * { margin-top: 1.05em; }
+.lh-prose.lh-page-editor .lh-collapsible-summary { font-weight: 550; line-height: 1.8; min-height: 0; }
+.lh-prose.lh-page-editor .lh-collapsible-toggle { width: 1.8em; height: 1.8em; }
+.lh-prose.lh-page-editor .lh-wiki-link { border-radius: 3px; text-decoration-color: var(--riddle-line); }
+.lh-prose.lh-page-editor .lh-wiki-link:hover { background: var(--riddle-wash); }
+.lh-prose.lh-page-editor .lh-page-image { margin: 0.6em 0; border-radius: 6px; box-shadow: 0 0 0 1px var(--rule); }
+@media (pointer: coarse) {
+	.lh-prose.lh-page-editor :is(.lh-callout-kind, .lh-callout-title) { height: 2.75rem; }
+	.lh-prose.lh-page-editor .lh-collapsible-toggle { width: 2.75rem; height: 2.75rem; }
+	.lh-prose.lh-page-editor .lh-collapsible-summary { min-height: 2.75rem; line-height: 2.75rem; }
+}
 .lh-page-editor-host > div { display: flex; min-height: 100%; flex-direction: column; }
 .lh-page-editor-host > div > .lh-page-editor { flex: 1; }
 .lh-page-editor .tiptap-mathematics-render--editable { cursor: pointer; border-radius: var(--radius-md); }
 .lh-page-editor .tiptap-mathematics-render--editable:hover, .lh-page-editor .ProseMirror-selectednode.tiptap-mathematics-render { background: var(--shelf); }
 .lh-page-editor .ProseMirror-selectednode { outline: 1px solid var(--nb-focus); outline-offset: 1px; }
-.lh-page-editor .lh-math-source { border-radius: var(--radius-md); background: var(--shelf); font-family: var(--font-mono, monospace); font-size: 0.8125rem; line-height: 1.5; outline: 1px solid var(--nb-focus); }
+.lh-page-editor .lh-math-source { border-radius: var(--radius-md); background: var(--shelf); font-family: var(--font-mono, monospace); font-size: var(--text-sm); line-height: 1.5; outline: 1px solid var(--nb-focus); }
 .lh-page-editor div.lh-math-source { display: flex; flex-direction: column; padding: 0.5rem 0.75rem; }
 .lh-page-editor span.lh-math-source { display: inline-flex; max-width: 100%; padding: 0 0.25rem; vertical-align: baseline; }
 .lh-math-delimiter { color: var(--faint); user-select: none; }
 .lh-math-input { field-sizing: content; min-width: 2ch; max-width: 100%; resize: none; overflow: hidden; border: 0; background: transparent; color: var(--ink); font: inherit; outline: none; }
 div.lh-math-source > .lh-math-input { width: 100%; }
-@media (pointer: coarse) { .lh-page-editor .lh-math-source { font-size: 1rem; } }
+@media (pointer: coarse) { .lh-page-editor .lh-math-source { font-size: var(--text-base); } }
 
 /* Page editor tools (feature 010): placeholder, toolbar, menus. Unavailable
    controls use muted ink, never opacity. */
@@ -1415,12 +1460,12 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 .lh-page-editor .lh-wiki-link[data-state="deleted"] { text-decoration-line: line-through; }
 .lh-page-editor .lh-source-link { cursor: pointer; }
 .lh-page-editor .lh-source-gone { color: var(--faint); cursor: default; }
-.lh-page-editor .lh-source-gone-note { color: var(--faint); font-size: 0.8125rem; }
+.lh-page-editor .lh-source-gone-note { color: var(--faint); font-size: var(--text-sm); }
 .lh-page-editor .lh-callout { display: flex; flex-direction: column; gap: 0.25rem; border-radius: 10px; background: var(--shelf); padding: 0.5rem 0.75rem 0.75rem; }
 .lh-page-editor .lh-callout-head { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
-.lh-page-editor .lh-callout-kind { height: 2rem; border-radius: var(--radius-md); background: transparent; padding-inline: 0.25rem; color: var(--graphite); font-size: 0.8125rem; font-weight: 500; }
+.lh-page-editor .lh-callout-kind { height: 2rem; border-radius: var(--radius-md); background: transparent; padding-inline: 0.25rem; color: var(--graphite); font-size: var(--text-sm); font-weight: 500; }
 .lh-page-editor .lh-callout-kind option { background: var(--paper); color: var(--ink); }
-.lh-page-editor .lh-callout-title { height: 2rem; min-width: 6rem; flex: 1 1 8rem; border-radius: var(--radius-md); background: transparent; padding-inline: 0.25rem; color: var(--ink); font-size: 0.9375rem; font-weight: 500; }
+.lh-page-editor .lh-callout-title { height: 2rem; min-width: 6rem; flex: 1 1 8rem; border-radius: var(--radius-md); background: transparent; padding-inline: 0.25rem; color: var(--ink); font-size: 0.95em; font-weight: 500; }
 .lh-page-editor .lh-callout-title::placeholder { color: var(--faint); font-weight: 400; }
 .lh-page-editor .lh-callout-body > * + * { margin-top: 0.75em; }
 .lh-page-editor .lh-collapsible { display: flex; align-items: flex-start; gap: 0.25rem; }
@@ -1444,7 +1489,7 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 [data-testid="page-wiki-menu"]::-webkit-scrollbar, [data-testid="note-connections"]::-webkit-scrollbar { display: none; }
 [data-testid="note-connections"] button:focus-visible { outline: 1px solid var(--nb-focus); outline-offset: -1px; }
 /* Features 019-020: a search match, a landed line and block. Ink, never the accent. */
-.lh-doc-mark { background: var(--shelf); color: var(--ink); border-radius: 2px; text-decoration: underline; text-underline-offset: 2px; }
+.lh-doc-mark { background: var(--riddle-wash); color: var(--ink); border-radius: 2px; text-decoration: underline; text-decoration-color: var(--riddle-line); text-underline-offset: 2px; }
 .lh-doc-line { display: inline; background: var(--shelf); color: var(--ink); border-radius: 2px; }
 .lh-jump-flash { background: var(--shelf); border-radius: var(--radius-md); transition: background-color 240ms; }
 @media (prefers-reduced-motion: reduce) { .lh-jump-flash { transition: none; } }

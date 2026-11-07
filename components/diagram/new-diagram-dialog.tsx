@@ -40,26 +40,26 @@ export function NewDiagramDialog({ folderId, onCreated, onClose }: { folderId: s
 	};
 	return (
 		<Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-			<DialogContent className="flex flex-col gap-3 rounded-xl border-0 bg-paper shadow-lift" data-testid="diagram-new-dialog">
-				<DialogTitle className="text-md font-semibold">New diagram</DialogTitle>
-				<DialogDescription className="text-sm text-faint">Choose how it starts. You can use every tool in any of them.</DialogDescription>
+			<DialogContent className="flex flex-col gap-3" data-testid="diagram-new-dialog">
+				<DialogTitle>New diagram</DialogTitle>
+				<DialogDescription>Choose how it starts. You can use every tool in any of them.</DialogDescription>
 				<form className="flex flex-col gap-3" onSubmit={(event) => { event.preventDefault(); if (!busy) void create(); }}>
-					<fieldset className="flex flex-col gap-1">
+					<fieldset className="flex flex-col gap-2">
 						<legend className="sr-only">Starting form</legend>
 						{DIAGRAM_FORMS.map((option) => (
-							<label key={option} className={`flex cursor-pointer items-start gap-2 rounded-md p-2 text-sm hover:bg-shelf pointer-coarse:min-h-11 ${form === option ? "bg-shelf" : ""}`}>
+							<label key={option} className="nb-option-card min-h-0 cursor-pointer flex-row items-start gap-2.5 px-3.5 py-2.5 pointer-coarse:min-h-11">
 								<input type="radio" name="diagram-form" value={option} checked={form === option} data-testid={`diagram-form-${option}`} className="mt-1 accent-ink" onChange={() => setForm(option)} />
-								<span className="flex flex-col"><span className="text-ink">{DIAGRAM_FORM_LABEL[option]}</span><span className="text-faint">{DIAGRAM_FORM_HINT[option]}</span></span>
+								<span className="flex flex-col gap-0.5"><span className="nb-option-title">{DIAGRAM_FORM_LABEL[option]}</span><span className="nb-option-description">{DIAGRAM_FORM_HINT[option]}</span></span>
 							</label>
 						))}
 					</fieldset>
-					<label className="flex flex-col gap-1 text-sm text-graphite">Name
-						<input name="diagram-name" value={name} autoComplete="off" placeholder={`${DEFAULT_NAME[form]}…`} data-testid="diagram-new-name" className="h-9 w-full rounded-md border border-rule bg-transparent px-2 text-sm text-ink pointer-coarse:h-11" onChange={(event) => setName(event.target.value)} />
+					<label className="flex flex-col gap-0.5 text-xs font-medium text-faint">Name
+						<input name="diagram-name" value={name} autoComplete="off" placeholder={`${DEFAULT_NAME[form]}…`} data-testid="diagram-new-name" className="lh-line-field" onChange={(event) => setName(event.target.value)} />
 					</label>
 					{failure && <p role="alert" className="text-sm text-red [overflow-wrap:anywhere]" data-testid="diagram-new-failure">{failure}</p>}
-					<div className="flex justify-end gap-2">
-						<button type="button" className="prompt-secondary" onClick={onClose}>Cancel</button>
-						<button type="submit" className="prompt-primary" disabled={busy} data-testid="diagram-new-create">{busy ? "Creating…" : "Create"}</button>
+					<div className="mt-1 flex items-center justify-end gap-5">
+						<button type="button" className="lh-text-action" onClick={onClose}>Cancel</button>
+						<button type="submit" className="nb-pill" disabled={busy} data-testid="diagram-new-create">{busy ? "Creating…" : "Create"}</button>
 					</div>
 				</form>
 			</DialogContent>

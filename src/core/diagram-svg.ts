@@ -17,8 +17,10 @@ export function escapeXml(text: string): string {
 		.replace(/'/g, "&#39;");
 }
 
-/** Study ink as literal colours: a downloaded file can't read the app's tokens. */
-const COLOR = { ground: "#0b0b0a", raised: "#151513", raised2: "#1d1d1a", ink: "#edece8", ink2: "#b4b2ab", edge: "#8a8881" } as const;
+/** Paper light as literal colours (app/paper.css: paper, shelf, ink, graphite, faint, rule;
+ *  feature 025 T051): a downloaded file can't read the app's tokens, and a file on light
+ *  paper reads the same in any viewer. */
+const COLOR = { ground: "#f8f7f4", raised: "#f1f0ec", raised2: "#f8f7f4", ink: "#1d1c1a", ink2: "#5c5953", edge: "#716d67", rule: "#dedbd4" } as const;
 const FONT_SIZE = 14;
 const LINE = 19;
 const PAD_X = 12;
@@ -108,7 +110,7 @@ export function diagramToSvg(doc: DiagramDoc, title?: string): string {
 			parts.push(`<path d="${path}" fill="none" stroke="${COLOR.ink}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`);
 			continue;
 		}
-		parts.push(`<rect x="${n(box.x)}" y="${n(box.y)}" width="${box.width}" height="${box.height}" rx="${node.type === "sticky" ? 10 : 6}" fill="${node.type === "sticky" ? COLOR.raised2 : COLOR.raised}" stroke="${COLOR.edge}" stroke-width="1"/>`);
+		parts.push(`<rect x="${n(box.x)}" y="${n(box.y)}" width="${box.width}" height="${box.height}" rx="${node.type === "sticky" ? 10 : 6}" fill="${node.type === "sticky" ? COLOR.raised2 : COLOR.raised}" stroke="${COLOR.rule}" stroke-width="1"/>`);
 		const textTop = box.y + box.height / 2 - ((box.lines.length - 1) * LINE) / 2 + 5;
 		box.lines.forEach((line, i) => parts.push(`<text x="${n(box.x + box.width / 2)}" y="${n(textTop + i * LINE)}" text-anchor="middle" fill="${COLOR.ink}">${escapeXml(line)}</text>`));
 	}

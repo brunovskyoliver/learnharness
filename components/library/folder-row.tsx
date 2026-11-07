@@ -2,12 +2,10 @@
 
 import Link from "next/link";
 import { FolderIcon, PencilIcon, PinIcon, StarIcon, Trash2Icon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import type { LibraryFolder } from "@/src/core";
 import { DRAG_TYPE, type EntryKey } from "./library-filter.ts";
 import { LibraryEntryMenu, LibraryMoreButton, LibrarySelectBox, moreButton, type LibraryMenuAction } from "./library-menu.tsx";
 
-const ACTION = "size-9 text-faint pointer-coarse:size-11";
 export const folderHref = (id: string | null) => (id ? `/library?folder=${encodeURIComponent(id)}` : "/library");
 
 export function FolderRow({ folder, count, location, actions = [], selection, dropTarget, onDragStartEntry, onRename, onDelete }: {
@@ -32,7 +30,9 @@ export function FolderRow({ folder, count, location, actions = [], selection, dr
 	return (
 		<LibraryEntryMenu actions={menuActions}>
 		<li
-			className={`rounded-lg ${selection?.selected || dropTarget?.over ? "bg-shelf" : "bg-shelf"}`}
+			className="lh-row"
+			data-selected={selection?.selected ? "" : undefined}
+			data-drop={dropTarget?.over ? "" : undefined}
 			data-testid="library-folder-row"
 			draggable={Boolean(onDragStartEntry)}
 			onDragStart={(event) => onDragStartEntry?.(`folder:${folder.id}`, event)}
@@ -49,21 +49,21 @@ export function FolderRow({ folder, count, location, actions = [], selection, dr
 				dropTarget.onDrop(event);
 			}}
 		>
-			<div className="flex items-center gap-1 pr-1.5">
+			<div className="flex items-center gap-0.5 pr-2">
 				{selection && <LibrarySelectBox label={`Select folder ${folder.name}`} checked={selection.selected} onChange={selection.toggle} />}
-				<Link href={folderHref(folder.id)} aria-label={`Open folder ${folder.name}`} className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-3 py-2.5 transition-colors hover:bg-shelf">
-					<FolderIcon className="ui-icon shrink-0 text-faint" aria-hidden="true" />
+				<Link href={folderHref(folder.id)} aria-label={`Open folder ${folder.name}`} className="lh-row-open lh-row-folder">
+					<FolderIcon className="size-[15px] shrink-0 text-faint" aria-hidden="true" />
 					<span className="flex min-w-0 flex-col gap-0.5">
-						<span className="flex items-start gap-1.5 text-md font-medium text-ink [overflow-wrap:anywhere]">
-							{folder.pinned && <PinIcon className="ui-icon mt-1 size-3.5 shrink-0 text-graphite" role="img" aria-label="Pinned" />}
-							{folder.favorite && <StarIcon className="ui-icon mt-1 size-3.5 shrink-0 text-graphite" role="img" aria-label="Favorite" />}
+						<span className="lh-row-name flex items-start gap-1.5">
+							{folder.pinned && <PinIcon className="mt-[3px] size-3.5 shrink-0 text-graphite" role="img" aria-label="Pinned" />}
+							{folder.favorite && <StarIcon className="mt-[3px] size-3.5 shrink-0 text-graphite" role="img" aria-label="Favorite" />}
 							<span className="min-w-0">{folder.name}</span>
 						</span>
-						<span className="text-sm text-faint">{meta}</span>
+						<span className="lh-row-meta">{meta}</span>
 					</span>
 				</Link>
-				<Button type="button" variant="ghost" size="icon" aria-label={`Rename folder ${folder.name}`} className={`${ACTION} max-sm:hidden`} onClick={(event) => onRename(folder, event.currentTarget)}><PencilIcon className="ui-icon" aria-hidden="true" /></Button>
-				<Button type="button" variant="ghost" size="icon" aria-label={`Delete folder ${folder.name}`} className={ACTION} onClick={(event) => onDelete(folder, event.currentTarget)}><Trash2Icon className="ui-icon" aria-hidden="true" /></Button>
+				<button type="button" aria-label={`Rename folder ${folder.name}`} className="lh-tool max-sm:hidden" onClick={(event) => onRename(folder, event.currentTarget)}><PencilIcon aria-hidden="true" /></button>
+				<button type="button" aria-label={`Delete folder ${folder.name}`} className="lh-tool" onClick={(event) => onDelete(folder, event.currentTarget)}><Trash2Icon aria-hidden="true" /></button>
 				{menuActions.length > 0 && <LibraryMoreButton name={folder.name} actions={menuActions} />}
 			</div>
 		</li>
@@ -76,14 +76,14 @@ export function FolderBreadcrumbs({ trail }: { trail: readonly LibraryFolder[] }
 	if (trail.length === 0) return null;
 	return (
 		<nav aria-label="Folder path" data-testid="library-breadcrumbs">
-			<ol className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm text-graphite">
-				<li><Link href={folderHref(null)} className="rounded-md underline-offset-2 hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center">Library</Link></li>
+			<ol className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm text-faint">
+				<li><Link href={folderHref(null)} className="rounded-md underline-offset-2 hover:text-ink hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center">Library</Link></li>
 				{trail.map((folder, index) => (
 					<li key={folder.id} className="flex min-w-0 items-center gap-1.5">
 						<span aria-hidden="true" className="text-faint">/</span>
 						{index === trail.length - 1
 							? <span aria-current="page" className="text-ink [overflow-wrap:anywhere]">{folder.name}</span>
-							: <Link href={folderHref(folder.id)} className="rounded-md underline-offset-2 [overflow-wrap:anywhere] hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center">{folder.name}</Link>}
+							: <Link href={folderHref(folder.id)} className="rounded-md underline-offset-2 [overflow-wrap:anywhere] hover:text-ink hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center">{folder.name}</Link>}
 					</li>
 				))}
 			</ol>

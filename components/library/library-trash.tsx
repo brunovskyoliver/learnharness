@@ -1,11 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { KIND_LABEL, type LibraryTrashEntry } from "@/src/core";
-import { DESTRUCTIVE_BUTTON } from "./delete-item-dialog.tsx";
-
-const RAISED_2 = "bg-shelf text-ink hover:bg-[color-mix(in_srgb,var(--shelf)_80%,var(--ink))] pointer-coarse:h-11";
 
 function metaOf(entry: LibraryTrashEntry): string {
 	const date = new Date(entry.trashedAt).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
@@ -25,25 +21,25 @@ export function LibraryTrash({ entries, failed, failure, onRetry, onRestore, onP
 }) {
 	if (entries === null) {
 		return failed ? (
-			<div role="status" className="flex flex-wrap items-center gap-2 text-graphite">
+			<div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-md text-ink">
 				<p>Your trash could not be loaded.</p>
-				<button type="button" onClick={onRetry} className="prompt-secondary">Try again</button>
+				<button type="button" onClick={onRetry} className="lh-text-action">Try again</button>
 			</div>
-		) : <div role="status" aria-label="Loading your trash"><Skeleton className="h-[62px] w-full rounded-lg" /></div>;
+		) : <div role="status" aria-label="Loading your trash"><Skeleton className="h-[60px] w-full rounded-lg" /></div>;
 	}
-	if (entries.length === 0) return <p className="text-md text-graphite">The trash is empty.</p>;
+	if (entries.length === 0) return <p className="text-md text-faint">The trash is empty.</p>;
 	return (
 		<>
 			{failure && <p role="alert" className="text-sm text-red">{failure}</p>}
-			<ul className="flex flex-col gap-1" data-testid="library-trash-list">
+			<ul className="flex flex-col" data-testid="library-trash-list">
 				{entries.map((entry) => (
-					<li key={entry.id} data-testid="library-trash-row" className="flex flex-wrap items-center gap-2 rounded-lg bg-shelf px-3 py-2.5">
+					<li key={entry.id} data-testid="library-trash-row" className="lh-row flex flex-wrap items-center gap-x-5 gap-y-1 py-2.5 pl-3 pr-3">
 						<span className="flex min-w-0 flex-1 basis-48 flex-col gap-0.5">
-							<span className="text-md font-medium text-ink [overflow-wrap:anywhere]">{entry.name}</span>
-							<span className="text-sm text-faint" suppressHydrationWarning>{metaOf(entry)}</span>
+							<span className="lh-row-name">{entry.name}</span>
+							<span className="lh-row-meta" suppressHydrationWarning>{metaOf(entry)}</span>
 						</span>
-						<Button type="button" className={RAISED_2} aria-label={`Restore ${entry.name}`} onClick={() => onRestore(entry)}>Restore</Button>
-						<Button type="button" variant="ghost" className={`${DESTRUCTIVE_BUTTON} pointer-coarse:h-11`} aria-label={`Delete ${entry.name} for good`} onClick={() => onPurge(entry)}>Delete for good</Button>
+						<button type="button" className="lh-text-action" aria-label={`Restore ${entry.name}`} onClick={() => onRestore(entry)}>Restore</button>
+						<button type="button" className="lh-text-action" data-danger="" aria-label={`Delete ${entry.name} for good`} onClick={() => onPurge(entry)}>Delete for good</button>
 					</li>
 				))}
 			</ul>

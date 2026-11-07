@@ -12,6 +12,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import "./diagram.css";
 import { Link2Icon, MaximizeIcon, MinusIcon, PlusIcon } from "lucide-react";
+import { usePaperAppearance } from "@/components/paper/appearance";
 import { diagramNodeName, type DiagramDoc, type DiagramEdge, type DiagramNode } from "@/src/core";
 
 export interface CanvasActions {
@@ -234,7 +235,7 @@ function PenLayer({ onStroke }: { onStroke: (points: [number, number][]) => void
 	);
 }
 
-const ZOOM_BUTTON = "ui-icon-button bg-paper shadow-lift text-ink hover:bg-shelf";
+const ZOOM_BUTTON = "ui-icon-button rounded-full bg-paper shadow-lift text-graphite hover:text-ink";
 
 function ZoomControls() {
 	const flow = useReactFlow();
@@ -249,6 +250,8 @@ function ZoomControls() {
 
 function CanvasInner({ doc, readOnly, drawing, editingNode, editingEdge, focusRequest, actions, label }: DiagramCanvasProps) {
 	const flow = useReactFlow();
+	// React Flow's own colours follow the paper theme ("system" until the OS is read; R1).
+	const colorMode = usePaperAppearance().resolvedTheme;
 	const [nodes, setNodes] = useState<Node[]>(() => doc.nodes.map((node) => toFlowNode(node)));
 	useEffect(() => {
 		setNodes((prior) => {
@@ -353,7 +356,7 @@ function CanvasInner({ doc, readOnly, drawing, editingNode, editingEdge, focusRe
 					deleteKeyCode={null}
 					zoomOnDoubleClick={false}
 					proOptions={{ hideAttribution: true }}
-					colorMode="dark"
+					colorMode={colorMode}
 				>
 					<ZoomControls />
 				</ReactFlow>

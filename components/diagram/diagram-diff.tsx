@@ -12,7 +12,7 @@ function Section({ title, count, children }: { title: string; count: number; chi
 	if (count === 0) return null;
 	return (
 		<section className="flex flex-col gap-1" data-testid="diagram-diff-section" data-title={title}>
-			<h4 className="text-sm font-medium text-graphite">{title} ({count})</h4>
+			<h4 className="text-xs font-medium text-faint">{title} ({count})</h4>
 			<ul className="flex flex-col gap-0.5 text-sm text-ink [overflow-wrap:anywhere]">{children}</ul>
 		</section>
 	);

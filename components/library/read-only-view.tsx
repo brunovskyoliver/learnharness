@@ -40,17 +40,17 @@ export function ReadOnlyView({ item }: { item: PaneItem }) {
 	useEffect(() => { mark.current?.scrollIntoView({ block: "center" }); }, [jumpLine, item.jump?.nonce, text]);
 	const lines = text !== null && jumpLine !== null ? splitAtLine(text, jumpLine) : null;
 	return (
-		<div className="flex min-h-0 flex-1 flex-col gap-2 px-3 pb-3" data-testid="library-read-only">
+		<div className="flex min-h-0 flex-1 flex-col gap-2 px-4 pb-4" data-testid="library-read-only">
 			<p className="text-sm text-faint">This is your original; it can&apos;t be edited here.</p>
 			{tooLong ? (
 				<p className="flex flex-wrap items-center gap-2 text-sm text-graphite">
 					Too long to preview
-					<a href={contentUrl(item.id, true)} className="prompt-secondary">Download</a>
+					<a href={contentUrl(item.id, true)} className="lh-text-action">Download</a>
 				</p>
 			) : failed ? (
 				<div role="status" className="flex flex-wrap items-center gap-2 text-sm text-graphite">
 					<p>{item.name} could not be loaded.</p>
-					<button type="button" className="prompt-secondary" onClick={() => void load()}>Try again</button>
+					<button type="button" className="lh-text-action" onClick={() => void load()}>Try again</button>
 				</div>
 			) : text === null ? (
 				<p role="status" className="text-sm text-faint">Loading…</p>

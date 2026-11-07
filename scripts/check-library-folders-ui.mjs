@@ -212,7 +212,7 @@ try {
 		if (!ready) await pause(250);
 	}
 	assert.ok(ready, "isolated server starts");
-	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true });
+	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true, args: ["--no-sandbox"] });
 	for (const width of [1440, 390, 320]) await checkWidth(width);
 	console.log("Library folders browser checks passed.");
 } finally {

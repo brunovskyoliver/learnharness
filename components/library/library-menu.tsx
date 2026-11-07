@@ -3,12 +3,11 @@
 import { ContextMenu, DropdownMenu } from "radix-ui";
 import type { ReactNode } from "react";
 import { CheckIcon, ChevronDownIcon, MoreHorizontalIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 export interface LibraryMenuAction { label: string; onSelect: () => void; destructive?: boolean; testId?: string }
 
-const PANEL = "z-50 min-w-44 rounded-lg bg-shelf p-1 text-ink data-[state=closed]:hidden";
-const ROW = "flex min-h-9 cursor-default items-center rounded-md px-2 text-md outline-none data-[highlighted]:bg-[color-mix(in_srgb,var(--shelf)_80%,var(--ink))] pointer-coarse:min-h-11";
+const PANEL = "nb-menu min-w-44 data-[state=closed]:hidden";
+const ROW = "nb-menu-item items-center";
 
 /** The ⋯ menu and the right-click menu share one list of actions. */
 export function LibraryEntryMenu({ actions, children }: { actions: readonly LibraryMenuAction[]; children: ReactNode }) {
@@ -31,9 +30,9 @@ export function LibraryMoreButton({ name, actions }: { name: string; actions: re
 	return (
 		<DropdownMenu.Root>
 			<DropdownMenu.Trigger asChild>
-				<Button type="button" variant="ghost" size="icon" aria-label={`More actions for ${name}`} data-testid="library-more" className="size-9 text-faint pointer-coarse:size-11">
-					<MoreHorizontalIcon className="ui-icon" aria-hidden="true" />
-				</Button>
+				<button type="button" aria-label={`More actions for ${name}`} data-testid="library-more" className="lh-tool">
+					<MoreHorizontalIcon aria-hidden="true" />
+				</button>
 			</DropdownMenu.Trigger>
 			<DropdownMenu.Portal>
 				<DropdownMenu.Content data-lh-menu align="end" sideOffset={4} className={PANEL}>
@@ -72,21 +71,21 @@ export function LibraryChoice<T extends string>({ label, name, value, options, o
 }) {
 	const current = options.find((option) => option.value === value)?.label ?? "";
 	return (
-		<div className="flex min-w-0 items-center gap-1.5 text-sm text-graphite">
+		<div className="flex min-w-0 items-center gap-1 text-sm text-faint">
 			<span aria-hidden="true">{label}</span>
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger asChild>
-					<button type="button" aria-label={`${name}: ${current}`} data-testid={testId} className="flex h-9 min-w-0 max-w-full items-center gap-1 rounded-md border border-rule bg-transparent pl-2.5 pr-1.5 text-sm text-ink transition-colors hover:bg-shelf pointer-coarse:h-11">
+					<button type="button" aria-label={`${name}: ${current}`} data-testid={testId} className="lh-tool min-w-0 max-w-full gap-1 pr-1 text-ink">
 						<span className="min-w-0 truncate">{current}</span>
-						<ChevronDownIcon className="ui-icon shrink-0 text-faint" aria-hidden="true" />
+						<ChevronDownIcon className="!size-3 text-faint" aria-hidden="true" />
 					</button>
 				</DropdownMenu.Trigger>
 				<DropdownMenu.Portal>
-					<DropdownMenu.Content data-lh-menu align="start" sideOffset={4} collisionPadding={8} className={`${PANEL} max-h-[60dvh] max-w-[min(20rem,calc(100vw-1rem))] overflow-y-auto [scrollbar-width:none]`}>
+					<DropdownMenu.Content data-lh-menu align="start" sideOffset={4} collisionPadding={8} className={`${PANEL} max-w-[min(20rem,calc(100vw-1rem))]`}>
 						<DropdownMenu.RadioGroup value={value} onValueChange={(next) => onChange(next as T)}>
 							{options.map((option) => (
-								<DropdownMenu.RadioItem key={option.value} value={option.value} data-testid={`${testId}-option`} className={`${ROW} gap-2 [overflow-wrap:anywhere]`}>
-									<span className="flex size-4 shrink-0 items-center justify-center"><DropdownMenu.ItemIndicator><CheckIcon className="ui-icon" aria-hidden="true" /></DropdownMenu.ItemIndicator></span>
+								<DropdownMenu.RadioItem key={option.value} value={option.value} data-testid={`${testId}-option`} className={`${ROW} [overflow-wrap:anywhere]`}>
+									<span className="nb-menu-check"><DropdownMenu.ItemIndicator><CheckIcon aria-hidden="true" /></DropdownMenu.ItemIndicator></span>
 									{option.label}
 								</DropdownMenu.RadioItem>
 							))}

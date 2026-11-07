@@ -1,5 +1,7 @@
-/* Study ink over React Flow's defaults (feature 022). Loaded with the canvas, after
-   React Flow's own sheet, so neither reaches a route that has no open diagram. */
+/* The paper tokens over React Flow's defaults (feature 022; paper in feature 025 T051),
+   in both themes: React Flow's colorMode follows the resolved theme and every colour
+   here is a token. Loaded with the canvas, after React Flow's own sheet, so neither
+   reaches a route that has no open diagram. */
 .lh-diagram-canvas .react-flow {
 	--xy-background-color: transparent;
 	--xy-edge-stroke: var(--faint);
@@ -40,10 +42,12 @@
 .lh-diagram-box textarea::-webkit-scrollbar { display: none; }
 .lh-diagram-box[data-empty="true"] { color: var(--faint); }
 .lh-diagram-edge-label { position: absolute; padding: 0 4px; border-radius: var(--radius-md); background: var(--paper); color: var(--graphite); font-size: var(--text-sm); line-height: 18px; max-width: 200px; text-align: center; overflow-wrap: anywhere; pointer-events: all; }
-.lh-diagram-edge-label input { width: 9rem; background: var(--paper); color: var(--ink); border: 1px solid var(--nb-focus); border-radius: var(--radius-md); padding: 2px 4px; font: inherit; }
+.lh-diagram-edge-label input { width: 9rem; background: var(--paper); color: var(--ink); border: 0; border-bottom: 1px solid var(--ink); border-radius: 0; padding: 2px 4px; font: inherit; outline: none; }
 .lh-diagram-pen { position: absolute; inset: 0; z-index: 5; cursor: crosshair; touch-action: none; }
 .lh-diagram-pen svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .lh-diagram-canvas .react-flow__panel { margin: 8px; }
+/* Clear of the corner hint, which sits over the pane's bottom right (R13). */
+.lh-diagram-canvas .react-flow__panel.bottom.right { margin-bottom: 40px; }
 @media (prefers-reduced-motion: reduce) {
 	.lh-diagram-canvas .react-flow__handle { transition: none; }
 }

@@ -61,10 +61,65 @@ export interface CheckThreadProps {
 
 interface Placement { top: number; left: number; width: number; passageY: number; column: { left: number; right: number } }
 
+/** How to find a focused control again in a remounted thread, and where its caret was. */
+type FocusMark = { selector: string; index: number; start: number | null; end: number | null };
+
+function focusMark(root: Element, target: HTMLElement): FocusMark | null {
+	const attr = (["aria-label", "data-kbdrow", "data-testid", "name"] as const).find((name) => target.hasAttribute(name));
+	if (!attr) return null;
+	const value = (target.getAttribute(attr) ?? "").replace(/["\\]/g, "\\$&");
+	const selector = `[${attr}="${value}"]`;
+	const index = [...root.querySelectorAll(selector)].indexOf(target);
+	const field = target as HTMLInputElement | HTMLTextAreaElement;
+	const caret = "selectionStart" in field && typeof field.selectionStart === "number";
+	return { selector, index: Math.max(0, index), start: caret ? field.selectionStart : null, end: caret ? field.selectionEnd : null };
+}
+
 export function CheckThread(props: CheckThreadProps) {
 	const { id, kind, variant, layer } = props;
 	const slotRef = useRef<HTMLDivElement>(null);
 	const thread = <ThreadBody {...props} slotRef={slotRef} />;
+	// Moving between the margin and inline (the right pane opens, the window narrows) mounts
+	// the thread afresh; whatever had focus in it gets it back, caret and all.
+	const mark = useRef<FocusMark | null>(null);
+	useEffect(() => {
+		const threadOf = (el: Element | null) => {
+			const root = el?.closest('[data-testid="check-thread"]');
+			return root?.getAttribute("data-check") === id ? root : null;
+		};
+		const onFocus = (event: FocusEvent) => {
+			const target = event.target instanceof HTMLElement ? event.target : null;
+			const root = threadOf(target);
+			mark.current = root && target ? focusMark(root, target) : null;
+		};
+		// The caret moves without a focus event; keep its place.
+		const onKey = () => {
+			const active = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+			const root = threadOf(active);
+			if (root && active) mark.current = focusMark(root, active);
+		};
+		document.addEventListener("focusin", onFocus);
+		document.addEventListener("keyup", onKey);
+		document.addEventListener("pointerup", onKey);
+		return () => {
+			document.removeEventListener("focusin", onFocus);
+			document.removeEventListener("keyup", onKey);
+			document.removeEventListener("pointerup", onKey);
+		};
+	}, [id]);
+	const placed = useRef(variant);
+	useLayoutEffect(() => {
+		if (placed.current === variant) return;
+		placed.current = variant;
+		const wanted = mark.current;
+		const active = document.activeElement;
+		if (!wanted || (active && active !== document.body)) return;
+		const root = [...document.querySelectorAll('[data-testid="check-thread"]')].find((el) => el.getAttribute("data-check") === id);
+		const target = root?.querySelectorAll<HTMLElement>(wanted.selector)[wanted.index];
+		if (!target) return;
+		target.focus({ preventScroll: true });
+		if (wanted.start !== null && "setSelectionRange" in target) (target as HTMLTextAreaElement).setSelectionRange(wanted.start, wanted.end ?? wanted.start);
+	}, [variant, id]);
 	return (
 		<div ref={slotRef} data-check-slot={id} data-check-kind={kind}>
 			{variant === "inline" ? thread : layer ? createPortal(thread, layer) : null}

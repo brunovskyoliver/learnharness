@@ -533,7 +533,14 @@ async function checkMentions(width) {
 			return typeof field?.[props]?.onChange === "function";
 		}, {}, selector);
 		const hidden = await page.$eval(selector, (el) => !el.offsetParent);
-		if (hidden) await page.click('[data-testid="question-dock-bar"], [data-testid="practice-dock-bar"]');
+		// Feature 025: a pending check or problem is a thread beside the lesson; "Go to it" opens it
+		// (the collapsed thread's own line when the bottom bar has no Go to it).
+		if (hidden) {
+			const goTo = await page.$('[data-testid="check-go-to"]');
+			if (goTo) await goTo.click();
+			else await page.click('[data-testid="question-dock-bar"], [data-testid="practice-dock-bar"], [data-testid="teach-check-reveal"]');
+			await page.waitForFunction((sel) => !!document.querySelector(sel)?.offsetParent, {}, selector);
+		}
 	};
 	const composer = '[data-testid="composer"] textarea';
 	await open("/", composer);
@@ -703,7 +710,7 @@ try {
 		if (!ready) await pause(250);
 	}
 	assert.ok(ready, "isolated server starts");
-	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true });
+	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true, args: ["--no-sandbox"] });
 	if (toolsOnly) {
 		if (!process.env.LH_UI_SKIP_FORMAT) for (const width of [1440, 390, 320]) await checkEditorTools(width);
 		if (!process.env.LH_UI_SKIP_ACTIONS) for (const width of [1440, 390]) await checkTutorActions(width);
@@ -1293,14 +1300,15 @@ async function checkTutorActions(width) {
 		await page.keyboard.up("Shift");
 		await page.waitForSelector('[data-testid="page-bubble"]', { visible: true });
 		await pause(400);
-		// Above the text it selects, even on the first line, and inside the page pane.
+		// Clear of the text it selects (above it, or below when the card has no room there:
+		// feature 025 made it Notebook's taller selection card), even on the first line, and inside the page pane.
 		const bubble = await page.evaluate(() => {
 			const text = getSelection().getRangeAt(0).getBoundingClientRect();
 			const box = document.querySelector('[data-testid="page-bubble"]').getBoundingClientRect();
 			const pane = document.querySelector(".page-workspace").getBoundingClientRect();
-			return { above: box.bottom <= text.top, inPane: box.left >= pane.left && box.right <= pane.right };
+			return { clear: box.bottom <= text.top + 1 || box.top >= text.bottom - 1, inPane: box.left >= pane.left - 1 && box.right <= pane.right + 1 };
 		});
-		assert.deepEqual(bubble, { above: true, inPane: true }, `selection bubble at ${width}px`);
+		assert.deepEqual(bubble, { clear: true, inPane: true }, `selection bubble at ${width}px`);
 	};
 
 	// Beside a chat: Explain sends at once; Ask… only fills the composer.
@@ -1468,19 +1476,27 @@ async function checkOutlineExport(width) {
 	await page.waitForFunction(() => window.getSelection()?.anchorNode?.parentElement?.closest("h3")?.textContent === "Third");
 	console.log(`PASS ${width}px outline lists h1-h3 and jumps the caret, word count leaves out formulas`);
 
+	// Feature 025 (T049): Export is the paper export dialog: PDF, Word and Markdown through the
+	// export route, with Copy as Markdown and Print kept as its own actions. A page with no
+	// Notebook notes shows no "Include the notes".
 	await page.click('[data-testid="page-export"]');
-	await page.waitForSelector('[data-testid="page-export-menu"]');
+	await page.waitForSelector('[data-testid="page-export-dialog"]');
+	assert.equal(await page.$('[data-testid="page-export-include"]'), null, "no notes switch for a page without notes");
 	await page.click('[data-testid="page-export-copy"]');
 	await page.waitForFunction(() => document.querySelector('[data-testid="page-export-copy"]')?.textContent === "Copied");
 	assert.equal(await page.evaluate(() => navigator.clipboard.readText()), text);
-	await page.click('[data-testid="page-export-download"]');
+	await page.click('[data-testid="page-export-format-md"]');
+	await page.click('[data-testid="page-export-run"]');
 	let file = null;
 	for (let i = 0; i < 40 && !file; i++) {
 		file = (await readdir(downloads)).find((f) => f.endsWith(".md"));
 		if (!file) await pause(250);
 	}
 	assert.equal(file, `${name}.md`);
-	assert.equal(await readFile(path.join(downloads, file), "utf8"), text);
+	const exported = await readFile(path.join(downloads, file), "utf8");
+	assert.ok(exported.includes("Second part") && exported.includes("Six."), exported);
+	await page.waitForFunction(() => !document.querySelector('[data-testid="page-export-dialog"]'));
+	await page.waitForFunction((n) => document.querySelector('[data-testid="page-exported"]')?.textContent === `Exported “${n}.md”.`, {}, name);
 	await page.click('[data-testid="page-export"]');
 	await page.waitForSelector('[data-testid="page-export-print"]');
 	await page.click('[data-testid="page-export-print"]');
@@ -1489,7 +1505,7 @@ async function checkOutlineExport(width) {
 	assert.equal(printed.title, name);
 	assert.ok(printed.text.includes("Second part") && printed.text.includes("Six."), printed.text);
 	await page.waitForFunction(() => !document.getElementById("lh-print-root"));
-	console.log(`PASS ${width}px export: copy is the stored Markdown, download is "${name}.md", print shows only the page`);
+	console.log(`PASS ${width}px export: copy is the stored Markdown, the Markdown file is "${name}.md", print shows only the page`);
 	assert.deepEqual(errors, [], `${width}px: no browser exceptions`);
 	await context.close();
 }

@@ -85,8 +85,8 @@ export function SavePassageDialog({ chatId, passage, document: fromDocument, onC
 					<>
 						<p role="status" className="text-sm text-graphite" data-testid="save-passage-saved">Saved to {saved.name}, {fromDocument ? `with a citation to page ${fromDocument.page}` : "with a link back to this lesson"}.</p>
 						<div className="flex flex-wrap gap-2">
-							<button type="button" className="prompt-secondary" data-testid="save-passage-open" onClick={() => { workspace?.openItem(saved); onClose(); }}>Open page</button>
-							<button type="button" className="prompt-primary" onClick={onClose}>Done</button>
+							<button type="button" className="lh-text-action" data-testid="save-passage-open" onClick={() => { workspace?.openItem(saved); onClose(); }}>Open page</button>
+							<button type="button" className="nb-pill" onClick={onClose}>Done</button>
 						</div>
 					</>
 				) : (
@@ -105,7 +105,7 @@ export function SavePassageDialog({ chatId, passage, document: fromDocument, onC
 						</label>
 						<div className="flex max-h-56 flex-col gap-0.5 overflow-y-auto [scrollbar-width:none]">
 							{library.items === null && !library.failed && <div role="status" aria-label="Loading your pages" className="flex flex-col gap-2 py-1"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-5 w-1/2" /></div>}
-							{library.failed && <div role="status" className="flex flex-wrap items-center gap-2 text-sm text-graphite"><p>Your Library could not be loaded.</p><button type="button" className="prompt-secondary" onClick={library.retry}>Try again</button></div>}
+							{library.failed && <div role="status" className="flex flex-wrap items-center gap-2 text-sm text-graphite"><p>Your Library could not be loaded.</p><button type="button" className="lh-text-action" onClick={library.retry}>Try again</button></div>}
 							{library.items !== null && pages.length === 0 && !query.trim() && <p className="text-sm text-graphite">You have no pages yet. Name one above.</p>}
 							{rows.map((page) => <button key={page.id} type="button" className={ROW} disabled={busy} data-testid="save-passage-page" onClick={() => void saveTo(page)}>{page.name}</button>)}
 							{library.items !== null && query.trim() && !exact && <button type="button" className={ROW} disabled={busy} data-testid="save-passage-new" onClick={() => void saveToNew()}>New page: {query.trim()}</button>}

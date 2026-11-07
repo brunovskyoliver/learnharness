@@ -10,8 +10,7 @@ import { diagramLinkKey, isWikiTarget, nameKey, type DiagramLink } from "@/src/c
 
 type Tab = "note" | "lesson" | "idea";
 const TAB_LABEL: Record<Tab, string> = { note: "Notes", lesson: "Lessons", idea: "Ideas" };
-const PILL = "min-h-9 rounded-md px-3 text-sm pointer-coarse:min-h-11";
-const ROW = "flex min-h-9 w-full min-w-0 flex-col rounded-md px-2 py-1 text-left text-sm hover:bg-shelf pointer-coarse:min-h-11";
+const ROW = "flex min-h-9 w-full flex-col justify-center gap-0.5 rounded-lg px-2.5 py-1.5 text-left text-md hover:bg-shelf pointer-coarse:min-h-11";
 
 interface Row { key: string; name: string; meta?: string; link: DiagramLink }
 
@@ -57,22 +56,22 @@ export function DiagramLinkDialog({ subject, links, onAdd, onRemove, onClose }: 
 	const dangling = tab === "note" && rows && isWikiTarget(query.trim()) && !rows.some((row) => nameKey(row.name) === nameKey(query.trim()));
 	return (
 		<Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-			<DialogContent className="flex max-h-[85dvh] flex-col gap-3 rounded-xl border-0 bg-paper shadow-lift" data-testid="diagram-link-dialog">
-				<DialogTitle className="pe-6 text-md font-semibold [overflow-wrap:anywhere]">Link {subject}</DialogTitle>
-				<DialogDescription className="text-sm text-faint">Links show in the Links panel of both sides. Nothing is written to your graph.</DialogDescription>
+			<DialogContent className="flex max-h-[85dvh] flex-col gap-3" data-testid="diagram-link-dialog">
+				<DialogTitle className="pe-6 [overflow-wrap:anywhere]">Link {subject}</DialogTitle>
+				<DialogDescription>Links show in the Links panel of both sides. Nothing is written to your graph.</DialogDescription>
 				{links.length > 0 && (
 					<ul aria-label="Already linked" className="flex flex-col gap-1">
 						{links.map((link) => (
 							<li key={diagramLinkKey(link)} className="flex items-center gap-2 text-sm text-ink" data-testid="diagram-link-existing">
 								<span className="min-w-0 flex-1 [overflow-wrap:anywhere]">{linkWords(link)}</span>
-								<button type="button" className="prompt-secondary" aria-label={`Remove link to ${linkWords(link)}`} onClick={() => onRemove(diagramLinkKey(link))}>Remove</button>
+								<button type="button" className="lh-text-action" aria-label={`Remove link to ${linkWords(link)}`} onClick={() => onRemove(diagramLinkKey(link))}>Remove</button>
 							</li>
 						))}
 					</ul>
 				)}
-				<div role="group" aria-label="What to link" className="flex flex-wrap gap-1">
+				<div role="group" aria-label="What to link" className="nb-set-pills">
 					{(Object.keys(TAB_LABEL) as Tab[]).map((name) => (
-						<button key={name} type="button" aria-pressed={tab === name} data-testid={`diagram-link-tab-${name}`} className={`${PILL} ${tab === name ? "bg-shelf text-ink" : "text-graphite"}`} onClick={() => setTab(name)}>{TAB_LABEL[name]}</button>
+						<button key={name} type="button" aria-pressed={tab === name} data-testid={`diagram-link-tab-${name}`} className="nb-set-pill" onClick={() => setTab(name)}>{TAB_LABEL[name]}</button>
 					))}
 				</div>
 				<input
@@ -82,12 +81,12 @@ export function DiagramLinkDialog({ subject, links, onAdd, onRemove, onClose }: 
 					autoComplete="off"
 					placeholder={tab === "note" ? "Filter, or name a page to come…" : "Filter…"}
 					data-testid="diagram-link-filter"
-					className="h-9 w-full rounded-md border border-rule bg-transparent px-2 text-sm text-ink pointer-coarse:h-11"
+					className="lh-line-field"
 					onChange={(event) => setQuery(event.target.value)}
 				/>
 				<div className="flex min-h-24 flex-col gap-0.5 overflow-y-auto" data-testid="diagram-link-rows">
 					{failed ? (
-						<div role="status" className="flex flex-wrap items-center gap-2 text-sm text-graphite"><p>These could not be loaded.</p><button type="button" className="prompt-secondary" onClick={() => setAttempt((n) => n + 1)}>Try again</button></div>
+						<div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink"><p>These could not be loaded.</p><button type="button" className="lh-text-action" onClick={() => setAttempt((n) => n + 1)}>Try again</button></div>
 					) : !rows ? (
 						<div role="status" aria-label="Loading" className="flex flex-col gap-2"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-5 w-1/2" /></div>
 					) : (
@@ -95,20 +94,20 @@ export function DiagramLinkDialog({ subject, links, onAdd, onRemove, onClose }: 
 							{dangling && (
 								<button type="button" className={ROW} data-testid="diagram-link-dangling" onClick={() => { onAdd({ kind: "note", target: query.trim() }); setQuery(""); }}>
 									<span className="text-ink [overflow-wrap:anywhere]">Link {query.trim()}</span>
-									<span className="text-faint">Nothing has this name yet. Link it now, make the page later.</span>
+									<span className="text-meta text-faint">Nothing has this name yet. Link it now, make the page later.</span>
 								</button>
 							)}
 							{shown.length === 0 && !dangling && <p className="px-2 text-sm text-graphite">Nothing to link here.</p>}
 							{shown.map((row) => (
 								<button key={row.key} type="button" className={ROW} data-testid="diagram-link-row" onClick={() => onAdd(row.link)}>
 									<span className="text-ink [overflow-wrap:anywhere]">{row.name}</span>
-									{row.meta && <span className="line-clamp-2 text-faint [overflow-wrap:anywhere]">{row.meta}</span>}
+									{row.meta && <span className="line-clamp-2 text-meta text-faint [overflow-wrap:anywhere]">{row.meta}</span>}
 								</button>
 							))}
 						</>
 					)}
 				</div>
-				<div className="flex justify-end"><button type="button" className="prompt-secondary" onClick={onClose}>Done</button></div>
+				<div className="flex justify-end"><button type="button" className="nb-pill" onClick={onClose}>Done</button></div>
 			</DialogContent>
 		</Dialog>
 	);

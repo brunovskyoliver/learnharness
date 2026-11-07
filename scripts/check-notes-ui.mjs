@@ -403,8 +403,11 @@ async function checkAiEdit(width) {
 	await page.waitForSelector(id("page-bubble"), { visible: true });
 	await pause(400);
 	if (shots) await page.screenshot({ path: path.join(shots, `bubble-${width}.png`) });
-	const labels = await page.$$eval(`${id("page-bubble")} button`, (els) => els.map((el) => el.textContent || el.getAttribute("aria-label")));
-	assert.deepEqual(labels.slice(3), ["Explain", "Simpler", "Summarize", "Rewrite", "Expand", "Challenge", "Quiz me on this", "Generate questions", "Ask…"]);
+	// Feature 025: the bubble is Notebook's selection card: format rows (with Link), then the tutor's actions.
+	const formats = await page.$$eval(`${id("page-bubble")} .nb-sel-format`, (els) => els.map((el) => el.getAttribute("aria-label")));
+	assert.ok(["Bold", "Italic", "Link"].every((name) => formats.includes(name)), `format rows: ${formats}`);
+	const labels = await page.$$eval(`${id("page-bubble")} [data-testid^="page-tutor-"]`, (els) => els.map((el) => el.textContent));
+	assert.deepEqual(labels, ["Explain", "Simpler", "Summarize", "Rewrite", "Expand", "Challenge", "Quiz me on this", "Generate questions", "Ask…"]);
 	assert.equal(posts.length, 0, "nothing is sent by showing the bubble");
 	const bubble = await page.$eval(id("page-bubble"), (el) => { const r = el.getBoundingClientRect(); return [r.left, r.right]; });
 	assert.ok(bubble[0] >= 0 && bubble[1] <= width, `the bubble fits: ${bubble}`);
@@ -682,7 +685,7 @@ try {
 		if (!ready) await pause(250);
 	}
 	assert.ok(ready, "isolated server starts");
-	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true });
+	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true, args: ["--no-sandbox"] });
 	for (const width of (process.env.LH_UI_WIDTHS ?? "1440,390,320").split(",").map(Number)) {
 		await checkLinks(width);
 		await checkBlocks(width);

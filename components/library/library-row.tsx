@@ -2,14 +2,12 @@
 
 import { useRef, useState } from "react";
 import { PencilIcon, PinIcon, StarIcon, Trash2Icon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { formatBytes, KIND_LABEL, type LibraryItem } from "@/src/core";
 import type { EntryKey } from "./library-filter.ts";
 import { LibraryEntryMenu, LibraryMoreButton, LibrarySelectBox, moreButton, type LibraryMenuAction } from "./library-menu.tsx";
 import { opensInPane, usePagePane } from "./page-pane-context.tsx";
 
-const ACTION = "size-9 text-faint pointer-coarse:size-11";
-const OPEN = "flex min-w-0 flex-1 flex-col gap-0.5 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-shelf";
+const OPEN = "lh-row-open";
 const contentUrl = (id: string, download = false) => `/api/library/items/${id}/content${download ? "?download=1" : ""}`;
 
 function metaLine(item: LibraryItem): string {
@@ -86,12 +84,12 @@ export function LibraryRow({ item, location, onRenamed, actions = [], grid = fal
 	];
 	const body = (
 		<>
-			<span className="flex items-start gap-1.5 text-md font-medium text-ink [overflow-wrap:anywhere]">
-				{item.pinned && <PinIcon className="ui-icon mt-1 size-3.5 shrink-0 text-graphite" role="img" aria-label="Pinned" />}
-				{item.favorite && <StarIcon className="ui-icon mt-1 size-3.5 shrink-0 text-graphite" role="img" aria-label="Favorite" />}
+			<span className="lh-row-name flex items-start gap-1.5">
+				{item.pinned && <PinIcon className="mt-[3px] size-3.5 shrink-0 text-graphite" role="img" aria-label="Pinned" />}
+				{item.favorite && <StarIcon className="mt-[3px] size-3.5 shrink-0 text-graphite" role="img" aria-label="Favorite" />}
 				<span className="min-w-0">{item.name}</span>
 			</span>
-			<span className="text-sm text-faint" suppressHydrationWarning>{metaLine(item)}{location ? ` · ${location}` : ""}</span>
+			<span className="lh-row-meta" suppressHydrationWarning>{metaLine(item)}{location ? ` · ${location}` : ""}</span>
 		</>
 	);
 	const newTab = item.kind === "image";
@@ -100,15 +98,16 @@ export function LibraryRow({ item, location, onRenamed, actions = [], grid = fal
 	return (
 		<LibraryEntryMenu actions={menuActions}>
 		<li
-			className={`rounded-lg ${selection?.selected ? "bg-shelf" : "bg-shelf"}`}
+			className="lh-row"
+			data-selected={selection?.selected ? "" : undefined}
 			data-testid="library-row"
 			draggable={Boolean(onDragStartEntry) && !renaming}
 			onDragStart={(event) => onDragStartEntry?.(`item:${item.id}`, event)}
 		>
-			<div className={`flex items-center gap-1 pr-1.5 ${grid ? "h-full" : ""}`}>
+			<div className={`flex items-center gap-0.5 pr-2 ${grid ? "h-full" : ""}`}>
 				{selection && <LibrarySelectBox label={`Select ${item.name}`} checked={selection.selected} onChange={selection.toggle} />}
 				{renaming ? (
-					<div className="flex min-w-0 flex-1 flex-col gap-1 px-3 py-2">
+					<div className="nb-reply-line flex min-w-0 flex-1 flex-col gap-1 px-3 py-2">
 						<input
 							autoFocus
 							defaultValue={item.name}
@@ -130,7 +129,7 @@ export function LibraryRow({ item, location, onRenamed, actions = [], grid = fal
 									finish();
 								}
 							}}
-							className="h-9 w-full min-w-0 rounded-md border border-rule bg-transparent px-2 text-md text-ink pointer-coarse:h-11"
+							className="lh-line-field font-medium"
 						/>
 						{renameError && <p role="alert" className="text-sm text-red">{renameError}</p>}
 					</div>
@@ -143,30 +142,26 @@ export function LibraryRow({ item, location, onRenamed, actions = [], grid = fal
 				)}
 				{!renaming && !grid && (
 					<>
-						<Button
+						<button
 							ref={renameButton}
 							type="button"
-							variant="ghost"
-							size="icon"
 							aria-label={`Rename ${item.name}`}
-							className={`${ACTION} max-sm:hidden`}
+							className="lh-tool max-sm:hidden"
 							onClick={() => {
 								discard.current = false;
 								setRenaming(true);
 							}}
 						>
-							<PencilIcon className="ui-icon" aria-hidden="true" />
-						</Button>
-						<Button
+							<PencilIcon aria-hidden="true" />
+						</button>
+						<button
 							type="button"
-							variant="ghost"
-							size="icon"
 							aria-label={`Delete ${item.name}`}
-							className={ACTION}
+							className="lh-tool"
 							onClick={(event) => onDelete(item, event.currentTarget)}
 						>
-							<Trash2Icon className="ui-icon" aria-hidden="true" />
-						</Button>
+							<Trash2Icon aria-hidden="true" />
+						</button>
 					</>
 				)}
 				{!renaming && menuActions.length > 0 && <LibraryMoreButton name={item.name} actions={menuActions} />}

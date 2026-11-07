@@ -7,7 +7,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CheckSquareIcon, FilePlusIcon, FolderPlusIcon, LayoutGridIcon, ListIcon, NetworkIcon, SearchIcon, UploadIcon, XIcon } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import { LibraryContextSlot } from "@/components/workspace/context-slot";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useServerEvent, useServerResync } from "@/components/server-events";
@@ -35,7 +34,6 @@ const DocumentSearchPanel = dynamic(() => import("./document-search.tsx").then((
 	loading: () => <p role="status" className="text-sm text-faint">Loading search…</p>,
 });
 
-const RAISED_2 = "bg-shelf text-ink hover:bg-[color-mix(in_srgb,var(--shelf)_80%,var(--ink))] pointer-coarse:h-11";
 const LOAD_FAILED = "Your Library could not be loaded.";
 
 const noop = () => {};
@@ -83,17 +81,17 @@ const EMPTY: Record<LibraryViewName, string> = {
 export function LibraryBody({ items, folders = [], folderId = null, view = "all", tag = null, kind = null, sort = "name", descending = false, recentIds = [], layout = "list", selected = null, onToggle = noop, itemActions, folderActions, onDragStartEntry, onDropOnFolder, onRenameFolder = noop, onDeleteFolder = noop, loadFailed, refreshFailed, query, onRetry, onChanged, onDelete }: LibraryBodyProps) {
 	const [overFolder, setOverFolder] = useState<string | null>(null);
 	const failedLine = (
-		<div role="status" className="flex flex-wrap items-center gap-2 text-graphite">
+		<div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-md text-ink">
 			<p>{LOAD_FAILED}</p>
-			<button type="button" onClick={onRetry} className="prompt-secondary">Try again</button>
+			<button type="button" onClick={onRetry} className="lh-text-action">Try again</button>
 		</div>
 	);
 	if (items === null) {
 		return loadFailed ? failedLine : (
 			<div role="status" aria-label="Loading your Library" className="flex flex-col gap-1">
-				<Skeleton className="h-[62px] w-full rounded-lg" />
-				<Skeleton className="h-[62px] w-full rounded-lg" />
-				<Skeleton className="h-[62px] w-full rounded-lg" />
+				<Skeleton className="h-[60px] w-full rounded-lg" />
+				<Skeleton className="h-[60px] w-full rounded-lg" />
+				<Skeleton className="h-[60px] w-full rounded-lg" />
 			</div>
 		);
 	}
@@ -108,11 +106,11 @@ export function LibraryBody({ items, folders = [], folderId = null, view = "all"
 		<>
 			{refreshFailed && failedLine}
 			{filtering && nothing ? (
-				<p role="status" className="text-md text-graphite">Nothing matched</p>
+				<p role="status" className="text-md text-faint">Nothing matched</p>
 			) : nothing ? (
-				<p className="text-md text-graphite">{folderId ? "This folder is empty." : EMPTY[view]}</p>
+				<p className="text-md text-faint">{folderId ? "This folder is empty." : EMPTY[view]}</p>
 			) : (
-				<ul className={layout === "grid" ? "grid grid-cols-1 gap-1 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col gap-1"} data-testid="library-list">
+				<ul className={layout === "grid" ? "lh-grid grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col"} data-testid="library-list">
 					{shown.folders.map((folder) => (
 						<FolderRow
 							key={folder.id}
@@ -150,7 +148,7 @@ const PREFS_KEY = "lh-library-view";
 type LibrarySearchMode = "names" | "text";
 type LibraryPrefs = { layout: LibraryLayout; sort: LibrarySort; descending: boolean; searchMode: LibrarySearchMode };
 const DEFAULT_PREFS: LibraryPrefs = { layout: "list", sort: "name", descending: false, searchMode: "names" };
-const PILL = "inline-flex min-h-9 items-center justify-center rounded-md px-2.5 text-sm transition-colors hover:bg-shelf pointer-coarse:min-h-11 pointer-coarse:min-w-11";
+const PILL = "nb-set-pill";
 
 function viewHref(view: LibraryViewName, tag?: string | null): string {
 	const params = new URLSearchParams();
@@ -471,29 +469,29 @@ export function LibraryView() {
 					<div onDragOver={(event) => { if (trail.length > 0 && event.dataTransfer.types.includes(DRAG_TYPE)) { event.preventDefault(); setOverTop(true); } }} onDragLeave={() => setOverTop(false)} onDrop={(event) => { setOverTop(false); if (event.dataTransfer.types.includes(DRAG_TYPE)) { event.preventDefault(); void dropOn(trail.at(-2)?.id ?? null, event); } }} className={overTop ? "rounded-md bg-shelf" : undefined}>
 						<FolderBreadcrumbs trail={trail} />
 					</div>
-					<div className="flex flex-wrap items-center justify-between gap-3">
-						<h1 className="tracking-title text-2xl font-medium leading-[1.2] [overflow-wrap:anywhere]">{trail.at(-1)?.name ?? (view === "all" ? "Library" : VIEW_LABELS[view])}</h1>
-						<div className="flex flex-wrap gap-2">
-							<Button type="button" className={RAISED_2} aria-pressed={selected !== null} onClick={() => setSelected(selected ? null : new Set())} data-testid="library-select-mode">
-								<CheckSquareIcon className="ui-icon" aria-hidden="true" />
+					<div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+						<h1 className="tracking-title text-2xl font-medium leading-[1.2] text-ink [overflow-wrap:anywhere]">{trail.at(-1)?.name ?? (view === "all" ? "Library" : VIEW_LABELS[view])}</h1>
+						<div className="lh-tools -mx-1.5 gap-x-3">
+							<button type="button" className="lh-tool" aria-pressed={selected !== null} onClick={() => setSelected(selected ? null : new Set())} data-testid="library-select-mode">
+								<CheckSquareIcon aria-hidden="true" />
 								{selected ? "Done" : "Select"}
-							</Button>
-							<Button ref={newFolderButton} type="button" className={RAISED_2} onClick={() => setNaming({ folder: null })} data-testid="library-new-folder">
-								<FolderPlusIcon className="ui-icon" aria-hidden="true" />
+							</button>
+							<button ref={newFolderButton} type="button" className="lh-tool" onClick={() => setNaming({ folder: null })} data-testid="library-new-folder">
+								<FolderPlusIcon aria-hidden="true" />
 								New folder
-							</Button>
-							<Button ref={uploadButton} type="button" className={RAISED_2} onClick={() => picker.current?.click()} data-testid="library-upload">
-								<UploadIcon className="ui-icon" aria-hidden="true" />
+							</button>
+							<button ref={uploadButton} type="button" className="lh-tool" onClick={() => picker.current?.click()} data-testid="library-upload">
+								<UploadIcon aria-hidden="true" />
 								Upload
-							</Button>
-							<Button type="button" className={RAISED_2} disabled={creating} onClick={() => void newPage()} data-testid="library-new-page">
-								<FilePlusIcon className="ui-icon" aria-hidden="true" />
+							</button>
+							<button type="button" className="lh-tool" disabled={creating} onClick={() => void newPage()} data-testid="library-new-page">
+								<FilePlusIcon aria-hidden="true" />
 								New page
-							</Button>
-							<Button type="button" className={RAISED_2} onClick={() => setNewDiagram(true)} data-testid="library-new-diagram">
-								<NetworkIcon className="ui-icon" aria-hidden="true" />
+							</button>
+							<button type="button" className="lh-tool" onClick={() => setNewDiagram(true)} data-testid="library-new-diagram">
+								<NetworkIcon aria-hidden="true" />
 								New diagram
-							</Button>
+							</button>
 						</div>
 						<input
 							ref={picker}
@@ -507,9 +505,9 @@ export function LibraryView() {
 							}}
 						/>
 					</div>
-					<div className="flex flex-wrap items-center gap-2">
-					<label className="flex h-9 min-w-[11rem] flex-[1_1_16rem] items-center gap-2 rounded-md bg-shelf px-2.5 text-faint transition-colors focus-within:bg-shelf pointer-coarse:h-11">
-						<SearchIcon className="ui-icon shrink-0" aria-hidden="true" />
+					<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+					<label className="nb-reply-line flex h-9 min-w-[11rem] flex-[1_1_16rem] items-center gap-2 border-b border-rule text-faint pointer-coarse:h-11">
+						<SearchIcon className="size-[15px] shrink-0" aria-hidden="true" />
 						<input
 							type="search"
 							value={query}
@@ -519,12 +517,12 @@ export function LibraryView() {
 							onChange={(event) => setQuery(event.target.value)}
 							autoComplete="off"
 							spellCheck={false}
-							className="min-w-0 flex-1 bg-transparent text-md text-ink placeholder:text-faint"
+							className="min-w-0 flex-1 bg-transparent text-md text-ink lh-bare-field placeholder:text-faint"
 						/>
 					</label>
-					<div role="group" aria-label="What to search" className="flex gap-1" data-testid="library-search-mode">
+					<div role="group" aria-label="What to search" className="nb-set-pills" data-testid="library-search-mode">
 						{([["names", "Names"], ["text", "Full text"]] as const).map(([mode, label]) => (
-							<button key={mode} type="button" aria-pressed={prefs.searchMode === mode} onClick={() => updatePrefs({ searchMode: mode })} data-testid={`library-search-mode-${mode}`} className={`${PILL} ${prefs.searchMode === mode ? "bg-shelf text-ink" : "text-graphite"}`}>{label}</button>
+							<button key={mode} type="button" aria-pressed={prefs.searchMode === mode} onClick={() => updatePrefs({ searchMode: mode })} data-testid={`library-search-mode-${mode}`} className={PILL}>{label}</button>
 						))}
 					</div>
 					</div>
@@ -541,46 +539,46 @@ export function LibraryView() {
 					)}
 					<DiagramProposalsLine />
 					<PageProposalsLine exceptPageId={pane?.item?.id} onAccepted={(item) => { if (workspace) workspace.openItem(item); else pane?.open({ id: item.id, name: item.name, kind: item.kind, size: item.size }); }} />
-					<nav aria-label="Library views" className="flex flex-wrap gap-1" data-testid="library-views">
+					<nav aria-label="Library views" className="nb-set-pills" data-testid="library-views">
 						{(Object.keys(VIEW_LABELS) as LibraryViewName[]).map((name) => (
-							<Link key={name} href={viewHref(name)} aria-current={view === name ? "page" : undefined} className={`${PILL} ${view === name ? "bg-shelf text-ink" : "text-graphite"}`}>{VIEW_LABELS[name]}</Link>
+							<Link key={name} href={viewHref(name)} aria-current={view === name ? "page" : undefined} className={PILL}>{VIEW_LABELS[name]}</Link>
 						))}
 					</nav>
 					{view !== "trash" && (
-						<div className="flex flex-wrap items-center gap-2" data-testid="library-filters">
+						<div className="flex flex-wrap items-center gap-x-4 gap-y-2" data-testid="library-filters">
 							{prefs.searchMode === "names" && (
 								<>
 									<LibraryChoice label="Sort" name="Sort by" testId="library-sort" value={prefs.sort} onChange={(sort) => updatePrefs({ sort })} options={(Object.keys(SORT_LABELS) as LibrarySort[]).map((name) => ({ value: name, label: SORT_LABELS[name] }))} />
-									<button type="button" className={`${PILL} text-graphite`} onClick={() => updatePrefs({ descending: !prefs.descending })} aria-label={prefs.descending ? "Sorted descending" : "Sorted ascending"}>{prefs.descending ? "Descending" : "Ascending"}</button>
+									<button type="button" className="lh-tool -mx-1.5" onClick={() => updatePrefs({ descending: !prefs.descending })} aria-label={prefs.descending ? "Sorted descending" : "Sorted ascending"}>{prefs.descending ? "Descending" : "Ascending"}</button>
 								</>
 							)}
 							<LibraryChoice<LibraryKind | "all"> label="Type" name="Filter by type" testId="library-kind" value={kind ?? "all"} onChange={(next) => setKind(next === "all" ? null : next)} options={[{ value: "all", label: "All" }, ...(Object.keys(KIND_LABEL) as LibraryKind[]).map((name) => ({ value: name, label: KIND_LABEL[name] }))]} />
-							<div className={`ml-auto flex gap-1 ${prefs.searchMode === "text" ? "hidden" : ""}`}>
-								<Button type="button" variant="ghost" size="icon" aria-label="List view" aria-pressed={prefs.layout === "list"} className={`size-9 pointer-coarse:size-11 ${prefs.layout === "list" ? "bg-shelf" : "text-faint"}`} onClick={() => updatePrefs({ layout: "list" })}><ListIcon className="ui-icon" aria-hidden="true" /></Button>
-								<Button type="button" variant="ghost" size="icon" aria-label="Grid view" aria-pressed={prefs.layout === "grid"} className={`size-9 pointer-coarse:size-11 ${prefs.layout === "grid" ? "bg-shelf" : "text-faint"}`} onClick={() => updatePrefs({ layout: "grid" })} data-testid="library-grid"><LayoutGridIcon className="ui-icon" aria-hidden="true" /></Button>
+							<div className={`-mr-1.5 ml-auto flex gap-0.5 ${prefs.searchMode === "text" ? "hidden" : ""}`}>
+								<button type="button" aria-label="List view" aria-pressed={prefs.layout === "list"} className="lh-tool" onClick={() => updatePrefs({ layout: "list" })}><ListIcon aria-hidden="true" /></button>
+								<button type="button" aria-label="Grid view" aria-pressed={prefs.layout === "grid"} className="lh-tool" onClick={() => updatePrefs({ layout: "grid" })} data-testid="library-grid"><LayoutGridIcon aria-hidden="true" /></button>
 							</div>
 						</div>
 					)}
 					{view !== "trash" && allTags(items ?? []).length > 0 && (
-						<nav aria-label="Filter by tag" className="flex flex-wrap gap-1" data-testid="library-tags">
+						<nav aria-label="Filter by tag" className="nb-set-pills" data-testid="library-tags">
 							{allTags(items ?? []).map((name) => (
-								<Link key={name} href={viewHref(view, tag === name ? null : name)} aria-current={tag === name ? "true" : undefined} className={`${PILL} ${tag === name ? "bg-shelf text-ink" : "text-graphite"}`}>{name}</Link>
+								<Link key={name} href={viewHref(view, tag === name ? null : name)} aria-current={tag === name ? "true" : undefined} className={PILL}>{name}</Link>
 							))}
 						</nav>
 					)}
 					{selected && (
-						<div role="toolbar" aria-label="Selected items" className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-lg bg-shelf px-3 py-2" data-testid="library-bulk">
-							<span role="status" className="mr-auto text-sm text-ink">{selected.size} selected</span>
-							<Button type="button" variant="ghost" className="pointer-coarse:h-11" disabled={selected.size === 0} onClick={() => openMove(selectedKeys, `${selected.size} selected`, null)} data-testid="library-bulk-move">Move to…</Button>
-							<Button type="button" variant="ghost" className="pointer-coarse:h-11" disabled={selected.size === 0} onClick={() => void bulkMark({ favorite: true })}>Favorite</Button>
-							<Button type="button" variant="ghost" className="pointer-coarse:h-11" disabled={selectedItems.length === 0} onClick={() => setBulkTagging(true)}>Tags…</Button>
-							<Button type="button" variant="ghost" className="pointer-coarse:h-11" disabled={selected.size === 0} onClick={() => void bulkMark({ archived: true })}>Archive</Button>
-							<Button type="button" variant="ghost" className={`${DESTRUCTIVE_BUTTON} pointer-coarse:h-11`} disabled={selected.size === 0} onClick={async () => finishBulk(await runBulk(selectedKeys, trashKey, nameOfKey))} data-testid="library-bulk-trash">Move to the trash</Button>
+						<div role="toolbar" aria-label="Selected items" className="sticky top-2 z-10 flex flex-wrap items-center gap-x-5 gap-y-1 rounded-xl bg-paper px-4 py-2 shadow-lift" data-testid="library-bulk">
+							<span role="status" className="mr-auto text-sm font-medium text-ink">{selected.size} selected</span>
+							<button type="button" className="lh-text-action" disabled={selected.size === 0} onClick={() => openMove(selectedKeys, `${selected.size} selected`, null)} data-testid="library-bulk-move">Move to…</button>
+							<button type="button" className="lh-text-action" disabled={selected.size === 0} onClick={() => void bulkMark({ favorite: true })}>Favorite</button>
+							<button type="button" className="lh-text-action" disabled={selectedItems.length === 0} onClick={() => setBulkTagging(true)}>Tags…</button>
+							<button type="button" className="lh-text-action" disabled={selected.size === 0} onClick={() => void bulkMark({ archived: true })}>Archive</button>
+							<button type="button" className="lh-text-action" data-danger="" disabled={selected.size === 0} onClick={async () => finishBulk(await runBulk(selectedKeys, trashKey, nameOfKey))} data-testid="library-bulk-trash">Move to the trash</button>
 						</div>
 					)}
 					{inFlight && (
-						<div className="flex items-center justify-between gap-3 rounded-lg bg-shelf px-3 py-2.5" data-testid="library-upload-row">
-							<span className="min-w-0 text-md [overflow-wrap:anywhere]">{inFlight.name}</span>
+						<div className="flex items-center justify-between gap-3 border-b border-rule px-1 py-2" data-testid="library-upload-row">
+							<span className="min-w-0 text-md text-ink [overflow-wrap:anywhere]">{inFlight.name}</span>
 							<span
 								role="progressbar"
 								aria-label={`Uploading ${inFlight.name}`}
@@ -594,27 +592,25 @@ export function LibraryView() {
 						</div>
 					)}
 					{refusals.map((refusal) => (
-						<div key={refusal.id} role="alert" className="flex items-center justify-between gap-2 rounded-lg bg-shelf py-1.5 pl-3 pr-1.5" data-testid="library-refusal">
+						<div key={refusal.id} role="alert" className="lh-line-card justify-between py-1.5 pr-1.5" data-testid="library-refusal">
 							<p className="min-w-0 text-sm [overflow-wrap:anywhere]">
 								<span className="font-medium text-ink">{refusal.name}</span>
 								<span className="text-red"> · {refusal.message}</span>
 							</p>
-							<Button
+							<button
 								type="button"
-								variant="ghost"
-								size="icon"
 								aria-label={`Dismiss ${refusal.name}`}
-								className="size-9 pointer-coarse:size-11"
+								className="lh-tool"
 								onClick={() => setRefusals((list) => list.filter((entry) => entry.id !== refusal.id))}
 							>
-								<XIcon className="ui-icon" aria-hidden="true" />
-							</Button>
+								<XIcon aria-hidden="true" />
+							</button>
 						</div>
 					))}
 					{folderMissing && (
-						<div role="status" className="flex flex-wrap items-center gap-2 text-graphite" data-testid="library-folder-missing">
+						<div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-md text-graphite" data-testid="library-folder-missing">
 							<p>That folder is no longer in your Library.</p>
-							<Link href={folderHref(null)} className="prompt-secondary">Back to Library</Link>
+							<Link href={folderHref(null)} className="lh-text-action">Back to Library</Link>
 						</div>
 					)}
 					{citeMissing && <p role="status" className="text-md text-graphite" data-testid="library-citation-missing">That document is no longer in your Library, so the citation can't be checked.</p>}
@@ -707,34 +703,34 @@ export function LibraryView() {
 				returnFocus={returnFolderFocus}
 			/>
 			<Dialog open={purging !== null} onOpenChange={(open) => { if (!open) setPurging(null); }}>
-				<DialogContent showCloseButton={false} aria-describedby={undefined} data-testid="library-purge-dialog" className="gap-3 rounded-lg border-0 bg-shelf sm:max-w-md">
-					<DialogTitle className="text-md font-semibold [overflow-wrap:anywhere]">Delete {purging?.name} for good?</DialogTitle>
-					<p className="text-sm text-faint">This can't be undone. Page versions go too.</p>
-					<div className="flex justify-end gap-2">
-						<Button type="button" variant="ghost" className="pointer-coarse:h-11" onClick={() => setPurging(null)}>Cancel</Button>
-						<Button type="button" variant="ghost" className={`${DESTRUCTIVE_BUTTON} pointer-coarse:h-11`} onClick={() => void purgeEntry()} data-testid="library-purge-confirm">Delete for good</Button>
+				<DialogContent showCloseButton={false} aria-describedby={undefined} data-testid="library-purge-dialog" className="gap-3 sm:max-w-md">
+					<DialogTitle className="[overflow-wrap:anywhere]">Delete {purging?.name} for good?</DialogTitle>
+					<p className="text-md text-graphite">This can't be undone. Page versions go too.</p>
+					<div className="mt-2 flex items-center justify-end gap-5">
+						<button type="button" className="lh-text-action" onClick={() => setPurging(null)}>Cancel</button>
+						<button type="button" className={DESTRUCTIVE_BUTTON} onClick={() => void purgeEntry()} data-testid="library-purge-confirm">Delete for good</button>
 					</div>
 				</DialogContent>
 			</Dialog>
 			<Dialog open={deletingFolder !== null} onOpenChange={(open) => { if (!open) setDeletingFolder(null); }}>
-				<DialogContent showCloseButton={false} aria-describedby={undefined} data-testid="library-folder-delete-dialog" className="gap-3 rounded-lg border-0 bg-shelf sm:max-w-md" onCloseAutoFocus={(event) => { event.preventDefault(); returnFolderFocus(); }}>
-					<DialogTitle className="text-md font-semibold [overflow-wrap:anywhere]">Move {deletingFolder?.name} to the trash?</DialogTitle>
-					<p className="text-sm text-faint">Everything inside goes with it, and comes back together from Trash.</p>
+				<DialogContent showCloseButton={false} aria-describedby={undefined} data-testid="library-folder-delete-dialog" className="gap-3 sm:max-w-md" onCloseAutoFocus={(event) => { event.preventDefault(); returnFolderFocus(); }}>
+					<DialogTitle className="[overflow-wrap:anywhere]">Move {deletingFolder?.name} to the trash?</DialogTitle>
+					<p className="text-md text-graphite">Everything inside goes with it, and comes back together from Trash.</p>
 					{folderFailure && <p role="alert" className="text-sm text-red">{folderFailure}</p>}
-					<div className="flex justify-end gap-2">
-						<Button type="button" variant="ghost" className="pointer-coarse:h-11" onClick={() => setDeletingFolder(null)}>Cancel</Button>
-						<Button type="button" variant="ghost" className={`${DESTRUCTIVE_BUTTON} pointer-coarse:h-11`} onClick={() => void confirmFolderDelete()} data-testid="library-folder-delete-confirm">Move to the trash</Button>
+					<div className="mt-2 flex items-center justify-end gap-5">
+						<button type="button" className="lh-text-action" onClick={() => setDeletingFolder(null)}>Cancel</button>
+						<button type="button" className={DESTRUCTIVE_BUTTON} onClick={() => void confirmFolderDelete()} data-testid="library-folder-delete-confirm">Move to the trash</button>
 					</div>
 				</DialogContent>
 			</Dialog>
 			<Dialog open={clash !== null} onOpenChange={(open) => { if (!open) answerClash(false); }}>
-				<DialogContent showCloseButton={false} aria-describedby={undefined} data-testid="library-clash-dialog" className="gap-4 rounded-lg border-0 bg-shelf sm:max-w-md" onCloseAutoFocus={(event) => { event.preventDefault(); uploadButton.current?.focus(); }}>
-					<DialogTitle className="text-md font-semibold [overflow-wrap:anywhere]">{clash?.name} is already in your Library.</DialogTitle>
-					<div className="flex flex-wrap justify-end gap-2">
-						<Button type="button" variant="ghost" className="pointer-coarse:h-11" onClick={() => answerClash(false)} data-testid="library-clash-cancel">Cancel</Button>
-						<Button type="button" className={`${RAISED_2} h-auto min-h-9 max-w-full whitespace-normal text-left [overflow-wrap:anywhere]`} onClick={() => answerClash(true)} data-testid="library-clash-keep">
+				<DialogContent showCloseButton={false} aria-describedby={undefined} data-testid="library-clash-dialog" className="gap-4 sm:max-w-md" onCloseAutoFocus={(event) => { event.preventDefault(); uploadButton.current?.focus(); }}>
+					<DialogTitle className="[overflow-wrap:anywhere]">{clash?.name} is already in your Library.</DialogTitle>
+					<div className="flex flex-wrap items-center justify-end gap-x-5 gap-y-2">
+						<button type="button" className="lh-text-action" onClick={() => answerClash(false)} data-testid="library-clash-cancel">Cancel</button>
+						<button type="button" className="nb-pill h-auto min-h-8 max-w-full whitespace-normal py-1.5 text-left [overflow-wrap:anywhere]" onClick={() => answerClash(true)} data-testid="library-clash-keep">
 							Keep both as {clash?.suggestedName}
-						</Button>
+						</button>
 					</div>
 				</DialogContent>
 			</Dialog>

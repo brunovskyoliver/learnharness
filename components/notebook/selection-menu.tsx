@@ -15,15 +15,14 @@
  * Mod+Enter on a selection is "Think about this".
  */
 import { type Editor } from "@tiptap/core";
-import { NodeSelection } from "@tiptap/pm/state";
-import { useEditorState } from "@tiptap/react";
 import { BubbleMenu, type BubbleMenuProps } from "@tiptap/react/menus";
-import { BoldIcon, CodeXmlIcon, Heading1Icon, Heading2Icon, Heading3Icon, Heading4Icon, ItalicIcon, ListIcon, ListOrderedIcon, StrikethroughIcon, TextQuoteIcon, TypeIcon, UnderlineIcon, type LucideIcon } from "lucide-react";
-import { useCallback, useEffect, useRef, type ReactNode } from "react";
-import { INK_COLORS, type InkColor } from "@/components/library/page-ink";
+import { useCallback, useEffect, useRef } from "react";
 import { selectedTextReference } from "@/components/library/page-toolbar";
-import type { NoteBridge, SelectionAction } from "./nb-plugins";
+import { INK_NAMES, SelectionAction, SelectionFormatRows, selectableText, useSelectionFormat } from "@/components/paper/selection-card";
+import type { NoteBridge, SelectionAction as SelectionActionName } from "./nb-plugins";
 import { useNotebook } from "./nb-shared";
+
+export { INK_NAMES };
 
 /** Gap from the column's right edge to the menu (frame inline-sketch-and-selection: the card at x 1228.5 in the
  *  viewport; the 660px column, 5.5px left of centre as in the frames, ends at 1157). */
@@ -32,40 +31,12 @@ export const MENU_GAP = 71.5;
  *  selected line's glyphs at y 218, the Text button's top at 212, rows at 266, 300, 341, 377, 412). */
 const MENU_RISE = 8;
 
-export const INK_NAMES: Record<InkColor | "default", string> = {
-	default: "Default", gray: "Gray", brown: "Brown", red: "Red", orange: "Orange", green: "Green", blue: "Blue", purple: "Purple",
-};
-
-export const ACTIONS: readonly { action: SelectionAction; label: string; hint?: "mod-enter" | string }[] = [
+export const ACTIONS: readonly { action: SelectionActionName; label: string; hint?: "mod-enter" | string }[] = [
 	{ action: "think", label: "Think about this", hint: "mod-enter" },
 	{ action: "ask", label: "Ask about this", hint: "Your own question" },
 	{ action: "visualize", label: "Visualize", hint: "See it drawn out" },
 	{ action: "flashcards", label: "Make flashcards" },
 ];
-
-type Style = "paragraph" | "h1" | "h2" | "h3" | "h4" | "quote" | "bullet" | "ordered" | "other";
-
-type Chain = ReturnType<Editor["chain"]>;
-/** Row 1, in Riddled's order. Text lifts the block out of any list or quote. */
-const STYLES: readonly { style: Exclude<Style, "other">; label: string; Icon: LucideIcon; apply: (chain: Chain) => Chain }[] = [
-	{ style: "paragraph", label: "Text", Icon: TypeIcon, apply: (c) => c.clearNodes() },
-	{ style: "h1", label: "Heading 1", Icon: Heading1Icon, apply: (c) => c.setHeading({ level: 1 }) },
-	{ style: "h2", label: "Heading 2", Icon: Heading2Icon, apply: (c) => c.setHeading({ level: 2 }) },
-	{ style: "h3", label: "Heading 3", Icon: Heading3Icon, apply: (c) => c.setHeading({ level: 3 }) },
-	{ style: "h4", label: "Heading 4", Icon: Heading4Icon, apply: (c) => c.setHeading({ level: 4 }) },
-	{ style: "quote", label: "Quote", Icon: TextQuoteIcon, apply: (c) => c.toggleBlockquote() },
-	{ style: "bullet", label: "Bulleted list", Icon: ListIcon, apply: (c) => c.toggleBulletList() },
-	{ style: "ordered", label: "Numbered list", Icon: ListOrderedIcon, apply: (c) => c.toggleOrderedList() },
-];
-
-function blockStyle(e: Editor): Style {
-	for (const level of [1, 2, 3, 4] as const) if (e.isActive("heading", { level })) return `h${level}`;
-	if (e.isActive("heading")) return "other";
-	if (e.isActive("bulletList")) return "bullet";
-	if (e.isActive("orderedList")) return "ordered";
-	if (e.isActive("blockquote")) return "quote";
-	return e.isActive("paragraph") ? "paragraph" : "other";
-}
 
 /** Right of the column, level with the selection; with no room there, left of it, then under or over. */
 const MENU_OPTIONS: NonNullable<BubbleMenuProps["options"]> = {
@@ -76,28 +47,6 @@ const MENU_OPTIONS: NonNullable<BubbleMenuProps["options"]> = {
 	shift: { padding: 8 },
 };
 
-const selectable = (editor: Editor): boolean => {
-	const { selection } = editor.state;
-	if (selection.empty || selection instanceof NodeSelection) return false;
-	if (editor.isActive("codeBlock") || editor.isActive("rawBlock")) return false;
-	return editor.state.doc.textBetween(selection.from, selection.to, " ", " ").trim().length > 0;
-};
-
-function FormatButton({ label, pressed, onPress, children, className = "" }: { label: string; pressed: boolean; onPress: () => void; children: ReactNode; className?: string }) {
-	return (
-		<button
-			type="button"
-			className={`nb-sel-format ${className}`}
-			aria-label={label}
-			title={label}
-			aria-pressed={pressed}
-			// The editor keeps its selection while the pointer presses.
-			onMouseDown={(event) => event.preventDefault()}
-			onClick={onPress}
-		>{children}</button>
-	);
-}
-
 export function SelectionMenu({ editor, bridge }: { editor: Editor; bridge: NoteBridge }) {
 	const nb = useNotebook();
 	const mac = nb.mac;
@@ -107,22 +56,7 @@ export function SelectionMenu({ editor, bridge }: { editor: Editor; bridge: Note
 	const recheck = useRef(0);
 	useEffect(() => () => window.clearTimeout(recheck.current), []);
 
-	const state = useEditorState({
-		editor,
-		selector: ({ editor: e }) => {
-			const style = blockStyle(e as Editor);
-			const color = e.getAttributes("inkColor").color as string | undefined;
-			return {
-				style,
-				bold: e.isActive("bold"),
-				italic: e.isActive("italic"),
-				underline: e.isActive("underline"),
-				strike: e.isActive("strike"),
-				code: e.isActive("code"),
-				color: (e.isActive("inkColor") && color ? color : "default") as InkColor | "default",
-			};
-		},
-	});
+	const state = useSelectionFormat(editor);
 
 	// Any other selection, even for a moment, ends the dismissal.
 	useEffect(() => {
@@ -141,7 +75,7 @@ export function SelectionMenu({ editor, bridge }: { editor: Editor; bridge: Note
 		editor.view.dispatch(editor.state.tr.setMeta("nbSelectionMenu", "hide").setMeta("addToHistory", false));
 	}, [editor]);
 
-	const run = useCallback((action: SelectionAction) => {
+	const run = useCallback((action: SelectionActionName) => {
 		const handler = bridge.selectionAction;
 		const { from, to } = editor.state.selection;
 		if (!handler || from === to) return;
@@ -175,11 +109,11 @@ export function SelectionMenu({ editor, bridge }: { editor: Editor; bridge: Note
 				dismissed.current = null;
 				window.clearTimeout(recheck.current);
 				recheck.current = window.setTimeout(() => {
-					if (!card.current?.isConnected && selectable(editor) && editor.isFocused) editor.view.dispatch(editor.state.tr.setMeta("nbSelectionMenu", "show").setMeta("addToHistory", false));
+					if (!card.current?.isConnected && selectableText(editor) && editor.isFocused) editor.view.dispatch(editor.state.tr.setMeta("nbSelectionMenu", "show").setMeta("addToHistory", false));
 				}, 200);
 			}
 			const mod = mac ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
-			if (event.key === "Enter" && mod && !event.shiftKey && !event.altKey && selectable(editor) && bridge.selectionAction) {
+			if (event.key === "Enter" && mod && !event.shiftKey && !event.altKey && selectableText(editor) && bridge.selectionAction) {
 				event.preventDefault();
 				runRef.current("think");
 			}
@@ -189,7 +123,6 @@ export function SelectionMenu({ editor, bridge }: { editor: Editor; bridge: Note
 		return () => dom.removeEventListener("keydown", onKey, true);
 	}, [editor, bridge, mac, hide]);
 
-	const chain = () => editor.chain().focus();
 	const actions = bridge.selectionAction !== null;
 	const enterGlyph = mac ? "⌘↵" : "Ctrl+↵";
 
@@ -200,7 +133,7 @@ export function SelectionMenu({ editor, bridge }: { editor: Editor; bridge: Note
 			updateDelay={120}
 			appendTo={() => nb.root ?? document.body}
 			shouldShow={({ editor: e, from, to }) => {
-				if (!e.isEditable || from === to || !selectable(e as Editor)) return false;
+				if (!e.isEditable || from === to || !selectableText(e as Editor)) return false;
 				const gone = dismissed.current;
 				return !(gone && gone.from === from && gone.to === to);
 			}}
@@ -233,44 +166,18 @@ export function SelectionMenu({ editor, bridge }: { editor: Editor; bridge: Note
 					editor.commands.focus();
 				}}
 			>
-				<div role="toolbar" aria-label="Text style" className="nb-sel-row nb-sel-styles">
-					{STYLES.map(({ style, label, Icon, apply }) => (
-						<FormatButton key={style} label={label} pressed={state.style === style} className="nb-sel-style" onPress={() => apply(chain()).run()}><Icon aria-hidden="true" /></FormatButton>
-					))}
-				</div>
-				<div role="toolbar" aria-label="Format" className="nb-sel-row nb-sel-marks">
-					<FormatButton label="Bold" pressed={state.bold} onPress={() => chain().toggleBold().run()}><BoldIcon aria-hidden="true" /></FormatButton>
-					<FormatButton label="Italic" pressed={state.italic} onPress={() => chain().toggleItalic().run()}><ItalicIcon aria-hidden="true" /></FormatButton>
-					<FormatButton label="Underline" pressed={state.underline} onPress={() => chain().toggleUnderline().run()}><UnderlineIcon aria-hidden="true" /></FormatButton>
-					<FormatButton label="Strikethrough" pressed={state.strike} onPress={() => chain().toggleStrike().run()}><StrikethroughIcon aria-hidden="true" /></FormatButton>
-					<FormatButton label="Code" pressed={state.code} onPress={() => chain().toggleCode().run()}><CodeXmlIcon aria-hidden="true" /></FormatButton>
-				</div>
-				<div role="toolbar" aria-label="Ink" className="nb-sel-row nb-sel-inks">
-					{(["default", ...INK_COLORS] as const).map((color) => (
-						<FormatButton
-							key={color}
-							label={`${INK_NAMES[color]} ink`}
-							pressed={state.color === color}
-							className="nb-sel-ink"
-							onPress={() => (color === "default" ? chain().unsetMark("inkColor").run() : chain().setMark("inkColor", { color }).run())}
-						><span aria-hidden="true" data-ink={color}>A</span></FormatButton>
-					))}
-				</div>
+				<SelectionFormatRows editor={editor} state={state} />
 				{actions && (
 					<div className="nb-sel-actions">
 						{ACTIONS.map(({ action, label, hint }) => (
-							<button
+							<SelectionAction
 								key={action}
-								type="button"
-								className="nb-sel-action"
-								data-testid={`nb-sel-${action}`}
-								onMouseDown={(event) => event.preventDefault()}
-								aria-keyshortcuts={hint === "mod-enter" ? (mac ? "Meta+Enter" : "Control+Enter") : undefined}
-								onClick={() => run(action)}
-							>
-								<span className="nb-sel-label nb-voice">{label}</span>
-								{hint && <span className="nb-sel-hint" aria-hidden="true">{hint === "mod-enter" ? enterGlyph : hint}</span>}
-							</button>
+								testId={`nb-sel-${action}`}
+								label={label}
+								hint={hint === "mod-enter" ? enterGlyph : hint}
+								keyShortcuts={hint === "mod-enter" ? (mac ? "Meta+Enter" : "Control+Enter") : undefined}
+								onRun={() => run(action)}
+							/>
 						))}
 					</div>
 				)}

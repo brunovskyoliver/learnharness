@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useId, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { PageVersion } from "@/src/core";
@@ -37,9 +36,9 @@ const unchangedText = (count: number) => `${count} unchanged ${count === 1 ? "bl
 /** Added and removed blocks, each with its word, so colour never carries it. */
 export function ChangeRows({ rows }: { rows: readonly CompareRow[] }) {
 	return (
-		<div className="flex flex-col gap-1 rounded-lg bg-shelf px-3 py-2 text-md">
+		<div className="flex flex-col gap-1.5 rounded-lg border border-rule px-3 py-2.5 text-md text-ink">
 			{changeViewRows(rows).map((row, i) => row.kind === "same" ? (
-				<p key={i} className="text-sm text-faint">{unchangedText(row.count)}</p>
+				<p key={i} className="text-meta text-faint">{unchangedText(row.count)}</p>
 			) : (
 				<div key={i} className="flex min-w-0 items-baseline gap-2" data-change={row.kind}>
 					<span className={cn("shrink-0 font-mono text-xs", row.kind === "added" ? "text-green" : "text-red")}>{row.kind}</span>
@@ -82,9 +81,9 @@ function NameField({ id, version, onNamed }: { id: string; version: PageVersion;
 		}
 	};
 	return (
-		<form className="flex flex-wrap items-end gap-2" onSubmit={(event) => { event.preventDefault(); void send(value.trim() || null); }} data-testid="page-version-name-form">
-			<span className="flex min-w-0 flex-[1_1_12rem] flex-col gap-1">
-				<label htmlFor={fieldId} className="text-sm font-medium text-graphite">Version name</label>
+		<form className="flex flex-wrap items-end gap-x-4 gap-y-2" onSubmit={(event) => { event.preventDefault(); void send(value.trim() || null); }} data-testid="page-version-name-form">
+			<span className="nb-reply-line flex min-w-0 flex-[1_1_12rem] flex-col gap-1">
+				<label htmlFor={fieldId} className="lh-float-label">Version name</label>
 				<input
 					id={fieldId}
 					autoFocus
@@ -94,11 +93,11 @@ function NameField({ id, version, onNamed }: { id: string; version: PageVersion;
 					aria-invalid={error ? true : undefined}
 					autoComplete="off"
 					data-testid="page-version-name-input"
-					className="h-8 w-full rounded-md border border-rule bg-transparent px-2 text-md text-ink pointer-coarse:h-11"
+					className="lh-line-field"
 				/>
 			</span>
-			<button type="submit" className="prompt-secondary">Save</button>
-			{version.name && <button type="button" className="prompt-secondary" onClick={() => void send(null)}>Clear name</button>}
+			<button type="submit" className="lh-text-action">Save</button>
+			{version.name && <button type="button" className="lh-text-action" onClick={() => void send(null)}>Clear name</button>}
 			{error && <p role="alert" className="basis-full text-sm text-red">{error}</p>}
 		</form>
 	);
@@ -175,22 +174,22 @@ export function PageHistory({ id, onRestore, canRestore }: { id: string; onResto
 
 	if (failed) {
 		return (
-			<div role="status" className="flex flex-wrap items-center gap-2 px-3 text-sm text-graphite">
+			<div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 text-sm text-ink">
 				<p>The history could not be loaded.</p>
-				<button type="button" className="prompt-secondary" onClick={() => void load()}>Try again</button>
+				<button type="button" className="lh-text-action" onClick={() => void load()}>Try again</button>
 			</div>
 		);
 	}
 	if (!versions) {
 		return (
-			<div role="status" aria-label="Loading history" className="flex flex-col gap-1 px-3">
+			<div role="status" aria-label="Loading history" className="flex flex-col gap-1 px-4">
 				<Skeleton className="h-9 w-full rounded-md" />
 				<Skeleton className="h-9 w-full rounded-md" />
 			</div>
 		);
 	}
 	return (
-		<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 pb-3" data-testid="page-history">
+		<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4" data-testid="page-history">
 			<ul className="flex shrink-0 flex-col gap-0.5">
 				{versions.map((version) => (
 					<li key={version.n}>
@@ -199,52 +198,52 @@ export function PageHistory({ id, onRestore, canRestore }: { id: string; onResto
 							aria-current={selected === version.n ? "true" : undefined}
 							onClick={() => setSelected(version.n)}
 							suppressHydrationWarning
-							className={cn("w-full rounded-md px-2 py-1.5 text-left text-sm text-graphite transition-colors hover:bg-shelf pointer-coarse:min-h-11", selected === version.n && "bg-shelf text-ink")}
+							className={cn("lh-outline-row w-full", selected === version.n && "bg-shelf text-ink")}
 						>{versionLabel(version)}</button>
 					</li>
 				))}
 			</ul>
 			{more && (
-				<button type="button" className="prompt-secondary w-fit" disabled={loadingEarlier} onClick={() => void loadEarlier()} data-testid="page-history-earlier">Show earlier versions</button>
+				<button type="button" className="lh-text-action w-fit" disabled={loadingEarlier} onClick={() => void loadEarlier()} data-testid="page-history-earlier">Show earlier versions</button>
 			)}
 			{earlierFailed && (
-				<div role="status" className="flex flex-wrap items-center gap-2 text-sm text-graphite">
+				<div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink">
 					<p>The history could not be loaded.</p>
-					<button type="button" className="prompt-secondary" onClick={() => void loadEarlier()}>Try again</button>
+					<button type="button" className="lh-text-action" onClick={() => void loadEarlier()}>Try again</button>
 				</div>
 			)}
 			{selected !== null && (
 				previewFailed ? (
-					<div role="status" className="flex flex-wrap items-center gap-2 text-sm text-graphite" data-testid="page-version-failed">
+					<div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink" data-testid="page-version-failed">
 						<p>Version {selected} could not be loaded.</p>
-						<button type="button" className="prompt-secondary" onClick={() => setPreviewTry((n) => n + 1)}>Try again</button>
+						<button type="button" className="lh-text-action" onClick={() => setPreviewTry((n) => n + 1)}>Try again</button>
 					</div>
 				) : (
 					<>
-						<Button
+						<button
 							type="button"
 							disabled={!canRestore || restoring || content === null}
-							className="w-fit bg-shelf text-ink hover:bg-[color-mix(in_srgb,var(--shelf)_80%,var(--ink))] pointer-coarse:h-11"
+							className="nb-pill w-fit"
 							data-testid="page-restore"
 							onClick={() => {
 								setRestoring(true);
 								setRestoreError(null);
 								void onRestore(selected).then(setRestoreError, () => setRestoreError(`Version ${selected} could not be restored. Your text is kept.`)).finally(() => setRestoring(false));
 							}}
-						>Restore this version</Button>
+						>Restore this version</button>
 						{restoreError && <p role="alert" className="text-sm text-red" data-testid="page-restore-error">{restoreError}</p>}
-						<div className="flex flex-wrap items-center gap-2">
-							<button type="button" className="prompt-secondary" disabled={content === null} data-testid="page-copy-version" onClick={() => {
+						<div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+							<button type="button" className="lh-text-action" disabled={content === null} data-testid="page-copy-version" onClick={() => {
 								if (content === null) return;
 								void navigator.clipboard.writeText(content).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 2000); }, () => {});
 							}}>{copied ? "Copied" : "Copy this version"}</button>
-							<button type="button" className="prompt-secondary" aria-expanded={naming} onClick={() => setNaming((open) => !open)} data-testid="page-name-version">
+							<button type="button" className="lh-text-action" aria-expanded={naming} onClick={() => setNaming((open) => !open)} data-testid="page-name-version">
 								{versions.find((v) => v.n === selected)?.name ? "Rename" : "Name this version"}
 							</button>
 							<span className="min-w-0 flex-1" />
-							<div role="group" aria-label="View" className="flex gap-1">
-								<button type="button" aria-pressed={view === "changes"} onClick={() => setView("changes")} className="h-8 rounded-md px-2 text-sm text-graphite hover:bg-shelf aria-pressed:bg-shelf aria-pressed:text-ink pointer-coarse:min-h-11" data-testid="page-view-changes">Changes</button>
-								<button type="button" aria-pressed={view === "full"} onClick={() => setView("full")} className="h-8 rounded-md px-2 text-sm text-graphite hover:bg-shelf aria-pressed:bg-shelf aria-pressed:text-ink pointer-coarse:min-h-11" data-testid="page-view-full">Full text</button>
+							<div role="group" aria-label="View" className="nb-set-pills">
+								<button type="button" aria-pressed={view === "changes"} onClick={() => setView("changes")} className="nb-set-pill" data-testid="page-view-changes">Changes</button>
+								<button type="button" aria-pressed={view === "full"} onClick={() => setView("full")} className="nb-set-pill" data-testid="page-view-full">Full text</button>
 							</div>
 						</div>
 						{naming && (() => {

@@ -195,9 +195,10 @@ async function checkWidth(width) {
 		await page.keyboard.press("Enter");
 		await page.waitForSelector(`[data-testid="${testId}-option"]`);
 		const panel = await page.$eval("[data-lh-menu]", (el) => { const s = getComputedStyle(el); return { background: s.backgroundColor, radius: s.borderRadius, border: s.borderTopWidth, shadow: s.boxShadow, accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() }; });
-		assert.equal(panel.radius, "10px", "a menu's radius");
+		// Feature 025: Notebook's menu, a lifted paper card (radius 12, the lift, no border).
+		assert.equal(panel.radius, "12px", "a menu's radius");
 		assert.equal(panel.border, "0px", "a menu has no border");
-		assert.equal(panel.shadow, "none", "a menu has no shadow");
+		assert.notEqual(panel.shadow, "none", "a menu carries the lift");
 		await page.evaluate((id, text) => [...document.querySelectorAll(`[data-testid="${id}-option"]`)].find((el) => el.textContent.trim().endsWith(text)).click(), testId, label);
 		await page.waitForFunction(() => !document.querySelector("[data-lh-menu]"));
 		await page.waitForFunction((id) => document.activeElement?.getAttribute("data-testid") === id, {}, testId);
@@ -499,7 +500,7 @@ try {
 		if (!ready) await pause(250);
 	}
 	assert.ok(ready, "isolated server starts");
-	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true });
+	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true, args: ["--no-sandbox"] });
 	for (const width of (process.env.LH_UI_WIDTHS ?? "1440,390,320").split(",").map(Number)) await checkWidth(width);
 	console.log("Documents browser checks passed.");
 } catch (error) {

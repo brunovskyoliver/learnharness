@@ -21,12 +21,13 @@ export interface NoteConnections {
 	graph: GraphLinkRow[];
 }
 
-const ROW = "flex min-h-8 w-full min-w-0 flex-col rounded-md px-2 py-1 text-left text-sm hover:bg-shelf pointer-coarse:min-h-11";
+/** Notebook's Links rows (feature 025 T048): 14px name, 12.5px meta, shelf on hover. */
+const ROW = "flex min-h-9 w-full flex-col justify-center gap-0.5 rounded-lg px-2 py-1.5 text-left text-md leading-5 transition-colors hover:bg-shelf pointer-coarse:min-h-11";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
 	return (
 		<section className="flex flex-col gap-0.5">
-			<h3 className="px-2 pb-1 text-sm font-medium text-faint">{title}</h3>
+			<h3 className="px-2 pb-1 text-xs font-medium text-faint">{title}</h3>
 			{children}
 		</section>
 	);
@@ -44,7 +45,7 @@ export const CONNECTION_EMPTY = {
 
 const Empty = ({ children }: { children: ReactNode }) => <p className="px-2 text-sm text-graphite">{children}</p>;
 const Name = ({ children }: { children: ReactNode }) => <span className="text-ink [overflow-wrap:anywhere]">{children}</span>;
-const Meta = ({ children }: { children: ReactNode }) => <span className="text-faint [overflow-wrap:anywhere]">{children}</span>;
+const Meta = ({ children }: { children: ReactNode }) => <span className="text-meta leading-[18px] text-graphite [overflow-wrap:anywhere]">{children}</span>;
 
 /** Pure for render tests: every section, with its own empty line. */
 export function NoteConnectionsBody({ data, subject = "page", onOpenPage, onFollowLink, onSource, makeCardsHref }: {
@@ -156,11 +157,11 @@ export function NoteConnectionsPanel({ pageId, subject, onOpenPage, onFollowLink
 }) {
 	const { data, failed, refresh } = useNoteConnections(pageId);
 	return (
-		<aside aria-label="Links and sources" data-testid="note-connections" className={cn("flex flex-col gap-4", className)}>
+		<aside aria-label="Links and sources" data-testid="note-connections" className={cn("flex flex-col gap-6", className)}>
 			{data
 				? <NoteConnectionsBody data={data} subject={subject} onOpenPage={onOpenPage} onFollowLink={onFollowLink} onSource={onSource} makeCardsHref={subject === "diagram" ? undefined : `/review?make=${encodeURIComponent(`page:${pageId}`)}`} />
 				: failed
-					? <div role="status" className="flex flex-wrap items-center gap-2 px-2 text-sm text-graphite"><p>These links could not be loaded.</p><button type="button" className="prompt-secondary" onClick={() => void refresh()}>Try again</button></div>
+					? <div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 px-2 text-sm text-ink"><p>These links could not be loaded.</p><button type="button" className="lh-text-action" onClick={() => void refresh()}>Try again</button></div>
 					: <div role="status" aria-label="Loading links" className="flex flex-col gap-2 px-2"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-5 w-1/2" /></div>}
 		</aside>
 	);

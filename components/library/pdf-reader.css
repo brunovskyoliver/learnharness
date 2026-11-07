@@ -20,8 +20,8 @@
 .lh-pdf-mark[data-noted] { border-bottom: 2px solid rgb(90 60 0); }
 .lh-pdf-cite { position: absolute; background: rgb(60 140 255 / 30%); outline: 2px solid rgb(20 80 190); outline-offset: 0; mix-blend-mode: multiply; }
 
-.lh-pdf-bubble { position: fixed; z-index: 40; display: flex; max-width: min(22rem, calc(100vw - 1rem)); flex-wrap: wrap; align-items: center; gap: 0.25rem; border-radius: 10px; background: var(--paper); padding: 0.25rem; }
-.lh-pdf-bubble button { display: inline-flex; min-height: 2rem; align-items: center; border-radius: var(--radius-md); padding-inline: 0.5rem; color: var(--ink); font-size: 0.8125rem; }
-.lh-pdf-bubble button:hover { background: var(--shelf); }
-.lh-pdf-bubble button:focus-visible { outline: 1px solid var(--nb-focus); outline-offset: 1px; }
-@media (pointer: coarse) { .lh-pdf-bubble button { min-height: 2.75rem; min-width: 2.75rem; padding-inline: 0.75rem; } }
+/* The bubble is Notebook's selection card (feature 025 T050); the reader places it. */
+.lh-pdf-bubble { position: fixed; z-index: 40; max-height: calc(100dvh - 16px); overflow-y: auto; overscroll-behavior: contain; }
+.lh-pdf-bubble .nb-sel-actions + .lh-pdf-bubble-line { margin-top: 4px; border-top: 1px solid var(--rule); }
+.lh-pdf-bubble-line { margin: 0; padding: 8px 10px 4px; color: var(--faint); font-size: var(--text-xs); line-height: 1.4; }
+.lh-pdf-bubble .nb-sel-action:focus-visible { outline: 2px solid var(--nb-focus); outline-offset: -2px; }

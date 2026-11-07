@@ -66,14 +66,14 @@ Inputs: spec.md, plan.md, research.md (R1-R16), data-model.md, contracts/ui-cont
 
 ## Phase 7: Library and notes
 
-- [ ] T045 [P] Library view (header, search, views pills, tags, sort/layout controls, rows/grid, folder rows, breadcrumbs, select toolbar, upload rows, refusals, clash dialog, trash), contract look.
-- [ ] T046 [P] Page pane header and editor: toolbar as Notebook toolbar buttons, slash and [[ menus (Notebook's restyle, already present under `.nb-root`, lifted), link popover, tables, callouts, collapsible, wiki links, saved passages, images, placeholder; editor body type = Notebook note body (Instrument Sans, note size, 1.8).
-- [ ] T047 Editor selection bubble → Notebook selection-menu card (format rows + Study's actions as the action list in the voice: Explain, Simpler, Summarize, Rewrite, Expand, Challenge, Quiz me on this, Generate questions, Ask…; the "why not now" sentence) — same handlers.
-- [ ] T048 [P] History, tutor-changes bar, held edits line/review dialog/edit-first, Links panel (column/block), outline.
-- [ ] T049 Export: page Export opens the lifted export dialog (PDF, Word, Markdown through the existing `/api/notebook/:pageId/export` route; "Include the notes" only when the page has Notebook notes) plus Copy as Markdown and Print actions kept.
-- [ ] T050 [P] PDF reader chrome (header, toolbar row, highlights list, bubble → selection-menu card, citation line); page paper stays white (data).
-- [ ] T051 [P] Diagrams: `diagram.css`, canvas `colorMode` follows resolved theme, nodes/edges on tokens, tools row, dialogs; `src/core/diagram-svg.ts` export palette = paper light (allowlisted).
-- [ ] T052 Tests: `check-library-ui`, `check-library-folders-ui`, `check-notes-ui`, `check-documents-ui`, `check-diagrams-ui` and render tests updated where they assert the look.
+- [X] T045 [P] Library view (header, search, views pills, tags, sort/layout controls, rows/grid, folder rows, breadcrumbs, select toolbar, upload rows, refusals, clash dialog, trash), contract look.
+- [X] T046 [P] Page pane header and editor: toolbar as Notebook toolbar buttons, slash and [[ menus (Notebook's restyle, already present under `.nb-root`, lifted), link popover, tables, callouts, collapsible, wiki links, saved passages, images, placeholder; editor body type = Notebook note body (Instrument Sans, note size, 1.8).
+- [X] T047 Editor selection bubble → Notebook selection-menu card (format rows + Study's actions as the action list in the voice: Explain, Simpler, Summarize, Rewrite, Expand, Challenge, Quiz me on this, Generate questions, Ask…; the "why not now" sentence) — same handlers.
+- [X] T048 [P] History, tutor-changes bar, held edits line/review dialog/edit-first, Links panel (column/block), outline.
+- [X] T049 Export: page Export opens the lifted export dialog (PDF, Word, Markdown through the existing `/api/notebook/:pageId/export` route; "Include the notes" only when the page has Notebook notes) plus Copy as Markdown and Print actions kept.
+- [X] T050 [P] PDF reader chrome (header, toolbar row, highlights list, bubble → selection-menu card, citation line); page paper stays white (data).
+- [X] T051 [P] Diagrams: `diagram.css`, canvas `colorMode` follows resolved theme, nodes/edges on tokens, tools row, dialogs; `src/core/diagram-svg.ts` export palette = paper light (allowlisted).
+- [X] T052 Tests: `check-library-ui`, `check-library-folders-ui`, `check-notes-ui`, `check-documents-ui`, `check-diagrams-ui` and render tests updated where they assert the look.
 
 ## Phase 8: Home, Review, demos
 

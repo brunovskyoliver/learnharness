@@ -142,9 +142,9 @@ export function DiagramProposalDialog({ proposalId, onClose, onApproved, beforeA
 			>
 				{failure && !data ? (
 					<>
-						<DialogTitle className="text-md font-semibold">This proposal could not be loaded</DialogTitle>
-						<DialogDescription className="text-sm text-graphite">{failure}</DialogDescription>
-						<div className="flex gap-2"><button type="button" className="prompt-secondary" onClick={() => void load()}>Try again</button><button type="button" className="prompt-secondary" onClick={onClose}>Close</button></div>
+						<DialogTitle>This proposal could not be loaded</DialogTitle>
+						<DialogDescription>{failure}</DialogDescription>
+						<div className="flex justify-end gap-5"><button type="button" className="lh-text-action" onClick={() => void load()}>Try again</button><button type="button" className="lh-text-action" onClick={onClose}>Close</button></div>
 					</>
 				) : !data ? (
 					<>
@@ -154,15 +154,15 @@ export function DiagramProposalDialog({ proposalId, onClose, onApproved, beforeA
 					</>
 				) : editing ? (
 					<>
-						<div className="flex flex-wrap items-center gap-2 pe-1">
+						<div className="flex flex-wrap items-center gap-x-5 gap-y-2 pe-1">
 							<div className="min-w-0 flex-[1_1_12rem]">
-								<DialogTitle className="truncate text-md font-medium">Editing the proposal: {name}</DialogTitle>
-								<DialogDescription className="text-sm text-faint" data-testid="diagram-proposal-edit-state">
+								<DialogTitle className="truncate text-md">Editing the proposal: {name}</DialogTitle>
+								<DialogDescription className="text-meta text-faint" data-testid="diagram-proposal-edit-state">
 									{editSave === "saving" ? "Saving…" : editSave === "failed" ? "Not saved." : "Your edits stay in the proposal until you approve."}
 								</DialogDescription>
 							</div>
-							<button type="button" className="prompt-secondary" data-testid="diagram-proposal-edit-done" onClick={() => { void flushEdit().then(() => load()); setEditing(false); }}>Back to comparison</button>
-							<button type="button" className="prompt-primary" disabled={busy} data-testid="diagram-proposal-approve-edited" onClick={() => void approve()}>Approve</button>
+							<button type="button" className="lh-text-action" data-testid="diagram-proposal-edit-done" onClick={() => { void flushEdit().then(() => load()); setEditing(false); }}>Back to comparison</button>
+							<button type="button" className="nb-pill" disabled={busy} data-testid="diagram-proposal-approve-edited" onClick={() => void approve()}>Approve</button>
 						</div>
 						{line && <p role="alert" className="text-sm text-red">{line}</p>}
 						<DiagramEditor
@@ -179,25 +179,25 @@ export function DiagramProposalDialog({ proposalId, onClose, onApproved, beforeA
 					</>
 				) : (
 					<>
-						<DialogTitle className="pe-6 text-md font-semibold [overflow-wrap:anywhere]">{data.proposal.diagramId ? `Proposed changes to ${name}` : `Proposed diagram: ${name}`}</DialogTitle>
-						<DialogDescription className="whitespace-pre-wrap text-sm text-graphite [overflow-wrap:anywhere]" data-testid="diagram-proposal-summary">{data.proposal.summary}</DialogDescription>
+						<DialogTitle className="pe-6 [overflow-wrap:anywhere]">{data.proposal.diagramId ? `Proposed changes to ${name}` : `Proposed diagram: ${name}`}</DialogTitle>
+						<DialogDescription className="whitespace-pre-wrap [overflow-wrap:anywhere]" data-testid="diagram-proposal-summary">{data.proposal.summary}</DialogDescription>
 						<p className="text-sm text-faint">Nothing has changed. {data.proposal.diagramId ? "This diagram stays as it is unless you approve." : "No diagram exists unless you approve."}{data.proposal.edited ? " You edited this proposal." : ""}</p>
 						{/* An image can't run anything, and the SVG's text is escaped. */}
 						{/* eslint-disable-next-line @next/next/no-img-element */}
-						<img src={svgDataUrl(diagramToSvg(data.proposal.doc, name))} alt={`Preview of the proposal for ${name}`} className="max-h-64 w-full rounded-md object-contain" data-testid="diagram-proposal-preview" />
+						<img src={svgDataUrl(diagramToSvg(data.proposal.doc, name))} alt={`Preview of the proposal for ${name}`} className="max-h-64 w-full rounded-lg border border-rule object-contain" data-testid="diagram-proposal-preview" />
 						{blocked ? <p role="status" className="text-sm text-graphite" data-testid="diagram-proposal-blocked">{blocked}</p> : <DiagramDiffView diff={diffDiagrams(currentDoc, data.proposal.doc)} />}
 						{line && <p role="alert" className="text-sm text-red" data-testid="diagram-proposal-line">{line}</p>}
 						{clash && (
-							<div role="status" className="flex flex-wrap items-center gap-2 text-sm text-graphite">
+							<div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-graphite">
 								<p>{name} is already in your Library.</p>
-								<button type="button" className="prompt-secondary" data-testid="diagram-proposal-keep-both" onClick={() => void approve(clash)}>Keep both as {clash}</button>
+								<button type="button" className="lh-text-action" data-testid="diagram-proposal-keep-both" onClick={() => void approve(clash)}>Keep both as {clash}</button>
 							</div>
 						)}
 						{!blocked && (
-							<div className="flex flex-wrap justify-end gap-2">
-								<button type="button" className="prompt-secondary" disabled={busy} data-testid="diagram-proposal-reject" onClick={() => void reject()}>Reject</button>
-								<button type="button" className="prompt-secondary" disabled={busy} data-testid="diagram-proposal-edit" onClick={() => setEditing(true)}>Edit first</button>
-								<button type="button" className="prompt-primary" disabled={busy} data-testid="diagram-proposal-approve" onClick={() => void approve()}>{busy ? "Approving…" : "Approve"}</button>
+							<div className="mt-1 flex flex-wrap items-center justify-end gap-x-5 gap-y-2">
+								<button type="button" className="lh-text-action" disabled={busy} data-testid="diagram-proposal-reject" onClick={() => void reject()}>Reject</button>
+								<button type="button" className="lh-text-action" disabled={busy} data-testid="diagram-proposal-edit" onClick={() => setEditing(true)}>Edit first</button>
+								<button type="button" className="nb-pill" disabled={busy} data-testid="diagram-proposal-approve" onClick={() => void approve()}>{busy ? "Approving…" : "Approve"}</button>
 							</div>
 						)}
 					</>

@@ -66,34 +66,34 @@ export function DocumentSearchPanel({ query, kind, tag, folders, narrowed = null
 			</div>
 			{narrowed && <p className="text-sm text-faint">Searching the whole Library, not only {narrowed}.</p>}
 			<p role="status" aria-live="polite" className="text-sm text-graphite empty:hidden" data-testid="doc-search-count">{live}</p>
-			{phase === "failed" && <button type="button" className="prompt-secondary self-start" onClick={search.retry}>Try again</button>}
+			{phase === "failed" && <button type="button" className="lh-text-action self-start" onClick={search.retry}>Try again</button>}
 			{phase === "searching" && !response && (
 				<div role="status" aria-label="Searching your Library" className="flex flex-col gap-1">
 					<Skeleton className="h-[72px] w-full rounded-lg" />
 					<Skeleton className="h-[72px] w-full rounded-lg" />
 				</div>
 			)}
-			{!query.trim() && <p className="text-graphite">Search inside your pages, text files and PDFs.</p>}
+			{!query.trim() && <p className="text-md text-faint">Search inside your pages, text files and PDFs.</p>}
 			{response && response.results.length > 0 && (
-				<ul className="flex flex-col gap-1" data-testid="doc-search-results">
+				<ul className="flex flex-col" data-testid="doc-search-results">
 					{response.results.map((hit) => (
-						<li key={hit.id} className="rounded-lg bg-shelf" data-testid="doc-search-result">
-							<button type="button" aria-label={`Open ${hit.name}${docHitPlace(hit.jump) ? `, ${docHitPlace(hit.jump)}` : ""}`} onClick={() => open(hit)} className="flex w-full min-w-0 flex-col gap-0.5 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-shelf pointer-coarse:min-h-11">
-								<span className="text-md font-medium text-ink [overflow-wrap:anywhere]">{hit.name}</span>
+						<li key={hit.id} className="lh-row" data-testid="doc-search-result">
+							<button type="button" aria-label={`Open ${hit.name}${docHitPlace(hit.jump) ? `, ${docHitPlace(hit.jump)}` : ""}`} onClick={() => open(hit)} className="lh-row-open w-full">
+								<span className="lh-row-name">{hit.name}</span>
 								{hit.snippet && <DocSnippetText snippet={hit.snippet} className="text-sm text-graphite [overflow-wrap:anywhere]" />}
-								<span className="text-sm text-faint [overflow-wrap:anywhere]" data-testid="doc-search-meta">{hitMeta(hit)}</span>
+								<span className="lh-row-meta [overflow-wrap:anywhere]" data-testid="doc-search-meta">{hitMeta(hit)}</span>
 							</button>
 						</li>
 					))}
 				</ul>
 			)}
 			{status && (
-				<div className="flex flex-col gap-1 text-sm text-faint" data-testid="doc-search-status">
-					<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+				<div className="flex flex-col gap-1 text-meta text-faint" data-testid="doc-search-status">
+					<div className="flex flex-wrap items-center gap-x-4 gap-y-1">
 						<p className="min-w-0 [overflow-wrap:anywhere]">{docStatusText(status.counts)}</p>
 						{status.building && <p data-testid="doc-search-building">Reading {status.building.done} of {status.building.total}…</p>}
-						{notSearched.length > 0 && <button type="button" className="prompt-secondary" aria-expanded={showWhich} onClick={() => setShowWhich((on) => !on)} data-testid="doc-search-which">{showWhich ? "Hide which" : "Show which"}</button>}
-						<button type="button" className="prompt-secondary" disabled={Boolean(status.building)} onClick={() => void reindex()} data-testid="doc-search-reindex">Reindex</button>
+						{notSearched.length > 0 && <button type="button" className="lh-text-action" aria-expanded={showWhich} onClick={() => setShowWhich((on) => !on)} data-testid="doc-search-which">{showWhich ? "Hide which" : "Show which"}</button>}
+						<button type="button" className="lh-text-action" disabled={Boolean(status.building)} onClick={() => void reindex()} data-testid="doc-search-reindex">Reindex</button>
 					</div>
 					{reindexFailed && <p role="alert" className="text-red">The reindex could not be started. Your search still works.</p>}
 					{showWhich && (
