@@ -289,9 +289,9 @@ Feature 024, [specs/024-notebook-mode](specs/024-notebook-mode/spec.md). A secon
 
 ### Tokens
 
-- Light: paper `#f8f7f4`, shelf `#f1f0ec`, code `#ebe9e3`, ink `#1d1c1a`, graphite `#5c5953`, faint `#8e8a83`, rule `#dedbd4`, bulb `#d99a1e`. Dark: paper `#1a1a19`, shelf and code `#151514`, ink `#e9e7e2`, graphite `#a9a69e`, faint `#7a776f`, rule `#33322f`, bulb `#f2b84b`. System follows the OS; a change cross-fades.
+- Light: paper `#f8f7f4`, shelf `#f1f0ec`, code `#ebe9e3`, ink `#1d1c1a`, graphite `#5c5953`, faint `#716d67`, rule `#dedbd4`, bulb `#d99a1e`, focus `#8c8a88`. Dark: paper `#1a1a19`, shelf and code `#151514`, ink `#e9e7e2`, graphite `#a9a69e`, faint `#858279`, rule `#33322f`, bulb `#f2b84b`, focus `#676661`. System follows the OS; a change cross-fades.
 - The AI's ink (`--riddle`) is ink by default, or one of gray, brown, red, orange, green, blue, purple (`--text-*`, separate light and dark values). Its wash is ink at 5.5% (light) or 8% (dark), its line at 32% / 34%.
-- Faint is Riddled's and sits under 4.5:1 (3.2:1 light, 3.9:1 dark); it is kept for meta, hints and placeholders only, pending the owner (reviews.md).
+- Contrast passes WCAG AA (owner, 2026-11-07, "Raise to pass"): faint and the gray ink (`--text-gray` light `#716d66`, dark `#9a968e` unchanged) reach 4.5:1 on paper and on shelf in both themes; the focus ring (`--nb-focus`) reaches 3:1 on both. Only lightness moved from Riddled's values (faint `#8e8a83` / `#7a776f`, gray `#858179`); hue and warmth are kept. `tests/notebook-contrast.test.ts` reads the tokens from notebook.css and holds the thresholds.
 - Grain: a fixed SVG fractal-noise tile, 180px, over the paper: opacity .16 multiply (light), .4 soft-light (dark). Floating panels carry their own grain.
 - Lift: shadows are allowed here, on floating surfaces only (menus, selection menu, sidebar, chat, dialogs): `--lift` light `0 0 0 1px #1d1c1a12, 0 1px 1px #1d1c1a0a, 0 6px 16px -8px #1d1c1a29`, dark `0 0 0 1px #ffffff12, 0 8px 20px -8px #0009`.
 
@@ -326,5 +326,5 @@ Feature 024, [specs/024-notebook-mode](specs/024-notebook-mode/spec.md). A secon
 
 ### Focus and scrolling
 
-- Focus is a 2px `--riddle-line` outline, offset 2px (inset where an edge would clip it). Text fields show their caret, no outline. Coarse pointers get 44px targets.
+- Focus is a 2px `--nb-focus` outline, offset 2px (inset where an edge would clip it); `--riddle-line` stays on marks, links and tethers as Riddled has it. The keyboard-active row of the `/` and `[[` menus shows the same ring inset (-2px) over its shelf fill. Text fields show their caret, no outline. Coarse pointers get 44px targets.
 - Every scroller in the mode hides its track and thumb, as everywhere else.

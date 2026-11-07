@@ -42,6 +42,16 @@ Colour values are hex with alpha; percentages are given as alpha/255.
 | `--texture-blend` | `multiply` | `soft-light` | |
 | `--background` / `--foreground` | `var(--paper)` / `var(--ink)` | same | shadcn bridge |
 
+**Deliberate deviation (owner, 2026-11-07, "Raise to pass").** The values above are Riddled's. Notebook darkens (light) or lightens (dark) a few of them along lightness only, hue and warmth kept, just enough to pass WCAG AA on `--paper` and on `--shelf`; `tests/notebook-contrast.test.ts` holds the thresholds against notebook.css.
+
+| Token | Riddled light → Notebook | Riddled dark → Notebook | Ratio now (paper / shelf), light; dark |
+|---|---|---|---|
+| `--faint` | `#8e8a83` (3.21 / 3.01) → `#716d67` | `#7a776f` (3.89 / 4.09) → `#858279` | 4.80 / 4.51; 4.53 / 4.76 |
+| `--text-gray` | `#858179` (3.62 / 3.40) → `#716d66` | `#9a968e` unchanged | 4.80 / 4.51; 5.91 / 6.20 |
+| `--nb-focus` (new, focus ring) | Riddled used `--riddle-line` (2.0:1) → `#8c8a88` | `--riddle-line` (2.77:1) → `#676661` | 3.21 / 3.02; 3.03 / 3.18 |
+
+`--riddle-line` itself is unchanged and stays on marks, link underlines and tethers.
+
 Data-theme switching: `:root[data-theme=light]` sets `color-scheme:light`; dark sets `color-scheme:dark` (CSS l.3305-3311). JS (`riddled:theme` = `system|light|dark`, default `system`) removes the attribute for system. `::view-transition-old/new(root){animation-duration:.35s}` (CSS l.5275-5280) suggests the theme switch uses a View Transition (cross-fade 350ms).
 
 ### 1.2 Text and AI ink colours (CSS l.3240-3246, dark l.3267-3273)
@@ -73,7 +83,8 @@ Data-theme switching: `:root[data-theme=light]` sets `color-scheme:light`; dark 
 | Item | Value | Source |
 |---|---|---|
 | `::selection` | `background:color-mix(in srgb, var(--ink) 13%, transparent)` (fallback `var(--ink)`) | CSS l.3312-3319 |
-| `:focus-visible` | `outline:2px solid var(--riddle-line); outline-offset:2px` | CSS l.344-347 |
+| `:focus-visible` | `outline:2px solid var(--riddle-line); outline-offset:2px` (Notebook: `var(--nb-focus)`, owner deviation, §1.1) | CSS l.344-347 |
+| Slash / `[[` menu active row | Riddled: `--shelf` fill only (1.06:1). Notebook adds `outline:2px solid var(--nb-focus); outline-offset:-2px` (owner deviation, §1.1) | notebook.css |
 | Cursor | `cursor:pointer` on buttons, `[role=button]`, `[role=option]`, `summary`, `.riddle-anchor`, `.riddle-mark`; `not-allowed` on disabled | CSS l.335-343 |
 | `.thin-scroll` | `scrollbar-width:thin; scrollbar-color:var(--rule) transparent` | CSS l.3849-3852 (our AGENTS.md hides scrollbars instead) |
 | Overscroll | `html:has(.page-sheet), body{overscroll-behavior:none}` | CSS l.326-331 |

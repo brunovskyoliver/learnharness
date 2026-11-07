@@ -8,7 +8,7 @@ Evidence beyond reading the code: the impeccable detector (`impeccable detect --
 
 | # | Dimension | Score | Key finding |
 |---|---|---|---|
-| 1 | Accessibility | 3 | Faint text and the focus ring sit under AA contrast (Riddled's values; owner) |
+| 1 | Accessibility | 3 | Faint text and the focus ring sat under AA contrast (Riddled's values); raised to pass by the owner's decision 2026-11-07, see Resolution |
 | 2 | Performance | 3 | Animations are transform/opacity/stroke only; layout reads batched in layout effects |
 | 3 | Responsive | 3 | Phones fall back to Marks only; coarse targets 44 px; phones are out of focus by the owner |
 | 4 | Theming | 4 | Every colour is a token with light, dark and system values; hex only in Riddled's own sheen/thumb/backdrop |
@@ -58,10 +58,10 @@ selection-menu, toolbar, footer - sentence case, not Title Case → kept (Riddle
 | Notes change sides while the sidebar opens | impeccable (compare strip) | Fixed (`columnSpace`, margin.tsx, thinking.tsx) + e2e |
 | Sidebar note rows not links | web-design-guidelines | Fixed (`<a href>`, overlay-sidebar.tsx) |
 | Dark html canvas and rubber band behind light paper | web-design-guidelines | Fixed (notebook.css) |
-| `--faint` 3.2:1 / 3.9:1, `--text-gray` 3.6:1 | impeccable | Kept by design (Riddled); owner approval needed |
-| Focus ring 2.0:1 / 2.8:1 | impeccable | Kept by design (Riddled); owner approval needed |
-| Slash / [[ menu active row only a shelf fill | impeccable | Kept by design; owner decision |
-| Bounce easings (8) | impeccable detector | Kept by design (Riddled's curves) |
+| `--faint` 3.2:1 / 3.9:1, `--text-gray` 3.6:1 | impeccable | Fixed (owner 2026-11-07, "Raise to pass"): faint `#716d67` / `#858279`, gray `#716d66` (dark `#9a968e` already 5.9:1); ≥4.5:1 on paper and shelf in both themes, lightness only; `tests/notebook-contrast.test.ts` |
+| Focus ring 2.0:1 / 2.8:1 | impeccable | Fixed (owner 2026-11-07): new `--nb-focus` `#8c8a88` / `#676661`, ≥3:1 on paper and shelf; `--riddle-line` kept for marks, links and tethers |
+| Slash / [[ menu active row only a shelf fill | impeccable | Fixed (owner 2026-11-07): the row adds a 2px `--nb-focus` ring inset -2px over the fill (≥3:1 on paper and shelf) |
+| Bounce easings (8) | impeccable detector | Kept by design (Riddled's curves); approved by owner 2026-11-07 |
 | Straight apostrophes in strings | web-design-guidelines | Fixed (owner asked): ’ in every Notebook string and ui-contract.md |
-| Placeholder without "…", sentence case, no text-wrap balance | web-design-guidelines | Kept by design (Riddled) |
-| No theme-color for Notebook | web-design-guidelines | Deferred (phones out of focus) |
+| Placeholder without "…", sentence case, no text-wrap balance | web-design-guidelines | Kept by design (Riddled); approved by owner 2026-11-07 |
+| No theme-color for Notebook | web-design-guidelines | Deferred (phones out of focus); approved by owner 2026-11-07 |

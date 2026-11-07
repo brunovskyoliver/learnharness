@@ -22,18 +22,19 @@
 	--code: #ebe9e3;
 	--ink: #1d1c1a;
 	--graphite: #5c5953;
-	--faint: #8e8a83;
+	--faint: #716d67; /* Riddled #8e8a83; raised to 4.5:1 (owner, 2026-11-07) */
 	--rule: #dedbd4;
 	--riddle: #2a2824;
 	--riddle-ink: #2a2824;
 	--riddle-wash: #1d1c1a0e;
 	--riddle-line: #1d1c1a52;
+	--nb-focus: #8c8a88; /* focus ring, ≥3:1 on paper and shelf (owner); Riddled used --riddle-line */
 	--bulb: #d99a1e;
 	--lift: 0 0 0 1px #1d1c1a12, 0 1px 1px #1d1c1a0a, 0 6px 16px -8px #1d1c1a29;
 	--grain-opacity: 0.16;
 	--texture-blend: multiply;
 	/* 1.2 text and AI ink colours */
-	--text-gray: #858179;
+	--text-gray: #716d66; /* Riddled #858179; raised to 4.5:1 (owner) */
 	--text-brown: #8a5a3b;
 	--text-red: #b23b33;
 	--text-orange: #b5621f;
@@ -54,12 +55,13 @@
 	--code: #151514;
 	--ink: #e9e7e2;
 	--graphite: #a9a69e;
-	--faint: #7a776f;
+	--faint: #858279; /* Riddled #7a776f; raised to 4.5:1 (owner) */
 	--rule: #33322f;
 	--riddle: #ebe8e2;
 	--riddle-ink: #ebe8e2;
 	--riddle-wash: #e9e7e214;
 	--riddle-line: #e9e7e257;
+	--nb-focus: #676661; /* focus ring, ≥3:1 on paper and shelf (owner) */
 	--bulb: #f2b84b;
 	--lift: 0 0 0 1px #ffffff12, 0 8px 20px -8px #0009;
 	--grain-opacity: 0.4;
@@ -83,12 +85,13 @@
 		--code: #151514;
 		--ink: #e9e7e2;
 		--graphite: #a9a69e;
-		--faint: #7a776f;
+		--faint: #858279; /* Riddled #7a776f; raised to 4.5:1 (owner) */
 		--rule: #33322f;
 		--riddle: #ebe8e2;
 		--riddle-ink: #ebe8e2;
 		--riddle-wash: #e9e7e214;
 		--riddle-line: #e9e7e257;
+		--nb-focus: #676661; /* focus ring, ≥3:1 on paper and shelf (owner) */
 		--bulb: #f2b84b;
 		--lift: 0 0 0 1px #ffffff12, 0 8px 20px -8px #0009;
 		--grain-opacity: 0.4;
@@ -201,7 +204,7 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 
 .nb-root :focus-visible,
 .nb-root:focus-visible {
-	outline: 2px solid var(--riddle-line);
+	outline: 2px solid var(--nb-focus);
 	outline-offset: 2px;
 }
 
@@ -701,7 +704,7 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 	--popover-foreground: var(--ink);
 	--muted-foreground: var(--faint);
 	--ink-2: var(--graphite);
-	--ring: var(--riddle-line);
+	--ring: var(--nb-focus);
 	--input: var(--rule);
 	--border: var(--rule);
 	--color-border: var(--rule);
@@ -714,7 +717,7 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 }
 .nb-root :is(button, input, textarea) { font: inherit; color: inherit; }
 .nb-root button { background: none; border: 0; padding: 0; }
-.nb-root :focus-visible { outline: 2px solid var(--riddle-line); outline-offset: 2px; }
+.nb-root :focus-visible { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
 
 /* ── 4 Top-left menu and wordmark ───────────────────────────────────────── */
 
@@ -897,7 +900,7 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 	user-select: none;
 }
 .nb-root .nb-menu-item[data-highlighted] { background: var(--shelf); }
-.nb-root .nb-menu-item:focus-visible { outline: 2px solid var(--riddle-line); outline-offset: 2px; }
+.nb-root .nb-menu-item:focus-visible { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
 .nb-root .nb-menu-check {
 	display: inline-grid;
 	place-items: center;
@@ -1045,7 +1048,7 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 .nb-root .nb-prose .katex { font-size: 1.08em; color: var(--ink); }
 .nb-root .nb-prose .tiptap-mathematics-render--editable:hover,
 .nb-root .nb-prose .ProseMirror-selectednode.tiptap-mathematics-render { background: var(--riddle-wash); }
-.nb-root .nb-prose .ProseMirror-selectednode { outline: 2px solid var(--riddle-line); outline-offset: 2px; }
+.nb-root .nb-prose .ProseMirror-selectednode { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
 .nb-root .nb-prose .lh-math-source { background: var(--shelf); outline: 1px solid var(--rule); font-family: var(--nb-mono); }
 .nb-root .nb-prose .lh-callout { gap: 0.2em; padding: 0.75em 1em 0.85em; border-radius: 10px; background: var(--shelf); }
 .nb-root .nb-prose .lh-callout-kind { height: 1.8em; color: var(--graphite); font-size: 0.8125em; font-weight: 550; letter-spacing: 0.02em; }
@@ -1087,7 +1090,7 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 	font-size: 13.5px;
 }
 .nb-root :is([data-testid="page-slash-menu"], [data-testid="page-wiki-menu"]) [role="option"] { min-height: 32px; border-radius: 8px; font-size: 13.5px; }
-.nb-root :is([data-testid="page-slash-menu"], [data-testid="page-wiki-menu"]) [aria-selected="true"] { background: var(--shelf); outline: none; }
+.nb-root :is([data-testid="page-slash-menu"], [data-testid="page-wiki-menu"]) [aria-selected="true"] { background: var(--shelf); outline: 2px solid var(--nb-focus); outline-offset: -2px; }
 
 /* ── 7 Corner hint ──────────────────────────────────────────────────────── */
 
@@ -1979,7 +1982,7 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 	outline: none;
 }
 .nb-root .nb-rev-input::placeholder { color: var(--faint); opacity: 1; }
-.nb-root .nb-rev-input:focus-visible { box-shadow: 0 0 0 2px var(--riddle-line); }
+.nb-root .nb-rev-input:focus-visible { box-shadow: 0 0 0 2px var(--nb-focus); }
 .nb-root .nb-rev-area { min-height: 72px; overflow: hidden; resize: none; }
 .nb-root .nb-rev-actions { display: flex; justify-content: flex-end; margin-top: 2px; }
 .nb-root .nb-rev-text-button { color: var(--faint); font-size: 12.5px; line-height: 1.4; transition: color 0.15s; }

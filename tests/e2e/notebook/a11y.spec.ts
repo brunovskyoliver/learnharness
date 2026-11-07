@@ -3,7 +3,7 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 // Feature 024, T045: accessibility. One keyboard-only run through every
 // scope item (no pointer after the first page load), checking after each
 // step that the focus is somewhere (never <body>) and visibly so (2px
-// outline in --riddle-line, offset 2px; text fields show their caret);
+// outline in --nb-focus, offset 2px; text fields show their caret);
 // then three sanity checks without new dependencies: every control has an
 // accessible name, every scroller hides its track, Escape closes layers in
 // order.
@@ -24,7 +24,7 @@ const focusInfo = (page: Page): Promise<FocusInfo> => page.evaluate(() => {
 	const el = document.activeElement as HTMLElement | null;
 	const root = document.querySelector(".nb-root") ?? document.body;
 	const probe = document.createElement("span");
-	probe.style.color = "var(--riddle-line)";
+	probe.style.color = "var(--nb-focus)";
 	root.appendChild(probe);
 	const line = getComputedStyle(probe).color;
 	probe.remove();
