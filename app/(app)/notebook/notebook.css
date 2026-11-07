@@ -776,12 +776,13 @@
 	overflow-anchor: none;
 	padding: 103px 24px 0;
 }
-/* 690px: with our fonts every line of the frames' list items (margin-notes) and
-   inline reply (inline-sketch-and-selection) breaks where the frame breaks
-   (any width from 681 to 698 does; 660 broke four of the reply's seven lines). */
+/* 660px: Riddled's `max-w-[660px]`, and the frames' column edges at 660
+   centred. Linux Chromium sets the same font files ≈3% wider than the macOS
+   frames, so some lines break earlier than the frame's (progress.md, width
+   investigation). */
 .nb-root .nb-column {
 	position: relative;
-	max-width: 690px;
+	max-width: 660px;
 	margin: 0 auto;
 }
 

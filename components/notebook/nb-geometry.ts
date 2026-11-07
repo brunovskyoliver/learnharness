@@ -9,9 +9,10 @@
 
 /** Margin note type (§8, measured ≈): 16px serif on a 23.5px line. */
 export const NOTE_LINE = 23.5;
-/** A note's full width at most (§8 measured ≈376px). At 15px our Newsreader breaks all eleven lines of the
- *  frame's three left notes where the frame does at 385.1-388.4px (phase 11 measure; 384 broke "…employers use"). */
-export const NOTE_WIDTH = 386;
+/** A note's full width at most (§8, frame margin-notes: the widest left-note line spans ≈376px, and "⋯" sits
+ *  22px outside it). Geometry, not line breaks: Linux Chromium sets text ≈3% wider than the macOS frames
+ *  (same font files, same widths as riddled.ai in one browser), so some lines break earlier than the frame's. */
+export const NOTE_WIDTH = 376;
 /** An open thread's measure (§8.1, frame margin-thread: x 156-566, the same right edge as collapsed). */
 export const EXPANDED_WIDTH = 410;
 /** Narrower than this and a margin is too tight for notes. */

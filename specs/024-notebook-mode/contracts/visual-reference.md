@@ -155,12 +155,25 @@ User text weights: body 400, `strong` **620**, title 500, H1/H2 **550**, H3/H4 6
 | Measure | Value |
 |---|---|
 | Column left edge | x=625 in still = **498px** from viewport left at a ~1665px viewport (roughly centred: column centre ≈ 818-832px from viewport left) |
-| Column width | **≈640-680px** (wrap of "…replaced and" ends at x=1259; the next word did not fit). The CSS has a `max-w-[660px]` utility; the landing uses 620px (`.landing-scene` ≥1120px) and 660px max-width below. Exact app value unknown. Ours: **690px** (phase 11), where every frame line break of the list items and the inline reply matches with our fonts (progress.md). |
+| Column width | **≈640-680px** (wrap of "…replaced and" ends at x=1259; the next word did not fit). The CSS has a `max-w-[660px]` utility; the landing uses 620px (`.landing-scene` ≥1120px) and 660px max-width below. Ours: **660px**, Riddled's `max-w-[660px]`; the frames' column edges match 660 centred (left x=502.5 at 1665). Line breaks are not a width measure here: the same Instrument Sans and Newsreader files render ≈3% wider in Linux Chromium than in the macOS frames (§3.5). |
 | Toolbar row baseline | y≈176 (112px below the viewport top) |
 | Tell-Riddled line | y≈215 (≈39px below toolbar) |
 | Title cap top | y≈255; title to first body line ≈ 62px |
 | When the toolbar has no instruction line | title sits at y≈225, about 49px below the toolbar (inline-sketch frame) |
 | Notes stay in the column when scrolled | the toolbar row stays pinned at top y≈50 (sheet-08), see §5 |
+
+### 3.5 Text width: Linux vs the macOS frames (measured 2026-11-07)
+
+The frames were recorded on macOS. Their text is uniformly ≈3% narrower than ours (sans body 0.964-0.976, margin serif 0.974) while every vertical pitch matches. Measured in one browser (chrome-headless-shell 156, Linux), the same strings at the same size, weight, tracking and variation settings are identical to 0.01px on riddled.ai (its own fonts and CSS), in our Notebook (`--nb-font-sans`, `--nb-font-voice`) and in our page with Riddled's woff2 files loaded:
+
+| String, setting | riddled.ai | ours | ours, Riddled's files |
+|---|---|---|---|
+| "Users never read the onboarding emails, so we can drop them." sans 16px −.004em | 451.17 | 451.17 | 451.17 |
+| same, 19.5px (the landing element itself: 552.33) | 552.33 | 552.33 | 552.33 |
+| "fib(3) calls fib(2) and fib(1), then waits" voice 14.5px 420 opsz 14 .004em (landing `.voice` element: 250.44) | 250.44 | 250.44 | 250.44 |
+| "The old flow was replaced and nobody noticed…" voice 16px | 596.06 | 596.06 | 596.06 |
+
+So the fonts match; the frames' narrower text is macOS rasterisation (Core Text advances), not a different build, axis or tracking. Riddled loads Instrument Sans at `font-stretch:100%` only (no `wdth` range) and Newsreader 200-800 normal; ours adds the `wdth` range, which does not change widths at 100%. Geometry (column, margins, gaps) follows the frames; line breaks on Linux differ where a line is within ≈3% of its measure.
 
 ---
 
@@ -598,7 +611,7 @@ All values measured ≈ (frames inline-sketch-and-selection, sheet-06 tile 9, sh
 
 Neither the CSS nor the frames settle these:
 
-1. **Exact column width** of the app page: ≈640-680px measured, 620/660px in landing CSS. Left and right note widths and gutters are measured only (≈376-395px, ≈36px left gap).
+1. **Exact column width** of the app page: 660px adopted (CSS `max-w-[660px]`, frame edges at 660 centred); the app bundle that would confirm it was not read. Left and right note widths and gutters are measured only (≈376px collapsed, ≈410px open, 59px left text gap, ≈36px left dot). Frame line breaks cannot settle widths: Linux renders the same fonts ≈3% wider than the macOS frames (§3.5).
 2. **Margin-note type size and line-height** in the app (≈16px / ≈23.5px measured; landing uses 19px/1.5).
 3. **Margin-note container classes, collision and stacking logic**, and the faded-others opacity (≈.35-.4) have no CSS rule.
 4. **Tether path geometry**: stroke styles and timings are exact, but the path builder (how spine and tie are routed) lives in the unread `/write` bundle.
