@@ -16,7 +16,8 @@ export type SketchTextSize = "s" | "m" | "l";
 
 interface ItemBase { step: number }
 export type SketchItem = ItemBase & (
-	| { kind: "grid"; x: number; y: number; cols: number; rows: number; cell: number }
+	/** `cell` wide; `cellH` tall when the cells are not square. */
+	| { kind: "grid"; x: number; y: number; cols: number; rows: number; cell: number; cellH?: number }
 	| { kind: "text"; x: number; y: number; text: string; size?: SketchTextSize; voice?: boolean; anchor?: "start" | "middle" | "end" }
 	| { kind: "line" | "arrow"; x1: number; y1: number; x2: number; y2: number; curve?: number }
 	| { kind: "rect"; x: number; y: number; w: number; h: number; r?: number }
@@ -109,7 +110,9 @@ function itemProblem(raw: unknown, sketch: { w: number; h: number; steps: number
 			if (!Number.isInteger(cols) || (cols as number) < 1 || (cols as number) > SKETCH_LIMITS.gridCells) return `grid cols must be 1-${SKETCH_LIMITS.gridCells}`;
 			if (!Number.isInteger(rows) || (rows as number) < 1 || (rows as number) > SKETCH_LIMITS.gridCells) return `grid rows must be 1-${SKETCH_LIMITS.gridCells}`;
 			if (!num(cell) || cell <= 0) return "grid cell must be a positive size";
-			if ((x as number) + (cols as number) * cell > w + 1e-9 || (y as number) + (rows as number) * cell > h + 1e-9) return "grid leaves the drawing";
+			if (raw.cellH !== undefined && (!num(raw.cellH) || raw.cellH <= 0)) return "grid cellH must be a positive size";
+			const tall = num(raw.cellH) ? raw.cellH : cell;
+			if ((x as number) + (cols as number) * cell > w + 1e-9 || (y as number) + (rows as number) * tall > h + 1e-9) return "grid leaves the drawing";
 			return null;
 		}
 		case "text": {
@@ -151,7 +154,7 @@ function itemProblem(raw: unknown, sketch: { w: number; h: number; steps: number
 }
 
 const ITEM_FIELDS: Record<SketchItemKind, readonly string[]> = {
-	grid: ["x", "y", "cols", "rows", "cell"],
+	grid: ["x", "y", "cols", "rows", "cell", "cellH"],
 	text: ["x", "y", "text", "size", "voice", "anchor"],
 	line: ["x1", "y1", "x2", "y2", "curve"],
 	arrow: ["x1", "y1", "x2", "y2", "curve"],
@@ -239,13 +242,14 @@ function renderItem(item: SketchItem): string {
 	switch (item.kind) {
 		case "grid": {
 			const parts: string[] = [];
-			const right = item.x + item.cols * item.cell, bottom = item.y + item.rows * item.cell;
+			const tall = item.cellH ?? item.cell;
+			const right = item.x + item.cols * item.cell, bottom = item.y + item.rows * tall;
 			for (let c = 0; c <= item.cols; c++) {
 				const x = item.x + c * item.cell;
 				parts.push(`<path class="nb-sketch-line" pathLength="1" style="stroke:var(--rule);stroke-width:1px" d="M${n(x)} ${n(item.y)}L${n(x)} ${n(bottom)}"/>`);
 			}
 			for (let r = 0; r <= item.rows; r++) {
-				const y = item.y + r * item.cell;
+				const y = item.y + r * tall;
 				parts.push(`<path class="nb-sketch-line" pathLength="1" style="stroke:var(--rule);stroke-width:1px" d="M${n(item.x)} ${n(y)}L${n(right)} ${n(y)}"/>`);
 			}
 			return `<g data-kind="grid">${parts.join("")}</g>`;

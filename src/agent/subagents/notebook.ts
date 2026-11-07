@@ -91,6 +91,7 @@ const sketchItemSchema = Type.Object({
 	kind: Type.Union(["grid", "text", "line", "arrow", "rect", "circle", "dot", "bar", "path"].map((k) => Type.Literal(k))),
 	x: Type.Optional(Type.Number()), y: Type.Optional(Type.Number()),
 	cols: Type.Optional(Type.Integer()), rows: Type.Optional(Type.Integer()), cell: Type.Optional(Type.Number()),
+	cellH: Type.Optional(Type.Number({ description: "grid: cell height when not square (default cell)." })),
 	text: Type.Optional(Type.String({ maxLength: 40 })),
 	size: Type.Optional(Type.Union([Type.Literal("s"), Type.Literal("m"), Type.Literal("l")])),
 	voice: Type.Optional(Type.Boolean()),
@@ -278,29 +279,32 @@ export function firstSentence(note: string): string | null {
 	return match ? match[0].trim() : null;
 }
 
-/** A 3x3 DP grid, three steps: deterministic, valid, for the faux engine. */
+/** The 2D DP grid of frame inline-sketch-and-selection (a 3x3 grid of path
+ *  counts, four steps): deterministic, valid, for the faux engine. Units are
+ *  drawn at 1.12px, so the frame's 256x201px grid is 228x180. */
+const cx = [50.5, 126.5, 202.5], cy = [71, 131, 191];
+const cellText = (step: number, col: number, row: number, text: string): Sketch["items"][number] => ({ step, kind: "text", x: cx[col]!, y: cy[row]!, text, size: "l" });
 export const FAUX_SKETCH: Sketch = {
 	title: "How many ways to each cell?",
-	subtitle: "Count paths moving right or down",
-	w: 320,
-	h: 240,
+	subtitle: "Start top-left. Move only right or down.",
+	w: 262,
+	h: 282,
 	items: [
-		{ step: 0, kind: "grid", x: 70, y: 30, cols: 3, rows: 3, cell: 60 },
-		{ step: 0, kind: "text", x: 100, y: 60, text: "1" },
-		{ step: 1, kind: "text", x: 160, y: 60, text: "1" },
-		{ step: 1, kind: "text", x: 220, y: 60, text: "1" },
-		{ step: 1, kind: "text", x: 100, y: 120, text: "1" },
-		{ step: 1, kind: "text", x: 100, y: 180, text: "1" },
-		{ step: 2, kind: "text", x: 160, y: 120, text: "2" },
-		{ step: 2, kind: "text", x: 220, y: 120, text: "3" },
-		{ step: 2, kind: "text", x: 160, y: 180, text: "3" },
-		{ step: 2, kind: "text", x: 220, y: 180, text: "6" },
-		{ step: 2, kind: "arrow", x1: 160, y1: 140, x2: 160, y2: 165 },
+		{ step: 0, kind: "grid", x: 12.5, y: 41, cols: 3, rows: 3, cell: 76, cellH: 60 },
+		cellText(0, 0, 0, "1"), cellText(0, 1, 0, "1"), cellText(0, 2, 0, "1"), cellText(0, 0, 1, "1"), cellText(0, 0, 2, "1"),
+		{ step: 0, kind: "text", x: 12.5, y: 250, text: "Two coordinates choose the cell.", size: "s", voice: false, anchor: "start" },
+		{ step: 0, kind: "text", x: 12.5, y: 272, text: "Its number stores a smaller answer.", size: "s", voice: false, anchor: "start" },
+		cellText(1, 1, 1, "2"),
+		cellText(2, 2, 1, "3"), cellText(2, 1, 2, "3"),
+		cellText(3, 2, 2, "6"),
+		{ step: 3, kind: "arrow", x1: 202.5, y1: 147, x2: 202.5, y2: 171 },
+		{ step: 3, kind: "arrow", x1: 144, y1: 191, x2: 182, y2: 191 },
 	],
 	steps: [
-		{ caption: "Start with the grid and the corner." },
-		{ caption: "The top row and left column have one way each.", note: "One way along an edge." },
-		{ caption: "Every other cell adds the cell above and the cell to its left.", note: "Above plus left." },
+		{ caption: "Start with 1 way to reach every edge cell." },
+		{ caption: "The middle cell gets 1 from above + 1 from the left." },
+		{ caption: "The next two cells each get 1 + 2 = 3." },
+		{ caption: "The last cell adds its two neighbors: 3 + 3 = 6.", note: "Above + left = this cell." },
 	],
 };
 

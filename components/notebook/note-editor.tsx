@@ -21,6 +21,7 @@ import type { WikiBridge } from "@/components/library/page-note-views";
 import { slashQuery, type SlashItem } from "@/components/library/page-slash";
 import { anchorBelowSelection, filterSlashItems, SlashMenu, WikiMenu, type WikiMenuRow } from "@/components/library/page-toolbar";
 import { NotebookDecor, type NoteBridge } from "./nb-plugins";
+import { SelectionMenu } from "./selection-menu";
 
 const CHANGE_DELAY_MS = 120;
 
@@ -282,6 +283,7 @@ export default function NoteEditor({ value, onChange, onSave, onExitTop, readOnl
 		<div ref={host} className="nb-editor-host">
 			<EditorContent editor={editor} />
 			{editor && wikiOpen && wikiSource && <WikiMenu rows={wikiRows} status={wikiSource.status ?? (wikiRows.length === 0 ? "Keep typing a page name." : null)} active={Math.min(wikiActive, Math.max(0, wikiRows.length - 1))} at={anchorBelowSelection(editor, host.current)} onPick={(row) => pickWikiRef.current(row)} />}
+			{editor && bridge && !readOnly && <SelectionMenu editor={editor} bridge={bridge} />}
 			{editor && slashOpen && <SlashMenu items={slashItems} query={slashState!.query} active={Math.min(slashActive, Math.max(0, slashItems.length - 1))} at={anchorBelowSelection(editor, host.current)} onPick={(item) => pickSlashRef.current(item)} />}
 		</div>
 	);

@@ -23,7 +23,7 @@ describe("validation", () => {
 	it("accepts the faux 3x3 grid and every primitive kind", () => {
 		const grid = validateSketch(FAUX_SKETCH);
 		assert.ok(grid.ok);
-		assert.equal(grid.sketch.steps.length, 3);
+		assert.equal(grid.sketch.steps.length, 4);
 		const all = validateSketch(base({
 			items: [
 				{ step: 0, kind: "grid", x: 0, y: 0, cols: 2, rows: 2, cell: 20 },
@@ -76,8 +76,8 @@ describe("rendering", () => {
 	it("is deterministic and draws one group per step with data-step", () => {
 		const svg = renderSketchSvg(sketch);
 		assert.equal(svg, renderSketchSvg(sketch));
-		assert.match(svg, /^<svg xmlns="http:\/\/www.w3.org\/2000\/svg" class="nb-drawing" viewBox="0 0 320 240" role="img"/);
-		assert.equal((svg.match(/<g data-step="/g) ?? []).length, 3);
+		assert.match(svg, /^<svg xmlns="http:\/\/www.w3.org\/2000\/svg" class="nb-drawing" viewBox="0 0 262 282" role="img"/);
+		assert.equal((svg.match(/<g data-step="/g) ?? []).length, 4);
 		assert.doesNotMatch(svg, /opacity="0"/, "the default step is the last, so all show");
 	});
 
@@ -85,9 +85,18 @@ describe("rendering", () => {
 		const first = renderSketchSvg(sketch, { step: 0 });
 		assert.match(first, /<g data-step="1" opacity="0">/);
 		assert.match(first, /<g data-step="2" opacity="0">/);
+		assert.match(first, /<g data-step="3" opacity="0">/);
 		assert.doesNotMatch(first, /<g data-step="0" opacity/);
 		assert.equal(renderSketchSvg(sketch, { step: 99 }), renderSketchSvg(sketch));
 		assert.equal(renderSketchSvg(sketch, { step: -3 }), first);
+	});
+
+	it("draws a grid with cells taller or shorter than wide (cellH)", () => {
+		const svg = renderSketchSvg(sketch, { step: 0 });
+		assert.match(svg, /d="M12.5 41L12.5 221"/, "the grid's left edge runs 3 x 60 down");
+		assert.match(svg, /d="M12.5 101L240.5 101"/, "a row line every 60, 3 x 76 across");
+		assert.equal(problemOf(base({ items: [{ step: 0, kind: "grid", x: 0, y: 0, cols: 2, rows: 2, cell: 10, cellH: -1 }] })), "item 0: grid cellH must be a positive size");
+		assert.match(problemOf(base({ items: [{ step: 0, kind: "grid", x: 0, y: 0, cols: 2, rows: 8, cell: 10, cellH: 60 }] })), /grid leaves the drawing/);
 	});
 
 	it("tags strokes for the pencil draw, bars for grow, dots for pop", () => {
@@ -117,8 +126,8 @@ describe("rendering", () => {
 	it("puts the title inside the SVG only for exports", () => {
 		assert.doesNotMatch(renderSketchSvg(sketch), />How many ways/, "the page draws the title as HTML");
 		const withTitle = renderSketchSvg(sketch, { withTitle: true });
-		assert.match(withTitle, /viewBox="0 0 320 284"/);
+		assert.match(withTitle, /viewBox="0 0 262 326"/);
 		assert.match(withTitle, />How many ways to each cell\?</);
-		assert.equal(sketchLabel(sketch), "How many ways to each cell. Start with the grid and the corner. The top row and left column have one way each. Every other cell adds the cell above and the cell to its left.");
+		assert.equal(sketchLabel(sketch), "How many ways to each cell. Start with 1 way to reach every edge cell. The middle cell gets 1 from above + 1 from the left. The next two cells each get 1 + 2 = 3. The last cell adds its two neighbors: 3 + 3 = 6.");
 	});
 });

@@ -13,20 +13,24 @@
  */
 import { useLayoutEffect, useState } from "react";
 import type { NotebookThread } from "@/src/core";
+import { BlotGlyph } from "./blot";
 import { useMeasuredRefs } from "./margin";
 import { blockEnd, type NoteBridge, type SpacerMark } from "./nb-plugins";
 import { Thread } from "./thread";
+import { SKETCHING_LINE } from "./use-selection-runs";
 
-export { SketchStill } from "./thread";
+
 
 /** Room above an inline reply (§13: ≈21px from the block's last line to the reply's first). */
 export const INLINE_GAP = 21;
 
-export function InlineReplies({ bridge, column, threads, anchored, fresh, tick }: {
+export function InlineReplies({ bridge, column, threads, sketching = [], anchored, fresh, tick }: {
 	bridge: NoteBridge;
 	column: HTMLElement | null;
 	/** Threads shown under their block (or, with no passage, at the top of the note), and ones leaving. */
 	threads: readonly NotebookThread[];
+	/** Visualize runs still drawing (their hidden anchor ids): "Sketching it…" under the passage. */
+	sketching?: readonly string[];
 	/** Threads whose passage is on the page (the rest have lost their words). */
 	anchored: ReadonlySet<string>;
 	fresh: ReadonlySet<string>;
@@ -42,12 +46,12 @@ export function InlineReplies({ bridge, column, threads, anchored, fresh, tick }
 		const anchors = new Map((bridge.decor()?.anchors ?? []).map((a) => [a.id, a]));
 		const spacers: SpacerMark[] = [];
 		const order: Record<string, number> = {};
-		for (const thread of threads) {
-			const anchor = anchors.get(thread.id);
-			const el = replies.get(thread.id);
-			order[thread.id] = anchor ? anchor.from : -1;
-			if (!el) continue;
-			spacers.push({ id: thread.id, pos: anchor ? blockEnd(view.state.doc, anchor.from) : 0, height: Math.ceil(el.offsetHeight) + INLINE_GAP });
+		for (const id of [...threads.map((t) => t.id), ...sketching]) {
+			const anchor = anchors.get(id);
+			const el = replies.get(id);
+			order[id] = anchor ? anchor.from : -1;
+			if (!el || (!anchor && sketching.includes(id))) continue;
+			spacers.push({ id, pos: anchor ? blockEnd(view.state.doc, anchor.from) : 0, height: Math.ceil(el.offsetHeight) + INLINE_GAP });
 		}
 		const current = bridge.decor()?.spacers ?? [];
 		const changed = current.length !== spacers.length || spacers.some((s, i) => current[i]?.id !== s.id || current[i]?.pos !== s.pos || current[i]?.height !== s.height);
@@ -62,7 +66,7 @@ export function InlineReplies({ bridge, column, threads, anchored, fresh, tick }
 			return keys.length === Object.keys(prev).length && keys.every((k) => Math.abs((prev[k] ?? -1) - next[k]!) < 0.5) ? prev : next;
 		});
 		setPositions((prev) => (JSON.stringify(prev) === JSON.stringify(order) ? prev : order));
-	}, [bridge, column, threads, tick, tops, bump]);
+	}, [bridge, column, threads, sketching, tick, tops, bump]);
 
 	return (
 		<>
@@ -80,6 +84,15 @@ export function InlineReplies({ bridge, column, threads, anchored, fresh, tick }
 						rootRef={refFor(thread.id)}
 						style={top === undefined ? { top: 0, opacity: 0, pointerEvents: "none" } : { top }}
 					/>
+				);
+			})}
+			{sketching.map((id) => {
+				const top = tops[id];
+				return (
+					<div key={id} ref={refFor(id)} className="nb-inline nb-sketching" data-thread={id} data-testid="nb-sketching" role="status" style={top === undefined ? { top: 0, opacity: 0 } : { top }}>
+						<span className="nb-voice">{SKETCHING_LINE}</span>
+						<BlotGlyph className="nb-sketching-blot" size={9} />
+					</div>
 				);
 			})}
 		</>

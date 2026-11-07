@@ -174,7 +174,7 @@ describe("reads", () => {
 		assert.equal(think!.origin, "think");
 		assert.equal(sketch!.origin, "visualize");
 		assert.equal(sketch!.placement, "inline");
-		assert.equal(sketch!.messages[0]!.sketch?.steps.length, 3);
+		assert.equal(sketch!.messages[0]!.sketch?.steps.length, 4);
 	}));
 });
 

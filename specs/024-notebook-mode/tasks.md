@@ -51,9 +51,9 @@ Format: `- [ ] T### [P?] [US?] description (paths)`. All Notebook CSS values com
 
 ## Phase 6: US4 Selection menu and sketches (P2)
 
-- [ ] T030 [US4] `selection-menu.tsx` (BubbleMenu, export `selectedTextReference` from `page-toolbar.tsx`): format row, ink colours (text colour mark in `pageExtensions` if absent, Markdown-safe), actions Think / Ask / Visualize / Make flashcards
-- [ ] T031 [US4] `sketch.tsx` inline stepped sketch with stepper, replay, captions; `sketch-dialog.tsx` See it larger
-- [ ] T032 [US4] Tests: sketch render tests; Playwright `selection.spec.ts` (format applies, think → thread, ask → focused field and no send, visualize → sketch steps, dialog Escape)
+- [X] T030 [US4] `selection-menu.tsx` (BubbleMenu, export `selectedTextReference` from `page-toolbar.tsx`): format row, ink colours (text colour mark in `pageExtensions` if absent, Markdown-safe), actions Think / Ask / Visualize / Make flashcards
+- [X] T031 [US4] `sketch.tsx` inline stepped sketch with stepper, replay, captions; `sketch-dialog.tsx` See it larger
+- [X] T032 [US4] Tests: sketch render tests; Playwright `selection.spec.ts` (format applies, think → thread, ask → focused field and no send, visualize → sketch steps, dialog Escape)
 
 ## Phase 7: US5 Instructions and reviewers (P2)
 

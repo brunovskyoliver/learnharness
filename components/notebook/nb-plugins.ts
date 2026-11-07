@@ -83,6 +83,23 @@ export function textRange(note: NoteText, start: number, end: number): { from: n
 	return { from, to };
 }
 
+/** A document range as a span of the plain text (from its first to its last
+ *  real character: separators and list markers map to a block's start and
+ *  don't count), trimmed of whitespace; null when it holds no text. */
+export function rangeText(note: NoteText, from: number, to: number): { start: number; end: number } | null {
+	let start = -1, end = -1;
+	for (let i = 0; i < note.text.length; i++) {
+		const pos = note.positions[i]!;
+		if (note.positions[i + 1] === pos || pos < from || pos >= to) continue;
+		if (start < 0) start = i;
+		end = i + 1;
+	}
+	if (start < 0) return null;
+	while (start < end && /\s/.test(note.text[start]!)) start++;
+	while (end > start && /\s/.test(note.text[end - 1]!)) end--;
+	return end > start ? { start, end } : null;
+}
+
 /** The first occurrence of a quote (the passage a read is considering). */
 export function quoteRange(note: NoteText, quote: string): { from: number; to: number } | null {
 	const at = note.text.indexOf(quote);
@@ -94,9 +111,15 @@ export function quoteRange(note: NoteText, quote: string): { from: number; to: n
 /** "doc": the text changed (any cause); "edit": he changed it, typing in the focused editor. */
 export type BridgeEvent = "doc" | "edit" | "view" | "decor" | "composition-start" | "composition-end";
 
+/** The selection menu's actions (US4); "flashcards" is the hook Phase 11 wires to feature 021. */
+export type SelectionAction = "think" | "ask" | "visualize" | "flashcards";
+export type SelectionActionHandler = (action: SelectionAction, range: { from: number; to: number }) => void;
+
 /** Lets Notebook's layers follow the editor without owning it. */
 export class NoteBridge {
 	view: EditorView | null = null;
+	/** Set by the thinking layer: runs what the selection menu picked (null: the menu shows no actions). */
+	selectionAction: SelectionActionHandler | null = null;
 	private listeners = new Set<(event: BridgeEvent) => void>();
 	private cleanup: (() => void) | null = null;
 	private cached: { doc: PMNode; text: NoteText } | null = null;

@@ -284,6 +284,10 @@
 	to { opacity: 1; transform: none; }
 }
 /* 9.1, 16.3, 22 strokes */
+@keyframes nb-fade-in {
+	0% { opacity: 0; }
+	to { opacity: 1; }
+}
 @keyframes nb-pencil-draw {
 	to { stroke-dashoffset: 0; }
 }
@@ -1332,23 +1336,6 @@
 	line-height: 1.5;
 }
 .nb-root .nb-inline .nb-inline-dot { left: 3px; top: 0.42em; }
-.nb-root .nb-sketch-still { margin: 0.9em 0 0; }
-.nb-root .nb-sketch-head {
-	display: flex;
-	flex-direction: column;
-	align-items: center;
-	gap: 6px;
-	margin-bottom: 1.4em;
-	text-align: center;
-}
-.nb-root .nb-sketch-title { color: var(--ink); font-size: 1.12em; line-height: 1.3; }
-.nb-root .nb-sketch-subtitle { color: var(--faint); font-family: var(--nb-sans); font-size: 13px; line-height: 1.4; }
-.nb-root .nb-sketch-art { margin: 0 auto; }
-.nb-root .nb-sketch-art svg { display: block; width: 100%; height: auto; overflow: visible; }
-/* A drawing that was already there shows finished; only a new one draws itself. */
-.nb-root .nb-sketch-still[data-static] .nb-drawing * { animation: none; stroke-dashoffset: 0; }
-.nb-root .nb-sketch-note { margin: 1em 0 0; color: var(--ink); text-align: center; font-size: 1.06em; }
-.nb-root .nb-sketch-caption { margin: 0.9em 0 0; color: var(--graphite); font-size: 0.86em; }
 
 /* ── 7 Corner hint: running, refused, failed; the activity popover ──────── */
 
@@ -1424,7 +1411,8 @@
 	letter-spacing: inherit;
 }
 .nb-root .nb-thread-open > span { display: block; }
-.nb-root .nb-clamp {
+/* Margin notes clamp; an inline reply shows whole (frame inline-sketch: a 7-line reply). */
+.nb-root .nb-note .nb-clamp {
 	display: -webkit-box;
 	-webkit-box-orient: vertical;
 	-webkit-line-clamp: 6;
@@ -1636,4 +1624,206 @@
 @media (prefers-reduced-motion: reduce) {
 	.nb-root :is(.nb-note, .nb-inline, .nb-thread-more-hover, .nb-thread-button, .nb-mark) { transition: none; }
 	.nb-root .nb-mark-fresh { animation: none; }
+}
+
+/* ══ Phase 6 (US4): the selection menu and sketches ═════════════════════════
+ * Selection menu: frame inline-sketch-and-selection.jpg and sheet-07 tile 1
+ * (visual-reference §15, all measured ≈): card ≈236px in the right margin
+ * 91px past the column, 7px above the selection's line; rows at 28/28/28px,
+ * rules under the style row and the inks, actions 35px apart.
+ * Sketches: §16 (CSS l.5315-5345) and the same frame.
+ */
+
+.nb-root .nb-prose u { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
+.nb-root .nb-prose .lh-ink[data-color="gray"] { color: var(--text-gray); }
+.nb-root .nb-prose .lh-ink[data-color="brown"] { color: var(--text-brown); }
+.nb-root .nb-prose .lh-ink[data-color="red"] { color: var(--text-red); }
+.nb-root .nb-prose .lh-ink[data-color="orange"] { color: var(--text-orange); }
+.nb-root .nb-prose .lh-ink[data-color="green"] { color: var(--text-green); }
+.nb-root .nb-prose .lh-ink[data-color="blue"] { color: var(--text-blue); }
+.nb-root .nb-prose .lh-ink[data-color="purple"] { color: var(--text-purple); }
+
+.nb-root .nb-sel-host { z-index: 60; }
+.nb-root .nb-sel-menu {
+	width: 236px;
+	padding: 7px 7px 10px;
+	border-radius: 12px;
+	background: var(--paper);
+	box-shadow: var(--lift), 0 0 0 1px var(--rule);
+	color: var(--ink);
+	font-family: var(--nb-sans);
+	animation: 0.2s ease-out both nb-settle;
+}
+.nb-root .nb-sel-row { display: flex; align-items: center; }
+.nb-root .nb-sel-styles { gap: 0; padding-bottom: 10px; border-bottom: 1px solid var(--rule); }
+.nb-root .nb-sel-marks { justify-content: space-between; margin-top: 7px; }
+.nb-root .nb-sel-inks { justify-content: space-between; margin-top: 5.5px; padding-bottom: 5.5px; border-bottom: 1px solid var(--rule); }
+.nb-root .nb-sel-format {
+	display: grid;
+	place-items: center;
+	width: 30px;
+	height: 28px;
+	padding: 0;
+	border: 0;
+	border-radius: 6px;
+	background: none;
+	color: var(--graphite);
+	transition: color 0.15s, background-color 0.15s;
+}
+.nb-root .nb-sel-format svg { width: 16px; height: 16px; stroke-width: 1.6; }
+.nb-root .nb-sel-format:hover { background: var(--shelf); color: var(--ink); }
+.nb-root .nb-sel-format[aria-pressed="true"] { background: var(--shelf); color: var(--ink); }
+.nb-root .nb-sel-style { width: 28px; }
+.nb-root .nb-sel-style svg { width: 17px; height: 17px; }
+/* The block style he is in: a filled ink square with a paper glyph. */
+.nb-root .nb-sel-style[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.nb-root .nb-sel-ink span { font-size: 14px; font-weight: 500; line-height: 1; }
+/* The frame shows no fill behind the current ink. */
+.nb-root .nb-sel-ink[aria-pressed="true"]:not(:hover) { background: none; }
+.nb-root .nb-sel-ink [data-ink="default"] { color: var(--ink); }
+.nb-root .nb-sel-ink [data-ink="gray"] { color: var(--text-gray); }
+.nb-root .nb-sel-ink [data-ink="brown"] { color: var(--text-brown); }
+.nb-root .nb-sel-ink [data-ink="red"] { color: var(--text-red); }
+.nb-root .nb-sel-ink [data-ink="orange"] { color: var(--text-orange); }
+.nb-root .nb-sel-ink [data-ink="green"] { color: var(--text-green); }
+.nb-root .nb-sel-ink [data-ink="blue"] { color: var(--text-blue); }
+.nb-root .nb-sel-ink [data-ink="purple"] { color: var(--text-purple); }
+.nb-root .nb-sel-actions { display: flex; flex-direction: column; padding-top: 4px; }
+.nb-root .nb-sel-action {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	height: 35px;
+	padding: 0 8px 0 10px;
+	border: 0;
+	border-radius: 7px;
+	background: none;
+	color: var(--ink);
+	text-align: left;
+	transition: background-color 0.12s;
+}
+.nb-root .nb-sel-action:hover { background: var(--shelf); }
+.nb-root .nb-sel-label { font-size: 15.5px; line-height: 1; }
+.nb-root .nb-sel-hint { color: var(--faint); font-family: var(--nb-sans); font-size: 10.5px; line-height: 1; white-space: nowrap; }
+
+/* Ask about this, before it is sent: the field and its hint. */
+.nb-root .nb-thread-hint {
+	margin: 8px 0 0;
+	color: var(--faint);
+	font-family: var(--nb-sans);
+	font-size: 10.5px;
+	line-height: 14px;
+	letter-spacing: 0;
+}
+
+/* "Sketching it…" under the passage while a drawing is made (frame sheet-05 tiles 4-6). */
+.nb-root .nb-sketching {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	color: var(--faint);
+	font-size: 12.5px;
+	line-height: 1.6;
+}
+.nb-root .nb-sketching-blot { color: var(--riddle); animation: 1.8s ease-in-out infinite nb-ink-wait; }
+
+/* ── 16 The inline sketch ───────────────────────────────────────────────── */
+
+.nb-root .nb-sketch { margin-top: 10px; color: var(--ink); }
+.nb-root .nb-sketch-figure { margin: 0 auto; }
+.nb-root .nb-sketch-head { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
+.nb-root .nb-sketch-title { color: var(--ink); font-size: 19px; line-height: 1.3; letter-spacing: 0; }
+.nb-root .nb-sketch-subtitle { margin-top: 11.5px; color: var(--faint); font-family: var(--nb-sans); font-size: 13px; line-height: 1.4; letter-spacing: 0; }
+.nb-root .nb-drawing-picture svg { display: block; width: 100%; height: auto; max-height: 440px; overflow: visible; }
+.nb-root .nb-drawing-picture text { paint-order: stroke; stroke: var(--paper) !important; stroke-width: 4px !important; stroke-linejoin: round; }
+/* A step not yet shown is clear; one already drawn stays drawn; a step that comes in inks in. */
+.nb-root .nb-drawing-picture [data-step]:not([data-live]) * { animation: none; stroke-dashoffset: 0; }
+.nb-root .nb-sketch-note { margin: 17px 0 0; color: var(--ink); font-size: 19px; line-height: 1.3; letter-spacing: 0; animation: 0.52s cubic-bezier(0.2, 0.7, 0.2, 1) both nb-ink-in; }
+.nb-root .nb-sketch-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; min-height: 3em; margin-top: 14px; }
+.nb-root .nb-sketch-caption { margin: 0; color: var(--graphite); font-size: 14.5px; line-height: 1.45; letter-spacing: 0; }
+.nb-root .nb-stepper { display: flex; flex-shrink: 0; align-items: center; gap: 2px; }
+.nb-root .nb-step-count { min-width: 2.6em; color: var(--faint); font-family: var(--nb-sans); font-size: 11.5px; font-variant-numeric: tabular-nums; text-align: center; letter-spacing: 0; }
+.nb-root .nb-drawing-control {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 24px;
+	height: 24px;
+	padding: 0;
+	border: 0;
+	border-radius: 6px;
+	background: none;
+	color: var(--faint);
+	transition: color 0.15s, background-color 0.15s;
+}
+.nb-root .nb-drawing-control:hover { color: var(--ink); background: var(--shelf); }
+.nb-root .nb-drawing-control[aria-disabled="true"] { opacity: 0.35; }
+.nb-root .nb-drawing-control[aria-disabled="true"]:hover { color: var(--faint); background: none; }
+.nb-root .nb-sketch-larger {
+	display: block;
+	margin-top: 12px;
+	padding: 0;
+	border: 0;
+	background: none;
+	color: var(--faint);
+	font-family: var(--nb-sans);
+	font-size: 12.5px;
+	line-height: 1.4;
+	letter-spacing: 0;
+	transition: color 0.15s;
+}
+.nb-root .nb-sketch-larger:hover { color: var(--ink); }
+.nb-root .nb-sketch-larger[data-hidden] { visibility: hidden; }
+.nb-root .nb-sketch-failed { margin: 8px 0 0; color: var(--faint); font-family: var(--nb-sans); font-size: 13.5px; line-height: 1.45; }
+
+/* See it larger: backdrop black/30, a paper card min(92vw, 760px), radius 16px. */
+.nb-root .nb-sketch-backdrop {
+	position: fixed;
+	inset: 0;
+	z-index: 80;
+	display: grid;
+	place-items: center;
+	padding: 16px;
+	background: rgb(0 0 0 / 0.3);
+	animation: 0.2s ease-out both nb-fade-in;
+}
+.nb-root .nb-sketch-card {
+	position: relative;
+	width: min(92vw, 760px);
+	max-height: 92vh;
+	overflow: auto;
+	padding: 44px 24px 24px;
+	border-radius: 16px;
+	background: var(--paper);
+	box-shadow: var(--lift), 0 0 0 1px var(--rule);
+	color: var(--ink);
+	animation: 0.38s cubic-bezier(0.3, 1.4, 0.5, 1) both nb-sketch-pop-in;
+}
+.nb-root .nb-sketch-card:focus { outline: none; }
+.nb-root .nb-sketch-close {
+	position: absolute;
+	top: 12px;
+	right: 12px;
+	display: grid;
+	place-items: center;
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	border: 0;
+	border-radius: 999px;
+	background: none;
+	color: var(--faint);
+	transition: color 0.15s, background-color 0.15s;
+}
+.nb-root .nb-sketch-close:hover { background: var(--shelf); color: var(--ink); }
+.nb-root .nb-sketch-figure-large { max-width: none; }
+.nb-root .nb-sketch-figure-large .nb-sketch-head { align-items: center; text-align: center; }
+.nb-root .nb-drawing-large { margin: 12px auto 0; }
+.nb-root .nb-drawing-large svg { max-height: 72vh; }
+.nb-root .nb-sketch-card .nb-sketch-caption { font-size: 17px; line-height: 1.5; }
+
+@media (prefers-reduced-motion: reduce) {
+	.nb-root :is(.nb-sel-menu, .nb-sketch-note, .nb-sketch-backdrop, .nb-sketch-card, .nb-sketching-blot) { animation: none; }
+	.nb-root .nb-drawing-picture * { animation: none !important; stroke-dashoffset: 0 !important; }
 }

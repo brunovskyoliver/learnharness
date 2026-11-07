@@ -14,29 +14,15 @@ import { DropdownMenu } from "radix-ui";
 import { SendIcon } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type Ref } from "react";
 import { useSettingsDialog } from "@/components/settings/settings-dialog";
-import { renderSketchSvg, replyCount, replyCountLabel, type NotebookThread, type Sketch, type ThreadMessage } from "@/src/core";
+import { replyCount, replyCountLabel, type NotebookThread, type ThreadMessage } from "@/src/core";
 import { BlotGlyph, InkDot } from "./blot";
 import { refusalLine } from "./corner-hint";
 import { InkText } from "./ink-text";
 import { useNotebook } from "./nb-shared";
-import { DISMISSED_LINE, FAILED_LINE, RESOLVED_LINE, STOPPED_LINE, useThreads, type ThreadProblem } from "./use-threads";
+import { Sketch } from "./sketch";
+import { ASK_HINT, ASK_ID, ASK_PLACEHOLDER, DISMISSED_LINE, FAILED_LINE, RESOLVED_LINE, STOPPED_LINE, useThreads, type ThreadProblem } from "./use-threads";
 
 export const DETACHED_LINE = "The words this was about are gone.";
-
-export function SketchStill({ sketch, animate }: { sketch: Sketch; animate: boolean }) {
-	const last = sketch.steps.at(-1);
-	return (
-		<figure className="nb-sketch-still" data-testid="nb-sketch" data-static={animate ? undefined : ""}>
-			<figcaption className="nb-sketch-head">
-				<span className="nb-sketch-title nb-voice">{sketch.title}</span>
-				{sketch.subtitle && <span className="nb-sketch-subtitle">{sketch.subtitle}</span>}
-			</figcaption>
-			<div className="nb-sketch-art" style={{ maxWidth: sketch.w }} dangerouslySetInnerHTML={{ __html: renderSketchSvg(sketch) }} />
-			{last?.note && <p className="nb-sketch-note nb-voice">{last.note}</p>}
-			{last && <p className="nb-sketch-caption">{last.caption}</p>}
-		</figure>
-	);
-}
 
 /** The "⋯" menu: Copy text. */
 function ThreadMenu({ thread, className }: { thread: NotebookThread; className: string }) {
@@ -95,7 +81,7 @@ function Message({ message, last, threadId }: { message: ThreadMessage; last: bo
 		<div className="nb-msg nb-msg-ai" data-author="ai" data-state={failed ? "failed" : message.state} data-testid="nb-thread-message">
 			{text && <div className="nb-voice"><InkText text={text} animate={threads.inked(message.id)} /></div>}
 			{streaming && !text && <InkWait />}
-			{message.sketch && <SketchStill sketch={message.sketch} animate={threads.inked(message.id)} />}
+			{message.sketch && <Sketch sketch={message.sketch} />}
 			{message.state === "stopped" && <p className="nb-thread-line" data-testid="nb-thread-stopped">{STOPPED_LINE}</p>}
 			{failed && (
 				<p className="nb-thread-line" role="status" data-testid="nb-thread-failed">
@@ -149,7 +135,7 @@ function WriteBack({ thread, placeholder = "Write back…" }: { thread: Notebook
 					rows={1}
 					value={value}
 					placeholder={placeholder}
-					aria-label="Write back"
+					aria-label={thread.id === ASK_ID ? "Ask about this passage" : "Write back"}
 					data-testid="nb-write-back"
 					data-nb-entry=""
 					onChange={(event) => threads.setDraft(thread.id, event.currentTarget.value)}
@@ -214,7 +200,7 @@ export function Thread({ thread, variant, side = "right", fresh, detached, order
 		);
 	}
 
-	const roleProps = { role: "note", "aria-roledescription": "note", "aria-label": margin ? "Margin note" : "Note under the passage" } as const;
+	const roleProps = { role: "note", "aria-roledescription": "note", "aria-label": thread.id === ASK_ID ? "Your question" : margin ? "Margin note" : "Note under the passage" } as const;
 	const dot = <InkDot fresh={fresh} className={margin ? "nb-note-dot" : "nb-inline-dot"} />;
 
 	if (!expanded) {
@@ -233,16 +219,18 @@ export function Thread({ thread, variant, side = "right", fresh, detached, order
 					<span className={`${margin ? "nb-note-text" : "nb-inline-text"} nb-voice nb-clamp`}>
 						<InkText text={first?.text ?? ""} animate={fresh} />
 					</span>
-					{!margin && first?.sketch && <SketchStill sketch={first.sketch} animate={fresh} />}
 					{detached && <span className="nb-note-meta nb-note-detached">{DETACHED_LINE}</span>}
 					{count && <span className="nb-note-meta nb-note-count" data-testid="nb-reply-count">{count}</span>}
 				</button>
+				{/* The drawing has its own controls, so it sits after the button, not in it. */}
+				{!margin && first?.sketch && <Sketch sketch={first.sketch} />}
 				<ThreadMenu thread={thread} className="nb-thread-more-hover" />
 			</div>
 		);
 	}
 
 	const problem = threads.problem(thread.id);
+	const asking = thread.id === ASK_ID;
 	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
 		if (event.key !== "Escape" || event.defaultPrevented || event.nativeEvent.isComposing) return;
 		const target = event.target as HTMLElement;
@@ -275,12 +263,16 @@ export function Thread({ thread, variant, side = "right", fresh, detached, order
 					{threads.waiting(thread.id) && <div className="nb-msg nb-msg-ai"><InkWait /></div>}
 				</div>
 				{problem && <ProblemLine problem={problem} onRetry={() => void threads.retry(thread.id)} />}
-				<WriteBack thread={thread} />
-				<div className="nb-thread-actions">
-					<button type="button" className="nb-thread-button" data-testid="nb-resolve" onClick={() => void threads.setStatus(thread, "resolved")}>Resolve</button>
-					<button type="button" className="nb-thread-button" data-testid="nb-dismiss" onClick={() => void threads.setStatus(thread, "dismissed")}>Dismiss</button>
-					<ThreadMenu thread={thread} className="nb-thread-more-end" />
-				</div>
+				<WriteBack thread={thread} {...(asking ? { placeholder: ASK_PLACEHOLDER } : {})} />
+				{asking ? (
+					<p className="nb-thread-hint" data-testid="nb-ask-hint">{ASK_HINT}</p>
+				) : (
+					<div className="nb-thread-actions">
+						<button type="button" className="nb-thread-button" data-testid="nb-resolve" onClick={() => void threads.setStatus(thread, "resolved")}>Resolve</button>
+						<button type="button" className="nb-thread-button" data-testid="nb-dismiss" onClick={() => void threads.setStatus(thread, "dismissed")}>Dismiss</button>
+						<ThreadMenu thread={thread} className="nb-thread-more-end" />
+					</div>
+				)}
 			</div>
 		</div>
 	);

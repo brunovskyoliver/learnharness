@@ -5,7 +5,7 @@
  * renamed note. Each steps past a taken name the way the Library does
  * (the server's `suggestedName`, "Name (2)").
  */
-import type { LibraryFolder, LibraryItem } from "@/src/core";
+import type { LibraryFolder, LibraryItem, NotebookThread, ThreadAnchor } from "@/src/core";
 import { UNTITLED_NOTE } from "./nb-shared";
 
 type Outcome<T> = { ok: T } | { error: string };
@@ -121,3 +121,36 @@ export async function setThreadStatus(pageId: string, threadId: string, status: 
 		return false;
 	}
 }
+
+// ─── the selection menu (US4) ───────────────────────────────────────────────
+
+/** "Ask about this" once he sends: the thread with his question, written ahead of its reply run. */
+export async function postAskThread(pageId: string, anchor: ThreadAnchor, text: string): Promise<{ ok: NotebookThread } | { error: string }> {
+	try {
+		const response = await post(`/api/notebook/${encodeURIComponent(pageId)}/threads`, { anchor, origin: "ask", text });
+		const body = (await response.json().catch(() => ({}))) as { thread?: NotebookThread; error?: string };
+		return response.ok && body.thread ? { ok: body.thread } : { error: body.error ?? "That didn't come through." };
+	} catch {
+		return { error: "That didn't come through." };
+	}
+}
+
+/** "Think about this" or "Visualize" on a passage of the text he sees. */
+export async function startPassageRun(pageId: string, kind: "think" | "visualize", text: string, anchor: ThreadAnchor): Promise<StartReadOutcome> {
+	try {
+		const response = await post(`/api/notebook/${encodeURIComponent(pageId)}/runs`, { kind, text, anchor });
+		const body = (await response.json().catch(() => ({}))) as { run?: { id: string }; reason?: "models" | "key"; provider?: string; error?: string };
+		if (response.status === 202 && body.run) return { ok: { id: body.run.id } };
+		if (response.status === 503 && (body.reason === "models" || body.reason === "key")) return { refused: { reason: body.reason, ...(body.provider ? { provider: body.provider } : {}) } };
+		return { error: body.error ?? "That didn't come through." };
+	} catch {
+		return { error: "That didn't come through." };
+	}
+}
+
+/**
+ * "Make flashcards" (the hook Phase 11 wires to feature 021's flow): for now
+ * Study's card drafting for this whole page, the door feature 023 opened
+ * (`/review?make=page:<id>`). The passage is not passed on yet.
+ */
+export const flashcardsHref = (pageId: string): string => `/review?make=${encodeURIComponent(`page:${pageId}`)}`;

@@ -78,7 +78,7 @@ describe("structured runs", () => {
 			submit("submit_remark", { text: "Is it?", placement: "inline", sketch: FAUX_SKETCH }, "b"),
 		])), passage: "a cup of tea" });
 		assert.equal(remark.placement, "inline");
-		assert.equal(remark.sketch?.steps.length, 3);
+		assert.equal(remark.sketch?.steps.length, 4);
 	});
 
 	it("visualize: needs a valid sketch of 2+ steps, up to two retries", async () => {
@@ -155,11 +155,11 @@ describe("the faux engine (LH_NOTEBOOK_FAUX=1)", () => {
 		assert.deepEqual(short, { action: "silent" });
 	});
 
-	it("think remarks, visualize draws the 3-step grid, reply streams in chunks", async () => {
+	it("think remarks, visualize draws the 4-step grid, reply streams in chunks", async () => {
 		const remark = await runNotebookThink({ ...base(fauxNotebookEngine("think", NOTE, "a cup of tea")), passage: "a cup of tea" });
 		assert.match(remark.text, /a cup of tea/);
 		const drawn = await runNotebookVisualize({ ...base(fauxNotebookEngine("visualize", NOTE, "tea")), passage: "tea" });
-		assert.equal(drawn.sketch.steps.length, 3);
+		assert.equal(drawn.sketch.steps.length, 4);
 		const deltas: string[] = [];
 		const text = await streamNotebookReply({ ...base(fauxNotebookEngine("reply", NOTE)), conversation: [{ author: "user", text: "?" }], onDelta: (d) => deltas.push(d), quote: "x" });
 		assert.ok(deltas.length > 3, `streamed in chunks (${deltas.length})`);

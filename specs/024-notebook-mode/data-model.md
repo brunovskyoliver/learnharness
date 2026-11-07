@@ -89,7 +89,7 @@ Sketch = {
   steps: { caption: string (1..160); note?: string (..120) }[] (1..6); // note = the big serif line under the drawing
 }
 SketchItem = { step: number (0-based, < steps.length) } & (
-  | { kind: "grid"; x; y; cols (1..8); rows (1..8); cell }      // faint rule grid
+  | { kind: "grid"; x; y; cols (1..8); rows (1..8); cell; cellH? }  // faint rule grid; cellH = cell height when not square (phase 6)
   | { kind: "text"; x; y; text (..40); size?: "s"|"m"|"l"; voice?: boolean; anchor?: "start"|"middle"|"end" }
   | { kind: "line" | "arrow"; x1; y1; x2; y2; curve?: number }
   | { kind: "rect"; x; y; w; h; r? }

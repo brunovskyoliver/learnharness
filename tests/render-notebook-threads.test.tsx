@@ -21,6 +21,7 @@ const api = (patch: Partial<ThreadsApi> = {}): ThreadsApi => ({
 	openId: null, focusRequest: null, draft: () => "", setDraft: () => {}, messages: (t) => t.messages, liveText: () => undefined, inked: () => false,
 	waiting: () => false, sending: () => false, problem: () => undefined, orphaned: () => false, detail: () => undefined, leaving: () => undefined,
 	open: () => {}, collapse: () => {}, send: async () => {}, retry: async () => {}, setStatus: async () => {}, undo: async () => {}, copy: async () => {},
+	asking: null, ask: () => {},
 	...patch,
 });
 

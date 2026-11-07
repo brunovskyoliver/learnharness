@@ -9,19 +9,22 @@
  * threads (US3: open, write back, resolve, dismiss; Marks only; the
  * keyboard path between notes). Nothing here writes to his page.
  */
+import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { EditorView } from "@tiptap/pm/view";
-import { effectiveLayout, firstWords, type NoteCompanion, type NoteMode, type NotebookLayout, type NotebookPace, type NotebookThread } from "@/src/core";
+import { anchorForSpan, effectiveLayout, firstWords, type NoteCompanion, type NoteMode, type NotebookLayout, type NotebookPace, type NotebookThread } from "@/src/core";
 import { ReadingMarks } from "./blot";
 import { InlineReplies } from "./inline-reply";
 import { Margin, rangeLines } from "./margin";
 import { marginWidths, readingHoldMs, type PassageLine } from "./nb-geometry";
-import { anchorRange, quoteRange, type AnchorMark, type NoteBridge, type QuestionMark } from "./nb-plugins";
+import { flashcardsHref } from "./nb-actions";
+import { anchorRange, quoteRange, rangeText, type AnchorMark, type NoteBridge, type QuestionMark } from "./nb-plugins";
 import { useNotebook } from "./nb-shared";
 import { useLayoutTick } from "./use-layout-tick";
 import { useReading } from "./use-reading";
 import { useRunStream } from "./use-run-stream";
-import { focusPassage, ThreadsContext, useThreadsController, type ThreadsApi } from "./use-threads";
+import { useSelectionRuns } from "./use-selection-runs";
+import { ASK_ID, focusPassage, ThreadsContext, useThreadsController, type ThreadsApi } from "./use-threads";
 
 /** Anchors are matched again this long after typing stops (positions map through edits meanwhile). */
 const RESOLVE_DELAY_MS = 150;
@@ -35,6 +38,17 @@ function useViewportWidth(): number {
 		return () => window.removeEventListener("resize", sync);
 	}, []);
 	return width;
+}
+
+/** Follows a Think or Visualize run until its thread lands. */
+function PassageFollower({ runId, onEnd }: { runId: string; onEnd: (outcome: { threadId?: string } | "failed" | "gone") => void }) {
+	useRunStream(runId, {
+		done: (d) => onEnd({ ...(d.threadId ? { threadId: d.threadId } : {}) }),
+		failed: () => onEnd("failed"),
+		stopped: () => onEnd("gone"),
+		lost: () => onEnd("gone"),
+	});
+	return null;
 }
 
 /** Follows one reply run's stream into the thread it answers in. */
@@ -93,7 +107,7 @@ export function NoteThinking({ bridge, column, pageId, companion, reload, mode, 
 	const columnRef = useRef(column);
 	columnRef.current = column;
 
-	const { live, fresh } = useReading({
+	const { live, fresh: freshRead } = useReading({
 		bridge,
 		pageId,
 		enabled: mode === "thinks" && !readOnly && companion !== null,
@@ -107,17 +121,47 @@ export function NoteThinking({ bridge, column, pageId, companion, reload, mode, 
 		},
 	});
 
-	const all = useMemo(() => companion?.threads ?? [], [companion]);
-	const { api, statusOf, runs, follow } = useThreadsController({ bridge, pageId, threads: all, reload });
+	const stored = useMemo(() => companion?.threads ?? [], [companion]);
+	const { api, statusOf, runs, created, follow } = useThreadsController({ bridge, pageId, threads: stored, reload });
 	const apiRef = useRef<ThreadsApi>(api);
 	apiRef.current = api;
+	// His asked threads show before the companion reloads with them.
+	const all = useMemo(() => (created.length ? [...stored, ...created.filter((c) => !stored.some((t) => t.id === c.id))] : stored), [stored, created]);
+
+	// The selection menu's actions (US4).
+	const router = useRouter();
+	const passage = useSelectionRuns({ pageId, noteText: () => bridge.text()?.text ?? "", reload });
+	const passageRef = useRef(passage);
+	passageRef.current = passage;
+	useEffect(() => {
+		if (readOnly) return;
+		bridge.selectionAction = (action, range) => {
+			if (action === "flashcards") { router.push(flashcardsHref(pageId)); return; }
+			const text = bridge.text();
+			const span = text ? rangeText(text, range.from, range.to) : null;
+			if (!text || !span) return;
+			const anchor = anchorForSpan(text.text, span.start, span.end);
+			if (action === "ask") apiRef.current.ask(anchor);
+			else void passageRef.current.start(action, anchor);
+		};
+		return () => { bridge.selectionAction = null; };
+	}, [bridge, pageId, router, readOnly]);
+	const { shown: passageShown } = passage;
+	useEffect(() => { passageShown(new Set(all.map((t) => t.id))); }, [all, passageShown]);
+	const fresh = useMemo<ReadonlySet<string>>(() => (passage.fresh.size ? new Set([...freshRead, ...passage.fresh]) : freshRead), [freshRead, passage.fresh]);
+	// "Ask about this" before he sends: a thread on this screen only.
+	const askThread = useMemo<NotebookThread | null>(() => (api.asking
+		? { id: ASK_ID, anchor: api.asking, placement: "margin", side: "right", status: "open", origin: "ask", createdAt: "", updatedAt: "", messages: [] }
+		: null), [api.asking]);
+	const pendingRuns = passage.runs;
 
 	// Open threads; ones a running read wrote stay back until its marks have had their moment.
 	const threads = useMemo(() => {
 		const open = all.filter((t) => statusOf(t) === "open" && !api.leaving(t.id));
+		if (askThread) open.push(askThread);
 		if (!live) return open;
 		return open.filter((t) => fresh.has(t.id) || t.messages[0]?.runId !== live.runId);
-	}, [all, statusOf, api, live, fresh]);
+	}, [all, statusOf, api, live, fresh, askThread]);
 	// Resolved or dismissed a moment ago: their status line holds the place for the Undo.
 	const leaving = useMemo(() => all.filter((t) => api.leaving(t.id)), [all, api]);
 	const openId = api.openId;
@@ -128,26 +172,34 @@ export function NoteThinking({ bridge, column, pageId, companion, reload, mode, 
 
 	// Passage marks: matched against the text he sees after each pause in typing.
 	const [anchored, setAnchored] = useState<ReadonlySet<string>>(() => new Set());
-	const threadsRef = useRef({ threads, leaving, openId, layout: shownLayout, fresh });
-	threadsRef.current = { threads, leaving, openId, layout: shownLayout, fresh };
+	const threadsRef = useRef({ threads, leaving, openId, layout: shownLayout, fresh, pendingRuns });
+	threadsRef.current = { threads, leaving, openId, layout: shownLayout, fresh, pendingRuns };
 	useEffect(() => {
 		let timer = 0;
 		const resolve = () => {
 			const text = bridge.text();
 			if (!text) return;
-			const { threads: shown, leaving: gone, openId: open, layout: now, fresh: wet } = threadsRef.current;
+			const { threads: shown, leaving: gone, openId: open, layout: now, fresh: wet, pendingRuns: pending } = threadsRef.current;
 			const anchors: AnchorMark[] = [];
 			const marks: QuestionMark[] = [];
+			let asking: { from: number; to: number } | null = null;
+			// A run on a passage keeps a hidden anchor: its marks follow the words while he types.
+			for (const run of pending) {
+				const range = anchorRange(text, run.anchor);
+				if (range) anchors.push({ id: run.key, ...range, state: "open", kind: run.kind === "visualize" ? "inline" : "margin", hidden: true });
+			}
 			for (const thread of [...shown, ...gone]) {
 				const range = anchorRange(text, thread.anchor);
 				if (!range) continue;
-				const hidden = gone.includes(thread);
+				// The passage he is asking about takes the asking wash, not a thread's underline.
+				if (thread.id === ASK_ID) asking = range;
+				const hidden = gone.includes(thread) || thread.id === ASK_ID;
 				anchors.push({ id: thread.id, ...range, state: "open", kind: thread.placement, ...(thread.id === open ? { active: true } : {}), ...(hidden ? { hidden } : {}) });
-				if (now === "marks" && thread.placement === "margin" && !hidden) {
+				if (now === "marks" && thread.placement === "margin" && !hidden && thread.id !== ASK_ID) {
 					marks.push({ id: thread.id, pos: range.to, label: markLabel(thread.anchor.quote), open: thread.id === open, fresh: wet.has(thread.id) });
 				}
 			}
-			bridge.setDecor({ anchors, marks });
+			bridge.setDecor({ anchors, marks, asking });
 			const ids = new Set(anchors.map((m) => m.id));
 			setAnchored((prev) => (prev.size === ids.size && [...ids].every((id) => prev.has(id)) ? prev : ids));
 		};
@@ -159,8 +211,8 @@ export function NoteThinking({ bridge, column, pageId, companion, reload, mode, 
 			timer = window.setTimeout(resolve, RESOLVE_DELAY_MS);
 		});
 		return () => { off(); window.clearTimeout(timer); };
-	}, [bridge, threads, leaving, openId, shownLayout, fresh]);
-	useEffect(() => () => bridge.setDecor({ anchors: [], marks: [] }), [bridge]);
+	}, [bridge, threads, leaving, openId, shownLayout, fresh, pendingRuns]);
+	useEffect(() => () => bridge.setDecor({ anchors: [], marks: [], asking: null }), [bridge]);
 
 	// The "?" marks open their thread under the paragraph.
 	useEffect(() => {
@@ -260,13 +312,15 @@ export function NoteThinking({ bridge, column, pageId, companion, reload, mode, 
 	}, [threads, fresh, announce]);
 
 	// The passage being read, as lines in the column.
+	// A Think run from the selection menu shows the same marks on its passage until its note lands.
+	const thinking = pendingRuns.find((r) => r.kind === "think" && !r.threadId) ?? null;
 	const [lines, setLines] = useState<PassageLine[]>([]);
 	useLayoutEffect(() => {
 		const view = bridge.view, text = bridge.text();
-		const range = live?.quote && text ? quoteRange(text, live.quote) : null;
+		const range = live?.quote && text ? quoteRange(text, live.quote) : thinking && text ? anchorRange(text, thinking.anchor) : null;
 		const next = view && range && column ? rangeLines(view, range.from, range.to, column.getBoundingClientRect()) : [];
 		setLines((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
-	}, [bridge, column, live?.quote, tick]);
+	}, [bridge, column, live?.quote, thinking, tick]);
 
 	const margin: NotebookThread[] = [];
 	const inline: NotebookThread[] = [];
@@ -284,9 +338,10 @@ export function NoteThinking({ bridge, column, pageId, companion, reload, mode, 
 		<ThreadsContext.Provider value={api}>
 			<div className="nb-thinking" data-layout={shownLayout} data-testid="nb-thinking">
 				{runs.map((run) => <RunFollower key={run.runId} runId={run.runId} follow={follow} />)}
-				{live?.quote && <ReadingMarks lines={lines} leaving={live.leaving} />}
+				{pendingRuns.filter((r) => !r.threadId).map((run) => <PassageFollower key={run.key} runId={run.runId} onEnd={(outcome) => passageRef.current.settle(run.key, outcome)} />)}
+				{(live?.quote || thinking) && <ReadingMarks lines={lines} leaving={live?.leaving ?? false} />}
 				<Margin bridge={bridge} column={column} threads={margin} layout={shownLayout} fresh={fresh} tick={tick} />
-				<InlineReplies bridge={bridge} column={column} threads={[...detachedInline, ...inline]} anchored={anchored} fresh={fresh} tick={tick} />
+				<InlineReplies bridge={bridge} column={column} threads={[...detachedInline, ...inline]} sketching={pendingRuns.filter((r) => r.kind === "visualize").map((r) => r.key)} anchored={anchored} fresh={fresh} tick={tick} />
 			</div>
 		</ThreadsContext.Provider>
 	);

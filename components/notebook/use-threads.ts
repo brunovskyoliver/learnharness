@@ -12,8 +12,8 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { TextSelection } from "@tiptap/pm/state";
-import type { NotebookThread, ThreadMessage, ThreadStatus } from "@/src/core";
-import { postThreadMessage, setThreadStatus, startReply } from "./nb-actions";
+import type { NotebookThread, ThreadAnchor, ThreadMessage, ThreadStatus } from "@/src/core";
+import { postAskThread, postThreadMessage, setThreadStatus, startReply } from "./nb-actions";
 import type { NoteBridge } from "./nb-plugins";
 import { useNotebook } from "./nb-shared";
 
@@ -25,6 +25,11 @@ export const DISMISSED_LINE = "Dismissed.";
 export const FAILED_LINE = "That didn't come through.";
 export const STOPPED_LINE = "Stopped.";
 export const REPLY_READY = "Reply ready.";
+
+/** "Ask about this" before he sends: a thread only on this screen, its field focused (US4). */
+export const ASK_ID = "nb-ask";
+export const ASK_PLACEHOLDER = "Ask about this passage…";
+export const ASK_HINT = "Enter to ask. Esc to cancel.";
 
 /** Something that went wrong in a thread, shown in place until he acts. */
 export type ThreadProblem =
@@ -61,6 +66,9 @@ export interface ThreadsApi {
 	setStatus: (thread: NotebookThread, status: "resolved" | "dismissed") => Promise<void>;
 	undo: (id: string) => Promise<void>;
 	copy: (thread: NotebookThread) => Promise<void>;
+	/** The passage he is asking about (nothing is sent until he does). */
+	asking: ThreadAnchor | null;
+	ask: (anchor: ThreadAnchor) => void;
 }
 
 const noop = () => {};
@@ -69,6 +77,7 @@ export const ThreadsContext = createContext<ThreadsApi>({
 	openId: null, focusRequest: null, draft: () => "", setDraft: noop, messages: (t) => t.messages, liveText: none, inked: () => false,
 	waiting: () => false, sending: () => false, problem: none, orphaned: () => false, detail: none, leaving: none,
 	open: noop, collapse: noop, send: async () => {}, retry: async () => {}, setStatus: async () => {}, undo: async () => {}, copy: async () => {},
+	asking: null, ask: noop,
 });
 export const useThreads = () => useContext(ThreadsContext);
 
@@ -113,7 +122,7 @@ export function useThreadsController({ bridge, pageId, threads, reload }: {
 	/** Every thread of the companion (all statuses). */
 	threads: readonly NotebookThread[];
 	reload: () => void;
-}): { api: ThreadsApi; statusOf: (thread: NotebookThread) => ThreadStatus; runs: FollowedRun[]; follow: { delta: (runId: string, messageId: string, text: string) => void; end: (runId: string, outcome: "done" | "failed" | "stopped" | "lost", detail?: string) => void } } {
+}): { api: ThreadsApi; statusOf: (thread: NotebookThread) => ThreadStatus; runs: FollowedRun[]; created: NotebookThread[]; follow: { delta: (runId: string, messageId: string, text: string) => void; end: (runId: string, outcome: "done" | "failed" | "stopped" | "lost", detail?: string) => void } } {
 	const { announce } = useNotebook();
 	const [openId, setOpenId] = useState<string | null>(null);
 	const [focusRequest, setFocusRequest] = useState<{ id: string; n: number } | null>(null);
@@ -128,6 +137,9 @@ export function useThreadsController({ bridge, pageId, threads, reload }: {
 	const [lost, setLost] = useState<ReadonlySet<string>>(() => new Set());
 	const [overrides, setOverrides] = useState<Record<string, ThreadStatus>>({});
 	const [leavingMap, setLeavingMap] = useState<Record<string, Leaving>>({});
+	const [asking, setAsking] = useState<ThreadAnchor | null>(null);
+	// Asked threads the companion doesn't show yet (POST answered, reload pending).
+	const [created, setCreated] = useState<NotebookThread[]>([]);
 	const timers = useRef(new Map<string, number>());
 	const runMessage = useRef(new Map<string, string>());
 	const threadsRef = useRef(threads);
@@ -138,6 +150,7 @@ export function useThreadsController({ bridge, pageId, threads, reload }: {
 
 	// A status the companion now agrees with needs no override; his sent words it shows need no copy.
 	useEffect(() => {
+		setCreated((prev) => (prev.some((c) => threads.some((t) => t.id === c.id)) ? prev.filter((c) => !threads.some((t) => t.id === c.id)) : prev));
 		setOverrides((prev) => {
 			const next = { ...prev };
 			let changed = false;
@@ -192,6 +205,11 @@ export function useThreadsController({ bridge, pageId, threads, reload }: {
 	const collapse = useCallback((returnFocus: boolean) => {
 		const id = openRef.current;
 		setOpenId(null);
+		// Closing an ask he hasn't sent cancels it.
+		if (id === ASK_ID) {
+			setAsking(null);
+			setDrafts((d) => ({ ...d, [ASK_ID]: "" }));
+		}
 		if (!id || !returnFocus) return;
 		if (passageFocus(id)) return;
 		// No passage (its words are gone): back to the thread's own button.
@@ -233,7 +251,33 @@ export function useThreadsController({ bridge, pageId, threads, reload }: {
 		reload();
 	}, [pageId, bridge, reload, announce]);
 
+	const askingRef = useRef(asking);
+	askingRef.current = asking;
+	const sendAsk = useCallback(async () => {
+		const text = (draftsRef.current[ASK_ID] ?? "").trim();
+		const anchor = askingRef.current;
+		if (!text || !anchor) return;
+		flag(setBusy, ASK_ID, true);
+		mark(setProblems, ASK_ID, undefined);
+		const posted = await postAskThread(pageId, anchor, text);
+		flag(setBusy, ASK_ID, false);
+		if ("error" in posted) {
+			mark<ThreadProblem>(setProblems, ASK_ID, { kind: "send", detail: posted.error });
+			announce(FAILED_LINE);
+			return;
+		}
+		const thread = posted.ok;
+		setCreated((prev) => [...prev, thread]);
+		setAsking(null);
+		setDrafts((d) => ({ ...d, [ASK_ID]: "" }));
+		// The asked thread stays open where the ask was, its answer coming.
+		setOpenId(thread.id);
+		setFocusRequest((r) => ({ id: thread.id, n: (r?.n ?? 0) + 1 }));
+		await begin(thread.id);
+	}, [pageId, announce, begin]);
+
 	const send = useCallback(async (threadId: string) => {
+		if (threadId === ASK_ID) return sendAsk();
 		const text = (draftsRef.current[threadId] ?? "").trim();
 		if (!text) return;
 		flag(setBusy, threadId, true);
@@ -251,6 +295,12 @@ export function useThreadsController({ bridge, pageId, threads, reload }: {
 		await begin(threadId);
 		flag(setBusy, threadId, false);
 	}, [pageId, begin, setDraft, announce]);
+
+	const ask = useCallback((anchor: ThreadAnchor) => {
+		setAsking(anchor);
+		setOpenId(ASK_ID);
+		setFocusRequest((r) => ({ id: ASK_ID, n: (r?.n ?? 0) + 1 }));
+	}, []);
 
 	const retry = useCallback(async (threadId: string) => {
 		const problem = problems[threadId];
@@ -359,7 +409,9 @@ export function useThreadsController({ bridge, pageId, threads, reload }: {
 		setStatus,
 		undo,
 		copy,
-	}), [openId, focusRequest, drafts, setDraft, sent, streamed, inkedIds, threads, started, busy, problems, lost, details, leavingMap, open, collapse, send, retry, setStatus, undo, copy]);
+		asking,
+		ask,
+	}), [openId, focusRequest, drafts, setDraft, sent, streamed, inkedIds, threads, started, busy, problems, lost, details, leavingMap, open, collapse, send, retry, setStatus, undo, copy, asking, ask]);
 
-	return { api, statusOf, runs, follow };
+	return { api, statusOf, runs, created, follow };
 }
