@@ -27,6 +27,9 @@ export const RIGHT_TEXT_GAP = 71;
 export const EDGE_GAP = 16;
 /** Between stacked notes (§8: ≈34px from a reply count to the next note's first line). */
 export const STACK_GAP = 14;
+/** How far above the column's top a margin note may sit (frame margin-thread: an open thread pushed
+ *  up against the top starts its first line 6px above the toolbar row's top). */
+export const MARGIN_TOP = -6;
 /** A note further than this from its passage's line counts as displaced (it gets a tether). */
 export const DISPLACED_PX = 4;
 

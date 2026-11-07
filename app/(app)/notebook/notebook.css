@@ -924,7 +924,9 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 .nb-root .nb-title {
 	display: block;
 	width: 100%;
-	margin: 17.5px 0 0.7em;
+	/* Riddled's .7em under the title, 3px tighter: frames margin-notes, inline-sketch and note-chat-panel
+	   all set the first line of the page ≈3px nearer the title than the CSS alone gives. */
+	margin: 17.5px 0 calc(0.7em - 3px);
 	padding: 0;
 	border: 0;
 	overflow: hidden;
@@ -1434,7 +1436,7 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 .nb-root .nb-inline[data-state="open"] { z-index: 1; }
 .nb-root :is(.nb-note, .nb-inline)[data-state="open"]:focus:not(:focus-visible) { outline: none; }
 
-/* The collapsed thread is one button: its question, clamped, and the count. */
+/* The collapsed thread is one button: its whole question and the count. */
 .nb-root .nb-thread-open {
 	display: block;
 	width: 100%;
@@ -1449,14 +1451,6 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 	letter-spacing: inherit;
 }
 .nb-root .nb-thread-open > span { display: block; }
-/* Margin notes clamp; an inline reply shows whole (frame inline-sketch: a 7-line reply). */
-.nb-root .nb-note .nb-clamp {
-	display: -webkit-box;
-	-webkit-box-orient: vertical;
-	-webkit-line-clamp: 6;
-	line-clamp: 6;
-	overflow: hidden;
-}
 .nb-root .nb-thread-open .nb-note-meta { margin-top: 8px; }
 
 /* "⋯": at the outer edge of a hovered note's first line (frame margin-notes x≈169). */
@@ -1491,11 +1485,13 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 /* ── 8.1 Open thread ────────────────────────────────────────────────────── */
 
 .nb-root .nb-note[data-state="open"] { text-align: left; }
+/* Frame margin-thread: the next note sits 22px under Resolve · Dismiss (8 more than STACK_GAP). */
+.nb-root .nb-note[data-state="open"] { padding-bottom: 8px; }
 /* The rail beside an open thread, down from its dot (frame margin-thread x≈589). */
 .nb-root .nb-thread-rail {
 	position: absolute;
 	top: 20px;
-	bottom: 6px;
+	bottom: 14px; /* 6px above the thread's end; the 8px under it is the gap to the next note */
 	width: 1px;
 	border-radius: 1px;
 	background: color-mix(in srgb, var(--riddle) 16%, transparent);
@@ -1504,14 +1500,14 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 .nb-root .nb-note[data-side="left"] .nb-thread-rail { right: -23.5px; }
 .nb-root .nb-note[data-side="right"] .nb-thread-rail { left: -20.5px; }
 
-/* His words: sans on ≈23px, graphite. The landing's 14.5px sets "Well in my opinion … USC i can" 336px
+/* His words: sans on 22.5px (the landing's 14.5px × 1.55; frame margin-thread: 255, 278, 300), graphite. The landing's 14.5px sets "Well in my opinion … USC i can" 336px
  * wide; the frame's line is ≈364px, so the app's size is ≈15px (15.5px drops "how" from the frame's second line). */
 .nb-root .nb-msg-user {
 	margin-top: 12px;
 	color: var(--graphite);
 	font-family: var(--nb-sans);
 	font-size: 15px;
-	line-height: 23px;
+	line-height: 22.5px;
 	letter-spacing: 0;
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
@@ -1520,6 +1516,8 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 /* The words keep a ≈404px measure (frame: lines end by x≈551); the field and arrow run to the note's edge. */
 .nb-root .nb-note .nb-thread-messages { padding-right: 6px; }
 .nb-root .nb-msg + .nb-msg-ai { margin-top: 11px; }
+/* In the margin his 1.5px shorter lines keep the AI's answer where the frame has it (margin-thread y 334). */
+.nb-root .nb-note .nb-msg-user + .nb-msg-ai { margin-top: 12.5px; }
 .nb-root .nb-inline .nb-msg-user { font-size: var(--note-size); line-height: 1.6; }
 
 /* Write back: underline only (1px rule), the reply-line ink grows on focus, send arrow at the end. */
@@ -1570,7 +1568,7 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 .nb-root .nb-send:not([aria-disabled="true"]):hover { color: var(--ink); }
 .nb-root .nb-send[aria-disabled="true"] { cursor: default; }
 
-/* Resolve · Dismiss · ⋯: sans ≈12px faint, ≈16px apart, ≈16px under the field. */
+/* Resolve · Dismiss · ⋯: sans ≈12px faint, ≈16px apart, ≈16px under the field (in the margin 13px: frame margin-thread y 556). */
 .nb-root .nb-thread-actions {
 	display: flex;
 	align-items: center;
@@ -1580,6 +1578,7 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 	font-size: 12px;
 	line-height: 16px;
 }
+.nb-root .nb-note .nb-thread-actions { margin-top: 13px; }
 .nb-root .nb-thread-more-end { margin-left: auto; }
 .nb-root .nb-thread-button {
 	padding: 0;
@@ -1693,9 +1692,10 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 	animation: 0.2s ease-out both nb-settle;
 }
 .nb-root .nb-sel-row { display: flex; align-items: center; }
-.nb-root .nb-sel-styles { justify-content: space-between; gap: 0; padding-bottom: 10px; border-bottom: 1px solid var(--rule); }
+/* Row tops from frame inline-sketch-and-selection: Text 212, B 266, the inks 300, actions 341, 377, 412. */
+.nb-root .nb-sel-styles { justify-content: space-between; gap: 0; padding-bottom: 8.5px; border-bottom: 1px solid var(--rule); }
 .nb-root .nb-sel-marks { justify-content: space-between; margin-top: 7px; }
-.nb-root .nb-sel-inks { justify-content: space-between; margin-top: 5.5px; padding-bottom: 5.5px; border-bottom: 1px solid var(--rule); }
+.nb-root .nb-sel-inks { justify-content: space-between; margin-top: 5.5px; padding-bottom: 6.5px; border-bottom: 1px solid var(--rule); }
 .nb-root .nb-sel-format {
 	display: grid;
 	place-items: center;
@@ -1711,8 +1711,9 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 .nb-root .nb-sel-format svg { width: 16px; height: 16px; stroke-width: 1.6; }
 .nb-root .nb-sel-format:hover { background: var(--shelf); color: var(--ink); }
 .nb-root .nb-sel-format[aria-pressed="true"] { background: var(--shelf); color: var(--ink); }
-/* Eight block styles across the card (frame sheet-06 tile 9: the filled T is ≈26px). */
-.nb-root .nb-sel-style { width: 26px; height: 26px; }
+/* Eight block styles share the card's width with no gap (frame inline-sketch-and-selection: the filled T
+   spans x 1237-1264 and y 213-242, the H1 and H2 glyphs centre 27.75px apart). */
+.nb-root .nb-sel-style { flex: 1 1 0; min-width: 0; width: auto; height: 29.5px; }
 .nb-root .nb-sel-style svg { width: 15px; height: 15px; }
 .nb-root .nb-sel-style:first-child svg { width: 16px; height: 16px; }
 /* The block style he is in: a filled ink square with a paper glyph. */
@@ -1734,7 +1735,7 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 	align-items: center;
 	justify-content: space-between;
 	gap: 10px;
-	height: 35px;
+	height: 35.5px;
 	padding: 0 8px 0 10px;
 	border: 0;
 	border-radius: 7px;
@@ -1877,7 +1878,8 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 	flex-wrap: wrap;
 	align-items: baseline;
 	gap: 2px 12px;
-	margin-top: 19px;
+	/* Frame margin-notes: the instruction's text 2px nearer the toolbar row than 19px gave. */
+	margin-top: 17px;
 }
 .nb-root .nb-instruction-label {
 	display: inline-flex;

@@ -26,7 +26,7 @@ Exact sizes, colours, timings and easings are in [visual-reference.md](visual-re
 | Paces | Regular: read after 1600 ms of no typing; Slow: 3200 ms (visual-reference may refine). No read during IME composition, while the selection menu or a thread field is focused, or if the text is unchanged since the last read |
 | Reading state | underline under the considered passage + breathing blot at its start in the margin gutter; announced politely once: "Reading this passage." |
 | Margin question | AI lettering, word-by-word ink; tether draws from passage to note |
-| Collapsed thread | first message clamped; "{n} replies" / "1 reply" |
+| Collapsed thread | first message whole (no clamp: every frame shows collapsed notes in full; Riddled's CSS has only a 3-line utility used elsewhere); "{n} replies" / "1 reply" |
 | Expanded thread | full messages (his in Instrument Sans graphite, AI in lettering), field "Write back…", send arrow "Send", text buttons "Resolve", "Dismiss", "⋯" menu: "Copy text" |
 | Resolve | thread leaves the page; status line "Resolved. It’s still in exports." with "Undo" for 6 s |
 | Dismiss | thread leaves the page; "Dismissed." with "Undo" for 6 s |

@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { Schema } from "@tiptap/pm/model";
 import {
-	alignedTop, DISPLACED_PX, drawnSide, inkStepMs, marginWidths, mergeLines, NOTE_LINE, NOTE_WIDTH, pencilStrokes, placeStack, readingHoldMs, STACK_GAP, tetherPaths,
+	alignedTop, DISPLACED_PX, drawnSide, MARGIN_TOP, inkStepMs, marginWidths, mergeLines, NOTE_LINE, NOTE_WIDTH, pencilStrokes, placeStack, readingHoldMs, STACK_GAP, tetherPaths,
 } from "../components/notebook/nb-geometry.ts";
 import { anchorRange, blockEnd, noteText, quoteRange, textRange } from "../components/notebook/nb-plugins.ts";
 import { ReadScheduler, type ReadSchedulerDeps } from "../components/notebook/read-scheduler.ts";
@@ -183,6 +183,12 @@ describe("placeStack (margin notes settle without overlap)", () => {
 		const placed = placeStack([{ id: "a", want: 10, height: 200 }, { id: "b", want: 20, height: 40 }], STACK_GAP, 0);
 		assert.equal(placed.get("a"), 0);
 		assert.equal(placed.get("b"), 200 + STACK_GAP);
+	});
+
+	it("the margin's top is 6px above the column (frame margin-thread: a pushed-up open thread starts there)", () => {
+		assert.equal(MARGIN_TOP, -6);
+		const placed = placeStack([{ id: "a", want: -40, height: 400 }, { id: "b", want: 30, height: 90 }], STACK_GAP, MARGIN_TOP);
+		assert.equal(placed.get("a"), -6);
 	});
 
 	it("is stable for equal wants (by id)", () => {

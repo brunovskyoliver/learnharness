@@ -8,6 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { NotebookThread, ThreadMessage } from "../src/core/index.ts";
 import { Thread } from "../components/notebook/thread.tsx";
 import { markLabel } from "../components/notebook/thinking.tsx";
+import { Tether } from "../components/notebook/tether.tsx";
 import { ThreadsContext, threadPlainText, type ThreadsApi } from "../components/notebook/use-threads.ts";
 
 const AT = "2026-11-06T10:00:00.000Z";
@@ -31,12 +32,14 @@ const render = (t: NotebookThread, value: ThreadsApi, props: Partial<React.Compo
 const QUESTION = "Doing less thinking isn't the same as becoming less capable of thinking. Which do you mean?";
 
 describe("a collapsed thread", () => {
-	it("is one button with the clamped question and its reply count", () => {
+	it("is one button with the whole question and its reply count", () => {
 		const html = render(thread([msg("m1", "ai", QUESTION), msg("m2", "user", "The second."), msg("m3", "ai", "Then measure it.")]), api());
 		assert.match(html, /data-state="collapsed"/);
 		assert.match(html, /role="note"[^>]*aria-roledescription="note"[^>]*aria-label="Margin note"/);
 		assert.match(html, /<button type="button" class="nb-thread-open" aria-expanded="false" data-nb-entry="" data-order="10"/);
-		assert.match(html, /nb-note-text nb-voice nb-clamp/);
+		assert.match(html, /class="nb-note-text nb-voice"/);
+		// Shown whole, as in every frame: no line clamp.
+		assert.doesNotMatch(html, /nb-clamp/);
 		assert.match(html, />2 replies</);
 		assert.doesNotMatch(html, /Write back/);
 		assert.match(html, /aria-label="More for this note"/);
@@ -140,5 +143,25 @@ describe("words", () => {
 
 	it("Copy text: each message a paragraph, his marked", () => {
 		assert.equal(threadPlainText([{ author: "ai", text: "Why?" }, { author: "user", text: " Because. " }, { author: "ai", text: "" }]), "Why?\n\nYou: Because.");
+	});
+});
+
+describe("a tether", () => {
+	const props = { side: "left" as const, columnWidth: 660, noteY: 12, passageY: 120, threadId: "thr_1" };
+	it("open or fresh: the tie out of the dot, then the spine", () => {
+		const html = renderToStaticMarkup(<svg><Tether {...props} faint={false} /></svg>);
+		assert.match(html, /class="nb-tether-tie"/);
+		assert.match(html, /class="nb-tether-spine"/);
+	});
+	it("under the pointer (faint): the spine alone, as frame margin-notes shows the hovered note", () => {
+		const html = renderToStaticMarkup(<svg><Tether {...props} faint /></svg>);
+		assert.match(html, /nb-tether-faint/);
+		assert.doesNotMatch(html, /nb-tether-tie/);
+		assert.match(html, /class="nb-tether-spine"/);
+	});
+	it("faint with no spine (the note level with its line) keeps its tie", () => {
+		const html = renderToStaticMarkup(<svg><Tether {...props} passageY={13} faint /></svg>);
+		assert.match(html, /class="nb-tether-tie"/);
+		assert.doesNotMatch(html, /nb-tether-spine/);
 	});
 });

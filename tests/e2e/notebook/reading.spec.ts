@@ -233,6 +233,9 @@ test.describe("Notebook: it thinks with you", () => {
 		await expect(page.getByTestId("nb-tether")).toHaveCount(0);
 		await page.locator("[data-thread='thr_a'][data-testid='nb-margin-note']").hover();
 		await expect(page.locator("[data-testid='nb-tether'].nb-tether-faint[data-thread='thr_a']")).toHaveCount(1);
+		// The spine alone, no tie out of the dot (frame margin-notes, the hovered note).
+		await expect(page.locator("[data-testid='nb-tether'][data-thread='thr_a'] .nb-tether-spine")).toHaveCount(1);
+		await expect(page.locator("[data-testid='nb-tether'][data-thread='thr_a'] .nb-tether-tie")).toHaveCount(0);
 
 		const inline = page.getByTestId("nb-inline-reply");
 		await expect(inline).toBeVisible();

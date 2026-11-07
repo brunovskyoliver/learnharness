@@ -27,8 +27,9 @@ import { useNotebook } from "./nb-shared";
 
 /** Gap from the column's right edge to the menu (frame inline-sketch-and-selection: menu x≈1229 in the viewport; the 660px column ends at 1162.5). */
 export const MENU_GAP = 66;
-/** The menu's top sits 7px above the selection's line box (frame: line ≈212, card ≈205); the text box starts 4px lower. */
-const MENU_RISE = 11;
+/** The menu's top sits this far above the selection's text box (frame inline-sketch-and-selection: the
+ *  selected line's glyphs at y 218, the Text button's top at 212, rows at 266, 300, 341, 377, 412). */
+const MENU_RISE = 8;
 
 export const INK_NAMES: Record<InkColor | "default", string> = {
 	default: "Default", gray: "Gray", brown: "Brown", red: "Red", orange: "Orange", green: "Green", blue: "Blue", purple: "Purple",

@@ -13,7 +13,7 @@ This is a reference for reproducing Riddled's notebook look and motion. It is no
 | `frame` | Video stills in `~/agent-runs/2026-11-06-riddled-research/frames/`. Named stills are 1440x1026; `sheet-NN.jpg` are 3x3 contact sheets. |
 | **measured ≈** | Estimated from frames. Not a CSS value. |
 
-**Frame scale.** The stills are 1:1 CSS px at browser zoom 100%. Two checks agree: list items wrap at 28.8px, which is 16px x 1.8 (`--note-size` 16px, line-height 1.8), and the title cap height is about 28px, matching 16 x 2.45 = 39.2px. The browser viewport starts at x=127 in the stills (content y starts at about 64). The contact sheets show the whole viewport, which is about **1665px wide** (measured ≈). One contact-sheet display pixel is about 2.88 still px.
+**Frame scale.** The stills are 1:1 CSS px at browser zoom 100%. Two checks agree: list items wrap at about 28-29px, near 16px x 1.8 (`--note-size` 16px, line-height 1.8), and the title cap height is about 28px, matching 16 x 2.45 = 39.2px. (Re-measured 2026-11-07, frames margin-notes and margin-thread, the list numerals: item tops 308, 340, 368, 400, 432 in the still, so 28px a wrapped line and 32px an item, where 1.8 gives 28.8 and 32.8; we keep Riddled's CSS 1.8, so from item 2 down our lines drift ≈0.8px per line, ≈+3-4px by item 4.) The browser viewport starts at x=127 in the stills (content y starts at about 64). The contact sheets show the whole viewport, which is about **1665px wide** (measured ≈). One contact-sheet display pixel is about 2.88 still px.
 
 Colour values are hex with alpha; percentages are given as alpha/255.
 
@@ -165,11 +165,11 @@ User text weights: body 400, `strong` **620**, title 500, H1/H2 **550**, H3/H4 6
 
 | Measure | Value |
 |---|---|
-| Column left edge | x=625 in still = **498px** from viewport left at a ~1665px viewport (roughly centred: column centre ≈ 818-832px from viewport left) |
+| Column left edge | x=625 in still = **498px** from viewport left at a ~1665px viewport (roughly centred: column centre ≈ 818-832px from viewport left). The viewport is 1665: the chat panel's hairline (fixed, 466px from the right edge) sits at x 1199 in both frame and ours. Ours centres at 502.5, so the frames' page (column, margin notes, dots) sits ≈4.5px left of centre, as if a ≈9px scrollbar gutter were reserved on the right (Riddled's CSS has `scrollbar-gutter:stable` and `.thin-scroll` utilities); ours hides scrollbars (AGENTS.md), so it stays centred. The selection menu's card is at x 1228.5 in both. |
 | Column width | **≈640-680px** (wrap of "…replaced and" ends at x=1259; the next word did not fit). The CSS has a `max-w-[660px]` utility; the landing uses 620px (`.landing-scene` ≥1120px) and 660px max-width below. Ours: **660px**, Riddled's `max-w-[660px]`; the frames' column edges match 660 centred (left x=502.5 at 1665). Line breaks are not a width measure here: the same Instrument Sans and Newsreader files render ≈3% wider in Linux Chromium than in the macOS frames (§3.5). |
 | Toolbar row baseline | y≈176 (112px below the viewport top) |
 | Tell-Riddled line | y≈215 (≈39px below toolbar) |
-| Title cap top | y≈255; title to first body line ≈ 62px |
+| Title cap top | y≈255; title to first body line ≈ 62px. Glyph tops (viewport, frame | ours after 2026-11-07): instruction text 145 | 145, title 192 | 192, "Video Ideas:" 263 | 263, first list item 308 | 309 (margin-notes); title 147 | 147, first line 218 | 218 (inline-sketch). Ours: the instruction 17px under the row, the title's Riddled .7em less 3px (every frame sets the first line ≈3px nearer the title than the CSS alone gives) |
 | When the toolbar has no instruction line | title sits at y≈225, about 49px below the toolbar (inline-sketch frame) |
 | Notes stay in the column when scrolled | the toolbar row stays pinned at top y≈50 (sheet-08), see §5 |
 
@@ -260,12 +260,13 @@ Landing reference CSS: `.landing-margin{padding-left:22px}` (l.4137), `.landing-
 | Item | Value |
 |---|---|
 | Layout | expands in place in the same margin; switches to **left-aligned** text with a wider measure (≈395px, x 156-551) |
+| Top | the open thread, pushed up by the notes under it, starts its first line at y 101 (viewport), its line box 6px above the toolbar row's top (103): ours lets the margin stack rise to 6px above the column (`MARGIN_TOP`). Message tops frame | ours: 101 | 101 … 218 | 219, his 255 | 255, answer 334 | 334, field 536 | 537, Resolve 556 | 557 |
 | AI message | `.voice` ≈16px, pitch ≈23.5px, `--riddle` |
-| User reply | sans ≈14.5px, line pitch ≈23px, `--graphite` (landing JS: `mt-3 text-[14.5px] leading-[1.55] text-graphite`) |
+| User reply | sans ≈14.5px, line pitch **22.5px** (frame tops 255, 278, 300; 14.5 × 1.55 = 22.475), `--graphite` (landing JS: `mt-3 text-[14.5px] leading-[1.55] text-graphite`). Ours 15px on 22.5px, the AI answer after it 12.5px under |
 | Gap message → reply | ≈12px (`mt-3`); reply → next AI message ≈12px (`mt-2` in landing JS for the answer, `text-[18px] leading-[1.5] text-ink`) |
 | Write-back field | placeholder "Write back…" sans ≈14px `--faint`; underline only (1px `--rule`, full width ≈395px); send arrow (lucide send, ≈13px, faint) at right end |
 | Focus underline | `.reply-line:after`: `height:1.5px; border-radius:1px; background:linear-gradient(to right, var(--riddle) 0%, color-mix(in oklab,var(--riddle) 55%,transparent) 62%, transparent 100%)`; hidden `opacity:0; transform:scaleX(0); transform-origin:0`; on `:focus-within` `opacity:1; scaleX(1)`; `transition:transform .46s cubic-bezier(.2,.7,.2,1), opacity .18s ease-out`. Reduced motion: `transition:opacity .12s; transform:none` (CSS l.5420-5454) |
-| Actions | "Resolve" "Dismiss" text buttons, sans ≈12px `--faint`, gap ≈16px, ≈24px below the field; "…" at far right (measured ≈) |
+| Actions | "Resolve" "Dismiss" text buttons, sans ≈12px `--faint`, gap ≈16px, ≈24px below the field; "…" at far right (measured ≈). Frame tops: field line 536, Resolve 556, the next (faded) note's first line 595: ours 13px under the field and 8px of the open thread's own under the actions, then the 14px stack gap |
 | Other notes | fade to **≈.35-.4 opacity** while one thread is open (measured ≈; no CSS rule found, likely inline/utility) |
 | Passage | the anchored passage is `data-active=true` (wash, §9) |
 | Open animation | probably `.unfold` (§12) (not confirmed) |
@@ -365,7 +366,7 @@ Riddled draws a pencil line under the passage while it reads. In the video "it u
 | Paths | `fill:none; stroke:var(--riddle); stroke-linecap:round` |
 | Tie (short curve into the note) | `stroke-width:1.8px; stroke-opacity:.42` |
 | Spine (long run along the gutter) | `stroke-width:1.5px; stroke-opacity:.32` |
-| Faint variant (`.thread-tether-faint`) | tie `stroke-opacity:.26; stroke-width:1.5px`; reveal `.32s`, delay `60ms` |
+| Faint variant (`.thread-tether-faint`) | tie `stroke-opacity:.26; stroke-width:1.5px`; reveal `.32s`, delay `60ms`. Frame margin-notes (pointer on the first note): a faint spine runs down the gutter (x≈486-496, y≈247-302, still drawing toward the passage) and there is **no tie** out of the dot; ours draws a hovered note's faint tether as the spine alone (a faint tether with no spine keeps its tie) |
 | Reveal | a mask path `.thread-tether-reveal{stroke:#fff; stroke-opacity:1; stroke-width:10px; stroke-dasharray:1; stroke-dashoffset:1px}` (pathLength 1) |
 | Tie draw | `.56s cubic-bezier(.3,.7,.3,1) .14s forwards tether-draw` |
 | Spine draw | `.7s cubic-bezier(.3,.7,.3,1) .64s forwards tether-draw` (starts after the tie) |

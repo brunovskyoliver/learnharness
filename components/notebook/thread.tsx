@@ -3,7 +3,7 @@
 /**
  * One thread (feature 024, US3; ui-contract "Reading and threads";
  * visual-reference §8, §8.1, §13). Collapsed: the AI's first message,
- * clamped, and "{n} replies", as one button that expands it. Expanded in
+ * whole (the frames never cut one), and "{n} replies", as one button that expands it. Expanded in
  * place: every message (his in Instrument Sans graphite, the AI's in its
  * lettering, new words inking in), the "Write back…" field with the
  * reply-line underline and the send arrow, then Resolve, Dismiss and "⋯"
@@ -216,7 +216,7 @@ export function Thread({ thread, variant, side = "right", fresh, detached, order
 					data-testid="nb-thread-open"
 					onClick={() => threads.open(thread.id)}
 				>
-					<span className={`${margin ? "nb-note-text" : "nb-inline-text"} nb-voice nb-clamp`}>
+					<span className={`${margin ? "nb-note-text" : "nb-inline-text"} nb-voice`}>
 						<InkText text={first?.text ?? ""} animate={fresh} />
 					</span>
 					{detached && <span className="nb-note-meta nb-note-detached">{DETACHED_LINE}</span>}

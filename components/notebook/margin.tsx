@@ -15,7 +15,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { EditorView } from "@tiptap/pm/view";
 import type { NotebookLayout, NotebookThread } from "@/src/core";
-import { drawnSide, EXPANDED_WIDTH, LEFT_TEXT_GAP, marginWidths, mergeLines, NOTE_LINE, NOTE_WIDTH, placeStack, RIGHT_TEXT_GAP, type MarginSpace, type PassageLine, type Side } from "./nb-geometry";
+import { drawnSide, EXPANDED_WIDTH, LEFT_TEXT_GAP, MARGIN_TOP, marginWidths, mergeLines, NOTE_LINE, NOTE_WIDTH, placeStack, RIGHT_TEXT_GAP, STACK_GAP, type MarginSpace, type PassageLine, type Side } from "./nb-geometry";
 import type { NoteBridge } from "./nb-plugins";
 import { Tether } from "./tether";
 import { Thread } from "./thread";
@@ -151,7 +151,7 @@ export function Margin({ bridge, column, threads, layout, fresh, tick }: {
 		}
 		const next: Record<string, Placed> = {};
 		for (const side of ["left", "right"] as const) {
-			for (const [id, top] of placeStack(stacks[side])) {
+			for (const [id, top] of placeStack(stacks[side], STACK_GAP, MARGIN_TOP)) {
 				const width = id === openId ? wide[side] ?? widths[side]! : widths[side]!;
 				next[id] = { top, side, width, passageY: meta[id]!.passageY, from: meta[id]!.from };
 			}

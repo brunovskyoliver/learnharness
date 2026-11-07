@@ -311,7 +311,7 @@ Feature 024, [specs/024-notebook-mode](specs/024-notebook-mode/spec.md). A secon
 
 ### Components
 
-- Margin thread: collapsed is one button (the question, clamped, and "{n} replies"); open shows every message (the AI in the voice, his in sans graphite), the reply-line field, Resolve · Dismiss · ⋯ at 12px faint; others fade to .38. A tether joins a displaced or open note to its passage.
+- Margin thread: collapsed is one button (the whole question, never clamped, and "{n} replies"); open shows every message (the AI in the voice, his in sans graphite), the reply-line field, Resolve · Dismiss · ⋯ at 12px faint; others fade to .38. A tether joins an open or fresh note to its passage; under the pointer a note shows the faint spine alone.
 - Marks: the passage under a thread carries a 1px dotted `--riddle-line` (solid at 60% below 1.5 dppx); open adds the wash. Marks only shows a small "?" after the passage.
 - Inline reply: under its paragraph, 22px indent, an ink dot, the same thread states.
 - Sketch: title in the voice 19px, subtitle 13px faint, the SVG drawing step by step, a stepper ("‹ n/N › ↻") and See it larger.
