@@ -59,3 +59,9 @@ Each item: Decision, Rationale, Alternatives.
 ## R12 Phones
 
 - **Decision**: below 768px the effective layout is Marks only; a mark expands its thread inline under the paragraph. Toolbar row wraps; sidebar overlay is full width; chat panel full screen; settings modal full screen with nav as a top row.
+
+## R13 Real-model verification engine (verification only)
+
+- **Decision**: for T047 only, `LH_NOTEBOOK_ENGINE=codex-verify` (honoured only when `NODE_ENV !== "production"`) builds every Notebook run's engine from pi-ai's own `openai-codex` provider: model `gpt-5.6-sol` from `OPENAI_CODEX_MODELS` (`@earendil-works/pi-ai/providers/openai-codex.models`), thinking `medium`, streamed by `streamSimple` from `@earendil-works/pi-ai/api/openai-codex-responses` (chatgpt.com/backend-api/codex). `streamFn` injects `apiKey` = the ChatGPT access token, read in memory and read-only from the file named by `LH_NOTEBOOK_CODEX_AUTH` (a Codex CLI auth.json) on each request; unset, unreadable or expired is a plain refusal (503 with an error, no `reason`). Never writes the file, never refreshes or signs in, never logs the token. The Notebook model gate counts the switch as configured. Code: `src/agent/subagents/notebook-codex-verify.ts`; tests: `tests/notebook-codex-verify.test.ts`.
+- **Rationale**: the app's ChatGPT connection cannot use a Codex CLI token (progress.md Decisions, T047 block), and a product provider is an owner decision. The switch swaps only the transport; prompts, runSubmitAgent schemas, the run registry, SSE, the companion store and the UI are the real code path. Same pattern as `LH_NOTEBOOK_FAUX`.
+- **Not a product path**: no setting, UI or production build reaches it.

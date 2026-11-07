@@ -24,6 +24,7 @@ import {
 	fauxNotebookEngine, notebookFauxEnabled, notebookModelOverride, runNotebookRead, runNotebookThink, runNotebookVisualize,
 	streamNotebookChat, streamNotebookReply, type NotebookContext,
 } from "../agent/subagents/notebook.ts";
+import { codexVerifyEngine, notebookCodexVerifyEnabled, readCodexVerifyToken } from "../agent/subagents/notebook-codex-verify.ts";
 import { accumulateJobUsage, piUsageToStep, type JobUsage } from "../core/contracts.ts";
 import { emit } from "../core/events.ts";
 import { PAGE_MAX_BYTES } from "../core/library.ts";
@@ -82,6 +83,12 @@ const json = (body: unknown, status = 200) => Response.json(body, { status, head
  *  refusal persists nothing and starts nothing. */
 export function notebookModelRefusal(): { body: Record<string, unknown>; status: 503 } | null {
 	if (notebookModelOverride.current || notebookFauxEnabled()) return null;
+	// Verification only (research R13): the codex-verify engine counts as
+	// configured; a missing or expired token is refused plainly.
+	if (notebookCodexVerifyEnabled()) {
+		const read = readCodexVerifyToken();
+		return "problem" in read ? { body: { error: read.problem }, status: 503 } : null;
+	}
 	const spec = resolveRoleSpec("notebook", stores.settingsStore.readSettings());
 	if (!spec) return { body: { ...modelsNotConfigured(["strong"]), reason: "models" }, status: 503 };
 	if (!providerKeyPresent(spec.provider)) return { body: { ...providerKeyMissing(spec.provider, ["strong"]), reason: "key" }, status: 503 };
@@ -91,6 +98,7 @@ export function notebookModelRefusal(): { body: Record<string, unknown>; status:
 function engineFor(kind: NotebookRunKind, note: string, passage: string | undefined, auto: boolean): PiEngine | undefined {
 	if (notebookModelOverride.current) return notebookModelOverride.current;
 	if (notebookFauxEnabled()) return fauxNotebookEngine(kind, note, passage);
+	if (notebookCodexVerifyEnabled()) return codexVerifyEngine();
 	const spec = resolveRoleSpec("notebook", stores.settingsStore.readSettings());
 	// Automatic reads are background work; explicit actions are his.
 	return spec ? piEngineForSpec(spec, auto) : undefined;
