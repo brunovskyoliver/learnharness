@@ -1,44 +1,47 @@
 {
 	"pairs": {
 		"margin-notes": [
-			"By design (ui-contract): our wordmark and name instead of \"riddled.\"; toolbar reads \"Plain reader\", \"Instructions\", \"Export\" (Riddled: \"Riddled\", \"Tell Riddled\", \"Share\") and ends in the chat button.",
-			"Linux text ≈3% wider: list item 2 still breaks after \"replaced and\", but the first left note needs 7 lines where the frame has 6, so its 6-line clamp drops \"assignments.\"; the second and fourth notes break one word earlier in places.",
-			"From the instruction line down our page sits ≈2-5 px lower (title +2, list +5).",
-			"Hovering the first note shows its faint tether in ours; the frame shows none at that moment.",
-			"The right note's text is seeded from margin-thread (the frame's own words are cut off at the still's edge)."
+			"By design (ui-contract): our wordmark and name instead of \"riddled.\"; toolbar reads \"Plain reader\", \"Instructions\", \"Export\" (Riddled: \"Riddled\", \"Tell Riddled\", \"Share\") and ends in the chat button. Approved by owner 2026-11-07.",
+			"Linux text ≈3% wider: list item 2 still breaks after \"replaced and\", but the first left note needs 7 lines where the frame has 6, so its 6-line clamp drops \"assignments.\"; the second and fourth notes break one word earlier in places. Approved by owner 2026-11-07.",
+			"From the instruction line down our page sits ≈2-5 px lower (title +2, list +5). Approved by owner 2026-11-07.",
+			"Hovering the first note shows its faint tether in ours; the frame shows none at that moment. Approved by owner 2026-11-07.",
+			"The right note's text is seeded from margin-thread (the frame's own words are cut off at the still's edge).",
+			"Contrast (owner 2026-11-07, \"Raise to pass\"): faint text, the gray ink and the focus ring are deliberately darker than Riddled's, along lightness only, to pass WCAG AA on paper and shelf (visual-reference §1.1); the meta, hints and toolbar labels read a little darker than in the frame."
 		],
 		"margin-thread": [
-			"Open thread: every message, the Write back line and Resolve · Dismiss · ⋯ sit where the frame has them; ours ≈5 px lower.",
-			"Linux wrap: the first message breaks \"college / could\" one word earlier; the AI reply and his reply break as in the frame.",
-			"Toolbar strings as in margin-notes (by design)."
+			"Open thread: every message, the Write back line and Resolve · Dismiss · ⋯ sit where the frame has them; ours ≈5 px lower. Approved by owner 2026-11-07.",
+			"Linux wrap: the first message breaks \"college / could\" one word earlier; the AI reply and his reply break as in the frame. Approved by owner 2026-11-07.",
+			"Toolbar strings as in margin-notes (by design). Approved by owner 2026-11-07."
 		],
 		"inline-sketch-and-selection": [
-			"The inline reply re-wraps (7 lines both, different breaks): Linux width, plus ≈6% the font alone does not explain (open: the frame's reply may keep ≈20 px clear on its right).",
+			"The inline reply re-wraps (7 lines both, different breaks): Linux width, plus ≈6% the font alone does not explain (open: the frame's reply may keep ≈20 px clear on its right). Approved by owner 2026-11-07.",
 			"Sketch: lines and arrows are §16.1's graphite at 1.2 (fixed: they were the AI ink at 1.6), grid rules --rule; numbers, captions, stepper and See it larger line up.",
-			"Selection menu ≈7 px further right; its actions read Think about this / Ask about this / Visualize / Make flashcards (ui-contract) where Riddled has Riddle this / Ask Riddled / Visualize.",
-			"Toolbar strings as in margin-notes (by design)."
+			"Selection menu ≈7 px further right; its actions read Think about this / Ask about this / Visualize / Make flashcards (ui-contract) where Riddled has Riddle this / Ask Riddled / Visualize. Approved by owner 2026-11-07.",
+			"Toolbar strings as in margin-notes (by design). Approved by owner 2026-11-07."
 		],
 		"note-chat-panel": [
-			"Panel header \"This note\" (Riddled: \"Riddled\") and our context line \"Read the whole note and 1 thread.\" under the opening (ui-contract).",
-			"Page slides and fades as in the frame; inline reply re-wraps (Linux width)."
+			"Panel header \"This note\" (Riddled: \"Riddled\") and our context line \"Read the whole note and 1 thread.\" under the opening (ui-contract). Approved by owner 2026-11-07.",
+			"Page slides and fades as in the frame; inline reply re-wraps (Linux width). Approved by owner 2026-11-07."
 		],
 		"sidebar-and-settings": [
-			"By design (ui-contract): footer rows Copy this note, Export this note, Just my words, Settings, Reviewers, Make flashcards, Links, Switch to Study (Riddled: Customize Riddled, Riddlers, Profile, Billing, Sign out, an account email); settings nav Customize / Reviewers only; title \"Customize\"; card descriptions are ours.",
+			"By design (ui-contract): footer rows Copy this note, Export this note, Just my words, Settings, Reviewers, Make flashcards, Links, Switch to Study (Riddled: Customize Riddled, Riddlers, Profile, Billing, Sign out, an account email); settings nav Customize / Reviewers only; title \"Customize\"; card descriptions are ours. Approved by owner 2026-11-07.",
 			"The settings backdrop dims the open sidebar as in the frame (sidebar 170 vs frame 172, page 171 vs 169, 8-bit grey; e2e asserts the backdrop covers the sidebar).",
-			"Long note names truncate a few characters later (\"Longest Com…\" vs \"Longest C…\").",
-			"Fixed in this pass: hovering the chosen card hid its 1.5 px ink ring (the frame's pointer rests on \"Thinks with you\")."
+			"Long note names truncate a few characters later (\"Longest Com…\" vs \"Longest C…\"). Approved by owner 2026-11-07.",
+			"Fixed in this pass: hovering the chosen card hid its 1.5 px ink ring (the frame's pointer rests on \"Thinks with you\").",
+			"Contrast (owner 2026-11-07, \"Raise to pass\"): faint text, the gray ink and the focus ring are deliberately darker than Riddled's, along lightness only, to pass WCAG AA on paper and shelf (visual-reference §1.1); the meta, hints and toolbar labels read a little darker than in the frame."
 		],
 		"export-dialog": [
-			"By design (ui-contract): \"Include the notes\" and our card and switch descriptions (Riddled: \"Include the riddles\", \"…another AI included.\").",
+			"By design (ui-contract): \"Include the notes\" and our card and switch descriptions (Riddled: \"Include the riddles\", \"…another AI included.\"). Approved by owner 2026-11-07.",
 			"Size, radius, cards, switch and pill match within the tile's resolution (2.4x scaled contact sheet)."
 		],
 		"settings-bottom": [
-			"By design (ui-contract): \"Lettering\" / \"Ink colour\" and the samples \"Does this hold?\" with \"Its own hand\" / \"Same as yours\" (Riddled: \"Riddled's lettering\", \"Riddled's colour\", \"Does this still hold?\", \"Riddled's own\" / \"Like your notes\").",
+			"By design (ui-contract): \"Lettering\" / \"Ink colour\" and the samples \"Does this hold?\" with \"Its own hand\" / \"Same as yours\" (Riddled: \"Riddled's lettering\", \"Riddled's colour\", \"Does this still hold?\", \"Riddled's own\" / \"Like your notes\"). Approved by owner 2026-11-07.",
 			"Appearance, text size and ink swatches match the tile; our labels are slightly brighter (the tile is a compressed thumbnail)."
 		],
 		"dark-appearance": [
 			"Tokens match the dark tile (paper, shelf, rule, ink); the tile is a 2.4x scaled thumbnail with the presenter's camera over its top right.",
-			"The sidebar is dimmed under the modal as in the frame."
+			"The sidebar is dimmed under the modal as in the frame.",
+			"Contrast (owner 2026-11-07, \"Raise to pass\"): faint text, the gray ink and the focus ring are deliberately lighter than Riddled's, along lightness only, to pass WCAG AA on paper and shelf (visual-reference §1.1); the meta, hints and toolbar labels read a little lighter than in the frame."
 		]
 	},
 	"motion": {
