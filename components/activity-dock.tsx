@@ -360,10 +360,10 @@ export function ActivitySection({ feed: feedProp }: { feed?: ActivityFeed }) {
 	// alone (the cost span is population, not decoration).
 	return (
 		<section data-testid="activity-section" className="px-2 pb-2">
-			<div className="flex h-8 items-center gap-2 px-2.5 text-sm font-medium text-muted-foreground">
+			<div className="flex h-8 items-center gap-2 px-2.5 text-sm font-medium text-faint">
 				<ActivityIcon className="size-3.5 shrink-0" />
 				<span className="truncate whitespace-nowrap">Background agents</span>
-				<span className="h-px min-w-2 flex-1 bg-border" aria-hidden="true" />
+				<span className="h-px min-w-2 flex-1 bg-rule" aria-hidden="true" />
 				{/* Dollars only: plan-covered runs have no cost worth a label here. */}
 				{totalCost !== null && (
 					<span className="shrink-0 tabular-nums" data-testid="activity-total-cost" title="Total running cost (inferred)">
@@ -434,7 +434,7 @@ function ActivityBlobRow({
 				role="listitem"
 				data-testid={`activity-blob-${blob.process}`}
 				size="sm"
-				className="flex-col items-stretch gap-0 p-0 text-sm transition-colors hover:bg-accent"
+				className="flex-col items-stretch gap-0 p-0 text-sm transition-colors hover:bg-shelf"
 			>
 				<div className="flex items-start gap-1">
 					<CollapsibleTrigger asChild>
@@ -444,15 +444,15 @@ function ActivityBlobRow({
 						title={blob.title}
 						className="flex min-w-0 flex-1 items-start gap-2 py-1.5 pl-2 text-left"
 					>
-						<Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+						<Icon className="mt-0.5 size-4 shrink-0 text-faint" />
 						<span className="min-w-0 flex-1">
 							<span className="flex items-baseline gap-2">
-								<span className="min-w-0 flex-1 truncate font-medium text-card-foreground">{label}</span>
-								<span className="shrink-0 tabular-nums text-muted-foreground" data-testid="activity-blob-elapsed">
+								<span className="min-w-0 flex-1 truncate font-medium text-ink">{label}</span>
+								<span className="shrink-0 tabular-nums text-faint" data-testid="activity-blob-elapsed">
 									{elapsed}
 								</span>
 							</span>
-							<span className="block truncate text-muted-foreground" data-testid="activity-blob-activity">
+							<span className="block truncate text-faint" data-testid="activity-blob-activity">
 								{activity || blob.title}
 							</span>
 						</span>
@@ -479,40 +479,40 @@ function ActivityBlobRow({
 				<CollapsibleContent>
 					<dl
 						data-testid="activity-blob-detail"
-						className="mx-2 mb-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 rounded-md bg-accent/40 p-2 text-muted-foreground"
+						className="mx-2 mb-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 rounded-md bg-shelf/40 p-2 text-faint"
 					>
 						<dt>{blob.process === "notebook" ? "Note" : "Session"}</dt>
 						<dd className="min-w-0 text-right">
-							<a href={blob.href ?? (blob.process === "cards" ? "/review?view=drafts" : `/chat/${blob.chatId}`)} className="block truncate text-card-foreground hover:underline" title={blob.title}>
+							<a href={blob.href ?? (blob.process === "cards" ? "/review?view=drafts" : `/chat/${blob.chatId}`)} className="block truncate text-ink hover:underline" title={blob.title}>
 								{blob.title}
 							</a>
 						</dd>
 						{model && (
 							<>
 								<dt>Model</dt>
-								<dd className="truncate text-right text-card-foreground">{model}</dd>
+								<dd className="truncate text-right text-ink">{model}</dd>
 							</>
 						)}
 						<dt>Context</dt>
-						<dd className="text-right tabular-nums text-card-foreground" data-testid="activity-blob-context">
+						<dd className="text-right tabular-nums text-ink" data-testid="activity-blob-context">
 							{blob.context === null ? "—" : `${formatTokens(blob.context.used)} / ${formatTokens(blob.context.limit)}`}
 						</dd>
 						{blob.steps !== undefined && (
 							<>
 								<dt>Model calls</dt>
-								<dd className="text-right tabular-nums text-card-foreground">{blob.steps}</dd>
+								<dd className="text-right tabular-nums text-ink">{blob.steps}</dd>
 							</>
 						)}
 						{blob.cost !== null && (
 							<>
 								<dt>Cost</dt>
-								<dd className="text-right tabular-nums text-card-foreground" data-testid="activity-blob-cost">
+								<dd className="text-right tabular-nums text-ink" data-testid="activity-blob-cost">
 									{planCostLabel(blob.cost, [])}
 								</dd>
 							</>
 						)}
 						{abortState && (
-							<dd className="col-span-2 text-muted-foreground">
+							<dd className="col-span-2 text-faint">
 								{abortState === "failed" ? "Stopping failed, try again" : "Stopping…"}
 							</dd>
 						)}

@@ -21,7 +21,7 @@ export function teaserPlain(q: string): string {
 export function Teaser({ text }: { text: string }) {
 	return text.split(/(`[^`]+`)/g).map((part, i) =>
 		part.length > 2 && part.startsWith("`") && part.endsWith("`") ? (
-			<code key={i} className="rounded bg-muted px-[0.3em] font-mono text-[0.9em]">
+			<code key={i} className="rounded bg-shelf px-[0.3em] font-mono text-[0.9em]">
 				{part.slice(1, -1)}
 			</code>
 		) : (

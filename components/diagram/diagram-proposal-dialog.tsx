@@ -130,7 +130,7 @@ export function DiagramProposalDialog({ proposalId, onClose, onApproved, beforeA
 	return (
 		<Dialog open onOpenChange={(open) => { if (!open) { void flushEdit(); onClose(); } }}>
 			<DialogContent
-				className={editing ? "flex h-dvh max-h-dvh w-screen max-w-none translate-x-[-50%] flex-col gap-2 rounded-none border-0 bg-background p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:max-w-none" : "flex max-h-[90dvh] flex-col gap-3 overflow-y-auto rounded-[10px] border-0 bg-popover sm:max-w-xl"}
+				className={editing ? "flex h-dvh max-h-dvh w-screen max-w-none translate-x-[-50%] flex-col gap-2 rounded-none border-0 bg-paper p-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:max-w-none" : "flex max-h-[90dvh] flex-col gap-3 overflow-y-auto rounded-xl border-0 bg-paper shadow-lift sm:max-w-xl"}
 				showCloseButton={!editing}
 				data-testid="diagram-proposal-dialog"
 				onEscapeKeyDown={(event) => {
@@ -142,29 +142,29 @@ export function DiagramProposalDialog({ proposalId, onClose, onApproved, beforeA
 			>
 				{failure && !data ? (
 					<>
-						<DialogTitle className="text-base font-semibold">This proposal could not be loaded</DialogTitle>
-						<DialogDescription className="text-sm text-ink-2">{failure}</DialogDescription>
+						<DialogTitle className="text-md font-semibold">This proposal could not be loaded</DialogTitle>
+						<DialogDescription className="text-sm text-graphite">{failure}</DialogDescription>
 						<div className="flex gap-2"><button type="button" className="prompt-secondary" onClick={() => void load()}>Try again</button><button type="button" className="prompt-secondary" onClick={onClose}>Close</button></div>
 					</>
 				) : !data ? (
 					<>
 						<DialogTitle className="sr-only">Loading the proposal</DialogTitle>
 						<DialogDescription className="sr-only">One moment.</DialogDescription>
-						<div role="status" aria-label="Loading the proposal" className="flex flex-col gap-2"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-32 w-full rounded-[10px]" /></div>
+						<div role="status" aria-label="Loading the proposal" className="flex flex-col gap-2"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-32 w-full rounded-lg" /></div>
 					</>
 				) : editing ? (
 					<>
 						<div className="flex flex-wrap items-center gap-2 pe-1">
 							<div className="min-w-0 flex-[1_1_12rem]">
-								<DialogTitle className="truncate text-base font-medium">Editing the proposal: {name}</DialogTitle>
-								<DialogDescription className="text-sm text-muted-foreground" data-testid="diagram-proposal-edit-state">
+								<DialogTitle className="truncate text-md font-medium">Editing the proposal: {name}</DialogTitle>
+								<DialogDescription className="text-sm text-faint" data-testid="diagram-proposal-edit-state">
 									{editSave === "saving" ? "Saving…" : editSave === "failed" ? "Not saved." : "Your edits stay in the proposal until you approve."}
 								</DialogDescription>
 							</div>
 							<button type="button" className="prompt-secondary" data-testid="diagram-proposal-edit-done" onClick={() => { void flushEdit().then(() => load()); setEditing(false); }}>Back to comparison</button>
 							<button type="button" className="prompt-primary" disabled={busy} data-testid="diagram-proposal-approve-edited" onClick={() => void approve()}>Approve</button>
 						</div>
-						{line && <p role="alert" className="text-sm text-destructive">{line}</p>}
+						{line && <p role="alert" className="text-sm text-red">{line}</p>}
 						<DiagramEditor
 							doc={data.proposal.doc}
 							resetKey={proposalId}
@@ -179,16 +179,16 @@ export function DiagramProposalDialog({ proposalId, onClose, onApproved, beforeA
 					</>
 				) : (
 					<>
-						<DialogTitle className="pe-6 text-base font-semibold [overflow-wrap:anywhere]">{data.proposal.diagramId ? `Proposed changes to ${name}` : `Proposed diagram: ${name}`}</DialogTitle>
-						<DialogDescription className="whitespace-pre-wrap text-sm text-ink-2 [overflow-wrap:anywhere]" data-testid="diagram-proposal-summary">{data.proposal.summary}</DialogDescription>
-						<p className="text-sm text-muted-foreground">Nothing has changed. {data.proposal.diagramId ? "This diagram stays as it is unless you approve." : "No diagram exists unless you approve."}{data.proposal.edited ? " You edited this proposal." : ""}</p>
+						<DialogTitle className="pe-6 text-md font-semibold [overflow-wrap:anywhere]">{data.proposal.diagramId ? `Proposed changes to ${name}` : `Proposed diagram: ${name}`}</DialogTitle>
+						<DialogDescription className="whitespace-pre-wrap text-sm text-graphite [overflow-wrap:anywhere]" data-testid="diagram-proposal-summary">{data.proposal.summary}</DialogDescription>
+						<p className="text-sm text-faint">Nothing has changed. {data.proposal.diagramId ? "This diagram stays as it is unless you approve." : "No diagram exists unless you approve."}{data.proposal.edited ? " You edited this proposal." : ""}</p>
 						{/* An image can't run anything, and the SVG's text is escaped. */}
 						{/* eslint-disable-next-line @next/next/no-img-element */}
-						<img src={svgDataUrl(diagramToSvg(data.proposal.doc, name))} alt={`Preview of the proposal for ${name}`} className="max-h-64 w-full rounded-[6px] object-contain" data-testid="diagram-proposal-preview" />
-						{blocked ? <p role="status" className="text-sm text-ink-2" data-testid="diagram-proposal-blocked">{blocked}</p> : <DiagramDiffView diff={diffDiagrams(currentDoc, data.proposal.doc)} />}
-						{line && <p role="alert" className="text-sm text-destructive" data-testid="diagram-proposal-line">{line}</p>}
+						<img src={svgDataUrl(diagramToSvg(data.proposal.doc, name))} alt={`Preview of the proposal for ${name}`} className="max-h-64 w-full rounded-md object-contain" data-testid="diagram-proposal-preview" />
+						{blocked ? <p role="status" className="text-sm text-graphite" data-testid="diagram-proposal-blocked">{blocked}</p> : <DiagramDiffView diff={diffDiagrams(currentDoc, data.proposal.doc)} />}
+						{line && <p role="alert" className="text-sm text-red" data-testid="diagram-proposal-line">{line}</p>}
 						{clash && (
-							<div role="status" className="flex flex-wrap items-center gap-2 text-sm text-ink-2">
+							<div role="status" className="flex flex-wrap items-center gap-2 text-sm text-graphite">
 								<p>{name} is already in your Library.</p>
 								<button type="button" className="prompt-secondary" data-testid="diagram-proposal-keep-both" onClick={() => void approve(clash)}>Keep both as {clash}</button>
 							</div>

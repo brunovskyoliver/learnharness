@@ -52,16 +52,16 @@ export function PageProposalsLine({ pageId, exceptPageId, className, beforeAccep
 	if (shown.length === 0 && !failed && !open && !notice) return null;
 	return (
 		<section aria-label="Changes the tutor proposed" className={cn("flex flex-col gap-1", className)} data-testid="page-proposals">
-			{failed && shown.length === 0 && <div role="status" className="flex flex-wrap items-center gap-2 text-sm text-ink-2"><p>Proposed changes could not be loaded.</p><button type="button" className="prompt-secondary" onClick={() => void refresh()}>Try again</button></div>}
+			{failed && shown.length === 0 && <div role="status" className="flex flex-wrap items-center gap-2 text-sm text-graphite"><p>Proposed changes could not be loaded.</p><button type="button" className="prompt-secondary" onClick={() => void refresh()}>Try again</button></div>}
 			{notice && (
-				<div role="status" className="flex flex-wrap items-center gap-2 text-sm text-ink-2" data-testid="page-proposal-notice">
+				<div role="status" className="flex flex-wrap items-center gap-2 text-sm text-graphite" data-testid="page-proposal-notice">
 					<p className="min-w-0 flex-[1_1_12rem]">{notice}</p>
 					<button type="button" className="prompt-secondary" onClick={() => setNotice(null)}>Dismiss</button>
 				</div>
 			)}
 			{shown.map((row) => (
-				<div key={row.id} className="flex flex-wrap items-center gap-2 rounded-[10px] bg-card px-3 py-2 text-sm" data-testid="page-proposal-row">
-					<span className="min-w-0 flex-[1_1_12rem] [overflow-wrap:anywhere]">{pageId ? <span className="text-foreground">The tutor proposed a change.</span> : <span className="text-foreground">{row.name}</span>} <span className="text-muted-foreground">{pageId ? "Nothing changed yet." : "· Change proposed by the tutor, waiting for you"}</span></span>
+				<div key={row.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-shelf px-3 py-2 text-sm" data-testid="page-proposal-row">
+					<span className="min-w-0 flex-[1_1_12rem] [overflow-wrap:anywhere]">{pageId ? <span className="text-ink">The tutor proposed a change.</span> : <span className="text-ink">{row.name}</span>} <span className="text-faint">{pageId ? "Nothing changed yet." : "· Change proposed by the tutor, waiting for you"}</span></span>
 					<button type="button" className="prompt-secondary" aria-label={`Review the change proposed for ${row.name}`} data-testid="page-proposal-open" onClick={(event) => { opener.current = event.currentTarget; setOpen(row.id); }}>Review</button>
 				</div>
 			))}

@@ -7,7 +7,7 @@ import type { LibraryFolder } from "@/src/core";
 import { DRAG_TYPE, type EntryKey } from "./library-filter.ts";
 import { LibraryEntryMenu, LibraryMoreButton, LibrarySelectBox, moreButton, type LibraryMenuAction } from "./library-menu.tsx";
 
-const ACTION = "size-9 text-muted-foreground pointer-coarse:size-11";
+const ACTION = "size-9 text-faint pointer-coarse:size-11";
 export const folderHref = (id: string | null) => (id ? `/library?folder=${encodeURIComponent(id)}` : "/library");
 
 export function FolderRow({ folder, count, location, actions = [], selection, dropTarget, onDragStartEntry, onRename, onDelete }: {
@@ -32,7 +32,7 @@ export function FolderRow({ folder, count, location, actions = [], selection, dr
 	return (
 		<LibraryEntryMenu actions={menuActions}>
 		<li
-			className={`rounded-[10px] ${selection?.selected || dropTarget?.over ? "bg-accent" : "bg-card"}`}
+			className={`rounded-lg ${selection?.selected || dropTarget?.over ? "bg-shelf" : "bg-shelf"}`}
 			data-testid="library-folder-row"
 			draggable={Boolean(onDragStartEntry)}
 			onDragStart={(event) => onDragStartEntry?.(`folder:${folder.id}`, event)}
@@ -51,15 +51,15 @@ export function FolderRow({ folder, count, location, actions = [], selection, dr
 		>
 			<div className="flex items-center gap-1 pr-1.5">
 				{selection && <LibrarySelectBox label={`Select folder ${folder.name}`} checked={selection.selected} onChange={selection.toggle} />}
-				<Link href={folderHref(folder.id)} aria-label={`Open folder ${folder.name}`} className="flex min-w-0 flex-1 items-center gap-2.5 rounded-[10px] px-3 py-2.5 transition-colors hover:bg-accent">
-					<FolderIcon className="ui-icon shrink-0 text-muted-foreground" aria-hidden="true" />
+				<Link href={folderHref(folder.id)} aria-label={`Open folder ${folder.name}`} className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg px-3 py-2.5 transition-colors hover:bg-shelf">
+					<FolderIcon className="ui-icon shrink-0 text-faint" aria-hidden="true" />
 					<span className="flex min-w-0 flex-col gap-0.5">
-						<span className="flex items-start gap-1.5 text-base font-medium text-foreground [overflow-wrap:anywhere]">
-							{folder.pinned && <PinIcon className="ui-icon mt-1 size-3.5 shrink-0 text-ink-2" role="img" aria-label="Pinned" />}
-							{folder.favorite && <StarIcon className="ui-icon mt-1 size-3.5 shrink-0 text-ink-2" role="img" aria-label="Favorite" />}
+						<span className="flex items-start gap-1.5 text-md font-medium text-ink [overflow-wrap:anywhere]">
+							{folder.pinned && <PinIcon className="ui-icon mt-1 size-3.5 shrink-0 text-graphite" role="img" aria-label="Pinned" />}
+							{folder.favorite && <StarIcon className="ui-icon mt-1 size-3.5 shrink-0 text-graphite" role="img" aria-label="Favorite" />}
 							<span className="min-w-0">{folder.name}</span>
 						</span>
-						<span className="text-sm text-muted-foreground">{meta}</span>
+						<span className="text-sm text-faint">{meta}</span>
 					</span>
 				</Link>
 				<Button type="button" variant="ghost" size="icon" aria-label={`Rename folder ${folder.name}`} className={`${ACTION} max-sm:hidden`} onClick={(event) => onRename(folder, event.currentTarget)}><PencilIcon className="ui-icon" aria-hidden="true" /></Button>
@@ -76,13 +76,13 @@ export function FolderBreadcrumbs({ trail }: { trail: readonly LibraryFolder[] }
 	if (trail.length === 0) return null;
 	return (
 		<nav aria-label="Folder path" data-testid="library-breadcrumbs">
-			<ol className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm text-ink-2">
+			<ol className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-sm text-graphite">
 				<li><Link href={folderHref(null)} className="rounded-md underline-offset-2 hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center">Library</Link></li>
 				{trail.map((folder, index) => (
 					<li key={folder.id} className="flex min-w-0 items-center gap-1.5">
-						<span aria-hidden="true" className="text-muted-foreground">/</span>
+						<span aria-hidden="true" className="text-faint">/</span>
 						{index === trail.length - 1
-							? <span aria-current="page" className="text-foreground [overflow-wrap:anywhere]">{folder.name}</span>
+							? <span aria-current="page" className="text-ink [overflow-wrap:anywhere]">{folder.name}</span>
 							: <Link href={folderHref(folder.id)} className="rounded-md underline-offset-2 [overflow-wrap:anywhere] hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center">{folder.name}</Link>}
 					</li>
 				))}

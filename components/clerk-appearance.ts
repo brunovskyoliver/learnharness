@@ -14,13 +14,13 @@ export const CLERK_APPEARANCE = {
 		colorNeutral: "#e6e6e6",
 		colorRing: "#a1a1a1",
 		borderRadius: "8px",
-		fontFamily: "var(--font-ui)",
+		fontFamily: "var(--font-sans)",
 	},
 	// Elements use the live app roles; literal variables above seed Clerk
 	// shade generation before client appearance preferences are applied.
 	elements: {
-		card: { backgroundColor: "var(--card)", color: "var(--foreground)", borderColor: "var(--border)" },
-		formFieldInput: { backgroundColor: "var(--background)", color: "var(--foreground)", borderColor: "var(--input)" },
+		card: { backgroundColor: "var(--shelf)", color: "var(--ink)", borderColor: "var(--rule)" },
+		formFieldInput: { backgroundColor: "var(--paper)", color: "var(--ink)", borderColor: "var(--rule)" },
 	},
 };
 

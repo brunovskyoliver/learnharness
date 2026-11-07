@@ -70,12 +70,12 @@ describe("DeleteSessionDialog — the node-dialog shape (owner flow rework 2026-
 		);
 		assert.match(html, /Delete session\?/);
 		const title = html.match(/<h2[^>]*>/)?.[0] ?? "";
-		assert.match(title, /text-sm font-semibold text-destructive/); // red, abort-turn look (owner, 2026-10-13)
+		assert.match(title, /text-sm font-semibold text-red/); // red, abort-turn look (owner, 2026-10-13)
 		assert.ok(!title.includes("font-title"), "no serif display title");
 		// the name: mono, normal text-sm size (owner, 2026-10-13), NO bg-muted code-block chrome
 		const name = html.match(/data-testid="session-name-code"[^>]*>/)?.[0] ?? "";
 		assert.match(name, /font-mono text-sm/);
-		assert.ok(!name.includes("bg-muted"), "no code-block chrome");
+		assert.ok(!name.includes("bg-shelf"), "no code-block chrome");
 		assert.match(html, /data-testid="session-name-code"[^>]*>Orbital mechanics</);
 	});
 
@@ -117,7 +117,7 @@ describe("DeleteSessionDialog — the node-dialog shape (owner flow rework 2026-
 		);
 		assert.match(html, /data-testid="delete-cancel"[^>]*>Cancel</);
 		const del = html.match(/data-testid="delete-confirm"[^>]*>/)?.[0] ?? "";
-		assert.match(del, /border-destructive\/50/);
+		assert.match(del, /border-red\/50/);
 		assert.match(html, /data-testid="delete-confirm"[^>]*>Deleting…</); // busy label on Delete
 		// the checkbox survives a busy render (disabled, not unmounted)
 		assert.match(html, /data-testid="delete-traces-checkbox"[^>]*disabled=""/);

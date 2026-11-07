@@ -240,12 +240,12 @@ function MenuTrigger({
 				if (!disabled) onClick();
 			}}
 			disabled={disabled}
-			className={`flex h-9 min-w-0 items-center gap-2 rounded-md border border-input bg-background px-2.5 text-left font-ui text-sm transition-colors pointer-coarse:h-11 ${
-				disabled ? "cursor-not-allowed text-muted-foreground" : "text-foreground hover:bg-accent"
+			className={`flex h-9 min-w-0 items-center gap-2 rounded-md border border-rule bg-paper px-2.5 text-left font-sans text-sm transition-colors pointer-coarse:h-11 ${
+				disabled ? "cursor-not-allowed text-faint" : "text-ink hover:bg-shelf"
 			} ${widthClass}`}
 		>
 			<span className="min-w-0 flex-1 truncate">{value || emptyLabel}</span>
-			<ChevronDownIcon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+			<ChevronDownIcon aria-hidden="true" className="size-3.5 shrink-0 text-faint" />
 		</button>
 	);
 }
@@ -479,10 +479,10 @@ fetch("/api/models")
 			type="button"
 			data-testid={`engine-option-${id}`}
 			onClick={onPick}
-			className={cn("flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-foreground transition-colors hover:bg-muted pointer-coarse:min-h-11", active && "bg-muted")}
+			className={cn("flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-ink transition-colors hover:bg-shelf pointer-coarse:min-h-11", active && "bg-shelf")}
 		>
 			<span>{label}</span>
-			<span className="text-ink-2">
+			<span className="text-graphite">
 				{live === null ? (active && <span aria-hidden>✓</span>) : live ? <span aria-hidden>✓ key</span> : <span aria-hidden>· no key</span>}
 			</span>
 		</button>
@@ -529,29 +529,29 @@ fetch("/api/models")
 					}}
 					aria-expanded={open}
 					aria-label={`${open ? "Hide" : "Show"} text of ${info.path}`}
-					className="text-sm text-ink-2 underline-offset-2 hover:text-foreground hover:underline pointer-coarse:min-h-11"
+					className="text-sm text-graphite underline-offset-2 hover:text-ink hover:underline pointer-coarse:min-h-11"
 				>
 					{open ? "Hide text" : "Show text"}
 				</button>
 				{open && (
 					<div className="mt-1 flex flex-col gap-2">
 						<div>
-							<p className="mb-1 text-sm text-muted-foreground">Source</p>
+							<p className="mb-1 text-sm text-faint">Source</p>
 							<textarea
 								readOnly
 								value={info.sourceText}
 								aria-label="The original instructions"
-								className="h-24 w-full resize-y rounded-md border border-input bg-card p-2 font-ui text-sm text-ink-2"
+								className="h-24 w-full resize-y rounded-md border border-rule bg-shelf p-2 font-sans text-sm text-graphite"
 							/>
 						</div>
 						<div>
-							<p className="mb-1 text-sm text-muted-foreground">Override</p>
+							<p className="mb-1 text-sm text-faint">Override</p>
 							<textarea
 								value={segmentDraft[info.path] ?? info.overrideText ?? ""}
 								onChange={(e) => setSegmentDraft({ ...segmentDraft, [info.path]: e.target.value })}
 								aria-label="Your version of the instructions"
 								placeholder="Add your own instructions…"
-								className="h-24 w-full resize-y rounded-md border border-input bg-background p-2 font-ui text-sm text-foreground placeholder:text-muted-foreground"
+								className="h-24 w-full resize-y rounded-md border border-rule bg-paper p-2 font-sans text-sm text-ink placeholder:text-faint"
 							/>
 						</div>
 						<div className="flex items-center gap-3">
@@ -561,8 +561,8 @@ fetch("/api/models")
 								onClick={() => void saveSegment(info.path, segmentDraft[info.path] ?? "")}
 								className={
 									dirty
-										? "text-sm text-foreground underline-offset-2 hover:underline pointer-coarse:min-h-11"
-										: "cursor-not-allowed text-sm text-muted-foreground underline-offset-2 pointer-coarse:min-h-11"
+										? "text-sm text-ink underline-offset-2 hover:underline pointer-coarse:min-h-11"
+										: "cursor-not-allowed text-sm text-faint underline-offset-2 pointer-coarse:min-h-11"
 								}
 							>
 								Save
@@ -572,7 +572,7 @@ fetch("/api/models")
 									type="button"
 									onClick={() => void deleteSegment(info.path)}
 									aria-label={`Delete your version of ${info.path}`}
-									className="text-sm text-muted-foreground underline-offset-2 hover:text-destructive hover:underline pointer-coarse:min-h-11"
+									className="text-sm text-faint underline-offset-2 hover:text-red hover:underline pointer-coarse:min-h-11"
 								>
 									Delete
 								</button>
@@ -584,7 +584,7 @@ fetch("/api/models")
 							    open at a time (openSegment), so one shared
 							    status reads unambiguously. */}
 							{segmentStatus && (
-								<p role="status" className="text-sm text-muted-foreground" data-testid="segment-status">
+								<p role="status" className="text-sm text-faint" data-testid="segment-status">
 									{segmentStatus}
 								</p>
 							)}
@@ -762,7 +762,7 @@ dimmed={!graphOn}
 							<div
 								role="radiogroup"
 								aria-label="Quizzing mechanics"
-								className="flex rounded-md border border-input bg-background p-0.5"
+								className="flex rounded-md border border-rule bg-paper p-0.5"
 								>
 								{(["choice", "free"] as const).map((m) => {
 									const active = m === "free" ? free : !free;
@@ -776,7 +776,7 @@ dimmed={!graphOn}
 											onClick={() => onSectionChange(composeQuizMechanics(agent, m))}
 											className={cn(
 												"h-8 rounded-md px-3 text-sm font-medium transition-colors pointer-coarse:h-11",
-												active ? "bg-accent text-foreground" : "text-ink-2 hover:text-foreground",
+												active ? "bg-shelf text-ink" : "text-graphite hover:text-ink",
 											)}
 										>
 											{m === "choice" ? "Multiple choice" : "Free recall"}
@@ -830,7 +830,7 @@ dimmed={!anyKey}
 										preferredSide="down"
 											anchorTestid="search-engine-trigger"
 										testid="search-engine-menu"
-										menuClass="flex w-44 flex-col gap-0.5 rounded-lg bg-popover p-2 text-sm"
+										menuClass="flex w-44 flex-col gap-0.5 rounded-xl bg-paper shadow-lift p-2 text-sm"
 									>
 										{engineOption("auto", "Automatic", engine === null, null, () => {
 											onSectionChange(composeSearchEngine(agent, null));
@@ -899,11 +899,11 @@ dimmed={!anyKey}
 						    order. */}
 						{sectionedSegments(prompts).map((section) => (
 							<div key={section.id} data-testid={`prompt-section-${section.id}`}>
-								<h4 className="mb-1 text-sm font-medium text-foreground">
+								<h4 className="mb-1 text-sm font-medium text-ink">
 									{section.label}
 								</h4>
 								{section.hint && (
-									<p className="mb-1 text-sm text-muted-foreground">{section.hint}</p>
+									<p className="mb-1 text-sm text-faint">{section.hint}</p>
 								)}
 								<div className="flex flex-col gap-2">
 									{section.segments.map((info) => segmentRow(info))}

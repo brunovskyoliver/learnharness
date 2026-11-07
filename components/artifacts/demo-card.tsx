@@ -8,7 +8,6 @@ import { ChatActionsContext } from "@/components/chat";
 import { downloadFile, slugFilename } from "@/components/artifacts/download";
 import { DispatchCard } from "@/components/artifacts/dispatch-card";
 import { kitSpecOf, injectDemoTheme, DEMO_APPEARANCE_PROPERTIES, demoAppearanceVars, type ArtifactPartProps, type DemoResult, type DemoTokenizeRequest, type DemoTokensReply } from "@/src/core";
-import { useAppearance } from "@/components/settings/appearance";
 import { useDemoPresentation } from "@/components/artifacts/demo-presentation";
 import { useDemoPanel } from "@/components/artifacts/demo-panel-context";
 
@@ -142,7 +141,7 @@ export function DemoOutputCard({
 	const result = output as DemoResult | undefined;
 	if (!result || typeof result.html !== "string" || typeof result.title !== "string") {
 		return (
-			<div className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
+			<div className="rounded-lg border bg-shelf p-4 text-sm text-faint">
 				Demo completed, but the result could not be displayed.
 			</div>
 		);
@@ -150,12 +149,12 @@ export function DemoOutputCard({
 	const failed = result.html.length === 0;
 	if (failed) {
 		return (
-			<div className="rounded-xl border bg-card p-4 text-card-foreground" data-testid="demo-card-failed">
-				<div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+			<div className="rounded-lg border bg-shelf p-4 text-ink" data-testid="demo-card-failed">
+				<div className="flex items-center gap-2 text-xs font-medium text-faint">
 					Demo
-					<span className="rounded bg-destructive/15 px-1.5 py-0.5 text-destructive">failed</span>
+					<span className="rounded bg-red/15 px-1.5 py-0.5 text-red">failed</span>
 				</div>
-				<p className="mt-2 text-sm text-muted-foreground">{result.notes ?? "The demo could not be built."}</p>
+				<p className="mt-2 text-sm text-faint">{result.notes ?? "The demo could not be built."}</p>
 			</div>
 		);
 	}
@@ -179,7 +178,6 @@ export function DemoFrame({
 	variant?: "card" | "panel";
 }) {
 	const actions = useContext(ChatActionsContext);
-	const { appearance } = useAppearance();
 	const panel = useDemoPanel();
 	const iframeRef = useRef<HTMLIFrameElement | null>(null);
 	const dialogRef = useRef<HTMLDialogElement | null>(null);
@@ -208,10 +206,10 @@ export function DemoFrame({
 	}, [inWorkspace, state.height]);
 	useEffect(() => {
 		const sendAppearance = () => {
-			const size = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--lh-prose-size")) || 17;
+			const size = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--note-size")) || 17;
 			iframeRef.current?.contentWindow?.postMessage({ type: "lh-demo-size", size }, "*");
 			const styles = getComputedStyle(document.documentElement);
-			const vars = demoAppearanceVars((name) => styles.getPropertyValue(name), appearance.fontFamily);
+			const vars = demoAppearanceVars((name) => styles.getPropertyValue(name));
 			iframeRef.current?.contentWindow?.postMessage({ type: "lh-demo-theme", vars }, "*");
 		};
 		// The paper theme lives on <html> (feature 025); "system" follows the OS.
@@ -222,7 +220,7 @@ export function DemoFrame({
 		iframeRef.current?.addEventListener("load", sendAppearance);
 		sendAppearance();
 		return () => { observer.disconnect(); scheme?.removeEventListener("change", sendAppearance); iframeRef.current?.removeEventListener("load", sendAppearance); };
-	}, [appearance.fontFamily]);
+	}, []);
 	// Brightness inversion (owner, 2026-10-07): the switch state PERSISTS on
 	// the steer record (details.ui.inverted) — seeded here, written through
 	// the silent artifact-ui route on toggle. Without a chat page (tests,
@@ -274,7 +272,7 @@ export function DemoFrame({
 	}, []);
 
 	const controls = (
-		<div className="flex shrink-0 items-center gap-1.5" style={hasMlPanels ? { "--ring": "var(--foreground)" } as React.CSSProperties : undefined}>
+		<div className="flex shrink-0 items-center gap-1.5" style={hasMlPanels ? { "--nb-focus": "var(--ink)" } as React.CSSProperties : undefined}>
 			<button type="button" aria-label={focused ? "Close expanded demo" : "Expand demo"} onClick={(event) => { if (!focused) focusInvoker.current = event.currentTarget; focusOrigin.current = dialogRef.current?.getBoundingClientRect() ?? null; setFocused(!focused); }} className="ui-icon-button">{focused ? <XIcon className="ui-icon" /> : <MaximizeIcon className="ui-icon" />}</button>
 			<button type="button" aria-label="Invert demo brightness" title="Invert colors" aria-pressed={inverted} onClick={() => toggleInverted(!inverted)} className="ui-icon-button"><InvertDiscIcon className="ui-icon" /></button>
 			<button
@@ -326,7 +324,7 @@ export function DemoFrame({
 				scrolling={inWorkspace || focused ? "auto" : "no"}
 				// White backing only under inversion (it flips to black); dark
 				// demos sit on the card color.
-				className={`w-full ${inverted ? "bg-white" : "bg-background"}`}
+				className={`w-full ${inverted ? "bg-white" : "bg-paper"}`}
 				// content-box: the bridge reports the CONTENT height — with the
 				// preflight's border-box the 2px border would eat into it and clip
 				// the bottom of the demo (smoke finding, 2026-10-07).
@@ -343,16 +341,16 @@ export function DemoFrame({
 	);
 
 	return (
-		<div className="lh-breakout demo-artifact py-4 text-foreground" data-testid="demo-card">
+		<div className="lh-breakout demo-artifact py-4 text-ink" data-testid="demo-card">
 			{/* While the workspace shows this demo, its place in the lesson is one
 			    row (feature 001); focus without the workspace keeps the preview
 			    box so the reading position holds. */}
 			{inWorkspace && <button type="button" data-testid="demo-inline-row" className="demo-inline-row" onClick={() => { if (messageId) panel?.open(messageId); }}>
 				{/* The image is an in-memory sandbox snapshot, not an optimizable URL. */}
 				{/* eslint-disable-next-line @next/next/no-img-element */}
-				{preview && <img src={preview} alt="" className="h-8 w-12 shrink-0 rounded-sm object-cover" />}
-				<span className="flex min-w-0 flex-1 flex-col text-left"><span className="truncate text-base font-medium">{title}</span><span className="text-sm text-muted-foreground">Open in workspace</span></span>
-				<ArrowRightIcon aria-hidden="true" className="ui-icon text-muted-foreground" />
+				{preview && <img src={preview} alt="" className="h-8 w-12 shrink-0 rounded-md object-cover" />}
+				<span className="flex min-w-0 flex-1 flex-col text-left"><span className="truncate text-md font-medium">{title}</span><span className="text-sm text-faint">Open in workspace</span></span>
+				<ArrowRightIcon aria-hidden="true" className="ui-icon text-faint" />
 			</button>}
 			{focused && !inWorkspace && <div className="demo-inline-preview" style={{ minHeight: previewHeight.current }}>
 				{/* eslint-disable-next-line @next/next/no-img-element */}
@@ -386,7 +384,7 @@ export function DemoErrorChip({
 }) {
 	return (
 		<div
-			className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+			className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-red/10 px-3 py-2 text-sm text-red"
 			data-testid="demo-error-chip"
 		>
 			<span className="font-medium">This demo threw an error</span>
@@ -397,7 +395,7 @@ export function DemoErrorChip({
 				<button
 					type="button"
 					onClick={onSend}
-					className="rounded-md border border-destructive/40 px-2 py-1 text-xs font-medium hover:bg-destructive/15"
+					className="rounded-md border border-red/40 px-2 py-1 text-xs font-medium hover:bg-red/15"
 					data-testid="demo-error-send"
 				>
 					Send to teacher

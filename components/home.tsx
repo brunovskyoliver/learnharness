@@ -160,7 +160,7 @@ export function Home({
 			<div data-testid="home-scroll" className="min-h-0 flex-1 overflow-y-auto">
 				<div className="mx-auto flex w-full max-w-[52rem] flex-col gap-8 px-4 pb-12 pt-3 sm:gap-10 sm:pt-11">
 					<section aria-labelledby={startId} className="flex flex-col gap-3 sm:gap-4">
-						<h1 id={startId} className="font-title text-2xl font-medium leading-[1.2] tracking-[-0.3px]">What do you want to learn?</h1>
+						<h1 id={startId} className="tracking-title text-2xl font-medium leading-[1.2]">What do you want to learn?</h1>
 						<div>
 							{/* The pick bar (owner vision, 2026-10-04): the chain
 							    table's selection is PERSISTENT — picked
@@ -203,7 +203,7 @@ export function Home({
 												<SetupModelsButton onOpen={() => setSetupOpen(true)} />
 											) : undefined}
 											leadingSlot={
-												<div className="flex h-9 items-center gap-0.5 rounded-[8px] bg-background p-[3px]" data-testid="home-mode-switch">
+												<div className="flex h-9 items-center gap-0.5 rounded-md bg-paper p-[3px]" data-testid="home-mode-switch">
 													{(["teach", "practice"] as const).map((m) => (
 														<button
 															key={m}
@@ -212,10 +212,10 @@ export function Home({
 															onClick={() => setMode(m)}
 															aria-pressed={mode === m}
 															className={
-																"flex h-[30px] items-center gap-1.5 rounded-sm px-2 text-sm font-medium transition-colors sm:px-3 " +
+																"flex h-[30px] items-center gap-1.5 rounded-md px-2 text-sm font-medium transition-colors sm:px-3 " +
 																(mode === m
-																	? "bg-accent text-foreground"
-																	: "text-ink-2 hover:text-foreground")
+																	? "bg-shelf text-ink"
+																	: "text-graphite hover:text-ink")
 															}
 														>
 															{/* Narrow screens: icons only (the sidebar's session
@@ -325,7 +325,7 @@ function GraphSection({
 		<section aria-labelledby={headingId} data-testid="graph-section" className="flex flex-col gap-2.5 sm:gap-3">
 			<div className="flex flex-wrap items-center gap-x-1 gap-y-1 sm:gap-x-2.5">
 				<h2 id={headingId} className="flex-1 whitespace-nowrap text-xl font-semibold leading-[1.3] sm:flex-none">Knowledge graph</h2>
-				{statsLabel && <span data-testid="graph-stats" className="text-sm font-medium text-muted-foreground max-sm:hidden">{statsLabel}</span>}
+				{statsLabel && <span data-testid="graph-stats" className="text-sm font-medium text-faint max-sm:hidden">{statsLabel}</span>}
 				<span className="hidden flex-1 sm:block" aria-hidden="true" />
 				<input
 					ref={fileInputRef}

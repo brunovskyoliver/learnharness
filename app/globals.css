@@ -37,7 +37,7 @@
 	height: 2px;
 	width: 0.75rem;
 	border-radius: 1px;
-	background: var(--muted-foreground);
+	background: var(--faint);
 	opacity: 0.4;
 	transition: width 160ms ease-out, opacity 160ms ease-out;
 }
@@ -47,7 +47,7 @@
 }
 
 .session-turn-marker:is(:hover, :focus-visible, [aria-current="step"]) > span {
-	background: var(--foreground);
+	background: var(--ink);
 	opacity: 0.85;
 }
 
@@ -59,7 +59,7 @@
 	flex-direction: column;
 	gap: 0.375rem;
 	border-radius: var(--radius-lg);
-	background: var(--popover);
+	background: var(--paper);
 	padding: 0.875rem 1rem;
 	font-size: 0.875rem;
 	line-height: 1.5;
@@ -94,12 +94,11 @@
  *     carries its own line-height); components never invent pixel sizes.
  *   - Radii (feature 025): 8 controls / 10 cards / 12 menus / 16 the
  *     settings modal.
- *   - Emphasis colors live in tokens (--lh-ink-strong / --lh-ink-italic) so a
- *     future settings UI reassigns them (configurable per the owner).
+ *   - Emphasis colors are the paper ink (feature 025).
  */
 
 /* Keyboard-only ring (polish pass 2026-10-26, superseding the 2026-10-01
-   no-ring law): controls reached by keyboard get a 1px --ring outline.
+   no-ring law): controls reached by keyboard get a 1px --nb-focus outline.
    The old law's bug (a CLICKED sidebar session lit up when the quiz's
    ←/→ were pressed, because :focus-visible re-evaluates on key input) is
    fixed at its root instead: usePointerBlur (focus-hygiene.ts) drops
@@ -115,7 +114,7 @@
 		outline: none;
 	}
 	:where(button, a[href], input, textarea, select, [contenteditable="true"], summary, [role="button"], [role="tab"], [role="option"], [role="radio"], [role="checkbox"], [role="menuitem"], [role="switch"], [tabindex]:not([tabindex="-1"])):focus-visible {
-		outline: 1px solid var(--ring);
+		outline: 1px solid var(--nb-focus);
 		outline-offset: 2px;
 	}
 }
@@ -133,11 +132,11 @@
    strip, prompt body, answer well, toolbar). The shell never takes the
    focus ring; the answer well does. */
 .prompt-shell {
-	--prompt-surface: var(--card);
-	--prompt-muted: var(--muted-foreground);
-	--prompt-action: var(--primary);
-	--prompt-action-hover: color-mix(in srgb, var(--primary) 88%, var(--foreground));
-	--prompt-action-foreground: var(--primary-foreground);
+	--prompt-surface: var(--shelf);
+	--prompt-muted: var(--faint);
+	--prompt-action: var(--ink);
+	--prompt-action-hover: color-mix(in srgb, var(--ink) 88%, var(--paper));
+	--prompt-action-foreground: var(--paper);
 	border-radius: var(--radius-lg);
 	background: var(--prompt-surface);
 }
@@ -146,12 +145,12 @@
 	overflow-x: hidden;
 	overflow-y: auto;
 	white-space: pre-wrap;
-	color: var(--foreground);
-	caret-color: var(--foreground);
+	color: var(--ink);
+	caret-color: var(--ink);
 }
 
 .prompt-input::placeholder {
-	color: var(--prompt-muted, var(--muted-foreground));
+	color: var(--prompt-muted, var(--faint));
 	opacity: 1;
 	/* The caret sits at the text start; the gap keeps it off the
 	   placeholder's first letter (owner, 2026-10-28). */
@@ -170,9 +169,9 @@
 .turn-label {
 	flex-shrink: 0;
 	border-radius: var(--radius-sm);
-	background: color-mix(in srgb, var(--primary) 14%, transparent);
+	background: color-mix(in srgb, var(--bulb) 14%, transparent);
 	padding: 2px 8px;
-	color: var(--primary);
+	color: var(--bulb);
 	font-size: var(--text-sm);
 	font-weight: 600;
 	line-height: 1.4;
@@ -180,8 +179,8 @@
 
 .turn-kind {
 	flex-shrink: 0;
-	color: var(--ink-2);
-	font-size: 14px;
+	color: var(--graphite);
+	font-size: var(--text-md);
 	font-weight: 500;
 }
 
@@ -222,19 +221,19 @@
 	align-items: center;
 	justify-content: center;
 	border-radius: 50%;
-	background: var(--prompt-action, var(--primary));
-	color: var(--prompt-action-foreground, var(--primary-foreground));
+	background: var(--prompt-action, var(--ink));
+	color: var(--prompt-action-foreground, var(--paper));
 	cursor: pointer;
 	transition: background-color 160ms ease, color 160ms ease;
 }
 
 .prompt-submit:hover:not(:disabled) {
-	background: var(--prompt-action-hover, var(--primary));
+	background: var(--prompt-action-hover, var(--ink));
 }
 
 .prompt-submit:disabled {
-	background: var(--accent);
-	color: var(--muted-foreground);
+	background: var(--shelf);
+	color: var(--faint);
 	cursor: default;
 }
 
@@ -247,33 +246,33 @@
 	justify-content: center;
 	gap: 8px;
 	border-radius: var(--radius-sm);
-	background: var(--prompt-action, var(--primary));
+	background: var(--prompt-action, var(--ink));
 	padding: 0 16px;
-	color: var(--prompt-action-foreground, var(--primary-foreground));
-	font-size: var(--text-base);
+	color: var(--prompt-action-foreground, var(--paper));
+	font-size: var(--text-md);
 	font-weight: 600;
 	cursor: pointer;
 	transition: background-color 160ms ease, color 160ms ease;
 }
 
 .prompt-primary:hover:not(:disabled) {
-	background: var(--prompt-action-hover, var(--primary));
+	background: var(--prompt-action-hover, var(--ink));
 }
 
 .prompt-primary:disabled {
-	background: var(--accent);
-	color: var(--muted-foreground);
+	background: var(--shelf);
+	color: var(--faint);
 	cursor: default;
 }
 
 .prompt-primary[data-quiet] {
-	background: var(--accent);
-	color: var(--foreground);
+	background: var(--shelf);
+	color: var(--ink);
 	font-weight: 500;
 }
 
 .prompt-primary[data-quiet]:hover:not(:disabled) {
-	background: color-mix(in srgb, var(--accent) 80%, var(--foreground));
+	background: color-mix(in srgb, var(--shelf) 80%, var(--ink));
 }
 
 .prompt-secondary {
@@ -283,16 +282,16 @@
 	align-items: center;
 	border-radius: var(--radius-sm);
 	padding: 0 14px;
-	color: var(--ink-2);
-	font-size: var(--text-base);
+	color: var(--graphite);
+	font-size: var(--text-md);
 	font-weight: 500;
 	cursor: pointer;
 	transition: background-color 160ms ease, color 160ms ease;
 }
 
 .prompt-secondary:hover:not(:disabled) {
-	background: var(--accent);
-	color: var(--foreground);
+	background: var(--shelf);
+	color: var(--ink);
 }
 
 /* Home's waiting rows (feature 002). Phones stack kind, a two-line teaser,
@@ -306,7 +305,7 @@
 	column-gap: 12px;
 	row-gap: 2px;
 	border-radius: var(--radius-lg);
-	background: var(--card);
+	background: var(--shelf);
 	padding: 12px 12px 12px 16px;
 }
 .waiting-row-kind { grid-area: kind; }
@@ -344,17 +343,17 @@
 	min-height: 36px;
 	align-items: center;
 	border-radius: var(--radius-sm);
-	background: var(--accent);
+	background: var(--shelf);
 	padding: 0 12px;
-	color: var(--foreground);
-	font-size: 14px;
+	color: var(--ink);
+	font-size: var(--text-md);
 	font-weight: 500;
 	cursor: pointer;
 	transition: background-color 160ms ease;
 }
 
 .prompt-setup:hover {
-	background: color-mix(in srgb, var(--accent) 80%, var(--foreground));
+	background: color-mix(in srgb, var(--shelf) 80%, var(--ink));
 }
 
 @media (pointer: coarse) {
@@ -363,7 +362,7 @@
 
 .prompt-hint {
 	padding: 0 6px;
-	color: var(--muted-foreground);
+	color: var(--faint);
 	font-size: var(--text-sm);
 	white-space: nowrap;
 }
@@ -385,8 +384,8 @@
 	gap: 6px;
 	border-radius: var(--radius-sm);
 	padding: 0 10px;
-	color: var(--ink-2);
-	font-size: 14px;
+	color: var(--graphite);
+	font-size: var(--text-md);
 	font-weight: 500;
 	cursor: pointer;
 	transition: background-color 160ms ease, color 160ms ease;
@@ -394,8 +393,8 @@
 
 .prompt-model-trigger:hover,
 .prompt-model-trigger[aria-expanded="true"] {
-	background: var(--accent);
-	color: var(--foreground);
+	background: var(--shelf);
+	color: var(--ink);
 }
 
 .prompt-model-trigger:disabled {
@@ -405,18 +404,18 @@
 
 .model-picker-panel,
 .reasoning-picker-panel {
-	--picker-surface: var(--popover);
-	--picker-border: var(--border);
-	--picker-muted: var(--muted-foreground);
-	--picker-selection: var(--accent);
-	--picker-focus: var(--ring);
+	--picker-surface: var(--paper);
+	--picker-border: var(--rule);
+	--picker-muted: var(--faint);
+	--picker-selection: var(--shelf);
+	--picker-focus: var(--nb-focus);
 	display: flex;
 	flex-direction: column;
 	border-radius: var(--radius-lg);
 	background: var(--picker-surface);
 	padding: 8px;
-	color: var(--foreground);
-	font-family: var(--font-ui);
+	color: var(--ink);
+	font-family: var(--font-sans);
 }
 
 .model-menu-content {
@@ -432,17 +431,17 @@
 	align-items: center;
 	gap: 10px;
 	margin: 0 4px 8px;
-	border-bottom: 1px solid var(--picker-border, var(--border));
+	border-bottom: 1px solid var(--picker-border, var(--rule));
 	padding: 4px 4px 8px;
-	color: var(--picker-muted, var(--muted-foreground));
+	color: var(--picker-muted, var(--faint));
 }
 
 .model-menu-search:focus-within {
-	border-bottom-color: var(--picker-focus, var(--ring));
+	border-bottom-color: var(--picker-focus, var(--nb-focus));
 }
 
 .model-menu-search input::placeholder {
-	color: var(--picker-muted, var(--muted-foreground));
+	color: var(--picker-muted, var(--faint));
 	opacity: 1;
 }
 
@@ -475,11 +474,11 @@
 .model-menu-option[data-active],
 .reasoning-menu-option:hover,
 .reasoning-menu-option[aria-checked="true"] {
-	background: var(--picker-selection, var(--accent));
+	background: var(--picker-selection, var(--shelf));
 }
 
 .model-menu-option[data-active] {
-	outline: 1px solid var(--picker-focus, var(--ring));
+	outline: 1px solid var(--picker-focus, var(--nb-focus));
 	outline-offset: -1px;
 }
 
@@ -489,7 +488,7 @@
 	align-items: baseline;
 	gap: 8px;
 	margin-top: 3px;
-	color: var(--picker-muted, var(--muted-foreground));
+	color: var(--picker-muted, var(--faint));
 	font-size: var(--text-sm);
 }
 
@@ -497,20 +496,20 @@
 	flex-shrink: 0;
 	margin: 8px 4px 0;
 	padding: 10px 8px 4px;
-	color: var(--picker-muted, var(--muted-foreground));
+	color: var(--picker-muted, var(--faint));
 	font-size: var(--text-xs);
 }
 
 .model-menu-empty {
 	padding: 24px 12px;
-	color: var(--picker-muted, var(--muted-foreground));
-	font-size: var(--text-base);
+	color: var(--picker-muted, var(--faint));
+	font-size: var(--text-md);
 	text-align: center;
 }
 
 .reasoning-menu-heading {
 	padding: 6px 10px 10px;
-	color: var(--picker-muted, var(--muted-foreground));
+	color: var(--picker-muted, var(--faint));
 	font-size: var(--text-sm);
 }
 
@@ -521,10 +520,10 @@
 	align-items: center;
 	justify-content: space-between;
 	gap: 16px;
-	border-radius: 6px;
+	border-radius: var(--radius-md);
 	padding: 8px 10px;
-	color: var(--foreground);
-	font-size: var(--text-base);
+	color: var(--ink);
+	font-size: var(--text-md);
 	text-align: left;
 	cursor: pointer;
 	transition: background-color 120ms ease;
@@ -547,33 +546,46 @@
 }
 
 /* The colours are the paper system's (app/paper.css, feature 025): tokens
-   on html.lh-paper, with the shadcn names as aliases. What stays here is
-   reading layout Study's components still read until phase 2. */
+   on html.lh-paper, with the shadcn names as aliases for components/ui and
+   third-party CSS. Reading prose follows the note size (--note-size). */
 :root {
-	--radius: 8px;
-	--lh-ink-strong: var(--foreground);
-	--lh-ink-italic: var(--foreground);
-	--lh-prose-size: 17px;
 	--lh-prose-leading: calc(27 / 17);
-	--lh-heading-weight: 700;
 }
 
 @theme inline {
 	/* Faces (app/fonts.ts, research R3): Instrument Sans for the interface and
 	   the learner, Newsreader for the AI's voice, the system mono for code.
-	   font-ui and font-prose stay as aliases of the sans until phase 2. */
-	--font-sans: var(--nb-font-sans), ui-sans-serif, system-ui, sans-serif;
-	--font-ui: var(--nb-font-sans), ui-sans-serif, system-ui, sans-serif;
-	--font-prose: var(--nb-font-sans), ui-sans-serif, system-ui, sans-serif;
+	   Faces are var() chains to app/fonts.ts and paper.css's --nb-mono. */
+	--font-sans: var(--nb-sans);
 	--font-voice: var(--nb-font-voice), Georgia, serif;
 	--font-mono: var(--nb-mono);
-	/* The paper type scale (research R4), from the sizes Notebook uses.
-	   --text-xs and --text-sm live in the non-inline @theme below so
-	   .lh-session-scale can still move them. */
+	/* Titles: the sans at 500 with Notebook's tracking. */
+	--tracking-title: -0.032em;
+	/* Radii: 8 controls, 10 cards and panels, 12 menus and the export
+	   dialog, 16 the settings modal; full only for dots and send. */
+	--radius-xs: 4px;
+	--radius-sm: 8px;
+	--radius-md: 8px;
+	--radius-lg: 10px;
+	--radius-xl: 12px;
+	--radius-2xl: 16px;
+	--radius: 8px;
+}
+
+/* The paper type scale (research R4), from the sizes Notebook uses. Static:
+   every step is emitted as a variable, so app/paper.css and
+   app/(app)/notebook/notebook.css (not compiled with this file) can read
+   var(--text-…). Inline: the utilities write the value itself, so
+   text-base follows a local --note-size. */
+@theme inline static {
 	--text-2xs: 11px;
 	--text-2xs--line-height: 1.4;
+	--text-xs: 12px;
+	--text-xs--line-height: 1.4;
 	--text-meta: 12.5px;
 	--text-meta--line-height: 1.4;
+	--text-sm: 13px;
+	--text-sm--line-height: 1.4;
 	--text-ui: 13.5px;
 	--text-ui--line-height: 1.35;
 	--text-md: 14px;
@@ -590,18 +602,9 @@
 	--text-2xl--line-height: 1.25;
 	--text-title: calc(var(--note-size) * 2.45);
 	--text-title--line-height: 1.12;
-	/* Study's 40px step until phase 2 moves its two uses to text-title. */
-	--text-3xl: calc(var(--note-size) * 2.45);
-	--text-3xl--line-height: 1.12;
-	/* Radii: 8 controls, 10 cards and panels, 12 menus and the export
-	   dialog, 16 the settings modal; full only for dots and send. */
-	--radius-xs: 4px;
-	--radius-sm: 8px;
-	--radius-md: 8px;
-	--radius-lg: 10px;
-	--radius-xl: 12px;
-	--radius-2xl: 16px;
-	--radius: 8px;
+}
+
+@theme inline {
 	/* Lift: floating surfaces only. */
 	--shadow-lift: var(--lift);
 	/* Paper colours (app/paper.css). */
@@ -615,6 +618,7 @@
 	--color-riddle: var(--riddle);
 	--color-bulb: var(--bulb);
 	--color-focus: var(--nb-focus);
+	--color-backdrop: var(--nb-backdrop);
 	--color-gray: var(--text-gray);
 	--color-brown: var(--text-brown);
 	--color-red: var(--text-red);
@@ -623,31 +627,30 @@
 	--color-blue: var(--text-blue);
 	--color-purple: var(--text-purple);
 	/* The shadcn names, through paper.css's aliases, until phase 2. */
-	--color-background: var(--background);
-	--color-foreground: var(--foreground);
-	--color-card: var(--card);
-	--color-card-foreground: var(--card-foreground);
-	--color-popover: var(--popover);
-	--color-popover-foreground: var(--popover-foreground);
-	--color-primary: var(--primary);
-	--color-primary-foreground: var(--primary-foreground);
-	--color-secondary: var(--secondary);
-	--color-secondary-foreground: var(--secondary-foreground);
-	--color-muted: var(--muted);
-	--color-muted-foreground: var(--muted-foreground);
-	--color-accent: var(--accent);
-	--color-accent-foreground: var(--accent-foreground);
-	--color-destructive: var(--destructive);
-	--color-success: var(--success);
-	--color-warning: var(--warning);
-	--color-border: var(--border);
-	--color-input: var(--input);
-	--color-ring: var(--ring);
-	--color-ink-2: var(--ink-2);
+	--color-background: var(--paper);
+	--color-foreground: var(--ink);
+	--color-card: var(--shelf);
+	--color-card-foreground: var(--ink);
+	--color-popover: var(--paper);
+	--color-popover-foreground: var(--ink);
+	--color-primary: var(--ink);
+	--color-primary-foreground: var(--paper);
+	--color-secondary: var(--shelf);
+	--color-secondary-foreground: var(--ink);
+	--color-muted: var(--shelf);
+	--color-muted-foreground: var(--faint);
+	--color-accent: var(--shelf);
+	--color-accent-foreground: var(--ink);
+	--color-destructive: var(--text-red);
+	--color-success: var(--text-green);
+	--color-warning: var(--bulb);
+	--color-border: var(--rule);
+	--color-input: var(--rule);
+	--color-ring: var(--nb-focus);
 }
 
 * {
-	border-color: var(--color-border);
+	border-color: var(--rule);
 }
 
 body {
@@ -660,7 +663,7 @@ body {
    reading column inside it; demos and visuals can use the full shell. */
 :root {
 	/* Adjacent panes share the canvas; raised and hover roles stay distinct. */
-	--lh-sidebar: var(--background);
+	--lh-sidebar: var(--paper);
 	--lh-measure: 52rem;
 	--lh-wide: 52rem;
 }
@@ -675,24 +678,18 @@ body {
 .lh-prose {
 	min-width: 0;
 	overflow-wrap: anywhere;
-	font-family: var(--font-prose);
-	font-size: var(--lh-prose-size);
+	font-family: var(--font-sans);
+	font-size: var(--note-size);
 	line-height: var(--lh-prose-leading);
 }
 
-/* Titles: the display serif at a reading weight, never black. */
-.font-title {
-	font-family: var(--font-title);
-	font-weight: 500;
-}
-
 .lh-prose :where(strong, b) {
-	color: var(--lh-ink-strong);
+	color: var(--ink);
 	font-weight: 700;
 }
 
 .lh-prose :where(em, i) {
-	color: var(--lh-ink-italic);
+	color: var(--ink);
 }
 
 /* Markdown lists indent from the prose edge (owner ask, 2026-09-24):
@@ -705,15 +702,14 @@ body {
 	padding-left: 1.5rem;
 }
 
-/* Markdown headings follow the appearance preference, defaulting to 700.
-   Lesson-level headings take the title face, capped at 600 so the serif
-   never goes black. */
+/* Markdown headings: 700, lesson-level headings 600 (phase 4 sets them
+   in the voice). */
 .lh-prose :where(h1, h2, h3, h4, h5, h6) {
-	font-weight: var(--lh-heading-weight, 700);
+	font-weight: 700;
 }
 .lh-prose :where(h1, h2) {
-	font-family: var(--font-title);
-	font-weight: min(var(--lh-heading-weight, 700), 600);
+	font-family: var(--font-sans);
+	font-weight: 600;
 	letter-spacing: -0.01em;
 }
 /* Heading sizes are relative to the reading size: DESIGN.md's 30 and 22 at the 17px default,
@@ -728,8 +724,8 @@ body {
 	width: 100%;
 	max-width: 76ch;
 	margin-inline: auto;
-	font-family: var(--font-prose);
-	font-size: var(--lh-prose-size);
+	font-family: var(--font-sans);
+	font-size: var(--note-size);
 }
 .lh-reading .lh-prose > :where(p, ul, ol, blockquote) {
 	margin-block: 0 1rem;
@@ -744,8 +740,8 @@ body {
 .lh-input {
 	min-width: 0;
 	overflow-wrap: anywhere;
-	font-family: var(--font-prose);
-	font-size: var(--lh-prose-size);
+	font-family: var(--font-sans);
+	font-size: var(--note-size);
 	line-height: 1.25;
 }
 
@@ -763,13 +759,13 @@ body {
 
 /* Wide tables: fade the edge that hides more columns (md-blocks sets data-clip). */
 .lh-table-scroll[data-clip="end"] {
-	mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
+	mask-image: linear-gradient(to right, black calc(100% - 48px), transparent);
 }
 .lh-table-scroll[data-clip="start"] {
-	mask-image: linear-gradient(to left, #000 calc(100% - 48px), transparent);
+	mask-image: linear-gradient(to left, black calc(100% - 48px), transparent);
 }
 .lh-table-scroll[data-clip="both"] {
-	mask-image: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent);
+	mask-image: linear-gradient(to right, transparent, black 48px, black calc(100% - 48px), transparent);
 }
 .lh-table-scroll:focus-visible {
 	/* The overflow fade must not hide the keyboard focus boundary. */
@@ -829,7 +825,7 @@ body {
 /* Token the streamdown utilities reference (code-block/mermaid chrome uses
  * bg-sidebar / border-sidebar): map it onto the app's card surface. */
 @theme inline {
-	--color-sidebar: var(--card);
+	--color-sidebar: var(--shelf);
 }
 
 /* Diagrams: keep wide charts inside the content column. The svg carries
@@ -842,14 +838,14 @@ body {
 /* Pele diagram theme (ui-v2): the app's own tokens, applied live. */
 .pele {
 	--pele-bg: transparent;
-	--pele-fg: var(--foreground);
-	--pele-muted: var(--muted-foreground);
-	--pele-line: color-mix(in oklab, var(--foreground) 55%, transparent);
-	--pele-surface: var(--card);
-	--pele-surface-alt: var(--accent);
-	--pele-border: var(--border);
-	--pele-accent: var(--foreground);
-	--pele-error: var(--destructive);
+	--pele-fg: var(--ink);
+	--pele-muted: var(--faint);
+	--pele-line: color-mix(in oklab, var(--ink) 55%, transparent);
+	--pele-surface: var(--shelf);
+	--pele-surface-alt: var(--shelf);
+	--pele-border: var(--rule);
+	--pele-accent: var(--ink);
+	--pele-error: var(--text-red);
 	--pele-radius: 6px;
 }
 
@@ -874,9 +870,9 @@ body {
 .md-code-panel {
 	margin-block: 0.65rem;
 	overflow: hidden;
-	border: 1px solid var(--border);
+	border: 1px solid var(--rule);
 	border-radius: var(--radius-sm);
-	background: var(--card);
+	background: var(--shelf);
 }
 .md-code-toolbar {
 	display: flex;
@@ -912,7 +908,7 @@ body {
 	display: block;
 }
 [data-streamdown="code-block-body"] code > span::before {
-	color: color-mix(in oklab, var(--foreground) 35%, transparent);
+	color: color-mix(in oklab, var(--ink) 35%, transparent);
 	font-size: 0.86em;
 }
 
@@ -922,7 +918,7 @@ body {
    edges). border-collapse merges the outer border with the row rules, so
    no edge doubles. (md-blocks supplies the wrapper + the copy corner.) */
 [data-streamdown="table"] {
-	border: 1px solid var(--border);
+	border: 1px solid var(--rule);
 	/* Tables HUG their contents (owner, callout round 2026-10-07): no more
 	   full-width stretch with dead space. max-content sizes to the cells
 	   (width:auto would still stretch — the classic table trap). No
@@ -933,7 +929,7 @@ body {
 	   visibly lagged the 16px chat text at streamdown's 12.5px text-sm).
 	   Unlayered CSS beats the cells' own utility-layer text-sm, and the
 	   :where keeps specificity zero — the override wins on layering alone. */
-	font-size: var(--lh-prose-size);
+	font-size: var(--note-size);
 }
 [data-streamdown="table"] :where(th, td) {
 	font-size: inherit;
@@ -959,14 +955,14 @@ body {
    its row (owner ask, 2026-09-19) — border-collapse merges it with the row
    rules and the outer border, no doubled lines anywhere. */
 [data-streamdown="table"] :where(th, td):not(:first-child) {
-	border-left: 1px solid var(--border);
+	border-left: 1px solid var(--rule);
 }
 [data-streamdown="table-header"] {
 	background: transparent;
-	border-bottom: 1px solid var(--border);
+	border-bottom: 1px solid var(--rule);
 }
 [data-streamdown="table-body"] [data-streamdown="table-row"] {
-	border-bottom: 1px solid var(--border);
+	border-bottom: 1px solid var(--rule);
 }
 
 /* The mermaid focus overlay's chart wrapper: the svg fills the wrapper
@@ -1143,25 +1139,6 @@ body {
 	max-width: max(0px, calc(100% - 5.5rem - var(--lh-wco-right, 0px)));
 }
 
-/* Not inline: .lh-session-scale overrides --text-xs and --text-sm at
-   runtime. --font-title (Study's titles) takes the voice face until phase 2
-   moves titles to the sans. */
-@theme {
-	--font-title: var(--nb-font-voice), Georgia, serif;
-	--text-xs: 12px;
-	--text-xs--line-height: 1.4;
-	--text-sm: 13px;
-	--text-sm--line-height: 1.4;
-}
-
-/* Labels inside a session follow the reading size: unchanged at the 17px
-   default, capped at 15/16px so chrome never competes with the lesson.
-   Sidebar, settings and the graph keep the fixed ladder. */
-.lh-session-scale {
-	--text-xs: clamp(12px, calc(var(--lh-prose-size) * 0.7), 15px);
-	--text-sm: clamp(13px, calc(var(--lh-prose-size) * 0.765), 16px);
-}
-
 /* Card enter (owner round, 2026-10-05): the transcript cards' one-shot
    mount — a subtle fade + 4px rise, the app's motion register (150ms,
    dock-variant/settings-pop taste). Nothing on update, nothing on
@@ -1193,8 +1170,8 @@ body {
 	scroll-margin-top: 1rem;
 }
 .lh-source-highlight {
-	background-color: var(--accent);
-	outline: 1px solid var(--border);
+	background-color: var(--shelf);
+	outline: 1px solid var(--rule);
 	border-radius: 0.25rem;
 }
 
@@ -1219,15 +1196,15 @@ body {
 }
 
 /* One live demo document, presented without moving or recreating its iframe. */
-.demo-live { margin: 0; padding: 0; border: 0; max-width: none; max-height: none; color: var(--foreground); background: var(--background); }
+.demo-live { margin: 0; padding: 0; border: 0; max-width: none; max-height: none; color: var(--ink); background: var(--paper); }
 .demo-live[open] { display: flex; flex-direction: column; }
 .demo-live-inline { position: static; width: 100%; overflow: visible; }
 .demo-live-workspace { position: fixed; z-index: 35; overflow: hidden; }
 .demo-live-focus { position: fixed; inset: 0; width: 100dvw; height: 100dvh; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); overflow: hidden; }
-.demo-live-focus::backdrop { background: var(--background); }
-.demo-inline-preview { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 16px; background: var(--card); border-radius: var(--radius-lg); }
-.demo-inline-row { display: flex; width: 100%; min-height: 56px; align-items: center; gap: 12px; padding: 10px 14px; border-radius: var(--radius-lg); background: var(--card); color: var(--foreground); cursor: pointer; transition: background-color 160ms ease; }
-.demo-inline-row:hover { background: var(--accent); }
+.demo-live-focus::backdrop { background: var(--paper); }
+.demo-inline-preview { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 16px; background: var(--shelf); border-radius: var(--radius-lg); }
+.demo-inline-row { display: flex; width: 100%; min-height: 56px; align-items: center; gap: 12px; padding: 10px 14px; border-radius: var(--radius-lg); background: var(--shelf); color: var(--ink); cursor: pointer; transition: background-color 160ms ease; }
+.demo-inline-row:hover { background: var(--shelf); }
 .demo-workspace { height: min(340px, 35dvh); }
 @media (min-width: 768px) { .demo-workspace { height: 100%; } }
 
@@ -1248,86 +1225,85 @@ body {
 	[data-pane-collapsed] { width: 0 !important; overflow: hidden; visibility: hidden; }
 	[data-pane-collapsed] > .lh-pane-inner { width: var(--lh-demo-w); flex: none; height: 100%; }
 }
-.lh-page-editor { min-height: 100%; padding: 0.5rem 0.75rem 3rem; white-space: pre-wrap; overflow-wrap: anywhere; outline: none; border-radius: 6px; }
+.lh-page-editor { min-height: 100%; padding: 0.5rem 0.75rem 3rem; white-space: pre-wrap; overflow-wrap: anywhere; outline: none; border-radius: var(--radius-md); }
 .lh-page-editor > * + *, .lh-page-editor li > * + *, .lh-page-editor blockquote > * + * { margin-top: 0.75em; }
 .lh-page-editor ul { list-style: disc; padding-left: 1.5em; }
 .lh-page-editor ol { list-style: decimal; padding-left: 1.5em; }
 .lh-page-editor li > p { margin: 0; }
-.lh-page-editor blockquote { color: var(--ink-2); padding-left: 1em; }
-.lh-page-editor a { text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--foreground) 40%, transparent); text-underline-offset: 3px; }
+.lh-page-editor blockquote { color: var(--graphite); padding-left: 1em; }
+.lh-page-editor a { text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--ink) 40%, transparent); text-underline-offset: 3px; }
 .lh-page-editor-host > div { display: flex; min-height: 100%; flex-direction: column; }
 .lh-page-editor-host > div > .lh-page-editor { flex: 1; }
-.lh-page-editor .tiptap-mathematics-render--editable { cursor: pointer; border-radius: 6px; }
-.lh-page-editor .tiptap-mathematics-render--editable:hover, .lh-page-editor .ProseMirror-selectednode.tiptap-mathematics-render { background: var(--accent); }
-.lh-page-editor .ProseMirror-selectednode { outline: 1px solid var(--ring); outline-offset: 1px; }
-.lh-page-editor .lh-math-source { border-radius: 6px; background: var(--card); font-family: var(--font-mono, monospace); font-size: 0.8125rem; line-height: 1.5; outline: 1px solid var(--ring); }
+.lh-page-editor .tiptap-mathematics-render--editable { cursor: pointer; border-radius: var(--radius-md); }
+.lh-page-editor .tiptap-mathematics-render--editable:hover, .lh-page-editor .ProseMirror-selectednode.tiptap-mathematics-render { background: var(--shelf); }
+.lh-page-editor .ProseMirror-selectednode { outline: 1px solid var(--nb-focus); outline-offset: 1px; }
+.lh-page-editor .lh-math-source { border-radius: var(--radius-md); background: var(--shelf); font-family: var(--font-mono, monospace); font-size: 0.8125rem; line-height: 1.5; outline: 1px solid var(--nb-focus); }
 .lh-page-editor div.lh-math-source { display: flex; flex-direction: column; padding: 0.5rem 0.75rem; }
 .lh-page-editor span.lh-math-source { display: inline-flex; max-width: 100%; padding: 0 0.25rem; vertical-align: baseline; }
-.lh-math-delimiter { color: var(--muted-foreground); user-select: none; }
-.lh-math-input { field-sizing: content; min-width: 2ch; max-width: 100%; resize: none; overflow: hidden; border: 0; background: transparent; color: var(--foreground); font: inherit; outline: none; }
+.lh-math-delimiter { color: var(--faint); user-select: none; }
+.lh-math-input { field-sizing: content; min-width: 2ch; max-width: 100%; resize: none; overflow: hidden; border: 0; background: transparent; color: var(--ink); font: inherit; outline: none; }
 div.lh-math-source > .lh-math-input { width: 100%; }
 @media (pointer: coarse) { .lh-page-editor .lh-math-source { font-size: 1rem; } }
 
 /* Page editor tools (feature 010): placeholder, toolbar, menus. Unavailable
    controls use muted ink, never opacity. */
-.lh-page-editor .lh-page-placeholder::before { content: attr(data-placeholder); float: left; height: 0; color: var(--muted-foreground); pointer-events: none; }
-[data-testid="page-toolbar"] .ui-icon-button:disabled { opacity: 1; color: var(--muted-foreground); }
+.lh-page-editor .lh-page-placeholder::before { content: attr(data-placeholder); float: left; height: 0; color: var(--faint); pointer-events: none; }
+[data-testid="page-toolbar"] .ui-icon-button:disabled { opacity: 1; color: var(--faint); }
 [data-testid="page-toolbar"] :is(button, select):focus-visible,
-[data-testid="page-table-controls"] button:focus-visible { outline: 1px solid var(--ring); outline-offset: -1px; }
+[data-testid="page-table-controls"] button:focus-visible { outline: 1px solid var(--nb-focus); outline-offset: -1px; }
 [data-testid="page-slash-menu"], [data-testid="page-link-popover"] { scrollbar-width: none; }
 /* The tutor's changes: a raised step behind what it wrote, removed text struck
    through in muted ink. Decorations only; never stored. */
-.lh-page-editor .lh-tutor-added { border-radius: 6px; background: var(--accent); box-decoration-break: clone; }
+.lh-page-editor .lh-tutor-added { border-radius: var(--radius-md); background: var(--shelf); box-decoration-break: clone; }
 /* Print (feature 010): only the page, on light paper. */
 #lh-print-root { display: none; }
 @media print {
 	html[data-lh-printing] body > :not(#lh-print-root) { display: none !important; }
-	html[data-lh-printing], html[data-lh-printing] body { background: #fff; }
+	html[data-lh-printing], html[data-lh-printing] body { background: var(--print-sheet); }
+	/* The light paper tokens for the printed page: app/paper.css, section 1.4. */
 	html[data-lh-printing] #lh-print-root {
-		--paper: #f8f7f4; --shelf: #f1f0ec; --code: #ebe9e3; --ink: #1d1c1a; --graphite: #5c5953; --faint: #716d67; --rule: #dedbd4;
-		--background: var(--paper); --foreground: var(--ink); --ink-2: var(--graphite); --muted-foreground: var(--faint); --card: var(--shelf); --accent: var(--shelf); --border: var(--rule); --input: var(--rule);
-		display: block; padding: 0; background: #fff; color: var(--ink);
+		display: block; padding: 0; background: var(--print-sheet); color: var(--ink);
 	}
 }
-.lh-page-editor .lh-tutor-removed { white-space: pre-wrap; color: var(--muted-foreground); text-decoration: line-through; user-select: none; }
+.lh-page-editor .lh-tutor-removed { white-space: pre-wrap; color: var(--faint); text-decoration: line-through; user-select: none; }
 @media (pointer: coarse) {
 	[data-testid="page-toolbar"] select, [data-testid="page-table-controls"] button { min-height: 44px; }
 }
-.lh-page-editor .inline-math-error, .lh-page-editor .block-math-error { color: var(--destructive); font-family: var(--font-mono, monospace); }
+.lh-page-editor .inline-math-error, .lh-page-editor .block-math-error { color: var(--text-red); font-family: var(--font-mono, monospace); }
 .lh-page-editor [data-type="block-math"] { overflow-x: auto; padding: 0.25rem 0; }
 .lh-page-editor table { border-collapse: collapse; }
-.lh-page-editor th, .lh-page-editor td { min-width: 5em; border: 1px solid var(--input); padding: 0.25rem 0.5rem; vertical-align: top; }
-.lh-page-editor .selectedCell { background: var(--accent); }
+.lh-page-editor th, .lh-page-editor td { min-width: 5em; border: 1px solid var(--rule); padding: 0.25rem 0.5rem; vertical-align: top; }
+.lh-page-editor .selectedCell { background: var(--shelf); }
 .lh-page-editor th p, .lh-page-editor td p { margin: 0; }
 .lh-page-editor .tableWrapper { overflow-x: auto; }
-.lh-page-editor pre { overflow-x: auto; border-radius: 6px; background: var(--card); padding: 0.5rem 0.75rem; font-family: var(--font-mono, monospace); font-size: 13px; }
+.lh-page-editor pre { overflow-x: auto; border-radius: var(--radius-md); background: var(--shelf); padding: 0.5rem 0.75rem; font-family: var(--font-mono, monospace); font-size: var(--text-sm); }
 .lh-page-editor ul[data-type="taskList"] { list-style: none; padding-left: 0; }
 .lh-page-editor ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 0.5rem; }
 .lh-page-editor ul[data-type="taskList"] li > * + * { margin-top: 0; }
 .lh-page-editor ul[data-type="taskList"] li > label { flex-shrink: 0; margin-top: calc((var(--lh-prose-leading) * 1em - 1rem) / 2); }
 .lh-page-editor ul[data-type="taskList"] li > div { flex: 1; min-width: 0; }
-.lh-page-editor ul[data-type="taskList"] input[type="checkbox"] { width: 1rem; height: 1rem; accent-color: var(--primary); }
-.lh-page-raw, .lh-page-raw-inline { color: var(--ink-2); font-size: 13px; }
-.lh-page-image { display: inline-block; max-width: 100%; border-radius: 6px; }
-.lh-page-image-missing { display: inline-block; border-radius: 6px; background: var(--card); padding: 0.25rem 0.5rem; color: var(--ink-2); font-size: 0.875em; }
-.lh-page-editor .ProseMirror-selectednode .lh-page-image, .lh-page-editor .lh-page-image-host.ProseMirror-selectednode { outline: 1px solid var(--ring); outline-offset: 2px; }
-.demo-live button:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.lh-page-editor ul[data-type="taskList"] input[type="checkbox"] { width: 1rem; height: 1rem; accent-color: var(--ink); }
+.lh-page-raw, .lh-page-raw-inline { color: var(--graphite); font-size: var(--text-sm); }
+.lh-page-image { display: inline-block; max-width: 100%; border-radius: var(--radius-md); }
+.lh-page-image-missing { display: inline-block; border-radius: var(--radius-md); background: var(--shelf); padding: 0.25rem 0.5rem; color: var(--graphite); font-size: 0.875em; }
+.lh-page-editor .ProseMirror-selectednode .lh-page-image, .lh-page-editor .lh-page-image-host.ProseMirror-selectednode { outline: 1px solid var(--nb-focus); outline-offset: 2px; }
+.demo-live button:focus-visible { outline: 2px solid var(--nb-focus); outline-offset: 3px; }
 
 /* Small chrome actions share geometry; data/chart icons keep their own sizes. */
 .ui-icon { width: 1rem; height: 1rem; flex-shrink: 0; stroke-width: 1.75; }
-.ui-icon-button { display: inline-flex; width: 2rem; height: 2rem; flex-shrink: 0; align-items: center; justify-content: center; border-radius: var(--radius); color: var(--muted-foreground); }
-.ui-icon-button:hover:not(:disabled), .ui-icon-button[aria-expanded="true"] { color: var(--foreground); background: var(--accent); }
+.ui-icon-button { display: inline-flex; width: 2rem; height: 2rem; flex-shrink: 0; align-items: center; justify-content: center; border-radius: var(--radius); color: var(--faint); }
+.ui-icon-button:hover:not(:disabled), .ui-icon-button[aria-expanded="true"] { color: var(--ink); background: var(--shelf); }
 .ui-icon-button:disabled { opacity: .5; cursor: default; }
-::selection { background: color-mix(in srgb, var(--foreground) 24%, var(--background)); color: var(--foreground); }
-:where(input, textarea, [contenteditable="true"]) { caret-color: var(--foreground); }
+::selection { background: color-mix(in srgb, var(--ink) 24%, var(--paper)); color: var(--ink); }
+:where(input, textarea, [contenteditable="true"]) { caret-color: var(--ink); }
 @media (pointer: coarse) {
 	.ui-icon-button, .prompt-submit { min-width: 44px; min-height: 44px; }
 }
 
 /* Settings: unavailable controls use the muted ink token, never opacity
    (owner, 2026-10-30). The row jump's highlight is a raised-2 step. */
-[data-settings-surface] [data-slot="button"]:disabled { opacity: 1; color: var(--muted-foreground); }
-[data-settings-jump] { background: var(--accent); }
+[data-settings-surface] [data-slot="button"]:disabled { opacity: 1; color: var(--faint); }
+[data-settings-jump] { background: var(--shelf); }
 [data-testid="settings-search-results"] button:focus-visible,
 [data-testid="settings-nav"] button:focus-visible { outline-offset: -1px; }
 
@@ -1373,20 +1349,20 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 [data-testid="toggle-tool-ml-visuals"],
 [data-testid="toggle-tool-model-hub"],
 [data-testid="toggle-tool-papers"] {
-	--ring: var(--foreground);
+	--nb-focus: var(--ink);
 }
 
 /* Owner-approved page citations keep the existing underline and visible focus. */
 .lh-reading .lh-prose a[href*="#page="] {
-	color: var(--foreground);
-	--ring: var(--foreground);
+	color: var(--ink);
+	--nb-focus: var(--ink);
 }
 
 /* The divider between a sidebar and the content, with its grip (owner, 2026-10-31). */
-.lh-pane-divider::before { content: ""; position: absolute; inset-block: 0; inset-inline-start: var(--lh-divider-at, 50%); width: 1px; background: var(--input); transition: background-color 160ms; }
-.lh-pane-divider::after { content: ""; position: absolute; top: 50%; inset-inline-start: var(--lh-divider-at, 50%); width: 9px; height: 16px; transform: translate(-4px, -50%); background: var(--background) repeating-linear-gradient(to bottom, var(--muted-foreground) 0 1px, transparent 1px 5px) center / 7px 16px no-repeat; transition: background-color 160ms; }
-.lh-pane-divider:hover::before, .lh-pane-divider[data-dragging]::before { background: var(--muted-foreground); }
-.lh-pane-divider:focus-visible::before { background: var(--ring); width: 2px; }
+.lh-pane-divider::before { content: ""; position: absolute; inset-block: 0; inset-inline-start: var(--lh-divider-at, 50%); width: 1px; background: var(--rule); transition: background-color 160ms; }
+.lh-pane-divider::after { content: ""; position: absolute; top: 50%; inset-inline-start: var(--lh-divider-at, 50%); width: 9px; height: 16px; transform: translate(-4px, -50%); background: var(--paper) repeating-linear-gradient(to bottom, var(--faint) 0 1px, transparent 1px 5px) center / 7px 16px no-repeat; transition: background-color 160ms; }
+.lh-pane-divider:hover::before, .lh-pane-divider[data-dragging]::before { background: var(--faint); }
+.lh-pane-divider:focus-visible::before { background: var(--nb-focus); width: 2px; }
 @media (prefers-reduced-motion: reduce) { .lh-pane-divider::before, .lh-pane-divider::after { transition: none; } }
 
 /* Long sessions (transcript-scroll-jank): the browser skips rendering rows and
@@ -1411,31 +1387,31 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 
 /* Note links, callouts and collapsible sections (feature 016). No side rules and
    no amber: raised steps and ink. A dangling link says so in words as well. */
-.lh-page-editor .lh-wiki-link { cursor: pointer; border-radius: 6px; color: var(--foreground); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--foreground) 40%, transparent); text-underline-offset: 3px; }
-.lh-page-editor .lh-wiki-link:hover { background: var(--accent); }
-.lh-page-editor .lh-wiki-link[data-state="missing"], .lh-page-editor .lh-wiki-link[data-state="deleted"] { color: var(--muted-foreground); text-decoration-style: dotted; text-decoration-color: currentColor; }
+.lh-page-editor .lh-wiki-link { cursor: pointer; border-radius: var(--radius-md); color: var(--ink); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--ink) 40%, transparent); text-underline-offset: 3px; }
+.lh-page-editor .lh-wiki-link:hover { background: var(--shelf); }
+.lh-page-editor .lh-wiki-link[data-state="missing"], .lh-page-editor .lh-wiki-link[data-state="deleted"] { color: var(--faint); text-decoration-style: dotted; text-decoration-color: currentColor; }
 .lh-page-editor .lh-wiki-link[data-state="deleted"] { text-decoration-line: line-through; }
 .lh-page-editor .lh-source-link { cursor: pointer; }
-.lh-page-editor .lh-source-gone { color: var(--muted-foreground); cursor: default; }
-.lh-page-editor .lh-source-gone-note { color: var(--muted-foreground); font-size: 0.8125rem; }
-.lh-page-editor .lh-callout { display: flex; flex-direction: column; gap: 0.25rem; border-radius: 10px; background: var(--card); padding: 0.5rem 0.75rem 0.75rem; }
+.lh-page-editor .lh-source-gone { color: var(--faint); cursor: default; }
+.lh-page-editor .lh-source-gone-note { color: var(--faint); font-size: 0.8125rem; }
+.lh-page-editor .lh-callout { display: flex; flex-direction: column; gap: 0.25rem; border-radius: 10px; background: var(--shelf); padding: 0.5rem 0.75rem 0.75rem; }
 .lh-page-editor .lh-callout-head { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
-.lh-page-editor .lh-callout-kind { height: 2rem; border-radius: 6px; background: transparent; padding-inline: 0.25rem; color: var(--ink-2); font-size: 0.8125rem; font-weight: 500; }
-.lh-page-editor .lh-callout-kind option { background: var(--popover); color: var(--foreground); }
-.lh-page-editor .lh-callout-title { height: 2rem; min-width: 6rem; flex: 1 1 8rem; border-radius: 6px; background: transparent; padding-inline: 0.25rem; color: var(--foreground); font-size: 0.9375rem; font-weight: 500; }
-.lh-page-editor .lh-callout-title::placeholder { color: var(--muted-foreground); font-weight: 400; }
+.lh-page-editor .lh-callout-kind { height: 2rem; border-radius: var(--radius-md); background: transparent; padding-inline: 0.25rem; color: var(--graphite); font-size: 0.8125rem; font-weight: 500; }
+.lh-page-editor .lh-callout-kind option { background: var(--paper); color: var(--ink); }
+.lh-page-editor .lh-callout-title { height: 2rem; min-width: 6rem; flex: 1 1 8rem; border-radius: var(--radius-md); background: transparent; padding-inline: 0.25rem; color: var(--ink); font-size: 0.9375rem; font-weight: 500; }
+.lh-page-editor .lh-callout-title::placeholder { color: var(--faint); font-weight: 400; }
 .lh-page-editor .lh-callout-body > * + * { margin-top: 0.75em; }
 .lh-page-editor .lh-collapsible { display: flex; align-items: flex-start; gap: 0.25rem; }
-.lh-page-editor .lh-collapsible-toggle { display: inline-flex; width: 2rem; height: 2rem; flex: none; align-items: center; justify-content: center; border-radius: 6px; color: var(--ink-2); }
-.lh-page-editor .lh-collapsible-toggle:hover { background: var(--accent); color: var(--foreground); }
+.lh-page-editor .lh-collapsible-toggle { display: inline-flex; width: 2rem; height: 2rem; flex: none; align-items: center; justify-content: center; border-radius: var(--radius-md); color: var(--graphite); }
+.lh-page-editor .lh-collapsible-toggle:hover { background: var(--shelf); color: var(--ink); }
 .lh-page-editor .lh-collapsible-toggle::before { content: ""; width: 0.5rem; height: 0.5rem; border-right: 1.75px solid currentColor; border-bottom: 1.75px solid currentColor; transform: rotate(-45deg); transition: transform 160ms; }
 .lh-page-editor .lh-collapsible[data-open="true"] > .lh-collapsible-toggle::before { transform: rotate(45deg); }
 .lh-page-editor .lh-collapsible-content { min-width: 0; flex: 1; }
 .lh-page-editor .lh-collapsible-content > * + * { margin-top: 0.75em; }
 .lh-page-editor .lh-collapsible[data-open="false"] > .lh-collapsible-content > :not(.lh-collapsible-summary) { display: none; }
 .lh-page-editor .lh-collapsible-summary { min-height: 2rem; line-height: 2rem; font-weight: 500; }
-.lh-page-editor .lh-collapsible-summary:has(> br:only-child)::before { content: "Section title"; float: left; height: 0; color: var(--muted-foreground); font-weight: 400; pointer-events: none; }
-.lh-page-editor :is(.lh-callout-kind, .lh-callout-title, .lh-collapsible-toggle):focus-visible { outline: 1px solid var(--ring); outline-offset: -1px; }
+.lh-page-editor .lh-collapsible-summary:has(> br:only-child)::before { content: "Section title"; float: left; height: 0; color: var(--faint); font-weight: 400; pointer-events: none; }
+.lh-page-editor :is(.lh-callout-kind, .lh-callout-title, .lh-collapsible-toggle):focus-visible { outline: 1px solid var(--nb-focus); outline-offset: -1px; }
 @media (pointer: coarse) {
 	.lh-page-editor :is(.lh-callout-kind, .lh-callout-title) { height: 2.75rem; }
 	.lh-page-editor .lh-collapsible-toggle { width: 2.75rem; height: 2.75rem; }
@@ -1444,15 +1420,15 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 @media (prefers-reduced-motion: reduce) { .lh-page-editor .lh-collapsible-toggle::before { transition: none; } }
 [data-testid="page-wiki-menu"], [data-testid="note-connections"] { scrollbar-width: none; }
 [data-testid="page-wiki-menu"]::-webkit-scrollbar, [data-testid="note-connections"]::-webkit-scrollbar { display: none; }
-[data-testid="note-connections"] button:focus-visible { outline: 1px solid var(--ring); outline-offset: -1px; }
+[data-testid="note-connections"] button:focus-visible { outline: 1px solid var(--nb-focus); outline-offset: -1px; }
 /* Features 019-020: a search match, a landed line and block. Ink, never the accent. */
-.lh-doc-mark { background: var(--accent); color: var(--foreground); border-radius: 2px; text-decoration: underline; text-underline-offset: 2px; }
-.lh-doc-line { display: inline; background: var(--accent); color: var(--foreground); border-radius: 2px; }
-.lh-jump-flash { background: var(--accent); border-radius: 6px; transition: background-color 240ms; }
+.lh-doc-mark { background: var(--shelf); color: var(--ink); border-radius: 2px; text-decoration: underline; text-underline-offset: 2px; }
+.lh-doc-line { display: inline; background: var(--shelf); color: var(--ink); border-radius: 2px; }
+.lh-jump-flash { background: var(--shelf); border-radius: var(--radius-md); transition: background-color 240ms; }
 @media (prefers-reduced-motion: reduce) { .lh-jump-flash { transition: none; } }
-.lh-passage-trigger { position: fixed; z-index: 40; display: inline-flex; height: 2rem; align-items: center; gap: 0.375rem; border-radius: 6px; background: var(--popover); padding-inline: 0.5rem; color: var(--foreground); font-size: 0.8125rem; }
-.lh-passage-trigger:hover { background: var(--card); }
-.lh-passage-trigger:focus-visible { outline: 1px solid var(--ring); outline-offset: 1px; }
+.lh-passage-trigger { position: fixed; z-index: 40; display: inline-flex; height: 2rem; align-items: center; gap: 0.375rem; border-radius: var(--radius-md); background: var(--paper); padding-inline: 0.5rem; color: var(--ink); font-size: 0.8125rem; }
+.lh-passage-trigger:hover { background: var(--shelf); }
+.lh-passage-trigger:focus-visible { outline: 1px solid var(--nb-focus); outline-offset: 1px; }
 @media (pointer: coarse) { .lh-passage-trigger { height: 2.75rem; padding-inline: 0.75rem; } }
 
 /* A diagram's full screen is the same element, so nothing remounts (feature 022). */

@@ -218,10 +218,10 @@ export function AppearanceSection({
 								aria-expanded={fontMenuOpen}
 								data-testid="font-trigger"
 								onClick={openFontMenu}
-								className="flex h-9 w-full min-w-20 items-center gap-2 rounded-md text-left border border-input bg-background px-3 font-ui text-sm text-foreground transition-colors hover:bg-accent pointer-coarse:h-11"
+								className="flex h-9 w-full min-w-20 items-center gap-2 rounded-md text-left border border-rule bg-paper px-3 font-sans text-sm text-ink transition-colors hover:bg-shelf pointer-coarse:h-11"
 							>
 								<span className="min-w-0 flex-1 truncate">{appearance?.fontFamily || DEFAULT_READING_FONT}</span>
-								<ChevronDownIcon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+								<ChevronDownIcon aria-hidden="true" className="size-3.5 shrink-0 text-faint" />
 							</button>
 						);
 						return fontMenuOpen ? (
@@ -237,7 +237,7 @@ export function AppearanceSection({
 							preferredSide="down"
 							anchorTestid="font-trigger"
 							testid="font-menu"
-							menuClass="flex w-[18rem] max-w-[calc(100vw-2rem)] flex-col gap-0.5 rounded-lg bg-popover p-2 text-sm"
+							menuClass="flex w-[18rem] max-w-[calc(100vw-2rem)] flex-col gap-0.5 rounded-xl bg-paper shadow-lift p-2 text-sm"
 						>
 							<FontMenuList
 								families={localFonts === undefined ? undefined : (localFonts ?? [...CURATED_FALLBACK_FONTS])}
@@ -279,9 +279,9 @@ export function AppearanceSection({
 				/>
 			</SettingsRow>
 			</SettingsGroup>
-			<section aria-label="Reading preview" data-testid="reading-preview" className="rounded-lg bg-card p-5">
-				<h3 className="mb-3 font-title text-lg font-medium">Live preview</h3>
-				<div style={{ fontSize: `${resolved.proseFontSize}px`, lineHeight: 1.6, fontFamily: "var(--font-prose)" }}>
+			<section aria-label="Reading preview" data-testid="reading-preview" className="rounded-lg bg-shelf p-5">
+				<h3 className="mb-3 tracking-title text-lg font-medium">Live preview</h3>
+				<div style={{ fontSize: `${resolved.proseFontSize}px`, lineHeight: 1.6, fontFamily: "var(--font-sans)" }}>
 					<h4 style={{ fontWeight: resolved.mdRendering.headingWeight }} className="mb-2">Gradient descent</h4>
 					<p>A small learning rate makes <strong style={{ color: "var(--lh-ink-strong)" }}>steady progress</strong>. A larger one can jump across the valley, producing a <em style={{ color: "var(--lh-ink-italic)" }}>zigzag path</em>.</p>
 				</div>

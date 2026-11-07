@@ -12,21 +12,21 @@ function Section({ title, count, children }: { title: string; count: number; chi
 	if (count === 0) return null;
 	return (
 		<section className="flex flex-col gap-1" data-testid="diagram-diff-section" data-title={title}>
-			<h4 className="text-sm font-medium text-ink-2">{title} ({count})</h4>
-			<ul className="flex flex-col gap-0.5 text-sm text-foreground [overflow-wrap:anywhere]">{children}</ul>
+			<h4 className="text-sm font-medium text-graphite">{title} ({count})</h4>
+			<ul className="flex flex-col gap-0.5 text-sm text-ink [overflow-wrap:anywhere]">{children}</ul>
 		</section>
 	);
 }
 
 export function DiagramDiffView({ diff }: { diff: DiagramDiff }) {
-	if (diff.empty) return <p className="text-sm text-ink-2" data-testid="diagram-diff-empty">No changes.</p>;
+	if (diff.empty) return <p className="text-sm text-graphite" data-testid="diagram-diff-empty">No changes.</p>;
 	return (
 		<div className="flex flex-col gap-3" data-testid="diagram-diff">
-			{diff.formChanged && <p className="text-sm text-ink-2">Changes the form.</p>}
+			{diff.formChanged && <p className="text-sm text-graphite">Changes the form.</p>}
 			<Section title="Added nodes" count={diff.nodes.added.length}>{diff.nodes.added.map((node) => <li key={node.id}>{node.name}</li>)}</Section>
 			<Section title="Removed nodes" count={diff.nodes.removed.length}>{diff.nodes.removed.map((node) => <li key={node.id}>{node.name}</li>)}</Section>
 			<Section title="Changed nodes" count={diff.nodes.changed.length}>
-				{diff.nodes.changed.map((node) => <li key={node.id}>{node.before === node.after ? node.after : `${node.before} → ${node.after}`} <span className="text-muted-foreground">· {node.what.map((what) => WHAT[what]).join(", ")}</span></li>)}
+				{diff.nodes.changed.map((node) => <li key={node.id}>{node.before === node.after ? node.after : `${node.before} → ${node.after}`} <span className="text-faint">· {node.what.map((what) => WHAT[what]).join(", ")}</span></li>)}
 			</Section>
 			<Section title="Added connections" count={diff.edges.added.length}>{diff.edges.added.map((edge) => <li key={edge.id}>{edgeWords(edge)}</li>)}</Section>
 			<Section title="Removed connections" count={diff.edges.removed.length}>{diff.edges.removed.map((edge) => <li key={edge.id}>{edgeWords(edge)}</li>)}</Section>

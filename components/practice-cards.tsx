@@ -64,8 +64,8 @@ export function ProblemCard({ part }: ArtifactPartProps) {
 	const input = (part.input ?? {}) as { statement?: string };
 	const statement = typeof input.statement === "string" ? input.statement : "";
 	return (
-		<div data-testid="problem-card" data-problem-call-id={part.toolCallId} className="lh-card-enter my-1 rounded-xl border bg-card p-4">
-			<div className="mb-1 text-sm font-medium text-muted-foreground">Problem</div>
+		<div data-testid="problem-card" data-problem-call-id={part.toolCallId} className="lh-card-enter my-1 rounded-lg border bg-shelf p-4">
+			<div className="mb-1 text-sm font-medium text-faint">Problem</div>
 			<div className="lh-prose">
 				<ToolContentResponse>{statement}</ToolContentResponse>
 			</div>
@@ -88,11 +88,11 @@ const OUTCOME_LABEL: Record<string, string> = {
  * (the agent's call, not a verdict against him). Outlined, like the quiz
  * card's verdict chip (polish pass 2026-10-26). */
 const OUTCOME_CHIP: Record<string, string> = {
-	solved: "border border-success/50 text-success",
-	solvedWithHints: "border border-warning/50 text-warning",
-	movedOn: "border border-border text-muted-foreground",
-	surrendered: "border border-destructive/50 text-destructive",
-	dismissed: "border border-border text-muted-foreground",
+	solved: "border border-green/50 text-green",
+	solvedWithHints: "border border-bulb/50 text-bulb",
+	movedOn: "border border-rule text-faint",
+	surrendered: "border border-red/50 text-red",
+	dismissed: "border border-rule text-faint",
 };
 
 export function ConcludeCard({ part }: ArtifactPartProps) {
@@ -112,18 +112,18 @@ export function ConcludeCard({ part }: ArtifactPartProps) {
 	// learner clicked; the record needs only the fact).
 	if (outcome === "dismissed") {
 		return (
-			<div data-testid="conclude-card" className="my-1 px-1 text-sm text-muted-foreground">
+			<div data-testid="conclude-card" className="my-1 px-1 text-sm text-faint">
 				Problem dismissed.
 			</div>
 		);
 	}
 
 	return (
-		<div data-testid="conclude-card" className="lh-card-enter relative my-1 rounded-xl border bg-card p-4">
+		<div data-testid="conclude-card" className="lh-card-enter relative my-1 rounded-lg border bg-shelf p-4">
 			{/* The heading row (owner round 3, 2026-10-05): plain 'Concluded'
 			    eyebrow + the outcome in the quiz cards' EXACT chip register —
 			    no more two same-weight headings stacked. */}
-			<div className="mb-1 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+			<div className="mb-1 flex items-center gap-2 text-sm font-medium text-faint">
 				Concluded
 				{(OUTCOME_LABEL[outcome] ?? "") !== "" && outcome !== "dismissed" && (
 					<span className={cn("rounded px-1.5 py-0.5", OUTCOME_CHIP[outcome] ?? OUTCOME_CHIP.movedOn)}>
@@ -134,7 +134,7 @@ export function ConcludeCard({ part }: ArtifactPartProps) {
 			{/* The verdict — plain prose under the heading, no 'Verdict:' label
 			    (owner round 3): the same quiet 50% register as quiz explanations. */}
 			{verdict.length > 0 && (
-				<div className="text-sm text-muted-foreground">
+				<div className="text-sm text-faint">
 					<ToolContentResponse>{verdict}</ToolContentResponse>
 				</div>
 			)}
@@ -144,7 +144,7 @@ export function ConcludeCard({ part }: ArtifactPartProps) {
 				<>
 					<div className="my-3 border-t" />
 					<div>
-						<div className="mb-0.5 text-sm font-medium text-muted-foreground">Model solution</div>
+						<div className="mb-0.5 text-sm font-medium text-faint">Model solution</div>
 						<div className="lh-prose">
 							<ToolContentResponse>{reveal}</ToolContentResponse>
 						</div>
@@ -164,8 +164,8 @@ export function ConcludeCard({ part }: ArtifactPartProps) {
 /* THE METADATA POPOVER (owner round 17 refinement, 2026-10-06 — full
  * transparency): a quiet METADATA trigger at the very bottom of the
  * conclude card (no divider — it just sits there); click opens the
- * info-box register of the graph-view node cards (rounded-xl border
- * bg-card p-4 shadow-lg, opening BELOW the trigger — always); any scroll or
+ * info-box register of the graph-view node cards (rounded-lg border
+ * bg-shelf p-4 , opening BELOW the trigger — always); any scroll or
  * click outside closes it (plus Esc, claimed from the layered chain
  * per the popover law). Shows every field the agent filled in both the
  * problem call (mode, targets — names resolved lazily) and the
@@ -241,7 +241,7 @@ function MetadataPopover({
 					});
 				}}
 				aria-expanded={open}
-				className="flex items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+				className="flex items-center gap-1 text-sm font-medium text-faint transition-colors hover:text-ink"
 			>
 				Metadata
 			</button>
@@ -257,12 +257,12 @@ function MetadataPopover({
 						// EVERYTHING, the dialogs' law. Node-card info-box register;
 						// opening BELOW the trigger — always.
 						style={{ position: "fixed", top: anchor.top, left: anchor.left }}
-						className="z-50 w-80 max-w-[calc(100vw-1rem)] rounded-xl border bg-card p-4 text-left "
+						className="z-50 w-80 max-w-[calc(100vw-1rem)] rounded-lg border bg-shelf p-4 text-left "
 					>
 				<dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
-						<dt className="text-muted-foreground">Mode</dt>
+						<dt className="text-faint">Mode</dt>
 						<dd className="font-mono">{mode || "—"}</dd>
-						<dt className="text-muted-foreground">Targets</dt>
+						<dt className="text-faint">Targets</dt>
 						<dd className="font-mono">
 							{targets.length === 0 ? (
 								"untagged"
@@ -277,13 +277,13 @@ function MetadataPopover({
 								</span>
 							)}
 						</dd>
-						<dt className="text-muted-foreground">Outcome</dt>
+						<dt className="text-faint">Outcome</dt>
 						<dd className="font-mono">{outcome || "—"}</dd>
-						<dt className="text-muted-foreground">Hint rung</dt>
+						<dt className="text-faint">Hint rung</dt>
 						<dd className="font-mono">{rung || "none"}</dd>
-						<dt className="text-muted-foreground">Miss class</dt>
+						<dt className="text-faint">Miss class</dt>
 						<dd className="font-mono">{miss || "none"}</dd>
-						<dt className="text-muted-foreground">Retest</dt>
+						<dt className="text-faint">Retest</dt>
 						<dd className="font-mono">{retest === undefined ? "—" : retest ? "yes" : "no"}</dd>
 					</dl>
 					</div>,

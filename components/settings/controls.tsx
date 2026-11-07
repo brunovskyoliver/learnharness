@@ -33,8 +33,8 @@ export function SettingsSection({
 	return (
 		<section data-testid={testid} className="mx-auto w-full max-w-5xl px-5 py-6 sm:px-8 sm:py-8">
 
-			<h2 className="mb-5 font-title text-xl font-semibold">{title}</h2>
-			{hint && <p className="mb-4 text-sm text-muted-foreground">{hint}</p>}
+			<h2 className="mb-5 tracking-title text-xl font-medium">{title}</h2>
+			{hint && <p className="mb-4 text-sm text-faint">{hint}</p>}
 			<FieldGroup className="gap-5">{children}</FieldGroup>
 		</section>
 	);
@@ -57,8 +57,8 @@ export function SettingsGroup({
 }) {
 	return (
 		<div data-testid={testid} data-settings-row={rowId} className="mt-3 scroll-mt-4 first:mt-0">
-			{label && <h3 className="mb-3 font-title text-lg font-medium">{label}</h3>}
-			<FieldGroup className="gap-0 rounded-lg bg-card px-4">{children}</FieldGroup>
+			{label && <h3 className="mb-3 tracking-title text-lg font-medium">{label}</h3>}
+			<FieldGroup className="gap-0 rounded-lg bg-shelf px-4">{children}</FieldGroup>
 		</div>
 	);
 }
@@ -87,7 +87,7 @@ export function SettingsRow({
 	return (
 		<Field orientation="horizontal" data-testid={testid} aria-labelledby={`${id}-label`} data-disabled={dimmed || undefined} data-settings-row={rowId} className="flex scroll-mt-4 flex-col items-stretch gap-3 rounded-md py-4 @lg/field-group:flex-row @lg/field-group:items-center @lg/field-group:has-[>[data-slot=field-content]]:items-center @lg/field-group:justify-between @lg/field-group:gap-6">
 			<FieldContent className="min-w-0 flex-1">
-				<FieldTitle id={`${id}-label`} className={cn("text-sm font-normal group-data-[disabled=true]/field:opacity-100", dimmed && "text-muted-foreground")}>{label}</FieldTitle>
+				<FieldTitle id={`${id}-label`} className={cn("text-sm font-normal group-data-[disabled=true]/field:opacity-100", dimmed && "text-faint")}>{label}</FieldTitle>
 				{hint && <FieldDescription className="text-sm">{hint}</FieldDescription>}
 			</FieldContent>
 			<RowControlContext.Provider value={id}>
@@ -125,8 +125,8 @@ export function ThinSelect({
 			disabled={disabled}
 			onChange={(e) => onChange(e.target.value)}
 			className={cn(
-				"h-9 rounded-md border border-input bg-background px-2.5 font-ui text-sm text-foreground pointer-coarse:h-11",
-				disabled && "cursor-not-allowed text-muted-foreground",
+				"h-9 rounded-md border border-rule bg-paper px-2.5 font-sans text-sm text-ink pointer-coarse:h-11",
+				disabled && "cursor-not-allowed text-faint",
 			)}
 		>
 			{children}
@@ -186,7 +186,7 @@ export function CommitInput({
 					e.currentTarget.blur();
 				}
 			}}
-			className="h-9 w-full rounded-md border border-input bg-background px-3 font-ui text-sm text-foreground placeholder:text-muted-foreground pointer-coarse:h-11"
+			className="h-9 w-full rounded-md border border-rule bg-paper px-3 font-sans text-sm text-ink placeholder:text-faint pointer-coarse:h-11"
 		/>
 	);
 }
@@ -211,9 +211,9 @@ export function SettingsFailure({
 }) {
 	const [open, setOpen] = useState(false);
 	return (
-		<div role="alert" data-testid={testid} className={cn("flex flex-col gap-1 rounded-md bg-accent px-3 py-2 text-sm", className)}>
+		<div role="alert" data-testid={testid} className={cn("flex flex-col gap-1 rounded-md bg-shelf px-3 py-2 text-sm", className)}>
 			<div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-				<p className="min-w-0 flex-1 basis-48 text-destructive">{message}</p>
+				<p className="min-w-0 flex-1 basis-48 text-red">{message}</p>
 				<span className="flex items-center gap-1">
 					{detail && (
 						<Button type="button" size="sm" variant="ghost" aria-expanded={open} data-testid={detailsTestid} className="pointer-coarse:min-h-11" onClick={() => setOpen((on) => !on)}>
@@ -227,7 +227,7 @@ export function SettingsFailure({
 					)}
 				</span>
 			</div>
-			{open && detail && <p className="break-words font-mono text-xs text-ink-2">{detail}</p>}
+			{open && detail && <p className="break-words font-mono text-xs text-graphite">{detail}</p>}
 		</div>
 	);
 }
@@ -237,8 +237,8 @@ export function SettingsRowsSkeleton({ label, rows = 4 }: { label: string; rows?
 	return (
 		<div role="status" data-testid="settings-skeleton" className="flex flex-col gap-3">
 			<span className="sr-only">{label}</span>
-			<Skeleton aria-hidden="true" className="h-6 w-32 bg-card motion-reduce:animate-none" />
-			<div aria-hidden="true" className="flex flex-col gap-5 rounded-lg bg-card p-4">
+			<Skeleton aria-hidden="true" className="h-6 w-32 bg-shelf motion-reduce:animate-none" />
+			<div aria-hidden="true" className="flex flex-col gap-5 rounded-lg bg-shelf p-4">
 				{Array.from({ length: rows }, (_, row) => (
 					<div key={row} className="flex items-center justify-between gap-6">
 						<Skeleton className="h-4 w-2/5 motion-reduce:animate-none" />

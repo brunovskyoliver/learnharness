@@ -85,15 +85,15 @@ export function LazyChainTableOverlay(originalProps: ChainProps) {
 	if (!props.open) return null;
 	return (
 		<div ref={host} className="contents">
-			<div data-testid="chain-table-loading" role="region" aria-label="Chains" className="absolute inset-0 z-40 flex flex-col bg-background ">
+			<div data-testid="chain-table-loading" role="region" aria-label="Chains" className="absolute inset-0 z-40 flex flex-col bg-paper ">
 				<TopBar>
-					<span className="min-w-0 flex-1 text-sm text-muted-foreground" role={failed ? "alert" : "status"}>
+					<span className="min-w-0 flex-1 text-sm text-faint" role={failed ? "alert" : "status"}>
 						{failed ? "Chains could not load. Reload to retry. Your draft will be saved before reloading." : "Loading chains…"}
 					</span>
 					{failed && <Button variant="outline" onClick={recovery.reload}>Reload to retry</Button>}
 					<Button ref={closeButton} variant="ghost" size="icon" aria-label="Close chains" onClick={props.onClose}><XIcon /></Button>
 				</TopBar>
-				{recovery.error && <p role="alert" className="px-5 py-3 text-sm text-muted-foreground">{recovery.error}</p>}
+				{recovery.error && <p role="alert" className="px-5 py-3 text-sm text-faint">{recovery.error}</p>}
 			</div>
 		</div>
 	);

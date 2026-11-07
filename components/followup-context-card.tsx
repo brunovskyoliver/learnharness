@@ -19,7 +19,7 @@ export function FollowupContextCard({ data }: { data: FollowupContextData }) {
 	const bodyId = useId();
 	return (
 		<div data-testid="followup-context-card" className="my-2 min-w-0 max-w-full">
-			<div className="flex min-w-0 select-none items-center gap-2 rounded-full bg-card px-3 py-1.5 font-ui text-sm text-muted-foreground">
+			<div className="flex min-w-0 select-none items-center gap-2 rounded-full bg-shelf px-3 py-1.5 font-sans text-sm text-faint">
 				<MessagesSquareIcon aria-hidden className="size-4 shrink-0" />
 				<a
 					data-testid="followup-source-link"
@@ -27,7 +27,7 @@ export function FollowupContextCard({ data }: { data: FollowupContextData }) {
 					target="_blank"
 					rel="noopener noreferrer"
 					title={data.sourceTitle}
-					className="min-w-0 flex-1 truncate rounded-sm hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+					className="min-w-0 flex-1 truncate rounded-md hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
 				>
 					{data.sourceTitle}
 				</a>
@@ -38,19 +38,19 @@ export function FollowupContextCard({ data }: { data: FollowupContextData }) {
 					aria-expanded={open}
 					aria-controls={bodyId}
 					onClick={() => setOpen((value) => !value)}
-					className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+					className="flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-shelf hover:text-ink focus-visible:outline-2 focus-visible:outline-focus"
 				>
 					<ChevronDownIcon aria-hidden className={cn("size-3.5 transition-transform motion-reduce:transition-none", open && "rotate-180")} />
 				</button>
 			</div>
 			{open && (
-				<div id={bodyId} data-testid="followup-context-body" className="mt-2 min-w-0 space-y-4 rounded-xl border border-border/70 bg-card p-4">
+				<div id={bodyId} data-testid="followup-context-body" className="mt-2 min-w-0 space-y-4 rounded-lg border border-rule/70 bg-shelf p-4">
 					<div>
-						<div className="mb-1 font-ui text-sm text-muted-foreground">Goal</div>
+						<div className="mb-1 font-sans text-sm text-faint">Goal</div>
 						<MessageResponse>{data.goal}</MessageResponse>
 					</div>
 					<div>
-						<div className="mb-1 font-ui text-sm text-muted-foreground">Context from the previous lesson</div>
+						<div className="mb-1 font-sans text-sm text-faint">Context from the previous lesson</div>
 						<MessageResponse>{data.context}</MessageResponse>
 					</div>
 				</div>

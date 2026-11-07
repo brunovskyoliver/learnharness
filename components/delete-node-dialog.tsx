@@ -52,9 +52,9 @@ export function DeleteNodeBody({
 			aria-label="Delete idea"
 			data-testid="delete-node-dialog"
 			onClick={(e) => e.stopPropagation()}
-			className="w-[32rem] max-w-[calc(100vw-2rem)] rounded-xl border bg-card p-5 "
+			className="w-[32rem] max-w-[calc(100vw-2rem)] rounded-lg border bg-shelf p-5 "
 		>
-			<h2 className="text-sm font-semibold text-destructive">
+			<h2 className="text-sm font-semibold text-red">
 				{nodes.length === 1 ? "Delete idea?" : `Delete ${nodes.length} ideas?`}
 			</h2>
 			{/* The node name(s) below the title in JetBrains Mono (owner,
@@ -68,17 +68,17 @@ export function DeleteNodeBody({
 			    more" — the count in the title carries the full number). */}
 			<div className="mt-1.5">
 				{nodes.length === 1 ? (
-					<code data-testid="node-name-code" className="font-mono text-sm text-foreground">
+					<code data-testid="node-name-code" className="font-mono text-sm text-ink">
 						{nodes[0]?.name}
 					</code>
 				) : (
-					<code data-testid="node-names-code" className="font-mono text-sm text-foreground">
+					<code data-testid="node-names-code" className="font-mono text-sm text-ink">
 						{nodes.slice(0, 8).map((n) => n.name).join(", ")}
 						{nodes.length > 8 ? `, and ${nodes.length - 8} more` : ""}
 					</code>
 				)}
 			</div>
-			<p className="mt-2 text-sm text-muted-foreground" data-testid="node-permanence-line">
+			<p className="mt-2 text-sm text-faint" data-testid="node-permanence-line">
 				{nodes.length === 1
 					? "This permanently deletes the idea. This cannot be undone."
 					: `This permanently deletes all ${nodes.length} ideas. This cannot be undone.`}
@@ -87,9 +87,9 @@ export function DeleteNodeBody({
 				<div
 					role="alert"
 					data-testid="node-delete-failure"
-					className="mt-3 rounded-sm border border-border/60 px-3 py-2 text-sm"
+					className="mt-3 rounded-md border border-rule/60 px-3 py-2 text-sm"
 				>
-					<span className="text-foreground">
+					<span className="text-ink">
 						{failure.code === "extraction_running" ? EXTRACTION_RETRY_LINE : failure.error}
 					</span>
 					<button
@@ -97,7 +97,7 @@ export function DeleteNodeBody({
 						data-testid="node-delete-retry"
 						onClick={onRun}
 						disabled={busy}
-						className="ml-3 text-sm text-foreground underline-offset-2 hover:underline disabled:opacity-40"
+						className="ml-3 text-sm text-ink underline-offset-2 hover:underline disabled:opacity-40"
 					>
 						Try again
 					</button>
@@ -109,7 +109,7 @@ export function DeleteNodeBody({
 					data-testid="node-delete-cancel"
 					onClick={onClose}
 					disabled={busy}
-					className="rounded-sm px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
+					className="rounded-md px-3 py-1.5 text-sm text-faint transition-colors hover:text-ink disabled:opacity-40"
 				>
 					Cancel
 				</button>
@@ -121,7 +121,7 @@ export function DeleteNodeBody({
 					// Destructive red (owner, polish round) — the
 					// app's established destructive pair (chat's
 					// refusal banner): border + text, fill on hover.
-					className="rounded-sm border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-sm text-destructive transition-colors hover:bg-destructive/20 disabled:opacity-40"
+					className="rounded-md border border-red/50 bg-red/10 px-3 py-1.5 text-sm text-red transition-colors hover:bg-red/20 disabled:opacity-40"
 				>
 					{busy ? "Deleting…" : "Delete"}
 				</button>
@@ -217,7 +217,7 @@ export function DeleteNodeDialog({
 
 	return createPortal(
 		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-background"
+			className="fixed inset-0 z-50 flex items-center justify-center bg-paper"
 			{...backdropDismiss}
 		>
 			<DeleteNodeBody

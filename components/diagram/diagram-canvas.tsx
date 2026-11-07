@@ -76,7 +76,7 @@ const NodeText = memo(function NodeText({ node }: { node: DiagramNode }) {
 					}}
 				/>
 			) : (node.text.trim() || "Untitled")}
-			{!editing && node.links?.length ? <Link2Icon className="ms-1 inline size-3 text-muted-foreground" aria-hidden="true" data-testid="diagram-node-linked" /> : null}
+			{!editing && node.links?.length ? <Link2Icon className="ms-1 inline size-3 text-faint" aria-hidden="true" data-testid="diagram-node-linked" /> : null}
 			<Handle type="source" position={Position.Bottom} />
 		</div>
 	);
@@ -93,7 +93,7 @@ function StrokeNode({ data }: NodeProps<Node<{ node: DiagramNode }>>) {
 	const path = points.map(([x, y], i) => `${i ? "L" : "M"}${x} ${y}`).join("");
 	return (
 		<svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ overflow: "visible", display: "block" }} aria-hidden="true">
-			<path d={path} fill="none" stroke="var(--foreground)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+			<path d={path} fill="none" stroke="var(--ink)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
 		</svg>
 	);
 }
@@ -160,7 +160,7 @@ function LabeledEdge(props: EdgeProps<Edge<{ edge: DiagramEdge }>>) {
 
 const nodeTypes = { box: TextNode, sticky: TextNode, stroke: StrokeNode };
 const edgeTypes = { labeled: LabeledEdge };
-const MARKER = { type: MarkerType.ArrowClosed, color: "var(--muted-foreground)" };
+const MARKER = { type: MarkerType.ArrowClosed, color: "var(--faint)" };
 const NUDGE = 20;
 const FIT = { padding: 0.2, maxZoom: 1 };
 const FIT_ALL_NODES = 12;
@@ -227,14 +227,14 @@ function PenLayer({ onStroke }: { onStroke: (points: [number, number][]) => void
 		>
 			{live && (
 				<svg aria-hidden="true">
-					<polyline points={live.points.map((p) => p.join(",")).join(" ")} fill="none" stroke="var(--foreground)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+					<polyline points={live.points.map((p) => p.join(",")).join(" ")} fill="none" stroke="var(--ink)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
 				</svg>
 			)}
 		</div>
 	);
 }
 
-const ZOOM_BUTTON = "ui-icon-button bg-popover text-foreground hover:bg-accent";
+const ZOOM_BUTTON = "ui-icon-button bg-paper shadow-lift text-ink hover:bg-shelf";
 
 function ZoomControls() {
 	const flow = useReactFlow();

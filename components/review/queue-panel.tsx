@@ -10,7 +10,7 @@ import { CardText } from "./card-text.tsx";
 
 const FOCUS_LABEL: Record<CardFocus, string> = { all: "All due", "weak-first": "Weak ideas first", "weak-only": "Only weak ideas" };
 const FOCUS_KEY = "lh:review-focus";
-const PILL = "inline-flex h-9 items-center rounded-md px-3 text-sm font-medium transition-colors hover:bg-accent motion-reduce:transition-none pointer-coarse:h-11";
+const PILL = "inline-flex h-9 items-center rounded-md px-3 text-sm font-medium transition-colors hover:bg-shelf motion-reduce:transition-none pointer-coarse:h-11";
 
 function readFocus(): CardFocus {
 	try {
@@ -26,7 +26,7 @@ export function QueueEmpty({ queue, focus, now, onNew, onShowAll }: { queue: Rev
 	if (queue.total === 0) {
 		return (
 			<div data-testid="queue-empty" className="flex flex-col items-start gap-3">
-				<p className="text-ink-2">No flashcards yet. Write one, or make some from a note, a PDF passage or a lesson.</p>
+				<p className="text-graphite">No flashcards yet. Write one, or make some from a note, a PDF passage or a lesson.</p>
 				<button type="button" className="prompt-primary" onClick={onNew} data-testid="queue-empty-new">New card</button>
 			</div>
 		);
@@ -34,7 +34,7 @@ export function QueueEmpty({ queue, focus, now, onNew, onShowAll }: { queue: Rev
 	if (focus === "weak-only" && queue.due > 0) {
 		return (
 			<div data-testid="queue-no-weak" className="flex flex-col items-start gap-3">
-				<p className="text-ink-2">None of the {queue.due} due {queue.due === 1 ? "card links" : "cards link"} to a weak idea.</p>
+				<p className="text-graphite">None of the {queue.due} due {queue.due === 1 ? "card links" : "cards link"} to a weak idea.</p>
 				<button type="button" className="prompt-secondary" onClick={onShowAll}>Show all due</button>
 			</div>
 		);
@@ -43,8 +43,8 @@ export function QueueEmpty({ queue, focus, now, onNew, onShowAll }: { queue: Rev
 	return (
 		<div data-testid="queue-done" className="flex flex-col gap-1">
 			<p className="text-lg">All done for now.</p>
-			{queue.laterToday > 0 && <p className="text-ink-2">{queue.laterToday === 1 ? "1 card comes" : `${queue.laterToday} cards come`} back later today{next ? `, the next in ${next}` : ""}.</p>}
-			{queue.laterToday === 0 && next && <p className="text-ink-2">The next card is due in {next}.</p>}
+			{queue.laterToday > 0 && <p className="text-graphite">{queue.laterToday === 1 ? "1 card comes" : `${queue.laterToday} cards come`} back later today{next ? `, the next in ${next}` : ""}.</p>}
+			{queue.laterToday === 0 && next && <p className="text-graphite">The next card is due in {next}.</p>}
 		</div>
 	);
 }
@@ -62,10 +62,10 @@ export function RatingButtons({ reveal, disabled, onRate }: { reveal: CardReveal
 					aria-keyshortcuts={String(index + 1)}
 					aria-label={`${preview.label}, back in ${preview.interval}`}
 					onClick={() => onRate(preview.rating)}
-					className="flex min-h-14 flex-col items-center justify-center rounded-md bg-accent px-2 py-1 text-foreground transition-colors motion-reduce:transition-none hover:bg-[color-mix(in_srgb,var(--accent)_80%,var(--foreground))] disabled:cursor-default disabled:text-muted-foreground"
+					className="flex min-h-14 flex-col items-center justify-center rounded-md bg-shelf px-2 py-1 text-ink transition-colors motion-reduce:transition-none hover:bg-[color-mix(in_srgb,var(--shelf)_80%,var(--ink))] disabled:cursor-default disabled:text-faint"
 				>
-					<span className="text-base font-medium">{preview.label}</span>
-					<span className="text-sm text-ink-2 tabular-nums">{preview.interval}<span className="ml-1.5 font-mono text-xs text-muted-foreground max-sm:hidden" aria-hidden="true">{index + 1}</span></span>
+					<span className="text-md font-medium">{preview.label}</span>
+					<span className="text-sm text-graphite tabular-nums">{preview.interval}<span className="ml-1.5 font-mono text-xs text-faint max-sm:hidden" aria-hidden="true">{index + 1}</span></span>
 				</button>
 			))}
 		</div>
@@ -76,10 +76,10 @@ export function RatingButtons({ reveal, disabled, onRate }: { reveal: CardReveal
 export function RevealMeta({ reveal }: { reveal: CardReveal }) {
 	if (!reveal.source && reveal.concepts.length === 0) return null;
 	return (
-		<div className="flex flex-col gap-1 text-sm text-muted-foreground" data-testid="queue-reveal-meta">
+		<div className="flex flex-col gap-1 text-sm text-faint" data-testid="queue-reveal-meta">
 			{reveal.source && (
 				<p className="[overflow-wrap:anywhere]" data-testid="queue-source">
-					{reveal.source.gone ? <span>{reveal.source.label} · this source is gone</span> : <a href={reveal.source.href} className="text-ink-2 underline decoration-[color-mix(in_srgb,var(--ink-2)_40%,transparent)] underline-offset-2 hover:text-foreground">{reveal.source.label}</a>}
+					{reveal.source.gone ? <span>{reveal.source.label} · this source is gone</span> : <a href={reveal.source.href} className="text-graphite underline decoration-[color-mix(in_srgb,var(--graphite)_40%,transparent)] underline-offset-2 hover:text-ink">{reveal.source.label}</a>}
 				</p>
 			)}
 			{reveal.concepts.length > 0 && <p className="[overflow-wrap:anywhere]" data-testid="queue-concepts">{reveal.concepts.map((concept) => `${concept.name}${concept.weak ? " · weak" : ""}`).join(", ")}</p>}
@@ -242,7 +242,7 @@ export function QueuePanel({ refreshKey, busyLayer, onDrafts, onEdit, onHistory,
 	}, [busyLayer, cardId, doReveal, rate, undo, queue?.undo]);
 
 	const failureLine = failure && (
-		<div role="alert" data-testid="queue-failure" className="flex flex-wrap items-center gap-2 text-sm text-destructive">
+		<div role="alert" data-testid="queue-failure" className="flex flex-wrap items-center gap-2 text-sm text-red">
 			<p>{failure.text}</p>
 			{failure.retry && <button type="button" className="prompt-secondary" onClick={failure.retry}>Try again</button>}
 		</div>
@@ -250,31 +250,31 @@ export function QueuePanel({ refreshKey, busyLayer, onDrafts, onEdit, onHistory,
 
 	if (queue === null) {
 		return loadFailed
-			? <div role="status" data-testid="queue-failed" className="flex flex-wrap items-center gap-2 text-ink-2"><p>Your flashcards could not be loaded.</p><button type="button" className="prompt-secondary" onClick={() => void load(focus)}>Try again</button></div>
-			: <div role="status" aria-label="Loading your flashcards" data-testid="queue-loading" className="flex flex-col gap-2"><Skeleton className="h-40 w-full rounded-[10px]" /></div>;
+			? <div role="status" data-testid="queue-failed" className="flex flex-wrap items-center gap-2 text-graphite"><p>Your flashcards could not be loaded.</p><button type="button" className="prompt-secondary" onClick={() => void load(focus)}>Try again</button></div>
+			: <div role="status" aria-label="Loading your flashcards" data-testid="queue-loading" className="flex flex-col gap-2"><Skeleton className="h-40 w-full rounded-lg" /></div>;
 	}
 
 	return (
 		<section aria-label="Review queue" className="flex flex-col gap-3">
 			<div className="flex flex-wrap items-center justify-between gap-2">
-				<p data-testid="queue-count" className="text-sm font-medium text-muted-foreground">{dueLine(queue)}{queue.weakDue > 0 ? ` · ${queue.weakDue} on weak ideas` : ""}</p>
+				<p data-testid="queue-count" className="text-sm font-medium text-faint">{dueLine(queue)}{queue.weakDue > 0 ? ` · ${queue.weakDue} on weak ideas` : ""}</p>
 				{queue.total > 0 && (
 					<div role="group" aria-label="What to show" className="flex flex-wrap gap-1" data-testid="queue-focus">
 						{(Object.keys(FOCUS_LABEL) as CardFocus[]).map((name) => (
-							<button key={name} type="button" aria-pressed={focus === name} data-testid={`queue-focus-${name}`} onClick={() => setFocus(name)} className={cn(PILL, focus === name ? "bg-accent text-foreground" : "text-ink-2")}>{FOCUS_LABEL[name]}</button>
+							<button key={name} type="button" aria-pressed={focus === name} data-testid={`queue-focus-${name}`} onClick={() => setFocus(name)} className={cn(PILL, focus === name ? "bg-shelf text-ink" : "text-graphite")}>{FOCUS_LABEL[name]}</button>
 						))}
 					</div>
 				)}
 			</div>
 			<p role="status" aria-live="polite" data-testid="queue-live" className="sr-only">{announce}</p>
-			{loadFailed && <div role="status" className="flex flex-wrap items-center gap-2 text-sm text-ink-2"><p>Your flashcards could not be refreshed.</p><button type="button" className="prompt-secondary" onClick={() => void load(focus)}>Try again</button></div>}
+			{loadFailed && <div role="status" className="flex flex-wrap items-center gap-2 text-sm text-graphite"><p>Your flashcards could not be refreshed.</p><button type="button" className="prompt-secondary" onClick={() => void load(focus)}>Try again</button></div>}
 
 			{card ? (
-				<article data-testid="queue-card" data-card-id={card.id} className="flex flex-col gap-3 rounded-[10px] bg-card p-4">
+				<article data-testid="queue-card" data-card-id={card.id} className="flex flex-col gap-3 rounded-lg bg-shelf p-4">
 					<div data-testid="queue-front"><CardText text={card.front} /></div>
 					{reveal ? (
 						<>
-							<div ref={answerRegion} tabIndex={-1} role="region" aria-label="Answer" data-testid="queue-back" className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"><CardText text={reveal.back} className="text-ink-2" /></div>
+							<div ref={answerRegion} tabIndex={-1} role="region" aria-label="Answer" data-testid="queue-back" className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"><CardText text={reveal.back} className="text-graphite" /></div>
 							<RevealMeta reveal={reveal} />
 							<RatingButtons reveal={reveal} disabled={busy} onRate={(rating) => void rate(rating)} />
 						</>
@@ -299,7 +299,7 @@ export function QueuePanel({ refreshKey, busyLayer, onDrafts, onEdit, onHistory,
 			)}
 
 			{(note || queue.undo || lastRemoved) && (
-				<div className="flex flex-wrap items-center gap-2 text-sm text-ink-2" data-testid="queue-note">
+				<div className="flex flex-wrap items-center gap-2 text-sm text-graphite" data-testid="queue-note">
 					{note && <p>{note}</p>}
 					{lastRemoved ? <button type="button" className="prompt-secondary" data-testid="queue-put-back" disabled={busy} onClick={() => void putBack()}>Undo</button>
 						: queue.undo && <button type="button" className="prompt-secondary" data-testid="queue-undo" disabled={busy} aria-keyshortcuts="U" onClick={() => void undo()}>Undo last rating</button>}

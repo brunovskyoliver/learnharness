@@ -115,7 +115,7 @@ export const wordsText = (n: number) => `${n} ${n === 1 ? "word" : "words"}`;
 
 export function SaveState({ state, onRetry, canRetry = true, words, failedLabel }: { state: Pick<PageDraftState, "status">; onRetry: () => void; canRetry?: boolean; words?: number; failedLabel?: string }) {
 	return (
-		<span className="flex min-w-0 flex-wrap items-center gap-x-2 text-sm text-muted-foreground" data-testid="page-save-state">
+		<span className="flex min-w-0 flex-wrap items-center gap-x-2 text-sm text-faint" data-testid="page-save-state">
 			{state.status === "failed" && failedLabel ? failedLabel : SAVE_STATE_LABEL[state.status]}
 			{words !== undefined && <span data-testid="page-word-count">· {wordsText(words)}</span>}
 			{state.status === "failed" && canRetry && <button type="button" className="prompt-secondary" onClick={onRetry} data-testid="page-retry">Try again</button>}
@@ -126,8 +126,8 @@ export function SaveState({ state, onRetry, canRetry = true, words, failedLabel 
 /** The tutor's changes: count, step through, undo, done (contracts/ui-contract.md). */
 export function ChangeBar({ text, onPrevious, onNext, onUndo, onDone, busy }: { text: string; onPrevious: () => void; onNext: () => void; onUndo: () => void; onDone: () => void; busy: boolean }) {
 	return (
-		<div role="region" aria-label="The tutor's changes" className="mx-3 mb-2 flex flex-wrap items-center gap-2 rounded-[10px] bg-card px-3 py-2 text-sm" data-testid="page-change-bar">
-			<p role="status" className="min-w-0 flex-[1_1_14rem] text-foreground">{text}</p>
+		<div role="region" aria-label="The tutor's changes" className="mx-3 mb-2 flex flex-wrap items-center gap-2 rounded-lg bg-shelf px-3 py-2 text-sm" data-testid="page-change-bar">
+			<p role="status" className="min-w-0 flex-[1_1_14rem] text-ink">{text}</p>
 			<button type="button" className="prompt-secondary" onClick={onPrevious}>Previous</button>
 			<button type="button" className="prompt-secondary" onClick={onNext}>Next</button>
 			<button type="button" className="prompt-secondary" disabled={busy} onClick={onUndo} data-testid="page-undo-tutor">Undo the tutor&apos;s edit</button>
@@ -138,7 +138,7 @@ export function ChangeBar({ text, onPrevious, onNext, onUndo, onDone, busy }: { 
 
 export function ConflictLine({ onKeepMine, onUseLatest }: { onKeepMine: () => void; onUseLatest: () => void }) {
 	return (
-		<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-ink-2" data-testid="page-conflict">
+		<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-graphite" data-testid="page-conflict">
 			<p>This page changed elsewhere. Your text is safe here.</p>
 			<button type="button" className="prompt-secondary" onClick={onKeepMine} data-testid="page-keep-mine">Keep mine</button>
 			<button type="button" className="prompt-secondary" onClick={onUseLatest} data-testid="page-use-latest">Use latest</button>
@@ -150,7 +150,7 @@ export function ConflictLine({ onKeepMine, onUseLatest }: { onKeepMine: () => vo
 export function DeletedLine({ name, text }: { name: string; text: string | null }) {
 	const [copied, setCopied] = useState(false);
 	return (
-		<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-ink-2" data-testid="page-deleted">
+		<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-graphite" data-testid="page-deleted">
 			<p>{name} was deleted.</p>
 			{text !== null && (
 				<button
@@ -168,15 +168,15 @@ export function DeletedLine({ name, text }: { name: string; text: string | null 
 export function PageOutline({ headings, onPick, className }: { headings: PageHeading[]; onPick: (pos: number) => void; className?: string }) {
 	return (
 		<nav aria-label="Outline" data-testid="page-outline" className={cn("flex flex-col gap-0.5 text-sm", className)}>
-			<span className="px-2 pb-1 text-sm font-medium text-muted-foreground">On this page</span>
-			{headings.length === 0 && <span className="px-2 text-sm text-ink-2">Headings appear here.</span>}
+			<span className="px-2 pb-1 text-sm font-medium text-faint">On this page</span>
+			{headings.length === 0 && <span className="px-2 text-sm text-graphite">Headings appear here.</span>}
 			{headings.map((heading) => (
 				<button
 					key={heading.pos}
 					type="button"
 					onClick={() => onPick(heading.pos)}
 					style={{ paddingInlineStart: `${0.5 + (heading.level - 1) * 0.75}rem` }}
-					className="min-h-8 truncate rounded-[6px] pe-2 text-left text-ink-2 hover:bg-accent hover:text-foreground pointer-coarse:min-h-11"
+					className="min-h-8 truncate rounded-md pe-2 text-left text-graphite hover:bg-shelf hover:text-ink pointer-coarse:min-h-11"
 				>{heading.text || "Untitled heading"}</button>
 			))}
 		</nav>
@@ -186,7 +186,7 @@ export function PageOutline({ headings, onPick, className }: { headings: PageHea
 function ExportMenu({ name, text, container, onPrint, labelClass }: { name: string; text: () => string; container: HTMLElement | null; onPrint: () => void; labelClass: string }) {
 	const [open, setOpen] = useState(false);
 	const [copied, setCopied] = useState(false);
-	const item = "flex min-h-9 w-full items-center rounded-[6px] px-2 text-left text-sm text-foreground hover:bg-card pointer-coarse:min-h-11";
+	const item = "flex min-h-9 w-full items-center rounded-md px-2 text-left text-sm text-ink hover:bg-shelf pointer-coarse:min-h-11";
 	return (
 		<Popover open={open} onOpenChange={(next) => { setOpen(next); if (!next) setCopied(false); }}>
 			<PopoverTrigger asChild>
@@ -195,7 +195,7 @@ function ExportMenu({ name, text, container, onPrint, labelClass }: { name: stri
 					<span className={labelClass}>Export</span>
 				</Button>
 			</PopoverTrigger>
-			<PopoverContent container={container} align="end" className="flex w-56 flex-col gap-0.5 rounded-[10px] border-0 p-1" data-testid="page-export-menu">
+			<PopoverContent container={container} align="end" className="flex w-56 flex-col gap-0.5 rounded-lg border-0 p-1" data-testid="page-export-menu">
 				<button type="button" className={item} data-testid="page-export-copy" onClick={() => {
 					void navigator.clipboard.writeText(text()).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 2000); }, () => {});
 				}}>{copied ? "Copied" : "Copy as Markdown"}</button>
@@ -227,7 +227,7 @@ export function PageName({ item, pane }: { item: PaneItem; pane: PagePaneApi }) 
 		}
 	};
 	if (!renaming) {
-		return <button type="button" aria-label={`Rename ${item.name}`} data-testid="page-name" className="min-w-0 truncate rounded-md text-left text-base font-medium hover:bg-accent pointer-coarse:min-h-11" onClick={() => setRenaming(true)}>{item.name}</button>;
+		return <button type="button" aria-label={`Rename ${item.name}`} data-testid="page-name" className="min-w-0 truncate rounded-md text-left text-md font-medium hover:bg-shelf pointer-coarse:min-h-11" onClick={() => setRenaming(true)}>{item.name}</button>;
 	}
 	return (
 		<span className="flex min-w-0 flex-col">
@@ -245,9 +245,9 @@ export function PageName({ item, pane }: { item: PaneItem; pane: PagePaneApi }) 
 					if (event.key === "Enter") { event.preventDefault(); void commit(event.currentTarget.value); }
 					if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setRenaming(false); setError(null); }
 				}}
-				className="h-8 w-full min-w-0 rounded-md border border-input bg-transparent px-2 text-base text-foreground pointer-coarse:h-11"
+				className="h-8 w-full min-w-0 rounded-md border border-rule bg-transparent px-2 text-md text-ink pointer-coarse:h-11"
 			/>
-			{error && <span role="alert" className="text-sm text-destructive">{error}</span>}
+			{error && <span role="alert" className="text-sm text-red">{error}</span>}
 		</span>
 	);
 }
@@ -268,7 +268,7 @@ export function PaneHeader({ phone, name, status, actions, onClose, closeLabel }
 			</div>
 			{actions}
 			{!phone && (
-				<button type="button" aria-label={closeLabel} onClick={onClose} data-testid="page-close" className="ui-icon-button text-muted-foreground hover:bg-accent hover:text-foreground">
+				<button type="button" aria-label={closeLabel} onClick={onClose} data-testid="page-close" className="ui-icon-button text-faint hover:bg-shelf hover:text-ink">
 					<XIcon className="ui-icon" />
 				</button>
 			)}
@@ -447,7 +447,7 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 			onOpenPage={(id, name, kind) => openItem({ id, name, kind: kind ?? "page", size: 0 })}
 			onFollowLink={(row) => followLink(row.target, row.resolution)}
 			onSource={followSource}
-			className={wide ? "w-64 shrink-0 overflow-y-auto pr-3 pb-6" : "mx-3 mb-2 max-h-[40dvh] shrink-0 overflow-y-auto rounded-[10px] bg-popover p-2"}
+			className={wide ? "w-64 shrink-0 overflow-y-auto pr-3 pb-6" : "mx-3 mb-2 max-h-[40dvh] shrink-0 overflow-y-auto rounded-lg bg-shelf p-2"}
 		/>
 	) : null;
 
@@ -509,16 +509,16 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 						status={state.loaded && !state.deleted ? <SaveState state={state} canRetry={!state.conflict} onRetry={() => void controller.retry()} words={stats?.words} /> : undefined}
 						actions={state.deleted ? undefined : (
 							<>
-							<Button type="button" variant="ghost" aria-pressed={outline} className="shrink-0 aria-pressed:bg-accent aria-pressed:text-foreground pointer-coarse:h-11 pointer-coarse:min-w-11" onClick={() => setOutline((open) => !open)} data-testid="page-outline-toggle">
+							<Button type="button" variant="ghost" aria-pressed={outline} className="shrink-0 aria-pressed:bg-shelf aria-pressed:text-ink pointer-coarse:h-11 pointer-coarse:min-w-11" onClick={() => setOutline((open) => !open)} data-testid="page-outline-toggle">
 								<ListTreeIcon className="ui-icon" aria-hidden="true" />
 								<span className={paneLabel}>Outline</span>
 							</Button>
-							<Button type="button" variant="ghost" aria-pressed={links} className="shrink-0 aria-pressed:bg-accent aria-pressed:text-foreground pointer-coarse:h-11 pointer-coarse:min-w-11" onClick={() => setLinks((open) => !open)} data-testid="page-links-toggle">
+							<Button type="button" variant="ghost" aria-pressed={links} className="shrink-0 aria-pressed:bg-shelf aria-pressed:text-ink pointer-coarse:h-11 pointer-coarse:min-w-11" onClick={() => setLinks((open) => !open)} data-testid="page-links-toggle">
 									<Link2Icon className="ui-icon" aria-hidden="true" />
 									<span className={paneLabel}>Links</span>
 								</Button>
 								<ExportMenu name={item.name} text={currentText} container={root.current} onPrint={() => setPrinting(true)} labelClass={paneLabel} />
-							<Button type="button" variant="ghost" aria-pressed={history} className="shrink-0 aria-pressed:bg-accent aria-pressed:text-foreground pointer-coarse:h-11 pointer-coarse:min-w-11" onClick={() => setHistory((open) => !open)} data-testid="page-history-toggle">
+							<Button type="button" variant="ghost" aria-pressed={history} className="shrink-0 aria-pressed:bg-shelf aria-pressed:text-ink pointer-coarse:h-11 pointer-coarse:min-w-11" onClick={() => setHistory((open) => !open)} data-testid="page-history-toggle">
 								<HistoryIcon className="ui-icon" aria-hidden="true" />
 								<span className={paneLabel}>History</span>
 							</Button>
@@ -526,18 +526,18 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 						)}
 					/>
 					{dangling && (
-						<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-ink-2" data-testid="page-wiki-dangling">
+						<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-graphite" data-testid="page-wiki-dangling">
 							<p className="min-w-0 flex-[1_1_12rem] [overflow-wrap:anywhere]">{dangling.state === "deleted" ? `${dangling.target} was deleted from your Library. The link is kept.` : dangling.state === "unknown" ? "Your Library could not be checked for that link." : `Nothing in your Library is called ${dangling.target} yet.`}</p>
 							{dangling.state === "missing" && <button type="button" className="prompt-secondary" data-testid="page-wiki-create" onClick={() => void createLinked(dangling.target)}>Create page</button>}
 							<button type="button" className="prompt-secondary" onClick={() => setDangling(null)}>Dismiss</button>
-							{creating && <p role="alert" className="w-full text-sm text-destructive">{creating}</p>}
+							{creating && <p role="alert" className="w-full text-sm text-red">{creating}</p>}
 						</div>
 					)}
 					{state.deleted && <DeletedLine name={item.name} text={isUnsent(state) ? state.text : null} />}
 					{changes && !state.conflict && !history && (
 						<ChangeBar text={changeBarText(changes)} busy={undoing} onPrevious={() => step(-1)} onNext={() => step(1)} onUndo={() => void undoTutor()} onDone={() => void done()} />
 					)}
-					{changeLine && <p role="status" className="px-3 pb-2 text-sm text-ink-2" data-testid="page-change-line">{changeLine}</p>}
+					{changeLine && <p role="status" className="px-3 pb-2 text-sm text-graphite" data-testid="page-change-line">{changeLine}</p>}
 					{!state.deleted && state.loaded && (
 						<PageProposalsLine
 							pageId={item.id}
@@ -547,7 +547,7 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 						/>
 					)}
 					{state.conflict && <ConflictLine onKeepMine={() => void controller.keepMine()} onUseLatest={() => void controller.useLatest()} />}
-					<p role="status" aria-live="polite" className="px-3 text-sm text-ink-2 empty:hidden" data-testid="page-agent-update">
+					<p role="status" aria-live="polite" className="px-3 text-sm text-graphite empty:hidden" data-testid="page-agent-update">
 						{state.agentUpdate !== null && !changes ? `Updated by the agent · version ${state.agentUpdate}` : ""}
 					</p>
 					<input
@@ -563,16 +563,16 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 							if (files.length) void addImages(files, imageAt.current);
 						}}
 					/>
-					{uploading && <p role="status" className="px-3 pb-2 text-sm text-ink-2" data-testid="page-image-uploading">Uploading {uploading.name} · {uploading.percent}%</p>}
-					{imageRefusal && <p role="alert" className="px-3 pb-2 text-sm text-destructive" data-testid="page-image-refused">{imageRefusal}</p>}
+					{uploading && <p role="status" className="px-3 pb-2 text-sm text-graphite" data-testid="page-image-uploading">Uploading {uploading.name} · {uploading.percent}%</p>}
+					{imageRefusal && <p role="alert" className="px-3 pb-2 text-sm text-red" data-testid="page-image-refused">{imageRefusal}</p>}
 					{printing && <PrintRoot name={item.name} text={controller.state.text} onDone={() => setPrinting(false)} />}
-					{outline && !wide && stats && !history && <PageOutline headings={stats.headings} onPick={jump} className="mx-3 mb-2 max-h-[40dvh] overflow-y-auto rounded-[10px] bg-popover p-1" />}
+					{outline && !wide && stats && !history && <PageOutline headings={stats.headings} onPick={jump} className="mx-3 mb-2 max-h-[40dvh] overflow-y-auto rounded-lg bg-shelf p-1" />}
 					{!wide && connections}
 						<div className={`flex min-h-0 flex-1 ${(outline || links) && wide && !history ? "flex-row gap-4" : "flex-col"} ${dragging ? "pointer-events-none" : ""}`}>
 						{outline && wide && stats && !history && <PageOutline headings={stats.headings} onPick={jump} className="w-44 shrink-0 overflow-y-auto pl-3" />}
 						<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 						{loadFailed ? (
-							<div role="status" className="flex flex-wrap items-center gap-2 px-3 text-sm text-ink-2">
+							<div role="status" className="flex flex-wrap items-center gap-2 px-3 text-sm text-graphite">
 								<p>{item.name} could not be loaded.</p>
 								<button type="button" className="prompt-secondary" onClick={retryLoad}>Try again</button>
 							</div>
@@ -628,7 +628,7 @@ function ReadOnlySurface({ item, pane, phone }: { item: PaneItem; pane: PagePane
 		>
 			{() => (
 				<>
-					<PaneHeader phone={phone} closeLabel={`Close ${item.name}`} onClose={pane.close} name={<span className="min-w-0 truncate text-base font-medium">{item.name}</span>} />
+					<PaneHeader phone={phone} closeLabel={`Close ${item.name}`} onClose={pane.close} name={<span className="min-w-0 truncate text-md font-medium">{item.name}</span>} />
 					<ReadOnlyView item={item} />
 				</>
 			)}
@@ -643,7 +643,7 @@ const contentUrl = (id: string, download = false) => `/api/library/items/${encod
 function PdfSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi; phone: boolean }) {
 	const root = useRef<HTMLElement | null>(null);
 	usePhoneLayer(phone, root);
-	const link = "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-2 text-sm text-foreground hover:bg-accent focus-visible:outline-1 focus-visible:outline-ring pointer-coarse:h-11 pointer-coarse:min-w-11 pointer-coarse:justify-center";
+	const link = "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-2 text-sm text-ink hover:bg-shelf focus-visible:outline-1 focus-visible:outline-focus pointer-coarse:h-11 pointer-coarse:min-w-11 pointer-coarse:justify-center";
 	return (
 		<WorkspacePane
 			label={item.name}
@@ -664,7 +664,7 @@ function PdfSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi; 
 						phone={phone}
 						closeLabel={`Close ${item.name}`}
 						onClose={pane.close}
-						name={<span className="min-w-0 truncate text-base font-medium">{item.name}</span>}
+						name={<span className="min-w-0 truncate text-md font-medium">{item.name}</span>}
 						actions={(
 							<>
 								<a href={contentUrl(item.id)} target="_blank" rel="noreferrer" className={link} data-testid="pdf-open-new-tab" aria-label={`Open ${item.name} in a new tab`}>

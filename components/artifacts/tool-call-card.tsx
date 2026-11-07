@@ -95,17 +95,17 @@ export function ToolCallCard({ part }: ArtifactPartProps) {
 			data-tool={tool}
 			className="group lh-reading my-1"
 		>
-			<summary className="flex cursor-pointer select-none list-none items-center gap-2 text-sm text-muted-foreground [&::-webkit-details-marker]:hidden">
-				<span className={`font-medium ${failed ? "text-destructive" : ""}`}>
+			<summary className="flex cursor-pointer select-none list-none items-center gap-2 text-sm text-faint [&::-webkit-details-marker]:hidden">
+				<span className={`font-medium ${failed ? "text-red" : ""}`}>
 					{(failed ? FAILED_LABELS[tool] : undefined) ?? TOOL_LABELS[tool] ?? tool}
 				</span>
 				{arg && <span className="truncate">{arg}</span>}
 				<ChevronRight className="size-3 shrink-0 opacity-50 transition-transform group-open:rotate-90" />
 			</summary>
-			<div className="mt-2 space-y-2 rounded-xl border bg-card p-3 text-sm">
+			<div className="mt-2 space-y-2 rounded-lg border bg-shelf p-3 text-sm">
 				{p.input != null && (
 					<div>
-						<div className="mb-1 font-medium text-muted-foreground">
+						<div className="mb-1 font-medium text-faint">
 							Input
 						</div>
 						<pre className="max-h-32 overflow-auto whitespace-pre-wrap break-all font-mono text-xs leading-relaxed">
@@ -115,16 +115,16 @@ export function ToolCallCard({ part }: ArtifactPartProps) {
 				)}
 				{typeof p.errorText === "string" ? (
 					<div>
-						<div className="mb-1 font-medium text-muted-foreground">
+						<div className="mb-1 font-medium text-faint">
 							Error
 						</div>
-						<pre className="whitespace-pre-wrap break-all font-mono text-xs text-destructive">
+						<pre className="whitespace-pre-wrap break-all font-mono text-xs text-red">
 							{p.errorText}
 						</pre>
 					</div>
 				) : out != null ? (
 					<div>
-						<div className="mb-1 font-medium text-muted-foreground">
+						<div className="mb-1 font-medium text-faint">
 							Output
 						</div>
 						<pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all font-mono text-xs leading-relaxed">
@@ -133,7 +133,7 @@ export function ToolCallCard({ part }: ArtifactPartProps) {
 					</div>
 				) : (
 					p.state !== "output-available" && (
-						<div className="text-muted-foreground italic">running…</div>
+						<div className="text-faint italic">running…</div>
 					)
 				)}
 			</div>

@@ -37,7 +37,7 @@ const ROUTES: Partial<Record<PaletteActionId, string>> = {
 };
 
 function EntryIcon({ entry }: { entry: PaletteEntry }) {
-	const className = "ui-icon shrink-0 text-muted-foreground";
+	const className = "ui-icon shrink-0 text-faint";
 	if (entry.kind === "session") return entry.practice ? <DumbbellIcon className={className} aria-hidden="true" /> : <BookOpenIcon className={className} aria-hidden="true" />;
 	if (entry.kind === "item" || entry.kind === "passage") return <FileTextIcon className={className} aria-hidden="true" />;
 	if (entry.kind === "folder") return <FolderIcon className={className} aria-hidden="true" />;
@@ -57,7 +57,7 @@ export function PaletteList({ groups, activeId, listId, optionId, onHover, onPic
 		<div id={listId} role="listbox" aria-label="Commands" data-testid="command-palette-list" className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain px-1 pb-1">
 			{groups.map((group) => (
 				<div key={group.label} role="group" aria-label={group.label} className="flex flex-col">
-					<div className="px-2.5 pb-0.5 pt-1.5 text-sm text-muted-foreground" aria-hidden="true">{group.label}</div>
+					<div className="px-2.5 pb-0.5 pt-1.5 text-sm text-faint" aria-hidden="true">{group.label}</div>
 					{group.entries.map((entry) => (
 						<div
 							key={entry.id}
@@ -70,14 +70,14 @@ export function PaletteList({ groups, activeId, listId, optionId, onHover, onPic
 							// Keep focus in the field; the pick closes the dialog.
 							onMouseDown={(event) => event.preventDefault()}
 							onClick={() => onPick(entry)}
-							className={cn("flex min-h-9 cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1 text-base text-foreground pointer-coarse:min-h-11", entry.id === activeId && "bg-card")}
+							className={cn("flex min-h-9 cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1 text-md text-ink pointer-coarse:min-h-11", entry.id === activeId && "bg-shelf")}
 						>
 							<EntryIcon entry={entry} />
 							<span className="flex min-w-0 flex-1 flex-col [overflow-wrap:anywhere]">
 							{entry.label}
-							{entry.kind === "passage" && entry.hit.snippet && <DocSnippetText snippet={entry.hit.snippet} className="text-sm text-ink-2" />}
+							{entry.kind === "passage" && entry.hit.snippet && <DocSnippetText snippet={entry.hit.snippet} className="text-sm text-graphite" />}
 						</span>
-							{entry.meta && <span className="min-w-0 shrink-[2] truncate text-sm text-muted-foreground">{entry.meta}</span>}
+							{entry.meta && <span className="min-w-0 shrink-[2] truncate text-sm text-faint">{entry.meta}</span>}
 						</div>
 					))}
 				</div>
@@ -253,7 +253,7 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 				showCloseButton={false}
 				aria-describedby={undefined}
 				data-testid="command-palette"
-				className="top-[10dvh] flex max-h-[min(70dvh,32rem)] translate-y-0 flex-col gap-0 overflow-hidden rounded-[10px] border-0 bg-popover p-0 sm:max-w-xl"
+				className="top-[10dvh] flex max-h-[min(70dvh,32rem)] translate-y-0 flex-col gap-0 overflow-hidden rounded-xl border-0 bg-paper shadow-lift p-0 sm:max-w-xl"
 				onOpenAutoFocus={(event) => { event.preventDefault(); input.current?.focus(); }}
 				onCloseAutoFocus={(event) => {
 					event.preventDefault();
@@ -261,7 +261,7 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 				}}
 			>
 				<DialogTitle className="sr-only">Command palette</DialogTitle>
-				<label className="flex h-11 shrink-0 items-center gap-2 rounded-t-[10px] px-3 text-muted-foreground focus-within:bg-card">
+				<label className="flex h-11 shrink-0 items-center gap-2 rounded-t-lg px-3 text-faint focus-within:bg-shelf">
 					<SearchIcon className="ui-icon shrink-0" aria-hidden="true" />
 					<input
 						ref={input}
@@ -278,31 +278,31 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 						onChange={(event) => { setQuery(event.target.value); setActiveId(null); setFailure(null); }}
 						onKeyDown={onKeyDown}
 						placeholder="Search or run an action…"
-						className="min-w-0 flex-1 bg-transparent text-base text-foreground outline-none placeholder:text-muted-foreground"
+						className="min-w-0 flex-1 bg-transparent text-md text-ink outline-none placeholder:text-faint"
 					/>
 				</label>
-				{failure && <p role="alert" data-testid="command-palette-failure" className="px-3 pb-1 text-sm text-destructive">{failure}</p>}
+				{failure && <p role="alert" data-testid="command-palette-failure" className="px-3 pb-1 text-sm text-red">{failure}</p>}
 				<PaletteList groups={groups} activeId={active?.id ?? null} listId={listId} optionId={optionId} onHover={setActiveId} onPick={pick} />
-				{flat.length === 0 && query.trim() !== "" && documents.phase !== "searching" && <p role="status" data-testid="command-palette-empty" className="px-3 pb-3 text-sm text-ink-2">Nothing matched</p>}
-				{documents.phase === "searching" && <p role="status" className="px-3 pb-2 text-sm text-muted-foreground">Searching inside your documents…</p>}
+				{flat.length === 0 && query.trim() !== "" && documents.phase !== "searching" && <p role="status" data-testid="command-palette-empty" className="px-3 pb-3 text-sm text-graphite">Nothing matched</p>}
+				{documents.phase === "searching" && <p role="status" className="px-3 pb-2 text-sm text-faint">Searching inside your documents…</p>}
 				{documents.phase === "failed" && (
-					<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-ink-2">
+					<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-graphite">
 						<p>Your documents could not be searched.</p>
 						<button type="button" className="prompt-secondary" onClick={documents.retry}>Try again</button>
 					</div>
 				)}
 				{documents.response && documents.phase === "done" && <p role="status" aria-live="polite" className="sr-only" data-testid="command-palette-doc-count">{docCountText(documents.response.results.length, documents.response.total)} inside your documents</p>}
 				{/* Each source reports for itself: the others stay usable. */}
-				{librarySettling && library.items === null && !library.failed && <p role="status" className="px-3 pb-2 text-sm text-muted-foreground">Loading your Library…</p>}
+				{librarySettling && library.items === null && !library.failed && <p role="status" className="px-3 pb-2 text-sm text-faint">Loading your Library…</p>}
 				{library.failed && (
-					<div role="status" data-testid="command-palette-library-failed" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-ink-2">
+					<div role="status" data-testid="command-palette-library-failed" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-graphite">
 						<p>Your Library could not be loaded.</p>
 						<button type="button" className="prompt-secondary" onClick={library.retry}>Try again</button>
 					</div>
 				)}
 				{chats === null && (loadError
-					? <div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-ink-2"><p>Could not load sessions.</p><button type="button" className="prompt-secondary" onClick={() => void refresh()}>Try again</button></div>
-					: <p role="status" className="px-3 pb-2 text-sm text-muted-foreground">Loading sessions…</p>)}
+					? <div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-graphite"><p>Could not load sessions.</p><button type="button" className="prompt-secondary" onClick={() => void refresh()}>Try again</button></div>
+					: <p role="status" className="px-3 pb-2 text-sm text-faint">Loading sessions…</p>)}
 			</DialogContent>
 		</Dialog>
 	);

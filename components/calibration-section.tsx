@@ -42,12 +42,12 @@ export function CalibrationSectionView({ chats }: { chats: readonly ChatListItem
 			<h2 id={headingId} className="text-xl font-semibold leading-[1.3]">Calibration</h2>
 			<ul className="flex flex-col gap-0.5">
 				{merged.levels.map((level) => (
-					<li key={level.level} className="text-base text-foreground">{levelLine(level)}</li>
+					<li key={level.level} className="text-md text-ink">{levelLine(level)}</li>
 				))}
 			</ul>
-			<h3 id={missesId} className="pt-2 text-sm font-medium text-muted-foreground">Wrong while Certain</h3>
+			<h3 id={missesId} className="pt-2 text-sm font-medium text-faint">Wrong while Certain</h3>
 			{merged.misses.length === 0 ? (
-				<p className="text-ink-2">None yet. Every answer you marked Certain was right.</p>
+				<p className="text-graphite">None yet. Every answer you marked Certain was right.</p>
 			) : (
 				<>
 					<ul aria-labelledby={missesId} className="flex flex-col gap-1">
@@ -69,7 +69,7 @@ function MissRow({ miss }: { miss: MergedMiss }) {
 	return (
 		<li className="waiting-row" data-testid="calibration-miss" data-no-kind="">
 			<RowMeta id={`${id}-meta`} title={miss.title} at={miss.answeredAt} />
-			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-lg leading-[27px] text-foreground">
+			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-lg leading-[27px] text-ink">
 				<Teaser text={teaserPlain(miss.question)} />
 			</p>
 			<Link

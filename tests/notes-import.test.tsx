@@ -96,7 +96,7 @@ for (const outcome of ["completed", "failed", "partial", "aborted", "busy"] as c
 	assert.equal(starts, 1);
 	assert.equal(finishes, 1);
 	const html = host!.innerHTML;
-	assert.doesNotMatch(html, /<button|<section|<ul|border|bg-card|rounded|shadow|Retry|Dismiss|Import complete|new propositions|Saved changes|Import stopped|already being imported/);
+	assert.doesNotMatch(html, /<button|<section|<ul|border|bg-shelf|rounded|shadow|Retry|Dismiss|Import complete|new propositions|Saved changes|Import stopped|already being imported/);
 	assert.deepEqual(Object.keys(current).sort(), ["errors", "importing", "onImportFiles"], "no retained rows, Files, retry or dismiss API");
 	if (outcome === "completed") {
 		assert.equal(html, "");
@@ -106,7 +106,7 @@ for (const outcome of ["completed", "failed", "partial", "aborted", "busy"] as c
 		assert.match(html, /&lt;script&gt;notes.md: &lt;img&gt;synthetic failure/);
 		assert.match(html, /provider_key_missing — openai — OPENAI_API_KEY — cheap, strong/);
 		assert.match(html, /role="alert"/);
-		assert.match(html, /text-sm text-destructive/);
+		assert.match(html, /text-sm text-red/);
 		assert.match(html, /whitespace-pre-wrap break-words/);
 		assert.doesNotMatch(html, /<script>|<img>/);
 	}

@@ -112,7 +112,7 @@ export function ThinkingBlock({
 				// NO band — the accent lift read too light; rail only.
 				// Feature 001: no side rail. Outside cards the row sits on the
 				// lesson's reading edge, distinguished by ink, not a border.
-				"lh-card-enter my-2 w-full py-1 font-ui text-sm",
+				"lh-card-enter my-2 w-full py-1 font-sans text-sm",
 				inCard ? "" : "lh-reading",
 			)}
 		>
@@ -124,13 +124,13 @@ export function ThinkingBlock({
 					blurAfterPointerClick(e);
 				}}
 				aria-expanded={open}
-				className="flex w-full items-center gap-2 font-medium text-muted-foreground transition-colors hover:text-foreground"
+				className="flex w-full items-center gap-2 font-medium text-faint transition-colors hover:text-ink"
 			>
 				{label}
 				<ChevronDownIcon className={cn("size-4 shrink-0 transition-transform", open ? "rotate-180" : "rotate-0")} />
 			</button>
 			{open && (
-				<span className="lh-prose mt-1.5 block whitespace-pre-wrap pl-4 italic text-ink-2">{text}</span>
+				<span className="lh-prose mt-1.5 block whitespace-pre-wrap pl-4 italic text-graphite">{text}</span>
 			)}
 		</div>
 	);

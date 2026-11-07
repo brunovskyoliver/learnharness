@@ -20,8 +20,8 @@
 .lh-pdf-mark[data-noted] { border-bottom: 2px solid rgb(90 60 0); }
 .lh-pdf-cite { position: absolute; background: rgb(60 140 255 / 30%); outline: 2px solid rgb(20 80 190); outline-offset: 0; mix-blend-mode: multiply; }
 
-.lh-pdf-bubble { position: fixed; z-index: 40; display: flex; max-width: min(22rem, calc(100vw - 1rem)); flex-wrap: wrap; align-items: center; gap: 0.25rem; border-radius: 10px; background: var(--popover); padding: 0.25rem; }
-.lh-pdf-bubble button { display: inline-flex; min-height: 2rem; align-items: center; border-radius: 6px; padding-inline: 0.5rem; color: var(--foreground); font-size: 0.8125rem; }
-.lh-pdf-bubble button:hover { background: var(--card); }
-.lh-pdf-bubble button:focus-visible { outline: 1px solid var(--ring); outline-offset: 1px; }
+.lh-pdf-bubble { position: fixed; z-index: 40; display: flex; max-width: min(22rem, calc(100vw - 1rem)); flex-wrap: wrap; align-items: center; gap: 0.25rem; border-radius: 10px; background: var(--paper); padding: 0.25rem; }
+.lh-pdf-bubble button { display: inline-flex; min-height: 2rem; align-items: center; border-radius: var(--radius-md); padding-inline: 0.5rem; color: var(--ink); font-size: 0.8125rem; }
+.lh-pdf-bubble button:hover { background: var(--shelf); }
+.lh-pdf-bubble button:focus-visible { outline: 1px solid var(--nb-focus); outline-offset: 1px; }
 @media (pointer: coarse) { .lh-pdf-bubble button { min-height: 2.75rem; min-width: 2.75rem; padding-inline: 0.75rem; } }

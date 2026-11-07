@@ -137,7 +137,7 @@ describe("AgentSection (thin SSR)", () => {
 		const tag = tagOf(html, "graph-tools-row");
 		assert.ok(tag.includes('data-disabled="true"'), "the row is unavailable when the graph is off");
 		assert.ok(!/ opacity-\d|"opacity-\d/.test(tag), "no opacity on the row");
-		assert.ok(row.includes("text-muted-foreground"), "muted ink on the label");
+		assert.ok(row.includes("text-faint"), "muted ink on the label");
 		assert.ok(tagOf(html, "toggle-graph-tools").includes("disabled"), "the control locks");
 		assert.ok(row.includes("Graph is disabled"), "the reason hint replaces the description");
 		assert.ok(row.includes("disabled"), "toggle untouchable while the graph is off");
@@ -323,13 +323,13 @@ describe("Settings meets DESIGN.md (feature 009, findings 6-12)", () => {
 
 	it("titles sit on the scale in the title serif", () => {
 		const html = renderToStaticMarkup(<SettingsSection title="Agent"><SettingsGroup label="Models">x</SettingsGroup></SettingsSection>);
-		assert.match(html, /<h2 class="[^"]*font-title[^"]*text-xl/);
-		assert.match(html, /<h3 class="[^"]*font-title[^"]*text-lg/);
+		assert.match(html, /<h2 class="[^"]*tracking-title[^"]*text-xl/);
+		assert.match(html, /<h3 class="[^"]*tracking-title[^"]*text-lg/);
 	});
 
-	it("radii are 6px controls and 10px cards only; no rounded-sm, -xl or bare rounded", () => {
-		for (const [name, source] of sources) assert.doesNotMatch(strip(source), /\brounded-(sm|xl|2xl|xs)\b|\brounded(?=[\s"`])/, name);
-		assert.ok(sources.find(([name]) => name === "settings-dialog-content.tsx")![1].includes("rounded-lg border border-border bg-background"), "dialog frame is 10px");
+	it("radii are 8px controls, 10px cards and 12px menus only; no rounded-sm, -2xl or bare rounded", () => {
+		for (const [name, source] of sources) assert.doesNotMatch(strip(source), /\brounded-(sm|2xl|xs)\b|\brounded(?=[\s"`])/, name);
+		assert.ok(sources.find(([name]) => name === "settings-dialog-content.tsx")![1].includes("rounded-lg border border-rule bg-paper"), "dialog frame is 10px");
 	});
 
 	it("connection rows have no separator", () => {
@@ -347,7 +347,7 @@ describe("Settings meets DESIGN.md (feature 009, findings 6-12)", () => {
 
 	it("a disabled Button in Settings uses muted ink, not its opacity", () => {
 		const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
-		assert.match(css, /\[data-settings-surface\] \[data-slot="button"\]:disabled \{ opacity: 1; color: var\(--muted-foreground\); \}/);
+		assert.match(css, /\[data-settings-surface\] \[data-slot="button"\]:disabled \{ opacity: 1; color: var\(--faint\); \}/);
 	});
 
 	it("small controls grow to 44px on coarse pointers", () => {

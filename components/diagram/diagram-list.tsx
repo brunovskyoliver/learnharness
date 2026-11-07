@@ -7,8 +7,8 @@ import { useEffect, useRef } from "react";
 import { Link2Icon, Trash2Icon } from "lucide-react";
 import { DIAGRAM_NODE_NOUN, diagramNodeName, type DiagramDoc } from "@/src/core";
 
-const FIELD = "w-full min-w-0 rounded-md border border-input bg-transparent px-2 py-1.5 text-sm text-foreground pointer-coarse:min-h-11";
-const ICON = "ui-icon-button shrink-0 text-muted-foreground hover:bg-accent hover:text-foreground";
+const FIELD = "w-full min-w-0 rounded-md border border-rule bg-transparent px-2 py-1.5 text-sm text-ink pointer-coarse:min-h-11";
+const ICON = "ui-icon-button shrink-0 text-faint hover:bg-shelf hover:text-ink";
 
 export function DiagramList({ doc, readOnly, focusRequest, onText, onLabel, onRemoveNode, onRemoveEdge, onLink }: {
 	doc: DiagramDoc;
@@ -30,13 +30,13 @@ export function DiagramList({ doc, readOnly, focusRequest, onText, onLabel, onRe
 	return (
 		<div ref={root} className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-3 pb-6" data-testid="diagram-list">
 			<section aria-label={`${noun}s`} className="flex flex-col gap-2">
-				<h3 className="text-sm font-medium text-muted-foreground">{noun[0]!.toUpperCase()}{noun.slice(1)}s</h3>
-				{doc.nodes.length === 0 && <p className="text-sm text-ink-2">Nothing here yet. Add a {noun} to start.</p>}
+				<h3 className="text-sm font-medium text-faint">{noun[0]!.toUpperCase()}{noun.slice(1)}s</h3>
+				{doc.nodes.length === 0 && <p className="text-sm text-graphite">Nothing here yet. Add a {noun} to start.</p>}
 				<ul className="flex flex-col gap-2">
 					{doc.nodes.map((node, index) => (
 						<li key={node.id} className="flex items-center gap-1 [content-visibility:auto] [contain-intrinsic-size:auto_44px]" data-testid="diagram-list-node">
 							{node.type === "stroke" ? (
-								<span tabIndex={-1} data-list-node={node.id} className="min-w-0 flex-1 px-2 py-1.5 text-sm text-ink-2">Freehand stroke</span>
+								<span tabIndex={-1} data-list-node={node.id} className="min-w-0 flex-1 px-2 py-1.5 text-sm text-graphite">Freehand stroke</span>
 							) : (
 								<textarea
 									data-list-node={node.id}
@@ -59,12 +59,12 @@ export function DiagramList({ doc, readOnly, focusRequest, onText, onLabel, onRe
 				</ul>
 			</section>
 			<section aria-label="Connections" className="flex flex-col gap-2">
-				<h3 className="text-sm font-medium text-muted-foreground">Connections</h3>
-				{doc.edges.length === 0 && <p className="text-sm text-ink-2">No connections yet.</p>}
+				<h3 className="text-sm font-medium text-faint">Connections</h3>
+				{doc.edges.length === 0 && <p className="text-sm text-graphite">No connections yet.</p>}
 				<ul className="flex flex-col gap-2">
 					{doc.edges.map((edge) => (
 						<li key={edge.id} className="flex flex-col gap-1" data-testid="diagram-list-edge">
-							<span className="text-sm text-ink-2 [overflow-wrap:anywhere]">{names.get(edge.from)} → {names.get(edge.to)}</span>
+							<span className="text-sm text-graphite [overflow-wrap:anywhere]">{names.get(edge.from)} → {names.get(edge.to)}</span>
 							<span className="flex items-center gap-1">
 								<input aria-label={`Label from ${names.get(edge.from)} to ${names.get(edge.to)}`} readOnly={readOnly} autoComplete="off" value={edge.label} placeholder="Label…" className={FIELD} onChange={(event) => onLabel(edge.id, event.target.value)} />
 								{!readOnly && <button type="button" aria-label={`Delete connection from ${names.get(edge.from)} to ${names.get(edge.to)}`} className={ICON} onClick={() => onRemoveEdge(edge.id)}><Trash2Icon className="ui-icon" aria-hidden="true" /></button>}

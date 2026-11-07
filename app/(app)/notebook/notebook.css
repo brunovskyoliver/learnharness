@@ -24,7 +24,7 @@
 	min-height: 100dvh;
 	background: var(--paper);
 	color: var(--ink);
-	font-family: var(--nb-font-sans), ui-sans-serif, system-ui, sans-serif;
+	font-family: var(--nb-sans);
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 	overscroll-behavior: none;
@@ -71,7 +71,7 @@
 	border-radius: 6px;
 	color: var(--ink);
 	font-family: var(--nb-sans);
-	font-size: 15px;
+	font-size: var(--text-wordmark);
 	font-weight: 600;
 	letter-spacing: -0.012em;
 	line-height: 1;
@@ -79,8 +79,7 @@
 	white-space: nowrap;
 }
 .nb-root .nb-wordmark-mark { width: 15px; height: 15px; flex: none; }
-/* LhMark's white ring is drawn for dark grounds; on paper it takes the ink. */
-.nb-root .nb-wordmark-mark :is([style*="#fff"], [style*="255, 255, 255"]) { fill: var(--ink) !important; }
+/* LhMark's ring and dot take the ink (components/lh-mark.tsx). */
 
 /* The hover strip at the left edge (fine pointers only, see notebook-app.tsx). */
 .nb-root .nb-edge {
@@ -138,7 +137,7 @@
 	min-height: 20px;
 	color: var(--faint);
 	font-family: var(--nb-sans);
-	font-size: 13px;
+	font-size: var(--text-sm);
 	line-height: 20px;
 }
 /* Text scrolls under the pinned row; a band of the same paper keeps it legible. */
@@ -218,7 +217,7 @@
 	gap: 4px 12px;
 	margin: -0.4em 0 1.2em;
 	color: var(--graphite);
-	font-size: 13px;
+	font-size: var(--text-sm);
 	line-height: 1.4;
 }
 .nb-root .nb-title-error { color: var(--text-red); }
@@ -300,7 +299,7 @@
 	max-width: 100%;
 	margin: 1.6em 0;
 	border-radius: 6px;
-	box-shadow: 0 0 0 1px var(--rule), 0 1px 2px #1d1c1a0d;
+	box-shadow: 0 0 0 1px var(--rule), var(--nb-image-shadow);
 }
 /* Tables, checklists, maths, callouts, sections, wiki links: Study's
  * structure, Notebook's type and tokens. */
@@ -355,9 +354,9 @@
 	box-shadow: var(--lift);
 	color: var(--ink);
 	font-family: var(--nb-sans);
-	font-size: 13.5px;
+	font-size: var(--text-ui);
 }
-.nb-root :is([data-testid="page-slash-menu"], [data-testid="page-wiki-menu"]) [role="option"] { min-height: 32px; border-radius: 8px; font-size: 13.5px; }
+.nb-root :is([data-testid="page-slash-menu"], [data-testid="page-wiki-menu"]) [role="option"] { min-height: 32px; border-radius: 8px; font-size: var(--text-ui); }
 .nb-root :is([data-testid="page-slash-menu"], [data-testid="page-wiki-menu"]) [aria-selected="true"] { background: var(--shelf); outline: 2px solid var(--nb-focus); outline-offset: -2px; }
 
 @media (max-width: 639px) {
@@ -444,7 +443,7 @@
 .nb-root .nb-sel-style:first-child svg { width: 16px; height: 16px; }
 /* The block style he is in: a filled ink square with a paper glyph. */
 .nb-root .nb-sel-style[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
-.nb-root .nb-sel-ink span { font-size: 14px; font-weight: 500; line-height: 1; }
+.nb-root .nb-sel-ink span { font-size: var(--text-md); font-weight: 500; line-height: 1; }
 /* The frame shows no fill behind the current ink. */
 .nb-root .nb-sel-ink[aria-pressed="true"]:not(:hover) { background: none; }
 .nb-root .nb-sel-ink [data-ink="default"] { color: var(--ink); }
@@ -471,15 +470,15 @@
 	transition: background-color 0.12s;
 }
 .nb-root .nb-sel-action:hover { background: var(--shelf); }
-.nb-root .nb-sel-label { font-size: 15.5px; line-height: 1; }
-.nb-root .nb-sel-hint { color: var(--faint); font-family: var(--nb-sans); font-size: 10.5px; line-height: 1; white-space: nowrap; }
+.nb-root .nb-sel-label { font-size: var(--text-select); line-height: 1; }
+.nb-root .nb-sel-hint { color: var(--faint); font-family: var(--nb-sans); font-size: var(--text-kbd); line-height: 1; white-space: nowrap; }
 
 /* Ask about this, before it is sent: the field and its hint. */
 .nb-root .nb-thread-hint {
 	margin: 8px 0 0;
 	color: var(--faint);
 	font-family: var(--nb-sans);
-	font-size: 10.5px;
+	font-size: var(--text-kbd);
 	line-height: 14px;
 	letter-spacing: 0;
 }
@@ -507,7 +506,7 @@
 	gap: 6px;
 	color: var(--faint);
 	font-family: var(--nb-sans);
-	font-size: 13px;
+	font-size: var(--text-sm);
 	line-height: 20px;
 	cursor: text;
 }
@@ -523,7 +522,7 @@
 	background: transparent;
 	color: var(--graphite);
 	caret-color: var(--ink);
-	font-size: 16.5px;
+	font-size: var(--text-instruction);
 	line-height: 1.6;
 	outline: none;
 	white-space: pre-wrap;

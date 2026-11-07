@@ -62,17 +62,17 @@ describe("DeleteNodeBody — the minimal screen (owner, 2026-09-30)", () => {
 		// as the session dialog.
 		assert.match(html, /Delete idea\?/);
 		const title = html.match(/<h2[^>]*>/)?.[0] ?? "";
-		assert.match(title, /text-sm font-semibold text-destructive/);
+		assert.match(title, /text-sm font-semibold text-red/);
 		assert.ok(!title.includes("font-title"), "no serif display title (owner, 2026-10-13)");
 		const name = html.match(/data-testid="node-name-code"[^>]*>/)?.[0] ?? "";
 		assert.match(name, /font-mono text-sm/);
-		assert.ok(!name.includes("bg-muted"), "no code-block chrome — the font already says code");
+		assert.ok(!name.includes("bg-shelf"), "no code-block chrome — the font already says code");
 		assert.match(html, /data-testid="node-name-code"[^>]*>Kepler&#x27;s three laws</);
 		assert.match(html, /data-testid="node-permanence-line"[^>]*>This permanently deletes the idea\. This cannot be undone\./);
 		assert.match(html, /data-testid="node-delete-cancel"/);
 		assert.match(html, /data-testid="node-delete-confirm"/);
 		// the Delete button carries the destructive red (owner, polish round)
-		assert.match(html, /border-destructive\/50[^>]*text-destructive/);
+		assert.match(html, /border-red\/50[^>]*text-red/);
 	});
 
 	it("NO impact facts, NO loading line, NO sessions join — the pre-flight read is dead", () => {

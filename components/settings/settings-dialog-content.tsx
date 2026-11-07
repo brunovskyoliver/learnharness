@@ -89,7 +89,7 @@ export default function SettingsDialog({
 	return (
 		<Dialog.Root open onOpenChange={(open) => { if (!open) onClose(); }}>
 			<Dialog.Portal>
-				<Dialog.Overlay className="fixed inset-0 z-50 bg-background" data-testid="settings-backdrop" {...backdropDismiss} />
+				<Dialog.Overlay className="fixed inset-0 z-50 bg-paper" data-testid="settings-backdrop" {...backdropDismiss} />
 				<Dialog.Content
 					ref={setPortalContainer}
 					// The dialog itself takes focus, so no control's tooltip opens with it.
@@ -101,7 +101,7 @@ export default function SettingsDialog({
 					data-lh-modal-content
 					aria-describedby={undefined}
 					data-settings-surface
-					className="fixed inset-3 z-50 overflow-hidden rounded-lg border border-border bg-background outline-none sm:inset-6 lg:inset-x-[6vw] lg:inset-y-[5vh]"
+					className="fixed inset-3 z-50 overflow-hidden rounded-lg border border-rule bg-paper outline-none sm:inset-6 lg:inset-x-[6vw] lg:inset-y-[5vh]"
 					onPointerDownOutside={(event) => event.preventDefault()}
 					onEscapeKeyDown={(event) => event.preventDefault()}
 						onCloseAutoFocus={(event) => {
@@ -315,14 +315,14 @@ useEffect(() => {
 			aria-modal={inModal ? undefined : true}
 			aria-label={inModal ? undefined : "Settings"}
 			data-testid="settings-dialog"
-			className="settings-dialog-pop flex h-full min-h-0 w-full flex-col overflow-hidden bg-background"
+			className="settings-dialog-pop flex h-full min-h-0 w-full flex-col overflow-hidden bg-paper"
 			onClick={(e) => e.stopPropagation()}
 		>
 			{/* Shared header height and section breadcrumb. */}
 			<header className="flex h-13 shrink-0 items-center gap-3 px-5 sm:px-6">
-				<span className="text-sm text-muted-foreground">Settings</span>
-				<span aria-hidden="true" className="text-muted-foreground">/</span>
-				<span className="truncate text-sm font-medium text-foreground">{activeSection.label}</span>
+				<span className="text-sm text-faint">Settings</span>
+				<span aria-hidden="true" className="text-faint">/</span>
+				<span className="truncate text-sm font-medium text-ink">{activeSection.label}</span>
 				<Hint
 						// Esc closes the dialog (its own listener) — surface it.
 						label="Close"
@@ -346,9 +346,9 @@ useEffect(() => {
 				<nav
 					aria-label="Settings sections"
 					data-testid="settings-nav"
-					className="flex min-h-0 shrink-0 flex-col gap-3 bg-background p-3 sm:w-56 sm:p-4"
+					className="flex min-h-0 shrink-0 flex-col gap-3 bg-paper p-3 sm:w-56 sm:p-4"
 				>
-					<label className="flex h-9 items-center gap-2 rounded-md border border-input bg-background px-2.5 text-muted-foreground pointer-coarse:h-11">
+					<label className="flex h-9 items-center gap-2 rounded-md border border-rule bg-paper px-2.5 text-faint pointer-coarse:h-11">
 						<SearchIcon aria-hidden="true" className="size-4 shrink-0" />
 						<input
 							type="search"
@@ -371,7 +371,7 @@ useEffect(() => {
 									setSearch("");
 								}
 							}}
-							className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
+							className="min-w-0 flex-1 bg-transparent text-sm text-ink placeholder:text-faint [&::-webkit-search-cancel-button]:hidden"
 						/>
 					</label>
 					{search.trim() ? (
@@ -384,7 +384,7 @@ useEffect(() => {
 									type="button"
 									data-testid={`settings-nav-${s.id}`}
 									aria-current={active === s.id}
-									className={cn("flex min-h-10 shrink-0 items-center gap-3 rounded-md px-3 py-2 text-left font-ui text-sm transition-colors", active === s.id ? "bg-accent text-foreground" : "text-ink-2 hover:bg-accent hover:text-foreground")}
+									className={cn("flex min-h-10 shrink-0 items-center gap-3 rounded-md px-3 py-2 text-left font-sans text-sm transition-colors", active === s.id ? "bg-shelf text-ink" : "text-graphite hover:bg-shelf hover:text-ink")}
 									onClick={() => setActive(s.id)}
 								>
 									<s.icon aria-hidden="true" className="size-[18px] shrink-0" strokeWidth={1.75} />
@@ -408,7 +408,7 @@ useEffect(() => {
 				>
 					{/* Stays in view however far down the failed control was. */}
 					{error && (
-						<div className="sticky top-0 z-10 mx-auto w-full max-w-5xl bg-background px-5 pt-3 sm:px-8">
+						<div className="sticky top-0 z-10 mx-auto w-full max-w-5xl bg-paper px-5 pt-3 sm:px-8">
 							<SettingsFailure
 								testid="settings-error"
 								retryTestid="settings-error-retry"
@@ -527,7 +527,7 @@ useEffect(() => {
 
 /** Matches under their category headings; choosing one jumps to the row. */
 function SearchResults({ query, results, onChoose }: { query: string; results: SettingsIndexEntry[]; onChoose: (entry: SettingsIndexEntry) => void }) {
-	if (results.length === 0) return <p role="status" data-testid="settings-search-empty" className="px-2 text-sm text-muted-foreground">Nothing matches {query}</p>;
+	if (results.length === 0) return <p role="status" data-testid="settings-search-empty" className="px-2 text-sm text-faint">Nothing matches {query}</p>;
 	return (
 		<div data-testid="settings-search-results" className="-m-1 flex max-h-[40dvh] min-h-0 flex-col gap-3 overflow-y-auto p-1 sm:max-h-none">
 			<p role="status" className="sr-only">{results.length === 1 ? "1 setting found" : `${results.length} settings found`}</p>
@@ -536,7 +536,7 @@ function SearchResults({ query, results, onChoose }: { query: string; results: S
 				if (hits.length === 0) return null;
 				return (
 					<div key={section.id} className="flex flex-col gap-0.5">
-						<h3 className="flex items-center gap-2 px-2 pb-1 text-sm text-muted-foreground">
+						<h3 className="flex items-center gap-2 px-2 pb-1 text-sm text-faint">
 							<section.icon aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.75} />
 							{section.label}
 						</h3>
@@ -545,11 +545,11 @@ function SearchResults({ query, results, onChoose }: { query: string; results: S
 								key={entry.row}
 								type="button"
 								data-testid={`settings-result-${entry.row}`}
-								className="flex min-h-10 w-full flex-col justify-center rounded-md px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent pointer-coarse:min-h-11"
+								className="flex min-h-10 w-full flex-col justify-center rounded-md px-2 py-1.5 text-left text-sm text-ink transition-colors hover:bg-shelf pointer-coarse:min-h-11"
 								onClick={() => onChoose(entry)}
 							>
 								{entry.label}
-								{entry.hint && <span className="line-clamp-1 text-muted-foreground">{entry.hint}</span>}
+								{entry.hint && <span className="line-clamp-1 text-faint">{entry.hint}</span>}
 							</button>
 						))}
 					</div>

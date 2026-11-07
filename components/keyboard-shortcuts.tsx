@@ -200,30 +200,30 @@ function CheatSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
 	return (
 		<div
 			data-testid="cheat-sheet"
-			className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+			className="fixed inset-0 z-50 flex items-center justify-center bg-backdrop"
 			{...backdropDismiss}
 		>
 			<div
-				className="max-h-[80vh] w-full max-w-[36rem] overflow-y-auto rounded-xl border bg-card p-5 "
+				className="max-h-[80vh] w-full max-w-[36rem] overflow-y-auto rounded-lg border bg-shelf p-5 "
 				onClick={(e) => e.stopPropagation()}
 			>
 				<div className="mb-4 flex items-baseline justify-between">
-					<span className="text-sm font-medium text-card-foreground">Keyboard shortcuts</span>
-					<span className="text-sm text-muted-foreground">Esc to close</span>
+					<span className="text-sm font-medium text-ink">Keyboard shortcuts</span>
+					<span className="text-sm text-faint">Esc to close</span>
 				</div>
 				{scopes.map((scope) => {
 					const actions = KEYBOARD_ACTIONS.filter((a) => a.scope === scope);
 					if (actions.length === 0) return null;
 					return (
 						<div key={scope} className="mb-4">
-							<div className="mb-1.5 text-sm text-muted-foreground">
+							<div className="mb-1.5 text-sm text-faint">
 								{scopeLabels[scope]}
 							</div>
 							<div className="flex flex-col gap-1">
 								{actions.map((a) => (
 									<div key={a.id} className="flex items-center justify-between gap-4 text-sm">
-										<span className="text-muted-foreground">{a.label}</span>
-										<kbd className="rounded-md border border-border bg-background px-1.5 py-0.5 font-mono text-xs text-card-foreground">
+										<span className="text-faint">{a.label}</span>
+										<kbd className="rounded-md border border-rule bg-paper px-1.5 py-0.5 font-mono text-xs text-ink">
 											{formatBinding(bindingForAction(a.id))}
 										</kbd>
 									</div>

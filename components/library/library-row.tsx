@@ -8,8 +8,8 @@ import type { EntryKey } from "./library-filter.ts";
 import { LibraryEntryMenu, LibraryMoreButton, LibrarySelectBox, moreButton, type LibraryMenuAction } from "./library-menu.tsx";
 import { opensInPane, usePagePane } from "./page-pane-context.tsx";
 
-const ACTION = "size-9 text-muted-foreground pointer-coarse:size-11";
-const OPEN = "flex min-w-0 flex-1 flex-col gap-0.5 rounded-[10px] px-3 py-2.5 text-left transition-colors hover:bg-accent";
+const ACTION = "size-9 text-faint pointer-coarse:size-11";
+const OPEN = "flex min-w-0 flex-1 flex-col gap-0.5 rounded-lg px-3 py-2.5 text-left transition-colors hover:bg-shelf";
 const contentUrl = (id: string, download = false) => `/api/library/items/${id}/content${download ? "?download=1" : ""}`;
 
 function metaLine(item: LibraryItem): string {
@@ -86,12 +86,12 @@ export function LibraryRow({ item, location, onRenamed, actions = [], grid = fal
 	];
 	const body = (
 		<>
-			<span className="flex items-start gap-1.5 text-base font-medium text-foreground [overflow-wrap:anywhere]">
-				{item.pinned && <PinIcon className="ui-icon mt-1 size-3.5 shrink-0 text-ink-2" role="img" aria-label="Pinned" />}
-				{item.favorite && <StarIcon className="ui-icon mt-1 size-3.5 shrink-0 text-ink-2" role="img" aria-label="Favorite" />}
+			<span className="flex items-start gap-1.5 text-md font-medium text-ink [overflow-wrap:anywhere]">
+				{item.pinned && <PinIcon className="ui-icon mt-1 size-3.5 shrink-0 text-graphite" role="img" aria-label="Pinned" />}
+				{item.favorite && <StarIcon className="ui-icon mt-1 size-3.5 shrink-0 text-graphite" role="img" aria-label="Favorite" />}
 				<span className="min-w-0">{item.name}</span>
 			</span>
-			<span className="text-sm text-muted-foreground" suppressHydrationWarning>{metaLine(item)}{location ? ` · ${location}` : ""}</span>
+			<span className="text-sm text-faint" suppressHydrationWarning>{metaLine(item)}{location ? ` · ${location}` : ""}</span>
 		</>
 	);
 	const newTab = item.kind === "image";
@@ -100,7 +100,7 @@ export function LibraryRow({ item, location, onRenamed, actions = [], grid = fal
 	return (
 		<LibraryEntryMenu actions={menuActions}>
 		<li
-			className={`rounded-[10px] ${selection?.selected ? "bg-accent" : "bg-card"}`}
+			className={`rounded-lg ${selection?.selected ? "bg-shelf" : "bg-shelf"}`}
 			data-testid="library-row"
 			draggable={Boolean(onDragStartEntry) && !renaming}
 			onDragStart={(event) => onDragStartEntry?.(`item:${item.id}`, event)}
@@ -130,9 +130,9 @@ export function LibraryRow({ item, location, onRenamed, actions = [], grid = fal
 									finish();
 								}
 							}}
-							className="h-9 w-full min-w-0 rounded-md border border-input bg-transparent px-2 text-base text-foreground pointer-coarse:h-11"
+							className="h-9 w-full min-w-0 rounded-md border border-rule bg-transparent px-2 text-md text-ink pointer-coarse:h-11"
 						/>
-						{renameError && <p role="alert" className="text-sm text-destructive">{renameError}</p>}
+						{renameError && <p role="alert" className="text-sm text-red">{renameError}</p>}
 					</div>
 				) : newTab ? (
 					<a href={contentUrl(item.id)} target="_blank" rel="noreferrer" aria-label={`Open ${item.name}`} className={OPEN} onClick={opened}>{body}</a>

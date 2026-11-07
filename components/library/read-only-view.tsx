@@ -41,25 +41,25 @@ export function ReadOnlyView({ item }: { item: PaneItem }) {
 	const lines = text !== null && jumpLine !== null ? splitAtLine(text, jumpLine) : null;
 	return (
 		<div className="flex min-h-0 flex-1 flex-col gap-2 px-3 pb-3" data-testid="library-read-only">
-			<p className="text-sm text-muted-foreground">This is your original; it can&apos;t be edited here.</p>
+			<p className="text-sm text-faint">This is your original; it can&apos;t be edited here.</p>
 			{tooLong ? (
-				<p className="flex flex-wrap items-center gap-2 text-sm text-ink-2">
+				<p className="flex flex-wrap items-center gap-2 text-sm text-graphite">
 					Too long to preview
 					<a href={contentUrl(item.id, true)} className="prompt-secondary">Download</a>
 				</p>
 			) : failed ? (
-				<div role="status" className="flex flex-wrap items-center gap-2 text-sm text-ink-2">
+				<div role="status" className="flex flex-wrap items-center gap-2 text-sm text-graphite">
 					<p>{item.name} could not be loaded.</p>
 					<button type="button" className="prompt-secondary" onClick={() => void load()}>Try again</button>
 				</div>
 			) : text === null ? (
-				<p role="status" className="text-sm text-muted-foreground">Loading…</p>
+				<p role="status" className="text-sm text-faint">Loading…</p>
 			) : (
 				<pre
 					// Keyboard users scroll it; the track stays hidden globally.
 					tabIndex={0}
 					aria-label={item.name}
-					className={`min-h-0 flex-1 overflow-auto whitespace-pre-wrap rounded-md text-base [overflow-wrap:anywhere] ${item.kind === "code" || item.kind === "csv" ? "font-mono" : "font-ui"}`}
+					className={`min-h-0 flex-1 overflow-auto whitespace-pre-wrap rounded-md text-md [overflow-wrap:anywhere] ${item.kind === "code" || item.kind === "csv" ? "font-mono" : "font-sans"}`}
 				>{lines ? <>{lines[0]}<mark ref={mark} className="lh-doc-line" data-testid="library-read-only-line">{lines[1]}</mark>{lines[2]}</> : text}</pre>
 			)}
 		</div>

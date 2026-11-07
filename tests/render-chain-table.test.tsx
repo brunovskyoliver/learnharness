@@ -138,10 +138,10 @@ describe("ChainTableBody — THE shared TopBar + the lines law (owner, round 2)"
 
 	it("headers, groups and rows use spacing without structural separator rules", () => {
 		const html = render({ expandedClusters: new Set(["chat1"]) });
-		assert.ok(!html.includes("border-b border-border/60"), "no header or group separator rules");
+		assert.ok(!html.includes("border-b border-rule/60"), "no header or group separator rules");
 		// chain rows themselves carry NO border — their entire class list is
 		// the staircase law (pl-12 = aligned with the cluster's FOLDER icon);
-		// the chip outlines' border-border/70 is an outline, not a row line
+		// the chip outlines' border-rule/70 is an outline, not a row line
 		assert.ok(html.includes('class="flex items-center gap-1 py-1 pl-12 pr-3"'), "the chain row: staircase indent, no border");
 	});
 
@@ -174,7 +174,7 @@ describe("ChainTableBody — chain rows (chips + connectors)", () => {
 		assert.ok(html.includes('data-testid="chain-and-c1-1"'), "the land between premises");
 		assert.ok(html.includes('data-testid="chain-implies-c1"'), "the implication before the conclusion");
 		const and = html.match(/data-testid="chain-and-c1-1"[^>]*>/)?.[0] ?? "";
-		assert.match(and, /text-foreground/, "prominent — the theme's white, not dim gray");
+		assert.match(and, /text-ink/, "prominent — the theme's white, not dim gray");
 		assert.ok(html.includes("katex"), "a REAL KaTeX render, not a unicode arrow");
 		// the old arrow is dead as a VISIBLE connector — it survives only in
 		// the row's aria-label (formatChainLine, the plain-text form)
@@ -274,7 +274,7 @@ describe("ChainTableBody — the floating selection bar (never shifts layout)", 
 		// riding the same confirm dialog as the canvas delete.
 		assert.ok(html.includes('data-testid="chain-danger-divider"'));
 		const del = html.match(/<button[^>]*data-testid="chain-delete"[^>]*>/)?.[0] ?? "";
-		assert.match(del, /border-destructive\/50/); // the destructive pair
+		assert.match(del, /border-red\/50/); // the destructive pair
 		assert.match(del, /aria-label="Delete 3 selected ideas"/);
 		assert.ok(html.includes("lucide-trash-2"), "the trash icon");
 		// the fence is before Delete in the DOM (right end of the bar)

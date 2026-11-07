@@ -68,18 +68,18 @@ export function AbortTurnBody({
 			aria-modal="true"
 			aria-label={copy.title}
 			data-testid="abort-turn-dialog"
-			className="fixed inset-0 z-50 flex items-center justify-center bg-background "
+			className="fixed inset-0 z-50 flex items-center justify-center bg-paper "
 			// A genuine click on the scrim cancels — the cautious default, like Esc.
 			{...backdropDismiss}
 		>
 			<div
-				className="mx-4 w-full max-w-sm rounded-xl border bg-card p-5 "
+				className="mx-4 w-full max-w-sm rounded-lg border bg-shelf p-5 "
 				onClick={(e) => e.stopPropagation()}
 			>
-				<h2 className="text-sm font-semibold text-card-foreground" data-testid="abort-turn-title">
+				<h2 className="text-sm font-semibold text-ink" data-testid="abort-turn-title">
 					{copy.title}
 				</h2>
-				<p className="mt-1.5 text-sm text-muted-foreground" data-testid="abort-turn-line">
+				<p className="mt-1.5 text-sm text-faint" data-testid="abort-turn-line">
 					{copy.line}
 					{busy && mode !== "turn" ? " The working turn stops too." : ""}
 				</p>
@@ -88,7 +88,7 @@ export function AbortTurnBody({
 						type="button"
 						data-testid="abort-turn-cancel"
 						onClick={onClose}
-						className="rounded-sm px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+						className="rounded-md px-3 py-1.5 text-sm text-faint transition-colors hover:text-ink"
 					>
 						Cancel
 					</button>
@@ -97,7 +97,7 @@ export function AbortTurnBody({
 						data-testid="abort-turn-confirm"
 						onClick={onConfirm}
 						// Destructive red — the app's established destructive pair.
-						className="rounded-sm border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-sm text-destructive transition-colors hover:bg-destructive/20"
+						className="rounded-md border border-red/50 bg-red/10 px-3 py-1.5 text-sm text-red transition-colors hover:bg-red/20"
 					>
 						{copy.action}
 					</button>

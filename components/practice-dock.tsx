@@ -72,11 +72,11 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, statemen
 				data-testid="practice-dock-bar"
 				aria-expanded={false}
 				onClick={onExpand}
-				className="relative z-10 turn-strip min-h-[52px] w-full cursor-pointer bg-card text-left transition-colors hover:bg-accent"
+				className="relative z-10 turn-strip min-h-[52px] w-full cursor-pointer bg-shelf text-left transition-colors hover:bg-shelf"
 			>
 				<span className="turn-label">Your turn</span>
-				<span className="min-w-0 flex-1 truncate text-base text-ink-2">
-					<span className="font-medium text-foreground">Problem · </span>
+				<span className="min-w-0 flex-1 truncate text-md text-graphite">
+					<span className="font-medium text-ink">Problem · </span>
 					{statement ? <Teaser text={teaserText(statement)} /> : "Open the active problem"}
 				</span>
 				<span className="prompt-primary shrink-0" data-quiet="">Solve</span>
@@ -134,7 +134,7 @@ export function PracticeDock({ problemCallId, expanded, outgoingHeight, statemen
 				/>
 				{mention.line}
 				</AnswerWell>
-				{compactionRunning && <div role="status" className="px-4 pt-2 text-sm text-muted-foreground">Compacting session…</div>}
+				{compactionRunning && <div role="status" className="px-4 pt-2 text-sm text-faint">Compacting session…</div>}
 				<PromptToolbar controls={controls}>
 					{onSkip && (
 						<button type="button" data-testid="practice-skip" onClick={onSkip} className="prompt-secondary">

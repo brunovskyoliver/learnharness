@@ -246,11 +246,11 @@ export function ChainTableBody({
 			    close only. Search + close carve out with lh-no-drag (the mask
 			    law: later in the DOM). */}
 			<TopBar>
-				<span className="hidden min-w-0 flex-1 truncate text-sm text-muted-foreground sm:block">
+				<span className="hidden min-w-0 flex-1 truncate text-sm text-faint sm:block">
 					{chains.length} {chains.length === 1 ? "chain" : "chains"} · {nodes.length} {nodes.length === 1 ? "idea" : "ideas"}
 				</span>
 				<div className="relative min-w-0 flex-1 sm:max-w-56">
-					<SearchIcon className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+					<SearchIcon className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-faint" />
 					<input
 						value={query}
 						data-testid="chain-table-search"
@@ -258,7 +258,7 @@ export function ChainTableBody({
 						placeholder="Search ideas…"
 						aria-label="Search ideas"
 						spellCheck={false}
-						className="lh-no-drag h-8 w-full rounded-lg border bg-background pl-8 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
+						className="lh-no-drag h-8 w-full rounded-lg border bg-paper pl-8 pr-3 text-sm outline-none placeholder:text-faint focus:border-focus"
 					/>
 				</div>
 			<button
@@ -274,13 +274,13 @@ export function ChainTableBody({
 
 			{/* Spacing, indentation and tree guides carry the hierarchy. */}
 			<div className="min-h-0 flex-1 overflow-y-auto">
-				<div className="sticky top-0 z-10 flex items-center gap-1 bg-background px-3 py-1.5 text-sm text-muted-foreground ">
+				<div className="sticky top-0 z-10 flex items-center gap-1 bg-paper px-3 py-1.5 text-sm text-faint ">
 					<button
 						type="button"
 						data-testid="sort-name"
 						onClick={() => onSort("name")}
 						aria-sort={sort.col === "name" ? (sort.dir === 1 ? "ascending" : "descending") : "none"}
-						className="flex flex-1 items-center gap-1 text-left transition-colors hover:text-foreground"
+						className="flex flex-1 items-center gap-1 text-left transition-colors hover:text-ink"
 					>
 						Name {dirIcon("name")}
 					</button>
@@ -289,7 +289,7 @@ export function ChainTableBody({
 						data-testid="sort-props"
 						onClick={() => onSort("props")}
 						aria-sort={sort.col === "props" ? (sort.dir === 1 ? "ascending" : "descending") : "none"}
-						className="order-2 flex w-14 shrink-0 items-center justify-end gap-1 text-right transition-colors hover:text-foreground sm:order-none"
+						className="order-2 flex w-14 shrink-0 items-center justify-end gap-1 text-right transition-colors hover:text-ink sm:order-none"
 					>
 						Ideas {dirIcon("props")}
 					</button>
@@ -298,14 +298,14 @@ export function ChainTableBody({
 						data-testid="sort-created"
 						onClick={() => onSort("created")}
 						aria-sort={sort.col === "created" ? (sort.dir === 1 ? "ascending" : "descending") : "none"}
-						className="order-1 flex w-auto shrink-0 items-center justify-end gap-1 text-right transition-colors hover:text-foreground sm:order-none sm:w-20"
+						className="order-1 flex w-auto shrink-0 items-center justify-end gap-1 text-right transition-colors hover:text-ink sm:order-none sm:w-20"
 					>
 						Created {dirIcon("created")}
 					</button>
 				</div>
 
 				{groups.length === 0 && (
-					<div data-testid="chain-table-nomatch" className="px-4 pt-3 text-sm text-muted-foreground">
+					<div data-testid="chain-table-nomatch" className="px-4 pt-3 text-sm text-faint">
 						No matching chains.
 					</div>
 				)}
@@ -329,7 +329,7 @@ export function ChainTableBody({
 							{open && group.chains.length > 0 && (
 								<div
 									data-testid={`cluster-thread-${group.key}`}
-									className="pointer-events-none absolute bottom-[8px] left-[37px] top-[23px] w-px bg-border/50"
+									className="pointer-events-none absolute bottom-[8px] left-[37px] top-[23px] w-px bg-rule/50"
 								/>
 							)}
 							{/* The cluster row: birth-session group header. */}
@@ -342,18 +342,18 @@ export function ChainTableBody({
 									label={`Select everything born in ${group.label ?? "unlabeled"}`}
 								/>
 								<Expander open={open} onClick={() => onToggleCluster(group.key)} testid={`cluster-toggle-${group.key}`} label={`Expand cluster ${group.label ?? "unlabeled"}`} />
-								<span className="flex shrink-0 items-center justify-center text-muted-foreground">
+								<span className="flex shrink-0 items-center justify-center text-faint">
 									{open ? <FolderOpenIcon className="size-3.5" /> : <FolderIcon className="size-3.5" />}
 								</span>
 								<span className="min-w-0 flex-1 truncate text-sm font-medium">
-									{group.label ?? <span className="text-muted-foreground">unlabeled</span>}
-									{group.kind === "notes" && <span className="ml-2 text-sm text-muted-foreground">notes</span>}
-									<span className="block text-sm font-normal text-muted-foreground sm:hidden">{group.newestCreatedAt.slice(0, 10)}</span>
+									{group.label ?? <span className="text-faint">unlabeled</span>}
+									{group.kind === "notes" && <span className="ml-2 text-sm text-faint">notes</span>}
+									<span className="block text-sm font-normal text-faint sm:hidden">{group.newestCreatedAt.slice(0, 10)}</span>
 								</span>
-								<span className="w-14 shrink-0 text-right text-sm tabular-nums text-muted-foreground">
+								<span className="w-14 shrink-0 text-right text-sm tabular-nums text-faint">
 									{group.nodeIds.length}
 								</span>
-								<span className="hidden w-20 shrink-0 sm:block text-right text-sm tabular-nums text-muted-foreground">
+								<span className="hidden w-20 shrink-0 sm:block text-right text-sm tabular-nums text-faint">
 									{group.newestCreatedAt.slice(0, 10)}
 								</span>
 							</div>
@@ -376,7 +376,7 @@ export function ChainTableBody({
 												{chainOpen && memberIds.length > 0 && (
 													<div
 														data-testid={`chain-thread-${chain.id}`}
-														className="pointer-events-none absolute bottom-[8px] left-[73px] top-[22px] w-px bg-border/50"
+														className="pointer-events-none absolute bottom-[8px] left-[73px] top-[22px] w-px bg-rule/50"
 													/>
 												)}
 											<div
@@ -411,30 +411,30 @@ export function ChainTableBody({
 																	<LatexGlyph
 																		cmd="\implies"
 																		testid={`chain-implies-${chain.id}`}
-																		className="px-1.5 text-foreground"
+																		className="px-1.5 text-ink"
 																	/>
 																) : (
 																	<LatexGlyph
 																		cmd="\land"
 																		testid={`chain-and-${chain.id}-${i}`}
-																		className="px-1.5 text-foreground"
+																		className="px-1.5 text-ink"
 																	/>
 																))}
 																<span
 																	data-testid={`prop-chip-${id}`}
-																	className="rounded border border-border/70 bg-muted/30 px-1.5 py-0.5"
+																	className="rounded border border-rule/70 bg-shelf/30 px-1.5 py-0.5"
 																>
 																	{nameOf(id)}
 																</span>
 															</span>
 														);
 													})}
-													<span className="w-full text-sm text-muted-foreground sm:hidden">{dateOf(chain.conclusion)}</span>
+													<span className="w-full text-sm text-faint sm:hidden">{dateOf(chain.conclusion)}</span>
 												</span>
-												<span className="w-14 shrink-0 text-right text-sm tabular-nums text-muted-foreground">
+												<span className="w-14 shrink-0 text-right text-sm tabular-nums text-faint">
 													{memberIds.length}
 												</span>
-												<span className="hidden w-20 shrink-0 sm:block text-right text-sm tabular-nums text-muted-foreground">
+												<span className="hidden w-20 shrink-0 sm:block text-right text-sm tabular-nums text-faint">
 													{dateOf(chain.conclusion)}
 												</span>
 											</div>
@@ -460,7 +460,7 @@ export function ChainTableBody({
 																testid={`prop-checkbox-${id}`}
 																label={`Select node ${node.name}`}
 															/>
-															<span className="min-w-0 flex-1 text-sm leading-relaxed text-muted-foreground">
+															<span className="min-w-0 flex-1 text-sm leading-relaxed text-faint">
 																{node.statement}
 															</span>
 															<span className="w-14 shrink-0" />
@@ -483,7 +483,7 @@ export function ChainTableBody({
 				<div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center pb-4">
 					<div
 						data-testid="chain-selection-bar"
-						className="pointer-events-auto mx-2 flex max-w-full flex-wrap items-center justify-center gap-2 rounded-xl border bg-card px-4 py-2 "
+						className="pointer-events-auto mx-2 flex max-w-full flex-wrap items-center justify-center gap-2 rounded-lg border bg-shelf px-4 py-2 "
 					>
 						<span data-testid="chain-selected-summary" className="text-sm font-medium">
 							{selection.size} {selection.size === 1 ? "idea" : "ideas"} →{" "}
@@ -493,7 +493,7 @@ export function ChainTableBody({
 							type="button"
 							data-testid="chain-clear"
 							onClick={onClear}
-							className="rounded-full px-2.5 py-1 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+							className="rounded-full px-2.5 py-1 text-sm text-faint transition-colors hover:bg-shelf hover:text-ink"
 						>
 							Clear
 						</button>
@@ -503,7 +503,7 @@ export function ChainTableBody({
 								data-testid="chain-practice-done"
 								onClick={onSelect}
 								aria-label={`Done picking — ${selection.size} ${selection.size === 1 ? "idea" : "ideas"} selected`}
-								className="flex items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80"
+								className="flex items-center gap-1.5 rounded-full bg-ink px-3 py-1.5 text-sm font-medium text-paper transition-colors hover:bg-ink/88"
 							>
 								<DumbbellIcon aria-hidden="true" className="size-3.5" />
 								Done
@@ -517,7 +517,7 @@ export function ChainTableBody({
 								data-testid="chain-delete"
 								onClick={onDelete}
 								aria-label={`Delete ${selection.size} selected ${selection.size === 1 ? "idea" : "ideas"}`}
-								className="flex items-center gap-1.5 rounded-full border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/20"
+								className="flex items-center gap-1.5 rounded-full border border-red/50 bg-red/10 px-3 py-1.5 text-sm font-medium text-red transition-colors hover:bg-red/20"
 							>
 								<Trash2Icon aria-hidden="true" className="size-3.5" />
 								Delete
@@ -541,7 +541,7 @@ function Expander({ open, onClick, testid, label }: { open: boolean; onClick: ()
 			onClick={onClick}
 			aria-label={label}
 			aria-expanded={open}
-			className="flex h-5 w-3.5 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+			className="flex h-5 w-3.5 shrink-0 items-center justify-center rounded text-faint transition-colors hover:bg-shelf hover:text-ink"
 		>
 			<ChevronRightIcon className={`size-3.5 transition-transform ${open ? "rotate-90" : ""}`} />
 		</button>
@@ -573,7 +573,7 @@ function RowCheckbox({
 			data-testid={testid}
 			aria-label={label}
 			onChange={(e) => onToggle(e.target.checked)}
-			className="size-3.5 shrink-0 accent-primary"
+			className="size-3.5 shrink-0 accent-ink"
 		/>
 	);
 }
@@ -669,7 +669,7 @@ export function ChainTableOverlay({
 		<>
 			<div
 				data-testid="chain-table-overlay"
-				className="absolute inset-0 z-40 flex flex-col bg-background "
+				className="absolute inset-0 z-40 flex flex-col bg-paper "
 			>
 				<ChainTableBody
 					nodes={nodes}

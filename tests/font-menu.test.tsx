@@ -91,15 +91,15 @@ describe("FontMenuList (thin SSR)", () => {
 			<FontMenuList families={["Georgia", "Menlo"]} effectiveFamily={null} onPick={() => {}} />,
 		);
 		const defaultRow = unset.split('data-testid="font-option-default"')[1]?.split("</button>")[0] ?? "";
-		assert.ok(defaultRow.includes(' bg-muted"'), "unset → the default row is the effective one");
+		assert.ok(defaultRow.includes(' bg-shelf"'), "unset → the default row is the effective one");
 
 		const menlo = renderToStaticMarkup(
 			<FontMenuList families={["Georgia", "Menlo"]} effectiveFamily="Menlo" onPick={() => {}} />,
 		);
 		const menloRow = menlo.split('data-testid="font-option-Menlo"')[1]?.split("</button>")[0] ?? "";
 		const georgiaRow = menlo.split('data-testid="font-option-Georgia"')[1]?.split("</button>")[0] ?? "";
-		assert.ok(menloRow.includes(' bg-muted"'), "the stored family highlights");
-		assert.ok(!georgiaRow.includes(' bg-muted"'), "others do not");
+		assert.ok(menloRow.includes(' bg-shelf"'), "the stored family highlights");
+		assert.ok(!georgiaRow.includes(' bg-shelf"'), "others do not");
 	});
 
 	it("undefined families = the enumerating state (Loading fonts…), not an empty picker", () => {
@@ -140,8 +140,9 @@ describe("the emphasis-ink factory ruling (globals.css)", () => {
 
 	it("the shared theme defaults inks to the regular text color", () => {
 		const css = fs.readFileSync("app/globals.css", "utf-8");
-		assert.equal((css.match(/--lh-ink-strong: var\(--foreground\)/g) ?? []).length, 1, "shared root and dark theme block");
-		assert.equal((css.match(/--lh-ink-italic: var\(--foreground\)/g) ?? []).length, 1, "shared root and dark theme block");
+		// Feature 025: the emphasis inks are the paper ink itself (no tokens).
+		assert.match(css, /\.lh-prose :where\(strong, b\) \{\s*color: var\(--ink\);/);
+		assert.match(css, /\.lh-prose :where\(em, i\) \{\s*color: var\(--ink\);/);
 	});
 
 	it("the emphasis inputs say 'same as text' when empty", () => {

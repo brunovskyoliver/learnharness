@@ -112,7 +112,7 @@ export function QuestionDock({
 		canonical === "quiz" ? parseQuizInput(input) : canonical === "explain" ? parseExplainInput(input) : parseAskInput(input);
 	if (!parsed) {
 		return (
-			<div data-testid="malformed-question" className="rounded-xl border bg-card p-3 text-sm text-muted-foreground">
+			<div data-testid="malformed-question" className="rounded-lg border bg-shelf p-3 text-sm text-faint">
 				This question arrived malformed — the transcript keeps the retry.
 			</div>
 		);
@@ -184,11 +184,11 @@ export function QuestionDockBar({
 			data-testid={variant === "reveal" ? "teach-check-reveal" : "question-dock-bar"}
 			aria-expanded={false}
 			onClick={onExpand}
-			className="dock-variant relative z-10 turn-strip min-h-[52px] w-full bg-card text-left transition-colors hover:bg-accent"
+			className="dock-variant relative z-10 turn-strip min-h-[52px] w-full bg-shelf text-left transition-colors hover:bg-shelf"
 		>
 			<span className="turn-label">Your turn</span>
-			<span className="min-w-0 flex-1 truncate text-base text-ink-2">
-				{variant === "reveal" ? <span className="font-medium text-foreground">Check your understanding · </span> : <span className="font-medium text-foreground">{kind} · </span>}
+			<span className="min-w-0 flex-1 truncate text-md text-graphite">
+				{variant === "reveal" ? <span className="font-medium text-ink">Check your understanding · </span> : <span className="font-medium text-ink">{kind} · </span>}
 				<Teaser text={teaserText(question)} />
 			</span>
 			<span className="prompt-primary shrink-0" data-quiet="">Answer</span>
@@ -502,18 +502,18 @@ function QuestionDockForm({
 
 	const questionContent = <div ref={rootRef} data-testid="lesson-question" hidden={!active && !outgoingHeight} inert={!active} style={!active && outgoingHeight ? { height: outgoingHeight, maxHeight: outgoingHeight } : undefined} className={`${!active && outgoingHeight ? "dock-outgoing pointer-events-none absolute inset-x-0 top-0" : ""} select-text max-h-[var(--dock-question-max-h,50dvh)] min-h-0 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
 			<div data-session-find-root="" className="min-h-0 select-text px-4 pt-0.5">
-				{qd.mode === "multi-select" && <div className="mb-1 text-sm font-medium text-ink-2">Select all that apply</div>}
+				{qd.mode === "multi-select" && <div className="mb-1 text-sm font-medium text-graphite">Select all that apply</div>}
 				<div className="mb-3">
 					<ToolContentResponse>{qd.question}</ToolContentResponse>
 				</div>
 				{qd.context && (
-					<div className="mb-3 text-base text-muted-foreground [--lh-prose-size:15px]">
+					<div className="mb-3 text-md text-faint [--note-size:15px]">
 						<ToolContentResponse>{qd.context}</ToolContentResponse>
 					</div>
 				)}
 
 				{qd.mode !== "text" && (
-					<div className="flex flex-col gap-1.5 pb-3 [--lh-prose-size:15px]" role={qd.mode === "multi-select" ? "group" : "radiogroup"}>
+					<div className="flex flex-col gap-1.5 pb-3 [--note-size:15px]" role={qd.mode === "multi-select" ? "group" : "radiogroup"}>
 						{qd.options.map((opt, i) => {
 							const isSel = sel.selected.has(i);
 							return (
@@ -525,20 +525,20 @@ function QuestionDockForm({
 									data-kbdrow={i}
 									onClick={() => toggle(i)}
 									className={cn(
-										"flex min-h-11 items-start gap-3 rounded-sm border px-3.5 py-2.5 text-left text-base leading-[22px] outline-none transition-colors",
-										isSel ? "border-primary bg-primary/10 text-foreground" : "border-input text-ink-2 hover:bg-accent hover:text-foreground",
-										i === kbdIdx && !isSel && "bg-accent text-foreground",
+										"flex min-h-11 items-start gap-3 rounded-md border px-3.5 py-2.5 text-left text-md leading-[22px] outline-none transition-colors",
+										isSel ? "border-ink bg-ink/10 text-ink" : "border-rule text-graphite hover:bg-shelf hover:text-ink",
+										i === kbdIdx && !isSel && "bg-shelf text-ink",
 									)}
 								>
 									<span
 										className={cn(
 											"mt-[3px] flex size-4 shrink-0 items-center justify-center border-[1.5px]",
-											qd.mode === "multi-select" ? "rounded-[4px]" : "rounded-full",
-											isSel ? "border-primary bg-primary text-primary-foreground" : "border-muted-foreground",
+											qd.mode === "multi-select" ? "rounded-xs" : "rounded-full",
+											isSel ? "border-ink bg-ink text-paper" : "border-faint",
 										)}
 									>
 										{isSel && (
-											<span className={cn(qd.mode === "multi-select" ? "text-base leading-none" : "size-1.5 rounded-full bg-current")}>
+											<span className={cn(qd.mode === "multi-select" ? "text-md leading-none" : "size-1.5 rounded-full bg-current")}>
 												{qd.mode === "multi-select" ? "✓" : ""}
 											</span>
 										)}
@@ -553,7 +553,7 @@ function QuestionDockForm({
 											// records must not leak either. Same MessageResponse path as the
 											// label (owner, 2026-10-12): descriptions are full markdown —
 											// LaTeX included — not plain text.
-											<ToolContentResponse className="lh-prose block text-sm text-muted-foreground">
+											<ToolContentResponse className="lh-prose block text-sm text-faint">
 												{opt.description}
 											</ToolContentResponse>
 										)}
@@ -570,22 +570,22 @@ function QuestionDockForm({
 								data-kbdrow={optionCount}
 								onClick={selectOther}
 								className={cn(
-									"flex min-h-11 items-start gap-3 rounded-sm border px-3.5 py-2.5 text-left text-base leading-[22px] outline-none transition-colors",
-									sel.otherSelected ? "border-primary bg-primary/10" : "border-input hover:bg-accent",
-									kbdIdx === optionCount && !sel.otherSelected && "bg-accent",
+									"flex min-h-11 items-start gap-3 rounded-md border px-3.5 py-2.5 text-left text-md leading-[22px] outline-none transition-colors",
+									sel.otherSelected ? "border-ink bg-ink/10" : "border-rule hover:bg-shelf",
+									kbdIdx === optionCount && !sel.otherSelected && "bg-shelf",
 								)}
 							>
 								<span
 									className={cn(
 										"mt-[3px] flex size-4 shrink-0 items-center justify-center border-[1.5px]",
-										qd.mode === "multi-select" ? "rounded-[4px]" : "rounded-full",
+										qd.mode === "multi-select" ? "rounded-xs" : "rounded-full",
 										sel.otherSelected
-											? "border-primary bg-primary text-primary-foreground"
-											: "border-muted-foreground",
+											? "border-ink bg-ink text-paper"
+											: "border-faint",
 									)}
 								>
 									{sel.otherSelected && (
-										<span className={cn(qd.mode === "multi-select" ? "text-base leading-none" : "size-1.5 rounded-full bg-current")}>
+										<span className={cn(qd.mode === "multi-select" ? "text-md leading-none" : "size-1.5 rounded-full bg-current")}>
 											{qd.mode === "multi-select" ? "✓" : ""}
 										</span>
 									)}
@@ -624,7 +624,7 @@ function QuestionDockForm({
 											}
 									}}
 									placeholder="Type your own answer…"
-									className="lh-input w-full min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted-foreground"
+									className="lh-input w-full min-w-0 flex-1 bg-transparent outline-none placeholder:text-faint"
 									onClick={(e) => e.stopPropagation()}
 								/>
 							</div>
@@ -641,7 +641,7 @@ function QuestionDockForm({
 				<div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 px-4 pb-4">
 					<span
 						id={`${toolCallId}-confidence`}
-						className={cn("shrink-0 text-sm font-medium", sel.dontKnow ? "text-muted-foreground" : "text-ink-2")}
+						className={cn("shrink-0 text-sm font-medium", sel.dontKnow ? "text-faint" : "text-graphite")}
 					>
 						Confidence
 					</span>
@@ -651,7 +651,7 @@ function QuestionDockForm({
 						aria-label="Confidence that your selected answer is correct"
 						data-testid="confidence-segments"
 						className={cn(
-							"grid min-w-0 flex-[1_1_320px] grid-cols-2 gap-0.5 rounded-[8px] bg-background p-[3px] sm:grid-cols-4",
+							"grid min-w-0 flex-[1_1_320px] grid-cols-2 gap-0.5 rounded-md bg-paper p-[3px] sm:grid-cols-4",
 							sel.dontKnow && "pointer-events-none opacity-40",
 						)}
 					>
@@ -665,10 +665,10 @@ function QuestionDockForm({
 								title={`${CONFIDENCE_STOPS[i]}% sure. Adjust with ←/→.`}
 								onClick={() => setConfIdx(i)}
 								className={cn(
-									"min-h-9 whitespace-normal rounded-sm px-2 py-1.5 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring pointer-coarse:min-h-11",
+									"min-h-9 whitespace-normal rounded-md px-2 py-1.5 text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-focus pointer-coarse:min-h-11",
 									!sel.dontKnow && confIdx === i
-										? "bg-accent font-semibold text-foreground"
-										: "font-medium text-ink-2 hover:bg-accent hover:text-foreground",
+										? "bg-shelf font-semibold text-ink"
+										: "font-medium text-graphite hover:bg-shelf hover:text-ink",
 								)}
 							>
 								{label}
@@ -685,9 +685,9 @@ function QuestionDockForm({
 						data-kbdrow={optionCount}
 						aria-pressed={sel.dontKnow}
 						className={cn(
-							"min-h-9 shrink-0 rounded-sm px-2 text-sm font-medium underline decoration-[rgb(255_252_240/25%)] underline-offset-[3px] outline-none transition-colors pointer-coarse:min-h-11",
-							sel.dontKnow ? "bg-primary/10 text-primary decoration-current" : "text-ink-2 hover:text-foreground",
-							kbdIdx === optionCount && !sel.dontKnow && "bg-accent text-foreground",
+							"min-h-9 shrink-0 rounded-md px-2 text-sm font-medium underline decoration-rule underline-offset-[3px] outline-none transition-colors pointer-coarse:min-h-11",
+							sel.dontKnow ? "bg-ink/10 text-ink decoration-current" : "text-graphite hover:text-ink",
+							kbdIdx === optionCount && !sel.dontKnow && "bg-shelf text-ink",
 						)}
 					>
 						I don't know
@@ -710,7 +710,7 @@ function QuestionDockForm({
 			)}
 			{questionContent}
 			{active && overflowBelow && (
-				<div aria-hidden="true" className="pointer-events-none relative -mt-10 h-10 bg-linear-to-b from-transparent to-card" />
+				<div aria-hidden="true" className="pointer-events-none relative -mt-10 h-10 bg-linear-to-b from-transparent to-shelf" />
 			)}
 
 			{/* The learner's half of the dock — a composer TWIN: the field with
@@ -784,7 +784,7 @@ function QuestionDockForm({
 					)}
 					{qd.mode === "text" ? answerMention.line : thinkingMention.line}
 					</AnswerWell>
-					{compactionRunning && <div role="status" className="px-4 pt-2 text-sm text-muted-foreground">Compacting session…</div>}
+					{compactionRunning && <div role="status" className="px-4 pt-2 text-sm text-faint">Compacting session…</div>}
 					<PromptToolbar controls={controls}>
 						<span aria-hidden="true" className="prompt-hint max-sm:hidden">↵</span>
 						<PrimaryAction aria-label="Submit answer" disabled={!canSubmit || compactionRunning}>

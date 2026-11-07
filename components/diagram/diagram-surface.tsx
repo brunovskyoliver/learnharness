@@ -26,8 +26,8 @@ import { DiagramVersions } from "./diagram-versions.tsx";
 
 const ProposalDialog = dynamic(() => import("./diagram-proposal-dialog.tsx").then((m) => m.DiagramProposalDialog), { ssr: false });
 
-const EXPORT_ROW = "flex min-h-9 w-full items-center rounded-[6px] px-2 text-left text-sm text-foreground hover:bg-card pointer-coarse:min-h-11";
-const HEADER_TOOL = "shrink-0 aria-pressed:bg-accent aria-pressed:text-foreground pointer-coarse:h-11 pointer-coarse:min-w-11";
+const EXPORT_ROW = "flex min-h-9 w-full items-center rounded-md px-2 text-left text-sm text-ink hover:bg-shelf pointer-coarse:min-h-11";
+const HEADER_TOOL = "shrink-0 aria-pressed:bg-shelf aria-pressed:text-ink pointer-coarse:h-11 pointer-coarse:min-w-11";
 
 export function DiagramSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi; phone: boolean }) {
 	const [refusedMessage, setRefusedMessage] = useState<string | null>(null);
@@ -180,7 +180,7 @@ export function DiagramSurface({ item, pane, phone }: { item: PaneItem; pane: Pa
 			onOpenPage={(id, name, kind) => openItem({ id, name, kind: kind ?? "page", size: 0 })}
 			onFollowLink={followLink}
 			onSource={followSource}
-			className={wide ? "w-64 shrink-0 overflow-y-auto pr-3 pb-6" : "mx-3 mb-2 max-h-[40dvh] shrink-0 overflow-y-auto rounded-[10px] bg-popover p-2"}
+			className={wide ? "w-64 shrink-0 overflow-y-auto pr-3 pb-6" : "mx-3 mb-2 max-h-[40dvh] shrink-0 overflow-y-auto rounded-lg bg-shelf p-2"}
 		/>
 	) : null;
 
@@ -232,7 +232,7 @@ export function DiagramSurface({ item, pane, phone }: { item: PaneItem; pane: Pa
 									<PopoverTrigger asChild>
 										<Button type="button" variant="ghost" className={HEADER_TOOL} data-testid="diagram-export"><DownloadIcon className="ui-icon" aria-hidden="true" /><span className={paneLabel}>Export</span></Button>
 									</PopoverTrigger>
-									<PopoverContent container={root.current} align="end" className="flex w-56 flex-col gap-0.5 rounded-[10px] border-0 p-1" data-testid="diagram-export-menu">
+									<PopoverContent container={root.current} align="end" className="flex w-56 flex-col gap-0.5 rounded-lg border-0 p-1" data-testid="diagram-export-menu">
 										<button type="button" className={EXPORT_ROW} data-testid="diagram-export-svg" onClick={() => void download("svg")}>Download SVG</button>
 										<button type="button" className={EXPORT_ROW} data-testid="diagram-export-png" onClick={() => void download("png")}>Download PNG</button>
 										<button type="button" className={EXPORT_ROW} data-testid="diagram-export-json" onClick={() => void download("json")}>Download JSON</button>
@@ -244,28 +244,28 @@ export function DiagramSurface({ item, pane, phone }: { item: PaneItem; pane: Pa
 							</div>
 						) : undefined}
 					/>
-					<p role="status" aria-live="polite" className="px-3 text-sm text-ink-2 empty:hidden" data-testid="page-agent-update">
+					<p role="status" aria-live="polite" className="px-3 text-sm text-graphite empty:hidden" data-testid="page-agent-update">
 						{state.agentUpdate !== null ? `Updated from the tutor's proposal · version ${state.agentUpdate}` : ""}
 					</p>
-					{exportLine && <p role="alert" className="px-3 pb-2 text-sm text-destructive" data-testid="diagram-export-failed">{exportLine}</p>}
-					{jumpMissed && <p role="status" className="px-3 pb-2 text-sm text-ink-2">Those words are no longer in this diagram.</p>}
+					{exportLine && <p role="alert" className="px-3 pb-2 text-sm text-red" data-testid="diagram-export-failed">{exportLine}</p>}
+					{jumpMissed && <p role="status" className="px-3 pb-2 text-sm text-graphite">Those words are no longer in this diagram.</p>}
 					{dangling && (
-						<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-ink-2" data-testid="diagram-link-dangling-line">
+						<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-graphite" data-testid="diagram-link-dangling-line">
 							<p className="min-w-0 flex-[1_1_12rem] [overflow-wrap:anywhere]">{dangling}</p>
 							{danglingTarget && <button type="button" className="prompt-secondary" data-testid="diagram-link-create" onClick={() => void createLinked(danglingTarget)}>Create page</button>}
 							<button type="button" className="prompt-secondary" onClick={() => setDangling(null)}>Dismiss</button>
-							{createFailed && <p role="alert" className="w-full text-sm text-destructive">{createFailed}</p>}
+							{createFailed && <p role="alert" className="w-full text-sm text-red">{createFailed}</p>}
 						</div>
 					)}
 					{proposals.length > 0 && usable && (
-						<div role="status" className="mx-3 mb-2 flex flex-wrap items-center gap-2 rounded-[10px] bg-card px-3 py-2 text-sm" data-testid="diagram-proposal-bar">
-							<p className="min-w-0 flex-[1_1_12rem] text-foreground">The tutor proposed {proposals.length === 1 ? "a change" : `${proposals.length} changes`}. Nothing has changed.</p>
+						<div role="status" className="mx-3 mb-2 flex flex-wrap items-center gap-2 rounded-lg bg-shelf px-3 py-2 text-sm" data-testid="diagram-proposal-bar">
+							<p className="min-w-0 flex-[1_1_12rem] text-ink">The tutor proposed {proposals.length === 1 ? "a change" : `${proposals.length} changes`}. Nothing has changed.</p>
 							<button type="button" className="prompt-secondary" data-testid="diagram-proposal-review" onClick={() => setReviewing(proposals[0]!.id)}>Review</button>
 						</div>
 					)}
-					{state.deleted && <p role="status" className="px-3 pb-2 text-sm text-ink-2" data-testid="page-deleted">{item.name} was deleted.</p>}
+					{state.deleted && <p role="status" className="px-3 pb-2 text-sm text-graphite" data-testid="page-deleted">{item.name} was deleted.</p>}
 					{state.conflict && (
-						<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-ink-2" data-testid="page-conflict">
+						<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-graphite" data-testid="page-conflict">
 							<p>This diagram changed elsewhere. Your version is safe here.</p>
 							<button type="button" className="prompt-secondary" onClick={() => void controller.keepMine()} data-testid="page-keep-mine">Keep mine</button>
 							<button type="button" className="prompt-secondary" onClick={() => void controller.useLatest()} data-testid="page-use-latest">Use latest</button>
@@ -278,9 +278,9 @@ export function DiagramSurface({ item, pane, phone }: { item: PaneItem; pane: Pa
 						{!wide && connections}
 						<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 							{unreadable ? (
-								<p role="status" className="px-3 text-sm text-ink-2" data-testid="diagram-refused">{unreadable}</p>
+								<p role="status" className="px-3 text-sm text-graphite" data-testid="diagram-refused">{unreadable}</p>
 							) : loadFailed ? (
-								<div role="status" className="flex flex-wrap items-center gap-2 px-3 text-sm text-ink-2">
+								<div role="status" className="flex flex-wrap items-center gap-2 px-3 text-sm text-graphite">
 									<p>{item.name} could not be loaded.</p>
 									<button type="button" className="prompt-secondary" onClick={retryLoad}>Try again</button>
 								</div>

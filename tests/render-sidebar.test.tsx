@@ -67,7 +67,7 @@ describe("SessionRow", () => {
 
 	it("a pending question shows the amber waiting dot (feature 002), never the old ? icon", () => {
 		const html = render(item({ phase: "teach", pendingQuestion: true }));
-		assert.match(html, /<span role="img" aria-label="Waiting for you" data-testid="waiting-dot" class="[^"]*rounded-full bg-primary/);
+		assert.match(html, /<span role="img" aria-label="Waiting for you" data-testid="waiting-dot" class="[^"]*rounded-full bg-bulb/);
 		assert.ok(!html.includes("lucide-message-circle-question"), "the repeated ? icon is gone");
 		assert.ok(!html.includes("braille-spinner"), "motion is reserved for working");
 		assert.ok(html.includes("Waiting for input"), "the meta line's text");
@@ -142,7 +142,7 @@ describe("SessionRow", () => {
 
 	it("active row is visually marked by the background alone (owner, round 5: no weight change)", () => {
 		const html = render(item({}), true);
-		assert.ok(html.includes("bg-accent"), "active background");
+		assert.ok(html.includes("bg-shelf"), "active background");
 		assert.ok(!html.includes("font-medium"), "weight is not a second channel doing the same job");
 	});
 });

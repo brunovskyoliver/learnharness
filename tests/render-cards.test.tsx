@@ -134,7 +134,7 @@ describe("DispatchCard — the BYOK refusal tone (owner, 2026-09-22)", () => {
 		assert.ok(html.includes('data-testid="dispatch-setup-link"'));
 		assert.ok(html.includes("Set up models"));
 		assert.ok(!html.includes("failed"));
-		assert.ok(!html.includes("text-destructive"));
+		assert.ok(!html.includes("text-red"));
 	});
 
 	it("a key-refused job is INFO: 'needs a provider key', 'Add a key' (zero-keys wave, 66dbea9)", () => {
@@ -152,7 +152,7 @@ describe("DispatchCard — the BYOK refusal tone (owner, 2026-09-22)", () => {
 		const html = renderToStaticMarkup(inJobs([job({ error: "FAILED: headless crashed" })]));
 		assert.ok(html.includes('data-testid="dispatch-settled"'));
 		assert.ok(html.includes("failed"));
-		assert.ok(html.includes("text-destructive"));
+		assert.ok(html.includes("text-red"));
 		assert.ok(!html.includes("dispatch-refused"));
 	});
 
@@ -217,7 +217,7 @@ describe("render smoke tests", () => {
 		assert.ok(html.includes('role="group"'), "checkbox group");
 		assert.ok((html.match(/role="checkbox"/g) ?? []).length >= 3, "options AND the Other row are checkboxes");
 		assert.ok(html.includes('data-testid="other-option"'), "Other is still an option row in multi-select");
-		// The bigger \u2713 glyph (text-base, 2026-09-24 owner round) only
+		// The bigger \u2713 glyph (text-md, 2026-09-24 owner round) only
 		// mounts on a CHECKED row — unreachable from the unselected static
 		// render, so it's live-verified (Playwright: 14px computed in the
 		// 16px box) instead of pinned here.
@@ -305,7 +305,7 @@ describe("render smoke tests", () => {
 		const answer = buildAnswer(askQD(), { other: "Fairly confident — but shaky on applications" });
 		const html = renderToStaticMarkup(<AnsweredCard answer={answer} />);
 		assert.ok(html.includes('data-testid="answered-other"'), "the Other answer is an option row");
-		assert.match(html, /border-primary bg-accent/, "styled like its selected siblings");
+		assert.match(html, /border-ink bg-shelf/, "styled like its selected siblings");
 		assert.match(html, /shaky on applications/, "the typed words render");
 		// Inside the options container — same list, not a loose quote outside it.
 		assert.ok(
@@ -329,7 +329,7 @@ describe("render smoke tests", () => {
 		// ONE GEOMETRY, NO BAND IN CARDS (owner round five, 2026-10-07): the
 		// accent lift read too light — rail only, heights match everywhere.
 		const yourRow = html.slice(html.indexOf('data-testid="your-thinking"'));
-		assert.ok(!yourRow.slice(0, 400).includes("bg-card") && !yourRow.slice(0, 400).includes("bg-accent"), "no band inside the card");
+		assert.ok(!yourRow.slice(0, 400).includes("bg-shelf") && !yourRow.slice(0, 400).includes("bg-shelf"), "no band inside the card");
 		// No side rail (feature 001): the label and ink carry ownership.
 		assert.ok(!yourRow.slice(0, 400).includes("border-l"), "no side border on the thinking row");
 		assert.ok(!html.includes("brightness isn&#x27;t distance"), "the text is hidden until expanded");

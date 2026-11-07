@@ -39,7 +39,7 @@ function headline(failed: boolean, d: MathCheckDetails | null): string {
 function Row({ label, children, mono = true }: { label: string; children: React.ReactNode; mono?: boolean }) {
 	return (
 		<div>
-			<div className="mb-1 font-medium text-muted-foreground">{label}</div>
+			<div className="mb-1 font-medium text-faint">{label}</div>
 			<div className={mono ? "whitespace-pre-wrap break-all font-mono text-xs leading-relaxed" : ""}>{children}</div>
 		</div>
 	);
@@ -56,7 +56,7 @@ export function isShownMathCheckFailure(part: { type: string; state?: string; er
 /** The reveal label on answered questions and concluded problems. */
 export function WolframCheckedLabel() {
 	return (
-		<p data-testid="wolfram-checked" className="mt-2 flex items-center gap-1.5 text-sm text-muted-foreground">
+		<p data-testid="wolfram-checked" className="mt-2 flex items-center gap-1.5 text-sm text-faint">
 			<Check className="size-3.5 shrink-0" aria-hidden="true" />
 			Checked with Wolfram
 		</p>
@@ -77,14 +77,14 @@ export function MathCheckCard({ part }: ArtifactPartProps) {
 			data-outcome={failed ? "failed" : d?.outcome ?? "unfinished"}
 			className="group lh-reading my-1"
 		>
-			<summary className="flex cursor-pointer select-none list-none items-center gap-2 text-sm text-muted-foreground [&::-webkit-details-marker]:hidden">
+			<summary className="flex cursor-pointer select-none list-none items-center gap-2 text-sm text-faint [&::-webkit-details-marker]:hidden">
 				{agreed && <Check className="size-3.5 shrink-0" aria-hidden="true" />}
-				<span className={`font-medium ${failed ? "text-destructive" : ""}`}>{headline(failed, d)}</span>
+				<span className={`font-medium ${failed ? "text-red" : ""}`}>{headline(failed, d)}</span>
 				<ChevronRight className="size-3 shrink-0 opacity-50 transition-transform group-open:rotate-90" aria-hidden="true" />
 			</summary>
-			<div className="mt-2 space-y-2 rounded-xl border bg-card p-3 text-sm">
+			<div className="mt-2 space-y-2 rounded-lg border bg-shelf p-3 text-sm">
 				{visibility.expressionsHidden ? (
-					<p className="text-muted-foreground">Expressions shown after the problem is concluded.</p>
+					<p className="text-faint">Expressions shown after the problem is concluded.</p>
 				) : (
 					expr && (
 						<>
@@ -98,7 +98,7 @@ export function MathCheckCard({ part }: ArtifactPartProps) {
 				{d?.reason && <Row label="Reason" mono={false}>{d.reason}</Row>}
 				{failed && typeof p.errorText === "string" && (
 					<Row label="Error" mono={false}>
-						<span className="text-destructive">{p.errorText}</span>
+						<span className="text-red">{p.errorText}</span>
 					</Row>
 				)}
 				{/* The parsed fields already say what an agreed or disagreed reply
@@ -108,7 +108,7 @@ export function MathCheckCard({ part }: ArtifactPartProps) {
 						<span className="block max-h-64 overflow-auto">{d.raw}</span>
 					</Row>
 				)}
-				{d && typeof d.ms === "number" && <p className="text-muted-foreground">Took {(d.ms / 1000).toFixed(1)} s</p>}
+				{d && typeof d.ms === "number" && <p className="text-faint">Took {(d.ms / 1000).toFixed(1)} s</p>}
 			</div>
 		</SessionDetails>
 	);

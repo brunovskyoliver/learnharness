@@ -61,7 +61,7 @@ export function UpdateSettings({
 					<>
 						{status && <span className="block" role="status" data-testid="update-status">{status}</span>}
 						{active && <span className="block">{MANUAL_UPDATE_HINT}</span>}
-						{releaseNotes && <a href={releaseNotes} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:text-foreground hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center" data-testid="release-notes">Release notes</a>}
+						{releaseNotes && <a href={releaseNotes} target="_blank" rel="noopener noreferrer" className="underline-offset-2 hover:text-ink hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center" data-testid="release-notes">Release notes</a>}
 					</>
 				}
 			>

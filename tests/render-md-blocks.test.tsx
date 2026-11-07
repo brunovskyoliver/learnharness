@@ -125,7 +125,7 @@ describe("session-scoped overlays (chrome-melt wave, 2026-09-19)", () => {
 	it("mermaid overlay mounts inside the session area — absolute (not fixed), opaque, closeable", () => {
 		const html = renderToStaticMarkup(<MermaidOverlay chart="graph TD\nA --> B" onClose={() => {}} />);
 		assert.match(html, /class="absolute inset-0[^"]*z-40/, "absolute inset-0 z-40 — scoped, not fullscreen");
-		assert.ok(html.includes("bg-background"), "opaque ground (feature 001: no blur scrims)");
+		assert.ok(html.includes("bg-paper"), "opaque ground (feature 001: no blur scrims)");
 		assert.ok(!html.includes("backdrop-blur"), "no blur surface");
 		assert.ok(!html.includes("fixed inset-0"), "never fixed — the drag bar stays uncovered");
 		assert.ok(html.includes('data-testid="mermaid-overlay-close"'), "the close X is present");
@@ -136,7 +136,7 @@ describe("session-scoped overlays (chrome-melt wave, 2026-09-19)", () => {
 		const html = renderToStaticMarkup(<PlanPopup messages={[]} onClose={() => {}} />);
 		assert.match(html, /data-testid="plan-popup"/);
 		assert.match(html, /class="absolute inset-0[^"]*z-40/, "absolute inset-0 z-40 — scoped, not fullscreen");
-		assert.ok(html.includes("bg-background"), "opaque ground");
+		assert.ok(html.includes("bg-paper"), "opaque ground");
 		assert.ok(!html.includes("backdrop-blur"), "no blur surface");
 		assert.ok(!html.includes("fixed inset-0"), "never fixed — the drag bar stays uncovered");
 	});
@@ -195,10 +195,10 @@ describe("md-blocks — key-idea callouts (GitHub alerts, owner round 2026-10-07
 		assert.ok(!html.includes("[!IMPORTANT]"), "the marker line never leaks as text");
 		// The owner's minimal law: sharp corners (no rounded), white stroke,
 		// no background, no label, no icon — and the box hugs its text.
-		assert.match(html, /border-white/, "white stroke");
+		assert.match(html, /border-rule/, "rule stroke");
 		assert.match(html, /w-fit/, "width: fit-content — the hug");
 		assert.ok(!html.includes("rounded"), "sharp corners — no rounding anywhere");
-		assert.ok(!html.includes("bg-card") && !html.includes("bg-background"), "transparent — no background");
+		assert.ok(!html.includes("bg-shelf") && !html.includes("bg-paper"), "transparent — no background");
 	});
 
 	it("all five GitHub markers box identically — one device, one meaning", () => {
@@ -248,7 +248,7 @@ describe("md-blocks — the restored plain blockquote (owner round, 2026-10-07)"
 			<MessageResponse mode="static">{"Before.\n\n> An ordinary quote.\n\nAfter."}</MessageResponse>,
 		);
 		assert.ok(!html.includes("border-l"), "no side rule (feature 001)");
-		assert.ok(html.includes("pl-6 text-ink-2 italic"), "indent plus secondary ink — the quote register");
+		assert.ok(html.includes("pl-6 text-graphite italic"), "indent plus secondary ink — the quote register");
 		assert.ok(!html.includes("md-callout"), "a plain quote is not a callout box");
 	});
 });
@@ -265,7 +265,7 @@ describe("ThinkingBlock — the document band + ⌘T sync (owner rounds, 2026-10
 
 	it("in-card rows take no band — the accent step read too light (owner round five)", () => {
 		const html = renderToStaticMarkup(<ThinkingBlock text="in card" inCard />);
-		assert.ok(!html.includes("bg-accent") && !html.includes("bg-card"), "transparent on the card");
+		assert.ok(!html.includes("bg-shelf") && !html.includes("bg-shelf"), "transparent on the card");
 		assert.ok(!html.includes("lh-reading") && !html.includes("border-l"), "card rows keep the card's own edge, no rail");
 	});
 

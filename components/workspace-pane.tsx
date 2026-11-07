@@ -94,7 +94,7 @@ export function WorkspacePane({ label, resizeLabel, testId, className, rootRef, 
 			onKeyDownCapture={onKeyDownCapture}
 			onKeyDown={onKeyDown}
 			style={{ "--lh-demo-w": `${clampWidth(width, typeof window === "undefined" ? 1440 : area())}px` } as React.CSSProperties}
-			className={cn("relative flex min-h-0 shrink-0 flex-col bg-background md:h-full md:w-[var(--lh-demo-w)]", className)}
+			className={cn("relative flex min-h-0 shrink-0 flex-col bg-paper md:h-full md:w-[var(--lh-demo-w)]", className)}
 		>
 			<div
 				role="separator"

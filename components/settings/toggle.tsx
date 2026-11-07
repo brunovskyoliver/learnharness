@@ -35,10 +35,10 @@ export function Toggle({
 			data-testid={`toggle-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}
 			onClick={() => onChange(!checked)}
 			className={cn(
-				"relative h-4.5 w-8 shrink-0 rounded-full border border-input transition-colors before:absolute before:-inset-3 before:content-[''] pointer-coarse:before:-inset-3.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring",
+				"relative h-4.5 w-8 shrink-0 rounded-full border border-rule transition-colors before:absolute before:-inset-3 before:content-[''] pointer-coarse:before:-inset-3.5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-focus",
 				// Owner (2026-09-20): on is a gray track with a WHITE disc (a full-white
 				// track was too loud); off stays the muted track.
-				checked && !disabled ? "bg-muted-foreground" : "bg-muted",
+				checked && !disabled ? "bg-faint" : "bg-shelf",
 				disabled && "cursor-not-allowed",
 			)}
 		>
@@ -49,7 +49,7 @@ export function Toggle({
 					className={cn(
 						"absolute left-0 top-0.5 flex size-3 items-center justify-center rounded-full transition-transform",
 						checked ? "translate-x-4" : "translate-x-0.5",
-							checked && !disabled ? "text-foreground" : "text-muted-foreground",
+							checked && !disabled ? "text-ink" : "text-faint",
 					)}
 				>
 					{discIcon}
@@ -61,7 +61,7 @@ export function Toggle({
 						// 2px inset from each inner edge, both states (owner round: the on
 						// disc used to touch the pill's right edge).
 						checked ? "translate-x-4" : "translate-x-0.5",
-							checked && !disabled ? "bg-foreground" : "bg-muted-foreground",
+							checked && !disabled ? "bg-ink" : "bg-faint",
 					)}
 				/>
 			)}

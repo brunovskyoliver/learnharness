@@ -49,7 +49,7 @@ export function BrailleSpinner({
 			data-testid="braille-spinner"
 			role="status"
 			aria-label={label}
-			className={cn("h-3 w-auto shrink-0 text-foreground", className)}
+			className={cn("h-3 w-auto shrink-0 text-ink", className)}
 		>
 			{FRAMES.map((frame, k) => (
 				<g

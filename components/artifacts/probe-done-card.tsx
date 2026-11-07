@@ -40,31 +40,31 @@ export function ProbeDoneCard({ part }: { part: { input?: unknown; output?: unkn
 	const strands = assessment && Array.isArray(assessment.strands) ? assessment.strands : null;
 
 	return (
-		<div data-testid="probe-done-card" className="my-3 rounded-xl border bg-card p-3">
-			<div className="mb-2 flex items-center gap-2 text-sm font-medium text-muted-foreground">
-				<ClipboardCheckIcon className="size-3.5 text-primary" />
+		<div data-testid="probe-done-card" className="my-3 rounded-lg border bg-shelf p-3">
+			<div className="mb-2 flex items-center gap-2 text-sm font-medium text-faint">
+				<ClipboardCheckIcon className="size-3.5 text-ink" />
 				Probe concluded — your assessment
 			</div>
 			{output && !output.ok ? (
-				<p className="text-sm text-muted-foreground">The prober retried: {output.error}</p>
+				<p className="text-sm text-faint">The prober retried: {output.error}</p>
 			) : state === "output-error" ? (
-				<p className="text-sm text-muted-foreground">
+				<p className="text-sm text-faint">
 					The assessment was malformed — the prober retried with a corrected one.
 				</p>
 			) : strands ? (
 				<div className="space-y-2">
 					{strands.map((s, i) => (
-						<div key={i} className="rounded-lg bg-background px-3 py-2">
+						<div key={i} className="rounded-lg bg-paper px-3 py-2">
 							<div className="text-sm font-medium">{s.strand}</div>
-							<div className="mt-0.5 text-sm text-muted-foreground">{s.assessment}</div>
+							<div className="mt-0.5 text-sm text-faint">{s.assessment}</div>
 						</div>
 					))}
 					{assessment?.summary && (
-						<p className="px-1 text-sm text-muted-foreground">{assessment.summary}</p>
+						<p className="px-1 text-sm text-faint">{assessment.summary}</p>
 					)}
 				</div>
 			) : (
-				<p className="text-sm text-muted-foreground">Writing the assessment…</p>
+				<p className="text-sm text-faint">Writing the assessment…</p>
 			)}
 		</div>
 	);

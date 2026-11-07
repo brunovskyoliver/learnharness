@@ -29,18 +29,18 @@ export function parseMakeParam(value: string | null, stored: () => string | null
 /** What Make flashcards would send, said before the click that costs. */
 export function MakePreviewBody({ preview, busy, failure, onGenerate, onByHand, onCancel, onSettings }: { preview: MakePreview; busy: boolean; failure: string | null; onGenerate: () => void; onByHand: () => void; onCancel: () => void; onSettings: () => void }) {
 	return (
-		<section aria-label="Make flashcards" data-testid="make-panel" className="flex flex-col gap-3 rounded-[10px] bg-card p-4">
-			<h2 className="font-title text-xl font-medium [overflow-wrap:anywhere]">Make flashcards from {preview.label}</h2>
+		<section aria-label="Make flashcards" data-testid="make-panel" className="flex flex-col gap-3 rounded-lg bg-shelf p-4">
+			<h2 className="tracking-title text-xl font-medium [overflow-wrap:anywhere]">Make flashcards from {preview.label}</h2>
 			{preview.refusal ? (
-				<div role="status" data-testid="make-refusal" className="flex flex-col items-start gap-2 text-ink-2">
+				<div role="status" data-testid="make-refusal" className="flex flex-col items-start gap-2 text-graphite">
 					<p>{preview.refusal.error ?? "No model is set up for this."}</p>
 					<button type="button" className="prompt-secondary" onClick={onSettings}>Open settings</button>
 				</div>
 			) : (
-				<p className="text-ink-2" data-testid="make-consent">Sends {preview.chars.toLocaleString()} characters of this source to {preview.model ?? "your model"}, which costs what a background step costs. The cost shows while it runs.{preview.truncated ? " The source is long, so only the first part goes." : ""}</p>
+				<p className="text-graphite" data-testid="make-consent">Sends {preview.chars.toLocaleString()} characters of this source to {preview.model ?? "your model"}, which costs what a background step costs. The cost shows while it runs.{preview.truncated ? " The source is long, so only the first part goes." : ""}</p>
 			)}
-			<p className="text-sm text-muted-foreground">You read each draft and choose what to keep. Nothing joins your queue until you do.</p>
-			{failure && <p role="alert" className="text-sm text-destructive">{failure}</p>}
+			<p className="text-sm text-faint">You read each draft and choose what to keep. Nothing joins your queue until you do.</p>
+			{failure && <p role="alert" className="text-sm text-red">{failure}</p>}
 			<div className="flex flex-wrap gap-2">
 				{!preview.refusal && <button type="button" className="prompt-primary" data-testid="make-generate" disabled={busy} onClick={onGenerate}>{busy ? "Starting…" : "Generate drafts"}</button>}
 				<button type="button" className="prompt-secondary" data-testid="make-by-hand" onClick={onByHand}>Write one by hand</button>
@@ -72,13 +72,13 @@ export function MakePanel({ param, onStarted, onByHand, onCancel }: { param: str
 
 	if (source === null || loadFailure) {
 		return (
-			<div role="status" data-testid="make-failed" className="flex flex-wrap items-center gap-2 text-ink-2">
+			<div role="status" data-testid="make-failed" className="flex flex-wrap items-center gap-2 text-graphite">
 				<p>{loadFailure ?? "That source could not be read. Open it again and choose Make flashcards."}</p>
 				<button type="button" className="prompt-secondary" onClick={onCancel}>Back to Review</button>
 			</div>
 		);
 	}
-	if (!preview) return <div role="status" aria-label="Reading the source"><Skeleton className="h-32 w-full rounded-[10px]" /></div>;
+	if (!preview) return <div role="status" aria-label="Reading the source"><Skeleton className="h-32 w-full rounded-lg" /></div>;
 	const generate = async () => {
 		if (!source || busy) return;
 		setBusy(true); setFailure(null);

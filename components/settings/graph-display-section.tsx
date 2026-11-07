@@ -87,7 +87,7 @@ export function GraphDisplaySection() {
 		userTouched.current = true;
 		setSettings((cur) => update(cur ?? DEFAULT_RENDER_SETTINGS));
 	}, []);
-	if (!settings) return <p role="status" className="text-sm text-muted-foreground">Loading display settings…</p>;
+	if (!settings) return <p role="status" className="text-sm text-faint">Loading display settings…</p>;
 	return (
 		<div data-testid="graph-display-settings" className="flex flex-col gap-3">
 			{loadError && <SettingsFailure testid="graph-display-load-error" message="Could not load the saved display settings. Showing the defaults." onRetry={() => setLoadRequest((request) => request + 1)} />}
@@ -127,7 +127,7 @@ function SettingSlider({
 }) {
 	return (
 		<label data-settings-row={displayRowId(label)} className="flex scroll-mt-4 flex-col gap-1 rounded-md">
-			<span className={cn("flex items-center justify-between text-sm", disabled ? "text-muted-foreground" : "text-ink-2")}>
+			<span className={cn("flex items-center justify-between text-sm", disabled ? "text-faint" : "text-graphite")}>
 				{label}
 				<span className="tabular-nums">{display ?? value}</span>
 			</span>
@@ -139,7 +139,7 @@ function SettingSlider({
 				value={value}
 				disabled={disabled}
 				onChange={(e) => onChange(Number(e.target.value))}
-				className={cn("h-1.5 w-full accent-ink-2 pointer-coarse:h-11", disabled && "cursor-not-allowed accent-muted-foreground")}
+				className={cn("h-1.5 w-full accent-graphite pointer-coarse:h-11", disabled && "cursor-not-allowed accent-faint")}
 			/>
 		</label>
 	);
@@ -220,10 +220,10 @@ export function GraphDisplayControls({
 		    the whole build (splat/blur/readback/blit), not just
 		    the paint. */}
 		<div className="mt-3 flex flex-col gap-3">
-			<h4 className="text-sm font-medium text-foreground">
+			<h4 className="text-sm font-medium text-ink">
 				Regions
 			</h4>
-			<label data-settings-row={displayRowId("Background colors")} className="flex scroll-mt-4 cursor-pointer items-center justify-between rounded-md text-sm text-ink-2 pointer-coarse:min-h-11">
+			<label data-settings-row={displayRowId("Background colors")} className="flex scroll-mt-4 cursor-pointer items-center justify-between rounded-md text-sm text-graphite pointer-coarse:min-h-11">
 				<span>Background colors</span>
 				<input
 					type="checkbox"
@@ -233,7 +233,7 @@ export function GraphDisplayControls({
 							...cur,
 							regions: { ...cur.regions, enabled: e.target.checked },
 						}))}
-						className="accent-primary"
+						className="accent-ink"
 				/>
 			</label>
 			<SettingSlider
@@ -281,12 +281,12 @@ export function GraphDisplayControls({
 			/>
 			<label
 				data-settings-row={displayRowId("Bitmap resolution")}
-				className={cn("flex scroll-mt-4 items-center justify-between gap-2 rounded-md text-sm", regionTuning.enabled ? "text-ink-2" : "text-muted-foreground")}
+				className={cn("flex scroll-mt-4 items-center justify-between gap-2 rounded-md text-sm", regionTuning.enabled ? "text-graphite" : "text-faint")}
 			>
 				<span>Bitmap resolution</span>
 				<select
 					disabled={!regionTuning.enabled}
-					className={cn("rounded-md border border-input bg-background px-1.5 py-0.5 text-sm tabular-nums pointer-coarse:min-h-11", regionTuning.enabled ? "text-foreground" : "cursor-not-allowed text-muted-foreground")}
+					className={cn("rounded-md border border-rule bg-paper px-1.5 py-0.5 text-sm tabular-nums pointer-coarse:min-h-11", regionTuning.enabled ? "text-ink" : "cursor-not-allowed text-faint")}
 					value={regionTuning.bitmap}
 					onChange={(e) =>
 						changeSettings((cur) => ({
@@ -307,13 +307,13 @@ export function GraphDisplayControls({
 			    the Background colors switch above — labels follow
 			    their own clusterLabels toggle. Size is screen px
 			    (constant at any zoom, unlike node labels). */}
-			<label data-settings-row={displayRowId("Cluster labels")} className="flex scroll-mt-4 cursor-pointer items-center justify-between rounded-md text-sm text-ink-2 pointer-coarse:min-h-11">
+			<label data-settings-row={displayRowId("Cluster labels")} className="flex scroll-mt-4 cursor-pointer items-center justify-between rounded-md text-sm text-graphite pointer-coarse:min-h-11">
 				<span>Cluster labels</span>
 				<input
 					type="checkbox"
 					checked={settings.clusterLabels}
 					onChange={(e) => changeSettings((cur) => ({ ...cur, clusterLabels: e.target.checked }))}
-					className="accent-primary"
+					className="accent-ink"
 				/>
 			</label>
 			<SettingSlider
@@ -342,7 +342,7 @@ export function GraphDisplayControls({
 		    Order (user 2026-09-17): general forces first; depth
 		    anchor + its gray-out-able controls last. */}
 		<div className="mt-3 flex flex-col gap-3">
-			<h4 className="text-sm font-medium text-foreground">
+			<h4 className="text-sm font-medium text-ink">
 				Physics
 			</h4>
 			<SettingSlider
@@ -427,10 +427,10 @@ export function GraphDisplayControls({
 			    forces first, then the mode + its conditional
 			    controls at the very bottom — the grayed group reads
 			    as a self-contained sub-section. */}
-			<label data-settings-row={displayRowId("Depth anchor")} className="flex scroll-mt-4 items-center justify-between gap-2 rounded-md text-sm text-ink-2">
+			<label data-settings-row={displayRowId("Depth anchor")} className="flex scroll-mt-4 items-center justify-between gap-2 rounded-md text-sm text-graphite">
 				Depth anchor
 				<select
-					className="rounded-md border border-input bg-background px-1 py-0.5 text-sm text-foreground pointer-coarse:min-h-11"
+					className="rounded-md border border-rule bg-paper px-1 py-0.5 text-sm text-ink pointer-coarse:min-h-11"
 					value={physicsTuning.depthMode}
 					onChange={(e) =>
 						changeSettings((cur) => ({

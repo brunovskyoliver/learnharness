@@ -22,9 +22,9 @@ export interface MentionMenuProps {
 	createPageRef?: RefObject<CreateMentionPage | null>;
 }
 
-const STATUS_ROW = "px-3 py-2 text-base text-ink-2";
-const OPTION_ROW = "flex min-h-11 cursor-pointer flex-col justify-center rounded-[10px] px-3 py-1.5 outline-offset-[-1px]";
-const ACTIVE_ROW = "bg-background outline-1 outline-ring outline-solid";
+const STATUS_ROW = "px-3 py-2 text-md text-graphite";
+const OPTION_ROW = "flex min-h-11 cursor-pointer flex-col justify-center rounded-lg px-3 py-1.5 outline-offset-[-1px]";
+const ACTIVE_ROW = "bg-paper outline-1 outline-focus outline-solid";
 
 /** The status a list with no rows shows, or null when it has rows. */
 export function mentionStatusText({ status, hasItems, options }: Pick<MentionMenuProps, "status" | "hasItems" | "options">): string | null {
@@ -59,7 +59,7 @@ export function MentionMenu({ listId, status, hasItems, options, activeIndex, on
 			aria-label="Your Library"
 			data-testid="mention-menu"
 			onClick={(event) => event.stopPropagation()}
-			className="mx-2 mt-2 max-h-[min(16.5rem,40dvh)] select-none overflow-y-auto overscroll-contain rounded-[10px] bg-accent"
+			className="mx-2 mt-2 max-h-[min(16.5rem,40dvh)] select-none overflow-y-auto overscroll-contain rounded-lg bg-shelf"
 		>
 			{message && <div role="status" className={STATUS_ROW}>{message}</div>}
 			{options.map((item, index) => (
@@ -74,8 +74,8 @@ export function MentionMenu({ listId, status, hasItems, options, activeIndex, on
 					onClick={() => onPick(item)}
 					className={cn(OPTION_ROW, index === activeIndex && ACTIVE_ROW)}
 				>
-					<span className="text-base text-foreground [overflow-wrap:anywhere]">{item.name}</span>
-					<span className="text-sm text-muted-foreground">{KIND_LABEL[item.kind]} · {formatBytes(item.size)}</span>
+					<span className="text-md text-ink [overflow-wrap:anywhere]">{item.name}</span>
+					<span className="text-sm text-faint">{KIND_LABEL[item.kind]} · {formatBytes(item.size)}</span>
 				</div>
 			))}
 			<div
@@ -87,7 +87,7 @@ export function MentionMenu({ listId, status, hasItems, options, activeIndex, on
 				onClick={onNewPage}
 				className={cn(OPTION_ROW, activeIndex === options.length && ACTIVE_ROW)}
 			>
-				<span className="text-base text-foreground">New page</span>
+				<span className="text-md text-ink">New page</span>
 			</div>
 		</div>
 	);

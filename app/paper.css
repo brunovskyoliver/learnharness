@@ -51,6 +51,8 @@ html.lh-paper[data-theme="light"] {
 	--nb-faded-mark: 0.38;
 	--bulb: #d99a1e;
 	--lift: 0 0 0 1px #1d1c1a12, 0 1px 1px #1d1c1a0a, 0 6px 16px -8px #1d1c1a29;
+	--nb-backdrop: #1d1c1a57; /* dialog backdrop: ink 34% */
+	--nb-switch-thumb: #fff;
 	--grain-opacity: 0.16;
 	--texture-blend: multiply;
 	/* 1.2 text and AI ink colours */
@@ -91,6 +93,8 @@ html.lh-paper[data-theme="dark"] {
 	--nb-faded-mark: 0.38;
 	--bulb: #f2b84b;
 	--lift: 0 0 0 1px #ffffff12, 0 8px 20px -8px #0009;
+	--nb-backdrop: #0009; /* dialog backdrop: black 60% */
+	--nb-switch-thumb: var(--graphite);
 	--grain-opacity: 0.4;
 	--texture-blend: soft-light;
 	--text-gray: #9a968e;
@@ -129,6 +133,8 @@ html.lh-paper[data-theme="dark"] {
 		--nb-faded-mark: 0.38;
 		--bulb: #f2b84b;
 		--lift: 0 0 0 1px #ffffff12, 0 8px 20px -8px #0009;
+		--nb-backdrop: #0009; /* dialog backdrop: black 60% */
+		--nb-switch-thumb: var(--graphite);
 		--grain-opacity: 0.4;
 		--texture-blend: soft-light;
 		--text-gray: #9a968e;
@@ -139,6 +145,15 @@ html.lh-paper[data-theme="dark"] {
 		--text-blue: #84afe3;
 		--text-purple: #bc98e4;
 		color-scheme: dark;
+	}
+}
+
+/* ── 1.4 Print (feature 010): the page on light paper, whatever the theme ── */
+
+@media print {
+	html.lh-paper[data-lh-printing] #lh-print-root {
+		--paper: #f8f7f4; --shelf: #f1f0ec; --code: #ebe9e3; --ink: #1d1c1a; --graphite: #5c5953; --faint: #716d67; --rule: #dedbd4;
+		--background: var(--paper); --foreground: var(--ink); --muted-foreground: var(--faint); --card: var(--shelf); --accent: var(--shelf); --border: var(--rule); --input: var(--rule);
 	}
 }
 
@@ -156,6 +171,20 @@ html.lh-paper[data-ink="orange"] { --riddle: var(--text-orange); --nb-faded: var
 
 html.lh-paper {
 	--note-size: 15.5px;
+	/* The scale's steps are globals.css's --text-2xs…--text-title (a static
+	   Tailwind theme, so they exist as variables here). These are the
+	   one-off sizes 024 set against its frames and references (research R4),
+	   kept exact so Notebook's look does not move: */
+	--text-mark: 10px; /* §14 the "?" mark in its 15px ring */
+	--text-kbd: 10.5px; /* visual-reference: hints "≈10.5px --faint", menu shortcuts "≈10.5px faint" */
+	--text-caption: 11.5px; /* visual-reference: the sketch counter "text-[11.5px]"; side panel and sidebar sub lines */
+	--text-margin: 15px; /* margin notes and his words: the frame's lines set at ≈15px (§ margin thread, 354/364px lines) */
+	--text-wordmark: 15px; /* the top-left wordmark */
+	--text-select: 15.5px; /* selection-menu action labels */
+	--text-instruction: 16.5px; /* the instruction line's field */
+	--text-sample-small: 15px; /* Customize text-size samples: the desktop --note-size of each choice */
+	--text-sample-default: 16px;
+	--text-sample-large: 18px;
 }
 html.lh-paper[data-text-size="small"] { --note-size: 14.5px; }
 html.lh-paper[data-text-size="large"] { --note-size: 17px; }
@@ -182,7 +211,7 @@ html.lh-paper[data-text-size="large"] { --note-size: 17px; }
 .lh-paper .nb-voice strong { font-weight: 600; }
 /* Lettering "plain": the voice switches to the sans face. */
 .lh-paper[data-lettering="plain"] .nb-voice {
-	font-family: var(--nb-font-sans), ui-sans-serif, system-ui, sans-serif;
+	font-family: var(--nb-sans);
 	font-variation-settings: normal;
 	letter-spacing: -0.004em;
 	font-weight: 400;
@@ -352,7 +381,7 @@ html.lh-paper,
 	to { opacity: 1; transform: none; }
 }
 @keyframes nb-ink-word {
-	0% { opacity: 0; color: color-mix(in srgb, var(--riddle) 55%, #b08a5a); }
+	0% { opacity: 0; color: color-mix(in srgb, var(--riddle) 55%, var(--nb-ink-wet)); }
 	35% { opacity: 0.55; }
 	to { opacity: 1; color: var(--riddle); }
 }
@@ -505,7 +534,7 @@ html.lh-paper,
 	height: 20%;
 	rotate: -30deg;
 	border-radius: 50%;
-	background: #fff;
+	background: var(--nb-sheen);
 	opacity: 0;
 	animation: 2.6s ease-out 0.2s both nb-ink-sheen;
 }
@@ -582,7 +611,7 @@ html.lh-paper,
 .lh-paper .nb-tether-tie { stroke-width: 1.8px; stroke-opacity: 0.42; }
 .lh-paper .nb-tether-spine { stroke-width: 1.5px; stroke-opacity: 0.32; }
 .lh-paper .nb-tether .nb-tether-reveal {
-	stroke: #fff;
+	stroke: var(--nb-mask);
 	stroke-opacity: 1;
 	stroke-width: 10px;
 	stroke-dasharray: 1;
@@ -600,7 +629,7 @@ html.lh-paper,
 	z-index: 5;
 	white-space: nowrap;
 	color: var(--faint);
-	font-size: 14px;
+	font-size: var(--text-md);
 	pointer-events: none;
 	animation: 2.4s forwards nb-quiet-mark;
 }
@@ -754,8 +783,10 @@ html.lh-paper,
  * inline-sketch-and-selection.jpg at 1:1 (visual-reference §3.4-§7, §18).
  */
 
-/* The shadcn names Study's components still use (until the phase 2
- * codemod), as aliases of the paper tokens (ui-contract "Token mapping"). */
+/* The shadcn names, as aliases of the paper tokens (ui-contract "Token
+ * mapping"), for third-party CSS (Streamdown's chrome) and the print root.
+ * Components use the paper names (tests/token-hygiene.test.ts). Then the
+ * theme-independent literals the shared parts read. */
 html.lh-paper {
 	--background: var(--paper);
 	--foreground: var(--ink);
@@ -774,11 +805,17 @@ html.lh-paper {
 	--destructive: var(--text-red);
 	--success: var(--text-green);
 	--warning: var(--bulb);
-	--ink-2: var(--graphite);
 	--ring: var(--nb-focus);
 	--input: var(--rule);
 	--border: var(--rule);
-	--color-border: var(--rule);
+	--nb-ink-wet: #b08a5a; /* ink-in: a word starts in wet brown ink */
+	--nb-sheen: #fff; /* the ink dot's sheen */
+	--nb-mask: #fff; /* SVG mask strokes (the tether reveal): full alpha */
+	--nb-image-shadow: 0 1px 2px #1d1c1a0d; /* note images: a hairline lift */
+	--nb-sketch-backdrop: rgb(0 0 0 / 0.3); /* See it larger: black 30% */
+	--nb-switch-thumb-shadow: 0 1px 2px #1d1c1a29;
+	--print-sheet: #fff; /* print: the sheet behind the light page */
+	--nb-mark-spiral: rgb(148 148 148); /* the app mark's spiral (components/lh-mark.tsx) */
 	--nb-mono: ui-monospace, "SF Mono", Menlo, monospace;
 	--nb-sans: var(--nb-font-sans), ui-sans-serif, system-ui, sans-serif;
 	--nb-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.32 0 0 0 0 0.27 0 0 0 0.5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
@@ -802,7 +839,7 @@ html.lh-paper {
 	box-shadow: var(--lift);
 	color: var(--ink);
 	font-family: var(--nb-sans);
-	font-size: 13.5px;
+	font-size: var(--text-ui);
 	line-height: 1.35;
 	transform-origin: var(--radix-dropdown-menu-content-transform-origin);
 	animation: 0.16s cubic-bezier(0.2, 0.8, 0.2, 1) both nb-menu-in;
@@ -815,7 +852,7 @@ html.lh-paper {
 .lh-paper .nb-menu-label {
 	padding: 6px 10px 4px;
 	color: var(--faint);
-	font-size: 12px;
+	font-size: var(--text-xs);
 }
 .lh-paper .nb-menu-item {
 	display: flex;
@@ -840,7 +877,7 @@ html.lh-paper {
 .lh-paper .nb-menu-check svg { width: 13px; height: 13px; stroke-width: 1.8; }
 .lh-paper .nb-menu-text { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
 .lh-paper .nb-menu-name { color: var(--ink); }
-.lh-paper .nb-menu-description { color: var(--faint); font-size: 12.5px; line-height: 1.4; }
+.lh-paper .nb-menu-description { color: var(--faint); font-size: var(--text-meta); line-height: 1.4; }
 .lh-paper .nb-text-button {
 	color: var(--ink);
 	text-decoration: underline;
@@ -858,7 +895,7 @@ html.lh-paper {
 	margin: 0;
 	color: var(--faint);
 	font-family: var(--nb-sans);
-	font-size: 11px;
+	font-size: var(--text-2xs);
 	line-height: 1.4;
 	/* The running cost changes in place: fixed-width digits keep the line still. */
 	font-variant-numeric: tabular-nums;
@@ -934,7 +971,7 @@ html.lh-paper {
 	padding: 0 7px;
 	border-radius: 6px;
 	color: var(--graphite);
-	font-size: 13.5px;
+	font-size: var(--text-ui);
 	line-height: 1.3;
 	text-align: left;
 	transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
@@ -952,7 +989,7 @@ html.lh-paper {
 	background: transparent;
 	color: var(--ink);
 	outline: none;
-	font-size: 13.5px;
+	font-size: var(--text-ui);
 }
 .lh-paper .nb-side-search input::placeholder { color: var(--graphite); opacity: 1; }
 .lh-paper .nb-side-search input::-webkit-search-cancel-button { display: none; }
@@ -960,7 +997,7 @@ html.lh-paper {
 	margin-left: auto;
 	color: var(--faint);
 	font-family: var(--nb-sans);
-	font-size: 10.5px;
+	font-size: var(--text-kbd);
 	letter-spacing: 0.02em;
 	white-space: nowrap;
 }
@@ -982,15 +1019,15 @@ html.lh-paper {
 .lh-paper .nb-side-chevron { width: 11px; height: 11px; margin-right: -4px; transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1); }
 .lh-paper .nb-side-folder[aria-expanded="true"] .nb-side-chevron { transform: rotate(90deg); }
 .lh-paper .nb-side-faint,
-.lh-paper .nb-side-faint .nb-side-icon { color: var(--faint); font-size: 13px; }
+.lh-paper .nb-side-faint .nb-side-icon { color: var(--faint); font-size: var(--text-sm); }
 .lh-paper .nb-side-scroll > .nb-side-faint { margin-top: 22px; }
-.lh-paper .nb-side-status { margin: 8px 7px 0; color: var(--faint); font-size: 12.5px; line-height: 1.4; }
+.lh-paper .nb-side-status { margin: 8px 7px 0; color: var(--faint); font-size: var(--text-meta); line-height: 1.4; }
 .lh-paper .nb-side-foot {
 	flex: none;
 	padding: 12px 18px 24px 15px;
 }
-.lh-paper .nb-side-account { margin: 0 7px; color: var(--graphite); font-size: 12.5px; line-height: 1.4; overflow-wrap: anywhere; }
-.lh-paper .nb-side-saved { margin: 2px 7px 10px; color: var(--faint); font-size: 11.5px; line-height: 1.4; }
+.lh-paper .nb-side-account { margin: 0 7px; color: var(--graphite); font-size: var(--text-meta); line-height: 1.4; overflow-wrap: anywhere; }
+.lh-paper .nb-side-saved { margin: 2px 7px 10px; color: var(--faint); font-size: var(--text-caption); line-height: 1.4; }
 .lh-paper .nb-side-actions { margin: 0; padding: 0; list-style: none; }
 .lh-paper .nb-side-footer-action { min-height: 31px; }
 
@@ -1062,7 +1099,7 @@ html.lh-paper {
 	position: absolute;
 	color: var(--riddle);
 	/* ≈15px: the frame's lines ("If AI makes competent-looking code cheap, college", 354px) set at 15px. */
-	font-size: 15px;
+	font-size: var(--text-margin);
 	line-height: 23.5px;
 	overflow-wrap: break-word;
 }
@@ -1077,7 +1114,7 @@ html.lh-paper {
 	margin: 8px 0 0;
 	color: var(--faint);
 	font-family: var(--nb-sans);
-	font-size: 12px;
+	font-size: var(--text-xs);
 	line-height: 16px;
 	letter-spacing: 0;
 }
@@ -1146,7 +1183,7 @@ html.lh-paper {
 	box-shadow: var(--lift);
 	color: var(--graphite);
 	font-family: var(--nb-sans);
-	font-size: 12.5px;
+	font-size: var(--text-meta);
 	line-height: 1.5;
 	animation: 0.16s ease-out both nb-menu-in;
 }
@@ -1217,7 +1254,7 @@ html.lh-paper {
 	background: none;
 	color: var(--faint);
 	font-family: var(--nb-sans);
-	font-size: 13px;
+	font-size: var(--text-sm);
 	line-height: 1;
 	letter-spacing: 0.5px;
 }
@@ -1258,7 +1295,7 @@ html.lh-paper {
 	margin-top: 12px;
 	color: var(--graphite);
 	font-family: var(--nb-sans);
-	font-size: 15px;
+	font-size: var(--text-margin);
 	line-height: 22.5px;
 	letter-spacing: 0;
 	white-space: pre-wrap;
@@ -1294,7 +1331,7 @@ html.lh-paper {
 	background: none;
 	color: var(--ink);
 	font-family: var(--nb-sans);
-	font-size: 14px;
+	font-size: var(--text-md);
 	line-height: 23px;
 	letter-spacing: 0;
 	resize: none;
@@ -1327,7 +1364,7 @@ html.lh-paper {
 	gap: 16px;
 	margin-top: 15px;
 	font-family: var(--nb-sans);
-	font-size: 12px;
+	font-size: var(--text-xs);
 	line-height: 16px;
 }
 .lh-paper .nb-note .nb-thread-actions { margin-top: 13px; }
@@ -1360,7 +1397,7 @@ html.lh-paper {
 	margin: 8px 0 0;
 	color: var(--faint);
 	font-family: var(--nb-sans);
-	font-size: 12px;
+	font-size: var(--text-xs);
 	line-height: 16px;
 	letter-spacing: 0;
 }
@@ -1386,7 +1423,7 @@ html.lh-paper {
 	color: var(--riddle);
 	opacity: 0.55;
 	font-family: var(--nb-sans);
-	font-size: 10px;
+	font-size: var(--text-mark);
 	font-weight: 600;
 	font-style: normal;
 	line-height: 1;
@@ -1421,7 +1458,7 @@ html.lh-paper {
 	align-items: center;
 	gap: 9px;
 	color: var(--faint);
-	font-size: 12.5px;
+	font-size: var(--text-meta);
 	line-height: 1.6;
 }
 .lh-paper .nb-sketching-blot { color: var(--riddle); animation: 1.8s ease-in-out infinite nb-ink-wait; }
@@ -1438,17 +1475,17 @@ html.lh-paper {
 }
 .lh-paper .nb-sketch-figure { margin: 0 auto; }
 .lh-paper .nb-sketch-head { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
-.lh-paper .nb-sketch-title { color: var(--ink); font-size: 19px; line-height: 1.3; letter-spacing: 0; }
-.lh-paper .nb-sketch-subtitle { margin-top: 11.5px; color: var(--faint); font-family: var(--nb-sans); font-size: 13px; line-height: 1.4; letter-spacing: 0; }
+.lh-paper .nb-sketch-title { color: var(--ink); font-size: var(--text-xl); line-height: 1.3; letter-spacing: 0; }
+.lh-paper .nb-sketch-subtitle { margin-top: 11.5px; color: var(--faint); font-family: var(--nb-sans); font-size: var(--text-sm); line-height: 1.4; letter-spacing: 0; }
 .lh-paper .nb-drawing-picture svg { display: block; width: 100%; height: auto; max-height: 440px; overflow: visible; }
 .lh-paper .nb-drawing-picture text { paint-order: stroke; stroke: var(--paper) !important; stroke-width: 4px !important; stroke-linejoin: round; }
 /* A step not yet shown is clear; one already drawn stays drawn; a step that comes in inks in. */
 .lh-paper .nb-drawing-picture [data-step]:not([data-live]) * { animation: none; stroke-dashoffset: 0; }
-.lh-paper .nb-sketch-note { margin: 17px 0 0; color: var(--ink); font-size: 19px; line-height: 1.3; letter-spacing: 0; animation: 0.52s cubic-bezier(0.2, 0.7, 0.2, 1) both nb-ink-in; }
+.lh-paper .nb-sketch-note { margin: 17px 0 0; color: var(--ink); font-size: var(--text-xl); line-height: 1.3; letter-spacing: 0; animation: 0.52s cubic-bezier(0.2, 0.7, 0.2, 1) both nb-ink-in; }
 .lh-paper .nb-sketch-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; min-height: 3em; margin-top: 14px; }
-.lh-paper .nb-sketch-caption { margin: 0; color: var(--graphite); font-size: 14.5px; line-height: 1.45; letter-spacing: 0; }
+.lh-paper .nb-sketch-caption { margin: 0; color: var(--graphite); font-size: var(--text-reply); line-height: 1.45; letter-spacing: 0; }
 .lh-paper .nb-stepper { display: flex; flex-shrink: 0; align-items: center; gap: 2px; }
-.lh-paper .nb-step-count { min-width: 2.6em; color: var(--faint); font-family: var(--nb-sans); font-size: 11.5px; font-variant-numeric: tabular-nums; text-align: center; letter-spacing: 0; }
+.lh-paper .nb-step-count { min-width: 2.6em; color: var(--faint); font-family: var(--nb-sans); font-size: var(--text-caption); font-variant-numeric: tabular-nums; text-align: center; letter-spacing: 0; }
 .lh-paper .nb-drawing-control {
 	display: flex;
 	align-items: center;
@@ -1473,14 +1510,14 @@ html.lh-paper {
 	background: none;
 	color: var(--faint);
 	font-family: var(--nb-sans);
-	font-size: 12.5px;
+	font-size: var(--text-meta);
 	line-height: 1.4;
 	letter-spacing: 0;
 	transition: color 0.15s;
 }
 .lh-paper .nb-sketch-larger:hover { color: var(--ink); }
 .lh-paper .nb-sketch-larger[data-hidden] { visibility: hidden; }
-.lh-paper .nb-sketch-failed { margin: 8px 0 0; color: var(--faint); font-family: var(--nb-sans); font-size: 13.5px; line-height: 1.45; }
+.lh-paper .nb-sketch-failed { margin: 8px 0 0; color: var(--faint); font-family: var(--nb-sans); font-size: var(--text-ui); line-height: 1.45; }
 
 /* See it larger: backdrop black/30, a paper card min(92vw, 760px), radius 16px. */
 .lh-paper .nb-sketch-backdrop {
@@ -1490,7 +1527,7 @@ html.lh-paper {
 	display: grid;
 	place-items: center;
 	padding: 16px;
-	background: rgb(0 0 0 / 0.3);
+	background: var(--nb-sketch-backdrop);
 	animation: 0.2s ease-out both nb-fade-in;
 }
 .lh-paper .nb-sketch-card {
@@ -1526,7 +1563,7 @@ html.lh-paper {
 .lh-paper .nb-sketch-figure-large .nb-sketch-head { align-items: center; text-align: center; }
 .lh-paper .nb-drawing-large { margin: 12px auto 0; }
 .lh-paper .nb-drawing-large svg { max-height: 72vh; }
-.lh-paper .nb-sketch-card .nb-sketch-caption { font-size: 17px; line-height: 1.5; }
+.lh-paper .nb-sketch-card .nb-sketch-caption { font-size: var(--text-lg); line-height: 1.5; }
 
 @media (prefers-reduced-motion: reduce) {
 	.lh-paper .nb-drawing-picture * { animation: none !important; stroke-dashoffset: 0 !important; }
@@ -1544,12 +1581,8 @@ html.lh-paper {
 	display: grid;
 	place-items: center;
 	padding: 16px;
-	background: #1d1c1a57;
+	background: var(--nb-backdrop);
 	animation: 0.2s ease-out both nb-fade-in;
-}
-.lh-paper[data-theme="dark"] .nb-dialog-backdrop { background: #0009; }
-@media (prefers-color-scheme: dark) {
-	.lh-paper[data-theme="system"] .nb-dialog-backdrop { background: #0009; }
 }
 .lh-paper .nb-dialog-close {
 	position: absolute;
@@ -1566,8 +1599,8 @@ html.lh-paper {
 .lh-paper .nb-dialog-close:hover { background: var(--shelf); color: var(--ink); }
 
 /* The Reviewers page (19: heading ≈19px 500, rows 13.5/12px, cards ring 1px rule). */
-.lh-paper .nb-rev-title { margin: 0; color: var(--ink); font-size: 19px; font-weight: 500; line-height: 1.3; }
-.lh-paper .nb-rev-lede { margin: 6px 40px 20px 0; color: var(--faint); font-size: 12.5px; line-height: 1.45; }
+.lh-paper .nb-rev-title { margin: 0; color: var(--ink); font-size: var(--text-xl); font-weight: 500; line-height: 1.3; }
+.lh-paper .nb-rev-lede { margin: 6px 40px 20px 0; color: var(--faint); font-size: var(--text-meta); line-height: 1.45; }
 .lh-paper .nb-rev-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .lh-paper .nb-rev-item { border-radius: 10px; box-shadow: 0 0 0 1px var(--rule); transition: box-shadow 0.15s; }
 .lh-paper .nb-rev-item:hover { box-shadow: 0 0 0 1px var(--faint); }
@@ -1581,18 +1614,18 @@ html.lh-paper {
 	border-radius: 10px;
 	text-align: left;
 }
-.lh-paper .nb-rev-name { color: var(--ink); font-size: 13.5px; line-height: 1.35; }
+.lh-paper .nb-rev-name { color: var(--ink); font-size: var(--text-ui); line-height: 1.35; }
 .lh-paper .nb-rev-first {
 	overflow: hidden;
 	color: var(--graphite);
-	font-size: 12px;
+	font-size: var(--text-xs);
 	line-height: 1.45;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 .lh-paper .nb-rev-item[data-open] .nb-rev-first { display: none; }
 .lh-paper .nb-rev-editor { display: flex; flex-direction: column; gap: 6px; padding: 0 14px 12px; }
-.lh-paper .nb-rev-label { margin-top: 4px; color: var(--faint); font-size: 12px; line-height: 1.4; }
+.lh-paper .nb-rev-label { margin-top: 4px; color: var(--faint); font-size: var(--text-xs); line-height: 1.4; }
 .lh-paper .nb-rev-input {
 	width: 100%;
 	padding: 7px 10px;
@@ -1601,7 +1634,7 @@ html.lh-paper {
 	background: var(--shelf);
 	color: var(--ink);
 	font-family: var(--nb-sans);
-	font-size: 13.5px;
+	font-size: var(--text-ui);
 	line-height: 1.45;
 	outline: none;
 }
@@ -1609,10 +1642,10 @@ html.lh-paper {
 .lh-paper .nb-rev-input:focus-visible { box-shadow: 0 0 0 2px var(--nb-focus); }
 .lh-paper .nb-rev-area { min-height: 72px; overflow: hidden; resize: none; }
 .lh-paper .nb-rev-actions { display: flex; justify-content: flex-end; margin-top: 2px; }
-.lh-paper .nb-rev-text-button { color: var(--faint); font-size: 12.5px; line-height: 1.4; transition: color 0.15s; }
+.lh-paper .nb-rev-text-button { color: var(--faint); font-size: var(--text-meta); line-height: 1.4; transition: color 0.15s; }
 .lh-paper .nb-rev-text-button:hover { color: var(--ink); }
 .lh-paper .nb-rev-link { color: var(--ink); text-decoration: underline; text-decoration-color: var(--riddle-line); text-underline-offset: 3px; }
-.lh-paper .nb-rev-status { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 12px 2px 0; color: var(--graphite); font-size: 12.5px; line-height: 1.4; }
+.lh-paper .nb-rev-status { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 12px 2px 0; color: var(--graphite); font-size: var(--text-meta); line-height: 1.4; }
 .lh-paper .nb-rev-error { color: var(--text-red); }
 .lh-paper .nb-rev-new {
 	display: inline-flex;
@@ -1621,7 +1654,7 @@ html.lh-paper {
 	margin-top: 16px;
 	padding: 4px 2px;
 	color: var(--graphite);
-	font-size: 13.5px;
+	font-size: var(--text-ui);
 	transition: color 0.15s;
 }
 .lh-paper .nb-rev-new:hover { color: var(--ink); }
@@ -1675,12 +1708,12 @@ html.lh-paper {
 .lh-paper .nb-chat-head { position: relative; flex: none; padding: 20px 56px 0 24px; }
 .lh-paper .nb-chat-heading { display: flex; align-items: center; gap: 10px; padding-left: 2px; }
 .lh-paper .nb-chat-dot { flex: none; color: var(--ink); }
-.lh-paper .nb-chat-title { margin: 0; color: var(--ink); font-size: 17px; line-height: 22px; white-space: normal; }
+.lh-paper .nb-chat-title { margin: 0; color: var(--ink); font-size: var(--text-lg); line-height: 22px; white-space: normal; }
 .lh-paper .nb-chat-sub {
 	margin: 8px 0 0;
 	overflow: hidden;
 	color: var(--faint);
-	font-size: 11.5px;
+	font-size: var(--text-caption);
 	line-height: 16px;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -1706,8 +1739,8 @@ html.lh-paper {
 	padding: 26px 24px 16px;
 }
 /* The frame's opening line wraps after ≈290px ("…Ask / anything about it."). */
-.lh-paper .nb-chat-open-line { max-width: 290px; margin: 0; color: var(--riddle); font-size: 17px; line-height: 27px; }
-.lh-paper .nb-chat-context { margin: 6px 0 0; color: var(--faint); font-size: 12px; line-height: 17px; }
+.lh-paper .nb-chat-open-line { max-width: 290px; margin: 0; color: var(--riddle); font-size: var(--text-lg); line-height: 27px; }
+.lh-paper .nb-chat-context { margin: 6px 0 0; color: var(--faint); font-size: var(--text-xs); line-height: 17px; }
 .lh-paper .nb-chat-starters { display: flex; flex-direction: column; align-items: flex-start; gap: 7px; margin: 14px 0 0; padding: 0; list-style: none; }
 .lh-paper .nb-chat-starter {
 	min-height: 32px;
@@ -1715,7 +1748,7 @@ html.lh-paper {
 	border-radius: 8px;
 	box-shadow: 0 0 0 1px var(--rule);
 	color: var(--graphite);
-	font-size: 13px;
+	font-size: var(--text-sm);
 	line-height: 1.3;
 	text-align: left;
 	transition: box-shadow 0.15s, color 0.15s;
@@ -1729,20 +1762,20 @@ html.lh-paper {
 	border-radius: 8px;
 	background: var(--shelf);
 	color: var(--ink);
-	font-size: 12.5px;
+	font-size: var(--text-meta);
 	line-height: 1.5;
 	white-space: pre-wrap;
 	overflow-wrap: anywhere;
 }
-.lh-paper .nb-chat-ai { align-self: stretch; font-size: 14.5px; line-height: 1.6; }
+.lh-paper .nb-chat-ai { align-self: stretch; font-size: var(--text-reply); line-height: 1.6; }
 .lh-paper .nb-chat-ai .nb-words { display: block; }
 .lh-paper .nb-chat-ai .nb-words + .nb-words { margin-top: 0.6em; }
-.lh-paper .nb-chat-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 6px 0 0; color: var(--graphite); font-family: var(--nb-sans); font-size: 12.5px; line-height: 1.4; }
+.lh-paper .nb-chat-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 6px 0 0; color: var(--graphite); font-family: var(--nb-sans); font-size: var(--text-meta); line-height: 1.4; }
 .lh-paper .nb-chat-problem { margin-top: 14px; }
 .lh-paper .nb-chat-link { color: var(--ink); text-decoration: underline; text-decoration-color: var(--riddle-line); text-underline-offset: 3px; }
 .lh-paper .nb-chat-text-button { color: var(--faint); }
 .lh-paper .nb-chat-text-button:hover { color: var(--ink); }
-.lh-paper .nb-chat-detail { flex-basis: 100%; color: var(--faint); font-size: 12px; overflow-wrap: anywhere; }
+.lh-paper .nb-chat-detail { flex-basis: 100%; color: var(--faint); font-size: var(--text-xs); overflow-wrap: anywhere; }
 .lh-paper .nb-chat-form { display: flex; flex: none; align-items: flex-end; gap: 12px; padding: 10px 18px 18px 24px; }
 .lh-paper .nb-chat-field {
 	min-width: 0;
@@ -1755,7 +1788,7 @@ html.lh-paper {
 	color: var(--ink);
 	caret-color: var(--ink);
 	font-family: var(--nb-sans);
-	font-size: 14px;
+	font-size: var(--text-md);
 	line-height: 22px;
 	outline: none;
 }
@@ -1802,11 +1835,11 @@ html.lh-paper {
 	background: var(--paper);
 	box-shadow: var(--lift);
 	color: var(--ink);
-	font-family: var(--nb-font-sans), ui-sans-serif, system-ui, sans-serif;
+	font-family: var(--nb-sans);
 	animation: 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both nb-menu-in;
 }
 .lh-paper .nb-export:focus { outline: none; }
-.lh-paper .nb-export-title { margin: 0 0 22px; color: var(--ink); font-size: 14.5px; font-weight: 500; line-height: 20px; }
+.lh-paper .nb-export-title { margin: 0 0 22px; color: var(--ink); font-size: var(--text-reply); font-weight: 500; line-height: 20px; }
 .lh-paper .nb-export-formats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 
 /* 19: option cards: 1px rule ring; selected 1.5px ink ring, no fill, no check. */
@@ -1830,8 +1863,8 @@ html.lh-paper {
 /* Hover never hides the chosen card's ring (frame sidebar-and-settings: pointer on the chosen card). */
 .lh-paper .nb-option-card[data-state="checked"],
 .lh-paper button.nb-option-card[data-state="checked"]:hover { box-shadow: 0 0 0 1.5px var(--ink); }
-.lh-paper .nb-option-title { color: var(--ink); font-size: 13.5px; font-weight: 500; line-height: 18px; }
-.lh-paper .nb-option-description { color: var(--graphite); font-size: 12px; line-height: 1.45; }
+.lh-paper .nb-option-title { color: var(--ink); font-size: var(--text-ui); font-weight: 500; line-height: 18px; }
+.lh-paper .nb-option-description { color: var(--graphite); font-size: var(--text-xs); line-height: 1.45; }
 
 .lh-paper .nb-export-toggle {
 	min-height: 0;
@@ -1863,22 +1896,18 @@ html.lh-paper {
 	width: 16px;
 	height: 16px;
 	border-radius: 999px;
-	background: #fff;
-	box-shadow: 0 1px 2px #1d1c1a29;
+	background: var(--nb-switch-thumb);
+	box-shadow: var(--nb-switch-thumb-shadow);
 	transition: transform 0.2s cubic-bezier(0.3, 0.7, 0.2, 1), background-color 0.2s;
 }
 .lh-paper .nb-switch-thumb[data-state="checked"] { transform: translateX(16px); background: var(--paper); box-shadow: none; }
-.lh-paper[data-theme="dark"] .nb-switch-thumb:not([data-state="checked"]) { background: var(--graphite); }
-@media (prefers-color-scheme: dark) {
-	.lh-paper[data-theme="system"] .nb-switch-thumb:not([data-state="checked"]) { background: var(--graphite); }
-}
 
-.lh-paper .nb-export-problem { margin-top: 14px; color: var(--ink); font-size: 12.5px; line-height: 1.5; }
+.lh-paper .nb-export-problem { margin-top: 14px; color: var(--ink); font-size: var(--text-meta); line-height: 1.5; }
 .lh-paper .nb-export-problem p { margin: 0; }
 .lh-paper .nb-export-detail { margin-top: 4px !important; color: var(--graphite); white-space: pre-wrap; overflow-wrap: anywhere; }
 
 .lh-paper .nb-export-actions { display: flex; align-items: center; justify-content: flex-end; gap: 22px; margin-top: 26px; }
-.lh-paper .nb-export-cancel { padding: 6px 0; color: var(--faint); font-size: 12.5px; transition: color 0.15s; }
+.lh-paper .nb-export-cancel { padding: 6px 0; color: var(--faint); font-size: var(--text-meta); transition: color 0.15s; }
 .lh-paper .nb-export-cancel:hover { color: var(--ink); }
 /* The landing's pill: rounded-full bg-ink text-paper, hover opacity .85. */
 .lh-paper .nb-pill {
@@ -1887,7 +1916,7 @@ html.lh-paper {
 	border-radius: 999px;
 	background: var(--ink);
 	color: var(--paper);
-	font-size: 12.5px;
+	font-size: var(--text-meta);
 	font-weight: 500;
 	white-space: nowrap;
 	transition: opacity 0.15s;
@@ -1977,7 +2006,7 @@ html.lh-paper {
 	padding: 0 12px;
 	border-radius: 8px;
 	color: var(--graphite);
-	font-size: 14px;
+	font-size: var(--text-md);
 	line-height: 1.3;
 	text-align: left;
 	transition: background-color 0.15s, color 0.15s;
@@ -1996,16 +2025,16 @@ html.lh-paper {
 .lh-paper .nb-settings-page:focus-visible { outline-offset: -4px; border-radius: 0 12px 12px 0; }
 .lh-paper .nb-settings-page[data-state="inactive"] { display: none; }
 .lh-paper .nb-settings-close { top: 16px; right: 16px; z-index: 1; }
-.lh-paper .nb-settings-title { margin: 0 40px 30px 0; color: var(--ink); font-size: 19px; font-weight: 500; line-height: 26px; }
+.lh-paper .nb-settings-title { margin: 0 40px 30px 0; color: var(--ink); font-size: var(--text-xl); font-weight: 500; line-height: 26px; }
 .lh-paper .nb-settings-page .nb-rev-title { line-height: 26px; }
 
 .lh-paper .nb-set-section + .nb-set-section,
 .lh-paper .nb-set-toggle + .nb-set-section { margin-top: 36px; }
-.lh-paper .nb-set-label { margin: 0 0 14px; color: var(--ink); font-size: 14px; font-weight: 500; line-height: 18px; }
+.lh-paper .nb-set-label { margin: 0 0 14px; color: var(--ink); font-size: var(--text-md); font-weight: 500; line-height: 18px; }
 .lh-paper .nb-set-grid { display: grid; grid-template-columns: repeat(var(--cols, 2), minmax(0, 1fr)); gap: 10px; }
 .lh-paper .nb-set-card { min-height: 82px; gap: 3px; padding: 12px; }
-.lh-paper .nb-set-card .nb-option-description { font-size: 12.5px; line-height: 18px; }
-.lh-paper .nb-set-hint { margin: 8px 0 0; color: var(--faint); font-size: 12.5px; line-height: 16px; }
+.lh-paper .nb-set-card .nb-option-description { font-size: var(--text-meta); line-height: 18px; }
+.lh-paper .nb-set-hint { margin: 8px 0 0; color: var(--faint); font-size: var(--text-meta); line-height: 16px; }
 .lh-paper .nb-set-toggle {
 	min-height: 68px;
 	margin-top: 36px;
@@ -2015,7 +2044,7 @@ html.lh-paper {
 	padding: 13px 15px 13px 16px;
 }
 .lh-paper .nb-set-toggle-text { display: flex; min-width: 0; flex: 1 1 auto; flex-direction: column; gap: 3px; cursor: pointer; }
-.lh-paper .nb-set-toggle .nb-option-description { font-size: 12.5px; line-height: 18px; }
+.lh-paper .nb-set-toggle .nb-option-description { font-size: var(--text-meta); line-height: 18px; }
 
 /* Thumbnails: a greyscale mini page on the shelf (layouts) or a mini toolbar (appearance). */
 .lh-paper .nb-set-thumb-card { padding: 10px 12px 12px; }
@@ -2030,25 +2059,25 @@ html.lh-paper {
 .lh-paper .nb-thumb-card { fill: var(--paper); }
 .lh-paper .nb-set-appearance { min-height: 0; padding: 10px 10px 10px; gap: 8px; }
 .lh-paper .nb-thumb-appearance { aspect-ratio: 158 / 60; }
-.lh-paper .nb-set-caption { color: var(--graphite); font-size: 12px; line-height: 16px; }
+.lh-paper .nb-set-caption { color: var(--graphite); font-size: var(--text-xs); line-height: 16px; }
 .lh-paper .nb-set-appearance .nb-set-caption { padding-left: 2px; }
 
 /* Text size and lettering: the sample in its size or face, the name under it. */
 .lh-paper .nb-set-sample-card { min-height: 82px; justify-content: center; gap: 6px; padding: 14px 16px; }
 .lh-paper .nb-set-sample { color: var(--ink); line-height: 1.2; }
-.lh-paper .nb-set-sample[data-size="small"] { font-size: 15px; }
-.lh-paper .nb-set-sample[data-size="default"] { font-size: 16px; }
-.lh-paper .nb-set-sample[data-size="large"] { font-size: 18px; }
-.lh-paper .nb-set-letter { color: var(--riddle); font-size: 17px; line-height: 1.25; }
+.lh-paper .nb-set-sample[data-size="small"] { font-size: var(--text-sample-small); }
+.lh-paper .nb-set-sample[data-size="default"] { font-size: var(--text-sample-default); }
+.lh-paper .nb-set-sample[data-size="large"] { font-size: var(--text-sample-large); }
+.lh-paper .nb-set-letter { color: var(--riddle); font-size: var(--text-lg); line-height: 1.25; }
 .lh-paper .nb-set-letter[data-lettering="serif"] { font-family: var(--nb-font-voice); font-variation-settings: "opsz" 14; font-weight: 420; letter-spacing: 0.004em; }
 .lh-paper .nb-set-letter[data-lettering="plain"] { font-family: var(--nb-sans); letter-spacing: -0.004em; }
-.lh-paper .nb-set-sample-card .nb-set-caption { color: var(--faint); font-size: 11.5px; }
+.lh-paper .nb-set-sample-card .nb-set-caption { color: var(--faint); font-size: var(--text-caption); }
 
 /* Ink swatches: seven small cards, a dot and its name in that ink. */
 .lh-paper .nb-set-grid[data-testid="nb-set-ink"] { gap: 8px; }
 .lh-paper .nb-set-swatch { min-height: 66px; align-items: center; justify-content: center; gap: 8px; padding: 10px 4px; }
 .lh-paper .nb-set-swatch-dot { width: 10px; height: 10px; border-radius: 999px; }
-.lh-paper .nb-set-swatch-name { font-size: 12px; line-height: 16px; }
+.lh-paper .nb-set-swatch-name { font-size: var(--text-xs); line-height: 16px; }
 
 .lh-paper .nb-set-problem {
 	position: sticky;
@@ -2061,7 +2090,7 @@ html.lh-paper {
 	padding: 12px 0;
 	background: var(--paper);
 	color: var(--ink);
-	font-size: 12.5px;
+	font-size: var(--text-meta);
 	line-height: 1.4;
 }
 
@@ -2092,7 +2121,7 @@ html.lh-paper {
 .lh-paper .nb-links { width: min(400px, 100vw); box-shadow: var(--lift), -1px 0 0 var(--rule); }
 .lh-paper .nb-links-scroll { display: flex; flex-direction: column; gap: 24px; padding-top: 22px; }
 .lh-paper .nb-links-section { display: flex; flex-direction: column; gap: 4px; }
-.lh-paper .nb-links-label { margin: 0 0 4px; color: var(--faint); font-size: 12px; font-weight: 500; line-height: 16px; }
+.lh-paper .nb-links-label { margin: 0 0 4px; color: var(--faint); font-size: var(--text-xs); font-weight: 500; line-height: 16px; }
 .lh-paper .nb-links-list { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
 .lh-paper .nb-links-row {
 	display: flex;
@@ -2110,11 +2139,11 @@ html.lh-paper {
 	transition: background-color 0.12s;
 }
 .lh-paper button.nb-links-row:hover { background: var(--shelf); }
-.lh-paper .nb-links-name { font-size: 14px; line-height: 20px; overflow-wrap: anywhere; }
-.lh-paper .nb-links-meta { color: var(--graphite); font-size: 12.5px; line-height: 18px; overflow-wrap: anywhere; }
+.lh-paper .nb-links-name { font-size: var(--text-md); line-height: 20px; overflow-wrap: anywhere; }
+.lh-paper .nb-links-meta { color: var(--graphite); font-size: var(--text-meta); line-height: 18px; overflow-wrap: anywhere; }
 .lh-paper .nb-links-row[data-state="missing"] .nb-links-name,
 .lh-paper .nb-links-row[data-state="deleted"] .nb-links-name { color: var(--graphite); }
-.lh-paper .nb-links-empty { margin: 0; color: var(--graphite); font-size: 13px; line-height: 19px; }
+.lh-paper .nb-links-empty { margin: 0; color: var(--graphite); font-size: var(--text-sm); line-height: 19px; }
 @media (pointer: coarse) {
 	.lh-paper .nb-links-row { min-height: 44px; }
 }

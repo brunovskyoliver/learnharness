@@ -40,8 +40,8 @@ describe("AbortTurnBody", () => {
 		const cancelAt = html.indexOf('data-testid="abort-turn-cancel"');
 		assert.ok(confirmAt > -1 && cancelAt > -1);
 		const confirmBtn = html.slice(confirmAt, html.indexOf("</button>", confirmAt));
-		assert.match(confirmBtn, /destructive/);
+		assert.match(confirmBtn, /bg-red/);
 		const cancelBtn = html.slice(cancelAt, html.indexOf("</button>", cancelAt));
-		assert.ok(!cancelBtn.includes("destructive"));
+		assert.ok(!cancelBtn.includes("bg-red"));
 	});
 });

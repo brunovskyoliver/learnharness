@@ -117,7 +117,7 @@ export function ModelMenuList({
 						}
 					}}
 					placeholder="Search models…"
-					className="min-w-0 flex-1 bg-transparent py-2 text-base text-foreground outline-none"
+					className="min-w-0 flex-1 bg-transparent py-2 text-md text-ink outline-none"
 				/>
 			</div>
 			{!models && <div role="status" className="model-menu-empty">Loading models…</div>}
@@ -144,7 +144,7 @@ export function ModelMenuList({
 								className="model-menu-option"
 							>
 								<span className="min-w-0 flex-1">
-									<span className="block truncate text-lg font-medium text-foreground">{m.name}</span>
+									<span className="block truncate text-lg font-medium text-ink">{m.name}</span>
 									<span className="model-menu-meta" aria-label={subscription ? `${subscription} (subscription)` : undefined}>
 										<span className="truncate">{subscription ?? m.provider}</span>
 										{subscription ? <span className="shrink-0 text-sm">Subscription</span> : (
@@ -188,7 +188,7 @@ export function ThinkingMenuList({
 		<div className="reasoning-menu-content" role="menu" aria-label="Reasoning">
 			<div className="reasoning-menu-heading">Reasoning</div>
 			{levels.length === 0 ? (
-				<div className="px-2 py-3 text-center text-muted-foreground">{empty ?? "No thinking levels."}</div>
+				<div className="px-2 py-3 text-center text-faint">{empty ?? "No thinking levels."}</div>
 			) : (
 				levels.map((level) => (
 					<button
@@ -274,10 +274,10 @@ export function ProviderMenuList({
 					}
 				}}
 				placeholder="Search providers…"
-				className="lh-input mb-1.5 w-full rounded-md border border-input bg-background pointer-coarse:min-h-11 px-2 py-1.5 text-foreground outline-none focus:ring-1 focus:ring-ring"
+				className="lh-input mb-1.5 w-full rounded-md border border-rule bg-paper pointer-coarse:min-h-11 px-2 py-1.5 text-ink outline-none focus:ring-1 focus:ring-focus"
 			/>
 			{results.length === 0 && (
-				<div className="px-2 py-3 text-center text-muted-foreground">No providers match.</div>
+				<div className="px-2 py-3 text-center text-faint">No providers match.</div>
 			)}
 			<ul ref={listRef} data-testid="provider-list" className="flex max-h-72 flex-col overflow-y-auto px-1">
 				{results.map((p, i) => (
@@ -287,12 +287,12 @@ export function ProviderMenuList({
 							data-testid={`provider-option-${p.id.replace(/[^a-z0-9-]/gi, "_")}`}
 							data-idx={i}
 							onClick={() => onPick(p)}
-							className={`flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left outline-none transition-colors hover:bg-muted pointer-coarse:min-h-11 ${
-								i === menuIdx ? "bg-muted ring-1 ring-inset ring-border" : ""
+							className={`flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left outline-none transition-colors hover:bg-shelf pointer-coarse:min-h-11 ${
+								i === menuIdx ? "bg-shelf ring-1 ring-inset ring-rule" : ""
 							}`}
 						>
-							<span className="truncate text-card-foreground">{p.label}</span>
-							<span className="shrink-0 font-mono text-xs text-muted-foreground">{p.envVar}</span>
+							<span className="truncate text-ink">{p.label}</span>
+							<span className="shrink-0 font-mono text-xs text-faint">{p.envVar}</span>
 						</button>
 					</li>
 				))}
@@ -404,9 +404,9 @@ export function FontMenuList({
 					}
 				}}
 				placeholder="Search fonts…"
-				className="lh-input mb-1.5 w-full rounded-md border border-input bg-background pointer-coarse:min-h-11 px-2 py-1.5 text-foreground outline-none focus:ring-1 focus:ring-ring"
+				className="lh-input mb-1.5 w-full rounded-md border border-rule bg-paper pointer-coarse:min-h-11 px-2 py-1.5 text-ink outline-none focus:ring-1 focus:ring-focus"
 			/>
-			{!families && <div className="px-2 py-3 text-center text-muted-foreground">Loading fonts…</div>}
+			{!families && <div className="px-2 py-3 text-center text-faint">Loading fonts…</div>}
 			<ul ref={listRef} data-testid="font-list" className="flex max-h-72 flex-col overflow-y-auto px-1">
 				{families &&
 					results.map((family, i) => {
@@ -419,12 +419,12 @@ export function FontMenuList({
 									data-testid={isDefault ? "font-option-default" : `font-option-${family.replace(/[^a-z0-9-]/gi, "_")}`}
 									data-idx={i}
 									onClick={() => onPick(family)}
-									className={`flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left outline-none transition-colors hover:bg-muted pointer-coarse:min-h-11 ${
-										i === menuIdx ? "bg-muted ring-1 ring-inset ring-border" : ""
-									}${effective && i !== menuIdx ? " bg-muted" : ""}`}
+									className={`flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left outline-none transition-colors hover:bg-shelf pointer-coarse:min-h-11 ${
+										i === menuIdx ? "bg-shelf ring-1 ring-inset ring-rule" : ""
+									}${effective && i !== menuIdx ? " bg-shelf" : ""}`}
 								>
-									<span className="truncate text-card-foreground">{family ?? "Source Sans 3"}</span>
-									<span className="shrink-0 text-muted-foreground">{isDefault ? "default" : effective && <span aria-hidden>✓</span>}</span>
+									<span className="truncate text-ink">{family ?? "Source Sans 3"}</span>
+									<span className="shrink-0 text-faint">{isDefault ? "default" : effective && <span aria-hidden>✓</span>}</span>
 								</button>
 							</li>
 						);
@@ -436,17 +436,17 @@ export function FontMenuList({
 							data-testid="font-option-custom"
 							data-idx={0}
 							onClick={() => onPick(customFamily)}
-							className={`flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left outline-none transition-colors hover:bg-muted pointer-coarse:min-h-11 ${
-								menuIdx === 0 ? "bg-muted ring-1 ring-inset ring-border" : ""
+							className={`flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left outline-none transition-colors hover:bg-shelf pointer-coarse:min-h-11 ${
+								menuIdx === 0 ? "bg-shelf ring-1 ring-inset ring-rule" : ""
 							}`}
 						>
-							<span className="truncate text-card-foreground">Use “{customFamily}”</span>
-							<span className="shrink-0 text-muted-foreground">custom</span>
+							<span className="truncate text-ink">Use “{customFamily}”</span>
+							<span className="shrink-0 text-faint">custom</span>
 						</button>
 					</li>
 				)}
 			</ul>
-			{footer && <div className="px-2 pt-1.5 text-sm text-muted-foreground">{footer}</div>}
+			{footer && <div className="px-2 pt-1.5 text-sm text-faint">{footer}</div>}
 		</>
 	);
 }

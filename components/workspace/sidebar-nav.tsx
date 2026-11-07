@@ -10,7 +10,7 @@ import { folderTreeRows, type FolderTreeRow, type LibraryFolder } from "@/src/co
 import { useLibrarySnapshot } from "./library-snapshot";
 import { useWorkspace } from "./workspace-context";
 
-const ROW = "flex h-9 items-center gap-2 rounded-md px-2.5 text-base transition-colors hover:bg-accent pointer-coarse:h-11";
+const ROW = "flex h-9 items-center gap-2 rounded-md px-2.5 text-md transition-colors hover:bg-shelf pointer-coarse:h-11";
 const folderHref = (id: string) => `/library?folder=${encodeURIComponent(id)}`;
 
 /** The tree's rows, pure for render tests. One stop, the current folder or the
@@ -27,7 +27,7 @@ export function FolderTreeView({ rows, currentId, onToggle, onNavigate }: { rows
 							tabIndex={-1}
 							aria-label={`${row.expanded ? "Hide" : "Show"} folders in ${row.folder.name}`}
 							onClick={() => onToggle(row.folder.id)}
-							className="flex w-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent pointer-coarse:w-11"
+							className="flex w-6 shrink-0 items-center justify-center rounded-md text-faint hover:bg-shelf pointer-coarse:w-11"
 						>
 							{row.expanded ? <ChevronDownIcon className="size-3.5" aria-hidden="true" /> : <ChevronRightIcon className="size-3.5" aria-hidden="true" />}
 						</button>
@@ -44,9 +44,9 @@ export function FolderTreeView({ rows, currentId, onToggle, onNavigate }: { rows
 						data-folder-id={row.folder.id}
 						data-testid="sidebar-folder"
 						onClick={onNavigate}
-						className={cn("flex min-h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-accent pointer-coarse:min-h-11", row.folder.id === currentId ? "bg-accent text-foreground" : "text-ink-2")}
+						className={cn("flex min-h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 py-1 text-sm transition-colors hover:bg-shelf pointer-coarse:min-h-11", row.folder.id === currentId ? "bg-shelf text-ink" : "text-graphite")}
 					>
-						<FolderIcon className="ui-icon shrink-0 text-muted-foreground" aria-hidden="true" />
+						<FolderIcon className="ui-icon shrink-0 text-faint" aria-hidden="true" />
 						<span className="min-w-0 break-words">{row.folder.name}</span>
 					</Link>
 				</li>
@@ -63,7 +63,7 @@ function LibraryFolders({ onNavigate, currentId }: { onNavigate?: () => void; cu
 	const rows = useMemo(() => withOpenPath(folders, currentId, expanded), [folders, currentId, expanded]);
 	if (failed) {
 		return (
-			<div role="status" className="px-2.5 py-1 text-sm text-muted-foreground">
+			<div role="status" className="px-2.5 py-1 text-sm text-faint">
 				<p>Folders could not be loaded.</p>
 				<button type="button" className="prompt-secondary mt-1" onClick={retry}>Try again</button>
 			</div>
@@ -72,7 +72,7 @@ function LibraryFolders({ onNavigate, currentId }: { onNavigate?: () => void; cu
 	if (items === null) {
 		return <div role="status" aria-label="Loading folders" className="flex flex-col gap-1 px-2.5 py-1"><Skeleton className="h-6 w-4/5" /><Skeleton className="h-6 w-3/5" /></div>;
 	}
-	if (rows.length === 0) return <p className="px-2.5 py-1 text-sm text-muted-foreground">No folders yet.</p>;
+	if (rows.length === 0) return <p className="px-2.5 py-1 text-sm text-faint">No folders yet.</p>;
 	return <FolderTreeView rows={rows} currentId={currentId} onToggle={workspace?.toggleFolder ?? (() => {})} onNavigate={onNavigate} />;
 }
 
@@ -155,18 +155,18 @@ export function SidebarNav({ pathname, kindFilter, onKindFilter, lessonCount, pr
 	const workspace = useWorkspace();
 	const toggle = (kind: "teach" | "practice") => onKindFilter(kindFilter === kind ? "all" : kind);
 	const libraryOpen = workspace?.libraryOpen ?? false;
-	const entryClass = (active: boolean) => cn(ROW, active ? "bg-accent text-foreground" : "text-ink-2");
+	const entryClass = (active: boolean) => cn(ROW, active ? "bg-shelf text-ink" : "text-graphite");
 	return (
 		<nav aria-label="Workspace" data-testid="sidebar-nav" data-sidebar-nav="" className="flex shrink-0 flex-col gap-px px-2 pb-1" onKeyDownCapture={(event) => onNavKeyDown(event, workspace?.toggleFolder ?? (() => {}), { open: libraryOpen, toggle: workspace?.toggleLibrary ?? (() => {}) })}>
 			<button type="button" data-nav-entry="" data-testid="sidebar-lessons" aria-pressed={kindFilter === "teach"} onClick={() => toggle("teach")} className={cn(entryClass(kindFilter === "teach"), "w-full text-left")}>
 				<BookOpenIcon className="size-[15px] shrink-0" aria-hidden="true" />
 				<span className="min-w-0 flex-1">Lessons</span>
-				{lessonCount !== null && <span className="text-sm tabular-nums text-muted-foreground">{lessonCount}</span>}
+				{lessonCount !== null && <span className="text-sm tabular-nums text-faint">{lessonCount}</span>}
 			</button>
 			<button type="button" data-nav-entry="" data-testid="sidebar-practice" aria-pressed={kindFilter === "practice"} onClick={() => toggle("practice")} className={cn(entryClass(kindFilter === "practice"), "w-full text-left")}>
 				<DumbbellIcon className="size-[15px] shrink-0" aria-hidden="true" />
 				<span className="min-w-0 flex-1">Practice</span>
-				{practiceCount !== null && <span className="text-sm tabular-nums text-muted-foreground">{practiceCount}</span>}
+				{practiceCount !== null && <span className="text-sm tabular-nums text-faint">{practiceCount}</span>}
 			</button>
 			<div className="flex items-stretch gap-px">
 				<Link
@@ -186,7 +186,7 @@ export function SidebarNav({ pathname, kindFilter, onKindFilter, lessonCount, pr
 					aria-label={libraryOpen ? "Hide Library folders" : "Show Library folders"}
 					data-testid="sidebar-library-toggle"
 					onClick={workspace?.toggleLibrary}
-					className="flex w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground pointer-coarse:w-11"
+					className="flex w-8 shrink-0 items-center justify-center rounded-md text-faint transition-colors hover:bg-shelf hover:text-ink pointer-coarse:w-11"
 				>
 					{libraryOpen ? <ChevronDownIcon className="size-3.5" aria-hidden="true" /> : <ChevronRightIcon className="size-3.5" aria-hidden="true" />}
 				</button>

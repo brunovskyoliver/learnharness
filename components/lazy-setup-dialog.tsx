@@ -59,11 +59,11 @@ export function LazySetupDialog(originalProps: SetupProps) {
 	if (!props.open) return null;
 	return (
         <LoadingModal label="Set up your models" testid="setup-loading-dialog" onClose={props.onClose} onOpen={(trigger) => { opener.current = trigger; }}
-            className="fixed inset-4 m-auto flex h-fit w-[640px] max-w-[calc(100vw-2rem)] flex-col gap-4 rounded-xl border border-border bg-background p-5 outline-none">
-            <p role={failed ? "alert" : "status"} className="text-sm text-muted-foreground">
+            className="fixed inset-4 m-auto flex h-fit w-[640px] max-w-[calc(100vw-2rem)] flex-col gap-4 rounded-lg border border-rule bg-paper p-5 outline-none">
+            <p role={failed ? "alert" : "status"} className="text-sm text-faint">
                 {failed ? "Setup could not load. Reload to retry. Your draft will be saved before reloading." : "Loading setup…"}
             </p>
-            {recovery.error && <p role="alert" className="text-sm text-muted-foreground">{recovery.error}</p>}
+            {recovery.error && <p role="alert" className="text-sm text-faint">{recovery.error}</p>}
             <div className="flex justify-end gap-2">
                 {failed && <Button variant="outline" onClick={recovery.reload}>Reload to retry</Button>}
                 <Button variant="outline" onClick={props.onClose}>Close setup</Button>

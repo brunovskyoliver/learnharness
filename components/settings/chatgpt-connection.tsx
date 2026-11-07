@@ -278,61 +278,61 @@ export function ChatGPTUIProvider({ children }: { children: React.ReactNode }) {
 	return <Context.Provider value={context}>
 		{children}
 		{dialog && <AccountDialog key={`${dialog.kind}:${dialog.kind === "manage" && !!dialog.confirm}`} onClose={close} busy={busy && operation.current !== "login"}>
-			<h2 className="font-title text-lg font-medium text-foreground">ChatGPT</h2>
+			<h2 className="tracking-title text-lg font-medium text-ink">ChatGPT</h2>
 			{dialog.kind === "warning" ? <>
-				<p role="alert" className="rounded-md bg-accent px-3 py-2 text-sm text-foreground" data-testid="chatgpt-revocation-warning">{REVOCATION_WARNING}</p>
+				<p role="alert" className="rounded-md bg-shelf px-3 py-2 text-sm text-ink" data-testid="chatgpt-revocation-warning">{REVOCATION_WARNING}</p>
 				<div className="mt-4 flex justify-end"><Button variant="outline" size="sm" onClick={() => { context.dismissWarning(); showDialog(null); }}>Dismiss</Button></div>
 			</> : dialog.kind === "manage" && dialog.confirm ? <div data-testid="chatgpt-disconnect-confirmation">
-				<p className="mt-3 text-sm font-semibold text-destructive">{CHATGPT_DISCONNECT_COPY.title}</p>
-				<p className="mt-3 text-sm text-foreground">{managed?.email || "ChatGPT account"}</p>
-				<p className="mt-3 text-sm text-muted-foreground">{web ? CHATGPT_DISCONNECT_COPY.body.replace("from this device", "from the machine running Brunovský's study") : CHATGPT_DISCONNECT_COPY.body}</p>
-				{context.error && <p role="alert" className="mt-3 text-sm text-destructive">{context.error}</p>}
+				<p className="mt-3 text-sm font-semibold text-red">{CHATGPT_DISCONNECT_COPY.title}</p>
+				<p className="mt-3 text-sm text-ink">{managed?.email || "ChatGPT account"}</p>
+				<p className="mt-3 text-sm text-faint">{web ? CHATGPT_DISCONNECT_COPY.body.replace("from this device", "from the machine running Brunovský's study") : CHATGPT_DISCONNECT_COPY.body}</p>
+				{context.error && <p role="alert" className="mt-3 text-sm text-red">{context.error}</p>}
 				<div className="mt-4 flex items-center justify-end gap-2">
 					<Button variant="ghost" size="sm" disabled={busy} onClick={close}>Cancel</Button>
 					<Button variant="destructive" size="sm" data-testid="chatgpt-confirm-disconnect" disabled={busy || !managedPresent} onClick={() => bridge && managed && void control("disconnect", () => bridge.disconnect(managed.id), managed.id)}>Disconnect account</Button>
 				</div>
 			</div> : <>
 				{dialog.kind === "connect" ? <>
-					{status.accounts.length > 0 && <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
-						<select aria-label="Saved ChatGPT account" value={registration} onChange={(event) => setRegistration(event.target.value)} disabled={busy || status.pending} className="min-w-0 rounded-md border border-input bg-background px-2 py-1.5 text-foreground pointer-coarse:min-h-11">
+					{status.accounts.length > 0 && <div className="mt-3 flex items-center gap-2 text-sm text-faint">
+						<select aria-label="Saved ChatGPT account" value={registration} onChange={(event) => setRegistration(event.target.value)} disabled={busy || status.pending} className="min-w-0 rounded-md border border-rule bg-paper px-2 py-1.5 text-ink pointer-coarse:min-h-11">
 							<option value="">Add another account or workspace</option>
 							{status.accounts.map((a) => <option key={a.id} value={a.id}>{a.email || "ChatGPT account"}</option>)}
 						</select>
 						{registration && <Button variant="ghost" size="xs" className="pointer-coarse:min-h-11" disabled={busy} onClick={() => context.manage(registration)}>Manage…</Button>}
 					</div>}
-					<p className="mt-3 text-sm leading-relaxed text-muted-foreground" data-testid="chatgpt-privacy-notice">{chatGPTNotice(web, status.callbackPaste === true)}</p>
+					<p className="mt-3 text-sm leading-relaxed text-faint" data-testid="chatgpt-privacy-notice">{chatGPTNotice(web, status.callbackPaste === true)}</p>
 				</> : null}
-				<div className={`mt-4 flex items-center gap-3 text-sm text-foreground ${busy && operation.current === "change" && status.available && !status.pending ? "[&>button:disabled]:cursor-auto" : ""}`} data-testid="chatgpt-global-background">
+				<div className={`mt-4 flex items-center gap-3 text-sm text-ink ${busy && operation.current === "change" && status.available && !status.pending ? "[&>button:disabled]:cursor-auto" : ""}`} data-testid="chatgpt-global-background">
 					<Toggle label={BACKGROUND_LABEL} checked={dialog.kind === "connect" ? background : status.allowBackgroundUse} disabled={busy || status.pending || !status.available} onChange={(enabled) => {
 						if (dialog.kind === "connect") { setBackground(enabled); setBackgroundDirty(true); }
 						else if (bridge) void control("change", () => bridge.consent(enabled));
 					}} />
-					<span>{BACKGROUND_LABEL}<span className="mt-1 block leading-relaxed text-muted-foreground">{CHATGPT_BACKGROUND_HINT}</span></span>
+					<span>{BACKGROUND_LABEL}<span className="mt-1 block leading-relaxed text-faint">{CHATGPT_BACKGROUND_HINT}</span></span>
 				</div>
-				<div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+				<div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-faint">
 					<a href="https://openai.com/policies/privacy-policy/" target="_blank" rel="noreferrer" className="underline underline-offset-2">OpenAI privacy</a>
 					<a href="https://chatgpt.com/settings/usage" target="_blank" rel="noreferrer" className="underline underline-offset-2">Manage usage</a>
 				</div>
-				{!status.available && <p className="mt-3 text-sm text-muted-foreground">ChatGPT sign-in is available only in the desktop app. API-key connections remain available here.</p>}
-				{status.pending && !status.callbackPaste && <p role="status" className="mt-3 text-sm text-muted-foreground">Waiting for browser sign-in…</p>}
+				{!status.available && <p className="mt-3 text-sm text-faint">ChatGPT sign-in is available only in the desktop app. API-key connections remain available here.</p>}
+				{status.pending && !status.callbackPaste && <p role="status" className="mt-3 text-sm text-faint">Waiting for browser sign-in…</p>}
 				{status.pending && status.callbackPaste && dialog.kind === "connect" && <form className="mt-3 flex flex-col gap-2" data-testid="chatgpt-callback-paste" onSubmit={(event) => { event.preventDefault(); void finishPaste(); }}>
-					<label htmlFor="chatgpt-callback-url" className="text-sm leading-relaxed text-muted-foreground">{PASTE_HINT}</label>
+					<label htmlFor="chatgpt-callback-url" className="text-sm leading-relaxed text-faint">{PASTE_HINT}</label>
 					<div className="flex items-center gap-2">
-						<input id="chatgpt-callback-url" type="url" autoComplete="off" spellCheck={false} placeholder="http://127.0.0.1:…/auth/callback?…" value={pasted} onChange={(event) => setPasted(event.target.value)} disabled={pasting} className="min-w-0 flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-sm text-foreground pointer-coarse:min-h-11" />
+						<input id="chatgpt-callback-url" type="url" autoComplete="off" spellCheck={false} placeholder="http://127.0.0.1:…/auth/callback?…" value={pasted} onChange={(event) => setPasted(event.target.value)} disabled={pasting} className="min-w-0 flex-1 rounded-md border border-rule bg-paper px-2 py-1.5 text-sm text-ink pointer-coarse:min-h-11" />
 						<Button type="submit" variant="outline" size="sm" data-testid="chatgpt-callback-submit" disabled={pasting || !pasted.trim()}>Finish sign-in</Button>
 					</div>
 				</form>}
-				{context.error && <p role="alert" className="mt-3 text-sm text-destructive">{context.error}</p>}
+				{context.error && <p role="alert" className="mt-3 text-sm text-red">{context.error}</p>}
 				{dialog.kind === "manage" && managed && <div className="mt-4 flex flex-wrap items-center justify-between gap-3" data-testid="chatgpt-account-strip">
-					<div data-testid="chatgpt-managed-identity" className="flex min-w-0 items-center gap-2 text-sm text-foreground">
-						{status.accounts.length > 1 && managedPresent && !busy ? <select aria-label="Manage ChatGPT account" value={managed.id} onChange={(event) => context.manage(event.target.value)} className="min-w-0 rounded-md border border-input bg-background px-2 py-1.5 pointer-coarse:min-h-11">
+					<div data-testid="chatgpt-managed-identity" className="flex min-w-0 items-center gap-2 text-sm text-ink">
+						{status.accounts.length > 1 && managedPresent && !busy ? <select aria-label="Manage ChatGPT account" value={managed.id} onChange={(event) => context.manage(event.target.value)} className="min-w-0 rounded-md border border-rule bg-paper px-2 py-1.5 pointer-coarse:min-h-11">
 							{status.accounts.map((a) => <option key={a.id} value={a.id}>{a.email || "ChatGPT account"}</option>)}
 						</select> : <span className="break-all">{managed.email || "ChatGPT account"}</span>}
 					</div>
-					<Button variant="ghost" size="sm" data-testid="chatgpt-add-accounts" className="cursor-pointer text-muted-foreground disabled:cursor-not-allowed" onClick={() => openConnect()} disabled={busy || status.pending || !status.available}>Add accounts</Button>
+					<Button variant="ghost" size="sm" data-testid="chatgpt-add-accounts" className="cursor-pointer text-faint disabled:cursor-not-allowed" onClick={() => openConnect()} disabled={busy || status.pending || !status.available}>Add accounts</Button>
 				</div>}
 				<ConnectionFooter testid="chatgpt-account-footer" leading={dialog.kind === "manage" && <div data-testid="chatgpt-account-actions">
-					<Button variant="ghost" size="sm" className="cursor-pointer text-destructive hover:bg-accent hover:text-destructive" data-testid="chatgpt-disconnect" disabled={busy || status.pending || !managedPresent} onClick={() => showDialog({ ...dialog, confirm: true })}>Disconnect</Button>
+					<Button variant="ghost" size="sm" className="cursor-pointer text-red hover:bg-shelf hover:text-red" data-testid="chatgpt-disconnect" disabled={busy || status.pending || !managedPresent} onClick={() => showDialog({ ...dialog, confirm: true })}>Disconnect</Button>
 				</div>}>
 					{dialog.kind === "manage" && managedPresent && managed && !managed.connected && managed.canSignInAgain === true && status.available && <Button variant="outline" size="sm" disabled={busy || status.pending || !status.available} onClick={() => openConnect(managed.id)}>Sign in again</Button>}
 					<Button variant={dialog.kind === "manage" ? "outline" : "ghost"} size="sm" onClick={close} disabled={busy && operation.current !== "login"}>{dialog.kind === "connect" ? "Cancel" : "Close"}</Button>
@@ -363,12 +363,12 @@ export function ChatGPTConnection(_props: { setup?: boolean } = {}) {
 	const accounts = ui.status.accounts.filter((a) => a.connected);
 	return <div className="flex scroll-mt-4 flex-col gap-2 rounded-md" data-testid="chatgpt-connection" data-settings-row="chatgpt">
 		<ConnectionRow label="ChatGPT" actionTestid={active ? undefined : "chatgpt-login"} action={active ? "Manage…" : "Connect"} disabled={!ui.status.available || ui.busy || ui.status.pending} onAction={() => active ? ui.manage(active.id) : ui.connect()}>
-			{active && <select aria-label="ChatGPT account" value={active.id} disabled={ui.busy || ui.status.pending} onChange={(event) => ui.select(event.target.value)} className="min-w-0 rounded-md border border-input bg-background px-2 py-1 text-sm text-foreground pointer-coarse:min-h-11">
+			{active && <select aria-label="ChatGPT account" value={active.id} disabled={ui.busy || ui.status.pending} onChange={(event) => ui.select(event.target.value)} className="min-w-0 rounded-md border border-rule bg-paper px-2 py-1 text-sm text-ink pointer-coarse:min-h-11">
 				{accounts.map((a) => <option key={a.id} value={a.id}>{a.email || "ChatGPT account"}</option>)}
 			</select>}
 		</ConnectionRow>
-		{ui.inlineError && <p role="alert" className="text-sm text-destructive">{ui.inlineError}</p>}
-		{ui.warning && <div role="alert" data-testid="chatgpt-revocation-warning" className="rounded-md bg-accent px-3 py-2 text-sm text-ink-2">{ui.warning}<button type="button" className="ml-2 cursor-pointer underline underline-offset-2 pointer-coarse:min-h-11" onClick={ui.dismissWarning}>Dismiss</button></div>}
+		{ui.inlineError && <p role="alert" className="text-sm text-red">{ui.inlineError}</p>}
+		{ui.warning && <div role="alert" data-testid="chatgpt-revocation-warning" className="rounded-md bg-shelf px-3 py-2 text-sm text-graphite">{ui.warning}<button type="button" className="ml-2 cursor-pointer underline underline-offset-2 pointer-coarse:min-h-11" onClick={ui.dismissWarning}>Dismiss</button></div>}
 	</div>;
 }
 

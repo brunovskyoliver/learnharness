@@ -171,8 +171,8 @@ export function SessionTurnRail({ messages, nativeMessages, turns, onReserve }: 
 								</Button>
 							</TooltipTrigger>
 							<TooltipContent side="right" align="center" sideOffset={16} className="session-turn-preview">
-								{entry.prompt && <p className="truncate text-foreground">{entry.prompt}</p>}
-								<p className="line-clamp-3 text-muted-foreground">{entry.answer}</p>
+								{entry.prompt && <p className="truncate text-ink">{entry.prompt}</p>}
+								<p className="line-clamp-3 text-faint">{entry.answer}</p>
 							</TooltipContent>
 						</Tooltip>
 					))}

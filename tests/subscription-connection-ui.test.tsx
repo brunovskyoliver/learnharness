@@ -91,12 +91,12 @@ test("native step transition moves keyboard focus into the new connection contro
 });
 test("healthy management has only controls, quiet Manage, destructive action left and Close right", async () => {
 	const f = fixture(true); await mount();
-	assert(!row("xai").textContent?.includes("Connected")); assert.match(button("Manage…", row("xai")).className, /text-muted-foreground/);
+	assert(!row("xai").textContent?.includes("Connected")); assert.match(button("Manage…", row("xai")).className, /text-faint/);
 	await click(button("Manage…", row("xai")));
 	assert.equal(dialog().querySelector("h2")?.textContent, "Grok");
 	assert(!dialog().querySelector("select")); assert(!dialog().textContent?.includes("Add accounts"));
 	assert(!dialog().querySelector('[data-testid="subscription-privacy-notice"]')); assert(!maybeButton("Reconnect", dialog())); assert(!maybeButton("Sign in again", dialog()));
-	assert.equal(footer().firstElementChild, button("Disconnect", dialog())); assert.match(button("Disconnect", dialog()).className, /text-destructive/);
+	assert.equal(footer().firstElementChild, button("Disconnect", dialog())); assert.match(button("Disconnect", dialog()).className, /text-red/);
 	assert.equal(footer().lastElementChild?.lastElementChild, button("Close", dialog()));
 	await click(toggle()); assert.deepEqual(f.calls.consent, [["xai", false]]); assert.equal(f.statuses.find((s) => s.providerId === "github-copilot")!.allowBackgroundUse, true);
 	await click(button("Disconnect", dialog())); assert.equal(f.calls.disconnect.length, 0);

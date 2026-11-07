@@ -175,7 +175,7 @@ function SystemLine({ children, testId }: { children: React.ReactNode; testId?: 
 	return (
 		<div
 			data-testid={testId}
-			className="flex items-center justify-center gap-1.5 py-1 text-sm text-muted-foreground"
+			className="flex items-center justify-center gap-1.5 py-1 text-sm text-faint"
 		>
 			{children}
 		</div>
@@ -194,10 +194,10 @@ function ThinkingPlaceholder() {
 	}, []);
 	const seconds = Math.floor((now - start) / 1000);
 	return (
-		<span data-testid="thinking-placeholder" className="flex items-center gap-2 font-ui text-sm font-medium text-muted-foreground">
+		<span data-testid="thinking-placeholder" className="flex items-center gap-2 font-sans text-sm font-medium text-faint">
 			<BrailleSpinner label="Thinking" />
 			<Shimmer duration={1}>THINKING…</Shimmer>
-			{seconds > 0 && <span className="tabular-nums normal-case text-muted-foreground">{seconds}s</span>}
+			{seconds > 0 && <span className="tabular-nums normal-case text-faint">{seconds}s</span>}
 		</span>
 	);
 }
@@ -1242,7 +1242,7 @@ function ChatView({
 			<div className="flex min-w-0 flex-1 flex-col">
 				{/* The top bar is its own block (owner, top-fade round 4): in flow
 				    above the scroller on the plain page background — no gradient. Its
-				    bottom outline (border-b border-border) matches the one that
+				    bottom outline (border-b border-rule) matches the one that
 				    separates the left sidebar — same width, same color (owner, r5).
 				    h-15 (60px), not py-2: the toggle (a size-9 icon button) renders
 				    only while the sidebar is CLOSED — an auto-height row would
@@ -1273,10 +1273,10 @@ function ChatView({
 							data-testid="phase-chip"
 							data-phase="practice"
 							aria-hidden="true"
-							className="pointer-events-none flex shrink-0 select-none items-center gap-2 text-sm text-muted-foreground"
+							className="pointer-events-none flex shrink-0 select-none items-center gap-2 text-sm text-faint"
 						>
 							Practice
-							<span className="text-muted-foreground">/</span>
+							<span className="text-faint">/</span>
 						</span>
 					) : (
 						<PhaseChip phase={phases.at(-1) ?? "probe"} />
@@ -1321,10 +1321,10 @@ function ChatView({
 								setTitleDraft(titleText);
 								setRenaming(true);
 							}}
-							className="lh-no-drag group -mx-1.5 flex min-w-4 shrink cursor-text items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-sm font-medium transition-colors hover:bg-white/[0.06]"
+							className="lh-no-drag group -mx-1.5 flex min-w-4 shrink cursor-text items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-sm font-medium transition-colors hover:bg-shelf"
 						>
 							<span className="truncate">{titleText}</span>
-							<PencilIcon className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
+							<PencilIcon className="size-3.5 shrink-0 text-faint opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
 							</button>
 						</Hint>
 							{/* flex-1 spacer: keeps the chips at the right edge AND stays a
@@ -1343,7 +1343,7 @@ function ChatView({
 								}}
 								aria-label={demoOpenId ? "Close demo panel" : "Open demos"}
 								aria-expanded={demoOpenId !== null}
-								className="lh-no-drag flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+								className="lh-no-drag flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-shelf hover:text-ink"
 							>
 								<PanelRightIcon className="size-4" aria-hidden />
 							</button>
@@ -1361,7 +1361,7 @@ function ChatView({
 							}}
 							aria-label="Open the full plan"
 							aria-expanded={planOpen}
-							className="lh-no-drag flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+							className="lh-no-drag flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-shelf hover:text-ink"
 						>
 							<WaypointsIcon className="size-4" aria-hidden />
 						</button>
@@ -1378,7 +1378,7 @@ function ChatView({
 				</TopBar>
 
 				<SessionFind scopeRef={sessionFindScopeRef} scrollContextRef={scrollContextRef} />
-				<div ref={sessionFindScopeRef} className="lh-session-scale session-workspace-layout relative flex min-h-0 flex-1 flex-col md:flex-row">
+				<div ref={sessionFindScopeRef} className="session-workspace-layout relative flex min-h-0 flex-1 flex-col md:flex-row">
 				<Conversation className="@container/session flex h-full min-h-0 min-w-0 flex-1 flex-col" initial={false} resize={transcriptSettled ? "smooth" : "instant"} contextRef={scrollContextRef}>
 					<SessionMessageNavigation />
 					<TurnReadingPosition busy={busy} messages={messages} onReserve={setReadingReserve} />
@@ -1444,7 +1444,7 @@ function ChatView({
 													<div
 														key={pi}
 														data-testid="practice-next-line"
-														className="my-4 flex items-center justify-center gap-1.5 font-ui text-sm font-medium text-muted-foreground"
+														className="my-4 flex items-center justify-center gap-1.5 font-sans text-sm font-medium text-faint"
 													>
 														<ArrowRightIcon className="size-3" />
 														Next problem
@@ -1503,16 +1503,16 @@ function ChatView({
 										    transparent prose). The "You" label stays — one register
 										    with the thinking labels. No rail (polish pass 2026-10-26):
 										    the band alone marks authorship; text keeps the 3ch inset. */
-										className="lh-reading my-2 rounded-lg bg-card px-4 py-3 font-ui text-sm"
+										className="lh-reading my-2 rounded-lg bg-shelf px-4 py-3 font-sans text-sm"
 									>
 												{/* The rail GROUPS (owner round 4, 2026-10-05): the YOU heading
 												    sits INSIDE the rail, same mono-xs register and same 1ch
 												    rail as the thinking rows — one quote geometry. */}
-												<div className="mb-1 font-medium text-muted-foreground">You</div>
+												<div className="mb-1 font-medium text-faint">You</div>
 												{m.parts.map((part, pi) => part.type === "data-library-references" ? (
 													<ReferencesCard key={pi} references={(part.data as { references: LibraryReference[] }).references} />
 												) : null)}
-												<div className="lh-prose whitespace-pre-wrap text-foreground">
+												<div className="lh-prose whitespace-pre-wrap text-ink">
 													<UserTurnText text={m.parts.filter((p) => p.type === "text").map((p) => p.text).join("\n")} />
 												</div>
 											</div>
@@ -1655,7 +1655,7 @@ function ChatView({
 						    the THINKING placeholder by construction (the gate sits
 						    BEFORE beginTurn; the settle kick runs after endTurn). */}
 							{compacting && (
-								<span className="flex items-center gap-2 font-ui text-sm font-medium text-muted-foreground">
+								<span className="flex items-center gap-2 font-sans text-sm font-medium text-faint">
 									<BrailleSpinner label="Compacting context" />
 									<Shimmer duration={1}>COMPACTING CONTEXT…</Shimmer>
 								</span>
@@ -1664,7 +1664,7 @@ function ChatView({
 								<ThinkingPlaceholder />
 							)}
 							{error && (
-								<div className="rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm">
+								<div className="rounded-lg border border-red/50 bg-red/10 px-3 py-2 text-sm">
 									Something went wrong: {error.message}
 								</div>
 							)}
@@ -2610,7 +2610,7 @@ function DockFooter({
 					    transcript's reachable end stops above it. Desktop keeps the
 					    button at the shell's top-right corner (below). */}
 					{phone && (!isAtBottom || bandHeld) && (
-						<div data-testid="scroll-band" className="pointer-events-auto -mx-4 flex h-12 items-center justify-end bg-background px-4">
+						<div data-testid="scroll-band" className="pointer-events-auto -mx-4 flex h-12 items-center justify-end bg-paper px-4">
 							<ConversationScrollButton aria-label="Scroll to latest" onClick={jumpToBottomThenExpand} className="static translate-x-0" />
 						</div>
 					)}

@@ -26,7 +26,7 @@ export default function MobileSidebar({ width, onClose, hasMenu, children }: { w
 	if (typeof document === "undefined") return null;
 	return createPortal(
 		<dialog ref={setDialog} role="dialog" aria-labelledby={title} aria-modal="true"
-			className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none border-0 bg-transparent p-0 text-foreground outline-none backdrop:bg-transparent"
+			className="fixed inset-0 m-0 h-dvh max-h-none w-screen max-w-none border-0 bg-transparent p-0 text-ink outline-none backdrop:bg-transparent"
 			onCancel={(event) => { event.preventDefault(); if (!hasMenu) onClose(); }}
 			onKeyDown={(event) => {
 				containModalTab(event, event.currentTarget);
@@ -37,7 +37,7 @@ export default function MobileSidebar({ width, onClose, hasMenu, children }: { w
 				if (!hasMenu) { event.stopPropagation(); onClose(); }
 			}}
 		>
-			<div className="fixed inset-0 bg-black/40" onPointerDown={onClose} />
+			<div className="fixed inset-0 bg-backdrop" onPointerDown={onClose} />
 			<div ref={panel} data-mobile-navigation="" tabIndex={-1}
 				className="fixed inset-y-0 left-0 outline-none"
 				style={{ width: Math.min(width, 320), maxWidth: "calc(100vw - 3rem)" }}

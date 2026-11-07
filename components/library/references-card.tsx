@@ -23,7 +23,7 @@ function currentLibraryIds(): Promise<Set<string> | null> {
 	return liveIds.ids;
 }
 
-const LINK = "text-foreground underline decoration-foreground/40 underline-offset-2 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center";
+const LINK = "text-ink underline decoration-ink/40 underline-offset-2 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center";
 
 export function ReferenceRow({ reference, deleted = false }: { reference: LibraryReference; deleted?: boolean }) {
 	const { open } = useSettingsDialog();
@@ -33,7 +33,7 @@ export function ReferenceRow({ reference, deleted = false }: { reference: Librar
 	const inPane = available && !!pane && opensInPane(reference.kind);
 	const inTab = available && !inPane && reference.kind !== "page";
 	return (
-		<li data-testid="reference-row" className="text-sm text-ink-2 [overflow-wrap:anywhere]">
+		<li data-testid="reference-row" className="text-sm text-graphite [overflow-wrap:anywhere]">
 			{prefix}
 			{inPane ? (
 				<button type="button" aria-label={`Open ${reference.name}`} className={LINK} onClick={() => pane.open({ id: reference.itemId, name: reference.name, kind: reference.kind, size: reference.size ?? 0 })}>{reference.name}</button>
@@ -46,7 +46,7 @@ export function ReferenceRow({ reference, deleted = false }: { reference: Librar
 					className={LINK}
 				>{reference.name}</a>
 			) : (
-				<span className="text-foreground">{reference.name}</span>
+				<span className="text-ink">{reference.name}</span>
 			)}
 			{suffix}
 			{deleted && NO_LONGER_IN_LIBRARY}
@@ -56,7 +56,7 @@ export function ReferenceRow({ reference, deleted = false }: { reference: Librar
 					<button
 						type="button"
 						onClick={(event) => open("agent", undefined, event.currentTarget)}
-						className="text-foreground underline decoration-foreground/40 underline-offset-2 pointer-coarse:min-h-11"
+						className="text-ink underline decoration-ink/40 underline-offset-2 pointer-coarse:min-h-11"
 					>Settings → Agent</button>
 				</>
 			)}
@@ -76,7 +76,7 @@ export function ReferencesCard({ references }: { references: readonly LibraryRef
 	}, [hasReferences]);
 	if (references.length === 0) return null;
 	return (
-		<ul data-testid="references-card" className="my-1 flex flex-col gap-0.5 font-ui">
+		<ul data-testid="references-card" className="my-1 flex flex-col gap-0.5 font-sans">
 			{references.map((reference) => (
 				<ReferenceRow
 					key={reference.itemId}

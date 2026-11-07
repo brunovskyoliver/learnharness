@@ -221,9 +221,9 @@ export function useLibraryMention({ value, onValueChange, inputRef }: {
 	const line: ReactNode = createElement(
 		Fragment,
 		null,
-		refusal ? createElement("div", { role: "alert", "data-testid": "mention-new-page-refusal", className: "px-4 pb-1 text-sm [overflow-wrap:anywhere]" }, createElement("span", { className: "font-medium text-foreground" }, "New page"), createElement("span", { className: "text-destructive" }, ` · ${refusal}`)) : null,
+		refusal ? createElement("div", { role: "alert", "data-testid": "mention-new-page-refusal", className: "px-4 pb-1 text-sm [overflow-wrap:anywhere]" }, createElement("span", { className: "font-medium text-ink" }, "New page"), createElement("span", { className: "text-red" }, ` · ${refusal}`)) : null,
 		attaching.length > 0
-			? createElement("div", { "data-testid": "attaching-line", className: "px-4 pb-1 text-sm text-muted-foreground [overflow-wrap:anywhere]" }, `Attaching ${attaching.join(", ")}`)
+			? createElement("div", { "data-testid": "attaching-line", className: "px-4 pb-1 text-sm text-faint [overflow-wrap:anywhere]" }, `Attaching ${attaching.join(", ")}`)
 			: null,
 	);
 

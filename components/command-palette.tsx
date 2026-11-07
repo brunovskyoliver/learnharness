@@ -42,7 +42,7 @@ export function CommandPaletteHost() {
 	return (
 		<>
 			{Dialog && <Dialog open={open} onOpenChange={setOpen} opener={opener} />}
-			{loadFailed && <p role="alert" data-testid="command-palette-failed" className="fixed bottom-4 left-1/2 z-50 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-[10px] bg-popover px-3 py-2 text-sm text-foreground">The command palette could not be loaded. Press the shortcut to try again.</p>}
+			{loadFailed && <p role="alert" data-testid="command-palette-failed" className="fixed bottom-4 left-1/2 z-50 w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-xl bg-paper shadow-lift px-3 py-2 text-sm text-ink">The command palette could not be loaded. Press the shortcut to try again.</p>}
 		</>
 	);
 }

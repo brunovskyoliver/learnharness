@@ -104,7 +104,7 @@ test("disconnected row uses shared Connect action; initial default is ON; cancel
  const f = fixture(); await mount(<ChatGPTConnection setup />);
  assert.equal(byTest("chatgpt-connection").textContent, "ChatGPTConnect");
  assert(!document.body.textContent?.includes(CHATGPT_NOTICE)); const trigger = byTest("chatgpt-login");
- assert.match(trigger.className, /cursor-pointer/); assert.match(trigger.className, /hover:bg-accent/); assert.match(trigger.className, /focus-visible:ring/);
+ assert.match(trigger.className, /cursor-pointer/); assert.match(trigger.className, /hover:text-ink/); assert.match(trigger.className, /focus-visible:outline/);
  await click(trigger); assert.equal(f.calls.login.length, 0); assert(document.body.textContent?.includes(CHATGPT_NOTICE));
  assert.equal(byTest("chatgpt-account-dialog").querySelector("h2")?.textContent, "ChatGPT");
  assert.equal(byTest("chatgpt-proceed").textContent, "Continue with ChatGPT"); assert(byTest("chatgpt-proceed").querySelector('img[src="/siwc/chatgpt-logo-white.svg"]'));
@@ -203,7 +203,7 @@ test("email-only connected selector and Manage remain responsive; account select
  assert.match(byTest("chatgpt-connection").firstElementChild!.className, /items-center/);
  const row = byTest("chatgpt-connection").firstElementChild!;
  assert.equal(row.children[0]!.textContent, "ChatGPT"); assert.equal(row.children[1]!.tagName, "SELECT"); assert.equal(row.children[2]!.textContent, "Manage…");
- assert.match(row.children[2]!.className, /text-muted-foreground/); assert(!row.textContent?.includes("Connected"));
+ assert.match(row.children[2]!.className, /text-faint/); assert(!row.textContent?.includes("Connected"));
  await selectAccount("ChatGPT account", "second"); assert.deepEqual(f.calls.select, ["second"]); assert.equal(f.status.allowBackgroundUse, false);
  await click(button("Manage…")); assert(byTest("chatgpt-managed-identity").textContent?.includes("second@example.invalid"));
  assert.deepEqual([...byTest("chatgpt-account-footer").querySelectorAll("button")].map((b) => b.textContent), ["Disconnect", "Close"]);
@@ -222,7 +222,7 @@ test("email-only connected selector and Manage remain responsive; account select
 test("Disconnect is the quiet red left-footer action below identity; confirmation Cancel never forgets", async () => {
  assert.deepEqual(CHATGPT_DISCONNECT_COPY, { title: "Disconnect account?", body: "This removes the saved account and its credentials from this device." });
  const f = fixture(connected()); await mount(); await click(button("Manage…"));
- assert.equal(byTest("chatgpt-account-actions").textContent, "Disconnect"); assert.match(byTest("chatgpt-disconnect").className, /text-destructive/);
+ assert.equal(byTest("chatgpt-account-actions").textContent, "Disconnect"); assert.match(byTest("chatgpt-disconnect").className, /text-red/);
  assert.equal(byTest("chatgpt-account-footer").firstElementChild, byTest("chatgpt-account-actions"));
  assert.equal(byTest("chatgpt-account-footer").lastElementChild?.lastElementChild, button("Close"));
  assert(!byTest("chatgpt-account-footer").contains(byTest("chatgpt-add-accounts")));
@@ -318,7 +318,7 @@ test("missing eligibility remains compatible but never implies authorization rec
 });
 test("connected setup row retains the email dropdown before muted Manage", async () => {
  fixture(connected()); await mount(<ChatGPTConnection setup />);
- const row = byTest("chatgpt-connection").firstElementChild!; assert.equal(row.children[1]!.tagName, "SELECT"); assert.equal(row.children[2]!.textContent, "Manage…"); assert.match(row.children[2]!.className, /text-muted-foreground/);
+ const row = byTest("chatgpt-connection").firstElementChild!; assert.equal(row.children[1]!.tagName, "SELECT"); assert.equal(row.children[2]!.textContent, "Manage…"); assert.match(row.children[2]!.className, /text-faint/);
 });
 test("Add accounts reuses the existing dialog's initial focus for the pre-auth transition", async () => {
  const previous = HTMLElement.prototype.focus; const focused: HTMLElement[] = [];
@@ -365,7 +365,7 @@ test("signed-out legacy accounts remain manageable/forgettable without pretendin
 test("unconfirmed provider outcome is exactly the approved concise dismissible warning, never permanent red success/navigation advice", async () => {
  const f = fixture(connected(), { disconnect: async () => { const result = { ...disconnected(), accounts: [], error: warning }; f.push(result); return result; } });
  await mount(); await click(button("Manage…")); await confirmDisconnect();
- const alert = byTest("chatgpt-revocation-warning"); assert.equal(alert.textContent, warning); assert.doesNotMatch(alert.className, /text-destructive/);
+ const alert = byTest("chatgpt-revocation-warning"); assert.equal(alert.textContent, warning); assert.doesNotMatch(alert.className, /text-red/);
  assert(!document.querySelector('[data-testid="chatgpt-disconnect"]')); assert(byTest("chatgpt-login"));
  await click(button("Dismiss", byTest("chatgpt-account-dialog"))); assert(!document.querySelector('[role="alert"]'));
  assert(!document.body.textContent?.includes("ChatGPT Settings"));

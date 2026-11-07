@@ -60,8 +60,8 @@ describe("WaitingSectionView", () => {
 		const b = html.indexOf("Session b");
 		const a = html.indexOf("Session a");
 		assert.ok(b > 0 && a > b, "newest first");
-		assert.match(html, /text-primary">Prediction</);
-		assert.match(html, /text-primary">Problem</);
+		assert.match(html, /text-bulb">Prediction</);
+		assert.match(html, /text-bulb">Problem</);
 		assert.match(html, /Find the eigenvalues\./, "markdown is stripped, never raw");
 		assert.doesNotMatch(html, /\*\*/);
 		assert.match(html, />Solve</);
@@ -77,7 +77,7 @@ describe("WaitingSectionView", () => {
 	it("uses the quiet button: raised grey, never the amber fill", () => {
 		const html = render([item("a", {})]);
 		assert.match(html, /<a[^>]*data-quiet=""[^>]*class="waiting-row-action prompt-primary"/);
-		assert.doesNotMatch(html, /bg-primary/);
+		assert.doesNotMatch(html, /bg-ink/);
 	});
 
 	it("truncates a long title in the meta line, never the time", () => {
@@ -142,7 +142,7 @@ describe("Continue rows (feature 003)", () => {
 			item("check", { postedAt: "2026-10-01T09:00:00.000Z" }),
 		]);
 		assert.ok(html.indexOf("Session check") < html.indexOf("Session lesson"), "Answer/Solve rows come first");
-		assert.match(html, /text-primary">Lesson</);
+		assert.match(html, /text-bulb">Lesson</);
 		assert.match(html, /2 of 11 topics left · next: Learning by gradient descent/);
 		assert.match(html, /href="\/chat\/lesson\?continue=1"[^>]*>Continue</);
 		assert.match(html, /2 open/, "the heading counts every row");

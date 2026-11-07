@@ -21,12 +21,12 @@ export interface NoteConnections {
 	graph: GraphLinkRow[];
 }
 
-const ROW = "flex min-h-8 w-full min-w-0 flex-col rounded-[6px] px-2 py-1 text-left text-sm hover:bg-accent pointer-coarse:min-h-11";
+const ROW = "flex min-h-8 w-full min-w-0 flex-col rounded-md px-2 py-1 text-left text-sm hover:bg-shelf pointer-coarse:min-h-11";
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
 	return (
 		<section className="flex flex-col gap-0.5">
-			<h3 className="px-2 pb-1 text-sm font-medium text-muted-foreground">{title}</h3>
+			<h3 className="px-2 pb-1 text-sm font-medium text-faint">{title}</h3>
 			{children}
 		</section>
 	);
@@ -42,9 +42,9 @@ export const CONNECTION_EMPTY = {
 	graph: (subject: "page" | "diagram") => `No graph idea relates to this ${subject} yet.`,
 } as const;
 
-const Empty = ({ children }: { children: ReactNode }) => <p className="px-2 text-sm text-ink-2">{children}</p>;
-const Name = ({ children }: { children: ReactNode }) => <span className="text-foreground [overflow-wrap:anywhere]">{children}</span>;
-const Meta = ({ children }: { children: ReactNode }) => <span className="text-muted-foreground [overflow-wrap:anywhere]">{children}</span>;
+const Empty = ({ children }: { children: ReactNode }) => <p className="px-2 text-sm text-graphite">{children}</p>;
+const Name = ({ children }: { children: ReactNode }) => <span className="text-ink [overflow-wrap:anywhere]">{children}</span>;
+const Meta = ({ children }: { children: ReactNode }) => <span className="text-faint [overflow-wrap:anywhere]">{children}</span>;
 
 /** Pure for render tests: every section, with its own empty line. */
 export function NoteConnectionsBody({ data, subject = "page", onOpenPage, onFollowLink, onSource, makeCardsHref }: {
@@ -90,7 +90,7 @@ export function NoteConnectionsBody({ data, subject = "page", onOpenPage, onFoll
 			<Section title="Lessons">
 				{data.sources.length === 0 && otherSessions.length === 0 ? <Empty>{CONNECTION_EMPTY.lessons(subject)}</Empty> : null}
 				{data.sources.map((row) => row.gone ? (
-					<p key={`${row.chatId}/${row.messageId}`} className="px-2 py-1 text-sm text-ink-2" data-testid="note-source-gone">{CONNECTION_EMPTY.sourceGone}</p>
+					<p key={`${row.chatId}/${row.messageId}`} className="px-2 py-1 text-sm text-graphite" data-testid="note-source-gone">{CONNECTION_EMPTY.sourceGone}</p>
 				) : (
 					<button key={`${row.chatId}/${row.messageId}`} type="button" className={ROW} data-testid="note-source" onClick={() => onSource(row.href)}>
 						<Name>{row.title}</Name>
@@ -160,7 +160,7 @@ export function NoteConnectionsPanel({ pageId, subject, onOpenPage, onFollowLink
 			{data
 				? <NoteConnectionsBody data={data} subject={subject} onOpenPage={onOpenPage} onFollowLink={onFollowLink} onSource={onSource} makeCardsHref={subject === "diagram" ? undefined : `/review?make=${encodeURIComponent(`page:${pageId}`)}`} />
 				: failed
-					? <div role="status" className="flex flex-wrap items-center gap-2 px-2 text-sm text-ink-2"><p>These links could not be loaded.</p><button type="button" className="prompt-secondary" onClick={() => void refresh()}>Try again</button></div>
+					? <div role="status" className="flex flex-wrap items-center gap-2 px-2 text-sm text-graphite"><p>These links could not be loaded.</p><button type="button" className="prompt-secondary" onClick={() => void refresh()}>Try again</button></div>
 					: <div role="status" aria-label="Loading links" className="flex flex-col gap-2 px-2"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-5 w-1/2" /></div>}
 		</aside>
 	);

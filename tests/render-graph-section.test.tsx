@@ -24,7 +24,7 @@ describe("graph section", () => {
 	it("sits in a fixed-height raised box", () => {
 		const html = render(false);
 		assert.match(html, /data-testid="graph-section-view"/);
-		assert.match(html, /h-\[260px\][^"]*rounded-\[10px\][^"]*bg-card[^"]*sm:h-\[420px\]/);
+		assert.match(html, /h-\[260px\][^"]*rounded-lg[^"]*bg-shelf[^"]*sm:h-\[420px\]/);
 		assert.doesNotMatch(html, /role="dialog"/);
 		assert.doesNotMatch(html, /data-testid="graph-collapse"/);
 	});

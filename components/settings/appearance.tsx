@@ -5,7 +5,7 @@
  * the factory defaults and applied as RUNTIME CSS variables on <html>.
  *
  * Why variables and not className swaps: every seam the settings touch was
- * built token-first (--font-prose, --lh-prose-size, --lh-ink-strong, …),
+ * built token-first (--font-sans, --note-size, --lh-ink-strong, …),
  * so application is setProperty and nothing re-renders. The ONE thing the
  * variables can't reach — the mode — is dark-only this wave (the light
  * palette is designed in the later design wave; <html class="dark"> is

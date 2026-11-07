@@ -63,8 +63,8 @@ describe("MathCheckCard", () => {
 		assert.match(html, /<details[^>]*class="[^"]*\blh-reading\b/);
 		assert.ok(!/<details[^>]*class="[^"]*select-none/.test(html), "only the summary is unselectable");
 		assert.match(html, /<summary[^>]*class="[^"]*select-none/);
-		assert.ok(!/font-mono[^>]*>[^<]*<span class="text-destructive">The Wolfram check is unavailable/.test(html), "the reason is not mono");
-		assert.match(html, /<div class=""><span class="text-destructive">The Wolfram check is unavailable/);
+		assert.ok(!/font-mono[^>]*>[^<]*<span class="text-red">The Wolfram check is unavailable/.test(html), "the reason is not mono");
+		assert.match(html, /<div class=""><span class="text-red">The Wolfram check is unavailable/);
 	});
 
 	it("renders nothing while its question waits for an answer", () => {

@@ -31,14 +31,14 @@ export function TabStripView({ tabs, selectedId, shownIds, pendingId, focusId, o
 }) {
 	const stop = tabs.some((tab) => tab.id === focusId) ? focusId : selectedId ?? tabs[0]?.id ?? null;
 	return (
-		<div data-workspace-tabs="" data-testid="workspace-tabs" className={cn("flex h-9 shrink-0 items-stretch gap-1 bg-background px-3 pb-1 pointer-coarse:h-12 pointer-coarse:pb-0", className)}>
+		<div data-workspace-tabs="" data-testid="workspace-tabs" className={cn("flex h-9 shrink-0 items-stretch gap-1 bg-paper px-3 pb-1 pointer-coarse:h-12 pointer-coarse:pb-0", className)}>
 			<div ref={listRef} role="tablist" aria-label="Open items" aria-orientation="horizontal" onKeyDownCapture={onKeyDown} className="flex min-w-0 flex-1 items-stretch gap-0.5 overflow-x-auto p-px">
 				{tabs.map((tab) => {
 					const Icon = tab.itemKind === "diagram" ? NetworkIcon : TAB_ICON[tab.kind];
 					const selected = tab.id === selectedId;
 					const shown = shownIds.includes(tab.id);
 					return (
-						<div key={tab.id} data-tab-row="" className={cn("flex max-w-52 shrink-0 items-center rounded-md transition-colors", selected ? "bg-accent text-foreground" : shown ? "bg-card text-foreground" : "text-ink-2 hover:bg-card")}>
+						<div key={tab.id} data-tab-row="" className={cn("flex max-w-52 shrink-0 items-center rounded-md transition-colors", selected ? "bg-shelf text-ink" : shown ? "bg-shelf text-ink" : "text-graphite hover:bg-shelf")}>
 							<button
 								type="button"
 								role="tab"
@@ -53,7 +53,7 @@ export function TabStripView({ tabs, selectedId, shownIds, pendingId, focusId, o
 								onClick={() => onActivate(tab)}
 								className="flex h-full min-w-0 flex-1 items-center gap-1.5 rounded-md pl-2 pr-1 text-sm"
 							>
-								{tab.id === pendingId ? <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground"><BrailleSpinner /></span> : <Icon className="ui-icon shrink-0 text-muted-foreground" aria-hidden="true" />}
+								{tab.id === pendingId ? <span className="flex size-4 shrink-0 items-center justify-center text-faint"><BrailleSpinner /></span> : <Icon className="ui-icon shrink-0 text-faint" aria-hidden="true" />}
 								<span className="min-w-0 truncate">{tab.title}</span>
 							</button>
 							<button
@@ -62,7 +62,7 @@ export function TabStripView({ tabs, selectedId, shownIds, pendingId, focusId, o
 								aria-label={`Close ${tab.title}`}
 								data-testid="workspace-tab-close"
 								onClick={() => onClose(tab)}
-								className="mr-0.5 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-card hover:text-foreground pointer-coarse:size-11"
+								className="mr-0.5 flex size-6 shrink-0 items-center justify-center rounded-md text-faint hover:bg-shelf hover:text-ink pointer-coarse:size-11"
 							>
 								<XIcon className="size-3.5" aria-hidden="true" />
 							</button>
@@ -179,7 +179,7 @@ export function WorkspaceTabStrip({ className }: { className?: string }) {
 						aria-expanded={rightPaneVisible}
 						data-testid="right-pane-toggle"
 						onClick={toggleRightPane}
-						className={cn("size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:flex pointer-coarse:size-11", workspace.occupied ? "hidden" : "flex")}
+						className={cn("size-8 shrink-0 items-center justify-center rounded-md text-faint transition-colors hover:bg-shelf hover:text-ink md:flex pointer-coarse:size-11", workspace.occupied ? "hidden" : "flex")}
 					>
 						{rightPaneVisible ? <PanelRightCloseIcon className="ui-icon" aria-hidden="true" /> : <PanelRightOpenIcon className="ui-icon" aria-hidden="true" />}
 					</button>

@@ -25,7 +25,7 @@ describe("GraphDisplayControls", () => {
 	it("region controls use the muted ink and lock while background colors are off, with no opacity", () => {
 		const off = { ...DEFAULT_RENDER_SETTINGS, regions: { ...DEFAULT_RENDER_SETTINGS.regions, enabled: false } };
 		const html = renderToStaticMarkup(<GraphDisplayControls settings={off} changeSettings={() => {}} />);
-		assert.match(html, /<span class="[^"]*text-muted-foreground[^"]*">Dilation/);
+		assert.match(html, /<span class="[^"]*text-faint[^"]*">Dilation/);
 		assert.ok(!html.includes("opacity-"));
 	});
 });

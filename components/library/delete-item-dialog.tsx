@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import type { LibraryItem } from "@/src/core";
 
-export const DESTRUCTIVE_BUTTON = "border border-destructive/50 bg-destructive/10 text-destructive hover:bg-destructive/20 hover:text-destructive";
+export const DESTRUCTIVE_BUTTON = "border border-red/50 bg-red/10 text-red hover:bg-red/20 hover:text-red";
 
 /** The dialog's pure body, exported for SSR tests (portals render nothing there). */
 export function DeleteItemBody({ item, busy, failure, onClose, onConfirm }: {
@@ -17,9 +17,9 @@ export function DeleteItemBody({ item, busy, failure, onClose, onConfirm }: {
 }) {
 	return (
 		<>
-			<DialogTitle className="text-base font-semibold [overflow-wrap:anywhere]">Move {item.name} to the trash?</DialogTitle>
-			<DialogDescription className="text-sm text-muted-foreground">{item.kind === "page" || item.kind === "diagram" ? "You can restore it, with its whole version history, from Trash." : "You can restore it from Trash."}</DialogDescription>
-			{failure && <p role="alert" className="text-sm text-destructive">{failure}</p>}
+			<DialogTitle className="text-md font-semibold [overflow-wrap:anywhere]">Move {item.name} to the trash?</DialogTitle>
+			<DialogDescription className="text-sm text-faint">{item.kind === "page" || item.kind === "diagram" ? "You can restore it, with its whole version history, from Trash." : "You can restore it from Trash."}</DialogDescription>
+			{failure && <p role="alert" className="text-sm text-red">{failure}</p>}
 			<div className="flex justify-end gap-2">
 				<Button type="button" variant="ghost" className="pointer-coarse:h-11" disabled={busy} onClick={onClose} data-testid="library-delete-cancel">Cancel</Button>
 				<Button type="button" variant="ghost" className={`${DESTRUCTIVE_BUTTON} pointer-coarse:h-11`} disabled={busy} onClick={onConfirm} data-testid="library-delete-confirm">
@@ -71,7 +71,7 @@ export function DeleteItemDialog({ item, onClose, onDeleted, returnFocus }: {
 					event.preventDefault();
 					returnFocus();
 				}}
-				className="gap-3 rounded-[10px] border-0 bg-card sm:max-w-md"
+				className="gap-3 rounded-lg border-0 bg-shelf sm:max-w-md"
 			>
 				{item && <DeleteItemBody item={item} busy={busy} failure={failure} onClose={onClose} onConfirm={() => void confirm()} />}
 			</DialogContent>

@@ -37,13 +37,13 @@ const unchangedText = (count: number) => `${count} unchanged ${count === 1 ? "bl
 /** Added and removed blocks, each with its word, so colour never carries it. */
 export function ChangeRows({ rows }: { rows: readonly CompareRow[] }) {
 	return (
-		<div className="flex flex-col gap-1 rounded-[10px] bg-card px-3 py-2 text-base">
+		<div className="flex flex-col gap-1 rounded-lg bg-shelf px-3 py-2 text-md">
 			{changeViewRows(rows).map((row, i) => row.kind === "same" ? (
-				<p key={i} className="text-sm text-muted-foreground">{unchangedText(row.count)}</p>
+				<p key={i} className="text-sm text-faint">{unchangedText(row.count)}</p>
 			) : (
 				<div key={i} className="flex min-w-0 items-baseline gap-2" data-change={row.kind}>
-					<span className={cn("shrink-0 font-mono text-xs", row.kind === "added" ? "text-success" : "text-destructive")}>{row.kind}</span>
-					<span className={cn("min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere]", row.kind === "removed" && "text-ink-2 line-through")}>{row.markdown}</span>
+					<span className={cn("shrink-0 font-mono text-xs", row.kind === "added" ? "text-green" : "text-red")}>{row.kind}</span>
+					<span className={cn("min-w-0 whitespace-pre-wrap [overflow-wrap:anywhere]", row.kind === "removed" && "text-graphite line-through")}>{row.markdown}</span>
 				</div>
 			))}
 		</div>
@@ -55,9 +55,9 @@ export function VersionChanges({ n, before, after }: { n: number; before: string
 	const rows = compareTexts(before ?? "", after);
 	return (
 		<div className="flex flex-col gap-2" data-testid="page-version-changes">
-			<p className="text-sm text-ink-2">{n === 1 ? "Version 1, the first version" : `Version ${n} compared with version ${n - 1}`}</p>
+			<p className="text-sm text-graphite">{n === 1 ? "Version 1, the first version" : `Version ${n} compared with version ${n - 1}`}</p>
 			{rows === null ? (
-				<p className="text-sm text-ink-2">Too long to compare. Use Full text.</p>
+				<p className="text-sm text-graphite">Too long to compare. Use Full text.</p>
 			) : (
 				<ChangeRows rows={rows} />
 			)}
@@ -84,7 +84,7 @@ function NameField({ id, version, onNamed }: { id: string; version: PageVersion;
 	return (
 		<form className="flex flex-wrap items-end gap-2" onSubmit={(event) => { event.preventDefault(); void send(value.trim() || null); }} data-testid="page-version-name-form">
 			<span className="flex min-w-0 flex-[1_1_12rem] flex-col gap-1">
-				<label htmlFor={fieldId} className="text-sm font-medium text-ink-2">Version name</label>
+				<label htmlFor={fieldId} className="text-sm font-medium text-graphite">Version name</label>
 				<input
 					id={fieldId}
 					autoFocus
@@ -94,12 +94,12 @@ function NameField({ id, version, onNamed }: { id: string; version: PageVersion;
 					aria-invalid={error ? true : undefined}
 					autoComplete="off"
 					data-testid="page-version-name-input"
-					className="h-8 w-full rounded-[6px] border border-input bg-transparent px-2 text-base text-foreground pointer-coarse:h-11"
+					className="h-8 w-full rounded-md border border-rule bg-transparent px-2 text-md text-ink pointer-coarse:h-11"
 				/>
 			</span>
 			<button type="submit" className="prompt-secondary">Save</button>
 			{version.name && <button type="button" className="prompt-secondary" onClick={() => void send(null)}>Clear name</button>}
-			{error && <p role="alert" className="basis-full text-sm text-destructive">{error}</p>}
+			{error && <p role="alert" className="basis-full text-sm text-red">{error}</p>}
 		</form>
 	);
 }
@@ -175,7 +175,7 @@ export function PageHistory({ id, onRestore, canRestore }: { id: string; onResto
 
 	if (failed) {
 		return (
-			<div role="status" className="flex flex-wrap items-center gap-2 px-3 text-sm text-ink-2">
+			<div role="status" className="flex flex-wrap items-center gap-2 px-3 text-sm text-graphite">
 				<p>The history could not be loaded.</p>
 				<button type="button" className="prompt-secondary" onClick={() => void load()}>Try again</button>
 			</div>
@@ -199,7 +199,7 @@ export function PageHistory({ id, onRestore, canRestore }: { id: string; onResto
 							aria-current={selected === version.n ? "true" : undefined}
 							onClick={() => setSelected(version.n)}
 							suppressHydrationWarning
-							className={cn("w-full rounded-md px-2 py-1.5 text-left text-sm text-ink-2 transition-colors hover:bg-accent pointer-coarse:min-h-11", selected === version.n && "bg-accent text-foreground")}
+							className={cn("w-full rounded-md px-2 py-1.5 text-left text-sm text-graphite transition-colors hover:bg-shelf pointer-coarse:min-h-11", selected === version.n && "bg-shelf text-ink")}
 						>{versionLabel(version)}</button>
 					</li>
 				))}
@@ -208,14 +208,14 @@ export function PageHistory({ id, onRestore, canRestore }: { id: string; onResto
 				<button type="button" className="prompt-secondary w-fit" disabled={loadingEarlier} onClick={() => void loadEarlier()} data-testid="page-history-earlier">Show earlier versions</button>
 			)}
 			{earlierFailed && (
-				<div role="status" className="flex flex-wrap items-center gap-2 text-sm text-ink-2">
+				<div role="status" className="flex flex-wrap items-center gap-2 text-sm text-graphite">
 					<p>The history could not be loaded.</p>
 					<button type="button" className="prompt-secondary" onClick={() => void loadEarlier()}>Try again</button>
 				</div>
 			)}
 			{selected !== null && (
 				previewFailed ? (
-					<div role="status" className="flex flex-wrap items-center gap-2 text-sm text-ink-2" data-testid="page-version-failed">
+					<div role="status" className="flex flex-wrap items-center gap-2 text-sm text-graphite" data-testid="page-version-failed">
 						<p>Version {selected} could not be loaded.</p>
 						<button type="button" className="prompt-secondary" onClick={() => setPreviewTry((n) => n + 1)}>Try again</button>
 					</div>
@@ -224,7 +224,7 @@ export function PageHistory({ id, onRestore, canRestore }: { id: string; onResto
 						<Button
 							type="button"
 							disabled={!canRestore || restoring || content === null}
-							className="w-fit bg-accent text-foreground hover:bg-[color-mix(in_srgb,var(--accent)_80%,var(--foreground))] pointer-coarse:h-11"
+							className="w-fit bg-shelf text-ink hover:bg-[color-mix(in_srgb,var(--shelf)_80%,var(--ink))] pointer-coarse:h-11"
 							data-testid="page-restore"
 							onClick={() => {
 								setRestoring(true);
@@ -232,7 +232,7 @@ export function PageHistory({ id, onRestore, canRestore }: { id: string; onResto
 								void onRestore(selected).then(setRestoreError, () => setRestoreError(`Version ${selected} could not be restored. Your text is kept.`)).finally(() => setRestoring(false));
 							}}
 						>Restore this version</Button>
-						{restoreError && <p role="alert" className="text-sm text-destructive" data-testid="page-restore-error">{restoreError}</p>}
+						{restoreError && <p role="alert" className="text-sm text-red" data-testid="page-restore-error">{restoreError}</p>}
 						<div className="flex flex-wrap items-center gap-2">
 							<button type="button" className="prompt-secondary" disabled={content === null} data-testid="page-copy-version" onClick={() => {
 								if (content === null) return;
@@ -243,8 +243,8 @@ export function PageHistory({ id, onRestore, canRestore }: { id: string; onResto
 							</button>
 							<span className="min-w-0 flex-1" />
 							<div role="group" aria-label="View" className="flex gap-1">
-								<button type="button" aria-pressed={view === "changes"} onClick={() => setView("changes")} className="h-8 rounded-[6px] px-2 text-sm text-ink-2 hover:bg-accent aria-pressed:bg-accent aria-pressed:text-foreground pointer-coarse:min-h-11" data-testid="page-view-changes">Changes</button>
-								<button type="button" aria-pressed={view === "full"} onClick={() => setView("full")} className="h-8 rounded-[6px] px-2 text-sm text-ink-2 hover:bg-accent aria-pressed:bg-accent aria-pressed:text-foreground pointer-coarse:min-h-11" data-testid="page-view-full">Full text</button>
+								<button type="button" aria-pressed={view === "changes"} onClick={() => setView("changes")} className="h-8 rounded-md px-2 text-sm text-graphite hover:bg-shelf aria-pressed:bg-shelf aria-pressed:text-ink pointer-coarse:min-h-11" data-testid="page-view-changes">Changes</button>
+								<button type="button" aria-pressed={view === "full"} onClick={() => setView("full")} className="h-8 rounded-md px-2 text-sm text-graphite hover:bg-shelf aria-pressed:bg-shelf aria-pressed:text-ink pointer-coarse:min-h-11" data-testid="page-view-full">Full text</button>
 							</div>
 						</div>
 						{naming && (() => {
@@ -256,7 +256,7 @@ export function PageHistory({ id, onRestore, canRestore }: { id: string; onResto
 								}} />
 							) : null;
 						})()}
-						{content === null ? <Skeleton className="h-24 w-full rounded-[10px]" /> : view === "changes" ? <VersionChanges n={selected} before={previous} after={content} /> : <PagePreview content={content} />}
+						{content === null ? <Skeleton className="h-24 w-full rounded-lg" /> : view === "changes" ? <VersionChanges n={selected} before={previous} after={content} /> : <PagePreview content={content} />}
 					</>
 				)
 			)}

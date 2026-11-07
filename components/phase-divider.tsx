@@ -44,10 +44,10 @@ export function PhaseChip({ phase }: { phase: Phase3 }) {
 			data-testid="phase-chip"
 			data-phase={phase}
 			aria-hidden="true"
-			className="pointer-events-none flex shrink-0 select-none items-center gap-2 text-sm text-muted-foreground"
+			className="pointer-events-none flex shrink-0 select-none items-center gap-2 text-sm text-faint"
 		>
 			{CHIP_LABEL[phase]}
-			<span className="text-muted-foreground">/</span>
+			<span className="text-faint">/</span>
 		</span>
 	);
 }
@@ -70,7 +70,7 @@ export function PhaseDivider({ phase, nodeCount }: { phase: Phase3; nodeCount?: 
 	// no rule, no centered pill.
 	return (
 		<div className="lh-reading mt-8 mb-3" data-testid={`phase-divider-${phase}`}>
-			<span className="text-sm font-medium text-muted-foreground">{label}</span>
+			<span className="text-sm font-medium text-faint">{label}</span>
 		</div>
 	);
 }

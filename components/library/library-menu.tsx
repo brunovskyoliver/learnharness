@@ -7,8 +7,8 @@ import { Button } from "@/components/ui/button";
 
 export interface LibraryMenuAction { label: string; onSelect: () => void; destructive?: boolean; testId?: string }
 
-const PANEL = "z-50 min-w-44 rounded-[10px] bg-accent p-1 text-foreground data-[state=closed]:hidden";
-const ROW = "flex min-h-9 cursor-default items-center rounded-md px-2 text-base outline-none data-[highlighted]:bg-[color-mix(in_srgb,var(--accent)_80%,var(--foreground))] pointer-coarse:min-h-11";
+const PANEL = "z-50 min-w-44 rounded-lg bg-shelf p-1 text-ink data-[state=closed]:hidden";
+const ROW = "flex min-h-9 cursor-default items-center rounded-md px-2 text-md outline-none data-[highlighted]:bg-[color-mix(in_srgb,var(--shelf)_80%,var(--ink))] pointer-coarse:min-h-11";
 
 /** The ⋯ menu and the right-click menu share one list of actions. */
 export function LibraryEntryMenu({ actions, children }: { actions: readonly LibraryMenuAction[]; children: ReactNode }) {
@@ -19,7 +19,7 @@ export function LibraryEntryMenu({ actions, children }: { actions: readonly Libr
 			<ContextMenu.Portal>
 				<ContextMenu.Content data-lh-menu className={PANEL}>
 					{actions.map((action) => (
-						<ContextMenu.Item key={action.label} className={`${ROW} ${action.destructive ? "text-destructive" : ""}`} onSelect={action.onSelect}>{action.label}</ContextMenu.Item>
+						<ContextMenu.Item key={action.label} className={`${ROW} ${action.destructive ? "text-red" : ""}`} onSelect={action.onSelect}>{action.label}</ContextMenu.Item>
 					))}
 				</ContextMenu.Content>
 			</ContextMenu.Portal>
@@ -31,14 +31,14 @@ export function LibraryMoreButton({ name, actions }: { name: string; actions: re
 	return (
 		<DropdownMenu.Root>
 			<DropdownMenu.Trigger asChild>
-				<Button type="button" variant="ghost" size="icon" aria-label={`More actions for ${name}`} data-testid="library-more" className="size-9 text-muted-foreground pointer-coarse:size-11">
+				<Button type="button" variant="ghost" size="icon" aria-label={`More actions for ${name}`} data-testid="library-more" className="size-9 text-faint pointer-coarse:size-11">
 					<MoreHorizontalIcon className="ui-icon" aria-hidden="true" />
 				</Button>
 			</DropdownMenu.Trigger>
 			<DropdownMenu.Portal>
 				<DropdownMenu.Content data-lh-menu align="end" sideOffset={4} className={PANEL}>
 					{actions.map((action) => (
-						<DropdownMenu.Item key={action.label} data-testid={action.testId} className={`${ROW} ${action.destructive ? "text-destructive" : ""}`} onSelect={action.onSelect}>{action.label}</DropdownMenu.Item>
+						<DropdownMenu.Item key={action.label} data-testid={action.testId} className={`${ROW} ${action.destructive ? "text-red" : ""}`} onSelect={action.onSelect}>{action.label}</DropdownMenu.Item>
 					))}
 				</DropdownMenu.Content>
 			</DropdownMenu.Portal>
@@ -55,7 +55,7 @@ export function moreButton(label: string): HTMLElement {
 export function LibrarySelectBox({ label, checked, onChange }: { label: string; checked: boolean; onChange: () => void }) {
 	return (
 		<label className="ml-3 flex shrink-0 items-center justify-center pointer-coarse:ml-0 pointer-coarse:size-11">
-			<input type="checkbox" checked={checked} onChange={onChange} aria-label={label} data-testid="library-select" className="size-4 accent-foreground pointer-coarse:size-6" />
+			<input type="checkbox" checked={checked} onChange={onChange} aria-label={label} data-testid="library-select" className="size-4 accent-ink pointer-coarse:size-6" />
 		</label>
 	);
 }
@@ -72,13 +72,13 @@ export function LibraryChoice<T extends string>({ label, name, value, options, o
 }) {
 	const current = options.find((option) => option.value === value)?.label ?? "";
 	return (
-		<div className="flex min-w-0 items-center gap-1.5 text-sm text-ink-2">
+		<div className="flex min-w-0 items-center gap-1.5 text-sm text-graphite">
 			<span aria-hidden="true">{label}</span>
 			<DropdownMenu.Root>
 				<DropdownMenu.Trigger asChild>
-					<button type="button" aria-label={`${name}: ${current}`} data-testid={testId} className="flex h-9 min-w-0 max-w-full items-center gap-1 rounded-md border border-input bg-transparent pl-2.5 pr-1.5 text-sm text-foreground transition-colors hover:bg-accent pointer-coarse:h-11">
+					<button type="button" aria-label={`${name}: ${current}`} data-testid={testId} className="flex h-9 min-w-0 max-w-full items-center gap-1 rounded-md border border-rule bg-transparent pl-2.5 pr-1.5 text-sm text-ink transition-colors hover:bg-shelf pointer-coarse:h-11">
 						<span className="min-w-0 truncate">{current}</span>
-						<ChevronDownIcon className="ui-icon shrink-0 text-muted-foreground" aria-hidden="true" />
+						<ChevronDownIcon className="ui-icon shrink-0 text-faint" aria-hidden="true" />
 					</button>
 				</DropdownMenu.Trigger>
 				<DropdownMenu.Portal>
