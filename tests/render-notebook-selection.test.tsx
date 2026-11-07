@@ -13,7 +13,7 @@ import { createPageCodec, parsePageMarkdown, serializePageJson } from "../compon
 import { INK_COLORS } from "../components/library/page-ink.ts";
 import { noteText, rangeText } from "../components/notebook/nb-plugins.ts";
 import { ACTIONS, INK_NAMES } from "../components/notebook/selection-menu.tsx";
-import { Sketch, sketchHash, stepHoldMs, Stepper, type SketchPlayer } from "../components/notebook/sketch.tsx";
+import { drawingLeft, Sketch, sketchHash, stepHoldMs, Stepper, type SketchPlayer } from "../components/notebook/sketch.tsx";
 import { ASK_HINT, ASK_PLACEHOLDER } from "../components/notebook/use-threads.ts";
 import { SKETCHING_LINE } from "../components/notebook/use-selection-runs.ts";
 import { FAUX_SKETCH } from "../src/agent/subagents/notebook.ts";
@@ -26,7 +26,7 @@ describe("the sketch (ui-contract \"Sketch\", §16)", () => {
 		const steps = FAUX_SKETCH.steps.map((s, i) => (i === FAUX_SKETCH.steps.length - 1 ? { caption: "The bottom-right cell receives $3+3=6$ paths.", note: "So $a+b$." } : s));
 		const html = renderToStaticMarkup(<Sketch sketch={{ ...FAUX_SKETCH, steps }} />);
 		assert.match(html, /data-testid="nb-sketch-caption">[\s\S]*class="katex"[\s\S]*paths\./);
-		assert.match(html, /data-testid="nb-sketch-note">[\s\S]*class="katex"/);
+		assert.match(html, /data-testid="nb-sketch-note"[^>]*>[\s\S]*class="katex"/);
 		assert.doesNotMatch(html, /\$3\+3=6\$|\$a\+b\$/);
 	});
 
@@ -36,12 +36,20 @@ describe("the sketch (ui-contract \"Sketch\", §16)", () => {
 		assert.match(html, /class="nb-sketch-subtitle">Start top-left\. Move only right or down\.</);
 		assert.match(html, /data-testid="nb-sketch-count">4\/4</);
 		assert.match(html, /aria-live="polite" data-testid="nb-sketch-caption"><span class="nb-words">The last cell adds its two neighbors: 3 \+ 3 = 6\.</);
-		assert.match(html, /data-testid="nb-sketch-note"><span class="nb-words">Above \+ left = this cell\.</);
+		// The step's line starts where the drawing does (the grid at x 12.5 of 262), as in the frame.
+		assert.match(html, /data-testid="nb-sketch-note" style="margin-left:4\.771%"><span class="nb-words">Above \+ left = this cell\.</);
 		assert.equal((html.match(/<g data-step="\d"/g) ?? []).length, 4);
 		assert.doesNotMatch(html, /opacity="0"/);
 		assert.match(html, /<button type="button" class="nb-sketch-larger" data-testid="nb-sketch-larger">See it larger<\/button>/);
 		// Drawn at 1.12px per unit, centred: 262 units wide.
 		assert.match(html, /max-width:293\.44/);
+	});
+
+	it("finds the drawing's left edge from the items with a known left", () => {
+		const base = { title: "T", w: 200, h: 100, steps: [{ caption: "c" }] };
+		assert.equal(drawingLeft({ ...base, items: [{ step: 0, kind: "rect", x: 20, y: 0, w: 10, h: 10 }, { step: 0, kind: "line", x1: 50, y1: 0, x2: 10, y2: 5 }] }), 0.05);
+		assert.equal(drawingLeft({ ...base, items: [{ step: 0, kind: "circle", cx: 40, cy: 40, r: 20 }, { step: 0, kind: "text", x: 2, y: 2, text: "mid" }] }), 0.1);
+		assert.equal(drawingLeft({ ...base, items: [{ step: 0, kind: "path", d: "M0 0L1 1" }] }), 0);
 	});
 
 	it("names the stepper's buttons and disables the ends", () => {

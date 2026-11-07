@@ -20,6 +20,25 @@ export const SKETCH_SCALE = 1.12;
 /** Autoplay pace "note" (§16.2): each step holds 1150ms + 22ms per caption character. */
 export const stepHoldMs = (caption: string): number => 1150 + 22 * caption.length;
 
+/**
+ * Where the drawing's own content starts, as a share of its width: the leftmost
+ * grid, start-anchored text, rect, bar, line end, circle or dot (middle- and
+ * end-anchored text and paths have no known left). The step's big line starts
+ * there, as the frame's does (inline-sketch-and-selection: on the grid and the
+ * captions' edge, not the title's).
+ */
+export function drawingLeft(sketch: SketchData): number {
+	let left = Infinity;
+	for (const item of sketch.items) {
+		if (item.kind === "grid" || item.kind === "rect" || item.kind === "bar") left = Math.min(left, item.x);
+		else if (item.kind === "text" && item.anchor === "start") left = Math.min(left, item.x);
+		else if (item.kind === "line" || item.kind === "arrow") left = Math.min(left, item.x1, item.x2);
+		else if (item.kind === "circle") left = Math.min(left, item.cx - item.r);
+		else if (item.kind === "dot") left = Math.min(left, item.cx);
+	}
+	return Number.isFinite(left) && sketch.w > 0 ? Math.min(Math.max(left / sketch.w, 0), 0.5) : 0;
+}
+
 const PLAYED_KEY = (hash: string) => `lh.nb.sketch.${hash}`;
 
 /** A short stable hash of a sketch (FNV-1a over its JSON), to remember that it played. */
@@ -187,7 +206,7 @@ function ValidSketch({ sketch }: { sketch: SketchData }) {
 			<figure className="nb-sketch-figure" style={{ maxWidth: sketch.w * SKETCH_SCALE }}>
 				<SketchHead sketch={sketch} />
 				<DrawingPicture key={player.round} sketch={sketch} step={player.step} liveStart={player.liveStart} />
-				{current?.note && <p key={`${player.round}-${player.step}`} className="nb-sketch-note nb-voice" data-testid="nb-sketch-note"><InkText text={current.note} animate={false} /></p>}
+				{current?.note && <p key={`${player.round}-${player.step}`} className="nb-sketch-note nb-voice" data-testid="nb-sketch-note" style={{ marginLeft: `${(drawingLeft(sketch) * 100).toFixed(3)}%` }}><InkText text={current.note} animate={false} /></p>}
 			</figure>
 			<div className="nb-sketch-row">
 				<p className="nb-sketch-caption nb-voice" aria-live="polite" data-testid="nb-sketch-caption"><InkText text={current?.caption ?? ""} animate={false} /></p>

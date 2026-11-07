@@ -20,16 +20,18 @@ export interface TetherProps {
 	noteY: number;
 	passageY: number;
 	faint: boolean;
+	/** Another thread is open (§8.1): the line fades with its note's dot, to --nb-faded-mark. */
+	faded?: boolean;
 	threadId: string;
 }
 
-export function Tether({ side, columnWidth, noteY, passageY, faint, threadId }: TetherProps) {
+export function Tether({ side, columnWidth, noteY, passageY, faint, faded = false, threadId }: TetherProps) {
 	const id = useId().replace(/[^A-Za-z0-9_-]/g, "");
 	const { tie, spine } = tetherPaths({ side, columnWidth, noteY, passageY });
 	const box = { x: -2000, y: -2000, width: 6000, height: 100000 };
 	const showTie = !faint || !spine;
 	return (
-		<g className={faint ? "nb-tether-faint" : undefined} data-thread={threadId} data-testid="nb-tether">
+		<g className={faint ? "nb-tether-faint" : undefined} data-thread={threadId} data-faded={faded ? "true" : undefined} data-testid="nb-tether">
 			{showTie && (
 				<>
 					<mask id={`${id}-tie`} maskUnits="userSpaceOnUse" {...box}>

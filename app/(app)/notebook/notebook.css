@@ -29,7 +29,18 @@
 	--riddle-wash: #1d1c1a0e;
 	--riddle-line: #1d1c1a52;
 	--nb-focus: #8c8a88; /* focus ring, ≥3:1 on paper and shelf (owner); Riddled used --riddle-line */
-	--nb-faded: 0.38; /* the other notes while a thread is open: Riddled §8.1 (scope: "others fade") */
+	/* The other notes while a thread is open (§8.1, scope "others fade"): text fades per AI ink to the smallest
+	   two-decimal opacity at which that ink over --paper reaches 4.5:1 (owner, "Raise to pass"); the dot,
+	   tether and rail fade to Riddled's .38 (--nb-faded-mark). --nb-faded follows data-nb-ink (§1.2). */
+	--nb-faded-ink: 0.65;
+	--nb-faded-blue: 0.91;
+	--nb-faded-green: 0.95;
+	--nb-faded-red: 0.89;
+	--nb-faded-purple: 0.89;
+	--nb-faded-brown: 0.91;
+	--nb-faded-orange: 0.97;
+	--nb-faded: var(--nb-faded-ink);
+	--nb-faded-mark: 0.38;
 	--bulb: #d99a1e;
 	--lift: 0 0 0 1px #1d1c1a12, 0 1px 1px #1d1c1a0a, 0 6px 16px -8px #1d1c1a29;
 	--grain-opacity: 0.16;
@@ -63,7 +74,16 @@
 	--riddle-wash: #e9e7e214;
 	--riddle-line: #e9e7e257;
 	--nb-focus: #676661; /* focus ring, ≥3:1 on paper and shelf (owner) */
-	--nb-faded: 0.38; /* Riddled §8.1 (scope: "others fade") */
+	/* per AI ink, 4.5:1 over dark --paper (see light) */
+	--nb-faded-ink: 0.51;
+	--nb-faded-blue: 0.72;
+	--nb-faded-green: 0.68;
+	--nb-faded-red: 0.82;
+	--nb-faded-purple: 0.74;
+	--nb-faded-brown: 0.78;
+	--nb-faded-orange: 0.72;
+	--nb-faded: var(--nb-faded-ink);
+	--nb-faded-mark: 0.38;
 	--bulb: #f2b84b;
 	--lift: 0 0 0 1px #ffffff12, 0 8px 20px -8px #0009;
 	--grain-opacity: 0.4;
@@ -94,7 +114,16 @@
 		--riddle-wash: #e9e7e214;
 		--riddle-line: #e9e7e257;
 		--nb-focus: #676661; /* focus ring, ≥3:1 on paper and shelf (owner) */
-		--nb-faded: 0.38; /* Riddled §8.1 (scope: "others fade") */
+		/* per AI ink, 4.5:1 over dark --paper (see light) */
+		--nb-faded-ink: 0.51;
+		--nb-faded-blue: 0.72;
+		--nb-faded-green: 0.68;
+		--nb-faded-red: 0.82;
+		--nb-faded-purple: 0.74;
+		--nb-faded-brown: 0.78;
+		--nb-faded-orange: 0.72;
+		--nb-faded: var(--nb-faded-ink);
+		--nb-faded-mark: 0.38;
 		--bulb: #f2b84b;
 		--lift: 0 0 0 1px #ffffff12, 0 8px 20px -8px #0009;
 		--grain-opacity: 0.4;
@@ -114,13 +143,13 @@
 
 /* ── 1.2 AI ink choice (after the themes: same specificity, later wins) ── */
 
-.nb-root[data-nb-ink="ink"] { --riddle: var(--riddle-ink); }
-.nb-root[data-nb-ink="blue"] { --riddle: var(--text-blue); }
-.nb-root[data-nb-ink="green"] { --riddle: var(--text-green); }
-.nb-root[data-nb-ink="red"] { --riddle: var(--text-red); }
-.nb-root[data-nb-ink="purple"] { --riddle: var(--text-purple); }
-.nb-root[data-nb-ink="brown"] { --riddle: var(--text-brown); }
-.nb-root[data-nb-ink="orange"] { --riddle: var(--text-orange); }
+.nb-root[data-nb-ink="ink"] { --riddle: var(--riddle-ink); --nb-faded: var(--nb-faded-ink); }
+.nb-root[data-nb-ink="blue"] { --riddle: var(--text-blue); --nb-faded: var(--nb-faded-blue); }
+.nb-root[data-nb-ink="green"] { --riddle: var(--text-green); --nb-faded: var(--nb-faded-green); }
+.nb-root[data-nb-ink="red"] { --riddle: var(--text-red); --nb-faded: var(--nb-faded-red); }
+.nb-root[data-nb-ink="purple"] { --riddle: var(--text-purple); --nb-faded: var(--nb-faded-purple); }
+.nb-root[data-nb-ink="brown"] { --riddle: var(--text-brown); --nb-faded: var(--nb-faded-brown); }
+.nb-root[data-nb-ink="orange"] { --riddle: var(--text-orange); --nb-faded: var(--nb-faded-orange); }
 
 /* ── Root, 2 fonts, 3.1 note-size scale ─────────────────────────────────── */
 
@@ -1447,11 +1476,17 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 
 .nb-root .nb-note,
 .nb-root .nb-inline { transition: opacity 0.2s ease-out; }
-/* §8.1: the other notes fade while one is open (Riddled ≈.38), as the scope asks ("others fade").
-   A faded note returns to full strength under the pointer or the keyboard, so none is read faded. */
-.nb-root :is(.nb-note, .nb-inline)[data-faded="true"] { opacity: var(--nb-faded); }
-/* A faded note the keyboard reaches reads at full strength, as one under the pointer does. */
-.nb-root :is(.nb-note, .nb-inline)[data-faded="true"]:focus-within { opacity: 1; }
+.nb-root :is(.nb-note, .nb-inline) :is(.nb-note-text, .nb-inline-text, .nb-sketch) { transition: opacity 0.2s ease-out; }
+.nb-root :is(.nb-note, .nb-inline) > :is(.nb-ink-dot, .nb-thread-rail) { transition: filter 0.2s ease-out; }
+.nb-root .nb-tether > g { transition: opacity 0.2s ease-out; }
+/* §8.1: the other notes fade while one is open, as the scope asks ("others fade"). The words fade to
+   --nb-faded (per AI ink: the lightest that still reads 4.5:1 on paper); the dot, tether and rail to
+   Riddled's .38 (--nb-faded-mark; filter, so the dot keeps its own opacity and drying animation); the
+   faint "{n} replies" and detached lines stay at full strength (--faint is 4.5:1 on its own).
+   A faded note returns to full strength under the pointer (it is no longer faded) or the keyboard. */
+.nb-root :is(.nb-note, .nb-inline)[data-faded="true"]:not(:focus-within) :is(.nb-note-text, .nb-inline-text, .nb-sketch) { opacity: var(--nb-faded); }
+.nb-root :is(.nb-note, .nb-inline)[data-faded="true"]:not(:focus-within) > :is(.nb-ink-dot, .nb-thread-rail) { filter: opacity(var(--nb-faded-mark)); }
+.nb-root .nb-tether > g[data-faded="true"] { opacity: var(--nb-faded-mark); }
 .nb-root .nb-note[data-state="open"],
 .nb-root .nb-inline[data-state="open"] { z-index: 1; }
 .nb-root :is(.nb-note, .nb-inline)[data-state="open"]:focus:not(:focus-visible) { outline: none; }
@@ -1679,7 +1714,7 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.nb-root :is(.nb-note, .nb-inline, .nb-thread-more-hover, .nb-thread-button, .nb-mark) { transition: none; }
+	.nb-root :is(.nb-note, .nb-inline, .nb-note-text, .nb-inline-text, .nb-sketch, .nb-ink-dot, .nb-thread-rail, .nb-tether > g, .nb-thread-more-hover, .nb-thread-button, .nb-mark) { transition: none; }
 	.nb-root .nb-mark-fresh { animation: none; }
 }
 
@@ -1792,6 +1827,13 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 /* ── 16 The inline sketch ───────────────────────────────────────────────── */
 
 .nb-root .nb-sketch { margin-top: 10px; color: var(--ink); }
+/* Frame inline-sketch-and-selection (1:1, measured; not in Riddled's CSS): the drawing keeps 18px clear on
+   its right, so it centres 9px left of the reply's middle (title 682, grid 694-951) and the stepper ends at
+   x 1132.6. Only the drawing: the reply's words keep the full width (Linux sets them ≈3% wider; 18px less
+   would add a line and push the drawing down). */
+@media (min-width: 768px) {
+	.nb-root .nb-inline .nb-sketch { margin-right: 18px; }
+}
 .nb-root .nb-sketch-figure { margin: 0 auto; }
 .nb-root .nb-sketch-head { display: flex; flex-direction: column; align-items: flex-start; gap: 0; }
 .nb-root .nb-sketch-title { color: var(--ink); font-size: 19px; line-height: 1.3; letter-spacing: 0; }

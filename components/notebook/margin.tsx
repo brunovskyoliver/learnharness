@@ -168,7 +168,7 @@ export function Margin({ bridge, column, threads, layout, fresh, tick }: {
 		const open = openId === thread.id;
 		if (!open && !fresh.has(thread.id) && pointed !== thread.id) return [];
 		const noteY = at.top + NOTE_LINE / 2;
-		return [<Tether key={`${thread.id}${open ? "-open" : ""}`} threadId={thread.id} side={at.side} columnWidth={columnWidth} noteY={noteY} passageY={at.passageY} faint={!open && !fresh.has(thread.id)} />];
+		return [<Tether key={`${thread.id}${open ? "-open" : ""}`} threadId={thread.id} side={at.side} columnWidth={columnWidth} noteY={noteY} passageY={at.passageY} faint={!open && !fresh.has(thread.id)} faded={openId !== null && !open && pointed !== thread.id} />];
 	});
 
 	return (

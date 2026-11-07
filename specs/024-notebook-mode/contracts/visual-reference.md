@@ -50,7 +50,8 @@ Colour values are hex with alpha; percentages are given as alpha/255.
 | `--text-gray` | `#858179` (3.62 / 3.40) → `#716d66` | `#9a968e` unchanged | 4.80 / 4.51; 5.91 / 6.20 |
 | `--nb-focus` (new, focus ring) | Riddled used `--riddle-line` (2.0:1) → `#8c8a88` | `--riddle-line` (2.77:1) → `#676661` | 3.21 / 3.02; 3.03 / 3.18 |
 | `--text-orange` (an AI ink and a text colour) | `#b5621f` (4.14 / 3.89) → `#a9580e` | `#e59b5b` unchanged | 4.79 / 4.50; 7.61 / 7.98 |
-| `--nb-faded` (new, the other notes while a thread is open, §8.1) | Riddled ≈.38 (ink 2.21:1, orange 1.63:1 on paper) → .97 → **.38** (reverted, see reviews.md) | ≈.38 (ink 3.14:1, red 1.94:1) → .82 → **.38** | the smallest two-decimal opacity at which every AI ink (ink, blue, green, red, purple, brown, orange) blended over paper reaches 4.5:1. Light: ink 12.61, blue 5.12, green 4.70, red 5.23, purple 5.43, brown 5.11, orange 4.55 (worst; .96 gives 4.47). Dark: ink 9.89, blue 5.56, green 6.05, red 4.53 (worst; .81 gives 4.46), purple 5.30, brown 4.89, orange 5.52 |
+| `--nb-faded` (new, the other notes' words while a thread is open, §8.1), per AI ink via `--nb-faded-<ink>` and `data-nb-ink` | Riddled ≈.38 for all (ink 2.21:1, orange 1.63:1 on paper) → **ink .65, blue .91, green .95, red .89, purple .89, brown .91, orange .97** | ≈.38 (ink 3.13:1, red 1.94:1) → **ink .51, blue .72, green .68, red .82, purple .74, brown .78, orange .72** | each the smallest two-decimal opacity at which that ink blended over `--paper` reaches 4.5:1 (one step lower fails). Light: ink 4.61 (.64: 4.43), blue 4.52, green 4.55, red 4.53, purple 4.60, brown 4.51, orange 4.55. Dark: ink 4.61 (.50: 4.48), blue 4.56, green 4.59, red 4.53, purple 4.54, brown 4.57, orange 4.55 |
+| `--nb-faded-mark` (new, a faded note's dot, tether and rail; non-text) | Riddled .38 kept | .38 kept | not text (WCAG 1.4.3 does not apply). The faint "{n} replies" and detached lines in a faded note stay at full strength: `--faint` 4.80 light / 4.53 dark on paper |
 
 `--riddle-line` itself is unchanged and stays on marks, link underlines and tethers.
 
@@ -269,7 +270,7 @@ Landing reference CSS: `.landing-margin{padding-left:22px}` (l.4137), `.landing-
 | Write-back field | placeholder "Write back…" sans ≈14px `--faint`; underline only (1px `--rule`, full width ≈395px); send arrow (lucide send, ≈13px, faint) at right end |
 | Focus underline | `.reply-line:after`: `height:1.5px; border-radius:1px; background:linear-gradient(to right, var(--riddle) 0%, color-mix(in oklab,var(--riddle) 55%,transparent) 62%, transparent 100%)`; hidden `opacity:0; transform:scaleX(0); transform-origin:0`; on `:focus-within` `opacity:1; scaleX(1)`; `transition:transform .46s cubic-bezier(.2,.7,.2,1), opacity .18s ease-out`. Reduced motion: `transition:opacity .12s; transform:none` (CSS l.5420-5454) |
 | Actions | "Resolve" "Dismiss" text buttons, sans ≈12px `--faint`, gap ≈16px, ≈24px below the field; "…" at far right (measured ≈). Frame tops: field line 536, Resolve 556, the next (faded) note's first line 595: ours 13px under the field and 8px of the open thread's own under the actions, then the 14px stack gap |
-| Other notes | fade to **≈.35-.4 opacity** while one thread is open (measured ≈; no CSS rule found, likely inline/utility). Notebook: `--nb-faded` .38 (Riddled), full strength under pointer/focus |
+| Other notes | fade to **≈.35-.4 opacity** while one thread is open (measured ≈; no CSS rule found, likely inline/utility). Notebook (owner's "Raise to pass", §1.1): the words fade to the ink's `--nb-faded` (light ink .65, blue .91, green .95, red .89, purple .89, brown .91, orange .97; dark ink .51, blue .72, green .68, red .82, purple .74, brown .78, orange .72; each 4.5:1 on paper), the dot, tether and rail to Riddled's .38 (`--nb-faded-mark`), the "{n} replies" line stays at full strength; full strength under pointer/focus |
 | Passage | the anchored passage is `data-active=true` (wash, §9) |
 | Open animation | probably `.unfold` (§12) (not confirmed) |
 
@@ -406,6 +407,7 @@ AI code block `.riddled-code`: `background:var(--code); box-shadow:0 0 0 1px var
 | Reply "…" | faint "…" at the right end of the first line on hover (measured ≈, sheet-05) |
 | User reply to inline | user text in sans at body size, then AI answer with a new dot; a "Write back…" field and Resolve/Dismiss appear under it when opened (sheet-08 tile 9, measured ≈) |
 | Spacer | `.riddle-spacer{pointer-events:none}` (vertical space reserved for inline content) | CSS l.3684-3686 |
+| Right edge | frame inline-sketch-and-selection: the reply's widest line ends at x 1129 and its sketch's stepper at 1132.6, 18px inside the column's right edge (no CSS rule found). Notebook reserves the 18px for the sketch only (§16.1); the words keep the full width, since Linux sets them ≈3% wider and 18px less would add a line | measured |
 
 ## 14. Marks-only "?" and narrow-screen marks
 
@@ -456,7 +458,7 @@ All values measured ≈ (frames inline-sketch-and-selection, sheet-06 tile 9, sh
 | Node labels | voice 16-17 `--ink`; secondary voice 16 `--graphite`; notes sans 11-12 `--faint`/`--graphite` | HTML |
 | Lines | `stroke:var(--rule)` or `--graphite`, `stroke-width:1.2`, round caps; arrow markers `M1 1L9 5L1 9` stroke 1.5 graphite, 6×6 | HTML |
 | Highlight | `rect rx=6 fill:var(--riddle-wash)` | HTML |
-| Measured layout | the drawing is centred under the inline reply (title centre ≈ column centre); grid 256px wide with 1px `--rule` cell lines and a 1px `--rule` outer box | measured ≈ |
+| Measured layout | the drawing is centred under the inline reply, in a box that keeps **18px clear on its right** (frame inline-sketch-and-selection, viewport px: title and subtitle 682, grid 694-951, captions 695, the step line 695 on the grid's edge, stepper ends 1132.6); grid 256px wide with 1px `--rule` cell lines and a 1px `--rule` outer box. Notebook: `.nb-inline .nb-sketch { margin-right: 18px }` at ≥768px (the reply's words keep the full width) and the step line indented to the drawing's leftmost item; ours 682, 682, 695-951, 696, 696, 1132 | measured |
 
 ### 16.2 Steps
 

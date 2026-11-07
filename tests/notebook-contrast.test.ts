@@ -82,11 +82,20 @@ describe("notebook contrast", () => {
 	});
 
 	const AI_INKS = ["riddle-ink", "text-blue", "text-green", "text-red", "text-purple", "text-brown", "text-orange"];
-	const faded = (theme: keyof typeof THEMES): number => {
-		const selector = { light: '.nb-root[data-nb-theme="light"]', dark: '.nb-root[data-nb-theme="dark"]', "system dark": '.nb-root[data-nb-theme="system"]' }[theme];
-		const value = /--nb-faded:\s*([\d.]+)/.exec(block(selector))?.[1];
-		assert.ok(value, `${theme}: --nb-faded missing`);
+	const SELECTORS = { light: '.nb-root[data-nb-theme="light"]', dark: '.nb-root[data-nb-theme="dark"]', "system dark": '.nb-root[data-nb-theme="system"]' } as const;
+	/** The ink setting's name, and the colour token it maps --riddle to (§1.2). */
+	const INK_SETTINGS = { ink: "riddle-ink", blue: "text-blue", green: "text-green", red: "text-red", purple: "text-purple", brown: "text-brown", orange: "text-orange" } as const;
+	const num = (theme: keyof typeof THEMES, name: string): number => {
+		const value = new RegExp(`--${name}:\\s*([\\d.]+);`).exec(block(SELECTORS[theme]))?.[1];
+		assert.ok(value, `${theme}: --${name} missing`);
 		return Number(value);
+	};
+	const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+	const hexOf = (c: number[]) => `#${c.map((v) => Math.round(v).toString(16).padStart(2, "0")).join("")}`;
+	/** `ink` at `alpha` over `ground`, as the browser composites an element's opacity. */
+	const over = (ink: string, ground: string, alpha: number) => {
+		const a = rgb(ink), g = rgb(ground);
+		return hexOf(a.map((v, i) => v * alpha + (g[i] ?? 0) * (1 - alpha)));
 	};
 
 	for (const theme of Object.keys(THEMES) as (keyof typeof THEMES)[]) {
@@ -103,13 +112,58 @@ describe("notebook contrast", () => {
 		});
 	}
 
-	it("the other notes fade to Riddled's .38 while a thread is open (scope: others fade)", () => {
-		for (const theme of ["light", "dark", "system dark"] as const) assert.equal(faded(theme), 0.38);
-		assert.match(css, /\[data-faded="true"\] \{ opacity: var\(--nb-faded\); \}/);
+	for (const theme of Object.keys(THEMES) as (keyof typeof THEMES)[]) {
+		const t = THEMES[theme];
+		for (const [setting, token] of Object.entries(INK_SETTINGS)) {
+			it(`${theme}, ${setting} ink: faded words reach 4.5:1 on paper at --nb-faded-${setting}, and one step lower does not`, () => {
+				const alpha = num(theme, `nb-faded-${setting}`), ink = t[token]!, paper = t.paper!;
+				assert.ok(alpha > 0 && alpha < 1, `${theme}: --nb-faded-${setting} ${alpha} does not fade`);
+				const ratio = contrast(over(ink, paper, alpha), paper);
+				assert.ok(ratio >= 4.5, `${theme}: --${token} ${ink} at ${alpha} on --paper is ${ratio.toFixed(2)}:1`);
+				const lower = Math.round((alpha - 0.01) * 100) / 100;
+				const below = contrast(over(ink, paper, lower), paper);
+				assert.ok(below < 4.5, `${theme}: --nb-faded-${setting} could be ${lower} (${below.toFixed(2)}:1)`);
+			});
+		}
+		it(`${theme}: the default ink fades visibly; marks fade to Riddled's .38`, () => {
+			assert.match(block(SELECTORS[theme]), /--nb-faded:\s*var\(--nb-faded-ink\);/);
+			assert.ok(num(theme, "nb-faded-ink") <= 0.7, `${theme}: default ink fade ${num(theme, "nb-faded-ink")}`);
+			assert.equal(num(theme, "nb-faded-mark"), 0.38);
+		});
+		it(`${theme}: the "{n} replies" line in a faded note stays at full strength and reaches 4.5:1`, () => {
+			// The count is not inside the faded words, so it composites at opacity 1.
+			assert.doesNotMatch(css, /\[data-faded="true"\][^{]*\.nb-note-(meta|count)/);
+			const ratio = contrast(over(t.faint!, t.paper!, 1), t.paper!);
+			assert.ok(ratio >= 4.5, `${theme}: --faint on --paper in a faded note is ${ratio.toFixed(2)}:1`);
+		});
+	}
+
+	it("system dark repeats the dark fades", () => {
+		for (const name of [...Object.keys(INK_SETTINGS).map((s) => `nb-faded-${s}`), "nb-faded-mark"]) assert.equal(num("system dark", name), num("dark", name), name);
+	});
+
+	it("each ink setting picks its own fade", () => {
+		for (const [setting, token] of Object.entries(INK_SETTINGS)) {
+			assert.ok(css.includes(`.nb-root[data-nb-ink="${setting}"] { --riddle: var(--${token}); --nb-faded: var(--nb-faded-${setting}); }`), setting);
+		}
+	});
+
+	it("faded words take --nb-faded, the dot, rail and tether --nb-faded-mark; the note itself is not dimmed", () => {
+		assert.match(css, /\[data-faded="true"\]:not\(:focus-within\) :is\(\.nb-note-text, \.nb-inline-text, \.nb-sketch\) \{ opacity: var\(--nb-faded\); \}/);
+		assert.match(css, /\[data-faded="true"\]:not\(:focus-within\) > :is\(\.nb-ink-dot, \.nb-thread-rail\) \{ filter: opacity\(var\(--nb-faded-mark\)\); \}/);
+		assert.match(css, /\.nb-tether > g\[data-faded="true"\] \{ opacity: var\(--nb-faded-mark\); \}/);
+		assert.doesNotMatch(css, /\)\[data-faded="true"\] \{ opacity/);
 	});
 
 	it("a faded note reads at full strength once the keyboard reaches it", () => {
-		assert.match(css, /\[data-faded="true"\]:focus-within \{ opacity: 1; \}/);
+		// Every faded rule excludes :focus-within, so focus lifts the words and the marks.
+		let checked = 0;
+		for (const [, rule] of css.matchAll(/([^\n{}]*\[data-faded="true"\][^{]*)\{[^}]*(?:opacity)/g)) {
+			if (rule!.includes(".nb-tether") || rule!.includes(":not([data-faded")) continue;
+			assert.match(rule!, /:not\(:focus-within\)/, rule);
+			checked++;
+		}
+		assert.ok(checked >= 2, `only ${checked} faded rules found`);
 	});
 
 	it("touch: taps act at once with a paper-toned tint; the running cost keeps fixed-width digits", () => {

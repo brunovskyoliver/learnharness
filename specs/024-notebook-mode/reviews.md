@@ -85,7 +85,19 @@ Findings:
 
 - **[P1] AI math had no accessible text.** `ink-text.tsx` rendered `$…$` / `$$…$$` with KaTeX `output: "html"`; with no MathML a screen reader reads the HTML's glyph spans. Fixed: `output: "htmlAndMathml"` (katex.min.css, loaded by the app layout, hides the MathML visually), as Study's rehype-katex does; render-notebook-reading asserts the `<math>` with its TeX annotation.
 - **[P2] A faded note reached by the keyboard stayed at .38.** While a thread is open the other notes fade (DESIGN.md, frame); the pointer un-fades the note it is on, the keyboard did not, so a focused note read at ≈2.2:1. Fixed: `[data-faded="true"]:focus-within { opacity: 1 }`; notebook-contrast asserts it.
-- **[P3, resolved under the owner's contrast ruling (2026-11-07, "Raise to pass")] Faded notes at rest were ≈2.2:1 light / 3.1:1 dark** (`--riddle` at .38; light orange 1.63:1). Raised to the smallest opacity at which every AI ink blended over paper reaches 4.5:1: `--nb-faded` .97 light (worst orange 4.55:1) / .82 dark (worst red 4.53:1). Light orange `--text-orange` itself was 4.14:1 at full strength, so it moved along lightness to `#a9580e` (4.79 paper / 4.50 shelf). DESIGN.md, visual-reference §1.1 and §8.1 record the deviation; tests/notebook-contrast.test.ts asserts every ink at full strength and faded, and that one step lower fails. Reverted by the coordinating agent 2026-11-07: .97/.82 made faded notes look unfaded, which removes the scope item "others fade"; the owner's contrast ruling covered faint text, gray ink, the focus ring and the menu row, not this deliberate fade. Back to Riddled's .38; a faded note returns to full strength under the pointer or the keyboard, so it is never read faded. Listed for the owner as a WCAG 1.4.3 exception he may overrule. Light orange stays #a9580e. Earlier note: the faint "{n} replies" line inside a faded note is 4.52:1 light but 3.48:1 dark at .82 (faint text reaches 4.5:1 only near full opacity); the ruling's brief covered the AI ink, so this is listed, not changed.
+- **[P3, resolved under the owner's contrast ruling (2026-11-07, "Raise to pass")] Faded notes at rest were ≈2.2:1 light / 3.1:1 dark** (`--riddle` at .38 on the whole note; light orange 1.63:1). History: first raised to one opacity for every ink (.97 / .82), which passed but made faded notes look unfaded (scope item "others fade"); reverted to .38. **Resolved 2026-11-07 (fade kept, contrast passes):** the fade is now per AI ink and theme. A faded note's words take `--nb-faded`, which `data-nb-ink` sets to that ink's `--nb-faded-<ink>`: the smallest two-decimal opacity at which that ink blended over `--paper` reaches 4.5:1. The dot, tether and rail (non-text) fade to Riddled's .38 (`--nb-faded-mark`). The faint "{n} replies" and detached lines stay at full strength inside the faded note (`--faint` 4.80:1 light / 4.53:1 dark on paper). The note lifts to full strength under the pointer or on focus. Light orange stays `#a9580e`.
+
+  | AI ink | light `--nb-faded` (ratio; one step lower) | dark `--nb-faded` (ratio; one step lower) |
+  |---|---|---|
+  | ink | .65 (4.61; .64 4.43) | .51 (4.61; .50 4.48) |
+  | blue | .91 (4.52; .90 4.45) | .72 (4.56; .71 4.49) |
+  | green | .95 (4.55; .94 4.42) | .68 (4.59; .67 4.47) |
+  | red | .89 (4.53; .88 4.46) | .82 (4.53; .81 4.45) |
+  | purple | .89 (4.60; .88 4.4996) | .74 (4.54; .73 4.46) |
+  | brown | .91 (4.51; .90 4.41) | .78 (4.57; .77 4.45) |
+  | orange | .97 (4.55; .96 4.49) | .72 (4.55; .71 4.47) |
+
+  tests/notebook-contrast.test.ts asserts every ink × theme (light, dark, system dark): faded words ≥4.5:1, one step lower <4.5:1, marks at .38, the reply count at full strength ≥4.5:1, and that focus lifts every faded rule; threads.spec checks in the browser that the words fade to the ink's token (default ink ≤ .7), the dot to .38 and the count stays at 1. DESIGN.md and visual-reference §1.1 / §8.1 record it.
 - **[P3, kept by design, approved 2026-11-07] Detector: 8 × bounce easing**, the same eight as the first review (Riddled's curves, visual-reference §10.1, §10.4, §16.3, §21).
 - Checked and passing: the hovered note's spine-only tether is `aria-hidden` decoration; removing the clamp leaves the collapsed note one button whose accessible name is the whole question; the open thread's new 8px bottom space sits inside its focus ring; reduced motion still draws tethers at once.
 
@@ -117,7 +129,7 @@ placeholders without "…", sentence case, no text-wrap balance on the title →
 | No `touch-action: manipulation`, default tap highlight | web-design-guidelines | Fixed (notebook.css) + test |
 | Running cost without tabular digits | web-design-guidelines | Fixed (notebook.css) + test |
 | Wordmark name translatable | web-design-guidelines | Fixed (chrome.tsx) + test |
-| Faded notes ≈2.2:1 at rest | impeccable | Kept at Riddled's .38 (scope "others fade"); full strength under pointer/focus; light orange `#a9580e`; listed for the owner |
+| Faded notes ≈2.2:1 at rest | impeccable | Resolved under the owner's ruling: per-ink fade (words ≥4.5:1, ink .65 / .51), marks at Riddled's .38, reply count at full strength; full strength under pointer/focus; light orange `#a9580e` (+ tests) |
 | Bounce easings; placeholders, sentence case, title balance; theme-color | both | Kept by design, approved by owner 2026-11-07 |
 
-No open findings remain. Every finding is fixed or resolved under the owner's rulings, except the items kept by design and approved above. The faded-notes fade was resolved under the contrast ruling ("Raise to pass") on 2026-11-07 with the frame column offset (5.5px, owner's "copy exact geometry").
+No open findings remain. Every finding is fixed or resolved under the owner's rulings, except the items kept by design and approved above. The faded notes were resolved under the contrast ruling ("Raise to pass") on 2026-11-07 with a per-ink fade that keeps the fade visible; the frame column offset (5.5px) and the inline sketch's 18px right reserve follow the owner's goal "copy exact geometry".

@@ -96,11 +96,22 @@ test.describe("Notebook: margin threads", () => {
 		// The underline grows under the focused field.
 		await expect.poll(() => open.locator(".nb-reply-line").evaluate((el) => getComputedStyle(el, "::after").opacity)).toBe("1");
 
-		// The others fade to Riddled's .38 (--nb-faded).
-		const faded = await page.locator(".nb-root").evaluate((el) => Number(getComputedStyle(el).getPropertyValue("--nb-faded")));
-		expect(faded).toBeCloseTo(0.38, 2);
+		// The others fade: the words to the ink's --nb-faded (4.5:1 on paper, still visibly faded),
+		// the dot to Riddled's .38 (--nb-faded-mark); the "{n} replies" line keeps full strength.
+		const root = page.locator(".nb-root");
+		const ink = await root.getAttribute("data-nb-ink");
+		const faded = await root.evaluate((el) => Number(getComputedStyle(el).getPropertyValue("--nb-faded")));
+		const inkFade = await root.evaluate((el, name) => Number(getComputedStyle(el).getPropertyValue(`--nb-faded-${name}`)), ink ?? "ink");
+		expect(faded).toBeCloseTo(inkFade, 2);
+		expect(faded).toBeLessThan(1);
+		if ((ink ?? "ink") === "ink") expect(faded).toBeLessThanOrEqual(0.7);
 		for (const other of ["thr_b", "thr_c", "thr_d"]) {
-			await expect.poll(() => note(page, other).evaluate((el) => Number(getComputedStyle(el).opacity))).toBeCloseTo(faded, 2);
+			await expect.poll(() => note(page, other).locator(".nb-note-text").evaluate((el) => Number(getComputedStyle(el).opacity))).toBeCloseTo(faded, 2);
+			expect(await note(page, other).evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
+			await expect.poll(() => note(page, other).locator(".nb-note-dot").evaluate((el) => getComputedStyle(el).filter)).toBe("opacity(0.38)");
+			for (const count of await note(page, other).getByTestId("nb-reply-count").all()) {
+				expect(await count.evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
+			}
 		}
 		await expect(page.locator(".nb-anchor[data-active='true']")).toHaveText(Q.a);
 		expect(await page.locator(".nb-anchor[data-active='true']").evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
@@ -118,7 +129,7 @@ test.describe("Notebook: margin threads", () => {
 		await expect(note(page, "thr_a")).toHaveAttribute("data-state", "collapsed");
 		await expect(page.getByTestId("nb-editor")).toBeFocused();
 		await expect(page.locator(".nb-anchor[data-active='true']")).toHaveCount(0);
-		await expect.poll(() => note(page, "thr_b").evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
+		await expect.poll(() => note(page, "thr_b").locator(".nb-note-text").evaluate((el) => getComputedStyle(el).opacity)).toBe("1");
 
 		// A click outside closes it too.
 		await opener(page, "thr_c").click();

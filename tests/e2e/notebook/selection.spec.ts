@@ -170,6 +170,15 @@ test.describe("Notebook: the selection menu and sketches", () => {
 		await expect(count).toHaveText("2/4", { timeout: 5_000 });
 		await expect(count).toHaveText("4/4", { timeout: 10_000 });
 		await expect(sketch.getByTestId("nb-sketch-note")).toHaveText("Above + left = this cell.");
+		// Frame inline-sketch-and-selection: the drawing keeps 18px clear of the reply's right edge
+		// (the stepper ends 18px in), and the step's line starts on the grid's edge.
+		const reply = page.getByTestId("nb-inline-reply");
+		const replyRight = await reply.evaluate((el) => el.getBoundingClientRect().right - parseFloat(getComputedStyle(el).paddingRight));
+		const stepperRight = await sketch.locator(".nb-stepper").evaluate((el) => el.getBoundingClientRect().right);
+		expect(replyRight - stepperRight).toBeCloseTo(18, 0);
+		const noteLeft = await sketch.getByTestId("nb-sketch-note").evaluate((el) => el.getBoundingClientRect().left);
+		const gridLeft = await sketch.locator("svg [data-kind='grid'] path").first().evaluate((el) => el.getBoundingClientRect().left);
+		expect(Math.abs(noteLeft - gridLeft)).toBeLessThan(2);
 		const hidden = await sketch.locator("svg [data-step]").evaluateAll((gs) => gs.map((g) => (g as SVGGElement).style.opacity));
 		expect(hidden).toEqual(["1", "1", "1", "1"]);
 
