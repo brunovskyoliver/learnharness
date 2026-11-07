@@ -83,7 +83,7 @@ Format: `- [ ] T### [P?] [US?] description (paths)`. All Notebook CSS values com
 - [X] T044 Links panel in Notebook styling (reuse the Links panel data); Make flashcards from selection and footer through feature 021's flow
 - [X] T045 Accessibility pass: focus order, names, live regions, Escape order, focus trap/return, 44px coarse targets; Playwright `a11y.spec.ts` keyboard-only path through every scope item
 - [X] T046 `scripts/notebook-compare.mjs` side-by-side screenshots vs reference frames; evidence to `~/agent-runs/2026-11-06-notebook-mode/`; list differences for owner approval
-- [ ] T047 Real-model pass per quickstart in both themes at 1440 and 390; record in progress.md. **Skipped by the owner (2026-11-07, "Skip for now"); not done.** Earlier block: the Codex CLI token cannot drive the app's ChatGPT connection (progress.md Decisions)
+- [X] T047 Real-model pass per quickstart in both themes at 1440 and 390; record in progress.md. Done 2026-11-07 with the verification-only engine `LH_NOTEBOOK_ENGINE=codex-verify` (research R13; pi-ai openai-codex, gpt-5.6-sol). Findings fixed in c8595e5; evidence ~/agent-runs/2026-11-06-notebook-mode/real-model/
 - [X] T048 DESIGN.md "Notebook" section (overrides Study ink inside the mode), PRODUCT.md paragraph, ROADMAP entry and dependency row (Playwright adopted for tests)
 - [X] T049 impeccable and web-design-guidelines reviews; fix findings
 - [X] T050 Full gate: `npm test`, `npm run test:e2e`, lint, typecheck, build; startup JS measured vs baseline; progress.md Report
