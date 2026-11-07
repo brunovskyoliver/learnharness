@@ -55,6 +55,7 @@ export * from "./documents.ts";
 export * from "./cards.ts";
 export { abortCardRun } from "./card-generation.ts";
 export * from "./notebook-api.ts";
+export { notebookExportResponse } from "./notebook-export.ts";
 export { abortNotebookRun } from "./notebook.ts";
 export { resolveSteerReferences } from "./library-references.ts";
 export { tokenize } from "../agent/tokenizer.ts";

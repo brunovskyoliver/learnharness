@@ -81,7 +81,7 @@ function caretPos(view: EditorView): number {
 const isNoteKey = (event: KeyboardEvent, mac: boolean) =>
 	(event.key === "ArrowDown" || event.key === "ArrowUp") && event.altKey && !event.shiftKey && (mac ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey);
 
-export function NoteThinking({ bridge, column, pageId, companion, reload, mode, pace, layout, readOnly }: {
+export function NoteThinking({ bridge, column, pageId, companion, reload, mode, pace, layout, readOnly, plain = false }: {
 	bridge: NoteBridge;
 	column: HTMLElement | null;
 	pageId: string;
@@ -91,6 +91,8 @@ export function NoteThinking({ bridge, column, pageId, companion, reload, mode, 
 	pace: NotebookPace;
 	layout: NotebookLayout;
 	readOnly: boolean;
+	/** Just my words (US7): nothing the AI wrote shows, and no automatic read starts (nothing would be seen). */
+	plain?: boolean;
 }) {
 	const { announce, mac } = useNotebook();
 	const tick = useLayoutTick(bridge, column);
@@ -104,13 +106,15 @@ export function NoteThinking({ bridge, column, pageId, companion, reload, mode, 
 		setNoRoom(widths.left === null && widths.right === null);
 	}, [column, tick, width]);
 	const shownLayout: NotebookLayout = noRoom ? "marks" : effectiveLayout(layout, width);
+	const plainRef = useRef(plain);
+	plainRef.current = plain;
 	const columnRef = useRef(column);
 	columnRef.current = column;
 
 	const { live, fresh: freshRead } = useReading({
 		bridge,
 		pageId,
-		enabled: mode === "thinks" && !readOnly && companion !== null,
+		enabled: mode === "thinks" && !readOnly && !plain && companion !== null,
 		pace,
 		seenHash: companion?.readCursor?.textHash,
 		holdFor: (quote) => {
@@ -177,6 +181,8 @@ export function NoteThinking({ bridge, column, pageId, companion, reload, mode, 
 	useEffect(() => {
 		let timer = 0;
 		const resolve = () => {
+			// Just my words: no underline, wash, "?" or spacer in his text.
+			if (plain) { bridge.setDecor({ anchors: [], marks: [], asking: null }); return; }
 			const text = bridge.text();
 			if (!text) return;
 			const { threads: shown, leaving: gone, openId: open, layout: now, fresh: wet, pendingRuns: pending } = threadsRef.current;
@@ -211,7 +217,9 @@ export function NoteThinking({ bridge, column, pageId, companion, reload, mode, 
 			timer = window.setTimeout(resolve, RESOLVE_DELAY_MS);
 		});
 		return () => { off(); window.clearTimeout(timer); };
-	}, [bridge, threads, leaving, openId, shownLayout, fresh, pendingRuns]);
+	}, [bridge, threads, leaving, openId, shownLayout, fresh, pendingRuns, plain]);
+	// Turning Just my words on closes the open thread (its field would be hidden with it).
+	useEffect(() => { if (plain && apiRef.current.openId) apiRef.current.collapse(false); }, [plain]);
 	useEffect(() => () => bridge.setDecor({ anchors: [], marks: [], asking: null }), [bridge]);
 
 	// The "?" marks open their thread under the paragraph.
@@ -266,7 +274,7 @@ export function NoteThinking({ bridge, column, pageId, companion, reload, mode, 
 				apiRef.current.collapse(!active || active === document.body);
 				return;
 			}
-			if (!isNoteKey(event, mac) || !view || !active) return;
+			if (!isNoteKey(event, mac) || !view || !active || plainRef.current) return;
 			const list = entries();
 			const inThread = active.closest<HTMLElement>("[data-thread]");
 			const current = inThread && !active.classList.contains("nb-anchor") ? list.findIndex((e) => e.id === inThread.dataset.thread) : -1;
@@ -336,12 +344,16 @@ export function NoteThinking({ bridge, column, pageId, companion, reload, mode, 
 
 	return (
 		<ThreadsContext.Provider value={api}>
-			<div className="nb-thinking" data-layout={shownLayout} data-testid="nb-thinking">
+			<div className="nb-thinking" data-layout={shownLayout} data-testid="nb-thinking" data-plain={plain ? "" : undefined}>
 				{runs.map((run) => <RunFollower key={run.runId} runId={run.runId} follow={follow} />)}
 				{pendingRuns.filter((r) => !r.threadId).map((run) => <PassageFollower key={run.key} runId={run.runId} onEnd={(outcome) => passageRef.current.settle(run.key, outcome)} />)}
-				{(live?.quote || thinking) && <ReadingMarks lines={lines} leaving={live?.leaving ?? false} />}
-				<Margin bridge={bridge} column={column} threads={margin} layout={shownLayout} fresh={fresh} tick={tick} />
-				<InlineReplies bridge={bridge} column={column} threads={[...detachedInline, ...inline]} sketching={pendingRuns.filter((r) => r.kind === "visualize").map((r) => r.key)} anchored={anchored} fresh={fresh} tick={tick} />
+				{!plain && (
+					<>
+						{(live?.quote || thinking) && <ReadingMarks lines={lines} leaving={live?.leaving ?? false} />}
+						<Margin bridge={bridge} column={column} threads={margin} layout={shownLayout} fresh={fresh} tick={tick} />
+						<InlineReplies bridge={bridge} column={column} threads={[...detachedInline, ...inline]} sketching={pendingRuns.filter((r) => r.kind === "visualize").map((r) => r.key)} anchored={anchored} fresh={fresh} tick={tick} />
+					</>
+				)}
 			</div>
 		</ThreadsContext.Provider>
 	);

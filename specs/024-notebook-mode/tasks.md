@@ -67,9 +67,9 @@ Format: `- [ ] T### [P?] [US?] description (paths)`. All Notebook CSS values com
 
 ## Phase 9: US7 Just my words and export (P2)
 
-- [ ] T037 [US7] Just my words toggle (footer + Mod+Shift+H), hides every AI layer; Copy this note (Markdown, respects toggle)
-- [ ] T038 [US7] `src/core/notebook-export.ts` (document model, Markdown), `src/core/zip.ts`, `src/core/docx.ts`, `src/server/notebook-export.ts` (headless `renderPdf` added to `src/agent/subagents/headless.ts`, resvg PNG), route `app/api/notebook/[pageId]/export/route.ts`, `export-dialog.tsx`
-- [ ] T039 [US7] Tests: unit for Markdown/docx/zip (unzip and parse XML), PDF smoke when Chromium present; Playwright `export.spec.ts` (downloads for 3 formats × toggle)
+- [X] T037 [US7] Just my words toggle (footer + Mod+Shift+H), hides every AI layer; Copy this note (Markdown, respects toggle)
+- [X] T038 [US7] `src/core/notebook-export.ts` (document model, Markdown), `src/core/zip.ts`, `src/core/docx.ts`, `src/server/notebook-export.ts` (headless `renderPdf` added to `src/agent/subagents/headless.ts`, resvg PNG), route `app/api/notebook/[pageId]/export/route.ts`, `export-dialog.tsx`
+- [X] T039 [US7] Tests: unit for Markdown/docx/zip (unzip and parse XML), PDF smoke when Chromium present; Playwright `export.spec.ts` (downloads for 3 formats × toggle)
 
 ## Phase 10: US8 Sidebar and settings complete (P2)
 

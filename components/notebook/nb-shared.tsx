@@ -59,7 +59,18 @@ export interface NotebookShared {
 	setReading: (status: ReadingStatus) => void;
 	/** Says something once to screen readers (polite live region). */
 	announce: (text: string) => void;
+	/** Just my words (US7): every AI layer hidden, reads paused. Per browser. */
+	plain: boolean;
+	togglePlain: () => void;
+	/** Copy this note (Mod+Shift+C): the open note's Markdown, with the notes unless Just my words is on. */
+	copyNote: () => void;
+	/** Export this note (Mod+Shift+E): the Export dialog. */
+	openExport: () => void;
+	/** The open note hands its commands here (NoteView). */
+	noteCommands: { current: NoteCommands | null };
 }
+
+export interface NoteCommands { copy: () => void; openExport: () => void }
 
 const noop = () => {};
 
@@ -85,6 +96,11 @@ export const NotebookContext = createContext<NotebookShared>({
 	reading: null,
 	setReading: noop,
 	announce: noop,
+	plain: false,
+	togglePlain: noop,
+	copyNote: noop,
+	openExport: noop,
+	noteCommands: { current: null },
 });
 
 export const useNotebook = () => useContext(NotebookContext);

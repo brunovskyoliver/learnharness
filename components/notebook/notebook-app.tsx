@@ -13,7 +13,8 @@ import { writeSettingsKey } from "@/components/interface-switch";
 import type { SaveStatus } from "@/components/library/page-draft";
 import type { NotebookStartMode } from "@/src/core";
 import { CornerHint } from "./corner-hint";
-import { isMod, NotebookContext, useIsMac, type NotebookPreferences, type NotebookReviewerView, type NotebookShared, type ReadingStatus, type SidebarOpen } from "./nb-shared";
+import { readJustMyWords, writeJustMyWords } from "./nb-actions";
+import { isMod, NotebookContext, useIsMac, type NoteCommands, type NotebookPreferences, type NotebookReviewerView, type NotebookShared, type ReadingStatus, type SidebarOpen } from "./nb-shared";
 import { MenuGlyph, Wordmark } from "./chrome";
 import { NoteView } from "./note-view";
 import { OverlaySidebar } from "./overlay-sidebar";
@@ -21,6 +22,10 @@ import { ReviewersDialog } from "./reviewers";
 import { useLibraryList } from "./use-notebook-data";
 
 export type { NotebookPreferences } from "./nb-shared";
+
+/** Just my words' confirmation (ui-contract "Overlay sidebar"); turning it off says the notes are back. */
+export const PLAIN_ON_TEXT = "Just your words. The notes are hidden, not gone.";
+export const PLAIN_OFF_TEXT = "The notes are back.";
 
 /** Hovering the left edge this long opens the sidebar (ui-contract.md). */
 const EDGE_HOVER_MS = 250;
@@ -95,13 +100,41 @@ export function NotebookApp({ note, fontClasses, preferences, startMode = "think
 	// A menu item opens it: the menu gives the focus back first, so closing returns it there.
 	const openReviewers = useCallback(() => { window.setTimeout(() => setReviewersOpen(true), 0); }, []);
 
+	// Just my words: read after mount (the server can't see this browser's choice).
+	const [plain, setPlain] = useState(false);
+	useEffect(() => { setPlain(readJustMyWords()); }, []);
+	const togglePlain = useCallback(() => {
+		setPlain((on) => {
+			const next = !on;
+			writeJustMyWords(next);
+			return next;
+		});
+	}, []);
+	const plainSeen = useRef<boolean | null>(null);
+	useEffect(() => {
+		// Say it when he changes it, not when a page loads with it on.
+		if (plainSeen.current !== null && plainSeen.current !== plain) announce(plain ? PLAIN_ON_TEXT : PLAIN_OFF_TEXT);
+		plainSeen.current = plain;
+	}, [plain, announce]);
+	const noteCommands = useRef<NoteCommands | null>(null);
+	const copyNote = useCallback(() => noteCommands.current?.copy(), []);
+	const openExport = useCallback(() => noteCommands.current?.openExport(), []);
+
 	const openSidebar = useCallback((via: "click" | "hover" | "key", search = false) => setSidebar({ via, search }), []);
 	const closeSidebar = useCallback(() => setSidebar(null), []);
 
 	// Mod+\ toggles the sidebar and Mod+K opens it on the search, from anywhere in Notebook.
 	useEffect(() => {
 		const onKey = (event: KeyboardEvent) => {
-			if (event.defaultPrevented || event.isComposing || !isMod(event, mac) || event.shiftKey) return;
+			if (event.defaultPrevented || event.isComposing || !isMod(event, mac)) return;
+			if (event.shiftKey) {
+				// Mod+Shift+H Just my words, Mod+Shift+C Copy this note, Mod+Shift+E Export (ui-contract "Overlay sidebar").
+				const key = event.code === "KeyH" ? "h" : event.code === "KeyC" ? "c" : event.code === "KeyE" ? "e" : event.key.toLowerCase();
+				if (key === "h") { event.preventDefault(); togglePlain(); }
+				else if (key === "c") { event.preventDefault(); copyNote(); }
+				else if (key === "e") { event.preventDefault(); openExport(); }
+				return;
+			}
 			if (event.key === "\\") {
 				event.preventDefault();
 				setSidebar((open) => (open ? null : { via: "key", search: false }));
@@ -112,7 +145,7 @@ export function NotebookApp({ note, fontClasses, preferences, startMode = "think
 		};
 		window.addEventListener("keydown", onKey);
 		return () => window.removeEventListener("keydown", onKey);
-	}, [mac]);
+	}, [mac, togglePlain, copyNote, openExport]);
 
 	useEffect(() => () => { if (edgeTimer.current) window.clearTimeout(edgeTimer.current); }, []);
 	// A real pointer movement on the strip starts the wait: the browser's synthetic "over" at (0, 0)
@@ -133,8 +166,8 @@ export function NotebookApp({ note, fontClasses, preferences, startMode = "think
 	const shared = useMemo<NotebookShared>(() => ({
 		root, mac, noteId: note.id, startMode, reviewers: reviewerList, saveReviewers, openReviewers, account, preferences: prefs, updatePreferences,
 		sidebar, openSidebar, closeSidebar, saveStatus, setSaveStatus, library, libraryFailed, refreshLibrary,
-		reading, setReading, announce,
-	}), [root, mac, note.id, startMode, reviewerList, saveReviewers, openReviewers, account, prefs, updatePreferences, sidebar, openSidebar, closeSidebar, saveStatus, library, libraryFailed, refreshLibrary, reading, announce]);
+		reading, setReading, announce, plain, togglePlain, copyNote, openExport, noteCommands,
+	}), [root, mac, note.id, startMode, reviewerList, saveReviewers, openReviewers, account, prefs, updatePreferences, sidebar, openSidebar, closeSidebar, saveStatus, library, libraryFailed, refreshLibrary, reading, announce, plain, togglePlain, copyNote, openExport]);
 
 	return (
 		<NotebookContext.Provider value={shared}>
@@ -147,6 +180,7 @@ export function NotebookApp({ note, fontClasses, preferences, startMode = "think
 				data-nb-lettering={prefs.lettering}
 				data-nb-ink={prefs.ink}
 				data-note-id={note.id}
+				data-plain={plain ? "" : undefined}
 			>
 				<div className="nb-paper" aria-hidden="true" />
 				<header className="nb-header">

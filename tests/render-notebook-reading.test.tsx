@@ -16,6 +16,7 @@ const base = (reading: ReadingStatus, mac = true): NotebookShared => ({
 	preferences: { appearance: "light", textSize: "default", lettering: "serif", ink: "ink", pace: "regular", layout: "both" },
 	updatePreferences: () => {}, sidebar: null, openSidebar: () => {}, closeSidebar: () => {}, saveStatus: null, setSaveStatus: () => {},
 	library: null, libraryFailed: false, refreshLibrary: async () => {}, reading, setReading: () => {}, announce: () => {},
+	plain: false, togglePlain: () => {}, copyNote: () => {}, openExport: () => {}, noteCommands: { current: null },
 });
 const hint = (reading: ReadingStatus, mac = true) => renderToStaticMarkup(<NotebookContext.Provider value={base(reading, mac)}><CornerHint /></NotebookContext.Provider>);
 

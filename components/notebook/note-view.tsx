@@ -13,9 +13,10 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useSta
 import { isUnsent } from "@/components/library/page-draft";
 import { useNoteLinks } from "@/components/library/use-note-links";
 import { usePageDraft } from "@/components/library/use-page-draft";
-import { notebookHref, type NoteMode, type WikiResolution } from "@/src/core";
+import { copyNoteMarkdown, notebookHref, type NoteMode, type WikiResolution } from "@/src/core";
+import { ExportDialog } from "./export-dialog";
 import { InstructionLine, type InstructionHandle } from "./instruction-line";
-import { renameNote } from "./nb-actions";
+import { copyText, renameNote } from "./nb-actions";
 import { NoteChat } from "./note-chat";
 import { NoteBridge } from "./nb-plugins";
 import { isUntitledName, useNotebook } from "./nb-shared";
@@ -35,6 +36,9 @@ function BodyLoading() {
 }
 
 export interface TitleHandle { focusEnd: () => void }
+
+/** The note's text as he sees it, and a way to hand it to the server first (exports read the saved draft). */
+interface DraftHandle { text: () => string | null; save: () => Promise<void> }
 
 /** What the title field shows for a stored name: new notes show the placeholder. */
 export const titleText = (name: string): string => (isUntitledName(name) ? "" : name);
@@ -159,6 +163,25 @@ export function NoteView({ note }: { note: { id: string; name: string } }) {
 	const [chatOpen, setChatOpen] = useState(false);
 	const chatButton = useRef<HTMLButtonElement>(null);
 	const noteText = useCallback(() => bridge.text()?.text ?? "", [bridge]);
+	const draft = useRef<DraftHandle | null>(null);
+	const [exportOpen, setExportOpen] = useState(false);
+	const exportButton = useRef<HTMLButtonElement>(null);
+	const { noteCommands, announce, reviewers, plain } = nb;
+	const companionRef = useRef(companion);
+	companionRef.current = companion;
+	// Copy this note and Export this note, for the shortcuts and (Phase 10) the sidebar footer.
+	useEffect(() => {
+		noteCommands.current = {
+			copy: () => {
+				const text = draft.current?.text();
+				if (text === null || text === undefined) return;
+				const markdown = copyNoteMarkdown({ markdown: text, companion: companionRef.current, reviewers, includeAi: !plain });
+				void copyText(markdown).then((ok) => announce(ok ? "Copied." : "The note could not be copied. The browser refused."));
+			},
+			openExport: () => setExportOpen(true),
+		};
+		return () => { noteCommands.current = null; };
+	}, [noteCommands, announce, reviewers, plain]);
 	// The button comes back a render after the line hides: focus it once it is there.
 	const refocused = useRef(0);
 	useEffect(() => {
@@ -187,8 +210,9 @@ export function NoteView({ note }: { note: { id: string; name: string } }) {
 					onEditReviewers={nb.openReviewers}
 					onMode={(next: NoteMode) => void patch({ mode: next })}
 					onInstructions={() => instruction.current?.open()}
-					// TODO(024 Phase 9): open the Export dialog.
-					onExport={() => {}}
+					exportRef={exportButton}
+					exportOpen={exportOpen}
+					onExport={() => setExportOpen(true)}
 					onChat={() => setChatOpen(true)}
 				/>
 				{companion && (
@@ -214,7 +238,7 @@ export function NoteView({ note }: { note: { id: string; name: string } }) {
 					}}
 					onEnter={() => body.current?.focusStart()}
 				/>
-				{mounted ? <NoteBody id={note.id} name={name} mode={mode} handle={body} title={title} noteBridge={bridge} onDeleted={setDeleted} /> : <div className="nb-body"><BodyLoading /></div>}
+				{mounted ? <NoteBody id={note.id} name={name} mode={mode} handle={body} title={title} noteBridge={bridge} onDeleted={setDeleted} draft={draft} /> : <div className="nb-body"><BodyLoading /></div>}
 				{mounted && (
 					<NoteThinking
 						bridge={bridge}
@@ -226,6 +250,7 @@ export function NoteView({ note }: { note: { id: string; name: string } }) {
 						pace={nb.preferences.pace}
 						layout={nb.preferences.layout}
 						readOnly={deleted}
+						plain={plain}
 					/>
 				)}
 			</div>
@@ -239,12 +264,20 @@ export function NoteView({ note }: { note: { id: string; name: string } }) {
 				noteText={noteText}
 				returnFocus={chatButton}
 			/>
+			<ExportDialog
+				open={exportOpen}
+				onOpenChange={setExportOpen}
+				pageId={note.id}
+				noteName={name}
+				beforeExport={() => draft.current?.save() ?? Promise.resolve()}
+				returnFocus={exportButton}
+			/>
 		</main>
 	);
 }
 
 /** The page's text through the Library's draft controller, as Study's page pane holds it. */
-function NoteBody({ id, name, mode, handle, title, noteBridge, onDeleted }: {
+function NoteBody({ id, name, mode, handle, title, noteBridge, onDeleted, draft }: {
 	id: string;
 	name: string;
 	mode: NoteMode;
@@ -252,11 +285,26 @@ function NoteBody({ id, name, mode, handle, title, noteBridge, onDeleted }: {
 	title: RefObject<TitleHandle | null>;
 	noteBridge: NoteBridge;
 	onDeleted: (deleted: boolean) => void;
+	draft: RefObject<DraftHandle | null>;
 }) {
 	const nb = useNotebook();
 	const router = useRouter();
 	const { controller, state, loadFailed, retryLoad, flush } = usePageDraft(id);
 	flush.current = () => handle.current?.flush();
+	useEffect(() => {
+		draft.current = {
+			text: () => {
+				handle.current?.flush();
+				const now = controller.getState();
+				return now.loaded ? now.text : null;
+			},
+			save: async () => {
+				handle.current?.flush();
+				await controller.saveDraft();
+			},
+		};
+		return () => { draft.current = null; };
+	}, [draft, controller, handle]);
 	const { setSaveStatus } = nb;
 
 	useEffect(() => { setSaveStatus(state.loaded ? state.status : null); }, [state.loaded, state.status, setSaveStatus]);

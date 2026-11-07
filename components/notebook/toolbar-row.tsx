@@ -36,6 +36,9 @@ export interface ToolbarRowProps {
 	container: HTMLElement | null;
 	instructionsRef?: Ref<HTMLButtonElement>;
 	chatRef?: Ref<HTMLButtonElement>;
+	exportRef?: Ref<HTMLButtonElement>;
+	/** The Export dialog is open. */
+	exportOpen?: boolean;
 	/** The note chat is open. */
 	chatOpen?: boolean;
 	onReviewer: (id: string) => void;
@@ -56,7 +59,7 @@ function ReviewerDot() {
 	);
 }
 
-export function ToolbarRow({ reviewers, reviewerId, mode, hasInstruction, container, instructionsRef, chatRef, chatOpen = false, onReviewer, onEditReviewers, onMode, onInstructions, onExport, onChat }: ToolbarRowProps) {
+export function ToolbarRow({ reviewers, reviewerId, mode, hasInstruction, container, instructionsRef, chatRef, exportRef, exportOpen = false, chatOpen = false, onReviewer, onEditReviewers, onMode, onInstructions, onExport, onChat }: ToolbarRowProps) {
 	const reviewer = currentReviewer(reviewers, reviewerId);
 	return (
 		<div className="nb-toolbar" role="toolbar" aria-label="Note" data-testid="nb-toolbar">
@@ -122,7 +125,7 @@ export function ToolbarRow({ reviewers, reviewerId, mode, hasInstruction, contai
 				</DropdownMenu.Portal>
 			</DropdownMenu.Root>
 
-			<button type="button" className="nb-tool nb-tool-export" data-testid="nb-export" onClick={onExport}>
+			<button ref={exportRef} type="button" className="nb-tool nb-tool-export" data-testid="nb-export" aria-haspopup="dialog" aria-expanded={exportOpen} onClick={onExport}>
 				<ShareIcon className="nb-tool-icon" aria-hidden="true" />
 				<span>Export</span>
 			</button>

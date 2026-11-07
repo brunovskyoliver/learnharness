@@ -2159,3 +2159,130 @@
 	.nb-root .nb-chat { animation: none; }
 	.nb-root .nb-chat-starter, .nb-root .nb-chat-send { transition: none; }
 }
+
+/* ══ Phase 9 (US7): Just my words and export ════════════════════════════════ */
+
+/* 22.1: `[data-plain]` hides every AI layer. thinking.tsx also stops drawing them
+ * (no margin, tethers, blots, inline replies, sketches; no underline, wash, "?"
+ * or spacer in the text); these rules hold if anything is left over. */
+.nb-root[data-plain] :is(.nb-thinking, .nb-margin, .nb-tether, .nb-reading, .nb-reading-blot, .nb-inline, .nb-sketch, .nb-sketching, .nb-mark, .nb-ink-dot) { display: none !important; }
+.nb-root[data-plain] :is(.nb-anchor, .nb-asking) { background: none !important; box-shadow: none !important; text-decoration: none !important; border: 0 !important; }
+/* The selection menu keeps formatting; Think, Ask and Visualize wait until the notes are back. */
+.nb-root[data-plain] .nb-sel-actions { display: none; }
+.nb-root .nb-hint-plain { color: var(--faint); }
+
+/* 20: the export dialog, ≈504 × 325, radius 12, lifted. */
+.nb-root .nb-export {
+	position: relative;
+	width: min(504px, calc(100vw - 32px));
+	max-height: calc(100dvh - 32px);
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	padding: 24px 20px 20px;
+	border-radius: 12px;
+	background: var(--paper);
+	box-shadow: var(--lift);
+	color: var(--ink);
+	font-family: var(--nb-font-sans), ui-sans-serif, system-ui, sans-serif;
+	animation: 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both nb-menu-in;
+}
+.nb-root .nb-export:focus { outline: none; }
+.nb-root .nb-export-title { margin: 0 0 22px; color: var(--ink); font-size: 14.5px; font-weight: 500; line-height: 20px; }
+.nb-root .nb-export-formats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+
+/* 19: option cards: 1px rule ring; selected 1.5px ink ring, no fill, no check. */
+.nb-root .nb-option-card {
+	display: flex;
+	min-height: 100px;
+	flex-direction: column;
+	align-items: flex-start;
+	justify-content: flex-start;
+	gap: 4px;
+	padding: 14px;
+	border-radius: 10px;
+	background: none;
+	box-shadow: 0 0 0 1px var(--rule);
+	color: var(--ink);
+	text-align: left;
+	transition: box-shadow 0.15s;
+}
+.nb-root button.nb-option-card { cursor: pointer; }
+.nb-root button.nb-option-card:hover { box-shadow: 0 0 0 1px var(--faint); }
+.nb-root .nb-option-card[data-state="checked"] { box-shadow: 0 0 0 1.5px var(--ink); }
+.nb-root .nb-option-title { color: var(--ink); font-size: 13.5px; font-weight: 500; line-height: 18px; }
+.nb-root .nb-option-description { color: var(--graphite); font-size: 12px; line-height: 1.45; }
+
+.nb-root .nb-export-toggle {
+	min-height: 0;
+	margin-top: 16px;
+	flex-direction: row;
+	align-items: center;
+	gap: 16px;
+	padding: 12px 14px;
+}
+.nb-root .nb-export-toggle-text { display: flex; flex: 1 1 auto; min-width: 0; flex-direction: column; gap: 3px; cursor: pointer; }
+
+/* 19: the switch, ≈36 × 20; off = rule track, white knob; on = ink track, paper knob. */
+.nb-root .nb-switch {
+	position: relative;
+	flex: none;
+	width: 36px;
+	height: 20px;
+	border-radius: 999px;
+	background: var(--rule);
+	cursor: pointer;
+	transition: background-color 0.2s;
+}
+.nb-root .nb-switch[data-state="checked"] { background: var(--ink); }
+.nb-root .nb-switch-thumb {
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	display: block;
+	width: 16px;
+	height: 16px;
+	border-radius: 999px;
+	background: #fff;
+	box-shadow: 0 1px 2px #1d1c1a29;
+	transition: transform 0.2s cubic-bezier(0.3, 0.7, 0.2, 1), background-color 0.2s;
+}
+.nb-root .nb-switch-thumb[data-state="checked"] { transform: translateX(16px); background: var(--paper); box-shadow: none; }
+.nb-root[data-nb-theme="dark"] .nb-switch-thumb:not([data-state="checked"]) { background: var(--graphite); }
+@media (prefers-color-scheme: dark) {
+	.nb-root[data-nb-theme="system"] .nb-switch-thumb:not([data-state="checked"]) { background: var(--graphite); }
+}
+
+.nb-root .nb-export-problem { margin-top: 14px; color: var(--ink); font-size: 12.5px; line-height: 1.5; }
+.nb-root .nb-export-problem p { margin: 0; }
+.nb-root .nb-export-detail { margin-top: 4px !important; color: var(--graphite); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.nb-root .nb-export-actions { display: flex; align-items: center; justify-content: flex-end; gap: 22px; margin-top: 26px; }
+.nb-root .nb-export-cancel { padding: 6px 0; color: var(--faint); font-size: 12.5px; transition: color 0.15s; }
+.nb-root .nb-export-cancel:hover { color: var(--ink); }
+/* The landing's pill: rounded-full bg-ink text-paper, hover opacity .85. */
+.nb-root .nb-pill {
+	height: 32px;
+	padding: 0 16px;
+	border-radius: 999px;
+	background: var(--ink);
+	color: var(--paper);
+	font-size: 12.5px;
+	font-weight: 500;
+	white-space: nowrap;
+	transition: opacity 0.15s;
+}
+.nb-root .nb-pill:hover { opacity: 0.85; }
+.nb-root .nb-pill[aria-disabled="true"] { opacity: 0.6; cursor: progress; }
+
+@media (max-width: 479px) {
+	.nb-root .nb-export-formats { grid-template-columns: 1fr; }
+	.nb-root .nb-export-formats .nb-option-card { min-height: 0; }
+}
+@media (pointer: coarse) {
+	.nb-root :is(.nb-export-cancel, .nb-pill) { min-height: 44px; }
+	.nb-root .nb-switch::after { content: ""; position: absolute; inset: -12px -4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.nb-root .nb-export { animation: none; }
+	.nb-root :is(.nb-option-card, .nb-switch, .nb-switch-thumb, .nb-pill, .nb-export-cancel) { transition: none; }
+}

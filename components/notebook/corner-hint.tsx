@@ -96,6 +96,9 @@ export function CornerHint() {
 				<button type="button" className="nb-hint-button nb-hint-link" onClick={status.retry}>Try again</button>
 			</span>
 		);
+	} else if (nb.plain) {
+		// Just my words: say why the notes are gone, while they are.
+		body = <span className="nb-hint-plain" data-testid="nb-hint-plain">Just your words. The notes are hidden, not gone.</span>;
 	} else {
 		body = <span className="nb-hint-idle">{`${keyLabel("mod+k", nb.mac)} finds a note`}</span>;
 	}

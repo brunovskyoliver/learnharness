@@ -105,6 +105,7 @@ export * from "./keyboard.ts";
 export * from "./interface-mode.ts";
 export * from "./notebook.ts";
 export * from "./notebook-sketch.ts";
+export * from "./notebook-export.ts";
 // coverage.ts stays server-side: its fingerprints use node:crypto, which
 // pulled ~330 KB of crypto-browserify into every page (2026-10-27).
 export type { CoverageEntry, CoverageSlot } from "./coverage.ts";
