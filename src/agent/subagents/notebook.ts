@@ -47,7 +47,7 @@ Submit with submit_read.`;
 
 const THINK_TASK = `He selected the passage inside <passage> and asked you to think about it. Write one useful remark about it: a question, a gap, a counterexample or a connection. Use placement "margin" for a remark, "inline" when it answers a question the passage asks. Add a sketch only when a picture says it better. Submit with submit_remark.`;
 
-const VISUALIZE_TASK = `He selected the passage inside <passage> and asked you to visualize it. Draw a small stepped sketch that builds the idea in 2 to 6 steps, one caption per step. Use only the sketch primitives; coordinates are in the sketch's own box (w by h, origin top left), every item inside it, each item tagged with the 0-based step that reveals it. Optionally add one sentence as text. Submit with submit_sketch.`;
+const VISUALIZE_TASK = `He selected the passage inside <passage> and asked you to visualize it. Draw a small stepped sketch that builds the idea in 2 to 6 steps, one caption per step. Use only the sketch primitives; coordinates are in the sketch's own box (w by h, origin top left), every item inside it, each item tagged with the 0-based step that reveals it. Labels drawn in the sketch are plain text: write a formula there as plain symbols (3 + 3 = 6, a = g sin θ), never with dollar signs; captions and notes may use $math$. Optionally add one sentence as text. Submit with submit_sketch.`;
 
 const REPLY_TASK = "Continue the thread inside <thread>: answer his last message. Reply with the text only.";
 const CHAT_TASK = "He is asking about the whole note in a side chat. Answer his last message using the note, its threads and his instructions. Reply with the text only.";
@@ -134,10 +134,22 @@ export type ReadResult = { action: "silent" } | { action: "margin" | "inline"; q
 export type RemarkResult = { text: string; placement: "margin" | "inline"; sketch?: Sketch };
 export type VisualizeResult = { text?: string; sketch: Sketch };
 
+/** A drawn label can't render math: "$3+3=6$" in a text item becomes "3+3=6"
+ *  (real-model pass, T047). Captions and notes keep theirs; they render it. */
+export function plainSketchLabels(raw: unknown): unknown {
+	if (!raw || typeof raw !== "object" || !Array.isArray((raw as { items?: unknown }).items)) return raw;
+	const items = (raw as { items: unknown[] }).items.map((item) => {
+		if (!item || typeof item !== "object" || typeof (item as { text?: unknown }).text !== "string") return item;
+		const text = (item as { text: string }).text.replace(/\$\$?([^$]+?)\$\$?/g, "$1");
+		return { ...item, text };
+	});
+	return { ...raw, items };
+}
+
 /** A sketch that passed validation, or the problem for the model's retry. */
 function checkSketch(raw: unknown): { sketch?: Sketch; problem?: string } {
 	if (raw === undefined || raw === null) return {};
-	const result = validateSketch(raw);
+	const result = validateSketch(plainSketchLabels(raw));
 	return result.ok ? { sketch: result.sketch } : { problem: `The sketch is invalid: ${result.problem}. Fix it and submit again.` };
 }
 

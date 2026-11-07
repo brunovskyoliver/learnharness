@@ -501,6 +501,9 @@ export function exportSketchSvg(sketch: Sketch, scale = 1.12): { svg: string; wi
 const escapeHtml = (value: string): string => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const safeHref = (href: string): string | null => (/^(https?:|mailto:)/i.test(href.trim()) ? href.trim() : null);
 
+/** A caption or step note: the Markdown subset messages use, so its $math$ shows as math (real-model pass). */
+const captionHtml = (text: string): string => runsHtml(messageParagraphs(text).flat());
+
 function runsHtml(runs: readonly ExportRun[]): string {
 	return runs.map((run) => {
 		let html = escapeHtml(run.text).replace(/\n/g, "<br>");
@@ -522,7 +525,7 @@ function noteHtml(note: ExportNote, withQuote = false): string {
 		const speaker = message.speaker ? `<span class="speaker">${escapeHtml(message.speaker)}</span>` : "";
 		const paragraphs = message.runs.map((runs) => `<p>${runsHtml(runs)}</p>`).join("");
 		const sketch = message.sketch
-			? `<figure class="sketch">${exportSketchSvg(message.sketch).svg}<figcaption>${message.sketch.steps.map((s, i) => `<span>${i + 1}. ${escapeHtml(s.caption)}${s.note ? ` <em>${escapeHtml(s.note)}</em>` : ""}</span>`).join("")}</figcaption></figure>`
+			? `<figure class="sketch">${exportSketchSvg(message.sketch).svg}<figcaption>${message.sketch.steps.map((s, i) => `<span>${i + 1}. ${captionHtml(s.caption)}${s.note ? ` <em>${captionHtml(s.note)}</em>` : ""}</span>`).join("")}</figcaption></figure>`
 			: "";
 		return `<div class="msg ${message.author}">${speaker}${paragraphs}${sketch}</div>`;
 	}).join("");
@@ -581,7 +584,7 @@ a { color: inherit; }
 .sketch { margin: 6pt 0 4pt; break-inside: avoid; }
 .sketch svg { display: block; max-width: 100%; height: auto; }
 .sketch figcaption { font-family: 'Instrument Sans', Arial, sans-serif; font-size: 9pt; color: ${EXPORT_PALETTE.graphite}; font-weight: 400; }
-.sketch figcaption span { display: block; }
+.sketch figcaption > span { display: block; }
 .other { margin-top: 24pt; }
 `;
 

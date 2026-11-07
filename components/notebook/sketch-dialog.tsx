@@ -13,6 +13,7 @@ import type { RefObject } from "react";
 import type { Sketch as SketchData } from "@/src/core";
 import { useNotebook } from "./nb-shared";
 import { DrawingPicture, SketchHead, Stepper, type SketchPlayer } from "./sketch";
+import { InkText } from "./ink-text";
 
 export function SketchDialog({ open, onOpenChange, sketch, player, label, returnFocus }: {
 	open: boolean;
@@ -45,10 +46,10 @@ export function SketchDialog({ open, onOpenChange, sketch, player, label, return
 						<figure className="nb-sketch-figure nb-sketch-figure-large" aria-label={label}>
 							<SketchHead sketch={sketch} />
 							<DrawingPicture key={player.round} sketch={sketch} step={player.step} liveStart={false} large />
-							{current?.note && <p className="nb-sketch-note nb-voice">{current.note}</p>}
+							{current?.note && <p className="nb-sketch-note nb-voice"><InkText text={current.note} animate={false} /></p>}
 						</figure>
 						<div className="nb-sketch-row">
-							<p className="nb-sketch-caption nb-voice" aria-live="polite">{current?.caption}</p>
+							<p className="nb-sketch-caption nb-voice" aria-live="polite"><InkText text={current?.caption ?? ""} animate={false} /></p>
 							<Stepper player={player} />
 						</div>
 					</Dialog.Content>

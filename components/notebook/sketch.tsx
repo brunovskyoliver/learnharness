@@ -12,6 +12,7 @@
 import { ChevronLeftIcon, ChevronRightIcon, RotateCcwIcon } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { renderSketchSvg, SKETCH_FAILED_TEXT, sketchLabel, validateSketch, type Sketch as SketchData } from "@/src/core";
+import { InkText } from "./ink-text";
 import { SketchDialog } from "./sketch-dialog";
 
 /** Drawing units to CSS px on the page (§16.1: a 17-unit title shows ≈19px, 11-unit text ≈13px). */
@@ -186,10 +187,10 @@ function ValidSketch({ sketch }: { sketch: SketchData }) {
 			<figure className="nb-sketch-figure" style={{ maxWidth: sketch.w * SKETCH_SCALE }}>
 				<SketchHead sketch={sketch} />
 				<DrawingPicture key={player.round} sketch={sketch} step={player.step} liveStart={player.liveStart} />
-				{current?.note && <p key={`${player.round}-${player.step}`} className="nb-sketch-note nb-voice" data-testid="nb-sketch-note">{current.note}</p>}
+				{current?.note && <p key={`${player.round}-${player.step}`} className="nb-sketch-note nb-voice" data-testid="nb-sketch-note"><InkText text={current.note} animate={false} /></p>}
 			</figure>
 			<div className="nb-sketch-row">
-				<p className="nb-sketch-caption nb-voice" aria-live="polite" data-testid="nb-sketch-caption">{current?.caption}</p>
+				<p className="nb-sketch-caption nb-voice" aria-live="polite" data-testid="nb-sketch-caption"><InkText text={current?.caption ?? ""} animate={false} /></p>
 				<Stepper player={player} />
 			</div>
 			<button

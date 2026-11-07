@@ -10,6 +10,8 @@ import { CornerHint, costLabel, refusalLine } from "../components/notebook/corne
 import { InkText } from "../components/notebook/ink-text.tsx";
 import { DEFAULT_SHARED, NotebookContext, type NotebookShared, type ReadingStatus } from "../components/notebook/nb-shared.tsx";
 import { DETACHED_LINE } from "../components/notebook/margin.tsx";
+import { createFauxCore, fauxAssistantMessage } from "@earendil-works/pi-ai";
+import { streamNotebookReply } from "../src/agent/subagents/notebook.ts";
 
 const base = (reading: ReadingStatus, mac = true): NotebookShared => ({
 	...DEFAULT_SHARED, mac, noteId: "lib_a", preferences: { ...DEFAULT_SHARED.preferences, appearance: "light" }, reading,
@@ -57,6 +59,36 @@ describe("ink", () => {
 		const still = renderToStaticMarkup(<InkText text="What would have to be true?" animate={false} />);
 		assert.doesNotMatch(still, /nb-ink-word/);
 		assert.match(still, /What would have to be true\?/);
+	});
+
+	it("renders its Markdown subset: math, code, bold and italic (real-model pass: `$\\theta$` showed raw)", async () => {
+		// The reply as a faux model streams it, through the real streaming path.
+		const faux = createFauxCore({ tokensPerSecond: 1000, tokenSize: { min: 2, max: 4 } });
+		faux.setResponses([fauxAssistantMessage("If you resolve gravity at angle $\\theta$, is it **always** $g\\sin\\theta$? Check `F=ma` *first*.", { stopReason: "stop" })]);
+		const text = await streamNotebookReply({
+			context: { note: "On a ramp the acceleration is g.", instruction: "", reviewer: null, threads: [] }, engine: { model: faux.getModel(), streamFn: faux.streamSimple } as never,
+			signal: new AbortController().signal, onUsage: () => {}, onDelta: () => {}, conversation: [{ author: "user", text: "Why?" }], quote: "the acceleration is g",
+		});
+		for (const animate of [true, false]) {
+			const html = renderToStaticMarkup(<InkText text={text} animate={animate} />);
+			assert.equal((html.match(/class="nb-math"/g) ?? []).length, 2, "two formulas");
+			assert.match(html, /class="katex"/);
+			assert.doesNotMatch(html, /\$\\theta\$|\$g/, "no raw dollar math");
+			assert.match(html, /<strong>always<\/strong>/);
+			assert.match(html, /<code class="nb-code">F=ma<\/code>/);
+			assert.match(html, /<em>first<\/em>/);
+			assert.doesNotMatch(html, /\*\*|`/);
+		}
+		const words = renderToStaticMarkup(<InkText text="A $\\theta$ here." animate />);
+		assert.equal((words.match(/class="nb-ink-word"/g) ?? []).length, 3, "a formula inks in as one word");
+		const display = renderToStaticMarkup(<InkText text="So $$a = g\\sin\\theta$$ holds." animate={false} />);
+		assert.match(display, /nb-math nb-math-display[\s\S]*katex-display/);
+	});
+
+	it("leaves prices, lone markers and unclosed math as text", () => {
+		const html = renderToStaticMarkup(<InkText text="It costs $5 and $10, 2 * 3 = 6, and $x is open." animate={false} />);
+		assert.doesNotMatch(html, /katex|<em>|<strong>/);
+		assert.match(html, /It costs \$5 and \$10, 2 \* 3 = 6, and \$x is open\./);
 	});
 
 	it("paragraphs become blocks", () => {

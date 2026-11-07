@@ -22,13 +22,21 @@ import { anchorForSpan } from "../src/core/index.ts";
 const player = (patch: Partial<SketchPlayer> = {}): SketchPlayer => ({ step: 0, count: 4, round: 0, liveStart: false, finished: false, go: () => {}, replay: () => {}, ...patch });
 
 describe("the sketch (ui-contract \"Sketch\", §16)", () => {
+	it("a caption's math renders (real-model pass: “$3+3=6$” showed raw)", () => {
+		const steps = FAUX_SKETCH.steps.map((s, i) => (i === FAUX_SKETCH.steps.length - 1 ? { caption: "The bottom-right cell receives $3+3=6$ paths.", note: "So $a+b$." } : s));
+		const html = renderToStaticMarkup(<Sketch sketch={{ ...FAUX_SKETCH, steps }} />);
+		assert.match(html, /data-testid="nb-sketch-caption">[\s\S]*class="katex"[\s\S]*paths\./);
+		assert.match(html, /data-testid="nb-sketch-note">[\s\S]*class="katex"/);
+		assert.doesNotMatch(html, /\$3\+3=6\$|\$a\+b\$/);
+	});
+
 	it("first paints finished: title, subtitle, every step drawn, the last caption and note, 4/4, See it larger", () => {
 		const html = renderToStaticMarkup(<Sketch sketch={FAUX_SKETCH} />);
 		assert.match(html, /class="nb-sketch-title nb-voice">How many ways to each cell\?</);
 		assert.match(html, /class="nb-sketch-subtitle">Start top-left\. Move only right or down\.</);
 		assert.match(html, /data-testid="nb-sketch-count">4\/4</);
-		assert.match(html, /aria-live="polite" data-testid="nb-sketch-caption">The last cell adds its two neighbors: 3 \+ 3 = 6\.</);
-		assert.match(html, /data-testid="nb-sketch-note">Above \+ left = this cell\.</);
+		assert.match(html, /aria-live="polite" data-testid="nb-sketch-caption"><span class="nb-words">The last cell adds its two neighbors: 3 \+ 3 = 6\.</);
+		assert.match(html, /data-testid="nb-sketch-note"><span class="nb-words">Above \+ left = this cell\.</);
 		assert.equal((html.match(/<g data-step="\d"/g) ?? []).length, 4);
 		assert.doesNotMatch(html, /opacity="0"/);
 		assert.match(html, /<button type="button" class="nb-sketch-larger" data-testid="nb-sketch-larger">See it larger<\/button>/);

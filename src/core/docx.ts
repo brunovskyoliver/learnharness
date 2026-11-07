@@ -8,7 +8,7 @@
  * not installed) and Newsreader (Georgia), named in fontTable.xml.
  * Pure: the PNGs come in from the caller and zip.ts packs the parts.
  */
-import { EXPORT_PALETTE, OTHER_NOTES_HEADING, sketchCaptionLines, type ExportBlock, type ExportDocument, type ExportNote, type ExportRun } from "./notebook-export.ts";
+import { EXPORT_PALETTE, messageParagraphs, OTHER_NOTES_HEADING, sketchCaptionLines, type ExportBlock, type ExportDocument, type ExportNote, type ExportRun } from "./notebook-export.ts";
 import { firstWords } from "./notebook.ts";
 import type { Sketch } from "./notebook-sketch.ts";
 import { textEntry, zip, type ZipDeps, type ZipEntry } from "./zip.ts";
@@ -129,7 +129,8 @@ function noteXml(note: ExportNote, picture: (sketch: Sketch) => PictureRef | nul
 			const ref = picture(message.sketch);
 			if (ref) out.push(paragraph(drawing(ref, message.sketch.title), styled(style)));
 			const lines = sketchCaptionLines(message.sketch);
-			for (const line of ref ? lines.slice(1) : lines) out.push(paragraph(textRuns(line, ""), styled(DOCX_STYLES.caption)));
+			// The captions' Markdown subset, so a caption's $math$ is a math run (real-model pass).
+			for (const line of ref ? lines.slice(1) : lines) out.push(paragraph(runsXml(messageParagraphs(line).flat()), styled(DOCX_STYLES.caption)));
 		}
 	}
 	return out.join("");

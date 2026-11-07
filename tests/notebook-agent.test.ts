@@ -81,6 +81,17 @@ describe("structured runs", () => {
 		assert.equal(remark.sketch?.steps.length, 4);
 	});
 
+	it("visualize: a drawn label's $math$ becomes plain symbols; captions keep theirs (real-model pass)", async () => {
+		const items = [...FAUX_SKETCH.items, { step: 3, kind: "text", x: 130, y: 230, text: "$3+3=6$ paths", size: "m" }];
+		const steps = [...FAUX_SKETCH.steps.slice(0, 3), { caption: "The bottom-right cell receives $3+3=6$ paths." }];
+		const log: { system?: string; messages: string }[] = [];
+		const drawn = await runNotebookVisualize({ ...base(engineOf([submit("submit_sketch", { sketch: { ...FAUX_SKETCH, items, steps } })], log)), passage: "tea" });
+		const label = drawn.sketch.items.at(-1) as { text: string };
+		assert.equal(label.text, "3+3=6 paths");
+		assert.equal(drawn.sketch.steps.at(-1)!.caption, "The bottom-right cell receives $3+3=6$ paths.");
+		assert.match(JSON.stringify(log[0]), /Labels drawn in the sketch are plain text/);
+	});
+
 	it("visualize: needs a valid sketch of 2+ steps, up to two retries", async () => {
 		const oneStep = { ...FAUX_SKETCH, steps: [FAUX_SKETCH.steps[0]], items: [FAUX_SKETCH.items[0]] };
 		const drawn = await runNotebookVisualize({ ...base(engineOf([

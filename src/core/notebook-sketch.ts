@@ -284,9 +284,9 @@ export interface SketchRenderOptions {
 	withTitle?: boolean;
 }
 
-/** The accessible name: every caption, in order. */
+/** The accessible name: every caption, in order; a caption's $math$ is read as its symbols. */
 export const sketchLabel = (sketch: Sketch): string =>
-	[sketch.title, ...sketch.steps.map((s) => s.caption)].map((t) => t.trim().replace(/[.!?]*$/, ".")).join(" ");
+	[sketch.title, ...sketch.steps.map((s) => s.caption)].map((t) => t.replace(/\$\$?([^$]+?)\$\$?/g, "$1").trim().replace(/[.!?]*$/, ".")).join(" ");
 
 /** The sketch as an SVG string. Pure and deterministic: same input, same bytes. */
 export function renderSketchSvg(sketch: Sketch, options: SketchRenderOptions = {}): string {

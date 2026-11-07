@@ -197,6 +197,23 @@ describe("docx", () => {
 		assert.deepEqual(new Uint8Array(files.get("word/media/image1.png")!.data), PNG);
 	});
 
+	it("a sketch caption's $math$ is a math run in Word and the PDF, not dollar signs (real-model pass)", () => {
+		const mathSketch: Sketch = { ...SKETCH, steps: [SKETCH.steps[0]!, { caption: "The last cell receives $3+3=6$ paths.", note: "So $a+b$." }] };
+		const extra = [thread("t_math", "Heat flows from hot to cold.", "open", ["Look."], "plain", mathSketch)];
+		const html = exportHtml(doc(true, extra));
+		assert.match(html, /2\. The last cell receives <span class="math">3\+3=6<\/span> paths\./);
+		assert.match(html, /<em><span class="math">a\+b<\/span><\/em>|<em>So <span class="math">a\+b<\/span>/);
+		assert.doesNotMatch(html, /\$3\+3=6\$/);
+		// One line per step: only the step spans are blocks, not the math inside them.
+		assert.match(html, /\.sketch figcaption > span \{ display: block; \}/);
+		assert.doesNotMatch(html, /\.sketch figcaption span \{/);
+		for (const picture of [new Map([[mathSketch, { png: PNG, width: 224, height: 156 }]]), new Map()]) {
+			const document = unzip(docx(doc(true, extra), picture as never, deps)).get("word/document.xml")!.data.toString("utf8");
+			assert.match(document, /<w:rStyle w:val="MathChar"\/><\/w:rPr><w:t xml:space="preserve">3\+3=6<\/w:t>/);
+			assert.doesNotMatch(document, /\$3\+3=6\$/);
+		}
+	});
+
 	it("without the notes, or without a picture, there is no image part", () => {
 		const plain = docxEntries(doc(false));
 		assert.ok(!plain.some((e) => e.name.startsWith("word/media/")));

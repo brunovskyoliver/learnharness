@@ -163,6 +163,11 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 	white-space: pre-line;
 	font-style: normal;
 }
+/* Its Markdown subset (ink-text.tsx): math as the editor's, code in mono. */
+.nb-root .nb-voice .nb-math .katex { font-size: 1.04em; color: inherit; }
+.nb-root .nb-voice .nb-math-display { display: block; margin: 0.3em 0; overflow-x: auto; scrollbar-width: none; }
+.nb-root .nb-voice .nb-code { font-family: var(--nb-mono); font-size: 0.86em; }
+.nb-root .nb-voice strong { font-weight: 600; }
 /* Lettering "plain": the voice switches to the sans face. */
 .nb-root[data-nb-lettering="plain"] .nb-voice {
 	font-family: var(--nb-font-sans), ui-sans-serif, system-ui, sans-serif;
@@ -1246,7 +1251,8 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 	.nb-root .nb-toolbar::after { inset: 0 -16px; }
 	.nb-root .nb-title { margin-top: 10px; }
 	.nb-root .nb-side-head { height: 64px; padding: 4px 0 0 8px; }
-	.nb-root .nb-corner-hint { display: none; }
+	/* Only the idle shortcut line goes: a run's cost and Stop stay (constitution V). */
+	.nb-root .nb-corner-hint[data-state="idle"] { display: none; }
 }
 
 /* ── 44px targets on coarse pointers (constitution VI) ──────────────────── */

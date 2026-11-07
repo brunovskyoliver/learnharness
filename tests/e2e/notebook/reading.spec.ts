@@ -148,6 +148,20 @@ test.describe("Notebook: it thinks with you", () => {
 		await expect(page.getByTestId("nb-activity")).toHaveCount(0);
 	});
 
+	test("390 px wide: a read still shows Reading…, its cost and Stop; the idle line is hidden (real-model pass)", async ({ page, request }) => {
+		await page.setViewportSize({ width: 390, height: 844 });
+		const id = await newNote(request, "Phone");
+		await openNote(page, id);
+		await expect(page.getByTestId("nb-corner-hint")).toBeHidden();
+		await page.keyboard.type(CLAIM);
+		await expect(page.getByTestId("nb-hint-running")).toBeVisible({ timeout: 5_000 });
+		await expect(page.getByTestId("nb-hint-cost")).toBeVisible();
+		await page.getByTestId("nb-hint-stop").click();
+		await expect(page.getByTestId("nb-hint-running")).toHaveCount(0);
+		await expect(page.getByTestId("nb-corner-hint")).toBeHidden();
+		expect(await companionThreads(request, id)).toHaveLength(0);
+	});
+
 	test("When you ask: typing and pausing makes no call", async ({ page, request }) => {
 		await putSection(request, "notebook", { startMode: "ask" });
 		const id = await newNote(request, "Quiet");
