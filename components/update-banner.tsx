@@ -16,20 +16,19 @@ import { useUpdateState } from "@/components/settings/update-state.ts";
 export default function UpdateBanner() {
 	const { state: ready } = useUpdateState();
 	if (ready?.status !== "downloaded") return null;
+	// Feature 025: a lifted card (radius 10) in the corner hint's register,
+	// Restart the one ink pill. It sits under the band, clear of the composer and the corner hint.
 	return (
 		<div
 			data-testid="update-banner"
-			className="fixed right-4 bottom-4 z-50 flex items-center gap-3 rounded-xl border border-rule bg-paper shadow-lift px-4 py-3 "
+			role="status"
+			className="fixed top-14 right-4 z-50 flex max-w-[calc(100vw-2rem)] flex-wrap items-center gap-x-4 gap-y-2 rounded-[10px] bg-paper px-4 py-3 shadow-lift"
 		>
-			<div className="text-sm">
-				<span className="font-medium">Brunovský's study {ready.version ?? "update"} is ready</span>
-				<span className="text-faint"> — restart to finish installing.</span>
-			</div>
-			<button
-				type="button"
-				onClick={() => window.lh?.installUpdate?.()}
-				className="rounded-md bg-shelf px-3 py-1.5 text-sm font-medium transition-colors hover:bg-shelf/80"
-			>
+			<p className="min-w-0 text-sm text-graphite">
+				<span className="font-medium text-ink">Brunovský&apos;s study {ready.version ?? "update"} is ready</span>
+				<span> — restart to finish installing.</span>
+			</p>
+			<button type="button" onClick={() => window.lh?.installUpdate?.()} className="nb-pill ml-auto">
 				Restart
 			</button>
 		</div>

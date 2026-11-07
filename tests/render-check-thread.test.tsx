@@ -10,7 +10,7 @@ import { afterEach, describe, it } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import type { Root } from "react-dom/client";
 import { parseHTML } from "linkedom";
-import { CheckThread, REVEAL_LINE, type CheckThreadProps } from "../components/study/check-thread.tsx";
+import { CheckThread, DRAFT_KEPT, REVEAL_LINE, type CheckThreadProps } from "../components/study/check-thread.tsx";
 import { CHECK_MIN_LEFT, CHECK_ROOM, checkAnchorPartId, checkColumn, checkLayout, checkMessageIndex } from "../components/study/check-geometry.ts";
 import { QuestionDock } from "../components/question-dock.tsx";
 import { PracticeDock } from "../components/practice-dock.tsx";
@@ -159,5 +159,39 @@ describe("storage keys stay bare inside the transcript part scope", () => {
 		const keys = [...saved.values()].flatMap((raw) => Object.keys((JSON.parse(raw) as { values: Record<string, unknown> }).values));
 		assert.ok(keys.includes("question/q1/selection"), `bare question key: ${keys.join(", ")}`);
 		assert.ok(keys.every((key) => !key.startsWith("message-1") && !key.startsWith("part-7")), "no part scope in the keys");
+	});
+
+	it("a closed thread holding a draft says Draft kept after the teaser; an empty one says nothing", async () => {
+		saved.clear();
+		const host = document.createElement("div");
+		document.body.append(host);
+		const root = createRoot(host);
+		roots.push(root);
+		const render = (open: boolean) => root.render(
+			<SessionAccountProvider account="a">
+				<SessionStateProvider chatId="c2">
+					<SessionPartState id="">
+						<CheckThread {...base} open={open}>
+							<QuestionDock toolName="quiz" toolCallId="q1" input={quiz} active={open} onSubmit={() => {}} />
+						</CheckThread>
+						<CheckThread {...base} id="p1" kind="problem" label="Problem" open={false}>
+							<PracticeDock problemCallId="p1" statement="S." active={false} onSubmit={() => {}} />
+						</CheckThread>
+					</SessionPartState>
+				</SessionStateProvider>
+			</SessionAccountProvider>,
+		);
+		await act(async () => render(false));
+		assert.ok(!host.textContent?.includes(DRAFT_KEPT), "empty drafts say nothing");
+		await act(async () => render(true));
+		await act(async () => { (host.querySelector('[data-kbdrow="0"]') as HTMLButtonElement).click(); });
+		await act(async () => render(false));
+		const question = host.querySelector('[data-check="q1"] .lh-check-open')!;
+		const draft = question.querySelector('[data-testid="check-draft-kept"]');
+		assert.equal(draft?.textContent, DRAFT_KEPT);
+		assert.equal(draft?.previousElementSibling?.className.includes("lh-check-teaser"), true, "after the teaser");
+		assert.ok(!host.querySelector('[data-check="p1"] [data-testid="check-draft-kept"]'), "the untouched problem says nothing");
+		await act(async () => root.unmount());
+		roots.pop();
 	});
 });

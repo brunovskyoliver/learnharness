@@ -140,7 +140,7 @@ export function DeleteSessionDialog({
 					event.stopPropagation();
 				}
 			}}
-			className="fixed inset-0 z-50 flex items-center justify-center bg-paper"
+			className="nb-dialog-backdrop"
 			{...backdropDismiss}
 		>
 			<DeleteSessionBody
@@ -184,26 +184,23 @@ export function DeleteSessionBody({
 			aria-label="Delete session"
 			data-testid="delete-session-dialog"
 			onClick={(e) => e.stopPropagation()}
-			className="w-[32rem] max-w-[calc(100vw-2rem)] rounded-lg border bg-shelf p-5 "
+			className="lh-dialog"
 		>
-			<h2 className="text-sm font-semibold text-red">Delete session?</h2>
-			{/* The session name below the title in JetBrains Mono (owner,
-			    2026-09-24): no code-block chrome — the font already says
-			    code. Owner, 2026-10-13 polish: normal text-sm size (was
-			    sized-up text-lg), still white. Same shape as the node
-			    dialog. */}
+			<h2 className="lh-dialog-title">Delete session?</h2>
+			{/* The session name below the title in mono (owner, 2026-09-24):
+			    no code-block chrome, the font already says code. */}
 			<div className="mt-1.5">
-				<code data-testid="session-name-code" className="font-mono text-sm text-ink">
+				<code data-testid="session-name-code" className="font-mono text-sm text-ink [overflow-wrap:anywhere]">
 					{chat.title}
 				</code>
 			</div>
-			<p className="mt-2 text-sm text-faint">
+			<p className="lh-dialog-text">
 				This permanently removes the session — its messages, background jobs, and extraction records. Everything
 				it added to the graph stays unless you check below. This cannot be undone.
 			</p>
 			<label
 				data-testid={TRACES_COPY.testid}
-				className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg border border-rule/60 px-4 py-3"
+				className="nb-option-card lh-option-row mt-4"
 			>
 				<input
 					type="checkbox"
@@ -214,48 +211,24 @@ export function DeleteSessionBody({
 					className="mt-0.5 size-4 shrink-0 accent-ink"
 				/>
 				<span className="min-w-0">
-					<span className="block text-sm text-ink">{TRACES_COPY.title}</span>
-					<span className="mt-1 block text-sm text-faint">{TRACES_COPY.body}</span>
+					<span className="block text-md text-ink">{TRACES_COPY.title}</span>
+					<span className="mt-1 block text-sm text-graphite">{TRACES_COPY.body}</span>
 				</span>
 			</label>
 			{failure && (
-				<div
-					role="alert"
-					data-testid="delete-failure"
-					className="mt-3 rounded-md border border-rule/60 px-3 py-2 text-sm"
-				>
-					<span className="text-ink">{failure.error}</span>
-					<button
-						type="button"
-						data-testid="delete-retry"
-						onClick={onRun}
-						disabled={busy}
-						className="ml-3 text-sm text-ink underline-offset-2 hover:underline disabled:opacity-40"
-					>
+				<div role="alert" data-testid="delete-failure" className="lh-dialog-problem">
+					<span>{failure.error}</span>
+					<button type="button" data-testid="delete-retry" onClick={onRun} disabled={busy} className="lh-text-action">
 						Try again
 					</button>
 				</div>
 			)}
-			{/* The node dialog's exact bottom row: quiet Cancel, destructive
-			    red Delete (border + text, fill on hover — the app's
-			    established destructive pair). */}
-			<div className="mt-4 flex justify-end gap-2">
-				<button
-					type="button"
-					data-testid="delete-cancel"
-					onClick={onClose}
-					disabled={busy}
-					className="rounded-md px-3 py-1.5 text-sm text-faint transition-colors hover:text-ink disabled:opacity-40"
-				>
+			{/* The node dialog's bottom row: Cancel as a text button, Delete as the red pill. */}
+			<div className="lh-dialog-actions">
+				<button type="button" data-testid="delete-cancel" onClick={onClose} disabled={busy} className="lh-text-action">
 					Cancel
 				</button>
-				<button
-					type="button"
-					data-testid="delete-confirm"
-					onClick={onRun}
-					disabled={busy}
-					className="rounded-md border border-red/50 bg-red/10 px-3 py-1.5 text-sm text-red transition-colors hover:bg-red/20 disabled:opacity-40"
-				>
+				<button type="button" data-testid="delete-confirm" onClick={onRun} disabled={busy} className="nb-pill lh-pill-danger">
 					{busy ? "Deleting…" : "Delete"}
 				</button>
 			</div>

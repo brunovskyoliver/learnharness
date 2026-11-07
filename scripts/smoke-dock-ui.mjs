@@ -398,7 +398,7 @@ try {
 	await page.setViewport({ width: 390, height: 844 });
 	await page.waitForSelector('[data-testid="practice-dock-bar"]', { visible: true });
 	assert.equal(await page.$eval('[data-testid="practice-problem-content"]', (element) => !!element.closest("[hidden][inert]")), true, "practice starts as a collapsed thread");
-	assert.match(await page.$eval('[data-testid="check-pending"]', (element) => element.textContent), /Solve the problem beside the lesson/);
+	assert.match(await page.$eval('[data-testid="check-pending"]', (element) => element.textContent), /Solve the problem above/, "inline at 390: the problem is above the bar");
 	await page.click('[data-testid="practice-dock-bar"]');
 	await page.waitForSelector('[data-testid="practice-problem-content"]', { visible: true });
 	assert.ok(await page.$eval('[data-testid="practice-problem-content"]', (element) => element.textContent.trim().length > 0 && element.closest('[data-testid="check-thread"]')?.dataset.variant === "inline" && !!element.closest('[data-testid="lesson-content"]') && !element.closest('[data-testid="dock-shell"]')), "on a phone the problem's thread sits inline in the lesson");

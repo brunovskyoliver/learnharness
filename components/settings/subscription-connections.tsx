@@ -82,31 +82,31 @@ export function NativeSubscriptionUIProvider({ children }: { children: React.Rea
 	return <Context.Provider value={{ statuses, busy: !!operation, open }}>
 		{children}
 		{dialog && descriptor && status && <ConnectionDialog key={`${dialog}:${view}:${confirm}`} label={`${descriptor.label} connection`} testid="subscription-connection-dialog" backdropTestid="subscription-dialog-backdrop" busy={busy} onClose={close}>
-			<h2 className="tracking-title text-lg font-medium text-ink">{descriptor.label}</h2>
+			<h2 className="lh-dialog-title">{descriptor.label}</h2>
 			{confirm ? <>
-				<p className="mt-3 text-sm font-semibold text-red">Disconnect {descriptor.label}?</p>
-				<p className="mt-3 text-sm leading-relaxed text-faint">{subscriptionDisconnectCopy(descriptor.label, web)}</p>
+				<p className="mt-3 text-md font-medium text-ink">Disconnect {descriptor.label}?</p>
+				<p className="lh-dialog-text">{subscriptionDisconnectCopy(descriptor.label, web)}</p>
 			</> : view === "notice" ? <>
-				<p className="mt-3 text-sm leading-relaxed text-faint" data-testid="subscription-privacy-notice">{subscriptionNotice(descriptor.label, web)}</p>
-				{dialog === "github-copilot" && <p className="mt-3 text-sm leading-relaxed text-faint" data-testid="copilot-policy-notice">{COPILOT_POLICY_NOTICE}</p>}
+				<p className="lh-dialog-text" data-testid="subscription-privacy-notice">{subscriptionNotice(descriptor.label, web)}</p>
+				{dialog === "github-copilot" && <p className="lh-dialog-text" data-testid="copilot-policy-notice">{COPILOT_POLICY_NOTICE}</p>}
 			</> : <>
 				<div className="mt-4 flex items-center gap-3 text-sm text-ink">
 					<Toggle label="Allow background use" checked={management ? status.allowBackgroundUse : background} disabled={busy || !!operation || status.pending || !status.available} onChange={(enabled) => { setBackground(enabled); if (management && bridge) void control(() => bridge.consent(dialog, enabled)); else setBackgroundDirty(true); }} />
 					<span>Allow background use<span className="mt-1 block leading-relaxed text-faint">{SUBSCRIPTION_BACKGROUND_HINT}</span></span>
 				</div>
-				{!status.available && <p className="mt-3 text-sm text-faint">Subscription sign-in requires the desktop app's private server connection. API-key connections remain available here.</p>}
+				{!status.available && <p className="lh-dialog-text">Subscription sign-in requires the desktop app's private server connection. API-key connections remain available here.</p>}
 				{view === "connection" && interaction && <div className="mt-3 space-y-3 text-sm" data-testid="subscription-login-interaction">
 					{interaction.progress && <p role="status" className="text-faint">{interaction.progress}</p>}
 					{interaction.userCode && <p>Device code: <code className="select-text font-mono">{interaction.userCode}</code></p>}
 					{interaction.browser && <Button variant="outline" size="sm" disabled={busy} onClick={() => bridge && void bridge.open(dialog, interaction.attemptId, interaction.browser!.id).catch(() => setError("The browser could not be opened. Try again."))}>Open browser</Button>}
 					{prompt && <form className="space-y-2" onSubmit={(event) => { event.preventDefault(); if (bridge) void bridge.respond(dialog, interaction.attemptId, prompt.id, promptValue).catch(() => setError(CONTROL_ERROR)); }}>
 						<label className="block" htmlFor="subscription-auth-prompt">{prompt.message}</label>
-						{prompt.type === "select" ? <select id="subscription-auth-prompt" value={promptValue} onChange={(event) => setPromptValue(event.target.value)} className="w-full rounded-md border border-rule bg-paper px-2 py-1.5 pointer-coarse:min-h-11"><option value="" disabled>Select…</option>{prompt.options?.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select> : <input id="subscription-auth-prompt" type={prompt.type === "secret" ? "password" : "text"} autoComplete="off" value={promptValue} placeholder={prompt.placeholder} onChange={(event) => setPromptValue(event.target.value)} className="w-full rounded-md border border-rule bg-paper px-2 py-1.5 pointer-coarse:min-h-11" />}
+						{prompt.type === "select" ? <select id="subscription-auth-prompt" value={promptValue} onChange={(event) => setPromptValue(event.target.value)} className="nb-set-select w-full"><option value="" disabled>Select…</option>{prompt.options?.map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}</select> : <input id="subscription-auth-prompt" type={prompt.type === "secret" ? "password" : "text"} autoComplete="off" value={promptValue} placeholder={prompt.placeholder} onChange={(event) => setPromptValue(event.target.value)} className="nb-set-input w-full" />}
 						<Button type="submit" variant="outline" size="sm" disabled={busy || (prompt.type === "select" && !promptValue)}>Continue</Button>
 					</form>}
 				</div>}
 			</>}
-			{(error || status.error) && <p role="alert" className="mt-3 text-sm text-red">{error || status.error}</p>}
+			{(error || status.error) && <p role="alert" className="mt-3 text-md text-ink">{error || status.error}</p>}
 			<ConnectionFooter testid="subscription-connection-footer" leading={!confirm && management && status.connectionId && !status.pending && <Button variant="ghost" size="sm" className="cursor-pointer text-red hover:bg-shelf hover:text-red" disabled={busy || !!operation} onClick={() => setConfirm(true)}>Disconnect</Button>}>
 				{!confirm && management && status.connectionId && status.available && !status.connected && !!status.error && !status.pending && <>
 					{status.error && <Button variant="outline" size="sm" disabled={busy || !!operation} onClick={() => bridge && void control(() => bridge.retry(dialog))}>Retry</Button>}

@@ -22,7 +22,8 @@
  * event first and can claim it with stopPropagation.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useModalFocus } from "@/components/modal-focus";
 import { chatUsesNativeTraversal } from "@/components/enter-submits";
 import { useBackdropDismiss } from "@/components/backdrop-dismiss";
 import { usePathname, useRouter } from "next/navigation";
@@ -191,6 +192,9 @@ export function KeyboardShortcuts() {
  *  stay discoverable. */
 function CheatSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
 	const backdropDismiss = useBackdropDismiss(onClose);
+	const sheet = useRef<HTMLDivElement>(null);
+	// The sheet takes the focus (it scrolls by keyboard), Tab stays in it, the focus goes back on close.
+	useModalFocus(sheet, open, '[role="dialog"]');
 	if (!open) return null;
 	const scopes = ["global", "chat", "graph"] as const;
 	const scopeLabels: Record<(typeof scopes)[number], string> = {
@@ -200,31 +204,37 @@ function CheatSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
 	};
 	return (
 		<div
+			ref={sheet}
 			data-testid="cheat-sheet"
-			className="fixed inset-0 z-50 flex items-center justify-center bg-backdrop"
+			className="nb-dialog-backdrop"
 			{...backdropDismiss}
 		>
 			<div
-				className="max-h-[80vh] w-full max-w-[36rem] overflow-y-auto rounded-lg border bg-shelf p-5 "
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby="cheat-sheet-title"
+				tabIndex={-1}
+				className="lh-dialog"
+				style={{ "--lh-dialog-width": "36rem", maxHeight: "min(80vh, calc(100dvh - 32px))" } as CSSProperties}
 				onClick={(e) => e.stopPropagation()}
 			>
-				<div className="mb-4 flex items-baseline justify-between">
-					<span className="text-sm font-medium text-ink">Keyboard shortcuts</span>
-					<span className="text-sm text-faint">Esc to close</span>
+				<div className="mb-5 flex items-baseline justify-between gap-4">
+					<h2 id="cheat-sheet-title" className="lh-dialog-title">Keyboard shortcuts</h2>
+					<span className="lh-dialog-meta shrink-0">Esc to close</span>
 				</div>
 				{scopes.map((scope) => {
 					const actions = KEYBOARD_ACTIONS.filter((a) => a.scope === scope);
 					if (actions.length === 0) return null;
 					return (
 						<div key={scope} className="mb-4">
-							<div className="mb-1.5 text-sm text-faint">
+							<div className="mb-1.5 text-xs font-medium text-faint">
 								{scopeLabels[scope]}
 							</div>
 							<div className="flex flex-col gap-1">
 								{actions.map((a) => (
-									<div key={a.id} className="flex items-center justify-between gap-4 text-sm">
-										<span className="text-faint">{a.label}</span>
-										<kbd className="rounded-md border border-rule bg-paper px-1.5 py-0.5 font-mono text-xs text-ink">
+									<div key={a.id} className="flex items-center justify-between gap-4 text-ui">
+										<span className="text-graphite">{a.label}</span>
+										<kbd className="rounded-md px-1.5 py-0.5 font-mono text-xs text-ink ring-1 ring-inset ring-rule">
 											{formatBinding(bindingForAction(a.id))}
 										</kbd>
 									</div>

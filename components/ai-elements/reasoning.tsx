@@ -156,7 +156,7 @@ export const ReasoningTrigger = memo(
              rail offsets it by exactly the one-character difference. */
           /* Feature 025 (R10): the quiet row register — 12.5px faint, a
              14px chevron, the graphite hover of the other quiet rows. */
-          "flex w-full items-center gap-[7px] text-faint text-meta transition-colors hover:text-graphite",
+          "flex w-full items-center gap-[7px] text-faint text-meta transition-colors hover:text-graphite pointer-coarse:min-h-11",
           className
         )}
         {...props}

@@ -60,8 +60,8 @@ describe("WaitingSectionView", () => {
 		const b = html.indexOf("Session b");
 		const a = html.indexOf("Session a");
 		assert.ok(b > 0 && a > b, "newest first");
-		assert.match(html, /text-bulb">Prediction</);
-		assert.match(html, /text-bulb">Problem</);
+		assert.match(html, /text-bulb-ink">Prediction</);
+		assert.match(html, /text-bulb-ink">Problem</);
 		assert.match(html, /Find the eigenvalues\./, "markdown is stripped, never raw");
 		assert.doesNotMatch(html, /\*\*/);
 		assert.match(html, />Solve</);
@@ -145,7 +145,7 @@ describe("Continue rows (feature 003)", () => {
 			item("check", { postedAt: "2026-10-01T09:00:00.000Z" }),
 		]);
 		assert.ok(html.indexOf("Session check") < html.indexOf("Session lesson"), "Answer/Solve rows come first");
-		assert.match(html, /text-bulb">Lesson</);
+		assert.match(html, /text-bulb-ink">Lesson</);
 		assert.match(html, /2 of 11 topics left · next: Learning by gradient descent/);
 		assert.match(html, /href="\/chat\/lesson\?continue=1"[^>]*>Continue</);
 		assert.match(html, /2 open/, "the heading counts every row");

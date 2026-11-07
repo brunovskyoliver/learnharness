@@ -1,5 +1,4 @@
 [
-	{"file":"components/clerk-appearance.ts","pattern":"^\\s*color[A-Za-z]+: \"#[0-9a-f]{6}\",$","reason":"Clerk appearance variables need literal colours (Clerk computes shades from them); T060 moves them to paper values"},
 	{"file":"components/graph-canvas.ts","pattern":"return `rgba\\(\\$\\{r\\}, \\$\\{g\\}, \\$\\{b\\}, \\$\\{alpha\\}\\)`","reason":"Canvas helper: a token colour read from CSS as #rrggbb, re-emitted with alpha for the 2D context"},
 	{"file":"components/graph-canvas.ts","pattern":"Style = `hsla\\(\\$\\{(rm\\.)?hue\\}","reason":"Knowledge-graph cluster colours: one hue per cluster, a data series"},
 	{"file":"components/graph-view.tsx","pattern":"\"#888888\"","reason":"Canvas fallback when a token cannot be read (no 2D context in tests); the graph paints token colours otherwise"},

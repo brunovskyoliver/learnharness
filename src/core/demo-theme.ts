@@ -15,17 +15,23 @@ export const DEMO_PAPER = {
 
 const NEUTRALS = Object.keys(DEMO_PAPER.light) as (keyof typeof DEMO_PAPER.light)[];
 
-/** Defaults: each neutral is `light-dark(paper light, paper dark)`, resolved
- *  by the page's `color-scheme` (the bridge sets it to the app's theme; the
- *  default follows the viewer's system). Series colours are the demo's data
- *  palette and stay the same in both themes. */
+/** The default data series per scheme. Dark keeps the kit's original
+ *  palette (tuned for a dark ground); light has the same hues with HSL
+ *  lightness lowered by the smallest 0.1% step that reaches 3:1 against
+ *  light paper (WCAG 1.4.11, feature 025). A demo's own colours still win. */
+export const DEMO_SERIES = {
+	light: { "--lh-blue": "#4d8ef5", "--lh-teal": "#2ba090", "--lh-amber": "#bc851e", "--lh-red": "#ed6357", "--lh-green": "#3ba34a" },
+	dark: { "--lh-blue": "#7cacf8", "--lh-teal": "#5fd4c4", "--lh-amber": "#e5b55a", "--lh-red": "#f28b82", "--lh-green": "#7fd18b" },
+} as const;
+export const DEMO_SERIES_NAMES = Object.keys(DEMO_SERIES.light) as (keyof typeof DEMO_SERIES.light)[];
+
+/** Defaults: each neutral and each series colour is `light-dark(light, dark)`,
+ *  resolved by the page's `color-scheme` (the bridge sets it to the app's
+ *  theme; the default follows the viewer's system). The series stay the
+ *  demo's data palette: they never cross the bridge. */
 export const DEMO_THEME_VARS = {
 	...Object.fromEntries(NEUTRALS.map((name) => [name, `light-dark(${DEMO_PAPER.light[name]},${DEMO_PAPER.dark[name]})`])) as Record<keyof typeof DEMO_PAPER.light, string>,
-	"--lh-blue": "#7cacf8",
-	"--lh-teal": "#5fd4c4",
-	"--lh-amber": "#e5b55a",
-	"--lh-red": "#f28b82",
-	"--lh-green": "#7fd18b",
+	...Object.fromEntries(DEMO_SERIES_NAMES.map((name) => [name, `light-dark(${DEMO_SERIES.light[name]},${DEMO_SERIES.dark[name]})`])) as Record<keyof typeof DEMO_SERIES.light, string>,
 	"--lh-font": `"LH Sans", system-ui, -apple-system, "Segoe UI", sans-serif`,
 	"--lh-mono": "ui-monospace, SFMono-Regular, Menlo, monospace",
 };

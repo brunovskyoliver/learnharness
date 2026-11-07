@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type ComponentProps } from "react";
 import { LoadingModal } from "@/components/loading-modal";
-import { Button } from "@/components/ui/button";
 import { useReloadRetry, useRestoreReloadRecovery, type ReloadOverlay } from "@/components/reload-recovery";
 import type { SetupDialog } from "@/components/setup-dialog";
 
@@ -58,15 +57,14 @@ export function LazySetupDialog(originalProps: SetupProps) {
 	if (Setup) return <Setup {...props} />;
 	if (!props.open) return null;
 	return (
-        <LoadingModal label="Set up your models" testid="setup-loading-dialog" onClose={props.onClose} onOpen={(trigger) => { opener.current = trigger; }}
-            className="fixed inset-4 m-auto flex h-fit w-[640px] max-w-[calc(100vw-2rem)] flex-col gap-4 rounded-lg border border-rule bg-paper p-5 outline-none">
-            <p role={failed ? "alert" : "status"} className="text-sm text-faint">
+        <LoadingModal label="Set up your models" testid="setup-loading-dialog" width="640px" onClose={props.onClose} onOpen={(trigger) => { opener.current = trigger; }}>
+            <p role={failed ? "alert" : "status"} className={failed ? "lh-dialog-text text-ink" : "lh-dialog-text text-faint"}>
                 {failed ? "Setup could not load. Reload to retry. Your draft will be saved before reloading." : "Loading setup…"}
             </p>
-            {recovery.error && <p role="alert" className="text-sm text-faint">{recovery.error}</p>}
-            <div className="flex justify-end gap-2">
-                {failed && <Button variant="outline" onClick={recovery.reload}>Reload to retry</Button>}
-                <Button variant="outline" onClick={props.onClose}>Close setup</Button>
+            {recovery.error && <p role="alert" className="lh-dialog-text text-ink">{recovery.error}</p>}
+            <div className="lh-dialog-actions">
+                {failed && <button type="button" className="lh-text-action" onClick={recovery.reload}>Reload to retry</button>}
+                <button type="button" className="lh-text-action" onClick={props.onClose}>Close setup</button>
             </div>
         </LoadingModal>
     );

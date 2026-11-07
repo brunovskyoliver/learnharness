@@ -24,10 +24,30 @@ import { InkText } from "@/components/paper/ink-text";
 import { Tether } from "@/components/paper/tether";
 import { NOTE_LINE, placeStack, RIGHT_TEXT_GAP } from "@/components/paper/thread-geometry";
 import { useMeasuredRefs } from "@/components/paper/use-measured-refs";
+import { useSessionState } from "@/components/session-state";
 import { cn } from "@/lib/utils";
+import { DEFAULT_CONFIDENCE_INDEX } from "@/src/core";
 import { CHECK_COLLAPSED_WIDTH, CHECK_OPEN_WIDTH, checkColumn } from "./check-geometry";
 
 export const REVEAL_LINE = "Check your understanding";
+/** On the collapsed line when the closed thread holds a draft. */
+export const DRAFT_KEPT = "Draft kept";
+
+const NO_SELECTION = { selected: [] as number[], otherSelected: false, dontKnow: false };
+/** Whether the form holds anything the learner typed, chose or moved: the
+ *  same session keys the forms write (question-dock.tsx, practice-dock.tsx). */
+export function useCheckDraft(kind: "question" | "problem", id: string): boolean {
+	const prefix = `${kind}/${id}`;
+	const [thinking] = useSessionState(`${prefix}/thinking`, "");
+	const [text] = useSessionState(`${prefix}/text`, "");
+	const [other] = useSessionState(`${prefix}/other`, "");
+	const [selection] = useSessionState(`${prefix}/selection`, NO_SELECTION);
+	const [confidence] = useSessionState(`${prefix}/confidence`, DEFAULT_CONFIDENCE_INDEX);
+	if (thinking.trim()) return true;
+	if (kind === "problem") return false;
+	const chosen = (Array.isArray(selection.selected) && selection.selected.length > 0) || selection.otherSelected || selection.dontKnow;
+	return Boolean(text.trim() || other.trim() || chosen || confidence !== DEFAULT_CONFIDENCE_INDEX);
+}
 
 /** Checks whose words have inked in this page load (a remount never re-inks). */
 const inked = new Set<string>();
@@ -73,6 +93,40 @@ function focusMark(root: Element, target: HTMLElement): FocusMark | null {
 	const field = target as HTMLInputElement | HTMLTextAreaElement;
 	const caret = "selectionStart" in field && typeof field.selectionStart === "number";
 	return { selector, index: Math.max(0, index), start: caret ? field.selectionStart : null, end: caret ? field.selectionEnd : null };
+}
+
+/** A field typed into while the software keyboard is up stays above the
+ *  bottom bar (feature 025, T061): the bar rides on the keyboard
+ *  (visualViewport), and the browser only brings a focused field into the
+ *  visual viewport, which can leave it under the bar. */
+export function keepFieldAboveBar(field: HTMLElement): void {
+	const bar = document.querySelector<HTMLElement>('[data-testid="dock-shell"]');
+	if (!bar) return;
+	const gap = field.getBoundingClientRect().bottom - (bar.getBoundingClientRect().top - 12);
+	if (gap <= 0) return;
+	for (let el = field.parentElement; el; el = el.parentElement) {
+		if (el.scrollHeight > el.clientHeight && /(auto|scroll)/.test(getComputedStyle(el).overflowY)) { el.scrollBy({ top: gap }); return; }
+	}
+}
+
+function useFieldAboveKeyboard(root: () => HTMLElement | null, active: boolean) {
+	const rootRef = useRef(root);
+	rootRef.current = root;
+	useEffect(() => {
+		const el = rootRef.current();
+		const view = typeof window === "undefined" ? undefined : window.visualViewport;
+		if (!active || !el || !view || !window.matchMedia("(pointer: coarse)").matches) return;
+		const typing = () => {
+			const field = document.activeElement;
+			return field instanceof HTMLElement && el.contains(field) && field.matches("textarea, input") ? field : null;
+		};
+		const fit = () => { const field = typing(); if (field) keepFieldAboveBar(field); };
+		// The keyboard opens after focus; the bar moves with the viewport's resize.
+		const onFocus = () => { requestAnimationFrame(fit); };
+		el.addEventListener("focusin", onFocus);
+		view.addEventListener("resize", fit);
+		return () => { el.removeEventListener("focusin", onFocus); view.removeEventListener("resize", fit); };
+	}, [active]);
 }
 
 export function CheckThread(props: CheckThreadProps) {
@@ -129,6 +183,9 @@ export function CheckThread(props: CheckThreadProps) {
 
 function ThreadBody({ id, kind, label, teaser, reveal, open, fresh, variant, layer, lessonWidth, shift, anchorId, onOpen, onClose, using, children, slotRef }: CheckThreadProps & { slotRef: React.RefObject<HTMLDivElement | null> }) {
 	const margin = variant === "margin";
+	// A closed thread says when it holds his draft; an empty one says nothing.
+	const draft = useCheckDraft(kind, id);
+	useFieldAboveKeyboard(() => elements.get(id) ?? null, !margin && open);
 	const { elements, refFor, bump } = useMeasuredRefs();
 	const [place, setPlace] = useState<Placement | null>(null);
 	const [tick, setTick] = useState(0);
@@ -206,6 +263,7 @@ function ThreadBody({ id, kind, label, teaser, reveal, open, fresh, variant, lay
 				<button type="button" className="nb-thread-open lh-check-open" aria-expanded={false} data-testid={testId} onClick={onOpen}>
 					<span className="lh-check-meta"><span className="lh-check-turn">Your turn</span> · <span>{reveal ? REVEAL_LINE : label}</span></span>
 					<span className="lh-check-teaser nb-voice"><InkText text={teaser || (kind === "problem" ? "Open the active problem" : "")} animate={inkTeaser} /></span>
+					{draft && <span className="lh-check-draft" data-testid="check-draft-kept">{DRAFT_KEPT}</span>}
 					<span className="lh-check-action">{action}</span>
 				</button>
 			)}

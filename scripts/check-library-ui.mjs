@@ -419,7 +419,8 @@ async function checkMentionField(page, posts, width, name, selector, { sends = t
 	await page.waitForFunction((row, sel) => document.querySelector(row) && document.querySelector(sel)?.querySelector('[role="status"]')?.textContent === "Nothing matched", {}, newRow, menu);
 	assert.equal(await isActive(), false, `${name}: no match activates nothing`);
 	if (width < 768) {
-		const height = await page.$eval(newRow, (el) => el.getBoundingClientRect().height);
+		// Layout height: Notebook's menu scales in from .98 (feature 025), so the box is smaller mid-entry.
+		const height = await page.$eval(newRow, (el) => el.offsetHeight);
 		assert.ok(height >= 44, `${name}: the row is at least 44px (${height})`);
 	}
 	assert.equal((await page.$eval(menu, (el) => el.lastElementChild.dataset.testid)), "mention-new-page", `${name}: last in the list`);
@@ -594,7 +595,7 @@ async function checkMentions(width) {
 	if (shots) await page.screenshot({ path: path.join(shots, `mention-${width}-new-page-long-list.png`) });
 	// Styled as the rows beside it: only the active treatment differs, and it isn't amber at rest.
 	const compare = await page.evaluate((sel) => {
-		const pick = (el) => { const c = getComputedStyle(el); return { height: Math.round(el.getBoundingClientRect().height) >= 44, radius: c.borderRadius, padding: c.paddingLeft, cursor: c.cursor }; };
+		const pick = (el) => { const c = getComputedStyle(el); return { height: el.offsetHeight >= 44, radius: c.borderRadius, padding: c.paddingLeft, cursor: c.cursor }; };
 		const text = (el) => { const c = getComputedStyle(el.firstElementChild); return { color: c.color, size: c.fontSize }; };
 		const other = document.querySelector('[data-testid="mention-option"]');
 		const own = document.querySelector(sel);

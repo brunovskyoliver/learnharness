@@ -139,7 +139,7 @@ function WaitingRow({ chat }: { chat: Waiting }) {
 	const { kind, action, teaser, postedAt } = chat.waiting;
 	return (
 		<li className="waiting-row" data-testid="waiting-row" data-progress={chat.progress ? "" : undefined}>
-			<span className="waiting-row-kind text-sm font-medium text-bulb">{kind}</span>
+			<span className="waiting-row-kind text-sm font-medium text-bulb-ink">{kind}</span>
 			<RowMeta id={`${id}-meta`} title={chat.title} at={postedAt} />
 			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-base leading-[1.6] text-graphite">
 				<Teaser text={teaserPlain(teaser)} />
@@ -162,7 +162,7 @@ function LessonRow({ chat }: { chat: Unfinished }) {
 	const id = useId();
 	return (
 		<li className="waiting-row" data-testid="waiting-row">
-			<span className="waiting-row-kind text-sm font-medium text-bulb">Lesson</span>
+			<span className="waiting-row-kind text-sm font-medium text-bulb-ink">Lesson</span>
 			<RowMeta id={`${id}-meta`} title={chat.title} at={chat.updatedAt} />
 			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-base leading-[1.6] text-graphite">
 				{progressLine(chat.progress, chat.course)}
@@ -183,7 +183,7 @@ function CardsRow({ due, weakDue }: { due: number; weakDue: number }) {
 	const id = useId();
 	return (
 		<li className="waiting-row" data-testid="waiting-cards-row">
-			<span className="waiting-row-kind text-sm font-medium text-bulb">Flashcards</span>
+			<span className="waiting-row-kind text-sm font-medium text-bulb-ink">Flashcards</span>
 			<span id={`${id}-meta`} className="waiting-row-meta min-w-0 truncate text-meta text-faint">{weakDue > 0 ? `${weakDue} on weak ideas` : "Today"}</span>
 			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-base leading-[1.6] text-graphite">{dueRowText(due)}</p>
 			<Link href="/review" aria-describedby={`${id}-teaser ${id}-meta`} className="waiting-row-action lh-tool">Review</Link>

@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { DEMO_PAPER, demoDeclaredScheme, demoPrefersInvert, injectDemoTheme } from "../src/core/demo-theme.ts";
+import { DEMO_PAPER, DEMO_SERIES, DEMO_SERIES_NAMES, demoDeclaredScheme, demoPrefersInvert, injectDemoTheme } from "../src/core/demo-theme.ts";
 import { PaperAppearanceProvider } from "../components/paper/appearance.tsx";
 import { DEFAULT_SHARED_APPEARANCE } from "../src/core/index.ts";
 import { buildSubagentSteer } from "../src/core/contracts.ts";
@@ -29,7 +29,8 @@ describe("demo theme", () => {
 		assert.match(out, /:root\{color-scheme:light dark;/);
 		assert.match(out, /--lh-bg:light-dark\(#f8f7f4,#1a1a19\)/);
 		assert.match(out, /--lh-text:light-dark\(#1d1c1a,#e9e7e2\)/);
-		assert.match(out, /--lh-blue:#7cacf8/, "series colours stay the demo's data");
+		// Series per scheme (feature 025): the dark palette as before, the light one deepened to 3:1 on paper.
+		assert.match(out, /--lh-blue:light-dark\(#4d8ef5,#7cacf8\)/, "series colours follow the scheme");
 		assert.ok(!out.includes("@font-face"), "no font without an app server");
 		assert.match(injectDemoTheme(LIGHT, true), /@font-face\{font-family:"LH Sans";src:url\("\/fonts\/instrument-sans-latin\.woff2"\)/);
 	});
@@ -88,6 +89,35 @@ describe("demos of the other scheme open inverted", () => {
 		for (const [role, name] of Object.entries(roles)) {
 			assert.equal(DEMO_PAPER.light[role as keyof typeof roles], token(light, name), `light ${role}`);
 			assert.equal(DEMO_PAPER.dark[role as keyof typeof roles], token(dark, name), `dark ${role}`);
+		}
+	});
+
+	it("gives each scheme a series that reaches 3:1 on its paper, the same hues, lightness moved by the smallest step", () => {
+		const channel = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+		const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255) as [number, number, number];
+		const lum = (hex: string) => { const [r, g, b] = rgb(hex).map(channel) as [number, number, number]; return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+		const contrast = (a: string, b: string) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+		const hsl = (hex: string) => {
+			const [r, g, b] = rgb(hex), max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 2, d = max - min;
+			const s = d === 0 ? 0 : l > 0.5 ? d / (2 - max - min) : d / (max + min);
+			const h = d === 0 ? 0 : max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+			return [h / 6, s, l] as const;
+		};
+		const hex = ([h, s, l]: readonly [number, number, number]) => `#${[0, 8, 4].map((n) => { const k = (n + h * 12) % 12, a = s * Math.min(l, 1 - l); return Math.round((l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255).toString(16).padStart(2, "0"); }).join("")}`;
+		for (const scheme of ["light", "dark"] as const) {
+			for (const name of DEMO_SERIES_NAMES) {
+				const ratio = contrast(DEMO_SERIES[scheme][name], DEMO_PAPER[scheme]["--lh-bg"]);
+				assert.ok(ratio >= 3, `${scheme} ${name} ${DEMO_SERIES[scheme][name]} is ${ratio.toFixed(2)}:1`);
+			}
+		}
+		for (const name of DEMO_SERIES_NAMES) {
+			const [h, s, l] = hsl(DEMO_SERIES.dark[name]), [h2, s2, l2] = hsl(DEMO_SERIES.light[name]);
+			assert.ok(Math.abs(h - h2) < 0.01 && Math.abs(s - s2) < 0.02, `${name}: the light series keeps the hue`);
+			assert.ok(l2 < l, `${name}: light is deeper than dark`);
+			// The first 0.1% lightness step down from the dark colour that reaches 3:1.
+			let first = "";
+			for (let i = 0; i <= 1000 && !first; i++) { const step = hex([h, s, l - i / 1000]); if (contrast(step, DEMO_PAPER.light["--lh-bg"]) >= 3) first = step; }
+			assert.equal(DEMO_SERIES.light[name], first, name);
 		}
 	});
 });

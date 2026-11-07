@@ -57,7 +57,9 @@ Shadows: only `shadow-lift` on floating surfaces (menus, popovers, dialogs, side
 | --- | --- |
 | Bottom bar, check pending | "Answer the check beside the lesson" · button "Go to it" |
 | Bottom bar, problem pending | "Solve the problem beside the lesson" · button "Go to it" |
+| Bottom bar, check pending, thread inline (phones, the right pane open) | "Answer the check above" / "Solve the problem above" · button "Go to it" |
 | Collapsed check thread | "{Kind}" (Lesson check, Question, Prediction, Explain, Recall, Problem) + teaser + "Answer" / "Solve" |
+| Collapsed check thread holding a draft (text, a choice or a moved confidence) | faint "Draft kept" after the teaser (nothing for an empty draft) |
 | Overlay sidebar (Study) search placeholder | "Find a session or page" |
 | Overlay sidebar (Study) footer | "Settings", "Command palette", "Switch to Notebook", "Sign out" (hosted) |
 | Corner hint idle (Study) | "⌘K searches everything" / "Ctrl+K searches everything" |

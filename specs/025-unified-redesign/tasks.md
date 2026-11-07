@@ -85,10 +85,10 @@ Inputs: spec.md, plan.md, research.md (R1-R16), data-model.md, contracts/ui-cont
 
 ## Phase 9: Dialogs and states
 
-- [ ] T058 [P] Every remaining dialog (delete session/node, abort turn, setup dialog and lazy setup, loading modal, notes import, connection dialogs, move-to, rename, tags) on the lifted dialog; focus trap/return intact.
-- [ ] T059 [P] Empty, loading (skeletons), error (error.tsx boundary, "This view could not be shown.") per contract; update banner; setup CTA.
-- [ ] T060 [P] Hosted: `clerk-appearance.ts` variables from paper tokens (`var(--…)` where Clerk accepts; literal paper hex allowlisted otherwise), sign-in/up pages on paper; account row.
-- [ ] T061 Phones: 320/390 pass for every surface (overlay sidebar, pane layer with "Back to chat", inline check threads, composer above keyboard, 44px targets).
+- [X] T058 [P] Every remaining dialog (delete session/node, abort turn, setup dialog and lazy setup, loading modal, notes import, connection dialogs, move-to, rename, tags) on the lifted dialog; focus trap/return intact.
+- [X] T059 [P] Empty, loading (skeletons), error (error.tsx boundary, "This view could not be shown.") per contract; update banner; setup CTA.
+- [X] T060 [P] Hosted: `clerk-appearance.ts` variables from paper tokens (`var(--…)` where Clerk accepts; literal paper hex allowlisted otherwise), sign-in/up pages on paper; account row.
+- [X] T061 Phones: 320/390 pass for every surface (overlay sidebar, pane layer with "Back to chat", inline check threads, composer above keyboard, 44px targets).
 
 ## Phase 10: Verification
 

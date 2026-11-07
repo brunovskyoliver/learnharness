@@ -30,7 +30,7 @@ export function GraphContextCard({ data }: { data: GraphContextData }) {
 				type="button"
 				data-testid="graph-context-toggle"
 				onClick={() => setOpen((v) => !v)}
-				className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-rule/70 px-3 py-2 text-left text-sm text-faint transition-colors hover:text-ink"
+				className="flex w-full cursor-pointer items-center gap-2 rounded-lg border border-rule/70 px-3 py-2 text-left text-sm text-faint transition-colors hover:text-ink pointer-coarse:min-h-11"
 			>
 				<ChevronRightIcon aria-hidden="true" className={cn("size-3.5 shrink-0 transition-transform", open && "rotate-90")} />
 				<span className="font-medium">Graph context</span>

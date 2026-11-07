@@ -4,7 +4,7 @@
  *  same folder only when a panel needs them. Colors and fonts come from the
  *  --lh-* variables injected ahead of the demo (src/core/demo-theme.ts). */
 
-import { DEMO_PAPER, DEMO_SCROLLBAR_CSS } from "../core/demo-theme.ts";
+import { DEMO_PAPER, DEMO_SCROLLBAR_CSS, DEMO_SERIES, DEMO_SERIES_NAMES } from "../core/demo-theme.ts";
 import { distribution, sample, type SamplingOptions, type SamplingToken, type SamplingRow } from "../core/ml-sampling.ts";
 import { forward, backward, steps, type NetworkSpec, type ForwardPass, type BackwardPass } from "../core/ml-net.ts";
 import { arithmetic, nearest, coordinates, validatePoints, type Point, type Arithmetic } from "../core/ml-vectors.ts";
@@ -97,9 +97,8 @@ function readTheme() {
 		border: colorVar("--lh-border", paper["--lh-border"]),
 		text: colorVar("--lh-text", paper["--lh-text"]),
 		muted: colorVar("--lh-muted", paper["--lh-muted"]),
-		series: ["--lh-blue", "--lh-teal", "--lh-amber", "--lh-red", "--lh-green"].map((v, i) =>
-			cssVar(v, ["#7cacf8", "#5fd4c4", "#e5b55a", "#f28b82", "#7fd18b"][i]!),
-		),
+		// Per scheme (the defaults are light-dark() pairs); a demo's own --lh-* colours win.
+		series: DEMO_SERIES_NAMES.map((name) => colorVar(name, DEMO_SERIES[scheme][name])),
 		font: cssVar("--lh-font", "system-ui, sans-serif"),
 		mono: cssVar("--lh-mono", "ui-monospace, monospace"),
 	};

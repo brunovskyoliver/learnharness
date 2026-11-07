@@ -1417,13 +1417,14 @@ function ChatView({
 							data-testid="phase-chip"
 							data-phase="practice"
 							aria-hidden="true"
-							className="pointer-events-none flex shrink-0 select-none items-center gap-2 text-sm text-faint"
+							className="pointer-events-none flex shrink-0 select-none items-center gap-2 text-sm text-faint max-sm:hidden"
 						>
 							Practice
 							<span className="text-faint">/</span>
 						</span>
 					) : (
-						<PhaseChip phase={phases.at(-1) ?? "probe"} />
+						// Phones give the band to the title (feature 025, T061): the phase shows from 640px.
+						<span className="contents max-sm:hidden"><PhaseChip phase={phases.at(-1) ?? "probe"} /></span>
 					)}
 					{renaming ? (
 						<>
@@ -1465,7 +1466,7 @@ function ChatView({
 								setTitleDraft(titleText);
 								setRenaming(true);
 							}}
-							className="lh-no-drag group -mx-1.5 flex min-w-4 shrink cursor-text items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-sm font-medium transition-colors hover:bg-shelf"
+							className="lh-no-drag group -mx-1.5 flex min-w-4 shrink cursor-text items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-sm font-medium transition-colors hover:bg-shelf pointer-coarse:min-h-11"
 						>
 							<span className="truncate">{titleText}</span>
 							<PencilIcon className="size-3.5 shrink-0 text-faint opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
@@ -1802,6 +1803,7 @@ function ChatView({
 				<DockFooter
 					onReserve={setDockReserve}
 					check={pending ? "question" : activeProblem ? "problem" : null}
+					checkInline={layout.variant === "inline"}
 					checkId={checkId}
 					onGoToCheck={openCheck}
 					chatId={chatId}
@@ -2011,9 +2013,17 @@ export function shouldStampGeometryMute(nextH: number, prevH: number, pending: b
 	return pending && nextH > prevH + 1;
 }
 
+/** The bar's line while a check waits: where the thread is (beside the lesson
+ *  in the margin, above when inline). Exported for the render pins. */
+export function checkPendingLine(check: "question" | "problem", inline: boolean): string {
+	if (check === "problem") return inline ? "Solve the problem above" : "Solve the problem beside the lesson";
+	return inline ? "Answer the check above" : "Answer the check beside the lesson";
+}
+
 function DockFooter({
 	onReserve,
 	check,
+	checkInline,
 	checkId,
 	onGoToCheck,
 	turns,
@@ -2029,6 +2039,8 @@ function DockFooter({
 	/** A waiting check or problem (feature 025, R8): it is answered in its
 	 *  thread beside the lesson, and this bar says so in the composer's place. */
 	check: "question" | "problem" | null;
+	/** The thread sits in the transcript (phones, the pane open), not in the margin. */
+	checkInline: boolean;
 	checkId: string | null;
 	/** "Go to it": scrolls to, opens and focuses the thread. */
 	onGoToCheck: () => void;
@@ -2592,7 +2604,7 @@ function DockFooter({
 					>
 							{check ? (
 								<div data-testid="check-pending" className="flex flex-col">
-									<p className="lh-check-pending-line">{check === "problem" ? "Solve the problem beside the lesson" : "Answer the check beside the lesson"}</p>
+									<p className="lh-check-pending-line">{checkPendingLine(check, checkInline)}</p>
 									<PromptToolbar controls={<StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} setup={setupCta} />}>
 										<PrimaryAction type="button" data-testid="check-go-to" onClick={onGoToCheck}>Go to it</PrimaryAction>
 									</PromptToolbar>

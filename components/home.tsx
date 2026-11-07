@@ -203,7 +203,7 @@ export function Home({
 												<SetupModelsButton onOpen={() => setSetupOpen(true)} />
 											) : undefined}
 											leadingSlot={
-												<div className="flex h-9 items-center gap-0.5 rounded-md bg-paper p-[3px]" data-testid="home-mode-switch">
+												<div className="flex h-9 items-center gap-0.5 rounded-md bg-paper p-[3px] pointer-coarse:h-auto" data-testid="home-mode-switch">
 													{(["teach", "practice"] as const).map((m) => (
 														<button
 															key={m}
@@ -212,7 +212,7 @@ export function Home({
 															onClick={() => setMode(m)}
 															aria-pressed={mode === m}
 															className={
-																"flex h-[30px] items-center gap-1.5 rounded-md px-2 text-sm font-medium transition-colors sm:px-3 " +
+																"flex h-[30px] items-center gap-1.5 rounded-md px-2 text-sm font-medium transition-colors sm:px-3 pointer-coarse:h-11 pointer-coarse:min-w-11 pointer-coarse:justify-center " +
 																(mode === m
 																	? "bg-shelf text-ink"
 																	: "text-graphite hover:text-ink")

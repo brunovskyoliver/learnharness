@@ -89,7 +89,7 @@ const OUTCOME_LABEL: Record<string, string> = {
  * card's verdict chip (polish pass 2026-10-26). */
 const OUTCOME_CHIP: Record<string, string> = {
 	solved: "border border-green/50 text-green",
-	solvedWithHints: "border border-bulb/50 text-bulb",
+	solvedWithHints: "border border-bulb-ink/50 text-bulb-ink",
 	movedOn: "border border-rule text-faint",
 	surrendered: "border border-red/50 text-red",
 	dismissed: "border border-rule text-faint",

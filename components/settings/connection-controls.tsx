@@ -47,11 +47,11 @@ export function ConnectionDialog(props: ComponentProps<DialogComponent>) {
  if (Dialog) return <Dialog {...props} />;
  return <LoadingModal label={props.label} onClose={props.onClose} busy={props.busy} onOpen={(trigger) => { opener.current = trigger; }} testid={`${props.testid}-loading`} hideTitle={failed}>
   {failed ? <>
-   <p role="status" className="mb-3 text-sm text-faint">The standard dialog could not load. Account controls remain available below.</p>
+   <p role="status" className="lh-dialog-text mb-3 text-ink">The standard dialog could not load. Account controls remain available below.</p>
    {props.children}
   </> : <>
-   <p role="status" className="text-sm text-faint">Loading connection…</p>
-   <div className="mt-4 flex justify-end"><Button variant="outline" disabled={props.busy} onClick={props.onClose}>Close</Button></div>
+   <p role="status" className="lh-dialog-text text-faint">Loading connection…</p>
+   <div className="lh-dialog-actions"><button type="button" className="lh-text-action" disabled={props.busy} onClick={props.onClose}>Close</button></div>
   </>}
  </LoadingModal>;
 }

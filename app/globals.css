@@ -318,23 +318,25 @@
 	.waiting-row-action { margin: 0 0 0 8px; }
 }
 
-/* Setup in the toolbar (no key, no models), in place of the model controls. */
+/* Setup in the toolbar (no key, no models), in place of the model controls:
+   the one thing to do, so Notebook's primary, the ink pill (feature 025). */
 .prompt-setup {
 	display: inline-flex;
-	min-height: 36px;
+	min-height: 32px;
 	align-items: center;
-	border-radius: var(--radius-sm);
-	background: var(--shelf);
-	padding: 0 12px;
-	color: var(--ink);
-	font-size: var(--text-md);
+	border-radius: 999px;
+	background: var(--ink);
+	padding: 0 14px;
+	color: var(--paper);
+	font-size: var(--text-meta);
 	font-weight: 500;
+	white-space: nowrap;
 	cursor: pointer;
-	transition: background-color 160ms ease;
+	transition: opacity 160ms ease;
 }
 
 .prompt-setup:hover {
-	background: color-mix(in srgb, var(--shelf) 80%, var(--ink));
+	opacity: 0.85;
 }
 
 @media (pointer: coarse) {
@@ -598,6 +600,7 @@
 	--color-rule: var(--rule);
 	--color-riddle: var(--riddle);
 	--color-bulb: var(--bulb);
+	--color-bulb-ink: var(--bulb-ink);
 	--color-focus: var(--nb-focus);
 	--color-backdrop: var(--nb-backdrop);
 	--color-gray: var(--text-gray);
@@ -1565,8 +1568,8 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 	line-height: 16px;
 	letter-spacing: 0;
 }
-/* "Your turn": the bulb, as Home and the sidebar's waiting dot (owner Q4). */
-.lh-check-turn { color: var(--bulb); font-weight: 600; }
+/* "Your turn": the bulb, as Home and the sidebar's waiting dot (owner Q4), in its 4.5:1 ink. */
+.lh-check-turn { color: var(--bulb-ink); font-weight: 600; }
 .lh-paper .lh-check-open { cursor: pointer; }
 .lh-paper .lh-check-open > .lh-check-meta { margin-bottom: 4px; }
 .lh-check-teaser {
@@ -1575,6 +1578,15 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 	-webkit-box-orient: vertical;
 	-webkit-line-clamp: 4;
 	white-space: normal;
+}
+/* "Draft kept": a closed thread that holds his draft says so, faint, after the teaser. */
+.lh-paper .lh-check-open > .lh-check-draft {
+	display: block;
+	margin-top: 6px;
+	color: var(--faint);
+	font-family: var(--nb-sans);
+	font-size: var(--text-xs);
+	line-height: 16px;
 }
 .lh-paper .lh-check-open > .lh-check-action {
 	display: inline-block;
@@ -1703,6 +1715,8 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 .lh-check-dont-know:focus-visible { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
 .lh-check-answer { display: flex; flex-direction: column; gap: 12px; }
 .lh-paper .lh-check-field { border-bottom: 1px solid var(--rule); cursor: text; }
+/* Phones: the reply line is a 44px target (feature 025, T061). */
+@media (pointer: coarse) { .lh-paper .lh-check-field > textarea { min-height: 43px; } }
 .lh-check-input {
 	display: block;
 	width: 100%;
