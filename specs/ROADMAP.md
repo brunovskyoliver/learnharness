@@ -17,7 +17,7 @@ Owner goal, 2026-10-31: evolve the app into one workspace connecting learning, d
 | 021 | Flashcards and FSRS review queue, separate from graph evidence | 017, 020 | Implemented on `feat/021-spaced-repetition`, not merged or deployed |
 | 022 | Diagrams: editable maps and whiteboards, proposed AI changes | 016 | Implemented on `feat/022-diagrams`, not merged or deployed |
 | 023 | Integration polish: held AI edits, PDF keyboard path, Electron and hosted verification across the slices | all | Implemented on `feat/023-integration-polish`, not merged or deployed |
-| 024 | Notebook mode: a Riddled-style writing page with margin threads, automatic reads, sketches, note chat, export; Study unchanged | 016, 021, 023 | Implemented on `notebook-mode`, not merged or deployed |
+| 024 | Notebook mode: a Riddled-style writing page with margin threads, automatic reads, sketches, note chat, export; Study unchanged | 016, 021, 023 | Implemented on `notebook-mode`, not merged or deployed; real-model pass (T047) waits on the owner's choice of credential |
 
 ## Dependency decisions to make with the owner
 

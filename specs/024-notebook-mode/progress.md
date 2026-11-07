@@ -1,6 +1,6 @@
 # Feature 024: Notebook mode
-Stage: implement
-Updated: 2026-11-06
+Stage: done (T047 real-model pass blocked, waiting on the owner; see Report)
+Updated: 2026-11-07
 
 ## Decisions
 - Owner answers (one question per call, 2026-11-06): see spec.md Clarifications. Mode "Notebook" / "Study"; AI has no name, verbs only; note = Library page; threads and chat stay with the note, not sessions; extras: rich editor, Make flashcards, Links panel; automatic reads uncapped but shown with cost and Stop; activity lives in the corner hint; switch in both sidebars + palette + one shortcut; Export replaces Share; strong slot for everything; phones not a focus.
@@ -110,6 +110,11 @@ Updated: 2026-11-06
 - Agent (phase 11, T048): DESIGN.md "## Notebook" states its rules override Study ink, the type scale and the no-shadow rule only inside `.nb-root`; constitution untouched (no rule needed amending).
 - Agent (phase 11, T049, see reviews.md): fixed four findings (chosen option card lost its ring under the pointer; notes changed sides while the sidebar slid the page, now measured without the sheet/page transforms by `columnSpace()`; sidebar note rows are links; the html canvas behind Notebook no longer rubber-bands Study's dark ground and takes `color-scheme: light` for light paper). Kept by design, owner approval needed: `--faint` 3.21:1 light / 3.89:1 dark (and `--text-gray` 3.62:1), the focus ring 2.0:1 / 2.77:1, the slash and [[ menus' active row as a shelf fill only, straight apostrophes in ui-contract strings, no theme-color for phones.
 
+- Agent (phase 11, owner fixes): sketch lines, arrows and shapes are §16.1's `--graphite` at 1.2 (SVG root attributes and `.nb-sketch-line`; grid rules stay `--rule` 1px). Frame arrow profile: minimum 73 over ≈3 px (JPEG); ours before: 41 over 5 px; after: 92 over 2 px. The bar, dot and line-chart primitives keep `--riddle`.
+- Agent (phase 11, owner fixes): the settings backdrop (z 80) already covered the open sidebar (z 40) in the same `.nb-root` stacking context. 8-bit grey under the modal: sidebar 170 / page 171 (frame 172 / 169), and sidebar text matches the frame (light: minimum 70 vs 65; dark: maximum 67 vs 62). So no CSS change; the earlier compare note was wrong. sidebar-settings.spec now asserts the backdrop is the top element over the sidebar.
+- Agent (phase 11, owner fixes): typographic ’ in every Notebook string (components/notebook, the strings the server sends to Notebook: failed run, drawing failed, chat limit, seeded Examiner instructions) and in ui-contract.md (and data-model.md's seeded reviewer). Quotation marks were already “ ”. Study's own strings and the app title stay as they are.
+- Agent (T047): blocked. The app's ChatGPT connection is OpenAI's direct agent flow (Bearer to api.openai.com/v1, requires `resource.invoke` + `chatgpt.tokens.use.direct`). The Codex CLI token has `openid profile email offline_access` only: a read-only probe got 403 on /v1/models (missing api.model.read) and 401 on /v1/responses (missing api.responses.write). There is no Codex-backend transport. Following the owner's rule (no other credential, no improvising), the pass stopped before seeding anything. ~/.codex/auth.json sha256 15b3ead8…74d4 was the same before and after.
+
 ## Log
 - 2026-11-06 specify: spec.md and checklists/requirements.md written; all checklist items pass.
 - 2026-11-06 clarify: 10 owner questions asked one per call before the spec; none left. Gate 1 covered by those questions.
@@ -134,5 +139,65 @@ Updated: 2026-11-06
 
 - 2026-11-07 implement phase 11 part 1 (T044-T045 + FIX-1..5): links-panel.tsx (+ `useNoteConnections`/`CONNECTION_EMPTY` in note-connections.tsx), passage flashcards (cards core/server/make-panel, `passageFlashcardsHref`), footer flashcards saves first, `stampMode` (core, route, createNote, useCompanion, data-model/api), `useArrowChoice` (settings + export), column 690 / menu gap 51 / note width 386, resting underline, selection row 1 with H3, H4, Quote, lists, focus on opened notes, a11y CSS (coarse targets, rings, scrollbars). Tests: notebook-api stampMode + route note, cards page passage, render-review parseMakeParam, e2e a11y.spec (3: keyboard-only run through every scope item with focus/outline checks, names and scrollbars at each layer; Escape order; coarse targets), links.spec (1), selection.spec (+2: row 1 blocks; passage flashcards preview only), sidebar-settings (+1: New notes start in; Links row opens the panel). npm test 4069: 4067 pass / 0 fail / 2 skipped (CHROME_PATH headless shell); typecheck, lint, build clean; e2e 52 passed (note.spec: the 1440 column now starts at 375, updated). Screenshots ~/agent-runs/2026-11-06-notebook-mode/phase11/ (margin-notes and inline-sketch-selection light/dark, compare + overlay for both frames, links-panel, selection-menu, underline, light/dark).
 
-## Report
 - 2026-11-07 implement phase 11 part 2 (width investigation, T046, T048, T049): same-browser measurements show our fonts equal Riddled's to 0.01 px, so the column returns to 660 px, `NOTE_WIDTH` 376, `MENU_GAP` 66 (visual-reference §3.4-§3.5, Gap 1; note.spec 1440 column x 390). scripts/notebook-compare.mjs + notebook-compare-notes.json: 8 pairs (margin-notes, margin-thread, inline-sketch-and-selection, note-chat-panel, sidebar-and-settings, export-dialog, settings-bottom, dark-appearance) with overlays and 7 motion strips × normal/reduced in ~/agent-runs/2026-11-06-notebook-mode/compare/ (index.md lists the differences). DESIGN.md Notebook section, PRODUCT.md paragraph, ROADMAP 024 row and Playwright row. Reviews (impeccable audit 16/20, web-design-guidelines) in reviews.md; fixes in notebook.css, margin.tsx, thinking.tsx, overlay-sidebar.tsx; new e2e threads.spec "opening the sidebar slides the page but keeps every note on its side" (fails without the fix). npm test 4069: 4067 pass / 0 fail / 2 skipped (CHROME_PATH headless shell); typecheck, lint, build clean; e2e 53 passed.
+- 2026-11-07 implement phase 11 part 3 (owner fixes, T050): ee4116a sketch ink, sidebar dim assertion, typographic apostrophes; compare re-run (all pairs and strips). T047 blocked (Decisions). Full gate below.
+
+## Report
+
+### What changed, by phase (`git log --oneline main..HEAD`)
+
+| Phase | Commits | What |
+|---|---|---|
+| Spec, plan, gates | f004401, 24841a9, dd0227a, 9bb71f0 | spec and owner clarifications; plan, research, data model, contracts (api, ui-contract, visual-reference), 50 tasks; gate 2 "go"; headless Chrome path |
+| 1 Setup | 7ad4e3b | Playwright (tests only), fonts, notebook.css scaffold, `general.interface` and the `notebook` settings section with five seeded reviewers, strong-slot role |
+| 2 Foundation | e8b0d3d, a01f178 | companion store, sketch schema and renderer, model calls, run registry and routes, mode switch (Mod+Shift+O, both sidebars, palette), `/` → `/notebook` redirect |
+| 3 Note page (US1) | 1224843 | note page, title in place, editor, toolbar row, overlay sidebar, corner hint |
+| 4 Thinks with you (US2) | bd38ad0 | automatic reads, margin notes with tethers, reading underline and blot, inline replies, Stop, cost |
+| 5 Margin threads (US3) | c17b83e | expand, Write back, Resolve/Dismiss with Undo, Marks only, keyboard path |
+| 6 Selection and sketches (US4) | 2f4d72d | selection menu (formats, ink, Think/Ask/Visualize/Make flashcards), stepped sketches, See it larger |
+| 7 Instructions and reviewers (US5) | f0d451d | instruction line, reviewer picker, Reviewers page |
+| 8 Note chat (US6) | 673aad8 | chat panel, starters, Stop, Try again |
+| 9 Just my words and export (US7) | b7e26b2 | Just my words, Copy this note, Export PDF / Word / Markdown with and without notes |
+| 10 Sidebar and settings (US8) | fbad3bb | footer actions and shortcuts, open-thread dots, settings modal (every option), pointer ink |
+| 11 Polish | 016ea73, 8c4ede0, 49e7d19, e146a50, f649232, ee4116a | Links panel, passage flashcards, `stampMode`, a11y; column 660 / notes 376 from frame geometry; compare script; DESIGN/PRODUCT/ROADMAP; review fixes; sketch ink, sidebar dim check, typographic apostrophes |
+
+### How it was verified (2026-11-07, on ee4116a)
+
+- `npm run lint`: clean. `npm run typecheck` (both programs): clean.
+- `npm test` with CHROME_PATH=chrome-headless-shell 156: **4070 tests, 4068 pass, 0 fail, 2 skipped** (baseline before 024: 3837 pass / 27 skipped).
+- `npm run test:e2e`: **53 passed** (4.0 min, headless shell, faux Notebook model).
+- `npm run build`: clean (main's build also clean).
+- Startup JS (constitution VIII): `next start` for each build on a fresh local data dir; headless Chrome loads the route; every script it loads is summed (raw and gzip -9) and scanned for Notebook markers (`lh.nb.justMyWords`, `nb-sel-menu`, `notebook-root`, `nb-sketch`, `.nb-root`, in scripts and stylesheets). Script: `~/agent-runs/2026-11-06-notebook-mode/startup-js/startup-js.mjs`, results in the same folder.
+
+| Route | main (scripts / raw / gzip) | branch | growth raw / gzip | Notebook chunks on branch |
+|---|---|---|---|---|
+| `/` | 14 / 812,118 / 249,051 | 13 / 816,580 / 249,516 | +0.55% / +0.19% | none |
+| `/chat/new` | 14 / 776,668 / 239,632 | 13 / 781,130 / 240,097 | +0.57% / +0.19% | none |
+| `/library` | 16 / 841,419 / 256,386 | 15 / 846,887 / 257,254 | +0.65% / +0.34% | none |
+
+  Every route is under the 5% budget, and no Notebook script or stylesheet loads on a Study route. `tests/startup-module-graph.test.ts` holds the same rule at the module-graph level.
+- Evidence: `~/agent-runs/2026-11-06-notebook-mode/` has phase3/ … phase11/ (screenshots per phase, light/dark, compare and overlay against the frames), compare/ (8 frame pairs with overlays, 7 motion strips normal and reduced, index.md), startup-js/, real-model/ (why T047 is blocked).
+- Real model (T047): **not run.** See Decisions; `real-model/index.md` has the probe results. SC-002 (20 mode round-trips with edits, nothing lost) is covered by the faux-model suites (notebook-mode-switch unit tests, e2e round trips) but has not been run against a real model.
+
+### Remaining differences from Riddled (owner approval)
+
+From compare/index.md and reviews.md:
+1. Contrast: `--faint` 3.21:1 light / 3.89:1 dark on paper (3.01:1 on shelf), `--text-gray` 3.62:1. These are Riddled's exact tokens and sit below AA 4.5:1 for the meta, hints, placeholders, reply counts, Resolve / Dismiss, the corner hint and the toolbar labels.
+2. Focus ring: Riddled's 2px `--riddle-line` is 2.0:1 light / 2.77:1 dark, below WCAG 1.4.11's 3:1.
+3. The keyboard-active row in the slash and [[ menus is only a `--shelf` fill (1.06:1), with no ring.
+4. Linux sets the same fonts ≈3% wider than the macOS frames, so some lines break differently. The first left margin note needs 7 lines and its 6-line clamp drops "assignments."; some margin lines break one word earlier; the inline reply re-wraps (plus ≈6% the font alone doesn't explain: the frame's reply may keep ≈20 px clear on its right).
+5. Vertical offsets: from the instruction line down the page sits ≈2-5 px lower; the open thread ≈5 px lower. The selection menu sits ≈7 px further right.
+6. Hovering a margin note shows its faint tether; the frame shows none at that moment.
+7. Long note names in the sidebar truncate a few characters later.
+8. Bounce/overshoot easings (8, flagged by the impeccable detector) are Riddled's exact curves.
+9. No `<meta name="theme-color">` for Notebook (phones out of focus).
+10. By design (ui-contract): our wordmark and strings instead of Riddled's ("Plain reader", "Instructions", "Export", "This note", "Think about this" / "Ask about this", "Include the notes", "Lettering" / "Ink colour", our footer rows and the settings nav Customize / Reviewers only). Our own blot shape for ink dots, the reviewer glyph and the reading mark.
+11. Open from phase 10, answered by FIX-1: "New notes start in" is stamped into each note when it is first opened in Notebook.
+
+Fixed in this last pass: sketch strokes now match the frame (§16.1 graphite 1.2). The sidebar dim was already right (measured and asserted). Every string uses ’.
+
+### What is left
+
+- **T047 real-model pass** (quickstart steps 2-11 at 1440 and 390, light and dark; SC-002 with a real model) waits on the owner's choice of credential. Options: sign in to the app's own ChatGPT connection in a throwaway data dir; use a provider API key in a throwaway data dir; or approve a Codex-backend transport as a new feature. Any bugs the real model shows (schema or validation, verbatim quotes, sketch rejects) get fixed with faux-core regression tests at that point.
+- Owner approval of the differences above.
+- Merge and deploy (not done; no push).
