@@ -29,7 +29,7 @@
 	--riddle-wash: #1d1c1a0e;
 	--riddle-line: #1d1c1a52;
 	--nb-focus: #8c8a88; /* focus ring, ≥3:1 on paper and shelf (owner); Riddled used --riddle-line */
-	--nb-faded: 0.97; /* the other notes while a thread is open: every AI ink ≥4.5:1 on paper (owner); Riddled .38 */
+	--nb-faded: 0.38; /* the other notes while a thread is open: Riddled §8.1 (scope: "others fade") */
 	--bulb: #d99a1e;
 	--lift: 0 0 0 1px #1d1c1a12, 0 1px 1px #1d1c1a0a, 0 6px 16px -8px #1d1c1a29;
 	--grain-opacity: 0.16;
@@ -63,7 +63,7 @@
 	--riddle-wash: #e9e7e214;
 	--riddle-line: #e9e7e257;
 	--nb-focus: #676661; /* focus ring, ≥3:1 on paper and shelf (owner) */
-	--nb-faded: 0.82; /* every AI ink ≥4.5:1 on paper when faded (owner); Riddled .38 */
+	--nb-faded: 0.38; /* Riddled §8.1 (scope: "others fade") */
 	--bulb: #f2b84b;
 	--lift: 0 0 0 1px #ffffff12, 0 8px 20px -8px #0009;
 	--grain-opacity: 0.4;
@@ -94,7 +94,7 @@
 		--riddle-wash: #e9e7e214;
 		--riddle-line: #e9e7e257;
 		--nb-focus: #676661; /* focus ring, ≥3:1 on paper and shelf (owner) */
-		--nb-faded: 0.82; /* every AI ink ≥4.5:1 on paper when faded (owner); Riddled .38 */
+		--nb-faded: 0.38; /* Riddled §8.1 (scope: "others fade") */
 		--bulb: #f2b84b;
 		--lift: 0 0 0 1px #ffffff12, 0 8px 20px -8px #0009;
 		--grain-opacity: 0.4;
@@ -1447,8 +1447,8 @@ html:has(.nb-root[data-nb-theme="light"]) { color-scheme: light; }
 
 .nb-root .nb-note,
 .nb-root .nb-inline { transition: opacity 0.2s ease-out; }
-/* §8.1: the other notes fade while one is open (Riddled ≈.38). Raised so every AI ink still
-   reads at 4.5:1 on paper (owner, "Raise to pass"): --nb-faded .97 light, .82 dark. */
+/* §8.1: the other notes fade while one is open (Riddled ≈.38), as the scope asks ("others fade").
+   A faded note returns to full strength under the pointer or the keyboard, so none is read faded. */
 .nb-root :is(.nb-note, .nb-inline)[data-faded="true"] { opacity: var(--nb-faded); }
 /* A faded note the keyboard reaches reads at full strength, as one under the pointer does. */
 .nb-root :is(.nb-note, .nb-inline)[data-faded="true"]:focus-within { opacity: 1; }

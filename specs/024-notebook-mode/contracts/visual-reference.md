@@ -50,7 +50,7 @@ Colour values are hex with alpha; percentages are given as alpha/255.
 | `--text-gray` | `#858179` (3.62 / 3.40) → `#716d66` | `#9a968e` unchanged | 4.80 / 4.51; 5.91 / 6.20 |
 | `--nb-focus` (new, focus ring) | Riddled used `--riddle-line` (2.0:1) → `#8c8a88` | `--riddle-line` (2.77:1) → `#676661` | 3.21 / 3.02; 3.03 / 3.18 |
 | `--text-orange` (an AI ink and a text colour) | `#b5621f` (4.14 / 3.89) → `#a9580e` | `#e59b5b` unchanged | 4.79 / 4.50; 7.61 / 7.98 |
-| `--nb-faded` (new, the other notes while a thread is open, §8.1) | Riddled ≈.38 (ink 2.21:1, orange 1.63:1 on paper) → **.97** | ≈.38 (ink 3.14:1, red 1.94:1) → **.82** | the smallest two-decimal opacity at which every AI ink (ink, blue, green, red, purple, brown, orange) blended over paper reaches 4.5:1. Light: ink 12.61, blue 5.12, green 4.70, red 5.23, purple 5.43, brown 5.11, orange 4.55 (worst; .96 gives 4.47). Dark: ink 9.89, blue 5.56, green 6.05, red 4.53 (worst; .81 gives 4.46), purple 5.30, brown 4.89, orange 5.52 |
+| `--nb-faded` (new, the other notes while a thread is open, §8.1) | Riddled ≈.38 (ink 2.21:1, orange 1.63:1 on paper) → .97 → **.38** (reverted, see reviews.md) | ≈.38 (ink 3.14:1, red 1.94:1) → .82 → **.38** | the smallest two-decimal opacity at which every AI ink (ink, blue, green, red, purple, brown, orange) blended over paper reaches 4.5:1. Light: ink 12.61, blue 5.12, green 4.70, red 5.23, purple 5.43, brown 5.11, orange 4.55 (worst; .96 gives 4.47). Dark: ink 9.89, blue 5.56, green 6.05, red 4.53 (worst; .81 gives 4.46), purple 5.30, brown 4.89, orange 5.52 |
 
 `--riddle-line` itself is unchanged and stays on marks, link underlines and tethers.
 
@@ -269,7 +269,7 @@ Landing reference CSS: `.landing-margin{padding-left:22px}` (l.4137), `.landing-
 | Write-back field | placeholder "Write back…" sans ≈14px `--faint`; underline only (1px `--rule`, full width ≈395px); send arrow (lucide send, ≈13px, faint) at right end |
 | Focus underline | `.reply-line:after`: `height:1.5px; border-radius:1px; background:linear-gradient(to right, var(--riddle) 0%, color-mix(in oklab,var(--riddle) 55%,transparent) 62%, transparent 100%)`; hidden `opacity:0; transform:scaleX(0); transform-origin:0`; on `:focus-within` `opacity:1; scaleX(1)`; `transition:transform .46s cubic-bezier(.2,.7,.2,1), opacity .18s ease-out`. Reduced motion: `transition:opacity .12s; transform:none` (CSS l.5420-5454) |
 | Actions | "Resolve" "Dismiss" text buttons, sans ≈12px `--faint`, gap ≈16px, ≈24px below the field; "…" at far right (measured ≈). Frame tops: field line 536, Resolve 556, the next (faded) note's first line 595: ours 13px under the field and 8px of the open thread's own under the actions, then the 14px stack gap |
-| Other notes | fade to **≈.35-.4 opacity** while one thread is open (measured ≈; no CSS rule found, likely inline/utility). Notebook: `--nb-faded` .97 light / .82 dark, so faded AI ink keeps 4.5:1 (owner deviation, §1.1) |
+| Other notes | fade to **≈.35-.4 opacity** while one thread is open (measured ≈; no CSS rule found, likely inline/utility). Notebook: `--nb-faded` .38 (Riddled), full strength under pointer/focus |
 | Passage | the anchored passage is `data-active=true` (wash, §9) |
 | Open animation | probably `.unfold` (§12) (not confirmed) |
 

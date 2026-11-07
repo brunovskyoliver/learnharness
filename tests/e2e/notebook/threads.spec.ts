@@ -96,10 +96,9 @@ test.describe("Notebook: margin threads", () => {
 		// The underline grows under the focused field.
 		await expect.poll(() => open.locator(".nb-reply-line").evaluate((el) => getComputedStyle(el, "::after").opacity)).toBe("1");
 
-		// The others fade to the theme's --nb-faded (.97 light / .82 dark: faded AI ink keeps 4.5:1, owner).
+		// The others fade to Riddled's .38 (--nb-faded).
 		const faded = await page.locator(".nb-root").evaluate((el) => Number(getComputedStyle(el).getPropertyValue("--nb-faded")));
-		expect(faded).toBeGreaterThan(0.8);
-		expect(faded).toBeLessThan(1);
+		expect(faded).toBeCloseTo(0.38, 2);
 		for (const other of ["thr_b", "thr_c", "thr_d"]) {
 			await expect.poll(() => note(page, other).evaluate((el) => Number(getComputedStyle(el).opacity))).toBeCloseTo(faded, 2);
 		}
