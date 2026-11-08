@@ -246,6 +246,13 @@ test.describe("Notebook: margin threads", () => {
 		await page.reload();
 		await expect(page.getByTestId("nb-margin-note")).toHaveCount(4, { timeout: 60_000 });
 		expect(await sides()).toEqual({ thr_a: "right", thr_b: "right", thr_c: "right", thr_d: "right" });
+		// At 1440 a right note's hover ⋯ stays inside its box, so the page never scrolls sideways (owner, 2026-11-08, feature 025 N4).
+		await note(page, "thr_b").hover();
+		const more = note(page, "thr_b").getByTestId("nb-thread-more");
+		await expect(more).toHaveCSS("opacity", "1");
+		const [moreBox, noteBox] = [await more.boundingBox(), await note(page, "thr_b").boundingBox()];
+		expect(moreBox!.x + moreBox!.width).toBeLessThanOrEqual(noteBox!.x + noteBox!.width + 0.5);
+		expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
 
 		await putSection(request, "notebook", { layout: "marks" });
 		await page.reload();

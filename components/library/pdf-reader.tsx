@@ -635,7 +635,7 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 				<button type="button" className={TOOL} aria-label="Previous page" disabled={current <= 1} onClick={() => scrollToPage(current - 1)}><ChevronLeftIcon aria-hidden="true" /></button>
 				<form className="flex items-center gap-1.5 text-sm text-faint" onSubmit={(event) => { event.preventDefault(); goToField(); }}>
 					<label className="sr-only" htmlFor={`pdf-page-${item.id}`}>Page number</label>
-					<input id={`pdf-page-${item.id}`} name="page" value={pageField} inputMode="numeric" autoComplete="off" data-testid="pdf-page-field" onChange={(event) => setPageField(event.target.value)} onBlur={goToField} className="lh-bare-field h-7 w-10 border-0 border-b border-rule bg-transparent px-0.5 text-center text-sm text-ink tabular-nums focus-visible:border-ink pointer-coarse:h-11" />
+					<input id={`pdf-page-${item.id}`} name="page" value={pageField} inputMode="numeric" autoComplete="off" data-testid="pdf-page-field" onChange={(event) => setPageField(event.target.value)} onBlur={goToField} className="lh-bare-field h-7 w-10 border-0 border-b border-edge bg-transparent px-0.5 text-center text-sm text-ink tabular-nums focus-visible:border-ink pointer-coarse:h-11" />
 					<span className="whitespace-nowrap" data-testid="pdf-page-count">of {numPages || "…"}</span>
 				</form>
 				<button type="button" className={TOOL} aria-label="Next page" disabled={current >= numPages} onClick={() => scrollToPage(current + 1)}><ChevronRightIcon aria-hidden="true" /></button>
@@ -782,7 +782,7 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 					<DialogTitle>Note on page {notePrompt ? ("anchor" in notePrompt ? notePrompt.anchor.page : notePrompt.annotation.anchor.page) : ""}</DialogTitle>
 					<label className="flex flex-col gap-1.5 text-xs font-medium text-faint">
 						Your note
-						<textarea autoFocus rows={4} value={noteText} onChange={(event) => setNoteText(event.currentTarget.value)} data-testid="pdf-note-text" className="lh-bare-field w-full resize-none rounded-lg border border-rule bg-transparent px-3 py-2 text-md font-normal text-ink focus-visible:border-ink" />
+						<textarea autoFocus rows={4} value={noteText} onChange={(event) => setNoteText(event.currentTarget.value)} data-testid="pdf-note-text" className="lh-bare-field w-full resize-none rounded-lg border border-edge bg-transparent px-3 py-2 text-md font-normal text-ink focus-visible:border-ink" />
 					</label>
 					{failureLine && <p role="alert" className="text-sm text-red">{failureLine}</p>}
 					<div className="mt-1 flex items-center justify-end gap-5">

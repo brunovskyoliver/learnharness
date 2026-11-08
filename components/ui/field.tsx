@@ -116,7 +116,7 @@ function FieldLabel({
       data-slot="field-label"
       className={cn(
         "group/field-label peer/field-label flex w-fit gap-2 leading-snug group-data-[disabled=true]/field:opacity-50",
-        "has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col has-[>[data-slot=field]]:rounded-lg has-[>[data-slot=field]]:border-0 has-[>[data-slot=field]]:ring-1 has-[>[data-slot=field]]:ring-rule [&>*]:data-[slot=field]:p-4",
+        "has-[>[data-slot=field]]:w-full has-[>[data-slot=field]]:flex-col has-[>[data-slot=field]]:rounded-lg has-[>[data-slot=field]]:border-0 has-[>[data-slot=field]]:ring-1 has-[>[data-slot=field]]:ring-edge [&>*]:data-[slot=field]:p-4",
         "has-data-[state=checked]:ring-[1.5px] has-data-[state=checked]:ring-ink",
         className
       )}

@@ -416,7 +416,7 @@
 	align-items: center;
 	gap: 10px;
 	margin: 0 4px 8px;
-	border-bottom: 1px solid var(--picker-border, var(--rule));
+	border-bottom: 1px solid var(--nb-control-edge);
 	padding: 4px 4px 8px;
 	color: var(--picker-muted, var(--faint));
 }
@@ -600,6 +600,7 @@
 	--color-graphite: var(--graphite);
 	--color-faint: var(--faint);
 	--color-rule: var(--rule);
+	--color-edge: var(--nb-control-edge);
 	--color-riddle: var(--riddle);
 	--color-bulb: var(--bulb);
 	--color-bulb-ink: var(--bulb-ink);
@@ -631,12 +632,16 @@
 	--color-success: var(--text-green);
 	--color-warning: var(--bulb);
 	--color-border: var(--rule);
-	--color-input: var(--rule);
+	--color-input: var(--nb-control-edge);
 	--color-ring: var(--nb-focus);
 }
 
-* {
-	border-color: var(--rule);
+/* The default border colour sits in the base layer, so a utility's colour
+   (border-edge, border-ink, border-red …) wins over it (T069). */
+@layer base {
+	* {
+		border-color: var(--rule);
+	}
 }
 
 body {
@@ -1690,7 +1695,7 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 	min-height: 28px;
 	padding: 0 11px;
 	border-radius: 999px;
-	box-shadow: 0 0 0 1px var(--rule);
+	box-shadow: 0 0 0 1px var(--nb-control-edge);
 	color: var(--graphite);
 	font-size: var(--text-meta);
 	font-weight: 500;
@@ -1716,7 +1721,7 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 .lh-check-dont-know[aria-pressed="true"] { color: var(--ink); text-decoration-color: currentColor; }
 .lh-check-dont-know:focus-visible { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
 .lh-check-answer { display: flex; flex-direction: column; gap: 12px; }
-.lh-paper .lh-check-field { border-bottom: 1px solid var(--rule); cursor: text; }
+.lh-paper .lh-check-field { border-bottom: 1px solid var(--nb-control-edge); cursor: text; }
 /* Phones: the reply line is a 44px target (feature 025, T061). */
 @media (pointer: coarse) { .lh-paper .lh-check-field > textarea { min-height: 43px; } }
 .lh-check-input {

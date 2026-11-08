@@ -751,12 +751,16 @@ function ChatView({
 	const cycleChatFields = useCallback((): readonly HTMLElement[] => {
 		// A closed check thread keeps its form mounted but hidden: not a stop.
 		const pick = (sel: string) => Array.from(document.querySelectorAll<HTMLElement>(sel)).filter((el) => !el.closest("[hidden], [inert]"));
-		return [
+		const fields = [
 			...pick('[data-testid="reading-thinking-field"] textarea'),
 			...pick('[data-testid="question-dock"] textarea'),
 			...pick('[data-testid="practice-dock"] textarea'),
 			...pick('[data-testid="composer"] textarea'),
 		];
+		// A waiting check whose thread is closed leaves no field: Tab goes to the
+		// bottom bar's "Go to it", and Enter there opens the thread (owner, 2026-11-08).
+		if (fields.length > 0) return fields;
+		return pick('[data-testid="check-go-to"]').filter((el) => el.getClientRects().length > 0);
 	}, []);
 	useFieldCycle(cycleChatFields);
 	const composerInputRef = useRef<HTMLTextAreaElement>(null);

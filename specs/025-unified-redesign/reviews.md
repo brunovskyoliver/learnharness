@@ -161,6 +161,8 @@ Rendered pixels (pixel.json, 2×, with the grain). Light paper renders `#f4f3ef`
 
 ## Needs the owner
 
+All five were ruled by the owner on 2026-11-08 and are implemented; see "Owner rulings 2026-11-08" at the end. The text below is the question as it was put.
+
 The review cannot settle these without a design decision. Nothing was changed for them.
 
 **N1. Control edges in `--rule` sit under WCAG 1.4.11's 3:1.**
@@ -232,13 +234,13 @@ The review cannot settle these without a design decision. Nothing was changed fo
 | Transcript controls outside the Tab walk | wdg | Kept by design (owner keyboard model 2026-09-17 / 2026-10-06) |
 | Notebook phone marks 15px | wdg, surface probe | Kept by design (owner: phones not a focus for Notebook) |
 | Prose links under 44px on phones | wdg, surface probe | Kept by design (inline links; DESIGN.md prose line heights) |
-| `--rule` control edges <3:1 | a11y (tokens, pixels) | Needs the owner (N1) |
-| Light switch off state | a11y (tokens) | Needs the owner (N2) |
-| Dark faint 4.49 on grain | a11y (pixels) | Needs the owner (N3) |
-| Notebook 6px overflow at 1440 | a11y (surface probe) | Needs the owner (N4) |
-| Tab does nothing with a check waiting | a11y (keyboard) | Needs the owner (N5) |
+| `--rule` control edges <3:1 | a11y (tokens, pixels) | Fixed under the owner's ruling 2026-11-08 (N1, option 1): `--nb-control-edge` |
+| Light switch off state | a11y (tokens) | Fixed under the owner's ruling 2026-11-08 (N2, option 1): off track in the control edge |
+| Dark faint 4.49 on grain | a11y (pixels) | Fixed under the owner's ruling 2026-11-08 (N3, option 1): `#868379`; faded notes rechecked on the grained paper |
+| Notebook 6px overflow at 1440 | a11y (surface probe) | Fixed under the owner's ruling 2026-11-08 (N4, option 2): ⋯ inside right notes |
+| Tab does nothing with a check waiting | a11y (keyboard) | Fixed under the owner's ruling 2026-11-08 (N5, option 1): Tab to "Go to it" |
 
-Counts: 26 findings. 11 fixed, 10 kept by design (one of them not a defect), 5 need the owner.
+Counts: 26 findings. 11 fixed by the review, 5 fixed under the owner's rulings of 2026-11-08, 10 kept by design (one of them not a defect). (First pass: 11 fixed, 10 kept, 5 for the owner.)
 
 ## Re-review 2026-11-08 (after the fixes)
 
@@ -262,4 +264,39 @@ On 3150a9b, rebuilt (`next build`, `next start`, the same seed). Run in order: `
 | 5 | Implementation integrity | 4 | The drift is gone: quiet rows, named separators only, empty states and pills as DESIGN.md says |
 | **Total** | | **18/20** | **Excellent** (16/20 before) |
 
-No open findings remain except the five under Needs the owner.
+After this re-review five findings waited for the owner. They were ruled and fixed on 2026-11-08 (below).
+
+## Owner rulings 2026-11-08 (N1-N5)
+
+The owner ruled on all five the same day. Each is implemented as ruled, recorded in DESIGN.md and in progress.md under Decisions. Commit: `fix(025): owner rulings N1–N5`.
+
+| | Ruling | Implementation |
+|---|---|---|
+| N1 | Option 1: a control-edge token on control boundaries only | `--nb-control-edge` (Tailwind `edge`): light `#938a73` (3.20 paper / 3.01 shelf / 3.09 grained paper), dark `#686660`. Dark is one lightness step past `#68665f`, which measured 2.9996:1 on the grained paper `#1b1b1a`; the new value is 3.03 / 3.18 / 3.00. Both are `--rule` moved along lightness only, by the smallest step. It goes on reply-line and line-field underlines (`.nb-write .nb-reply-line`, `.lh-line-field`, `.lh-check-field`, `.nb-settings-search`, `.nb-set-input`, the model menu's search, the Library, palette and chain-table fields, diagram and PDF fields, components/ui Input), unchosen option cards (`.nb-option-card`, the FieldLabel card), choice pills (`.nb-set-pill`, the confidence pills), ratings, rule-ringed fields and boxes (`.nb-set-trigger`, `.nb-set-textarea`, `.lh-box-field`, Textarea, InputGroup, the selects) and `--input`. Hairlines, table rules, dividers, the menu separator, the pane edge, cards and the locked switch keep `--rule`. Found on the way: the unlayered `* { border-color: var(--rule) }` beat every Tailwind border-colour utility, so `border-edge` (and `border-ink`, `border-red` and the rest) never showed. It now sits in `@layer base`. |
+| N2 | Option 1: the off switch's track in the control edge | `.nb-switch` background `--nb-control-edge`; rendered 3.09:1 (light) and 3.00:1 (dark) against the grained paper. The white thumb is 3.43:1 on the light track. |
+| N3 | Raise dark faint one step (Raise to pass on the paper as rendered) | `#858279` → `#868379`: 4.59 paper, 4.82 shelf, 4.54 grained paper. Rendered pixels: 4.54:1 on Home's meta, "You", the corner hint, Library meta and settings hints (pixel-after.json). Rechecking the faded notes on the grained paper moved dark red .82 → .83 and light blue .91 → .93, green .95 → .97, red .89 → .91, purple .89 → .90, brown .91 → .93, orange .97 → .99. These are the smallest two-decimal values that reach 4.5:1 over light `#f4f3ef` / dark `#1b1b1a`. The tests: notebook-contrast measures the fades on the grained paper; paper-contrast checks faint there. Dark faint also changed in `src/core/demo-theme.ts` (the demo bridge's `--lh-muted`). |
+| N4 | Option 2: the right note's ⋯ inside the note | `.nb-note[data-side="right"] .nb-thread-more-hover { right: 0 }`, as inline notes have it. The overflow probe now reads 0 at 1440 for Notebook in both themes (it was 6). threads.spec "layouts" asserts the ⋯ stays in the note's box and that the page doesn't scroll sideways. |
+| N5 | Option 1: Tab reaches "Go to it" | When the chat has no field (a check waits and its thread is closed), the field cycle's chain is the visible "Go to it" (`components/chat.tsx`). Enter there opens the thread and focuses its field or first choice. study/a11y.spec checks the ring on Go to it, then Enter, the open thread and the first choice focused. |
+
+Re-run after the rulings, on a fresh `next build` and `next start`:
+
+- **Rendered contrast** (pixel-after.json): light and dark text all pass, dark faint 4.54.
+- **Rendered control edges** (`edge.mjs`, edge-after.json, the strongest pixel row on the edge against the paper beside it):
+  - switch off track 3.09 / 3.00;
+  - unchosen option card 3.09 / 3.00;
+  - settings trigger 3.09 / 3.00;
+  - Library search underline 3.09 / 3.00.
+  - Inside the open check thread the reply line and the confidence pills sit at fractional y, so their 1px line anti-aliases across two device rows. The strongest row then measures 1.65:1 at 2×, while the line's colour is the 3:1 edge (computed `rgb(147,138,115)` / `rgb(104,102,96)`). WCAG measures the specified colour.
+- **Overflow probe** (probe-rulings.json: Notebook, lessons, the open check, Customize, the Library; light and dark; 1440 with reduce, and 390): 0 overflow, 0 nameless controls, 0 scrollbars.
+- **Keyboard walk** (focus-rulings.json): 19 layers clean. The cheat sheet and dismiss dialogs return focus to `<body>` only because the probe opened them from `<body>`, as before.
+
+| # | Dimension | Score | Key finding |
+|---|---|---|---|
+| 1 | Accessibility | 4 | Text 4.5:1 and control edges 3:1 on the paper as rendered, names complete, focus seen and returned, Tab never dead in a lesson |
+| 2 | Performance | 4 | Unchanged |
+| 3 | Responsive | 4 | 0 overflow at 320/390/1440 in both modes; 44px coarse targets |
+| 4 | Theming | 4 | One more token (`--nb-control-edge`), used only on control boundaries |
+| 5 | Implementation integrity | 4 | Border-colour utilities apply again (the default moved into the base layer) |
+| **Total** | | **20/20** | **Excellent** (18/20 after the first fixes, 16/20 at the start) |
+
+No open review findings remain.

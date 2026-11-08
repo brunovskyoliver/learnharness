@@ -258,7 +258,7 @@ export function ChainTableBody({
 						placeholder="Search ideas…"
 						aria-label="Search ideas"
 						spellCheck={false}
-						className="lh-no-drag h-8 w-full rounded-none border-0 border-b border-rule bg-transparent pl-8 pr-3 text-sm text-ink caret-ink outline-none placeholder:text-faint focus:border-ink"
+						className="lh-no-drag h-8 w-full rounded-none border-0 border-b border-edge bg-transparent pl-8 pr-3 text-sm text-ink caret-ink outline-none placeholder:text-faint focus:border-ink"
 					/>
 				</div>
 			<button

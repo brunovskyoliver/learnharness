@@ -83,6 +83,9 @@ describe("notebook contrast", () => {
 		assert.match(rule, /outline:\s*2px solid var\(--nb-focus\)/);
 	});
 
+	/** The paper as rendered under its grain (T069 pixel probe, reviews.md): the
+	 *  faded words are measured there (owner, 2026-11-08, feature 025 N3). */
+	const RENDERED_PAPER = { light: "#f4f3ef", dark: "#1b1b1a", "system dark": "#1b1b1a" } as const;
 	const AI_INKS = ["riddle-ink", "text-blue", "text-green", "text-red", "text-purple", "text-brown", "text-orange"];
 	const SELECTORS = { light: 'html.lh-paper[data-theme="light"]', dark: 'html.lh-paper[data-theme="dark"]', "system dark": 'html.lh-paper[data-theme="system"]' } as const;
 	/** The ink setting's name, and the colour token it maps --riddle to (§1.2). */
@@ -117,11 +120,11 @@ describe("notebook contrast", () => {
 	for (const theme of Object.keys(THEMES) as (keyof typeof THEMES)[]) {
 		const t = THEMES[theme];
 		for (const [setting, token] of Object.entries(INK_SETTINGS)) {
-			it(`${theme}, ${setting} ink: faded words reach 4.5:1 on paper at --nb-faded-${setting}, and one step lower does not`, () => {
-				const alpha = num(theme, `nb-faded-${setting}`), ink = t[token]!, paper = t.paper!;
+			it(`${theme}, ${setting} ink: faded words reach 4.5:1 on the grained paper at --nb-faded-${setting}, and one step lower does not`, () => {
+				const alpha = num(theme, `nb-faded-${setting}`), ink = t[token]!, paper = RENDERED_PAPER[theme];
 				assert.ok(alpha > 0 && alpha < 1, `${theme}: --nb-faded-${setting} ${alpha} does not fade`);
 				const ratio = contrast(over(ink, paper, alpha), paper);
-				assert.ok(ratio >= 4.5, `${theme}: --${token} ${ink} at ${alpha} on --paper is ${ratio.toFixed(2)}:1`);
+				assert.ok(ratio >= 4.5, `${theme}: --${token} ${ink} at ${alpha} on the grained paper ${paper} is ${ratio.toFixed(2)}:1`);
 				const lower = Math.round((alpha - 0.01) * 100) / 100;
 				const below = contrast(over(ink, paper, lower), paper);
 				assert.ok(below < 4.5, `${theme}: --nb-faded-${setting} could be ${lower} (${below.toFixed(2)}:1)`);

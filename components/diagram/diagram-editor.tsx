@@ -297,7 +297,7 @@ function ConnectForm({ doc, fromId, onAdd, onClose }: { doc: DiagramDoc; fromId:
 	const [label, setLabel] = useState("");
 	const first = useRef<HTMLSelectElement>(null);
 	useEffect(() => { first.current?.focus(); }, []);
-	const CONTROL = "lh-bare-field h-8 w-full min-w-0 border-0 border-b border-rule bg-transparent px-0 text-sm text-ink focus-visible:border-ink pointer-coarse:h-11";
+	const CONTROL = "lh-bare-field h-8 w-full min-w-0 border-0 border-b border-edge bg-transparent px-0 text-sm text-ink focus-visible:border-ink pointer-coarse:h-11";
 	if (nodes.length < 2) {
 		return (
 			<div role="status" className="lh-line-card mx-4 mb-2" data-testid="diagram-connect-form">

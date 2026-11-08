@@ -507,7 +507,7 @@ export function LibraryView() {
 						/>
 					</div>
 					<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-					<label className="nb-reply-line flex h-9 min-w-[11rem] flex-[1_1_16rem] items-center gap-2 border-b border-rule text-faint pointer-coarse:h-11">
+					<label className="nb-reply-line flex h-9 min-w-[11rem] flex-[1_1_16rem] items-center gap-2 border-b border-edge text-faint pointer-coarse:h-11">
 						<SearchIcon className="size-[15px] shrink-0" aria-hidden="true" />
 						<input
 							type="search"

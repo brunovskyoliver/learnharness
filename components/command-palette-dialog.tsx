@@ -268,7 +268,7 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 				}}
 			>
 				<DialogTitle className="sr-only">Command palette</DialogTitle>
-				<label className="mx-3 mb-1.5 mt-2 flex h-11 shrink-0 items-center gap-2.5 border-b border-rule px-1 text-faint transition-colors focus-within:border-ink">
+				<label className="mx-3 mb-1.5 mt-2 flex h-11 shrink-0 items-center gap-2.5 border-b border-edge px-1 text-faint transition-colors focus-within:border-ink">
 					<SearchIcon className="ui-icon shrink-0" aria-hidden="true" />
 					<input
 						ref={input}

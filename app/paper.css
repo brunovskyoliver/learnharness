@@ -32,6 +32,7 @@ html.lh-paper[data-theme="light"] {
 	--graphite: #5c5953;
 	--faint: #716d67; /* Riddled #8e8a83; raised to 4.5:1 (owner, 2026-11-07) */
 	--rule: #dedbd4;
+	--nb-control-edge: #938a73; /* control boundaries: --rule moved along lightness to 3:1 on paper and shelf (owner, 2026-11-08, N1) */
 	--riddle: #2a2824;
 	--riddle-ink: #2a2824;
 	--riddle-wash: #1d1c1a0e;
@@ -39,14 +40,15 @@ html.lh-paper[data-theme="light"] {
 	--nb-focus: #8c8a88; /* focus ring, ≥3:1 on paper and shelf (owner); Riddled used --riddle-line */
 	/* The other notes while a thread is open (§8.1, scope "others fade"): text fades per AI ink to the smallest
 	   two-decimal opacity at which that ink over --paper reaches 4.5:1 (owner, "Raise to pass"); the dot,
-	   tether and rail fade to Riddled's .38 (--nb-faded-mark). --nb-faded follows data-nb-ink (§1.2). */
+	   tether and rail fade to Riddled's .38 (--nb-faded-mark). --nb-faded follows data-nb-ink (§1.2).
+	   The paper is measured as rendered, under its grain (owner, 2026-11-08, N3): light #f4f3ef, dark #1b1b1a. */
 	--nb-faded-ink: 0.65;
-	--nb-faded-blue: 0.91;
-	--nb-faded-green: 0.95;
-	--nb-faded-red: 0.89;
-	--nb-faded-purple: 0.89;
-	--nb-faded-brown: 0.91;
-	--nb-faded-orange: 0.97;
+	--nb-faded-blue: 0.93;
+	--nb-faded-green: 0.97;
+	--nb-faded-red: 0.91;
+	--nb-faded-purple: 0.9;
+	--nb-faded-brown: 0.93;
+	--nb-faded-orange: 0.99;
 	--nb-faded: var(--nb-faded-ink);
 	--nb-faded-mark: 0.38;
 	--bulb: #d99a1e;
@@ -75,8 +77,9 @@ html.lh-paper[data-theme="dark"] {
 	--code: #151514;
 	--ink: #e9e7e2;
 	--graphite: #a9a69e;
-	--faint: #858279; /* Riddled #7a776f; raised to 4.5:1 (owner) */
+	--faint: #868379; /* Riddled #7a776f; raised to 4.5:1 on the grained paper (owner, 2026-11-07 and 2026-11-08, N3) */
 	--rule: #33322f;
+	--nb-control-edge: #686660; /* control boundaries, 3:1 on paper, shelf and the grained paper (owner, 2026-11-08, N1) */
 	--riddle: #ebe8e2;
 	--riddle-ink: #ebe8e2;
 	--riddle-wash: #e9e7e214;
@@ -86,7 +89,7 @@ html.lh-paper[data-theme="dark"] {
 	--nb-faded-ink: 0.51;
 	--nb-faded-blue: 0.72;
 	--nb-faded-green: 0.68;
-	--nb-faded-red: 0.82;
+	--nb-faded-red: 0.83;
 	--nb-faded-purple: 0.74;
 	--nb-faded-brown: 0.78;
 	--nb-faded-orange: 0.72;
@@ -116,8 +119,9 @@ html.lh-paper[data-theme="dark"] {
 		--code: #151514;
 		--ink: #e9e7e2;
 		--graphite: #a9a69e;
-		--faint: #858279; /* Riddled #7a776f; raised to 4.5:1 (owner) */
+		--faint: #868379; /* Riddled #7a776f; raised to 4.5:1 on the grained paper (owner, 2026-11-07 and 2026-11-08, N3) */
 		--rule: #33322f;
+		--nb-control-edge: #686660;
 		--riddle: #ebe8e2;
 		--riddle-ink: #ebe8e2;
 		--riddle-wash: #e9e7e214;
@@ -127,7 +131,7 @@ html.lh-paper[data-theme="dark"] {
 		--nb-faded-ink: 0.51;
 		--nb-faded-blue: 0.72;
 		--nb-faded-green: 0.68;
-		--nb-faded-red: 0.82;
+		--nb-faded-red: 0.83;
 		--nb-faded-purple: 0.74;
 		--nb-faded-brown: 0.78;
 		--nb-faded-orange: 0.72;
@@ -155,8 +159,8 @@ html.lh-paper[data-theme="dark"] {
 
 @media print {
 	html.lh-paper[data-lh-printing] #lh-print-root {
-		--paper: #f8f7f4; --shelf: #f1f0ec; --code: #ebe9e3; --ink: #1d1c1a; --graphite: #5c5953; --faint: #716d67; --rule: #dedbd4;
-		--background: var(--paper); --foreground: var(--ink); --muted-foreground: var(--faint); --card: var(--shelf); --accent: var(--shelf); --border: var(--rule); --input: var(--rule);
+		--paper: #f8f7f4; --shelf: #f1f0ec; --code: #ebe9e3; --ink: #1d1c1a; --graphite: #5c5953; --faint: #716d67; --rule: #dedbd4; --nb-control-edge: #938a73;
+		--background: var(--paper); --foreground: var(--ink); --muted-foreground: var(--faint); --card: var(--shelf); --accent: var(--shelf); --border: var(--rule); --input: var(--nb-control-edge);
 	}
 }
 
@@ -809,7 +813,7 @@ html.lh-paper {
 	--success: var(--text-green);
 	--warning: var(--bulb);
 	--ring: var(--nb-focus);
-	--input: var(--rule);
+	--input: var(--nb-control-edge);
 	--border: var(--rule);
 	--nb-ink-wet: #b08a5a; /* ink-in: a word starts in wet brown ink */
 	--nb-sheen: #fff; /* the ink dot's sheen */
@@ -1336,7 +1340,8 @@ html.lh-paper {
 	transition: opacity 0.15s ease-out;
 }
 .lh-paper .nb-note[data-side="left"] .nb-thread-more-hover { left: -22px; }
-.lh-paper .nb-note[data-side="right"] .nb-thread-more-hover { right: -22px; }
+/* Right notes keep the ⋯ inside their box, as inline notes do, so nothing passes the window's edge (owner, 2026-11-08, N4). */
+.lh-paper .nb-note[data-side="right"] .nb-thread-more-hover { right: 0; }
 .lh-paper .nb-inline .nb-thread-more-hover { right: 0; }
 .lh-paper :is(.nb-note, .nb-inline):not([data-faded="true"]):is(:hover, :focus-within) .nb-thread-more-hover,
 .lh-paper .nb-thread-more-hover[data-state="open"] { opacity: 1; }
@@ -1389,7 +1394,7 @@ html.lh-paper {
 .lh-paper .nb-write .nb-reply-line {
 	flex: 1;
 	min-width: 0;
-	border-bottom: 1px solid var(--rule);
+	border-bottom: 1px solid var(--nb-control-edge);
 }
 .lh-paper .nb-write-field {
 	display: block;
@@ -1923,7 +1928,7 @@ html.lh-paper {
 	padding: 14px;
 	border-radius: 10px;
 	background: none;
-	box-shadow: 0 0 0 1px var(--rule);
+	box-shadow: 0 0 0 1px var(--nb-control-edge);
 	color: var(--ink);
 	text-align: left;
 	transition: box-shadow 0.15s;
@@ -1953,7 +1958,7 @@ html.lh-paper {
 	width: 36px;
 	height: 20px;
 	border-radius: 999px;
-	background: var(--rule);
+	background: var(--nb-control-edge);
 	cursor: pointer;
 	transition: background-color 0.2s;
 }
@@ -2180,7 +2185,7 @@ html.lh-paper {
 	gap: 8px;
 	min-height: 34px;
 	margin: 0 4px;
-	box-shadow: inset 0 -1px 0 var(--rule);
+	box-shadow: inset 0 -1px 0 var(--nb-control-edge);
 	color: var(--faint);
 	transition: box-shadow 0.15s;
 }
@@ -2285,7 +2290,7 @@ html.lh-paper {
 	padding: 0 10px;
 	border-radius: 8px;
 	background: var(--paper);
-	box-shadow: 0 0 0 1px var(--rule);
+	box-shadow: 0 0 0 1px var(--nb-control-edge);
 	color: var(--ink);
 	font-family: var(--nb-sans);
 	font-size: var(--text-ui);
@@ -2301,7 +2306,7 @@ html.lh-paper {
 	height: 32px;
 	padding: 0 2px;
 	background: none;
-	box-shadow: inset 0 -1px 0 var(--rule);
+	box-shadow: inset 0 -1px 0 var(--nb-control-edge);
 	color: var(--ink);
 	font-family: var(--nb-sans);
 	font-size: var(--text-ui);
@@ -2317,7 +2322,7 @@ html.lh-paper {
 	min-height: 30px;
 	padding: 0 12px;
 	border-radius: 999px;
-	box-shadow: 0 0 0 1px var(--rule);
+	box-shadow: 0 0 0 1px var(--nb-control-edge);
 	color: var(--graphite);
 	font-size: var(--text-meta);
 	font-weight: 500;
@@ -2344,7 +2349,7 @@ html.lh-paper {
 	padding: 8px 10px;
 	border-radius: 8px;
 	background: var(--paper);
-	box-shadow: 0 0 0 1px var(--rule);
+	box-shadow: 0 0 0 1px var(--nb-control-edge);
 	color: var(--ink);
 	font-family: var(--nb-sans);
 	font-size: var(--text-ui);
@@ -2811,7 +2816,7 @@ html.lh-paper {
 	height: 32px;
 	padding: 0;
 	border: 0;
-	border-bottom: 1px solid var(--rule);
+	border-bottom: 1px solid var(--nb-control-edge);
 	border-radius: 0;
 	background: transparent;
 	color: var(--ink);
@@ -2876,7 +2881,7 @@ html.lh-paper {
 	justify-content: center;
 	padding: 6px 8px;
 	border-radius: 10px;
-	box-shadow: 0 0 0 1px var(--rule);
+	box-shadow: 0 0 0 1px var(--nb-control-edge);
 	color: var(--ink);
 	transition: box-shadow 0.15s;
 }
@@ -2889,7 +2894,7 @@ html.lh-paper {
 	width: 100%;
 	resize: vertical;
 	padding: 8px 12px;
-	border: 1px solid var(--rule);
+	border: 1px solid var(--nb-control-edge);
 	border-radius: 8px;
 	background: transparent;
 	color: var(--ink);

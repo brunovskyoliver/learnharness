@@ -107,4 +107,38 @@ describe("paper contrast", () => {
 		assert.doesNotMatch(globals, /\.lh-check-submit:disabled \{[^}]*opacity/);
 		assert.match(paper, /\.lh-paper \.nb-pill:disabled \{ opacity: 0\.6;/);
 	});
+
+	// Owner rulings 2026-11-08 (feature 025 T069, N1-N3): control boundaries take
+	// --nb-control-edge (3:1); dark faint passes on the paper as rendered.
+	const GRAINED = { light: "#f4f3ef", dark: "#1b1b1a", "system dark": "#1b1b1a" } as const;
+	for (const [theme, t] of Object.entries(THEMES)) {
+		const ground = GRAINED[theme as keyof typeof GRAINED];
+		it(`${theme}: --nb-control-edge reaches 3:1 on paper, shelf and the grained paper; --rule moved along lightness only, by the smallest step`, () => {
+			const edge = t["nb-control-edge"], rule = t.rule;
+			assert.ok(edge && rule, `${theme}: --nb-control-edge or --rule missing`);
+			const grounds = [t.paper!, t.shelf!, ground];
+			for (const g of grounds) assert.ok(contrast(edge, g) >= 3, `${theme}: --nb-control-edge ${edge} on ${g} is ${contrast(edge, g).toFixed(2)}:1`);
+			const [h, s, l] = hsl(rule), [h2, s2, l2] = hsl(edge);
+			assert.ok(Math.abs(h - h2) < 0.01 && Math.abs(s - s2) < 0.01, `${theme}: --nb-control-edge ${edge} changes hue or saturation`);
+			// Walking --rule's lightness in 0.1% steps (hue and saturation fixed), the first colour that passes is the edge.
+			const dir = Math.sign(l2 - l);
+			let step = l, first = rule;
+			while (!grounds.every((g) => contrast(first, g) >= 3)) { step += dir * 0.001; first = fromHsl([h, s, step]); }
+			assert.equal(edge, first, `${theme}: --nb-control-edge could be ${first}`);
+		});
+		it(`${theme}: faint reaches 4.5:1 on the grained paper`, () => {
+			assert.ok(contrast(t.faint!, ground) >= 4.5, `${theme}: --faint ${t.faint} on ${ground} is ${contrast(t.faint!, ground).toFixed(2)}:1`);
+		});
+	}
+
+	it("control boundaries use the control edge; hairlines keep --rule", () => {
+		const rule = (selector: string) => { const at = paper.indexOf(`${selector} {`); assert.ok(at >= 0, selector); return paper.slice(at, paper.indexOf("}", at)); };
+		for (const selector of [".lh-paper .nb-option-card", ".lh-paper .nb-switch", ".lh-paper .lh-line-field", ".lh-paper .nb-set-trigger", ".lh-paper .nb-set-input", ".lh-paper .lh-box-field", ".lh-paper .lh-rating", ".lh-paper .nb-write .nb-reply-line"]) {
+			assert.match(rule(selector), /var\(--nb-control-edge\)/, `${selector} takes the control edge`);
+		}
+		assert.match(globals, /\.lh-paper \.lh-check-field \{ border-bottom: 1px solid var\(--nb-control-edge\)/);
+		assert.match(globals, /--color-edge: var\(--nb-control-edge\)/);
+		assert.match(paper, /\.lh-paper \.nb-menu-separator \{[^}]*background: var\(--rule\)/);
+		assert.match(globals, /\.lh-pane-divider::before \{[^}]*background: var\(--rule\)/);
+	});
 });

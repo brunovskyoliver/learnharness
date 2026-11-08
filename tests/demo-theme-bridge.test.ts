@@ -23,10 +23,10 @@ function bridge() {
 
 describe("sandbox appearance bridge", () => {
 	it("reads the paper roles and the resolved scheme, and keeps data series out of appearance updates", () => {
-		const css: Record<string, string> = { "--paper": "#1a1a19", "--shelf": "#151514", "--code": "#151514", "--rule": "#33322f", "--ink": "#e9e7e2", "--faint": "#858279", "color-scheme": "dark", "--background": "#000000" };
+		const css: Record<string, string> = { "--paper": "#1a1a19", "--shelf": "#151514", "--code": "#151514", "--rule": "#33322f", "--ink": "#e9e7e2", "--faint": "#868379", "color-scheme": "dark", "--background": "#000000" };
 		const vars = demoAppearanceVars((name) => css[name] ?? "", "Georgia");
 		assert.deepEqual(vars, {
-			"--lh-bg": "#1a1a19", "--lh-surface": "#151514", "--lh-surface-2": "#151514", "--lh-border": "#33322f", "--lh-text": "#e9e7e2", "--lh-muted": "#858279",
+			"--lh-bg": "#1a1a19", "--lh-surface": "#151514", "--lh-surface-2": "#151514", "--lh-border": "#33322f", "--lh-text": "#e9e7e2", "--lh-muted": "#868379",
 			"--lh-font": '"Georgia", "LH Sans", system-ui, sans-serif',
 			"color-scheme": "dark",
 		});

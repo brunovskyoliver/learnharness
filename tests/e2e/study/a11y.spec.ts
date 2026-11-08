@@ -196,6 +196,19 @@ test.describe("Study: accessibility", () => {
 		await expect(h1).toHaveText("UI review · Knowledge check");
 		await expect(page.getByTestId("corner-hint-live")).toHaveAttribute("aria-live", "polite");
 
+		// A check waits with its thread closed: there is no field, so Tab lands on
+		// the bottom bar's "Go to it", and Enter there opens the thread on its first
+		// choice (owner, 2026-11-08, N5).
+		await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+		await page.keyboard.press("Tab");
+		const goTo = page.getByTestId("check-go-to").filter({ visible: true });
+		await expect(goTo).toBeFocused();
+		await seen(page, "Go to it");
+		await page.keyboard.press("Enter");
+		await expect(page.getByTestId("check-thread")).toHaveAttribute("data-state", "open");
+		await expect(page.locator('[data-kbdrow="0"]')).toBeFocused();
+		await page.locator('[aria-label="Collapse question"]').filter({ visible: true }).click();
+
 		await page.goto("/library");
 		await hydrated(page, '[data-testid="library-new-diagram"]');
 		const opener = page.getByTestId("library-new-diagram");

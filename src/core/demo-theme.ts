@@ -10,7 +10,7 @@
  *  through the bridge; these are the defaults before (and without) it. */
 export const DEMO_PAPER = {
 	light: { "--lh-bg": "#f8f7f4", "--lh-surface": "#f1f0ec", "--lh-surface-2": "#ebe9e3", "--lh-border": "#dedbd4", "--lh-text": "#1d1c1a", "--lh-muted": "#716d67" },
-	dark: { "--lh-bg": "#1a1a19", "--lh-surface": "#151514", "--lh-surface-2": "#151514", "--lh-border": "#33322f", "--lh-text": "#e9e7e2", "--lh-muted": "#858279" },
+	dark: { "--lh-bg": "#1a1a19", "--lh-surface": "#151514", "--lh-surface-2": "#151514", "--lh-border": "#33322f", "--lh-text": "#e9e7e2", "--lh-muted": "#868379" },
 } as const;
 
 const NEUTRALS = Object.keys(DEMO_PAPER.light) as (keyof typeof DEMO_PAPER.light)[];

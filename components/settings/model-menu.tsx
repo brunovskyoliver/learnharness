@@ -270,7 +270,7 @@ export function ProviderMenuList({
 					}
 				}}
 				placeholder="Search providers…"
-				className="lh-input mb-1.5 w-full rounded-md border border-rule bg-paper pointer-coarse:min-h-11 px-2 py-1.5 text-ink outline-none focus:ring-1 focus:ring-focus"
+				className="lh-input mb-1.5 w-full rounded-md border border-edge bg-paper pointer-coarse:min-h-11 px-2 py-1.5 text-ink outline-none focus:ring-1 focus:ring-focus"
 			/>
 			{results.length === 0 && (
 				<div className="px-2 py-3 text-center text-faint">No providers match.</div>

@@ -365,7 +365,7 @@ export function ChatGPTConnection(_props: { setup?: boolean } = {}) {
 	const accounts = ui.status.accounts.filter((a) => a.connected);
 	return <div className="flex scroll-mt-4 flex-col gap-2 rounded-md" data-testid="chatgpt-connection" data-settings-row="chatgpt">
 		<ConnectionRow label="ChatGPT" actionTestid={active ? undefined : "chatgpt-login"} action={active ? "Manage…" : "Connect"} disabled={!ui.status.available || ui.busy || ui.status.pending} onAction={() => active ? ui.manage(active.id) : ui.connect()}>
-			{active && <select aria-label="ChatGPT account" value={active.id} disabled={ui.busy || ui.status.pending} onChange={(event) => ui.select(event.target.value)} className="min-w-0 rounded-md border border-rule bg-paper px-2 py-1 text-sm text-ink pointer-coarse:min-h-11">
+			{active && <select aria-label="ChatGPT account" value={active.id} disabled={ui.busy || ui.status.pending} onChange={(event) => ui.select(event.target.value)} className="min-w-0 rounded-md border border-edge bg-paper px-2 py-1 text-sm text-ink pointer-coarse:min-h-11">
 				{accounts.map((a) => <option key={a.id} value={a.id}>{a.email || "ChatGPT account"}</option>)}
 			</select>}
 		</ConnectionRow>

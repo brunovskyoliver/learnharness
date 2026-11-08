@@ -105,6 +105,13 @@ Updated: 2026-11-08
 - Agent (phase 11, T068): constitution 1.1.3 (Sync Impact Report, theme line as plan.md's Amendment, VI names `components/paper/` beside TopBar and MenuShell, and the structural-line exception names the right pane's hairline since the sidebar dividers went with the persistent sidebar; Last Amended 2026-11-07, the gate-1 date the amendment was approved). PRODUCT.md's Study ink paragraph is replaced by one on the shared paper design; docs/ui-review.md describes the overlay sidebar, check threads, the settings modal and a light/dark check; design-system/README.md opens with a retired-mirror note; ROADMAP row 025 added.
 - Agent (phase 11, T069): the reviews (specs/025-unified-redesign/reviews.md) applied DESIGN.md as written where code had drifted. The diagram and PDF tool rows lose their hairlines: "Separators" names only the page editor's toolbar hairline. A running background job in the transcript is a quiet row ("Running rows show only the spinner and shimmer"). Empty states are `text-md text-faint` ("Empty states"). The check's disabled submit takes the shared pill's .6. The lesson's title is its h1. Study's corner hint speaks the run's word through a polite live region (not its cost, which ticks). Theme-color follows the paper, as Electron's chrome does. Kept and recorded there: the check column's margin-left shift (check-geometry reads layout boxes), Riddled's easings and the quote rule, and the shared disabled pill.
 - Agent (phase 11, T069): five findings need the owner and were not changed (reviews.md "Needs the owner"): N1 `--rule` control edges under 3:1, N2 the light switch's off state, N3 dark faint 4.49:1 on the grained paper, N4 Notebook's 6px overflow at 1440 (the right note's hover ⋯), N5 Tab doing nothing in a lesson while a check waits.
+- Owner rulings 2026-11-08 on the T069 questions (reviews.md "Owner rulings 2026-11-08"):
+  - N1, option 1: a control-edge token, `--nb-control-edge` (light `#938a73`; dark `#686660`, one step past `#68665f`, which missed 3:1 on the grained paper by 0.0004), only on control boundaries.
+  - N2, option 1: the off switch's track in that edge.
+  - N3, under "Raise to pass" measured on the paper as rendered: dark faint `#868379`. Rechecking the faded notes there moved dark red to .83 and light blue .93, green .97, red .91, purple .90, brown .93, orange .99. DESIGN.md, visual-reference.md and both contrast tests now measure on the grained paper (light `#f4f3ef`, dark `#1b1b1a`).
+  - N4, option 2: the right note's hover ⋯ inside the note.
+  - N5, option 1: with no field in the chat, Tab focuses "Go to it" and Enter there opens the thread.
+- Agent (owner rulings, N1): the unlayered `* { border-color: var(--rule) }` in app/globals.css outranked every Tailwind border-colour utility (layered), so `border-edge` rendered as `--rule`. The rule moved into `@layer base`. Utilities like `border-ink`, `border-red/50` and `border-green/50` (the practice outcome chips) now show the colours they name.
 
 ## Log
 - 2026-11-07 specify: spec.md written (6 stories, FR-001..043). Before-screenshot script delegated to a child (scripts/unified-screens.mjs).
@@ -146,5 +153,9 @@ Updated: 2026-11-08
   - Re-review on the rebuilt tree: detector 12 (all kept); keyboard probe 19/19 clean; 108 re-probe records with 0 nameless, 0 scrollbars, 0 overflow and h1 1 on every lesson.
   - Commands: `npm run lint` clean; `npm run typecheck` clean; `npm test` 4161 (4159 pass, 2 skipped, 0 fail); `npm run build` green; `npm run test:e2e` 82/82 (Notebook 54, Study 28).
   - Screenshots: the changed Study surfaces (lesson, checks, practice, Home's waiting and calibration, Review, diagrams; 4 Study combos) re-shot with `SERVER=start` into ~/agent-runs/2026-11-07-unified-redesign/after/. 76/80 ok; the 4 misses are the math-check row the seed doesn't have, as in every earlier run. Pairs and before/after rebuilt with scripts/unified-pairs.mjs (288 before | after).
+- 2026-11-08 owner rulings N1-N5 implemented (Decisions; reviews.md).
+  - Commands: `npm run lint` clean; `npm run typecheck` clean; `npm test` 4168 (4166 pass, 2 skipped, 0 fail); `npm run build` green; `npm run test:e2e` 82/82 (the Study a11y journey now covers N5; Notebook's threads "layouts" journey covers N4).
+  - Probes on `next start`: rendered text contrast passes in both themes (dark faint 4.54:1); rendered control edges 3.0-3.1:1; overflow 0 at 1440 and 390 in both modes (Notebook was 6px); keyboard walk 19/19 layers.
+  - Screenshots: the whole after/ set re-shot with `SERVER=start`: 576/600. The 24 misses are the expected ones: Home's sections under Notebook mode, and the math-check row the seed lacks. Pairs and before/after rebuilt (288 before | after, 24 Notebook | Study).
 
 ## Report

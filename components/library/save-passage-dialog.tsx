@@ -100,7 +100,7 @@ export function SavePassageDialog({ chatId, passage, document: fromDocument, onC
 								onChange={(event) => setQuery(event.currentTarget.value)}
 								autoComplete="off"
 								data-testid="save-passage-query"
-								className="h-8 w-full rounded-md border border-rule bg-transparent px-2 text-md font-normal text-ink pointer-coarse:h-11"
+								className="h-8 w-full rounded-md border border-edge bg-transparent px-2 text-md font-normal text-ink pointer-coarse:h-11"
 							/>
 						</label>
 						<div className="flex max-h-56 flex-col gap-0.5 overflow-y-auto [scrollbar-width:none]">

@@ -7,7 +7,7 @@ import { useEffect, useRef } from "react";
 import { Link2Icon, Trash2Icon } from "lucide-react";
 import { DIAGRAM_NODE_NOUN, diagramNodeName, type DiagramDoc } from "@/src/core";
 
-const FIELD = "w-full min-w-0 rounded-md border border-rule bg-transparent px-2 py-1.5 text-sm text-ink pointer-coarse:min-h-11";
+const FIELD = "w-full min-w-0 rounded-md border border-edge bg-transparent px-2 py-1.5 text-sm text-ink pointer-coarse:min-h-11";
 const ICON = "lh-tool";
 
 export function DiagramList({ doc, readOnly, focusRequest, onText, onLabel, onRemoveNode, onRemoveEdge, onLink }: {
