@@ -17,6 +17,7 @@ import { chatGPTStream } from "./chatgpt-stream.ts";
 import type { ChatGPTDispatchLifecycle } from "./chatgpt-request-cycle.ts";
 import { nativeSubscriptionId, nativeSubscriptionModel } from "./subscription-bridge.ts";
 import { nativeSubscriptionStream } from "./subscription-stream.ts";
+import { CODEX_VERIFY_PROVIDER, codexVerifyEngine, notebookCodexVerifyEnabled } from "./subagents/notebook-codex-verify.ts";
 
 /** App identity is immutable and shared by Models and every native Agent.
  * Agent's default Pi attribution otherwise overrides the Models identity. */
@@ -112,6 +113,9 @@ function defaultThinkingLevel(model: Model<Api>): ThinkingLevel {
  *  keys seam reflects file-saved keys into env), so the engine never
  *  hardcodes OpenRouter's. */
 export function piEngineForSpec(spec: ResolvedModelSpec, background: boolean | (() => boolean) = true, lifecycle?: ChatGPTDispatchLifecycle): PiEngine {
+	// Verification only (025 research R14): under the dev-only switch the
+	// one openai-codex spec Study resolves to runs on the verification engine.
+	if (spec.provider === CODEX_VERIFY_PROVIDER && notebookCodexVerifyEnabled()) return codexVerifyEngine();
 	const models: Models = piModels();
 	const nativeId = nativeSubscriptionId(spec.provider);
 	const model = spec.provider === "chatgpt" ? chatGPTModel(spec.id) : nativeId ? nativeSubscriptionModel(spec.provider, spec.id) : models.getModel(spec.provider, spec.id);

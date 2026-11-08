@@ -16,7 +16,7 @@ import { emit } from "../core/events.ts";
 import { getGraph } from "../core/graph.ts";
 import { lessonPassages, graphLinksOf } from "../core/note-sources.ts";
 import { modelsNotConfigured, providerKeyMissing } from "../core/settings.ts";
-import { resolveRoleSpec } from "../core/settings-resolution.ts";
+import { studyRoleSpec as resolveRoleSpec } from "./codex-verify.ts";
 import { cardStore } from "../store/cards.ts";
 import { providerKeyPresent } from "./keys.ts";
 import { jobCost } from "./pricing.ts";

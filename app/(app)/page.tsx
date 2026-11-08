@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { Home } from "@/components/home";
-import { graphView, readSettingsRecord, withTenantPage } from "@/src/server";
-import { resolveSettings, slotsConfigured, type GraphSnapshot } from "@/src/core";
+import { graphView, readSettingsRecord, withTenantPage, studySlotsConfigured } from "@/src/server";
+import { resolveSettings, type GraphSnapshot } from "@/src/core";
 
 // Dynamic: the configured state is server-rendered into the page (the
 // setup CTA's truth on the first frame), and every navigation re-reads
@@ -30,7 +30,7 @@ async function HomePage({ searchParams }: { searchParams: Promise<Record<string,
 		try { initialGraph = graphView(); } catch { /* client retries */ }
 	}
 	return (
-		<Home initialConfigured={slotsConfigured(record?.models)} rendering={rendering} initialGraph={initialGraph} />
+		<Home initialConfigured={studySlotsConfigured(record?.models)} rendering={rendering} initialGraph={initialGraph} />
 	);
 }
 

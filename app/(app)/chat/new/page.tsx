@@ -1,6 +1,5 @@
 import { NewSession } from "@/components/new-session";
-import { readSettingsRecord, withTenantPage } from "@/src/server";
-import { slotsConfigured } from "@/src/core";
+import { readSettingsRecord, withTenantPage, studySlotsConfigured } from "@/src/server";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +22,7 @@ async function NewSessionPage({
 	const { mode, send, draft } = await searchParams;
 	return (
 		<NewSession
-			initialConfigured={slotsConfigured(readSettingsRecord()?.models)}
+			initialConfigured={studySlotsConfigured(readSettingsRecord()?.models)}
 			mode={mode === "practice" ? "practice" : "teach"}
 			initialSend={typeof send === "string" ? send : undefined}
 			initialDraft={typeof draft === "string" ? draft : undefined}

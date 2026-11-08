@@ -57,5 +57,6 @@ export { abortCardRun } from "./card-generation.ts";
 export * from "./notebook-api.ts";
 export { notebookExportResponse } from "./notebook-export.ts";
 export { abortNotebookRun } from "./notebook.ts";
+export { studySlotsConfigured } from "./codex-verify.ts";
 export { resolveSteerReferences } from "./library-references.ts";
 export { tokenize } from "../agent/tokenizer.ts";

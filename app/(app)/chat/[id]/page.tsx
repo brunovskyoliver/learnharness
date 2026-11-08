@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { Chat } from "@/components/chat";
-import { continueDraft, lessonProgressOf, slotsConfigured } from "@/src/core";
-import { clientMessages, compactionInFlight, getChat, isTurnRunning, sessionCost, readSettingsRecord, turnFailure, withTenantPage } from "@/src/server";
+import { continueDraft, lessonProgressOf } from "@/src/core";
+import { clientMessages, compactionInFlight, getChat, isTurnRunning, sessionCost, readSettingsRecord, turnFailure, withTenantPage, studySlotsConfigured } from "@/src/server";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +35,7 @@ async function ChatPage({
 			initialTurns={chat.turns ?? []}
 			initialPricing={sessionCost(chat)}
 			initialError={turnFailure(chat.id)}
-			initialConfigured={slotsConfigured(record?.models)}
+			initialConfigured={studySlotsConfigured(record?.models)}
 			initialSettings={chat.settings}
 			initialModels={record?.models}
 			initialPrompt={prompt}

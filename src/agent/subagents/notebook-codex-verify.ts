@@ -21,6 +21,8 @@ import type { PiEngine } from "../models.ts";
 export const CODEX_VERIFY_MODEL_ID = "gpt-5.6-sol";
 /** The thinking level the strong slot's default order lands on for it. */
 export const CODEX_VERIFY_LEVEL = "medium";
+/** pi-ai's provider id for the transport. */
+export const CODEX_VERIFY_PROVIDER = "openai-codex";
 
 /** On only outside production and only with LH_NOTEBOOK_ENGINE=codex-verify. */
 export const notebookCodexVerifyEnabled = (): boolean =>
@@ -58,10 +60,16 @@ export function readCodexVerifyToken(now = Date.now()): { token: string } | { pr
 	return { token };
 }
 
-/** The verification engine. Every request re-reads the token. */
-export function codexVerifyEngine(stream: StreamFunction = codexStreamSimple as StreamFunction): PiEngine {
+/** The verification model from pi-ai's openai-codex catalog. */
+export function codexVerifyModel(): Model<Api> {
 	const model = OPENAI_CODEX_MODELS[CODEX_VERIFY_MODEL_ID as keyof typeof OPENAI_CODEX_MODELS] as Model<Api> | undefined;
 	if (!model) throw new Error(`pi-ai's openai-codex catalog has no model ${CODEX_VERIFY_MODEL_ID}`);
+	return model;
+}
+
+/** The verification engine. Every request re-reads the token. */
+export function codexVerifyEngine(stream: StreamFunction = codexStreamSimple as StreamFunction): PiEngine {
+	const model = codexVerifyModel();
 	return {
 		model,
 		level: CODEX_VERIFY_LEVEL,

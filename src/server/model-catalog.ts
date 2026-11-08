@@ -23,6 +23,7 @@ import { piModels } from "../agent/models.ts";
 import { chatGPTConnected, chatGPTModel, chatGPTModels, refreshChatGPTModels } from "../agent/chatgpt-bridge.ts";
 import { NATIVE_SUBSCRIPTIONS } from "../core/contracts/subscriptions.ts";
 import { nativeSubscriptionId, nativeSubscriptionConnected, nativeSubscriptionModel, nativeSubscriptionModels, refreshSubscriptionModels } from "../agent/subscription-bridge.ts";
+import { CODEX_VERIFY_PROVIDER, codexVerifyModel, codexVerifyProblem, codexVerifySpec } from "./codex-verify.ts";
 
 export async function refreshConnectionCatalog(provider?: string): Promise<void> {
 	await Promise.all([
@@ -189,6 +190,7 @@ export function catalogContextLimits(): Map<string, number> {
 		}
 	}
 	for (const model of [...chatGPTModels(), ...nativeSubscriptionModels()]) index.set(`${model.provider}:${model.id}`, model.contextWindow);
+	if (codexVerifySpec()) index.set(`${CODEX_VERIFY_PROVIDER}:${codexVerifyModel().id}`, codexVerifyModel().contextWindow);
 	return index;
 }
 
@@ -205,12 +207,25 @@ export function modelCatalog(): ModelCatalogResponse {
 		.map(toModelDto)
 		.sort((a, b) => (a.provider === b.provider ? a.id.localeCompare(b.id) : a.provider.localeCompare(b.provider)))
 		.concat([...chatGPTModels(), ...nativeSubscriptionModels()].map(toModelDto));
-	return {
+	const catalog: ModelCatalogResponse = {
 		models,
 		defaults: catalogDefaults(),
 		rolePins: catalogRolePins(),
 		slots: catalogSlots(),
 		providers: catalogProviders(),
+	};
+	// Verification only (025 R14): under the dev-only switch the picker and
+	// the setup gates see the one codex model in every slot, keyed while its
+	// token reads. Nothing is written to settings.
+	const verify = codexVerifySpec();
+	if (!verify) return catalog;
+	const pin = { model: { provider: verify.provider, id: verify.id }, thinkingLevel: verify.thinkingLevel };
+	return {
+		models: [...catalog.models, toModelDto(codexVerifyModel())],
+		defaults: pin,
+		rolePins: Object.fromEntries(Object.keys(catalog.rolePins).map((role) => [role, pin])) as RolePins,
+		slots: { strong: pin, cheap: pin, vision: pin },
+		providers: [...catalog.providers, { id: CODEX_VERIFY_PROVIDER, envVar: "", keyPresent: codexVerifyProblem() === null }],
 	};
 }
 

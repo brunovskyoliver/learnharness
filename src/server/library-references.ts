@@ -11,7 +11,8 @@ import {
 	type LibraryItem, type LibraryTombstone,
 } from "../core/library.ts";
 import type { LhMessage } from "../core/native-messages.ts";
-import { resolveConversationSpec, resolveRoleSpec } from "../core/settings-resolution.ts";
+import type { resolveConversationSpec } from "../core/settings-resolution.ts";
+import { studyConversationSpec, studyRoleSpec } from "./codex-verify.ts";
 import { effectiveThresholdTokens, projectedContextTokens } from "./compaction.ts";
 import { providerKeyPresent } from "./keys.ts";
 import { pdfFacts, pdfOutlineText, textOutline } from "./library-text.ts";
@@ -31,14 +32,14 @@ export interface ResolveOptions {
 
 /** A vision model is set and its provider's key is present. */
 export function visionAvailable(): boolean {
-	const spec = resolveRoleSpec("pdfReader", stores.settingsStore.readSettings());
+	const spec = studyRoleSpec("pdfReader", stores.settingsStore.readSettings());
 	return Boolean(spec && providerKeyPresent(spec.provider));
 }
 
 /** Room left in a chat before compaction, on the estimate compaction acts on. */
 export function roomTokensFor(record: { messages: LhMessage[]; kind?: string; settings?: Parameters<typeof resolveConversationSpec>[0] }): number {
 	const settings = effectiveSettings();
-	const spec = resolveConversationSpec(record.settings, settings.models.strong);
+	const spec = studyConversationSpec(record.settings, settings.models.strong);
 	const threshold = effectiveThresholdTokens(settings.compaction?.thresholdTokens, spec ? catalogContextLimits().get(`${spec.provider}:${spec.id}`) : undefined);
 	const system = Math.ceil(composeInstructions(record.kind === "practice" ? "practice" : "teacher").length / CHARS_PER_TOKEN);
 	return Math.max(0, threshold - projectedContextTokens(record.messages, system));
