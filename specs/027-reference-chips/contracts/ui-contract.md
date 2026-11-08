@@ -13,11 +13,12 @@ Paper tokens only (DESIGN.md, feature 025). Items marked **[owner, approved]** w
 | Hover | name underline ink 40% → ink (as links) | none (not a link) |
 | Focus | 2px `--nb-focus` outline, offset 2px | the field's caret only |
 | Coarse pointer | 44px hit box (inline-flex, transparent padding) | n/a |
-| Deleted for good | faint name, no ground, no underline, not focusable, followed by ` · no longer in your Library` (the existing `NO_LONGER_IN_LIBRARY`) | chip not drawn (the name no longer resolves) |
+| Deleted for good | faint name, no ground, no underline, not focusable, followed by ` · no longer in your Library` (the existing `NO_LONGER_IN_LIBRARY`) | drawn faint like sent messages, not a link: the server still resolves the name and attaches a "no longer in your Library" reference, so the composer and the transcript agree with what is attached (analyze M1, 2026-11-08) |
 | Removed from the repo (026) | as deleted, followed by ` · Removed from the repo` (026's constant) | chip not drawn |
 | Mirrored item (026) | name = display name (the file name); the chip covers the whole `@{linked folder}/{repo path}` token | the path as typed (the overlay restyles characters only) |
+| Equal names (analyze M2) | when two chips in one text would show the same name for different items (two mirrored `notes.md`), each shows its parent folder as a faint hint after the name (` · week1`), and its accessible name uses the full Library path ("Open Lecture notes/week1/notes.md, Markdown") | n/a: the path is typed out |
 
-Class names: `.lh-ref-chip`, `.lh-ref-chip-icon`, `.lh-ref-chip-hint`, `.lh-ref-chip[data-state="deleted"]`, `.lh-ref-field`, `.lh-ref-mirror` in `app/paper.css`. Data attributes: `data-ref-chip="{messageId}:{key}"`, `data-source` (the exact underlying text, for copy). Test ids: `ref-chip`, `ref-chip-hint`, `ref-mirror`, `back-pill`, `library-full-view`.
+Class names: `.lh-ref-chip`, `.lh-ref-chip-icon`, `.lh-ref-chip-hint`, `.lh-ref-chip-folder` (M2), `.lh-ref-chip[data-state="deleted"]` (and `"removed"`), `.lh-ref-field`, `.lh-ref-mirror` in `app/paper.css`. Data attributes: `data-ref-chip="{messageId}:{key}"`, `data-source` (the exact underlying text, for copy). Test ids: `ref-chip`, `ref-chip-hint`, `ref-mirror`, `back-pill`, `library-full-view`.
 
 ### Kind icons **[owner, approved]** (lucide; none exists per kind today: tabs use FileText and Network)
 

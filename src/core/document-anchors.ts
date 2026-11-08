@@ -119,6 +119,39 @@ export function parseCitationHref(href: string): DocumentCitation | null {
 	return { itemId, page, quote: params.get("quote") ?? "" };
 }
 
+/** Any Library item address (feature 027): `/library?item=…`, with an optional
+ *  page and quote. `citationHref` is its page-and-quote case. */
+export interface LibraryHref { itemId: string; page?: number; quote?: string }
+
+/** `/library?item=ID[&page=N][&quote=Q]`, encoded as `citationHref` encodes. */
+export function libraryHref({ itemId, page, quote }: LibraryHref): string {
+	return `/library?item=${encode(itemId)}${page === undefined ? "" : `&page=${page}`}${quote ? `&quote=${encode(quote)}` : ""}`;
+}
+
+/** The item an address names, or null for any other address. An absolute URL
+ *  counts only when it is on `origin` (pass `location.origin`); without one,
+ *  only a path does. A page that isn't an integer ≥ 1 is ignored, not refused.
+ *  `parseCitationHref` keeps requiring a page. */
+export function parseLibraryHref(href: string, origin?: string): LibraryHref | null {
+	let rest = href;
+	const absolute = /^[a-z][a-z\d+.-]*:/i.test(href) || href.startsWith("//");
+	if (absolute) {
+		if (!origin) return null;
+		let url: URL;
+		try { url = new URL(href); } catch { return null; }
+		if (url.origin !== origin) return null;
+		rest = url.pathname + url.search;
+	}
+	const at = rest.indexOf("?");
+	if (at === -1 || rest.slice(0, at) !== "/library") return null;
+	const params = new URLSearchParams(rest.slice(at + 1).split("#")[0]);
+	const itemId = params.get("item");
+	if (!itemId) return null;
+	const page = Number(params.get("page") ?? Number.NaN);
+	const quote = params.get("quote");
+	return { itemId, ...(Number.isInteger(page) && page >= 1 ? { page } : {}), ...(quote ? { quote } : {}) };
+}
+
 const labelText = (name: string) => name.replace(/[\\[\]]/g, "\\$&").replace(/\s+/g, " ").trim();
 
 export const citationLabel = (name: string, page: number) => `PDF: ${labelText(name)}, p. ${page}`;

@@ -35,7 +35,9 @@ Recognition rules are in contracts/recognition.md.
 | `name` | string | `live`/`trashed`: the current name (for a 026 mirrored item, its display name, the file name, not its @ path). `deleted`/`removed`/`unknown`: the name as written (removed mirrored entries: the entry's display name). |
 | `kind` | LibraryKind | Current kind, else the one at send. |
 | `href` | string \| null | `live`/`unknown`: `/library?item=ID[&page=N][&quote=Q]` via `citationHref` encoding (quote cut by `citationQuote`, 200 chars). `trashed`: `/library?view=trash&entry=ENTRY`. `deleted`/`removed`: null (not a link). |
-| `hint` | string? | `· p. {n}` for a page, else the passage's first non-empty line; one line, truncated by CSS. |
+| `hint` | string? | `· p. {n}` for a page, else `· ` and the passage's first non-empty line; one line, truncated by CSS. |
+| `path`, `parent` | string? | The item's full Library path and its folder's name, when the live list knows them (`itemPlace`). |
+| `folderHint` | string? | `· {parent}`, only when another chip in the same text shows the same name for a different item (`chipTargets`, analyze M2); the accessible name then uses `path`. |
 | `key` | string | `{index}` of the chip within its message (0-based, document order); a reference row's link uses `row-{itemId}`. Used with the message id for focus return. |
 
 ## ReturnPoint (browser sessionStorage `lh:reference-return`)

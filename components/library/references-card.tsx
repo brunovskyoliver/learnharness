@@ -3,25 +3,14 @@
 import { useEffect, useState } from "react";
 import { useSettingsDialog } from "@/components/settings/settings-dialog.tsx";
 import { opensInPane, usePagePane } from "@/components/library/page-pane-context";
+import { liveLibrary } from "@/components/reference-catalog";
 import { goneSuffix, referenceLabel, type LibraryReference } from "@/src/core";
 
 /** Live ids, fetched only once a transcript has references and shared across
- *  its rows. Short-lived, so a deletion shows up on the next view. */
-const LIVE_IDS_TTL_MS = 30_000;
-let liveIds: { at: number; ids: Promise<Set<string> | null> } | null = null;
-function currentLibraryIds(): Promise<Set<string> | null> {
-	if (!liveIds || Date.now() - liveIds.at > LIVE_IDS_TTL_MS) {
-		liveIds = {
-			at: Date.now(),
-			ids: fetch("/api/library", { cache: "no-store" })
-				.then((response) => (response.ok ? response.json() : null))
-				.then((body: { items: { id: string }[] } | null) => (body ? new Set(body.items.map((item) => item.id)) : null))
-				// The label stays as sent if this fails.
-				.catch(() => null),
-		};
-	}
-	return liveIds.ids;
-}
+ *  its rows. Short-lived (components/reference-catalog.ts holds the TTL), so a
+ *  deletion shows up on the next view. The label stays as sent if this fails. */
+const currentLibraryIds = (): Promise<Set<string> | null> =>
+	liveLibrary().then((list) => (list ? new Set(list.byId.keys()) : null));
 
 const LINK = "text-ink underline decoration-ink/40 underline-offset-[3px] hover:decoration-ink pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center";
 

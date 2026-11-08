@@ -126,16 +126,66 @@ function nameTable<T extends CatalogEntry>(entries: readonly T[], folders: reado
 	return [...table.values()].sort((a, b) => b.length - a.length);
 }
 
-/** Catalog entries the text names with @, first-seen, duplicates collapsed.
- *  No match means plain text: nothing happens and nothing is reported.
- *  `folders` gives mirrored items their Library-path names (feature 026). */
-export function parseReferences<T extends CatalogEntry>(rawText: string, entries: readonly T[], folders: readonly LibraryFolder[] = []): T[] {
+/** One `@name` the text holds (feature 027, data-model.md). Offsets index the
+ *  raw text as given: `start` is the `@`, `end` the index after the name. */
+export interface ReferenceSpan<T extends CatalogEntry = CatalogEntry> {
+	start: number;
+	end: number;
+	entry: T;
+}
+
+const PASSAGE_BLOCK = /<library_passage [^>]*>[\s\S]*?<\/library_passage>/g;
+
+/** NFC offsets back to raw ones. The text is normalised one run at a time, each
+ *  run starting at a code point that isn't a combining mark, so a run's NFC
+ *  characters all map to that run. A text whose runs don't add up to its whole
+ *  NFC form (rare scripts) falls back to normalising prefixes. */
+function rawOffsets(raw: string, nfc: string): (at: number, end: boolean) => number {
+	if (raw === nfc) return (at) => at;
+	const starts: number[] = [];
+	const rawStarts: number[] = [];
+	let joined = "";
+	for (const match of raw.matchAll(/\P{M}\p{M}*|\p{M}+/gu)) {
+		starts.push(joined.length);
+		rawStarts.push(match.index);
+		joined += match[0].normalize("NFC");
+	}
+	if (joined === nfc) {
+		const run = (at: number) => {
+			let lo = 0, hi = starts.length - 1;
+			while (lo < hi) {
+				const mid = (lo + hi + 1) >> 1;
+				if (starts[mid]! <= at) lo = mid; else hi = mid - 1;
+			}
+			return lo;
+		};
+		return (at, end) => {
+			if (at >= nfc.length) return raw.length;
+			const i = run(at);
+			if (!end || starts[i] === at) return rawStarts[i]!;
+			return rawStarts[i + 1] ?? raw.length;
+		};
+	}
+	return (at) => {
+		for (let r = 0; r <= raw.length; r++) if (raw.slice(0, r).normalize("NFC").length >= at) return r;
+		return raw.length;
+	};
+}
+
+/** Every `@name` in the text, in order, by the server's rules (feature 009,
+ *  contracts/references.md): a boundary before the @, not in code or a PDF
+ *  passage, the longest name first, live name > old name > tombstone, and no
+ *  letter or digit right after. `folders` gives mirrored items their
+ *  Library-path names (feature 026). `parseReferences` is built on this, so a
+ *  chip covers exactly what the server attaches (027, FR-003). */
+export function referenceSpans<T extends CatalogEntry>(rawText: string, entries: readonly T[], folders: readonly LibraryFolder[] = []): ReferenceSpan<T>[] {
 	if (!rawText.includes("@") || entries.length === 0) return [];
 	const text = rawText.normalize("NFC");
 	// A passage from a PDF is material: an @name inside it attaches nothing (feature 020).
-	const code = [...codeRanges(text), ...[...text.matchAll(/<library_passage [^>]*>[\s\S]*?<\/library_passage>/g)].map((match): [number, number] => [match.index, match.index + match[0].length])];
+	const code = [...codeRanges(text), ...[...text.matchAll(PASSAGE_BLOCK)].map((match): [number, number] => [match.index, match.index + match[0].length])];
 	const table = nameTable(entries, folders);
-	const found = new Map<string, T>();
+	const toRaw = rawOffsets(rawText, text);
+	const spans: ReferenceSpan<T>[] = [];
 	for (let at = text.indexOf("@"); at !== -1; at = text.indexOf("@", at + 1)) {
 		if (!boundaryBefore(text, at) || inRanges(code, at)) continue;
 		const start = at + 1;
@@ -144,12 +194,95 @@ export function parseReferences<T extends CatalogEntry>(rawText: string, entries
 			if (end > text.length || nameKey(text.slice(start, end)) !== key) continue;
 			const next = String.fromCodePoint(text.codePointAt(end) ?? 0x20);
 			if (LETTER_OR_DIGIT.test(next)) continue;
-			if (!found.has(entry.id)) found.set(entry.id, entry);
+			spans.push({ start: toRaw(at, false), end: toRaw(end, true), entry });
 			at = end - 1;
 			break;
 		}
 	}
+	return spans;
+}
+
+/** Catalog entries the text names with @, first-seen, duplicates collapsed.
+ *  No match means plain text: nothing happens and nothing is reported.
+ *  `folders` gives mirrored items their Library-path names (feature 026). */
+export function parseReferences<T extends CatalogEntry>(rawText: string, entries: readonly T[], folders: readonly LibraryFolder[] = []): T[] {
+	const found = new Map<string, T>();
+	for (const { entry } of referenceSpans(rawText, entries, folders)) if (!found.has(entry.id)) found.set(entry.id, entry);
 	return [...found.values()];
+}
+
+// ─── the selection actions' forms (feature 027, contracts/recognition.md) ────
+
+/** A span, joined with the passage that follows it when the text has one of
+ *  the selection actions' shapes, or a `<library_passage>` on its own. */
+export interface ReferenceForm<T extends CatalogEntry = CatalogEntry> {
+	/** Absent for a passage on its own. */
+	span?: ReferenceSpan<T>;
+	/** The span's entry id, or the passage's `item`. */
+	itemId: string;
+	/** What a chip covers and one Backspace removes, half-open, raw offsets. */
+	range: [number, number];
+	/** PDF form and passage on its own: the passage's page. */
+	page?: number;
+	/** The passage: `>` lines without their markers, or the passage body. */
+	quote?: string;
+	passageOnly: boolean;
+}
+
+const PASSAGE_AT = /<library_passage item="([^"]*)" page="(\d+)">\n([\s\S]*?)\n<\/library_passage>/y;
+const PASSAGE_ANY = /<library_passage item="([^"]*)" page="(\d+)">\n([\s\S]*?)\n<\/library_passage>/g;
+const unescapePassageAttribute = (value: string) => value.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+const unescapePassageBody = (body: string) => body.replace(/<\\\/(library_passage)/gi, "</$1");
+
+const lineEnd = (text: string, from: number) => {
+	const at = text.indexOf("\n", from);
+	return at === -1 ? text.length : at;
+};
+
+/** The chips a text draws: one per span, a quote form joined to its span, and
+ *  a passage no span claims on its own; in text order. */
+export function referenceForms<T extends CatalogEntry>(text: string, spans: readonly ReferenceSpan<T>[]): ReferenceForm<T>[] {
+	const code = codeRanges(text);
+	const forms: ReferenceForm<T>[] = [];
+	const claimed = new Set<number>();
+	spans.forEach((span, index) => {
+		const whole: ReferenceForm<T> = { span, itemId: span.entry.id, range: [span.start, span.end], passageOnly: false };
+		const eol = lineEnd(text, span.end);
+		const tail = text.slice(span.end, eol);
+		const next = spans[index + 1];
+		// The last reference on its line, whose line ends with ":" and a blank line.
+		if ((next && next.start < eol) || !tail.endsWith(":") || text.slice(eol, eol + 2) !== "\n\n") {
+			forms.push(whole);
+			return;
+		}
+		const body = eol + 2;
+		if (text[body] === ">") {
+			const lines: string[] = [];
+			let at = body;
+			let end = body;
+			while (at < text.length && text[at] === ">") {
+				end = lineEnd(text, at);
+				lines.push(text.slice(at, end).replace(/^> ?/, ""));
+				at = end + 1;
+			}
+			forms.push({ ...whole, range: [span.start, end], quote: lines.join("\n") });
+			return;
+		}
+		const page = /^, page (\d+)/.exec(tail);
+		PASSAGE_AT.lastIndex = body;
+		const passage = page ? PASSAGE_AT.exec(text) : null;
+		if (page && passage && unescapePassageAttribute(passage[1]!) === span.entry.id && passage[2] === page[1]) {
+			claimed.add(body);
+			forms.push({ ...whole, range: [span.start, body + passage[0].length], page: Number(page[1]), quote: unescapePassageBody(passage[3]!) });
+			return;
+		}
+		forms.push(whole);
+	});
+	for (const match of text.matchAll(PASSAGE_ANY)) {
+		if (claimed.has(match.index) || inRanges(code, match.index)) continue;
+		forms.push({ itemId: unescapePassageAttribute(match[1]!), range: [match.index, match.index + match[0].length], page: Number(match[2]), quote: unescapePassageBody(match[3]!), passageOnly: true });
+	}
+	return forms.sort((a, b) => a.range[0] - b.range[0]);
 }
 
 export interface MentionToken {

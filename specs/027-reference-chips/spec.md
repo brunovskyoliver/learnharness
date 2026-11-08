@@ -108,6 +108,8 @@ The tutor answers and refers to one of his Library items (for example a page cit
 ### Edge Cases
 
 - A sent message refers to an item that has since been renamed: the chip shows the current name and opens normally.
+- A draft names an item deleted for good: the server still resolves that name and attaches a "no longer in your Library" reference, so the composer draws its chip too, in the same faint state sent messages use (analyze M1, 2026-11-08).
+- Two chips in one text would show the same name for different items (two mirrored `notes.md` files): each shows its parent folder as a faint hint ("· week1"), and its accessible name uses the full Library path (analyze M2, 2026-11-08).
 - A sent message refers to an item now in the trash: the chip opens that item's entry in the Library's Trash, with Restore.
 - A sent message refers to an item deleted for good: the chip shows the name as written, faint, not a link, followed by "· no longer in your Library".
 - A chip in a tutor reply names something that is not a Library item (no link to an item, no `@name` that resolves): it stays plain text.

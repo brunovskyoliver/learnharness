@@ -23,6 +23,7 @@ export * from "./diagram.ts";
 export * from "./page-proposals.ts";
 export * from "./diagram-svg.ts";
 export * from "./library-refs.ts";
+export * from "./reference-chips.ts";
 export * from "./note-links.ts";
 export * from "./note-sources.ts";
 export * from "./document-search.ts";
