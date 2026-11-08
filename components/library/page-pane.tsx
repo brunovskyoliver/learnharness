@@ -12,7 +12,7 @@ import { jumpToSource, openCitation, useNoteLinks } from "./use-note-links.ts";
 import { ChatActionsContext } from "@/components/chat-actions-context.ts";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { WorkspacePane } from "@/components/workspace-pane";
+import { usePaneFull, WorkspacePane } from "@/components/workspace-pane";
 import { isUnsent, SAVE_STATE_LABEL, type PageDraftState } from "./page-draft.ts";
 import type { PageEditorHandle } from "./page-editor.tsx";
 import { PageHistory } from "./page-history.tsx";
@@ -284,6 +284,23 @@ export function PageName({ item, pane }: { item: PaneItem; pane: PagePaneApi }) 
 
 /** The header, pure for render tests. */
 export function PaneHeader({ phone, name, status, actions, onClose, closeLabel }: { phone: boolean; name: ReactNode; status?: ReactNode; actions?: ReactNode; onClose: () => void; closeLabel: string }) {
+	// The Library's full view (feature 027): ✕ becomes the toolbar word "← Library".
+	const full = usePaneFull();
+	if (full) {
+		return (
+			<div className="flex min-h-13 shrink-0 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-1">
+				<div className="flex min-w-0 flex-[1_1_7rem] flex-col">
+					{name}
+					{status}
+				</div>
+				{actions && <div className="lh-tools gap-x-1">{actions}</div>}
+				<button type="button" aria-label="Back to Library" onClick={onClose} data-testid="full-view-library" className="lh-tool -mr-1.5">
+					<ArrowLeftIcon aria-hidden="true" />
+					Library
+				</button>
+			</div>
+		);
+	}
 	return (
 		<div className="flex min-h-13 shrink-0 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-1">
 			{phone && (
@@ -490,6 +507,8 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 
 	// A search hit lands on its block (feature 019), once the editor is there.
 	const [jumpMissed, setJumpMissed] = useState(false);
+	// The miss line is said where a chip lands: the Library's full view (feature 027, FR-014).
+	const full = usePaneFull();
 	const jumpTarget = item.jump;
 	const jumpNonce = jumpTarget?.nonce;
 	useEffect(() => {
@@ -575,6 +594,7 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 						<ChangeBar text={changeBarText(changes)} busy={undoing} onPrevious={() => step(-1)} onNext={() => step(1)} onUndo={() => void undoTutor()} onDone={() => void done()} />
 					)}
 					{changeLine && <p role="status" className="px-4 pb-2 text-sm text-graphite" data-testid="page-change-line">{changeLine}</p>}
+					{jumpMissed && full && <p role="status" className="px-4 pb-2 text-sm text-graphite" data-testid="page-jump-missed">That passage is no longer in this page. Showing it from the top.</p>}
 					{!state.deleted && state.loaded && (
 						<PageProposalsLine
 							pageId={item.id}
@@ -726,8 +746,9 @@ function PdfSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi; 
 }
 
 /** A page, a PDF or a read-only original, beside the chat or the Library list. */
-export function PagePane({ item, pane }: { item: PaneItem; pane: PagePaneApi }) {
-	const phone = usePhone();
+export function PagePane({ item, pane, full = false }: { item: PaneItem; pane: PagePaneApi; full?: boolean }) {
+	// The Library's full view (feature 027) is never the phone layer.
+	const phone = usePhone() && !full;
 	if (item.kind === "page") return <PageSurface item={item} pane={pane} phone={phone} />;
 	if (item.kind === "pdf") return <PdfSurface item={item} pane={pane} phone={phone} />;
 	if (item.kind === "diagram") return <DiagramSurface item={item} pane={pane} phone={phone} />;

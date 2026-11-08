@@ -1,20 +1,13 @@
 "use client";
 
-/** The learner's sent text. A passage from a PDF shows as a quote with its citation,
- *  not as the marked block the model reads (feature 020). */
-import { citationHref, userTextRuns } from "@/src/core";
+import { copySource, ReferenceText } from "@/components/reference-text";
+import type { LibraryReference } from "@/src/core";
 
-export function UserTurnText({ text }: { text: string }) {
-	return (
-		<>
-			{userTextRuns(text).map((run, index) => ("text" in run ? <span key={index}>{run.text}</span> : (
-				<span key={index} className="block" data-testid="user-passage">
-					<span className="block pl-4 italic text-graphite">{run.passage}</span>
-					<a href={citationHref(run.citation)} className="ml-4 text-meta text-ink underline decoration-ink/40 underline-offset-[3px] hover:decoration-ink">Sent from page {run.citation.page}</a>
-				</span>
-			)))}
-		</>
-	);
+/** The learner's sent text. His references are chips (feature 027, R6): a
+ *  passage from a page or a PDF is carried by its chip, not shown again as a
+ *  quote, and a PDF passage's page is the chip's "· p. {n}". */
+export function UserTurnText({ text, references = [], messageId = "" }: { text: string; references?: readonly LibraryReference[]; messageId?: string }) {
+	return <ReferenceText text={text} references={references} messageId={messageId} />;
 }
 
 /** The learner's turn in the transcript (feature 025, research R9): no
@@ -22,13 +15,13 @@ export function UserTurnText({ text }: { text: string }) {
  *  in graphite, on the tutor's reading edge; "You" is a faint 12px meta line,
  *  which also names the row. Rendered plain: the model's LaTeX pipeline is
  *  not applied to learner-authored text ($ stays $). */
-export function UserTurn({ text, before }: { text: string; before?: React.ReactNode }) {
+export function UserTurn({ text, before, references = [], messageId = "" }: { text: string; before?: React.ReactNode; references?: readonly LibraryReference[]; messageId?: string }) {
 	return (
 		<div data-testid="user-message" className="lh-reading lh-user-turn my-2 font-sans">
 			<div className="mb-1 text-xs text-faint">You</div>
 			{before}
-			<div className="lh-prose whitespace-pre-wrap">
-				<UserTurnText text={text} />
+			<div className="lh-prose whitespace-pre-wrap" onCopy={copySource}>
+				<UserTurnText text={text} references={references} messageId={messageId} />
 			</div>
 		</div>
 	);

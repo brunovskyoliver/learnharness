@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { ToolContentResponse } from "@/components/ai-elements/message";
 import { WolframCheckedLabel } from "@/components/artifacts/math-check-card";
 import { ReferencesCard } from "@/components/library/references-card";
+import { copySource, ReferenceText } from "@/components/reference-text";
 import type { LibraryReference, QuestionAnswerData } from "@/src/core";
 import { answerForPresentation, parseAskInput, parseQuizInput } from "@/src/core";
 
@@ -25,8 +26,11 @@ import { answerForPresentation, parseAskInput, parseQuizInput } from "@/src/core
  * client — the card reveals his answer, the committed correct answer, and
  * the explanation, with NO verdict chips (owner ruling 2026-09-27).
  */
-export function AnsweredCard({ answer: savedAnswer, input, checked = false }: { answer: QuestionAnswerData; input?: unknown; checked?: boolean }) {
+const NO_REFERENCES: LibraryReference[] = [];
+
+export function AnsweredCard({ answer: savedAnswer, input, checked = false, chipScope = "" }: { answer: QuestionAnswerData; input?: unknown; checked?: boolean; /** Focus keys for its chips (feature 027). */ chipScope?: string }) {
 	const answer = answerForPresentation(savedAnswer, input);
+	const references = (savedAnswer as { references?: LibraryReference[] }).references ?? NO_REFERENCES;
 	const [whyOpen, setWhyOpen] = useSessionState("why", false); // the tucked explanation (predictions, owner 2026-10-03)
 	if (answer.dismissed) {
 		return (
@@ -169,7 +173,7 @@ export function AnsweredCard({ answer: savedAnswer, input, checked = false }: { 
 				</div>
 			)}
 
-			{answer.text && <div className="lh-prose mt-2 whitespace-pre-wrap">“{answer.text}”</div>}
+			{answer.text && <div className="lh-prose mt-2 whitespace-pre-wrap" onCopy={copySource}>“<ReferenceText text={answer.text} references={references} messageId={chipScope} />”</div>}
 
 			{/* The confidence record (owner round 6): the slider's rail, disc
 			    removed — the missing handle itself says "this is a record, not a
@@ -249,7 +253,7 @@ export function AnsweredCard({ answer: savedAnswer, input, checked = false }: { 
 				</div>
 			)}
 			{/* Feature 009: what his answer attached. The server wrote this field. */}
-			<ReferencesCard references={(savedAnswer as { references?: LibraryReference[] }).references ?? []} />
+			<ReferencesCard references={references} messageId={chipScope} />
 			{/* Feature 007: the answer was checked with Wolfram before it was posed. */}
 			{checked && <WolframCheckedLabel />}
 		</div>

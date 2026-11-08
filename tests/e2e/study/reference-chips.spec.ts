@@ -1,0 +1,362 @@
+import { mkdirSync } from "node:fs";
+import path from "node:path";
+import { expect, test, type Page } from "@playwright/test";
+import { GitRemote, skipReason } from "../../fixtures/git-remote";
+import { chatView, clearStudyKey, createPage, interceptModel, noPageOverflow, openChat, seedReferenceLesson, studySettings, visible, type ReferenceLesson } from "./helpers";
+
+// Feature 027, US1 (T032, T055, T056): chips in sent messages and reference
+// rows open the Library's full view at the passage; the Back pill and the
+// browser's Back return to the same message, scroll and chip.
+// Set LH_SHOTS_DIR to save screenshots.
+
+const shots = process.env.LH_SHOTS_DIR;
+async function shot(page: Page, name: string) {
+	if (!shots) return;
+	mkdirSync(shots, { recursive: true });
+	await page.waitForTimeout(400);
+	await page.screenshot({ path: path.join(shots, `${name}.png`) });
+}
+
+const chipsOf = (page: Page, lesson: ReferenceLesson, key: keyof ReferenceLesson["messages"]) =>
+	chatView(page, lesson.chatId).locator(`[data-ref-chip^="${lesson.messages[key]}:"][data-testid="ref-chip"]`);
+const scrollTop = (page: Page, chatId: string) => page.evaluate((id) => {
+	const view = [...document.querySelectorAll(`[data-chat-id="${id}"]`)].find((el) => el.getClientRects().length > 0);
+	const main = view?.querySelector<HTMLElement>("[data-session-restored]") ?? [...(view?.querySelectorAll<HTMLElement>("*") ?? [])].find((el) => el.scrollHeight > el.clientHeight + 4 && getComputedStyle(el).overflowY !== "visible");
+	return main?.scrollTop ?? -1;
+}, chatId);
+const focusedChip = (page: Page) => page.evaluate(() => (document.activeElement as HTMLElement | null)?.dataset.refChip ?? null);
+const fullView = (page: Page) => visible(page, '[data-testid="library-full-view"]');
+const pill = (page: Page) => visible(page, '[data-testid="back-pill"]');
+
+/** Click a chip so the lesson stays scrolled where it was, and remember where. */
+async function clickChip(page: Page, lesson: ReferenceLesson, chip: ReturnType<typeof chipsOf>) {
+	await chip.scrollIntoViewIfNeeded();
+	// Let the transcript settle (its arrival scroll, late fonts) before measuring.
+	let before = await scrollTop(page, lesson.chatId);
+	for (let i = 0; i < 20; i++) {
+		await page.waitForTimeout(250);
+		const now = await scrollTop(page, lesson.chatId);
+		if (now === before) break;
+		before = now;
+		await chip.scrollIntoViewIfNeeded();
+	}
+	const key = await chip.getAttribute("data-ref-chip");
+	await chip.click();
+	// The first visit compiles /library in dev.
+	await expect(page).toHaveURL(/\/library\?/, { timeout: 60_000 });
+	return { before, key };
+}
+
+async function expectReturned(page: Page, lesson: ReferenceLesson, from: { before: number; key: string | null }) {
+	await expect(page).toHaveURL(new RegExp(`/chat/${lesson.chatId}$`));
+	await expect(chatView(page, lesson.chatId)).toBeVisible();
+	await expect.poll(() => focusedChip(page), { timeout: 10_000 }).toBe(from.key);
+	expect(await page.evaluate(() => getComputedStyle(document.activeElement!).outlineStyle), "a visible focus ring").toBe("solid");
+	// Within one line height of where he was (SC-002).
+	const line = await page.evaluate(() => parseFloat(getComputedStyle(document.querySelector(".lh-user-turn .lh-prose") ?? document.body).lineHeight) || 24);
+	expect(Math.abs((await scrollTop(page, lesson.chatId)) - from.before)).toBeLessThanOrEqual(line);
+	await expect(page.locator('[data-testid="back-pill"]').filter({ visible: true })).toHaveCount(0);
+}
+
+let remote: GitRemote | undefined;
+
+test.describe("Study: reference chips in sent messages", () => {
+	test.beforeAll(async () => {
+		if (!skipReason()) remote = await GitRemote.start();
+	});
+	test.afterAll(async () => { await remote?.close(); });
+	test.beforeEach(async ({ request, page }) => {
+		await studySettings(request);
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await interceptModel(page);
+	});
+	test.afterEach(async ({ request }) => { await clearStudyKey(request); });
+
+	test("sent: every form renders as a chip, with its state and accessible name", async ({ page, request }) => {
+		test.setTimeout(240_000);
+		const lesson = await seedReferenceLesson(request, { remote });
+		await openChat(page, lesson.chatId);
+		const whole = chipsOf(page, lesson, "whole");
+		await expect(whole).toHaveCount(4);
+		// The longest name wins: "Untitled note" and "Untitled note 2" are two chips.
+		await expect(whole.nth(0)).toHaveText("Untitled note");
+		await expect(whole.nth(0)).toHaveAttribute("href", `/library?item=${lesson.items.note.id}`);
+		await expect(whole.nth(0)).toHaveAttribute("aria-label", "Open Untitled note, Page");
+		await expect(whole.nth(1)).toHaveText("Untitled note 2");
+		// In the trash: opens its Trash entry. Deleted for good: faint text, not a link.
+		await expect(whole.nth(2)).toHaveAttribute("href", `/library?view=trash&entry=${lesson.trashEntryId}`);
+		await expect(whole.nth(2)).toHaveAttribute("aria-label", "Open Trashed note in the trash");
+		await expect(whole.nth(3)).toHaveAttribute("data-state", "deleted");
+		await expect(whole.nth(3)).toHaveText("Gone note · no longer in your Library");
+		expect(await whole.nth(3).evaluate((el) => el.tagName)).toBe("SPAN");
+
+		// Scenario 12: LEAD words, one chip carrying the passage, the tail ":".
+		const quote = chipsOf(page, lesson, "quote");
+		await expect(quote).toHaveCount(1);
+		await expect(quote.getByTestId("ref-chip-hint")).toHaveText("· Second paragraph, the one he quoted.");
+		const quoteTurn = quote.locator("xpath=ancestor::div[contains(@class,'lh-prose')][1]");
+		await expect(quoteTurn).toHaveText(/^About this part of Untitled note · Second paragraph, the one he quoted\.:\s+Why\?$/);
+		await expect(quoteTurn).not.toContainText("> Second");
+
+		// A PDF passage: "· p. 4", and no "Sent from page".
+		const pdf = chipsOf(page, lesson, "pdfPassage");
+		await expect(pdf).toHaveCount(1);
+		await expect(pdf.getByTestId("ref-chip-hint")).toHaveText("· p. 4");
+		await expect(pdf).toHaveAttribute("aria-label", "Open Notes.pdf, page 4");
+		await expect(chatView(page, lesson.chatId)).not.toContainText("Sent from page");
+		await expect(chatView(page, lesson.chatId)).not.toContainText("library_passage");
+
+		// Nine kinds, nine icons.
+		const kinds = chipsOf(page, lesson, "kinds");
+		await expect(kinds).toHaveCount(9);
+		expect(await kinds.evaluateAll((els) => els.map((el) => el.getAttribute("data-kind")))).toEqual(["page", "pdf", "markdown", "text", "code", "csv", "image", "diagram", "other"]);
+
+		// Code stays text.
+		await expect(chipsOf(page, lesson, "code")).toHaveCount(0);
+
+		// The rows above a message keep their wording; the names are links.
+		const rows = visible(page, `[data-ref-chip="${lesson.messages.whole}:row-${lesson.items.note.id}"]`);
+		await expect(rows).toHaveAttribute("href", `/library?item=${lesson.items.note.id}`);
+
+		// Copy across a chip gives back the characters sent.
+		const copied = await quoteTurn.evaluate((el) => {
+			const range = document.createRange();
+			range.selectNodeContents(el);
+			const selection = window.getSelection()!;
+			selection.removeAllRanges();
+			selection.addRange(range);
+			const data = new DataTransfer();
+			el.dispatchEvent(new ClipboardEvent("copy", { clipboardData: data, bubbles: true, cancelable: true }));
+			selection.removeAllRanges();
+			return data.getData("text/plain");
+		});
+		expect(copied).toBe("About this part of @Untitled note:\n\n> Second paragraph, the one he quoted.\n\nWhy?");
+
+		for (const [width, height] of [[1440, 900], [390, 844], [320, 700]] as const) {
+			await page.setViewportSize({ width, height });
+			await quote.scrollIntoViewIfNeeded();
+			await noPageOverflow(page, `sent ${width}`);
+			await shot(page, `sent-light-${width}`);
+		}
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await whole.first().scrollIntoViewIfNeeded();
+		await shot(page, "sent-deleted-light-1440");
+	});
+
+	test("back: a chip opens the full view; the pill and browser Back return to the chip", async ({ page, request }) => {
+		test.setTimeout(240_000);
+		const lesson = await seedReferenceLesson(request, { remote });
+		await openChat(page, lesson.chatId);
+
+		// Scenario 1 + 4: the whole note, then the pill.
+		let from = await clickChip(page, lesson, chipsOf(page, lesson, "whole").first());
+		await expect(page).toHaveURL(`/library?item=${lesson.items.note.id}`);
+		await expect(fullView(page)).toHaveAttribute("data-item-id", lesson.items.note.id);
+		await expect(visible(page, '[data-testid="page-editor"]')).toContainText("First paragraph about waves.");
+		await expect(pill(page)).toHaveText("Back to E2E · Reference chips");
+		await expect(visible(page, '[data-testid="full-view-library"]')).toHaveAttribute("aria-label", "Back to Library");
+		await shot(page, "full-view-page-light-1440");
+		await pill(page).click();
+		await expectReturned(page, lesson, from);
+
+		// Scenario 2 + 5: the quoted passage, highlighted; then browser Back; then Forward.
+		from = await clickChip(page, lesson, chipsOf(page, lesson, "quote").first());
+		await expect(visible(page, "[data-page-jump]")).toContainText("Second paragraph, the one he quoted.");
+		await page.goBack();
+		await expectReturned(page, lesson, from);
+		await page.goForward();
+		await expect(page).toHaveURL(/\/library\?item=/);
+		await expect(visible(page, "[data-page-jump]")).toContainText("Second paragraph, the one he quoted.");
+		await page.goBack();
+		await expect(chatView(page, lesson.chatId)).toBeVisible();
+
+		// Scenario 3: the PDF on page 4, the passage marked.
+		from = await clickChip(page, lesson, chipsOf(page, lesson, "pdfPassage").first());
+		await expect(visible(page, '[data-testid="pdf-page-field"]')).toHaveValue("4", { timeout: 20_000 });
+		await expect(visible(page, '[data-pdf-page="4"] [data-testid="pdf-cite-mark"]').first()).toBeAttached({ timeout: 20_000 });
+		await shot(page, "full-view-pdf-light-1440");
+		await pill(page).click();
+		await expectReturned(page, lesson, from);
+
+		// Scenario 6 (SC-003): every kind opens in the full view, never a new tab.
+		const kinds = chipsOf(page, lesson, "kinds");
+		const expectations: Array<[string, string]> = [
+			["page", '[data-testid="page-editor"]'], ["pdf", '[data-testid="pdf-page"]'], ["markdown", '[data-pane-full]'], ["text", '[data-pane-full]'], ["code", '[data-pane-full]'], ["csv", '[data-pane-full]'],
+			["image", '[data-testid="full-view-image"] img'], ["diagram", '[data-pane-full]'], ["other", '[data-testid="full-view-download"]'],
+		];
+		for (let i = 0; i < expectations.length; i++) {
+			const [kind, selector] = expectations[i]!;
+			const chip = kinds.nth(i);
+			await expect(chip).toHaveAttribute("data-kind", kind);
+			const pages = page.context().pages().length;
+			from = await clickChip(page, lesson, chip);
+			await expect(visible(page, selector), kind).toBeVisible({ timeout: 20_000 });
+			expect(page.context().pages().length, `${kind}: no new tab`).toBe(pages);
+			if (kind === "image") await expect(visible(page, '[data-testid="full-view-image"] img')).toHaveAttribute("alt", lesson.items.image.name);
+			if (kind === "image" || kind === "other") await shot(page, `full-view-${kind}-light-1440`);
+			await page.goBack();
+			await expectReturned(page, lesson, from);
+		}
+
+		// Scenario 8: the trash, its entry in view, Restore focused, the pill there.
+		from = await clickChip(page, lesson, chipsOf(page, lesson, "whole").nth(2));
+		await expect(page).toHaveURL(`/library?view=trash&entry=${lesson.trashEntryId}`);
+		const entry = visible(page, `[data-entry-id="${lesson.trashEntryId}"]`);
+		await expect(entry).toHaveAttribute("data-landing", "true");
+		await expect(entry.getByRole("button", { name: "Restore Trashed note" })).toBeFocused();
+		await expect(pill(page)).toBeVisible();
+		await shot(page, "trash-landing-light-1440");
+		await pill(page).click();
+		await expectReturned(page, lesson, from);
+
+		// Scenario 10: a row's name opens like a chip.
+		const row = visible(page, `[data-ref-chip="${lesson.messages.whole}:row-${lesson.items.note2.id}"]`);
+		await row.scrollIntoViewIfNeeded();
+		from = { before: await scrollTop(page, lesson.chatId), key: await row.getAttribute("data-ref-chip") };
+		await row.click();
+		await expect(page).toHaveURL(`/library?item=${lesson.items.note2.id}`);
+		await expect(pill(page)).toBeVisible();
+		await pill(page).click();
+		await expectReturned(page, lesson, from);
+	});
+
+	test("back: the pill lasts across items, folders and a reload, and goes when he leaves", async ({ page, request }) => {
+		test.setTimeout(180_000);
+		const lesson = await seedReferenceLesson(request, { remote });
+		await openChat(page, lesson.chatId);
+		const from = await clickChip(page, lesson, chipsOf(page, lesson, "whole").first());
+		await expect(pill(page)).toBeVisible();
+		// ← Library, then another item from the list, then a folder.
+		await visible(page, '[data-testid="full-view-library"]').click();
+		await expect(page).toHaveURL(/\/library$/);
+		await expect(pill(page)).toBeVisible();
+		await page.goto(`/library?item=${lesson.items.markdown.id}`);
+		await expect(fullView(page)).toBeVisible();
+		await expect(pill(page)).toBeVisible();
+		await page.reload();
+		await expect(pill(page)).toBeVisible();
+		await expect(pill(page)).toHaveText("Back to E2E · Reference chips");
+		// After a reload the lesson is no longer right behind: the pill pushes it.
+		await pill(page).click();
+		await expectReturned(page, lesson, from);
+
+		// Leaving the Library by another route forgets it.
+		await clickChip(page, lesson, chipsOf(page, lesson, "whole").first());
+		await expect(pill(page)).toBeVisible();
+		await page.goto("/");
+		await expect.poll(() => page.evaluate(() => sessionStorage.getItem("lh:reference-return"))).toBeNull();
+		await page.goto("/library");
+		await expect(page.locator('[data-testid="back-pill"]').filter({ visible: true })).toHaveCount(0);
+	});
+
+	test("back: Ctrl-click opens a new tab with no pill; offline shows the Library's failed state", async ({ page, request }) => {
+		test.setTimeout(180_000);
+		const lesson = await seedReferenceLesson(request, { remote });
+		await openChat(page, lesson.chatId);
+		const chip = chipsOf(page, lesson, "whole").first();
+		const opened = page.context().waitForEvent("page");
+		await chip.click({ modifiers: [process.platform === "darwin" ? "Meta" : "Control"] });
+		const tab = await opened;
+		await tab.waitForLoadState();
+		await expect(tab).toHaveURL(new RegExp(`/library\\?item=${lesson.items.note.id}$`));
+		await expect(visible(tab, '[data-testid="library-full-view"]')).toBeVisible({ timeout: 60_000 });
+		await expect(tab.locator('[data-testid="back-pill"]')).toHaveCount(0);
+		await tab.close();
+		await expect(page).toHaveURL(new RegExp(`/chat/${lesson.chatId}$`));
+
+		// Offline: the Library's own failed line, and the pill still works.
+		await page.route(/\/api\/library(\?.*)?$/, (route) => route.abort());
+		const from = await clickChip(page, lesson, chipsOf(page, lesson, "kinds").nth(2));
+		await expect(visible(page, '[data-testid="library-full-view"]')).toContainText("Your Library could not be loaded.");
+		await pill(page).click();
+		await expectReturned(page, lesson, from);
+		await page.unroute(/\/api\/library(\?.*)?$/);
+	});
+
+	test("sent: dark and phone widths, and the pill on a phone", async ({ page, request }) => {
+		test.setTimeout(180_000);
+		await studySettings(request, { appearance: "dark" });
+		const lesson = await seedReferenceLesson(request, { remote });
+		for (const [width, height] of [[1440, 900], [390, 844]] as const) {
+			await page.setViewportSize({ width, height });
+			await openChat(page, lesson.chatId);
+			await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+			const quote = chipsOf(page, lesson, "quote").first();
+			await quote.scrollIntoViewIfNeeded();
+			await shot(page, `sent-dark-${width}`);
+			await chipsOf(page, lesson, "whole").first().scrollIntoViewIfNeeded();
+			await shot(page, `sent-deleted-dark-${width}`);
+			const from = await clickChip(page, lesson, quote);
+			await expect(pill(page)).toBeVisible();
+			await noPageOverflow(page, `full view ${width}`);
+			const box = await pill(page).boundingBox();
+			if (width < 768) expect(box!.y + box!.height).toBeGreaterThan(height - 80);
+			await shot(page, `full-view-page-dark-${width}`);
+			await pill(page).click();
+			await expectReturned(page, lesson, from);
+			await shot(page, `returned-dark-${width}`);
+		}
+		await page.setViewportSize({ width: 390, height: 844 });
+		await studySettings(request);
+		await openChat(page, lesson.chatId);
+		const from = await clickChip(page, lesson, chipsOf(page, lesson, "pdfPassage").first());
+		await expect(pill(page)).toBeVisible();
+		await expect(visible(page, '[data-testid="pdf-page-field"]')).toHaveValue("4", { timeout: 20_000 });
+		await expect(visible(page, '[data-pdf-page="4"] [data-testid="pdf-cite-mark"]').first()).toBeAttached({ timeout: 20_000 });
+		await shot(page, "full-view-pdf-light-390");
+		await pill(page).click();
+		await expectReturned(page, lesson, from);
+		await shot(page, "returned-light-390");
+	});
+
+	test("sent: a mirrored item is one chip over its path; one removed from the repo says so (T055)", async ({ page, request }) => {
+		test.skip(Boolean(skipReason()), skipReason() ?? "");
+		test.setTimeout(240_000);
+		const lesson = await seedReferenceLesson(request, { remote });
+		const mirrored = lesson.mirrored!;
+		await openChat(page, lesson.chatId);
+		const chips = chipsOf(page, lesson, "mirror");
+		await expect(chips).toHaveCount(2);
+		// Scenario 13: the whole path token is one chip, showing the file name.
+		await expect(chips.nth(0)).toHaveAttribute("data-source", `@${mirrored.livePath}`);
+		await expect(chips.nth(0)).toContainText("notes.md");
+		await expect(chips.nth(0)).toHaveAttribute("href", `/library?item=${mirrored.live.id}`);
+		await expect(chips.nth(1)).toHaveAttribute("data-source", `@${mirrored.removedPath}`);
+		await expect(chips.nth(1)).toHaveAttribute("data-state", "removed");
+		await expect(chips.nth(1)).toHaveText("notes.md · Removed from the repo");
+		await chips.nth(0).scrollIntoViewIfNeeded();
+		await shot(page, "sent-mirrored-removed-light-1440");
+		const from = await clickChip(page, lesson, chips.nth(0));
+		await expect(visible(page, '[data-pane-full]')).toContainText("Waves carry energy.");
+		await page.goBack();
+		await expectReturned(page, lesson, from);
+	});
+
+	test("every /library?item= address is the full view, with no pill; a citation inside a page still opens the side pane (T056)", async ({ page, request }) => {
+		test.setTimeout(180_000);
+		const lesson = await seedReferenceLesson(request, { remote });
+		// The notebook links panel's address, a card source's, and a pasted one.
+		for (const address of [
+			`/library?item=${encodeURIComponent(lesson.items.markdown.id)}`,
+			`/library?item=${encodeURIComponent(lesson.items.pdf.id)}&page=2`,
+			`/library?item=${encodeURIComponent(lesson.items.pdf.id)}&page=3&quote=${encodeURIComponent("the cited words sit here.")}`,
+		]) {
+			await page.goto(address);
+			await expect(fullView(page)).toBeVisible({ timeout: 60_000 });
+			await expect(page).toHaveURL(address);
+			await expect(page.locator('[data-testid="back-pill"]')).toHaveCount(0);
+		}
+		await expect(visible(page, '[data-testid="pdf-jump-status"]')).toContainText("Quote found on page 3.", { timeout: 20_000 });
+
+		// A page holding a PDF citation: in the full view, the citation opens the side pane.
+		const cited = await createPage(request, `Cites ${Date.now().toString(36)}`, `Read [PDF: Notes.pdf, p. 3](/library?item=${encodeURIComponent(lesson.items.pdf.id)}&page=3&quote=${encodeURIComponent("the cited words sit here.")}) first.`);
+		await page.goto(`/library?item=${encodeURIComponent(cited.id)}`);
+		await expect(visible(page, '[data-testid="page-editor"] a')).toBeVisible({ timeout: 60_000 });
+		await page.waitForTimeout(500);
+		await visible(page, '[data-testid="page-editor"] a').click();
+		const side = page.locator('aside[data-testid="page-pane"]').filter({ visible: true });
+		await expect(side).toBeVisible({ timeout: 20_000 });
+		await expect(side).toHaveAttribute("aria-label", "Notes.pdf");
+		await expect(page).toHaveURL(`/library?item=${encodeURIComponent(cited.id)}`);
+	});
+});

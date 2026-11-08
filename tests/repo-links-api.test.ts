@@ -357,6 +357,11 @@ describe("manage a link (US4, T044)", () => {
 		const entry = (await libraryStore.catalog()).find((e) => e.id === readme.id)!;
 		assert.ok("deletedAt" in entry);
 		assert.equal((entry as { removedBecause?: string }).removedBecause, "unlinked");
+		// Feature 027: GET /api/library names it by the paths a sent message used, for its chip.
+		const listed = await (await libraryListResponse()).json() as { removed: { id: string; names: string[] }[] };
+		const removed = listed.removed.find((r) => r.id === readme.id);
+		assert.ok(removed, "the removed entry is listed");
+		assert.ok(removed.names.some((name) => name.endsWith("/README.md")), JSON.stringify(removed));
 		assert.ok(fs.existsSync(annotations), "highlights stay");
 		assert.equal((await routes.repoLinkDeleteResponse(link.id)).status, 404);
 

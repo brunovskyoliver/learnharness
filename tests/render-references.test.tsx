@@ -40,6 +40,30 @@ describe("sent labels", () => {
 	it("a live item's name opens it, named accessibly", () => {
 		assert.ok(row({ mode: "inline" }).includes('aria-label="Open a.md"'));
 	});
+	it("a live item's name opens the Library's full view, keyed for focus return (feature 027, Q3)", () => {
+		const html = renderToStaticMarkup(<ReferenceRow reference={{ itemId: "lib_a", name: "a.md", kind: "markdown", mode: "inline" }} status={{ state: "live" }} messageId="msg_1" />);
+		assert.match(html, /<a href="\/library\?item=lib_a"/);
+		assert.match(html, /data-ref-chip="msg_1:row-lib_a"/);
+		assert.ok(!html.includes("target=\"_blank\""), "never a new tab");
+		assert.equal(text(html), "Used a.md · in full");
+	});
+	it("an image's name opens the full view too, not a new tab", () => {
+		const html = renderToStaticMarkup(<ReferenceRow reference={{ itemId: "lib_i", name: "f.png", kind: "image", mode: "image" }} />);
+		assert.match(html, /href="\/library\?item=lib_i"/);
+	});
+	it("a trashed item's name opens its Trash entry; the wording is unchanged", () => {
+		const html = renderToStaticMarkup(<ReferenceRow reference={{ itemId: "lib_t", name: "t.md", kind: "markdown", mode: "inline" }} status={{ state: "trashed", trashEntryId: "tr_1" }} messageId="m" />);
+		assert.match(html, /href="\/library\?view=trash&amp;entry=tr_1"/);
+		assert.equal(text(html), "Used t.md · in full · no longer in your Library");
+	});
+	it("deleted for good, or removed from its repo: ink text with its suffix", () => {
+		const deleted = renderToStaticMarkup(<ReferenceRow reference={{ itemId: "lib_d", name: "d.md", kind: "markdown", mode: "inline" }} status={{ state: "deleted" }} />);
+		assert.ok(!deleted.includes("<a "));
+		assert.equal(text(deleted), "Used d.md · in full · no longer in your Library");
+		const removed = renderToStaticMarkup(<ReferenceRow reference={{ itemId: "lib_r", name: "notes.md", kind: "markdown", mode: "inline", fromRepo: true }} status={{ state: "removed" }} />);
+		assert.ok(!removed.includes("<a "));
+		assert.equal(text(removed), "Used notes.md · in full · Removed from the repo");
+	});
 	it("a missing item has no link", () => {
 		assert.ok(!row({ mode: "missing" }).includes("<a "));
 	});

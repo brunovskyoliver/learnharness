@@ -217,7 +217,14 @@ async function upload(request: APIRequestContext, name: string, bytes: Buffer): 
 }
 
 async function page3(request: APIRequestContext, name: string, content: string): Promise<SeededItem> {
-	const response = await request.post("/api/library/pages", { data: { name, content } });
+	let response = await request.post("/api/library/pages", { data: { name, content } });
+	if (response.status() === 409) {
+		// Another journey made a page by that name in the shared data dir: step it aside.
+		const listed = (await (await request.get("/api/library")).json()) as { items: SeededItem[] };
+		const taken = listed.items.find((item) => item.name === name);
+		if (taken) expect((await request.patch(`/api/library/items/${taken.id}`, { data: { name: `${name} (moved aside ${Date.now().toString(36)})` } })).ok(), `rename ${name}`).toBeTruthy();
+		response = await request.post("/api/library/pages", { data: { name, content } });
+	}
 	expect(response.ok(), `page ${name}`).toBeTruthy();
 	return ((await response.json()) as { item: SeededItem }).item;
 }
@@ -253,6 +260,9 @@ const used = (item: SeededItem, extra: Partial<Ref> = {}): Ref => ({ itemId: ite
  *  (feature 026), linked as "Lecture notes" at the top level. Idempotent per run. */
 let referenceLesson: ReferenceLesson | null = null;
 export async function seedReferenceLesson(request: APIRequestContext, options: { remote?: GitRemote } = {}): Promise<ReferenceLesson> {
+	// A failed test restarts the worker; the lesson stays seeded in the data dir.
+	const saved = path.join(dataDir(), "e2e-reference-lesson.json");
+	if (!referenceLesson) try { referenceLesson = JSON.parse(readFileSync(saved, "utf8")) as ReferenceLesson; } catch { /* not seeded yet */ }
 	if (referenceLesson && (referenceLesson.mirrored || !options.remote)) return referenceLesson;
 	await seedStudy();
 	const stamp = Date.now().toString(36);
@@ -330,5 +340,6 @@ export async function seedReferenceLesson(request: APIRequestContext, options: {
 	];
 	writeChat({ ...structuredClone(lesson), id: REFERENCE_CHAT, title: "E2E · Reference chips", createdAt: new Date(now - 3_600_000).toISOString(), updatedAt: new Date(now - 60_000).toISOString(), messages: record as never });
 	referenceLesson = { chatId: REFERENCE_CHAT, items, trashEntryId, mirrored, messages, pdfPages };
+	writeFileSync(saved, JSON.stringify(referenceLesson));
 	return referenceLesson;
 }

@@ -5,7 +5,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { KIND_ICON, ReferenceChip } from "../components/reference-chip.tsx";
-import { chipTarget, chipTargets, type ChipInput, type LibraryKind } from "../src/core/index.ts";
+import { sentEntries } from "../components/reference-text.tsx";
+import { chipTarget, chipTargets, referenceForms, referenceSpans, type ChipInput, type LibraryFolder, type LibraryItem, type LibraryKind, type LibraryReference } from "../src/core/index.ts";
 
 // Feature 027, T015 + T054: the chip as markup (contracts/ui-contract.md §1).
 
@@ -85,5 +86,36 @@ describe("feature 026 (T054) and equal names (M2)", () => {
 		assert.equal(text(one!), "notes.md · week1");
 		assert.match(one!, /<span class="lh-ref-chip-folder">· week1<\/span>/);
 		assert.match(two!, /aria-label="Open Lecture notes\/week2\/notes.md, Markdown"/);
+	});
+});
+
+describe("sent messages find what was attached (T026, T055)", () => {
+	const ref = (itemId: string, name: string, extra: Partial<LibraryReference> = {}): LibraryReference => ({ itemId, name, kind: "markdown", mode: "inline", ...extra });
+	it("by the name it was sent with, before the Library is read", () => {
+		const text = "What does @Untitled note 2 say beside @Untitled note?";
+		const spans = referenceSpans(text, sentEntries([ref("a", "Untitled note"), ref("b", "Untitled note 2")], null));
+		assert.deepEqual(spans.map((s) => [s.entry.id, text.slice(s.start, s.end)]), [["b", "@Untitled note 2"], ["a", "@Untitled note"]]);
+	});
+	it("a mirrored live item by its Library path, one chip over the whole token", () => {
+		const folders: LibraryFolder[] = [
+			{ id: "f1", name: "Lecture notes", parentId: null, createdAt: "", mirror: { linkId: "l", path: "" } } as LibraryFolder,
+			{ id: "f2", name: "week1", parentId: "f1", createdAt: "", mirror: { linkId: "l", path: "week1" } } as LibraryFolder,
+		];
+		const live = { id: "m", name: "notes.md", kind: "markdown", size: 1, createdAt: "", updatedAt: "", origin: { type: "upload" }, folderId: "f2", mirror: { linkId: "l", path: "week1/notes.md" } } as unknown as LibraryItem;
+		const text = "Compare @Lecture notes/week1/notes.md now";
+		const spans = referenceSpans(text, sentEntries([ref("m", "notes.md", { fromRepo: true })], new Map([["m", { state: "live", item: live }]])), folders);
+		assert.equal(spans.length, 1);
+		assert.equal(text.slice(spans[0]!.start, spans[0]!.end), "@Lecture notes/week1/notes.md");
+	});
+	it("a removed mirrored item by the paths the server kept", () => {
+		const text = "and @Lecture notes/week2/notes.md.";
+		const spans = referenceSpans(text, sentEntries([ref("r", "notes.md", { fromRepo: true })], new Map([["r", { state: "removed", paths: ["Lecture notes/week2/notes.md"] }]])));
+		assert.equal(text.slice(spans[0]!.start, spans[0]!.end), "@Lecture notes/week2/notes.md");
+		assert.equal(spans[0]!.entry.id, "r");
+	});
+	it("the page form keeps its passage for the chip", () => {
+		const text = "About this part of @Untitled note:\n\n> Second paragraph.\n\nWhy?";
+		const forms = referenceForms(text, referenceSpans(text, sentEntries([ref("a", "Untitled note", { kind: "page" })], null)));
+		assert.equal(forms[0]!.quote, "Second paragraph.");
 	});
 });

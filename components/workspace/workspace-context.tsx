@@ -7,6 +7,7 @@ import { SessionAccountContext } from "@/components/session-state";
 import { SessionStateStore, WORKSPACE_STATE_ID } from "@/components/session-state-store";
 import { useSessionList, useSessionListDemand } from "@/components/session-list";
 import { useServerEvent, useServerResync } from "@/components/server-events";
+import { clearReturnPoint, readReturnPoint } from "@/components/reference-return";
 import { chatIdOfPath, closeTab, itemTab, itemTabId, kbdEventForAction, openTab, parseTabs, reconcileItemTabs, reconcileSessionTabs, selectedTabId, sessionTab, sessionTabId, tabRef, UNTITLED_SESSION, type DocJump, type LibraryItem, type LibraryKind, type WorkspaceTab } from "@/src/core";
 
 const DESKTOP_QUERY = "(min-width: 768px)";
@@ -44,6 +45,8 @@ export interface WorkspaceApi {
 	toggleLibrary: () => void;
 	expandedFolders: ReadonlySet<string>;
 	toggleFolder: (id: string, open?: boolean) => void;
+	/** A plain client navigation (feature 027: a reference chip). */
+	push: (href: string) => void;
 }
 
 const WorkspaceContext = createContext<WorkspaceApi | null>(null);
@@ -78,6 +81,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 	const chatId = chatIdOfPath(pathname);
 	const paneRoute = chatId !== null || pathname === "/library";
 	const paneItemId = pane?.item?.id ?? null;
+
+	// A chip's return point (feature 027) lives while he is in the Library and
+	// on his way back to its lesson, which clears it once focus is back. Leaving
+	// for anywhere else forgets it. A pathname effect, not an unmount: Next may
+	// keep a visited route mounted but hidden.
+	useEffect(() => {
+		if (pathname === "/library") return;
+		const point = readReturnPoint();
+		if (point && chatId !== point.chatId) clearReturnPoint();
+	}, [pathname, chatId]);
 
 	const [tabs, setTabs] = useState<WorkspaceTab[]>([]);
 	const [restored, setRestored] = useState(false);
@@ -264,8 +277,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 	const selectedId = selectedTabId(tabs, [routeTabId, paneTabId], last);
 	const rightPaneVisible = occupied ? !paneCollapsed : paneRoute && contextOpen;
 
+	const push = useCallback((href: string) => router.push(href), [router]);
 	const value = useMemo<WorkspaceApi>(() => ({
-		tabs, selectedId, shownIds, pendingId, activate, close, openItem, paneRoute, occupied, setDemoOpen, paneCollapsed, contextOpen, phoneContext, closeContext, expandPane, toggleRightPane, rightPaneVisible, libraryOpen, toggleLibrary, expandedFolders, toggleFolder,
-	}), [tabs, selectedId, shownIds, pendingId, activate, close, openItem, paneRoute, occupied, paneCollapsed, contextOpen, phoneContext, closeContext, expandPane, toggleRightPane, rightPaneVisible, libraryOpen, toggleLibrary, expandedFolders, toggleFolder]);
+		tabs, selectedId, shownIds, pendingId, activate, close, openItem, paneRoute, occupied, setDemoOpen, paneCollapsed, contextOpen, phoneContext, closeContext, expandPane, toggleRightPane, rightPaneVisible, libraryOpen, toggleLibrary, expandedFolders, toggleFolder, push,
+	}), [tabs, selectedId, shownIds, pendingId, activate, close, openItem, paneRoute, occupied, paneCollapsed, contextOpen, phoneContext, closeContext, expandPane, toggleRightPane, rightPaneVisible, libraryOpen, toggleLibrary, expandedFolders, toggleFolder, push]);
 	return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
 }

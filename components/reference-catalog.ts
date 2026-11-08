@@ -11,7 +11,7 @@
  * composer never does (tests/startup-module-graph.test.ts).
  */
 import { useEffect, useMemo, useState } from "react";
-import { useServerEvent, useServerResync } from "@/components/server-events";
+import { useNotifyHub } from "@/components/server-events";
 import type { ChipState, LibraryFolder, LibraryItem, LibraryTrashEntry } from "@/src/core";
 
 export const CATALOG_TTL_MS = 30_000;
@@ -20,6 +20,9 @@ export interface LiveLibrary {
 	items: LibraryItem[];
 	folders: LibraryFolder[];
 	byId: Map<string, LibraryItem>;
+	/** Files removed from a linked repo (feature 026), by id: the paths a sent
+	 *  message may name them by. */
+	removed: Map<string, readonly string[]>;
 }
 
 export interface ItemStatus {
@@ -28,6 +31,8 @@ export interface ItemStatus {
 	item?: LibraryItem;
 	/** Trashed: the entry that holds it. */
 	trashEntryId?: string;
+	/** Removed from its repo: the paths it was named by. */
+	paths?: readonly string[];
 }
 
 /** What a caller knows of the reference: the id, and whether it came from a repo (026's `fromRepo`). */
@@ -55,10 +60,11 @@ export function liveLibrary(): Promise<LiveLibrary | null> {
 	if (!live || !fresh(live)) {
 		live = {
 			at: Date.now(),
-			value: readJson<{ items: LibraryItem[]; folders?: LibraryFolder[] }>("/api/library").then((body) => body && {
+			value: readJson<{ items: LibraryItem[]; folders?: LibraryFolder[]; removed?: { id: string; names: string[] }[] }>("/api/library").then((body) => body && {
 				items: body.items,
 				folders: body.folders ?? [],
 				byId: new Map(body.items.map((item) => [item.id, item])),
+				removed: new Map((body.removed ?? []).map((entry) => [entry.id, entry.names])),
 			}),
 		};
 	}
@@ -86,14 +92,16 @@ export async function itemStatuses(queries: readonly CatalogQuery[]): Promise<Ma
 		for (const { itemId } of queries) out.set(itemId, { state: "unknown" });
 		return out;
 	}
-	const missing = queries.filter(({ itemId }) => !list.byId.has(itemId));
+	const missing = queries.filter(({ itemId }) => !list.byId.has(itemId) && !list.removed.has(itemId));
 	const entries = missing.length > 0 ? await trashEntries() : [];
 	for (const { itemId, fromRepo } of queries) {
 		const item = list.byId.get(itemId);
 		if (item) { out.set(itemId, { state: "live", item }); continue; }
+		// Mirrored items can't be trashed (026); gone, they read "Removed from the repo".
+		const paths = list.removed.get(itemId);
+		if (paths) { out.set(itemId, { state: "removed", paths }); continue; }
 		if (!entries) { out.set(itemId, { state: "unknown" }); continue; }
 		const entry = entries.find((each) => each.items.some((held) => held.id === itemId));
-		// Mirrored items can't be trashed (026); gone, they read "Removed from the repo".
 		out.set(itemId, entry ? { state: "trashed", trashEntryId: entry.id } : { state: fromRepo ? "removed" : "deleted" });
 	}
 	return out;
@@ -117,8 +125,14 @@ export function useReferenceCatalog(queries: readonly CatalogQuery[]): Reference
 		listeners.add(bump);
 		return () => { listeners.delete(bump); };
 	}, []);
-	useServerEvent("library-changed", invalidateCatalog);
-	useServerResync(invalidateCatalog);
+	// Outside the app shell (render tests) there are no server events.
+	const hub = useNotifyHub();
+	useEffect(() => {
+		if (!hub) return;
+		const off = hub.subscribe("library-changed", invalidateCatalog);
+		const offResync = hub.onResync(invalidateCatalog);
+		return () => { off(); offResync(); };
+	}, [hub]);
 	useEffect(() => {
 		if (stable.length === 0) return;
 		let current = true;

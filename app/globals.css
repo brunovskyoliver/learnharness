@@ -1282,6 +1282,8 @@ body {
    sized to the visual viewport so the keyboard never covers the caret. */
 .page-workspace { position: fixed; inset: 0 auto auto 0; z-index: 40; width: 100%; height: var(--lh-page-vh, 100dvh); padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); overscroll-behavior: contain; }
 @media (min-width: 768px) { .page-workspace { position: relative; inset: auto; z-index: auto; width: var(--lh-demo-w); height: 100%; padding: 0; } }
+/* The Library's full view (feature 027): the same surfaces across the content column, never a layer. */
+.page-workspace.lh-pane-full { position: relative; inset: auto; z-index: auto; width: 100%; height: auto; padding: 0; overscroll-behavior: auto; }
 /* Collapse keeps the pane mounted (feature 014): no width, no focus, nothing for
    assistive tech. The inner column keeps its width, so a live demo keeps its size
    off screen instead of relaying out. Phones use the layer and ignore this. */

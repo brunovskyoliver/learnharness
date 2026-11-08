@@ -60,7 +60,9 @@ export function itemPlace(item: Pick<LibraryItem, "name" | "folderId">, folders:
  *  and swaps the name in the accessible name for the full Library path. */
 export function chipTarget(input: ChipInput, disambiguate = false): ChipTarget {
 	const { itemId, state, name, kind, page, quote, trashEntryId, path, parent } = input;
-	const cut = quote ? citationQuote(quote) : "";
+	// A page is searched by the passage's first line, since a block holds one
+	// paragraph (research R9); a PDF page's passage is found whole.
+	const cut = quote ? citationQuote(page === undefined && kind !== "pdf" ? firstLine(quote) ?? quote : quote) : "";
 	const href = state === "live" || state === "unknown"
 		? libraryHref({ itemId, page, quote: cut || undefined })
 		: state === "trashed"

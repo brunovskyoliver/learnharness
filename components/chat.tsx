@@ -59,6 +59,8 @@ import { PagePaneSlot, usePagePane } from "@/components/library/page-pane-contex
 import { SessionContextSlot } from "@/components/workspace/context-slot";
 import { TranscriptPassages } from "@/components/transcript-passages";
 import { UserTurn } from "@/components/user-turn-text";
+import { ReferenceOriginProvider } from "@/components/reference-chip";
+import { useFocusReturn } from "@/components/reference-return";
 import { useWorkspace } from "@/components/workspace/workspace-context";
 import { isShownPageFailure } from "@/components/library/page-row";
 import { DemoPanelContext, sessionDemos, type DemoPanelApi } from "@/components/artifacts/demo-panel-context";
@@ -174,6 +176,13 @@ const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayout
 /** The quiet system line (custom-message scheme rendering): centered, muted,
  *  small — the transcript's voice for events that are not speech (wake
  *  scaffolding). */
+const NO_REFERENCES: readonly LibraryReference[] = [];
+/** The references a message's `data-library-references` parts carry (feature 027, T027). */
+function messageReferences(parts: readonly { type: string; data?: unknown }[]): readonly LibraryReference[] {
+	const found = parts.flatMap((part) => (part.type === "data-library-references" ? (part.data as { references?: LibraryReference[] }).references ?? [] : []));
+	return found.length > 0 ? found : NO_REFERENCES;
+}
+
 function SystemLine({ children, testId }: { children: React.ReactNode; testId?: string }) {
 	return (
 		<div
@@ -333,6 +342,8 @@ function ChatView({
 	// must not churn), and the sidebar patch is instant via the window event —
 	// its 2.5s poll is only a backstop.
 	const [titleText, setTitleText] = useState(title);
+	// Back from a chip (feature 027): focus returns to the chip he clicked.
+	useFocusReturn(chatId);
 	const [renaming, setRenaming] = useState(false);
 	const [titleDraft, setTitleDraft] = useState("");
 	const titleInputRef = useRef<HTMLInputElement | null>(null);
@@ -1381,6 +1392,7 @@ function ChatView({
 		>
 		<JobsContext.Provider value={jobs}>
 		<DemoPanelContext.Provider value={demoPanel}>
+		<ReferenceOriginProvider chatId={chatId} title={titleText}>
 		{/* The session surface: the transcript column (header + scroller) and
 		    the plan-tree panel as full-height SIBLINGS — the panel spans top to
 		    bottom exactly like the left sidebar, and the header (name + phase
@@ -1587,9 +1599,9 @@ function ChatView({
 											case "data-compaction-cut":
 												return <CompactionCutDivider key={pi} data={part.data as CompactionDividerData} />;
 											case "data-library-references":
-												return <ReferencesCard key={pi} references={(part.data as { references: LibraryReference[] }).references} />;
+												return <ReferencesCard key={pi} references={(part.data as { references: LibraryReference[] }).references} messageId={m.id || `m-${mi}`} />;
 											case "data-practice-thinking":
-												return <ThinkingCard key={pi} data={part.data as PracticeThinkingData} />;
+												return <ThinkingCard key={pi} data={part.data as PracticeThinkingData} references={messageReferences(m.parts)} messageId={m.id || `m-${mi}`} />;
 											case "data-practice-next":
 												// The learner's move-on signal (owner round 16): a compact
 												// centered mono-caps line — chrome, the dismissal register.
@@ -1639,8 +1651,10 @@ function ChatView({
 									{m.role === "user" ? (
 										<UserTurn
 											text={m.parts.filter((p) => p.type === "text").map((p) => p.text).join("\n")}
+											references={messageReferences(m.parts)}
+											messageId={m.id || `m-${mi}`}
 											before={m.parts.map((part, pi) => part.type === "data-library-references" ? (
-												<ReferencesCard key={pi} references={(part.data as { references: LibraryReference[] }).references} />
+												<ReferencesCard key={pi} references={(part.data as { references: LibraryReference[] }).references} messageId={m.id || `m-${mi}`} />
 											) : null)}
 										/>
 									) : (
@@ -1720,7 +1734,7 @@ function ChatView({
 														// transcript; answered ones render as graded records.
 														if (part.state === "output-available") {
 															return (
-																<AnsweredCard key={pi} answer={part.output as QuestionAnswerData} input={part.input} checked={part.wolframChecked === true} />
+																<AnsweredCard key={pi} answer={part.output as QuestionAnswerData} input={part.input} checked={part.wolframChecked === true} chipScope={`${m.id || `m-${mi}`}-${part.toolCallId}`} />
 															);
 														}
 														// The waiting one is its check thread (feature 025, R8).
@@ -1869,6 +1883,7 @@ function ChatView({
 				</div>
 			</div>
 		</div>
+		</ReferenceOriginProvider>
 		</DemoPanelContext.Provider>
 		</JobsContext.Provider>
 		</SessionMermaidContext.Provider>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode, type Ref } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type Ref } from "react";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/components/workspace/workspace-context";
 
@@ -15,6 +15,13 @@ function clampWidth(width: number, area: number): number {
 	const max = Math.max(MIN_WIDTH, area - MIN_TRANSCRIPT);
 	return Math.round(Math.min(Math.max(width, MIN_WIDTH), max));
 }
+
+/** Set by the Library's full view (feature 027, R9): the pane fills the
+ *  content column instead of sitting beside it, and its header's ✕ becomes
+ *  "← Library". */
+export interface PaneFull { onLibrary: () => void }
+export const PaneFullContext = createContext<PaneFull | null>(null);
+export const usePaneFull = () => useContext(PaneFullContext);
 
 /** The column beside the lesson that a demo or a page sits in: a paper panel
  *  with the grain (feature 025, R11), its edge the rule hairline that is also
@@ -31,16 +38,18 @@ export function WorkspacePane({ label, resizeLabel, testId, className, rootRef, 
 	children: (dragging: boolean) => ReactNode;
 }) {
 	const workspace = useWorkspace();
+	const full = usePaneFull() !== null;
 	// Collapse keeps everything mounted: a page's editor, a demo's live iframe.
-	const collapsed = Boolean(workspace?.paneCollapsed) && testId !== "context-pane";
+	const collapsed = !full && Boolean(workspace?.paneCollapsed) && testId !== "context-pane";
 	const own = useRef<HTMLElement | null>(null);
 	const [width, setWidth] = useState(DEFAULT_WIDTH);
 	const [dragging, setDragging] = useState(false);
 
 	useEffect(() => {
+		if (full) return;
 		const saved = Number(window.localStorage.getItem(WIDTH_KEY));
 		if (Number.isFinite(saved) && saved > 0) setWidth(saved);
-	}, []);
+	}, [full]);
 
 	const area = () => own.current?.parentElement?.clientWidth ?? window.innerWidth;
 	const commit = (next: number) => {
@@ -81,6 +90,27 @@ export function WorkspacePane({ label, resizeLabel, testId, className, rootRef, 
 		e.preventDefault();
 		e.stopPropagation();
 	};
+
+	if (full) {
+		// The full view: no resize edge, no saved width, the column's width.
+		return (
+			<section
+				ref={(node) => {
+					own.current = node;
+					if (typeof rootRef === "function") rootRef(node);
+					else if (rootRef) rootRef.current = node;
+				}}
+				aria-label={label}
+				data-testid={testId}
+				data-pane-full=""
+				onKeyDownCapture={onKeyDownCapture}
+				onKeyDown={onKeyDown}
+				className={cn("lh-pane-full relative flex min-h-0 w-full flex-1 flex-col", className)}
+			>
+				<div className="lh-pane-inner flex min-h-0 w-full flex-1 flex-col">{children(false)}</div>
+			</section>
+		);
+	}
 
 	return (
 		<aside

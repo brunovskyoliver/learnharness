@@ -1,44 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { useSettingsDialog } from "@/components/settings/settings-dialog.tsx";
-import { opensInPane, usePagePane } from "@/components/library/page-pane-context";
-import { liveLibrary } from "@/components/reference-catalog";
-import { goneSuffix, referenceLabel, type LibraryReference } from "@/src/core";
-
-/** Live ids, fetched only once a transcript has references and shared across
- *  its rows. Short-lived (components/reference-catalog.ts holds the TTL), so a
- *  deletion shows up on the next view. The label stays as sent if this fails. */
-const currentLibraryIds = (): Promise<Set<string> | null> =>
-	liveLibrary().then((list) => (list ? new Set(list.byId.keys()) : null));
+import { ReferenceLink } from "@/components/reference-chip";
+import { useReferenceCatalog, type ItemStatus } from "@/components/reference-catalog";
+import { goneSuffix, libraryHref, referenceLabel, type LibraryReference } from "@/src/core";
 
 const LINK = "text-ink underline decoration-ink/40 underline-offset-[3px] hover:decoration-ink pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center";
 
-export function ReferenceRow({ reference, deleted = false }: { reference: LibraryReference; deleted?: boolean }) {
+/** Where a row's name opens (feature 027, Q3): like a chip, in the Library's
+ *  full view, or the Trash entry that holds it. Null: plain ink text. */
+function rowHref(reference: LibraryReference, status: ItemStatus | undefined): string | null {
+	if (reference.mode === "missing") return null;
+	if (status?.state === "trashed") return `/library?view=trash${status.trashEntryId ? `&entry=${encodeURIComponent(status.trashEntryId)}` : ""}`;
+	if (status?.state === "deleted" || status?.state === "removed") return null;
+	return libraryHref({ itemId: reference.itemId });
+}
+
+/** `status` is what the item is now (components/reference-catalog.ts); until
+ *  it is known the row reads as sent. `deleted` forces the gone state. */
+export function ReferenceRow({ reference, deleted = false, status, messageId }: { reference: LibraryReference; deleted?: boolean; status?: ItemStatus; messageId?: string }) {
 	const { open } = useSettingsDialog();
 	const { prefix, suffix } = referenceLabel(reference);
-	const pane = usePagePane();
-	const available = reference.mode !== "missing" && !deleted;
-	const inPane = available && !!pane && opensInPane(reference.kind);
-	const inTab = available && !inPane && reference.kind !== "page";
+	// Not in the live list any more: the trash, deleted for good, or removed from its repo.
+	const gone = deleted || (reference.mode !== "missing" && (status?.state === "trashed" || status?.state === "deleted" || status?.state === "removed"));
+	const href = deleted ? null : rowHref(reference, status);
 	return (
 		<li data-testid="reference-row" className="text-meta text-faint [overflow-wrap:anywhere]">
 			{prefix}
-			{inPane ? (
-				<button type="button" aria-label={`Open ${reference.name}`} className={LINK} onClick={() => pane.open({ id: reference.itemId, name: reference.name, kind: reference.kind, size: reference.size ?? 0 })}>{reference.name}</button>
-			) : inTab ? (
-				<a
-					href={`/api/library/items/${encodeURIComponent(reference.itemId)}/content`}
-					target="_blank"
-					rel="noreferrer"
-					aria-label={`Open ${reference.name}`}
-					className={LINK}
-				>{reference.name}</a>
+			{href ? (
+				<ReferenceLink href={href} chipId={messageId ? `${messageId}:row-${reference.itemId}` : undefined} label={status?.state === "trashed" ? `Open ${reference.name} in the trash` : `Open ${reference.name}`} className={LINK}>{reference.name}</ReferenceLink>
 			) : (
 				<span className="text-ink">{reference.name}</span>
 			)}
 			{suffix}
-			{deleted && goneSuffix(reference)}
+			{gone && goneSuffix(reference)}
 			{reference.reason === "no-vision" && (
 				<>
 					{" · "}
@@ -53,25 +49,17 @@ export function ReferenceRow({ reference, deleted = false }: { reference: Librar
 	);
 }
 
-/** One quiet, always visible row per reference, on the reading edge. */
-export function ReferencesCard({ references }: { references: readonly LibraryReference[] }) {
-	const [ids, setIds] = useState<Set<string> | null>(null);
-	const hasReferences = references.length > 0;
-	useEffect(() => {
-		if (!hasReferences) return;
-		let live = true;
-		void currentLibraryIds().then((current) => { if (live) setIds(current); });
-		return () => { live = false; };
-	}, [hasReferences]);
+/** One quiet, always visible row per reference, on the reading edge. The
+ *  items' states come from one shared, short-lived read of the Library
+ *  (components/reference-catalog.ts); the label stays as sent if it fails. */
+export function ReferencesCard({ references, messageId }: { references: readonly LibraryReference[]; messageId?: string }) {
+	const queries = useMemo(() => references.map((reference) => (reference.fromRepo ? { itemId: reference.itemId, fromRepo: true } : { itemId: reference.itemId })), [references]);
+	const { statuses } = useReferenceCatalog(queries);
 	if (references.length === 0) return null;
 	return (
 		<ul data-testid="references-card" className="my-1 flex flex-col gap-0.5 font-sans">
 			{references.map((reference) => (
-				<ReferenceRow
-					key={reference.itemId}
-					reference={reference}
-					deleted={ids !== null && reference.mode !== "missing" && !ids.has(reference.itemId)}
-				/>
+				<ReferenceRow key={reference.itemId} reference={reference} status={statuses?.get(reference.itemId)} messageId={messageId} />
 			))}
 		</ul>
 	);

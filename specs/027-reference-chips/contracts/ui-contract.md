@@ -14,7 +14,7 @@ Paper tokens only (DESIGN.md, feature 025). Items marked **[owner, approved]** w
 | Focus | 2px `--nb-focus` outline, offset 2px | the field's caret only |
 | Coarse pointer | 44px hit box (inline-flex, transparent padding) | n/a |
 | Deleted for good | faint name, no ground, no underline, not focusable, followed by ` · no longer in your Library` (the existing `NO_LONGER_IN_LIBRARY`) | drawn faint like sent messages, not a link: the server still resolves the name and attaches a "no longer in your Library" reference, so the composer and the transcript agree with what is attached (analyze M1, 2026-11-08) |
-| Removed from the repo (026) | as deleted, followed by ` · Removed from the repo` (026's constant) | chip not drawn |
+| Removed from the repo (026) | as deleted, followed by ` · Removed from the repo` (026's constant) | drawn faint like the deleted case (owner, 2026-11-08); the names come from `GET /api/library`'s `removed: [{ id, names }]` |
 | Mirrored item (026) | name = display name (the file name); the chip covers the whole `@{linked folder}/{repo path}` token | the path as typed (the overlay restyles characters only) |
 | Equal names (analyze M2) | when two chips in one text would show the same name for different items (two mirrored `notes.md`), each shows its parent folder as a faint hint after the name (` · week1`), and its accessible name uses the full Library path ("Open Lecture notes/week1/notes.md, Markdown") | n/a: the path is typed out |
 

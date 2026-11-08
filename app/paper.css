@@ -3046,7 +3046,7 @@ html.lh-paper[data-theme="dark"] .lh-mark-on-dark { display: inline-block; }
 	transition: text-decoration-color 150ms;
 }
 .lh-paper a.lh-ref-chip:hover { text-decoration-color: var(--ink); }
-.lh-paper .lh-ref-chip:focus-visible { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
+.lh-paper .lh-ref-chip:focus-visible, .lh-paper [data-focus-return]:focus { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
 .lh-paper .lh-ref-chip-icon { display: inline-block; width: 12px; height: 12px; margin-right: 4px; color: var(--graphite); vertical-align: -1px; }
 .lh-paper .lh-ref-chip-hint {
 	display: inline-block;
@@ -3058,7 +3058,8 @@ html.lh-paper[data-theme="dark"] .lh-mark-on-dark { display: inline-block; }
 	white-space: nowrap;
 	vertical-align: bottom;
 }
-.lh-paper .lh-ref-chip-folder { color: var(--faint); text-decoration: none; }
+.lh-paper .lh-ref-chip-folder { display: inline-block; color: var(--faint); text-decoration: none; }
+.lh-paper .lh-ref-chip-head { white-space: nowrap; }
 /* Deleted for good, or removed from the repo: the name as written, faint, not a link. */
 .lh-paper .lh-ref-chip:is([data-state="deleted"], [data-state="removed"]) { padding: 0; background: none; color: var(--faint); text-decoration: none; }
 .lh-paper .lh-ref-chip:is([data-state="deleted"], [data-state="removed"]) .lh-ref-chip-icon { color: var(--faint); }
@@ -3089,6 +3090,24 @@ html.lh-paper[data-theme="dark"] .lh-mark-on-dark { display: inline-block; }
 .lh-paper .lh-ref-mirror .lh-ref-chip-marker { color: transparent; }
 .lh-paper .lh-ref-mirror .lh-ref-composing { text-decoration: underline 1px; text-underline-offset: 3px; }
 
+/* The Back pill (ui-contract §5): the primary pill at the content column's
+   left edge, 12px under the tabs; the row is the 44px the column gives it.
+   On phones it sits 16px above the safe area at the left gutter. */
+.lh-paper .lh-back-pill-row { flex-shrink: 0; width: 100%; max-width: 52rem; margin: 0 auto; padding: 12px 16px 0; }
+.lh-paper .lh-back-pill { display: inline-flex; max-width: 100%; align-items: center; gap: 6px; }
+.lh-paper .lh-back-pill svg { width: 14px; height: 14px; flex-shrink: 0; }
+.lh-paper .lh-back-pill:focus-visible { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
+@media (max-width: 767.98px) {
+	.lh-paper .lh-back-pill-row { position: fixed; left: 0; bottom: calc(env(safe-area-inset-bottom) + 16px); z-index: 30; width: auto; max-width: calc(100vw - 32px); margin: 0; padding: 0 0 0 16px; }
+	.lh-paper .lh-back-pill { box-shadow: var(--lift); }
+	/* Nothing stays under it: the column ends above the pill. */
+	.lh-paper [data-back-pill] { padding-bottom: calc(env(safe-area-inset-bottom) + 64px); }
+}
+@media (pointer: coarse) {
+	.lh-paper .lh-back-pill { height: 44px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.lh-paper .lh-ref-chip { transition: none; }
+	.lh-paper .lh-back-pill { transition: none; }
 }

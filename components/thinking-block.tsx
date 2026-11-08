@@ -73,9 +73,12 @@ export function ThinkingBlock({
 	dataCommit,
 	defaultOpen = false,
 	inCard = false,
+	body,
 }: {
 	label?: string;
 	text: string;
+	/** Drawn in place of `text` (feature 027: his references as chips). */
+	body?: React.ReactNode;
 	testId?: string;
 	/** The practice marker's register flag (commit vs nudge). */
 	dataCommit?: boolean;
@@ -131,7 +134,7 @@ export function ThinkingBlock({
 				<ChevronDownIcon className={cn("size-3.5 shrink-0 opacity-60 transition-transform motion-reduce:transition-none", open ? "rotate-180" : "rotate-0")} />
 			</button>
 			{open && (
-				<span className="lh-prose mt-1.5 block whitespace-pre-wrap pl-4 italic text-graphite">{text}</span>
+				<span className="lh-prose mt-1.5 block whitespace-pre-wrap pl-4 italic text-graphite">{body ?? text}</span>
 			)}
 		</div>
 	);

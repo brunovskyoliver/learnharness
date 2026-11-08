@@ -25,6 +25,8 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { ThinkingBlock } from "@/components/thinking-block";
+import { copySource, ReferenceText } from "@/components/reference-text";
+import type { LibraryReference } from "@/src/core";
 import { usePopoverDismiss } from "@/components/popover-dismiss";
 
 /* TARGET NAMES (owner round 17, 2026-10-06): targets are normalized to
@@ -292,10 +294,11 @@ function MetadataPopover({
 	);
 }
 
-export function ThinkingCard({ data }: { data: PracticeThinkingData }) {
+export function ThinkingCard({ data, references = [], messageId = "" }: { data: PracticeThinkingData; references?: readonly LibraryReference[]; messageId?: string }) {
 	// The unified row (owner rounds, 2026-10-05): one style, one label —
 	// 50%-italic quote block on expand. Legacy records' commit flag is
 	// deliberately unread (one lane now). A TRANSCRIPT row (owner round,
 	// 2026-10-07): full-width band + rail, arriving expanded.
-	return <ThinkingBlock testId="thinking-card" label="Your thinking" text={data.text} defaultOpen />;
+	// His references as chips (feature 027, T029), from the marker's references.
+	return <ThinkingBlock testId="thinking-card" label="Your thinking" text={data.text} body={references.length > 0 ? <span onCopy={copySource}><ReferenceText text={data.text} references={references} messageId={messageId} /></span> : undefined} defaultOpen />;
 }

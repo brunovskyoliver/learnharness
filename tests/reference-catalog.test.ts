@@ -31,6 +31,12 @@ describe("reference catalog", () => {
 		assert.deepEqual(states.get("d"), { state: "deleted" });
 		assert.deepEqual(states.get("r"), { state: "removed" });
 	});
+	it("a file removed from its repo is removed, with the paths it was named by (T055)", async () => {
+		respond = () => ok({ items: [item("a")], folders: [], removed: [{ id: "r", names: ["Lecture notes/week2/notes.md"] }] });
+		const states = await itemStatuses([{ itemId: "r" }]);
+		assert.deepEqual(states.get("r"), { state: "removed", paths: ["Lecture notes/week2/notes.md"] });
+		assert.deepEqual(calls, ["/api/library"], "no Trash read for it");
+	});
 	it("a failed list read is unknown, never deleted", async () => {
 		respond = () => new Response("", { status: 500 });
 		const states = await itemStatuses([{ itemId: "a" }]);

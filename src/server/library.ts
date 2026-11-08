@@ -7,7 +7,7 @@
 import { Readable } from "node:stream";
 import {
 	ACCEPTED_EXTENSIONS, cleanTags, extensionOf, isPageStale, isRefusal, isVersionedKind, kindForName, LIBRARY_REFUSALS, LibraryCatalogError, MAX_FILE_BYTES,
-	REFERENCE_INLINE_MAX_BYTES, uploadName,
+	isTombstone, REFERENCE_INLINE_MAX_BYTES, uploadName,
 	pageVersionName, type LibraryItem, type LibraryMarks, type LibraryRefusal, type LibraryRefusalCode, type PageVersionCause, type PageWriteResult,
 } from "../core/library.ts";
 import { libraryStore, openDocumentStream } from "../store/library.ts";
@@ -66,6 +66,9 @@ export function libraryListResponse(): Promise<Response> {
 		folders: await libraryStore.folders(),
 		recentIds: (await libraryStore.recent()).map((item) => item.id),
 		links: await repoLinkViews(),
+		// Feature 027: files removed from a linked repo, by the paths a sent
+		// message still names them by, so its chip reads "Removed from the repo".
+		removed: (await libraryStore.catalog()).flatMap((entry) => (isTombstone(entry) && entry.mirror && entry.removedBecause ? [{ id: entry.id, names: entry.kept?.previousNames ?? [] }] : [])),
 		limits: { maxFileBytes: MAX_FILE_BYTES, inlineItemBytes: REFERENCE_INLINE_MAX_BYTES, accepted: ACCEPTED_EXTENSIONS },
 	}));
 }

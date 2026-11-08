@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type DragEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useServerEvent, useServerResync } from "@/components/server-events";
 import { useWorkspace } from "@/components/workspace/workspace-context";
-import { folderPathLabel, folderSubtree, folderTrail, inMirror, KIND_LABEL, liveFolderId, MAX_FILE_BYTES, parseCitationHref, parseRepoAddress, type LibraryFolder, type LibraryItem, type LibraryKind, type LibraryMarks, type LibraryTrashEntry, type PendingLinkView, type RepoLinkView, type SyncFailure } from "@/src/core";
+import { folderPathLabel, folderSubtree, folderTrail, inMirror, KIND_LABEL, liveFolderId, MAX_FILE_BYTES, parseLibraryHref, parseRepoAddress, type LibraryFolder, type LibraryItem, type LibraryKind, type LibraryMarks, type LibraryTrashEntry, type PendingLinkView, type RepoLinkView, type SyncFailure } from "@/src/core";
 import { BlotGlyph } from "@/components/paper/blot";
 import { useSettingsDialog } from "@/components/settings/settings-dialog.tsx";
 import { DeleteItemDialog, DESTRUCTIVE_BUTTON } from "./delete-item-dialog.tsx";
@@ -25,6 +25,14 @@ import type { LinkAnswer, LinkFields } from "./repo-link-dialog.tsx";
 import { RepoStatusLine } from "./repo-status-line.tsx";
 import { createBlankPage, PagePaneSlot, usePagePane } from "./page-pane-context.tsx";
 import { runUploadQueue, sendFile } from "./upload.ts";
+import { BackPill, useReturnPoint } from "./back-pill.tsx";
+import { stampPendingMark } from "@/components/reference-return";
+
+/** Any `/library?item=` address (feature 027): the item across the column. Loads with the first one. */
+const LibraryFullView = dynamic(() => import("./library-full-view.tsx").then((m) => m.LibraryFullView), {
+	ssr: false,
+	loading: () => <div role="status" aria-label="Loading the item" className="px-4"><Skeleton className="h-5 w-2/3 rounded-md" /></div>,
+});
 
 /** Only loads once "Full text" is chosen: the search field itself stays small. */
 import { DiagramProposalsLine } from "@/components/diagram/diagram-proposals-line.tsx";
@@ -620,27 +628,13 @@ export function LibraryView() {
 	useEffect(() => {
 		if (openItem && listed && (listed.name !== openItem.name || listed.size !== openItem.size)) pane?.update({ id: listed.id, name: listed.name, kind: listed.kind, size: listed.size, ...(openItem.repo ? { repo: openItem.repo } : {}) });
 	}, [listed, openItem, pane]);
-	// A citation's address (feature 020): opens the viewer there, then steps out of
-	// the URL, so a reload doesn't jump again. A missing document says so.
-	const citeHref = params.get("item") ? `/library?${params.toString()}` : null;
-	const [citeMissing, setCiteMissing] = useState(false);
-	const citeHandled = useRef<string | null>(null);
-	useEffect(() => {
-		if (!citeHref) { citeHandled.current = null; return; }
-		// Once per address: opening changes the pane, which is a dependency here.
-		if (items === null || citeHandled.current === citeHref) return;
-		citeHandled.current = citeHref;
-		const citation = parseCitationHref(citeHref);
-		if (!citation) return;
-		const item = items.find((entry) => entry.id === citation.itemId);
-		setCiteMissing(!item);
-		if (item) {
-			const jump = { page: citation.page, quote: citation.quote, citation: true };
-			if (workspace) workspace.openItem(item, jump);
-			else pane?.open({ id: item.id, name: item.name, kind: item.kind, size: item.size, jump: { ...jump, nonce: Date.now() } });
-		}
-		router.replace("/library");
-	}, [citeHref, items, workspace, pane, router]);
+	// Any `/library?item=` address (feature 027, FR-021) is the full view, and
+	// the address stays: Back, Forward and a reload show it again.
+	const search = params.toString();
+	const address = useMemo(() => (search.includes("item=") ? parseLibraryHref(`/library?${search}`) : null), [search]);
+	// A chip pushed this entry: mark it, so the Back pill knows the lesson is right behind it.
+	useLayoutEffect(() => { stampPendingMark(); }, [search]);
+	const returnPoint = useReturnPoint();
 	const hasFiles = (event: DragEvent) => event.dataTransfer.types.includes("Files");
 
 	return (
@@ -648,6 +642,7 @@ export function LibraryView() {
 		<div
 			className={`flex min-h-0 min-w-0 flex-1 flex-col ${dragging ? "outline-2 -outline-offset-4 outline-rule" : ""}`}
 			data-testid="library-view"
+			data-back-pill={returnPoint ? "" : undefined}
 			onDragOver={(event) => {
 				if (!hasFiles(event) || insideMirror) return;
 				event.preventDefault();
@@ -664,6 +659,12 @@ export function LibraryView() {
 			}}
 		>
 			<TopBar tabs />
+			{returnPoint && <BackPill point={returnPoint} />}
+			{address ? (
+				<div data-testid="library-scroll" className="mx-auto flex min-h-0 w-full max-w-[52rem] flex-1 flex-col pt-3 sm:pt-6">
+					<LibraryFullView key={search} address={address} items={items} loadFailed={loadFailed} onRetry={retry} onChanged={() => void refresh()} />
+				</div>
+			) : (
 			<div data-testid="library-scroll" className="min-h-0 flex-1 overflow-y-auto">
 				<div className="mx-auto flex w-full max-w-[52rem] flex-col gap-4 px-4 pb-12 pt-3 sm:pt-11">
 					<div onDragOver={(event) => { if (trail.length > 0 && event.dataTransfer.types.includes(DRAG_TYPE)) { event.preventDefault(); setOverTop(true); } }} onDragLeave={() => setOverTop(false)} onDrop={(event) => { setOverTop(false); if (event.dataTransfer.types.includes(DRAG_TYPE)) { event.preventDefault(); void dropOn(trail.at(-2)?.id ?? null, event); } }} className={overTop ? "rounded-md bg-shelf" : undefined}>
@@ -838,11 +839,10 @@ export function LibraryView() {
 							<Link href={folderHref(null)} className="lh-text-action">Back to Library</Link>
 						</div>
 					)}
-					{citeMissing && <p role="status" className="text-md text-graphite" data-testid="library-citation-missing">That document is no longer in your Library, so the citation can't be checked.</p>}
 					{prefs.searchMode === "text" && view !== "trash" ? (
 						<DocumentSearchPanel query={query} kind={kind} tag={tag} folders={folders} narrowed={view !== "all" ? VIEW_LABELS[view] : null} />
 					) : view === "trash" ? (
-						<LibraryTrash entries={trash} failed={trashFailed} failure={trashFailure} onRetry={() => void refreshTrash()} onRestore={(entry) => void restoreEntry(entry)} onPurge={setPurging} />
+						<LibraryTrash entries={trash} failed={trashFailed} failure={trashFailure} onRetry={() => void refreshTrash()} onRestore={(entry) => void restoreEntry(entry)} onPurge={setPurging} landing={params.get("entry")} />
 					) : (
 						<LibraryBody
 							items={items}
@@ -887,6 +887,7 @@ export function LibraryView() {
 					)}
 				</div>
 			</div>
+			)}
 			<DeleteItemDialog
 				item={deleting}
 				onClose={() => setDeleting(null)}
