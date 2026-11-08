@@ -9,8 +9,8 @@
  * mirrored from a repo (feature 026) is its file name, not its Library path.
  */
 import { citationQuote, libraryHref } from "./document-anchors.ts";
-import { folderTrail, KIND_LABEL, nameKey, type LibraryFolder, type LibraryItem, type LibraryKind } from "./library.ts";
-import { NO_LONGER_IN_LIBRARY, REMOVED_FROM_REPO } from "./library-refs.ts";
+import { folderTrail, KIND_LABEL, nameKey, type LibraryFolder, type LibraryItem, type LibraryKind, type LibraryTombstone } from "./library.ts";
+import { NO_LONGER_IN_LIBRARY, REMOVED_FROM_REPO, referenceSpans } from "./library-refs.ts";
 
 /** `unknown`: the Library could not be read. The chip shows as sent and opens as live. */
 export type ChipState = "live" | "trashed" | "deleted" | "removed" | "unknown";
@@ -127,4 +127,75 @@ export function chipDeleteRange(value: string, caret: { start: number; end: numb
 		if (key.key === "Backspace" ? end === at : start === at) return [start, end];
 	}
 	return null;
+}
+
+// ─── tutor replies (US3, contracts/recognition.md chipMarkdown) ──────────────
+
+/** What a tutor reply's `@name` tokens are recognised against: the live list
+ *  and the tombstones the server still resolves. */
+export interface ChipCatalog {
+	entries: readonly (LibraryItem | LibraryTombstone)[];
+	folders?: readonly LibraryFolder[];
+}
+
+/** The title that marks a link chipMarkdown made from an `@name`. */
+export const CHIP_LINK_TITLE = "lh-ref";
+
+/** Half-open ranges an `@name` must not be rewritten in: a Markdown link or
+ *  image (label and address), a reference definition, an autolink, a raw HTML
+ *  tag and math (rewriting there would break what renders). Code is skipped
+ *  by `referenceSpans` itself. */
+function markdownRanges(text: string): Array<[number, number]> {
+	const ranges: Array<[number, number]> = [];
+	const closing = (from: number, open: string, close: string): number => {
+		let depth = 0;
+		for (let i = from; i < text.length; i++) {
+			const c = text[i];
+			if (c === "\\") { i++; continue; }
+			if (c === "\n" && text[i + 1] === "\n") return -1;
+			if (c === open) depth++;
+			else if (c === close && --depth === 0) return i;
+		}
+		return -1;
+	};
+	for (let at = text.indexOf("["); at !== -1; at = text.indexOf("[", at + 1)) {
+		if (at > 0 && text[at - 1] === "\\") continue;
+		const end = closing(at, "[", "]");
+		if (end === -1) continue;
+		const next = text[end + 1];
+		let to = -1;
+		if (next === "(") to = closing(end + 1, "(", ")");
+		else if (next === "[") to = closing(end + 1, "[", "]");
+		else if (next === ":") to = (text.indexOf("\n", end) + 1 || text.length + 1) - 1;
+		else to = end;
+		if (to === -1) continue;
+		const start = at > 0 && text[at - 1] === "!" ? at - 1 : at;
+		ranges.push([start, to + 1]);
+		at = to;
+	}
+	for (const pattern of [/<[a-z][a-z\d+.-]{1,31}:[^\s<>]*>/gi, /<[^\s<>@]+@[^\s<>@]+>/g, /<\/?[a-z][a-z\d-]*(?:\s[^<>]*)?\/?>|<!--[\s\S]*?-->/gi, /\$\$[\s\S]*?\$\$|\$[^$\n]+\$/g]) {
+		for (const match of text.matchAll(pattern)) ranges.push([match.index, match.index + match[0].length]);
+	}
+	return ranges;
+}
+
+/** A tutor reply's resolving `@name` tokens as Library links (research R7):
+ *  `@name` → `[@name](/library?item=ID "lh-ref")`, with `[`, `]` and `\` in the
+ *  label escaped. Skips code, links, autolinks, raw HTML and math; every other
+ *  character stays as it is, and a second run changes nothing. Display only:
+ *  the stored reply is never rewritten (constitution III). */
+export function chipMarkdown(markdown: string, catalog: ChipCatalog): string {
+	if (!markdown.includes("@") || catalog.entries.length === 0) return markdown;
+	const spans = referenceSpans(markdown, catalog.entries, catalog.folders ?? []);
+	if (spans.length === 0) return markdown;
+	const skip = markdownRanges(markdown);
+	let out = "";
+	let at = 0;
+	for (const { start, end, entry } of spans) {
+		if (skip.some(([from, to]) => start >= from && start < to)) continue;
+		const label = markdown.slice(start, end).replace(/[\\[\]]/g, "\\$&");
+		out += `${markdown.slice(at, start)}[${label}](${libraryHref({ itemId: entry.id })} "${CHIP_LINK_TITLE}")`;
+		at = end;
+	}
+	return at === 0 ? markdown : out + markdown.slice(at);
 }

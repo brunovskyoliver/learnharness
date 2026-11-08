@@ -336,6 +336,9 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown> & {
   /** Tutor prose (feature 025, research R9): while it streams, the last
    *  block's new words ink in (components/paper/rehype-ink-words.ts). */
   inkIn?: boolean;
+  /** Runs on the Markdown about to render, after the streaming cut (feature
+   *  027: a tutor reply's `@name`s become Library links, components/tutor-chips.tsx). */
+  prepare?: (markdown: string) => string;
 };
 
 // Type-only version skew: @streamdown/code bundles shiki@3 types while
@@ -375,7 +378,7 @@ export const streamdownPlugins = {
 } as unknown as PluginConfig;
 
 export const MessageResponse = memo(
-  ({ className, children, streaming = false, inkIn = false, mode = "static", ...props }: MessageResponseProps) => {
+  ({ className, children, streaming = false, inkIn = false, prepare, mode = "static", ...props }: MessageResponseProps) => {
     // Legacy backslash delimiters are converted in a single linear scan;
     // native dollar math passes through to Streamdown unchanged. Incomplete
     // legacy spans are left for a later render when their closer arrives.
@@ -383,7 +386,8 @@ export const MessageResponse = memo(
       typeof children === "string"
         ? transformMathDelimiters(children)
         : children;
-    const content = streaming && typeof normalized === "string" ? completedMarkdownPrefix(normalized) : normalized;
+    const shown = streaming && typeof normalized === "string" ? completedMarkdownPrefix(normalized) : normalized;
+    const content = prepare && typeof shown === "string" ? prepare(shown) : shown;
 
     // One ink memory per reply, kept across its streaming renders; a settled
     // reply passes no plugin, so Streamdown runs its defaults unchanged.

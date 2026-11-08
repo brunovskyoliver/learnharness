@@ -110,13 +110,13 @@ description: "Tasks for feature 027, reference chips"
 
 **Independent Test**: spec US3 Independent Test; quickstart.md §4.
 
-- [ ] T043 [P] [US3] Write tests/chip-markdown.test.ts per contracts/recognition.md: `@name` → `[@name](/library?item=ID "lh-ref")` outside code, link labels/addresses, autolinks and raw HTML; label escaping; existing `/library?item=` links untouched; idempotent; a completed-prefix stream cut mid-name leaves text
-- [ ] T044 [US3] Implement `chipMarkdown(markdown, catalog)` in src/core/reference-chips.ts
-- [ ] T045 [US3] In components/ai-elements/message.tsx add a tutor components set (mdComponents + an `a` override rendering `ReferenceChip` for `parseLibraryHref` hrefs, keyed by link order within the message) and apply `chipMarkdown` to the tutor reply's content after `completedMarkdownPrefix`; add `lh-refs-ready` to the class when the catalog arrives; other MessageResponse users unchanged
-- [ ] T046 [US3] **(owner)** Append the approved sentence to src/agent/prompts/shared/32-documents.md and update tests/prompt-overrides.test.ts if it pins the text
-- [ ] T047 [US3] Write the tutor journeys in tests/e2e/study/reference-chips.spec.ts ("tutor"): citation chip with PDF icon, name and "· p. 3" opening page 3 with "Quote found on page 3."; `@name` in prose chips, in code stays text; streaming fixture shows unchanged line-box heights when a reference becomes a chip
+- [X] T043 [P] [US3] Write tests/chip-markdown.test.ts per contracts/recognition.md: `@name` → `[@name](/library?item=ID "lh-ref")` outside code, link labels/addresses, autolinks and raw HTML; label escaping; existing `/library?item=` links untouched; idempotent; a completed-prefix stream cut mid-name leaves text
+- [X] T044 [US3] Implement `chipMarkdown(markdown, catalog)` in src/core/reference-chips.ts
+- [X] T045 [US3] In components/ai-elements/message.tsx add a tutor components set (mdComponents + an `a` override rendering `ReferenceChip` for `parseLibraryHref` hrefs, keyed by link order within the message) and apply `chipMarkdown` to the tutor reply's content after `completedMarkdownPrefix`; add `lh-refs-ready` to the class when the catalog arrives; other MessageResponse users unchanged
+- [X] T046 [US3] **(owner)** Append the approved sentence to src/agent/prompts/shared/32-documents.md and update tests/prompt-overrides.test.ts if it pins the text
+- [X] T047 [US3] Write the tutor journeys in tests/e2e/study/reference-chips.spec.ts ("tutor"): citation chip with PDF icon, name and "· p. 3" opening page 3 with "Quote found on page 3."; `@name` in prose chips, in code stays text; streaming fixture shows unchanged line-box heights when a reference becomes a chip
 
-- [ ] T058 [US3] Copy in tutor replies (FR-002): give each tutor chip a `data-source` equal to what that text rendered as before this feature (the link's label for a `/library?item=` link, `@name` for a chipped token) and reuse the T026 copy handler on the reply in components/ai-elements/message.tsx; test a selection across a chip in tests/e2e/study/reference-chips.spec.ts ("tutor")
+- [X] T058 [US3] Copy in tutor replies (FR-002): give each tutor chip a `data-source` equal to what that text rendered as before this feature (the link's label for a `/library?item=` link, `@name` for a chipped token) and reuse the T026 copy handler on the reply in components/ai-elements/message.tsx; test a selection across a chip in tests/e2e/study/reference-chips.spec.ts ("tutor")
 
 **Checkpoint**: all three stories work.
 

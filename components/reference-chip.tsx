@@ -44,10 +44,12 @@ function useOpenReference(href: string | null, chipId: string | undefined, own =
 		if (!href || !origin || event.defaultPrevented) return;
 		if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 		event.preventDefault();
-		const at = chipId?.lastIndexOf(":") ?? -1;
-		if (chipId && at > 0) {
+		// A tutor reply numbers its chips in the page (components/tutor-chips.tsx).
+		const id = chipId ?? event.currentTarget.dataset.refChip;
+		const at = id?.lastIndexOf(":") ?? -1;
+		if (id && at > 0) {
 			const pushed = newNonce();
-			saveReturnPoint({ chatId: origin.chatId, title: origin.title?.trim() || UNTITLED_SESSION, messageId: chipId.slice(0, at), chipKey: chipId.slice(at + 1), pushed });
+			saveReturnPoint({ chatId: origin.chatId, title: origin.title?.trim() || UNTITLED_SESSION, messageId: id.slice(0, at), chipKey: id.slice(at + 1), pushed });
 			markNextEntry(pushed, own);
 		}
 		origin.navigate(href);
@@ -59,7 +61,7 @@ export { KIND_ICON };
 
 export interface ReferenceChipProps {
 	target: ChipTarget;
-	/** `{messageId}:{key}`, for focus return. */
+	/** `{messageId}:{key}`, for focus return. Absent: the `data-ref-chip` the page gave it. */
 	chipId?: string;
 	/** The exact underlying text this chip stands for. */
 	source: string;

@@ -660,3 +660,111 @@ test.describe("Study: reference chips in the composer", () => {
 		}
 	});
 });
+
+// Feature 027, US3 (T047, T058): Library links and resolving @names in the
+// tutor's replies are chips that open like a sent message's.
+test.describe("Study: reference chips in tutor replies", () => {
+	test.beforeEach(async ({ request, page }) => {
+		await studySettings(request);
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await interceptModel(page);
+	});
+	test.afterEach(async ({ request }) => { await clearStudyKey(request); });
+
+	const tutorReply = (page: Page, lesson: ReferenceLesson) =>
+		chatView(page, lesson.chatId).locator(`[data-answer-part-id]`).filter({ hasText: "In code it stays" });
+
+	test("tutor: a citation and an @name are chips; code stays text; the citation opens page 3 and the pill returns", async ({ page, request }) => {
+		test.setTimeout(240_000);
+		const lesson = await seedReferenceLesson(request);
+		await openChat(page, lesson.chatId);
+		const chips = chipsOf(page, lesson, "tutor");
+		await expect(chips).toHaveCount(2);
+		// Scenario 1: the PDF icon, its name and "· p. 3".
+		const cite = chips.nth(0);
+		await expect(cite).toHaveAttribute("data-kind", "pdf");
+		await expect(cite.locator(".lh-ref-chip-name")).toHaveText(lesson.items.pdf.name);
+		await expect(cite.getByTestId("ref-chip-hint")).toHaveText("· p. 3");
+		await expect(cite).toHaveAttribute("aria-label", `Open ${lesson.items.pdf.name}, page 3`);
+		// The @name in prose; the one in code stays text.
+		const named = chips.nth(1);
+		await expect(named).toHaveAttribute("data-kind", "page");
+		await expect(named).toHaveText(lesson.items.note.name);
+		await expect(named).toHaveAttribute("href", `/library?item=${lesson.items.note.id}`);
+		const reply = tutorReply(page, lesson);
+		await expect(reply.locator("code")).toHaveText(`@${lesson.items.pdf.name}`);
+		await expect(reply.locator('[title="lh-ref"]')).toHaveCount(0);
+		// History never inks in.
+		await expect(reply.locator(".nb-ink-word")).toHaveCount(0);
+
+		// T058: copy across the chips gives the text as it read before.
+		const copied = await reply.locator(".lh-prose").first().evaluate((el) => {
+			const range = document.createRange();
+			range.selectNodeContents(el);
+			const selection = window.getSelection()!;
+			selection.removeAllRanges();
+			selection.addRange(range);
+			const data = new DataTransfer();
+			el.dispatchEvent(new ClipboardEvent("copy", { clipboardData: data, bubbles: true, cancelable: true }));
+			selection.removeAllRanges();
+			return data.getData("text/plain");
+		});
+		expect(copied.trim()).toBe(`See ${lesson.items.pdf.name}, p. 3 and @${lesson.items.note.name}. In code it stays: @${lesson.items.pdf.name}.`);
+
+		for (const appearance of ["light", "dark"] as const) {
+			if (appearance === "dark") {
+				await studySettings(request, { appearance });
+				await openChat(page, lesson.chatId);
+				await expect(chips).toHaveCount(2);
+			}
+			for (const [width, height] of [[1440, 900], [390, 844], [320, 700]] as const) {
+				await page.setViewportSize({ width, height });
+				await chips.first().scrollIntoViewIfNeeded();
+				await noPageOverflow(page, `tutor ${appearance} ${width}`);
+				await shot(page, `tutor-${appearance}-${width}`);
+			}
+		}
+		await studySettings(request);
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await openChat(page, lesson.chatId);
+
+		// Scenario 2: page 3, the cited words checked, then back to the reply.
+		let from = await clickChip(page, lesson, chips.nth(0));
+		await expect(fullView(page)).toHaveAttribute("data-item-id", lesson.items.pdf.id);
+		await expect(visible(page, '[data-testid="pdf-page-field"]')).toHaveValue("3", { timeout: 20_000 });
+		await expect(visible(page, '[data-testid="pdf-jump-status"]')).toContainText("Quote found on page 3.", { timeout: 20_000 });
+		await expect(pill(page)).toHaveText("Back to E2E · Reference chips");
+		await shot(page, "tutor-full-view-pdf-light-1440");
+		await pill(page).click();
+		await expectReturned(page, lesson, from);
+
+		from = await clickChip(page, lesson, chips.nth(1));
+		await expect(page).toHaveURL(`/library?item=${lesson.items.note.id}`);
+		await page.goBack();
+		await expectReturned(page, lesson, from);
+	});
+
+	test("tutor: a reference turning into a chip leaves the lines around it where they were", async ({ page, request }) => {
+		test.setTimeout(180_000);
+		const lesson = await seedReferenceLesson(request);
+		// Hold the Library list, so the reply first renders as it did before chips.
+		let release!: () => void;
+		const held = new Promise<void>((resolve) => { release = resolve; });
+		await page.route(/\/api\/library$/, async (route) => { await held; await route.continue(); });
+		await openChat(page, lesson.chatId);
+		const reply = tutorReply(page, lesson);
+		await expect(reply).toBeVisible();
+		await expect(chipsOf(page, lesson, "tutor")).toHaveCount(0);
+		const lines = () => reply.locator(".lh-prose p").first().evaluate((p) => {
+			const box = p.getBoundingClientRect();
+			// Against its own reply: chips above it (sent messages) arrive at the same time.
+			return { height: box.height, top: box.top - p.closest("[data-answer-part-id]")!.getBoundingClientRect().top };
+		});
+		const before = await lines();
+		release();
+		await expect(chipsOf(page, lesson, "tutor")).toHaveCount(2);
+		const after = await lines();
+		expect(Math.abs(after.height - before.height), "the paragraph keeps its height").toBeLessThanOrEqual(0.5);
+		expect(Math.abs(after.top - before.top), "the paragraph stays put").toBeLessThanOrEqual(0.5);
+	});
+});

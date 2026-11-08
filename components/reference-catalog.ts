@@ -12,7 +12,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { useNotifyHub } from "@/components/server-events";
-import type { ChipState, LibraryFolder, LibraryItem, LibraryTrashEntry } from "@/src/core";
+import type { ChipState, LibraryFolder, LibraryItem, LibraryKind, LibraryTombstone, LibraryTrashEntry } from "@/src/core";
 
 export const CATALOG_TTL_MS = 30_000;
 
@@ -23,7 +23,13 @@ export interface LiveLibrary {
 	/** Files removed from a linked repo (feature 026), by id: the paths a sent
 	 *  message may name them by. */
 	removed: Map<string, readonly string[]>;
+	/** What a tutor reply's `@name` is recognised against (US3): the live items,
+	 *  then each name the server still resolves to a tombstone (in the Trash,
+	 *  deleted for good, or a removed file's paths). */
+	entries: (LibraryItem | LibraryTombstone)[];
 }
+
+type ListBody = { items: LibraryItem[]; folders?: LibraryFolder[]; gone?: { id: string; name: string; kind: LibraryKind }[]; removed?: { id: string; kind?: LibraryKind; names: string[] }[] };
 
 export interface ItemStatus {
 	state: ChipState;
@@ -60,11 +66,16 @@ export function liveLibrary(): Promise<LiveLibrary | null> {
 	if (!live || !fresh(live)) {
 		live = {
 			at: Date.now(),
-			value: readJson<{ items: LibraryItem[]; folders?: LibraryFolder[]; removed?: { id: string; names: string[] }[] }>("/api/library").then((body) => body && {
+			value: readJson<ListBody>("/api/library").then((body) => body && {
 				items: body.items,
 				folders: body.folders ?? [],
 				byId: new Map(body.items.map((item) => [item.id, item])),
 				removed: new Map((body.removed ?? []).map((entry) => [entry.id, entry.names])),
+				entries: [
+					...body.items,
+					...(body.gone ?? []).map(({ id, name, kind }): LibraryTombstone => ({ id, name, kind, deletedAt: "" })),
+					...(body.removed ?? []).flatMap(({ id, kind, names }) => names.map((name): LibraryTombstone => ({ id, name, kind: kind ?? "text", deletedAt: "" }))),
+				],
 			}),
 		};
 	}
@@ -114,11 +125,8 @@ export interface ReferenceCatalog {
 	folders: LibraryFolder[];
 }
 
-/** The states of `queries`, re-read when the Library changes. Fetches nothing for none. */
-export function useReferenceCatalog(queries: readonly CatalogQuery[]): ReferenceCatalog {
-	const key = queries.map((q) => `${q.itemId}${q.fromRepo ? "!" : ""}`).join("\n");
-	const stable = useMemo((): CatalogQuery[] => (key ? key.split("\n").map((line) => (line.endsWith("!") ? { itemId: line.slice(0, -1), fromRepo: true } : { itemId: line })) : []), [key]);
-	const [state, setState] = useState<ReferenceCatalog>({ statuses: null, folders: [] });
+/** Bumps when the Library changes (or the catalog is dropped), so hooks read again. */
+function useCatalogGeneration(): number {
 	const [generation, setGeneration] = useState(0);
 	useEffect(() => {
 		const bump = () => setGeneration((n) => n + 1);
@@ -133,6 +141,15 @@ export function useReferenceCatalog(queries: readonly CatalogQuery[]): Reference
 		const offResync = hub.onResync(invalidateCatalog);
 		return () => { off(); offResync(); };
 	}, [hub]);
+	return generation;
+}
+
+/** The states of `queries`, re-read when the Library changes. Fetches nothing for none. */
+export function useReferenceCatalog(queries: readonly CatalogQuery[]): ReferenceCatalog {
+	const key = queries.map((q) => `${q.itemId}${q.fromRepo ? "!" : ""}`).join("\n");
+	const stable = useMemo((): CatalogQuery[] => (key ? key.split("\n").map((line) => (line.endsWith("!") ? { itemId: line.slice(0, -1), fromRepo: true } : { itemId: line })) : []), [key]);
+	const [state, setState] = useState<ReferenceCatalog>({ statuses: null, folders: [] });
+	const generation = useCatalogGeneration();
 	useEffect(() => {
 		if (stable.length === 0) return;
 		let current = true;
@@ -142,4 +159,18 @@ export function useReferenceCatalog(queries: readonly CatalogQuery[]): Reference
 		return () => { current = false; };
 	}, [stable, generation]);
 	return state;
+}
+
+/** The live list, read only while `enabled` (a reply that names something):
+ *  undefined until it settles, null when it can't be read. */
+export function useLiveLibrary(enabled: boolean): LiveLibrary | null | undefined {
+	const [list, setList] = useState<LiveLibrary | null | undefined>(undefined);
+	const generation = useCatalogGeneration();
+	useEffect(() => {
+		if (!enabled) return;
+		let current = true;
+		void liveLibrary().then((value) => { if (current) setList(value); });
+		return () => { current = false; };
+	}, [enabled, generation]);
+	return enabled ? list : undefined;
 }

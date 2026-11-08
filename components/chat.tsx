@@ -1699,7 +1699,7 @@ function ChatView({
 														const sourceId = textPartMessageId(part.id);
 														const anchor = sourceId && sourceTextParts.get(sourceId) === part.id ? messageAnchorId(sourceId) : undefined;
 														return (
-															<AssistantResponse key={part.id || pi} id={anchor} data-answer-part-id={part.id} data-source-message-id={sourceId ?? undefined} className="lh-source-passage" source={part.text ?? ""} streaming={part.state === "streaming"} />
+															<AssistantResponse key={part.id || pi} id={anchor} data-answer-part-id={part.id} data-source-message-id={sourceId ?? undefined} className="lh-source-passage" source={part.text ?? ""} streaming={part.state === "streaming"} chipScope={`${m.id || `m-${mi}`}:t${pi}`} />
 														);
 													}
 													case "reasoning":
