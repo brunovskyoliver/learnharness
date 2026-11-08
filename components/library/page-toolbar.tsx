@@ -162,6 +162,17 @@ export function PageBubble({ editor, tutor, onLink, scrollHost }: { editor: Edit
 	// no room above them, so the bubble flipped below the selection.
 	const workspace = scrollHost.closest<HTMLElement>(".page-workspace") ?? undefined;
 	const state = useSelectionFormat(editor);
+	// After an action the card closes and the selection collapses to its end, as Notebook's
+	// selection menu does (components/notebook/selection-menu.tsx): the caret rests after the
+	// passage in the editor; Ask… leaves the focus to the composer it fills.
+	const runTutor = (action: TutorAction) => {
+		if (!tutor || tutor.blocked !== null) return;
+		const text = tutorText(editor);
+		const { to } = editor.state.selection;
+		if (action === "ask") editor.commands.setTextSelection(to);
+		else editor.chain().focus().setTextSelection(to).run();
+		tutor.run(action, text);
+	};
 	return (
 		<BubbleMenu
 			editor={editor}
@@ -186,7 +197,7 @@ export function PageBubble({ editor, tutor, onLink, scrollHost }: { editor: Edit
 				{tutor && tutor.blocked === null && (
 					<div role="group" aria-label="Ask the tutor" className="nb-sel-actions">
 						{TUTOR_ACTIONS.map((action) => (
-							<SelectionAction key={action} testId={`page-tutor-${action}`} label={TUTOR_ACTION_LABEL[action]} onRun={() => tutor.run(action, tutorText(editor))} />
+							<SelectionAction key={action} testId={`page-tutor-${action}`} label={TUTOR_ACTION_LABEL[action]} onRun={() => runTutor(action)} />
 						))}
 					</div>
 				)}

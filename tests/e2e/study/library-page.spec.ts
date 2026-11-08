@@ -92,6 +92,13 @@ test.describe("Study: a Library page", () => {
 		await page.locator(`${editor} p`).first().click();
 		await selectFirstParagraph(page);
 		await page.getByTestId("page-tutor-explain").click();
+		// The card closes and the selection collapses to its end, the caret back in the editor (Notebook's rule).
+		await expect(page.getByTestId("page-bubble")).toBeHidden();
+		await expect.poll(() => page.evaluate((selector) => {
+			const selection = getSelection();
+			const host = document.querySelector(selector);
+			return Boolean(selection?.isCollapsed && host?.contains(document.activeElement) && host.contains(selection.anchorNode));
+		}, editor)).toBe(true);
 		await expect.poll(() => posts.length).toBe(1);
 		expect(posts[0]!.path).toBe("/api/chat");
 		expect(posts[0]!.body).toEqual({ chatId: CHATS.plain, input: { type: "text", text: `Explain this part of @${name}:\n\n> A pendulum swings back and forth. See [[${target.name}]]` } });

@@ -908,6 +908,20 @@ html.lh-paper {
 
 /* ── 4 Top-left menu and wordmark (both modes since feature 025) ─────────── */
 
+/* One place for the top-left chrome in both modes (feature 025, phase 11): the ☰'s box starts
+   --lh-chrome-left in and --lh-chrome-top down (Notebook's 024 header, frame-matched: 23/20, phones
+   8/12), and is --lh-chrome-size square. Study's bands are --lh-band tall with their row centred, so
+   the ☰, wordmark, breadcrumb and actions share one centre line with Notebook's header. 52px is the
+   band's floor. */
+html.lh-paper {
+	--lh-chrome-top: 20px;
+	--lh-chrome-left: 23px;
+	--lh-chrome-size: 32px;
+	--lh-band: max(52px, calc(var(--lh-chrome-top) * 2 + var(--lh-chrome-size)));
+}
+@media (pointer: coarse) { html.lh-paper { --lh-chrome-size: 44px; } }
+@media (max-width: 639px) { html.lh-paper { --lh-chrome-top: 12px; --lh-chrome-left: 8px; } }
+
 .lh-paper .nb-menu-button {
 	display: inline-grid;
 	place-items: center;
@@ -2537,14 +2551,12 @@ html.lh-paper {
 	.lh-paper .nb-side-filter { transition: none; }
 }
 
-/* Study's ✕ takes the ☰'s place in its 52px band (Notebook's head matches Notebook's fixed header). */
+/* Study's sidebar head is Notebook's: its ✕ sits where Notebook's does, since the ☰ is at Notebook's place (phase 11). */
 .lh-paper .nb-side-dim[data-dim] + .nb-sidebar { overflow-x: hidden; }
-.lh-paper .nb-side-dim[data-dim] + .nb-sidebar .nb-side-head { height: 52px; padding: 0 0 0 12px; }
-/* In the Mac window the traffic lights sit where the ✕ would. */
-.lh-electron[data-lh-platform="darwin"] .nb-side-dim[data-dim] + .nb-sidebar .nb-side-head { padding-left: calc(92px / var(--lh-zoom, 1)); }
+/* In the Mac window the traffic lights sit where the ✕ would: the ✕ keeps the ☰'s gutter (.lh-closed-toggle). */
+.lh-electron[data-lh-platform="darwin"] .nb-side-dim[data-dim] + .nb-sidebar .nb-side-head { padding-left: calc(var(--lh-chrome-left) + 92px / var(--lh-zoom, 1)); }
 
-/* Study's top bands: the ☰ and wordmark lead every band (R7). */
-.lh-paper .lh-study-chrome .nb-wordmark { top: 0; }
+/* Study's top bands: the ☰ and wordmark lead every band (R7), at Notebook's place (section 4). */
 /* On a phone a band with a title keeps its room for the title: the ☰ stays, the wordmark goes (the sidebar shows it). */
 @media (max-width: 639px) {
 	.lh-paper :is(header:has(> .lh-study-chrome + *), [data-mobile-chat-navigation]) .lh-study-wordmark { display: none; }

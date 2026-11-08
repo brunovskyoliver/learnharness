@@ -43,7 +43,7 @@ describe("desktop window chrome", () => {
 	it("macOS keeps the proven traffic lights and does not enable WCO", () => {
 		const options = windowOptions("darwin");
 		assert.equal(options.titleBarStyle, "hiddenInset");
-		assert.deepEqual(options.trafficLightPosition, { x: 16, y: 22.5 });
+		assert.deepEqual(options.trafficLightPosition, { x: 16, y: 29.25 });
 		assert.equal(options.titleBarOverlay, undefined);
 		assert.equal(options.autoHideMenuBar, undefined);
 	});

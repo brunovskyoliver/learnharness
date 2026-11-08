@@ -43,8 +43,8 @@
 
 .nb-root .nb-header {
 	position: fixed;
-	top: 20px;
-	left: 23px;
+	top: var(--lh-chrome-top);
+	left: var(--lh-chrome-left);
 	z-index: 20;
 	display: flex;
 	align-items: center;
@@ -305,7 +305,7 @@
 	pointer-events: none;
 }
 @media (max-width: 639px) {
-	.nb-root .nb-header { position: absolute; top: 12px; left: 8px; }
+	.nb-root .nb-header { position: absolute; }
 	.nb-root .nb-page { padding: 76px 16px 0; }
 	.nb-root .nb-toolbar { top: 0; gap: 4px 16px; padding: 6px 0; }
 	.nb-root .nb-toolbar::before,

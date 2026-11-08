@@ -131,7 +131,7 @@ export function DraftShell({
 			{/* Window-drag strip — deliberately FIRST in the DOM (the mask
 			    law: no-drag subtraction resolves by DOM order, so every
 			    carved control later in the tree subtracts correctly). */}
-			<div className="lh-drag absolute inset-x-0 top-0 h-13" aria-hidden="true" />
+			<div className="lh-drag absolute inset-x-0 top-0 h-(--lh-band)" aria-hidden="true" />
 			<div className="flex min-w-0 flex-1 flex-col">
 				<div className="relative flex min-h-0 flex-1">
 					{/* The pointer-events pattern (953b22b): the sticky wrapper is
@@ -185,13 +185,13 @@ export function DraftShell({
 			{/* The floating reopen toggle — pointer-events-none except the
 			    toggle itself (home's pattern), painted AFTER the overlay's
 			    column so nothing of it blocks the canvas area. */}
-			<header className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-2 px-3 py-2">
+			<header className="pointer-events-none absolute inset-x-0 top-0 flex h-(--lh-band) items-center gap-2 pl-(--lh-chrome-left) pr-3">
 				<div className="pointer-events-auto">
 					<SidebarToggle />
 				</div>
 			</header>
 			{/* Under the drag band, over the empty state. */}
-			<div className="absolute inset-x-0 top-13 z-10"><WorkspaceTabStrip /></div>
+			<div className="absolute inset-x-0 top-(--lh-band) z-10"><WorkspaceTabStrip /></div>
 		</div>
 	);
 }

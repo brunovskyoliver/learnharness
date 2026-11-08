@@ -815,7 +815,7 @@ export function AppShell({ children, account, hosted = false, initialChats }: { 
 			<SessionListProvider initialChats={initialChats}>
 				<WorkspaceProvider>
 				<StudySidebar account={account} hosted={hosted} />
-				{conversation && <div data-mobile-chat-navigation="" className="fixed left-0 top-0 z-20 flex h-13 items-center px-3"><SidebarToggle /></div>}
+				{conversation && <div data-mobile-chat-navigation="" className="fixed left-0 top-0 z-20 flex h-(--lh-band) items-center pl-(--lh-chrome-left) pr-3"><SidebarToggle /></div>}
 				<main className="min-w-0 flex-1">{children}</main>
 				{/* The single document-level keydown listener (keyboard wave A) —
 				    window-level, so order only matters for the events it

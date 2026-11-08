@@ -149,9 +149,9 @@ export function Home({
 			    mask resolves by DOM order — a no-drag element subtracts only drag
 			    regions that came EARLIER in the tree — so every carved control
 			    (the toggle, the graph chrome) comes later and subtracts. */}
-			<div className="lh-drag absolute inset-x-0 top-0 h-13" aria-hidden="true" />
+			<div className="lh-drag absolute inset-x-0 top-0 h-(--lh-band)" aria-hidden="true" />
 
-			<header className="relative z-30 flex h-13 shrink-0 items-center gap-3 px-3 max-sm:group-has-[[data-mobile-graph-search=true]]/home:invisible">
+			<header className="relative z-30 flex h-(--lh-band) shrink-0 items-center gap-3 pl-(--lh-chrome-left) pr-3 max-sm:group-has-[[data-mobile-graph-search=true]]/home:invisible">
 				<SidebarToggle />
 			</header>
 			<WorkspaceTabStrip />

@@ -319,8 +319,11 @@ function createWindow(url) {
 		// (band 0–59.5, pill box 19–39.5) — y 22.5 lands the circles at
 		// 29.25, exactly on the pill. Wordmark gutter: components/sidebar.tsx.
 		// Dragging comes from the renderer's .lh-drag bands (app/globals.css).
+		// Feature 025 (phase 11): the bands' row sits on the ☰'s centre line,
+		// 36px down (Notebook's header, app/paper.css section 4), so y 29.25
+		// puts the circles' centres (y+6.75) on that line.
 		...(process.platform === "darwin"
-			? { titleBarStyle: "hiddenInset", trafficLightPosition: { x: 16, y: 22.5 } }
+			? { titleBarStyle: "hiddenInset", trafficLightPosition: { x: 16, y: 29.25 } }
 			: {
 				titleBarStyle: "hidden",
 				// Native min/max/close on the right, at the OS's compact default
@@ -421,7 +424,7 @@ function createWindow(url) {
  * setZoomFactor, and broadcast to the renderer ("lh:zoom" — it publishes
  * --lh-zoom so gutter lengths can divide by it and stay PHYSICAL-
  * constant). The traffic lights themselves stay at their construction
- * position ({x:16, y:22.5} — Electron 44 has NO runtime setter, only
+ * position ({x:16, y:29.25} — Electron 44 has NO runtime setter, only
  * the BrowserWindow option), which is HIG-correct anyway: native lights
  * hug the window corner while the web chrome compensates around them.
  * Vertical note: at large factors the taller bands' content centers
