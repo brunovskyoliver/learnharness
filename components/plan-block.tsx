@@ -60,31 +60,32 @@ export { latestTree, type PopupMessage } from "@/components/plan-tree";
 
 /** Symmetric horizontal padding — EQUALS the vertical padding the
  * single-line text gets in NODE_H (owner: "the horizontal padding
- * should be the same as the vertical one"): (44 − 11) / 2 ≈ 16 (the
- * prose font renders text-xs at 11px). */
+ * should be the same as the vertical one"): (44 − 13) / 2 ≈ 16 (node
+ * titles render text-sm, 13px, since feature 025). */
 export const PAD_X = 16;
 export const NODE_W_MIN = 96;
 export const NODE_H = 44;
 
-// Width classes for the PROSE font (Source Sans 3 as shipped, text-xs
-// rendering at 11px): narrow stems and punctuation, wide m/w, caps +
-// digits, everything else. Rates least-squares-fitted against
-// getComputedTextLength() measurements of the live plan titles
-// (2026-10-07 smoke) — residuals land within ±4px per LINE, so
-// per-side padding reads as PAD_X ±2. A different reading font
-// (Appearance override) drifts the estimate slightly; accepted.
+// Width classes for the app's sans (Instrument Sans since feature 025,
+// node titles at text-sm, 13px): narrow stems and punctuation, wide m/w,
+// caps + digits, everything else. Rates least-squares-fitted against
+// canvas measureText of 45 plan titles (golden fixtures plus a real-model
+// lesson's plan, 2026-11-08); residuals within ±10px per LINE, so each
+// side keeps at least 11 of its 16px. The Source Sans 3 rates
+// (3.1/9.2/6.0/5.4 at 11px) ran 29% short and let titles spill out of
+// their boxes. A different reading font drifts the estimate; accepted.
 const NARROW_CHARS = new Set(" ijltfr.,:;'!|()[]-\\");
 const WIDE_CHARS = new Set("mwMW@");
 const CAP_DIGIT = /[A-Z0-9]/;
 
-/** Estimated rendered width (px) of one line at text-xs. Pure. */
+/** Estimated rendered width (px) of one line at text-sm. Pure. */
 export function estimateLineWidth(line: string): number {
 	let w = 0;
 	for (const ch of line) {
-		if (NARROW_CHARS.has(ch)) w += 3.1;
-		else if (WIDE_CHARS.has(ch)) w += 9.2;
-		else if (CAP_DIGIT.test(ch)) w += 6.0;
-		else w += 5.4;
+		if (NARROW_CHARS.has(ch)) w += 4.1;
+		else if (WIDE_CHARS.has(ch)) w += 10.5;
+		else if (CAP_DIGIT.test(ch)) w += 7.4;
+		else w += 7.0;
 	}
 	return w;
 }
@@ -303,11 +304,11 @@ export const GRAPH_PAD = 8;
 export const GLOW_MARGIN = 8;
 export const GLOW_BLUR = 5;
 export const GLOW_REACH = GLOW_MARGIN + 3 * GLOW_BLUR;
-/** Node titles render at text-xs (12.5px) in svg units. The in-chat block
- *  scales up to fill the column but NEVER past the chat prose size
- *  (--note-size, 16px — the ladder's reading rung) — the width cap
- *  that makes that hold. */
-export const TEXT_CAP_SCALE = 16 / 12.5;
+/** Node titles render at text-sm (13px since feature 025) in svg units.
+ *  The in-chat block scales up to fill the column but NEVER past the chat
+ *  prose size (--note-size, 16px — the ladder's reading rung) — the width
+ *  cap that makes that hold. */
+export const TEXT_CAP_SCALE = 16 / 13;
 
 // ─── The owner's arrowhead (plan-graph round 5) ──────────────────────────────
 
