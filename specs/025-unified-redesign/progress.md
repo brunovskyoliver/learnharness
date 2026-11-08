@@ -113,6 +113,8 @@ Updated: 2026-11-08
   - N5, option 1: with no field in the chat, Tab focuses "Go to it" and Enter there opens the thread.
 - Agent (owner rulings, N1): the unlayered `* { border-color: var(--rule) }` in app/globals.css outranked every Tailwind border-colour utility (layered), so `border-edge` rendered as `--rule`. The rule moved into `@layer base`. Utilities like `border-ink`, `border-red/50` and `border-green/50` (the practice outcome chips) now show the colours they name.
 
+- Owner (2026-11-08, second batch): N3 and N4 approved; Electron title-bar/macOS traffic lights and hosted Clerk sign-in approved as unverified here (owner checks on a Mac and a hosted deploy); math check approved as verified by seeded rows in every state instead of a live Wolfram call (no App ID); the Notebook | Study pairs read as one product (owner). Recorded in reviews.md.
+
 ## Log
 - 2026-11-07 specify: spec.md written (6 stories, FR-001..043). Before-screenshot script delegated to a child (scripts/unified-screens.mjs).
 
