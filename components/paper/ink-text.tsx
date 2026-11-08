@@ -12,9 +12,14 @@
  * math): `**bold**`, `*italic*`, `` `code` ``, `$math$` and `$$display$$`
  * render as such (KaTeX, as the editor's math). A formula or a code span
  * inks in as one word. Anything else stays the literal text.
+ *
+ * A TeX command whose backslash a JSON escape swallowed (`\theta` arriving
+ * as a tab and "heta") is restored inside math first, the same display
+ * repair Study's prose gets (restoreMathEscapes).
  */
 import katex from "katex";
 import { useRef, type ReactNode } from "react";
+import { restoreMathEscapes } from "@/src/core";
 import { inkStepMs } from "./rehype-ink-words";
 
 /** Words and the spaces after them, so nothing of his spacing is lost. */
@@ -74,7 +79,7 @@ export function InkText({ text, animate }: { text: string; animate: boolean }) {
 	// Each word's delay, fixed when it first shows, so a re-render never restarts it.
 	const delays = useRef<number[]>([]);
 	const step = useRef<number | null>(null);
-	const paragraphs = text.split(/\n{2,}/).map(inkTokens);
+	const paragraphs = restoreMathEscapes(text).split(/\n{2,}/).map(inkTokens);
 	if (!animate) return <>{paragraphs.map((tokens, i) => <span key={i} className="nb-words">{tokens.map((t, j) => <InkPiece key={j} token={t} />)}</span>)}</>;
 	const total = paragraphs.reduce((n, tokens) => n + tokens.length, 0);
 	step.current ??= inkStepMs(total);

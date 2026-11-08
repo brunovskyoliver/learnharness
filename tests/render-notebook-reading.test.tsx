@@ -86,6 +86,13 @@ describe("ink", () => {
 		assert.match(display, /nb-math nb-math-display[\s\S]*katex-display/);
 	});
 
+	it("restores a TeX command a JSON escape swallowed (a real sketch caption)", () => {
+		const html = renderToStaticMarkup(<InkText text={"Make it steeper, so $\theta_2> \theta_1$ and the path is shorter."} animate={false} />);
+		assert.equal((html.match(/class="nb-math"/g) ?? []).length, 1);
+		assert.match(html, /<annotation encoding="application\/x-tex">\\theta_2&gt; \\theta_1<\/annotation>/);
+		assert.doesNotMatch(html, /\t/);
+	});
+
 	it("leaves prices, lone markers and unclosed math as text", () => {
 		const html = renderToStaticMarkup(<InkText text="It costs $5 and $10, 2 * 3 = 6, and $x is open." animate={false} />);
 		assert.doesNotMatch(html, /katex|<em>|<strong>/);
