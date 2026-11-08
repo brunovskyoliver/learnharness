@@ -71,9 +71,9 @@ export const NODE_H = 44;
 // caps + digits, everything else. Rates least-squares-fitted against
 // canvas measureText of 45 plan titles (golden fixtures plus a real-model
 // lesson's plan, 2026-11-08); residuals within ±10px per LINE, so each
-// side keeps at least 11 of its 16px. The Source Sans 3 rates
-// (3.1/9.2/6.0/5.4 at 11px) ran 29% short and let titles spill out of
-// their boxes. A different reading font drifts the estimate; accepted.
+// side keeps at least 11 of its 16px. The pre-025 rates (3.1/9.2/6.0/5.4
+// at 11px) ran 29% short in Instrument Sans and let titles spill out of
+// their boxes.
 const NARROW_CHARS = new Set(" ijltfr.,:;'!|()[]-\\");
 const WIDE_CHARS = new Set("mwMW@");
 const CAP_DIGIT = /[A-Z0-9]/;
@@ -532,11 +532,8 @@ export function PlanDiagram({
 			viewBox={viewBoxOverride ?? `${ox - pad} ${oy - pad} ${vbW} ${vbH}`}
 			className={`block ${fill ? "h-full w-full" : `h-auto${naturalSize ? "" : " w-full"}`}${textCapScale ? " mx-auto" : ""}`}
 			style={{
-				// The READING font (owner, 2026-09-26) — via the runtime var, NOT
-				// the font-sans utility: @theme inline bakes the literal into
-				// utilities (the --font-sans trap), which would freeze the
-				// graph at Source Sans 3 and ignore the Appearance reading-font
-				// override. var(--font-sans) rides it.
+				// The UI face (Instrument Sans) through the runtime var, so the
+				// graph follows the shared font token.
 				fontFamily: "var(--font-sans)",
 				...(textCapScale
 					? { maxWidth: `${Math.round(vbW * textCapScale * 100) / 100}px` }

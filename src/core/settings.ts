@@ -414,8 +414,8 @@ export interface AppearanceSettings {
 	/** The one user-chosen color; everything else derives per-mode in code.
 	 *  null = the mode's default background. */
 	background?: string | null;
-	/** The main reading font (everything that is Source Sans 3 today), by
-	 *  name — user-chosen from installed fonts. null = Source Sans 3. */
+	/** Legacy reading font by name (pre-025). Kept on disk and validated;
+	 *  no longer styles the app (owner, 2026-11-07, feature 025). */
 	fontFamily?: string | null;
 	/** Reading font size in px (12–24, default 17). Headings render as
 	 *  multiples of this, so one knob scales the document coherently. */
@@ -537,7 +537,7 @@ export const FACTORY_SETTINGS: FactorySettings = {
 	appearance: {
 		mode: "dark",
 		background: null, // the default black canvas lives in globals.css
-		fontFamily: null, // Source Sans 3
+		fontFamily: null, // legacy, unused for styling since 025
 		proseFontSize: 17,
 		sessionNameSerif: false,
 		mdRendering: { headingWeight: 700, boldColor: null, italicColor: null },

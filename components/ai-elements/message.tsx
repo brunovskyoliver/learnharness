@@ -411,8 +411,8 @@ export const MessageResponse = memo(
       <div ref={ref} className="contents">
       <Streamdown
         className={cn(
-          // Source Sans 3 + emphasis-color tokens on every markdown surface
-          // (labels stay JetBrains Mono). Unlayered plain CSS wins over text-sm.
+          // Paper prose rules on every markdown surface (the tutor's voice in
+          // lessons). Unlayered plain CSS wins over text-sm.
           "lh-prose size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
           // Streamdown's memo ignores rehypePlugins: the class change makes the
           // settle render drop the ink spans even when the text is unchanged.

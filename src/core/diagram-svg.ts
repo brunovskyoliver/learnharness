@@ -84,7 +84,7 @@ export function diagramToSvg(doc: DiagramDoc, title?: string): string {
 	const width = Math.max(1, Math.ceil(maxX - minX));
 	const height = Math.max(1, Math.ceil(maxY - minY));
 	const parts: string[] = [
-		`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${n(minX)} ${n(minY)} ${width} ${height}" role="img" font-family="'Source Sans 3', 'Helvetica Neue', Arial, sans-serif" font-size="${FONT_SIZE}">`,
+		`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${n(minX)} ${n(minY)} ${width} ${height}" role="img" font-family="'Instrument Sans', 'Helvetica Neue', Arial, sans-serif" font-size="${FONT_SIZE}">`,
 		...(title ? [`<title>${escapeXml(title)}</title>`] : []),
 		`<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="${COLOR.edge}"/></marker></defs>`,
 		`<rect x="${n(minX)}" y="${n(minY)}" width="${width}" height="${height}" fill="${COLOR.ground}"/>`,

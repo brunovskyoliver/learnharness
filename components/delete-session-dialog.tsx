@@ -23,10 +23,8 @@ export const TRACES_COPY = {
  * destructive-confirmation surface, portaled z-50 like the setup dialog,
  * now in the node dialog's shape (the two must read as one design):
  *
- *   - red title "Delete session?" in the abort-turn look (owner, 2026-10-13
- *     polish: text-sm font-semibold JetBrains Mono via the UI default —
- *     the serif display title is gone), the session name below it in
- *     JetBrains Mono at normal text-sm size (was sized-up text-lg), no
+ *   - title "Delete session?" in the paper dialog's title type (feature 025;
+ *     the red moved to the Delete pill), the session name below it, no
  *     code-block chrome;
  *   - ONE unchecked-by-default checkbox "Also remove its graph traces"
  *     (unchecked = preserve-graph: the session record, its jobs, and its
