@@ -24,7 +24,13 @@
  *   RETRIES      retries per failed shot (default 1)
  *   DEBUG=1      log each step
  *   HOLD=1       seed, start the server, print its URL and wait (for probing)
+ *   SERVER=start `next start` on an existing `next build` instead of `next dev`
+ *                (an 8 GB machine thrashes under dev compiles)
  * Stop any other `next dev` in this checkout first (Next allows one per dir).
+ *
+ * Themes: Study combos write the shared appearance (notebook.appearance, feature
+ * 025) and the old Study appearance.mode too, so the same script runs against
+ * the tree before 025 (whichever section the tree lacks is refused and ignored).
  */
 import { execFileSync, spawn } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
@@ -87,7 +93,8 @@ let BASE;
 async function startServer() {
 	const port = Number(process.env.PORT) || await freePort();
 	BASE = `http://127.0.0.1:${port}`;
-	server = spawn(process.execPath, ["node_modules/next/dist/bin/next", "dev", "-p", String(port), "-H", "127.0.0.1"], {
+	const mode = process.env.SERVER === "start" ? "start" : "dev";
+	server = spawn(process.execPath, ["node_modules/next/dist/bin/next", mode, "-p", String(port), "-H", "127.0.0.1"], {
 		cwd: ROOT, stdio: ["ignore", "pipe", "pipe"], detached: true, env: ENV,
 	});
 	server.stdout.on("data", (chunk) => { serverLog = (serverLog + chunk).slice(-20000); });
@@ -229,9 +236,18 @@ async function writeSection(section, patch) {
 	const current = record[section] && typeof record[section] === "object" ? record[section] : {};
 	await api(`/api/settings/${section}`, "PUT", { ...current, ...patch });
 }
+/** Study's theme: the shared appearance (025) and the old appearance.mode (before 025); a section the tree lacks is skipped. */
+async function studyTheme(mode) {
+	await writeSection("general", { interface: "study" });
+	const wrote = [];
+	for (const [section, patch] of [["notebook", { appearance: mode }], ["appearance", { mode }]]) {
+		try { await writeSection(section, patch); wrote.push(section); } catch { /* not in this tree */ }
+	}
+	if (!wrote.length) throw new Error(`no appearance section took ${mode}`);
+}
 const THEMES = [
-	{ name: "study-dark", apply: async () => { await writeSection("general", { interface: "study" }); await writeSection("appearance", { mode: "dark" }); } },
-	{ name: "study-light", apply: async () => { await writeSection("general", { interface: "study" }); await writeSection("appearance", { mode: "light" }); } },
+	{ name: "study-dark", apply: () => studyTheme("dark") },
+	{ name: "study-light", apply: () => studyTheme("light") },
 	{ name: "notebook-dark", apply: async () => { await writeSection("general", { interface: "notebook" }); await writeSection("notebook", { appearance: "dark" }); } },
 	{ name: "notebook-light", apply: async () => { await writeSection("general", { interface: "notebook" }); await writeSection("notebook", { appearance: "light" }); } },
 ];
@@ -303,13 +319,18 @@ const scrollTranscriptTop = (page) => page.evaluate(() => {
 	return false;
 });
 async function openSidebarOnPhone(page, phone) {
-	if (!phone) return;
+	// Before 025 the desktop sidebar was a column; since 025 it is an overlay at every width behind ☰.
+	if (!phone) {
+		const opener = page.getByRole("button", { name: "Open sidebar", exact: true }).filter({ visible: true });
+		const open = await page.getByTestId("nb-sidebar").filter({ visible: true }).count();
+		if (open || !(await opener.count())) return;
+	}
 	await click(page, [byRole("button", "Open sidebar"), byRole("button", /open (the )?(sidebar|menu|notes)/i)], "the sidebar opener");
 	await settle(page);
 }
 async function openSettings(page, phone) {
 	await openSidebarOnPhone(page, phone);
-	await click(page, [byRole("button", "Settings", { exact: true }), byRole("button", /^settings$/i), byRole("menuitem", /settings/i)], "Settings");
+	await click(page, [byTest("settings-entry"), byRole("button", "Settings", { exact: true }), byRole("button", /^settings$/i), byRole("menuitem", /settings/i)], "Settings");
 	await pick(page, [byRole("dialog", /settings/i), byRole("dialog")], "the Settings dialog");
 	await settle(page);
 }
@@ -317,6 +338,11 @@ async function openLibraryPage(page, name) {
 	await click(page, [byRole("button", `Open ${name}`), byRole("link", `Open ${name}`), byRole("link", name), byText(name)], `Library item ${name}`);
 	await pick(page, [byRole("complementary", new RegExp(name)), byRole("textbox", new RegExp(`Page ${name}`)), byRole("dialog", new RegExp(name))], `the open page ${name}`, 30_000);
 	await settle(page, 1200);
+}
+/** The pending check: since 025 a thread beside the lesson (reveal or Go to it), before it the prompt bar's Your turn. */
+async function openPendingCheck(page) {
+	await click(page, [byTest("teach-check-reveal"), byTest("check-go-to"), byRole("button", /^your turn/i), byRole("button", /^answer$/i)], "the pending check");
+	await page.getByTestId("check-thread").filter({ visible: true }).first().waitFor({ timeout: 3000 }).catch(() => {});
 }
 /** A throwaway copy of the rich page for shots that type into the editor, so no draft leaks into later shots. */
 const SCRATCH = "Editing sample";
@@ -374,10 +400,10 @@ const SHOTS_LIST = [
 	{ name: "lesson-belief-math", route: "/chat/review-belief-check", steps: "scroll to the first block of display or inline math", run: async (page) => { await (await pick(page, [(p) => p.locator("[role=log] math, [role=log] .katex")], "math")).scrollIntoViewIfNeeded(); await settle(page, 800); } },
 	{ name: "lesson-plan", route: "/chat/review-belief-check", steps: "Open the full plan", run: async (page) => { await click(page, [byRole("button", /plan/i)], "the plan"); await settle(page, 800); } },
 	{ name: "check-answered", route: "/chat/review-belief-check", steps: "scroll to an answered check (\"Question correct\")", run: async (page) => { await (await pick(page, [byText(/Question\s*correct/), byText(/^Question$/)], "an answered check")).scrollIntoViewIfNeeded(); await settle(page, 800); } },
-	{ name: "check-pending-expanded", route: "/chat/review-belief-check", steps: "prompt bar → Your turn (choices + confidence)", run: async (page) => { await click(page, [byRole("button", /^your turn/i), byRole("button", /^answer$/i)], "Your turn"); await settle(page, 800); } },
-	{ name: "check-pending-chosen", route: "/chat/review-belief-check", steps: "Your turn → choose the first option, then Fairly sure", run: async (page) => {
-		await click(page, [byRole("button", /^your turn/i), byRole("button", /^answer$/i)], "Your turn");
-		await click(page, [(p) => p.getByRole("radiogroup").first().getByRole("radio")], "a choice");
+	{ name: "check-pending-expanded", route: "/chat/review-belief-check", steps: "open the pending check (025: Check your understanding opens its thread; before: prompt bar → Your turn)", run: async (page) => { await openPendingCheck(page); await settle(page, 800); } },
+	{ name: "check-pending-chosen", route: "/chat/review-belief-check", steps: "open the pending check → choose the first option, then Fairly sure", run: async (page) => {
+		await openPendingCheck(page);
+		await click(page, [(p) => p.getByTestId("check-thread").locator('[data-kbdrow="0"]'), (p) => p.getByRole("radiogroup").first().getByRole("radio")], "a choice");
 		await click(page, [(p) => p.getByRole("radio", { name: "Fairly sure" })], "Fairly sure").catch(() => {});
 		await settle(page, 800);
 	} },
@@ -390,7 +416,7 @@ const SHOTS_LIST = [
 		await settle(page);
 	} },
 	{ name: "practice-active", route: "/chat/review-practice", steps: "open Active practice", run: async (page) => { await settle(page, 1200); } },
-	{ name: "practice-active-problem", route: "/chat/review-practice", steps: "prompt bar → Your turn / Solve (the active problem)", run: async (page) => { await click(page, [byRole("button", /^your turn/i), byRole("button", /^(solve|answer)$/i)], "the problem"); await settle(page, 800); } },
+	{ name: "practice-active-problem", route: "/chat/review-practice", steps: "open the active problem (025: Go to it; before: prompt bar → Your turn / Solve)", run: async (page) => { await click(page, [byTest("check-go-to"), byRole("button", /^your turn/i), byRole("button", /^(solve|answer)$/i)], "the problem"); await settle(page, 800); } },
 	{ name: "practice-history", route: "/chat/review-practice-history", steps: "open Practice history", run: async (page) => { await settle(page, 1200); } },
 	{ name: "practice-history-top", route: "/chat/review-practice-history", steps: "scroll the transcript to the top", run: async (page) => { await scrollTranscriptTop(page); await settle(page, 1000); } },
 	{ name: "ml-panels", route: "/chat/review-ml-panels", steps: "open ML panels", run: async (page) => { await settle(page, 3000); } },
@@ -646,7 +672,7 @@ function writeIndex(started) {
 		"# Unified redesign screenshots", "",
 		`Run ${started} → ${new Date().toISOString()} from \`${path.relative(ROOT, fileURLToPath(import.meta.url))}\` at ${(() => { try { return execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim(); } catch { return "?"; } })()}.${ONLY ? ` Combos this run: ${[...ONLY].join(", ")}.` : ""}${SHOTS ? ` Shots this run: ${SHOTS.join(", ")}.` : ""}`,
 		`Viewports 1440x900 and 390x844 (touch), deviceScaleFactor 1, reduced motion. Files: \`<theme>-<width>/<NN-name>.png\`; \`-full.png\` is the full-page shot; failed shots keep the screen at failure under \`failed/\`.`,
-		"Study themes set settings appearance.mode with general.interface study; Notebook themes set general.interface notebook and notebook.appearance (Study routes other than Home still render in Study then).", "",
+		"Study themes set general.interface study and the shared notebook.appearance (and appearance.mode where the tree still has it); Notebook themes set general.interface notebook and notebook.appearance (Study routes other than Home still render in Study then).", "",
 		"## Seed", "", ...seedNotes, "",
 	];
 	const combos = [...new Set(results.map((r) => r.combo))];
@@ -699,10 +725,10 @@ async function main() {
 			const combo = `${theme.name}-${viewport.width}`;
 			if (ONLY && !ONLY.has(combo)) continue;
 			try { await theme.apply(); } catch (error) { console.log(`theme ${theme.name} failed: ${error.message}`); }
-			await themeCheck(combo, viewport);
-			// A full run replaces the combo's folder; a SHOTS run only overwrites its own files.
+			// A full run replaces the combo's folder (before the theme check writes into it); a SHOTS run only overwrites its own files.
 			if (!SHOTS) rmSync(path.join(OUT, combo), { recursive: true, force: true });
 			mkdirSync(path.join(OUT, combo), { recursive: true });
+			await themeCheck(combo, viewport);
 			for (const [index, shot] of SHOTS_LIST.entries()) {
 				if (SHOTS && !SHOTS.some((s) => shot.name.includes(s))) continue;
 				await shootWithRetry(combo, viewport, index, shot);

@@ -93,8 +93,8 @@ Inputs: spec.md, plan.md, research.md (R1-R16), data-model.md, contracts/ui-cont
 ## Phase 10: Verification
 
 - [X] T062 Playwright Study journeys `tests/e2e/study/*.spec.ts` (isolated data dir, seeded review chats, intercepted model routes as the browser regressions do): home-and-sidebar, lesson-check-thread (choice + confidence, free text, I don't know, reveal, ?answer=), practice (solve, skip, next problem), library-page (create, edit, slash menu, selection menu action, export), review (show answer, rate, undo), settings (every category, search, theme change applies to both modes), mode-switch round trip with theme continuity, a11y (keyboard path, focus ring colour, scrollbars hidden, coarse targets) at 1440 and 390.
-- [ ] T063 Extend the codex-verify switch to Study turns (R14) with unit tests (inert when unset and in production); real-model pass over every scope item in both modes, notes and screenshots under `~/agent-runs/2026-11-07-unified-redesign/real-model/`.
-- [ ] T064 Run `scripts/unified-screens.mjs` for the after set; side-by-side Notebook/Study pairs (`pairs/`) for: note vs lesson, Notebook sidebar vs Study sidebar, Notebook settings vs Study settings, note chat panel vs right pane, margin thread vs check thread; index.md.
+- [X] T063 Extend the codex-verify switch to Study turns (R14) with unit tests (inert when unset and in production); real-model pass over every scope item in both modes, notes and screenshots under `~/agent-runs/2026-11-07-unified-redesign/real-model/`.
+- [X] T064 Run `scripts/unified-screens.mjs` for the after set; side-by-side Notebook/Study pairs (`pairs/`) for: note vs lesson, Notebook sidebar vs Study sidebar, Notebook settings vs Study settings, note chat panel vs right pane, margin thread vs check thread; index.md.
 - [X] T065 Startup JS after vs `startup-base.json` (≤ +5% raw and gzip on `/`, `/chat/new`, `/library`).
 - [X] T066 Full gate: lint, typecheck, build, `npm test`, `npm run test:e2e`, the browser regressions in `scripts/`.
 
