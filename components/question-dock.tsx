@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { teaserPlain } from "@/components/teaser";
 import { focusSurfaceInput } from "@/components/input-surface";
 import { useLibraryMention } from "@/components/library/use-library-mention.ts";
+import { ReferenceField } from "@/components/reference-field";
 import { chatUsesNativeTraversal, mlResultKeepsNativeEnter, useEnterSubmits } from "@/components/enter-submits";
 import { ToolContentResponse } from "@/components/ai-elements/message";
 import { cn } from "@/lib/utils";
@@ -560,6 +561,7 @@ export function QuestionDockForm({
 				<div data-testid={qd.mode === "text" ? "answer-field" : "thinking-field"} className="nb-reply-line lh-check-field" onClick={focusSurfaceInput}>
 					{qd.mode === "text" ? answerMention.menu : thinkingMention.menu}
 					{qd.mode === "text" ? (
+						<ReferenceField key="answer" value={text} catalog={answerMention.catalog} inputRef={answerMention.ref}>
 						<textarea
 							{...answerMention.inputProps}
 							ref={answerMention.ref}
@@ -582,7 +584,9 @@ export function QuestionDockForm({
 							rows={1}
 							className="lh-check-input field-sizing-content lh-input"
 						/>
+						</ReferenceField>
 					) : (
+						<ReferenceField key="thinking" value={thinking} catalog={thinkingMention.catalog} inputRef={thinkingMention.ref}>
 						<textarea
 							{...thinkingMention.inputProps}
 							ref={thinkingMention.ref}
@@ -606,6 +610,7 @@ export function QuestionDockForm({
 							rows={1}
 							className="lh-check-input field-sizing-content lh-input"
 						/>
+						</ReferenceField>
 					)}
 					{qd.mode === "text" ? answerMention.line : thinkingMention.line}
 				</div>

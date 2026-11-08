@@ -85,4 +85,18 @@ describe("composer action row", () => {
 		assert.equal(document.querySelector('[data-testid="practice-props-chip"]')!.textContent, "1 node selected");
 		assert.ok(document.querySelector('[data-testid="practice-props-clear"]'));
 	});
+
+	it("the new-session composer's field sits in the chip mirror, still the @ list's combobox (feature 027, T040)", () => {
+		const document = documentFor(<DraftShell busy={false} text="Read @Notes" onChange={() => {}} onSend={() => {}} mode="teach" />);
+		const field = document.querySelector('[data-testid="composer"] .lh-ref-field')!;
+		assert.ok(field, "the field wrapper");
+		assert.equal(field.getAttribute("data-overlay"), null, "off until the browser shows it can match");
+		const mirror = field.querySelector('[data-testid="ref-mirror"]')!;
+		assert.equal(mirror.getAttribute("aria-hidden"), "true");
+		assert.equal(mirror.textContent, "", "nothing drawn before the client checks support");
+		const textarea = field.querySelector("textarea")!;
+		assert.equal(textarea.getAttribute("role"), "combobox");
+		assert.equal(textarea.getAttribute("aria-autocomplete"), "list");
+		assert.equal(textarea.textContent, "Read @Notes");
+	});
 });

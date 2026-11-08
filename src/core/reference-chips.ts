@@ -101,3 +101,30 @@ export function chipTargets(inputs: readonly ChipInput[]): ChipTarget[] {
 	}
 	return inputs.map((input) => chipTarget(input, (idsByName.get(nameKey(input.name))?.size ?? 0) > 1));
 }
+
+/** The key a composer field is handling, as far as removing a chip goes. */
+export interface ChipDeleteKey {
+	key: string;
+	composing?: boolean;
+	shiftKey?: boolean;
+	metaKey?: boolean;
+	ctrlKey?: boolean;
+	altKey?: boolean;
+}
+
+/** What one Backspace or Delete removes in a composer field (research R5): a
+ *  whole chip when the caret sits right after it (Backspace) or right before it
+ *  (Delete), with nothing selected, not composing and no modifier. A quote form
+ *  goes from its `@` through its last quoted line or `</library_passage>`; the
+ *  LEAD words before it stay. Null leaves the key to the field. */
+export function chipDeleteRange(value: string, caret: { start: number; end: number }, key: ChipDeleteKey, forms: readonly { range: readonly [number, number] }[]): [number, number] | null {
+	if (key.key !== "Backspace" && key.key !== "Delete") return null;
+	if (key.composing || key.shiftKey || key.metaKey || key.ctrlKey || key.altKey) return null;
+	if (caret.start !== caret.end || caret.start < 0 || caret.start > value.length) return null;
+	const at = caret.start;
+	for (const { range: [start, end] } of forms) {
+		if (end > value.length || start >= end) continue;
+		if (key.key === "Backspace" ? end === at : start === at) return [start, end];
+	}
+	return null;
+}

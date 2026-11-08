@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { createElement, Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
-import { folderPathLabel, hasMentionTrigger, matchMentions, mentionName, mentionQuery, parseReferences, type LibraryFolder, type LibraryItem } from "@/src/core";
+import { folderPathLabel, hasMentionTrigger, matchMentions, mentionName, mentionQuery, parseReferences, type LibraryFolder, type LibraryItem, type LibraryKind, type LibraryTombstone } from "@/src/core";
 import type { CreateMentionPage, MentionItem } from "./mention-menu.tsx";
 
 /**
@@ -40,6 +40,30 @@ export function mentionKeyAction(state: {
 }
 
 export type MentionStatus = "idle" | "loading" | "ready" | "failed";
+
+/** A name the server still resolves for an item that isn't live (feature 027,
+ *  analyze M1): one in the Trash or deleted for good, or a file removed from its
+ *  repo by one of the paths it was named by. The composer draws it faint. */
+export interface GoneName { id: string; name: string; kind: LibraryKind; removed?: true }
+
+/** What the composer's chips are found by: the list the @ list loaded, and the
+ *  gone names, as tombstones the recogniser ranks below every live name. */
+export interface MentionCatalog {
+	entries: (LibraryItem | LibraryTombstone)[];
+	folders: LibraryFolder[];
+	/** Ids that left their repo (feature 026), drawn "removed" rather than "deleted". */
+	removedIds: ReadonlySet<string>;
+}
+
+type ListBody = { items: LibraryItem[]; folders?: LibraryFolder[]; gone?: { id: string; name: string; kind: LibraryKind }[]; removed?: { id: string; kind?: LibraryKind; names: string[] }[] };
+
+/** The gone names in a list response. A removed file without a known kind reads as a text file. */
+export function goneNames(body: Pick<ListBody, "gone" | "removed">): GoneName[] {
+	return [
+		...(body.gone ?? []),
+		...(body.removed ?? []).flatMap((entry) => entry.names.map((name): GoneName => ({ id: entry.id, name, kind: entry.kind ?? "text", removed: true }))),
+	];
+}
 
 /** A row of matches, or the "New page" row, which stays chosen as matches load. */
 export type MentionCursor = number | "new-page";
@@ -81,6 +105,7 @@ export function useLibraryMention({ value, onValueChange, inputRef }: {
 	const listId = useId();
 	const [items, setItems] = useState<LibraryItem[] | null>(null);
 	const [folders, setFolders] = useState<LibraryFolder[]>([]);
+	const [gone, setGone] = useState<GoneName[]>([]);
 	const [status, setStatus] = useState<MentionStatus>("idle");
 	const [caret, setCaret] = useState<number | null>(null);
 	const [composing, setComposing] = useState(false);
@@ -112,9 +137,10 @@ export function useLibraryMention({ value, onValueChange, inputRef }: {
 		try {
 			const response = await fetch("/api/library", { cache: "no-store" });
 			if (!response.ok) throw new Error(String(response.status));
-			const body = (await response.json()) as { items: LibraryItem[]; folders?: LibraryFolder[] };
+			const body = (await response.json()) as ListBody;
 			setItems(body.items);
 			setFolders(body.folders ?? []);
+			setGone(goneNames(body));
 			setStatus("ready");
 		} catch {
 			// A failed refresh keeps the last good list.
@@ -236,5 +262,13 @@ export function useLibraryMention({ value, onValueChange, inputRef }: {
 			: null,
 	);
 
-	return { ref, inputProps, onKeyDown, menu, line };
+	/** The loaded list for the field's chips (feature 027, T036): nothing is
+	 *  fetched for it, so it is null until a trigger loads the @ list. */
+	const catalog = useMemo((): MentionCatalog | null => items && {
+		entries: [...items, ...gone.map(({ id, name, kind }): LibraryTombstone => ({ id, name, kind, deletedAt: "" }))],
+		folders,
+		removedIds: new Set(gone.filter((g) => g.removed).map((g) => g.id)),
+	}, [items, gone, folders]);
+
+	return { ref, inputProps, onKeyDown, menu, line, catalog };
 }

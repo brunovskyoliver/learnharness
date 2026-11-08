@@ -57,6 +57,14 @@ describe("Composer", () => {
 		assert.ok(html.includes('aria-label="Start session"'));
 	});
 
+	it("the field is the same combobox textarea inside the chip mirror (feature 027, T040)", () => {
+		const html = render();
+		assert.match(html, /<div class="lh-ref-field"><div class="lh-ref-mirror" aria-hidden="true" data-testid="ref-mirror"><\/div><textarea/, "mirror before the field, empty on the server");
+		assert.match(html, /<textarea[^>]*role="combobox"[^>]*aria-autocomplete="list"[^>]*aria-expanded="false"/);
+		assert.match(html, /<textarea[^>]*class="[^"]*prompt-input field-sizing-content lh-input max-h-48 min-h-11[^"]*"/, "its classes unchanged");
+		assert.ok(!html.includes("data-overlay"), "the overlay turns on only in the browser");
+	});
+
 	it("disabled when nothing to send", () => {
 		const html = render({ canSend: false });
 		assert.ok(/aria-label="Send"[^>]*disabled|disabled[^>]*aria-label="Send"/.test(html), "send disabled");

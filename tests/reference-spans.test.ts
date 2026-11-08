@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { parseReferences, referenceSpans, type ReferenceSpan } from "../src/core/library-refs.ts";
+import { parseReferences, referenceForms, referenceSpans, type ReferenceSpan } from "../src/core/library-refs.ts";
 import type { LibraryFolder, LibraryItem, LibraryTombstone } from "../src/core/library.ts";
 
 // Feature 027, T004 + T053: the recogniser every chip and the server share.
@@ -108,4 +108,23 @@ describe("invariant: distinct span entries equal parseReferences", () => {
 	for (const [text, entries] of fixtures) {
 		it(JSON.stringify(text), () => assert.deepEqual(uniqueById(referenceSpans(text, entries)), parseReferences(text, entries)));
 	}
+});
+
+// T041: the composer runs this on every keystroke.
+describe("keystroke cost", () => {
+	it("referenceSpans + referenceForms on a 4,000-character draft with 2,000 items: under 1ms median", () => {
+		const items = Array.from({ length: 2000 }, (_, i): LibraryItem => ({ id: `lib_${i}`, name: `Item number ${i} notes`, kind: "page", size: 1, createdAt: "", updatedAt: "", origin: { type: "upload" } }));
+		let draft = "";
+		for (let i = 0; draft.length < 4000; i++) draft += `Some words about @Item number ${i * 37 % 2000} notes and a few more words. `;
+		draft = draft.slice(0, 4000);
+		const runs: number[] = [];
+		for (let i = 0; i < 60; i++) {
+			const t = performance.now();
+			referenceForms(draft, referenceSpans(draft, items));
+			runs.push(performance.now() - t);
+		}
+		runs.sort((a, b) => a - b);
+		const median = runs[runs.length >> 1]!;
+		assert.ok(median < 1, `median ${median.toFixed(3)}ms`);
+	});
 });

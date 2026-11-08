@@ -6,6 +6,7 @@ import { useEnterSubmits } from "@/components/enter-submits";
 import { ToolContentResponse } from "@/components/ai-elements/message";
 import { focusSurfaceInput } from "@/components/input-surface";
 import { useLibraryMention } from "@/components/library/use-library-mention.ts";
+import { ReferenceField } from "@/components/reference-field";
 
 /** The active problem's thread body (feature 025: inside the check's margin
  * thread, components/study/check-thread.tsx): the public statement, one
@@ -70,6 +71,7 @@ export function PracticeDock({ problemCallId, statement = "", active, onReveal, 
 			<div className="lh-check-answer">
 				<div data-testid="practice-thinking-field" className="nb-reply-line lh-check-field" onClick={focusSurfaceInput}>
 					{mention.menu}
+					<ReferenceField value={thinking} catalog={mention.catalog} inputRef={mention.ref}>
 					<textarea
 						{...mention.inputProps}
 						ref={mention.ref}
@@ -93,6 +95,7 @@ export function PracticeDock({ problemCallId, statement = "", active, onReveal, 
 						rows={1}
 						className="lh-check-input field-sizing-content lh-input"
 					/>
+					</ReferenceField>
 					{mention.line}
 				</div>
 				{compactionRunning && <p role="status" className="nb-thread-line">Compacting session…</p>}

@@ -6,10 +6,10 @@ Paper tokens only (DESIGN.md, feature 025). Items marked **[owner, approved]** w
 
 | Part | Sent message / tutor reply | Composer |
 |---|---|---|
-| Ground | `bg-shelf`, radius 6px, `px-1.5`, no vertical padding | `bg-shelf` from `box-shadow: 0 0 0 3px var(--shelf)` + radius 6px; no padding or margin (research R3) |
+| Ground | `bg-shelf`, radius 6px, `px-1.5`, no vertical padding | the other surface from `box-shadow: 0 0 0 3px` + radius 6px: `--paper` on the shelf prompt shell, `--shelf` elsewhere; no padding or margin (research R3; phase 4) |
 | Icon | 12px, graphite, before the name, `aria-hidden` | 12px, graphite, centred over the transparent `@` |
 | Name | ink, the surrounding size and weight | ink, the field's size and weight (same characters) |
-| Hint | ` · p. {n}` or the passage's first line, faint, one line, ellipsis; the name wraps inside the column at 320px | PDF form: the literal `, page {n}` drawn faint. Page form: the `>` lines drawn as the chip's passage body, graphite italic, markers transparent, on the same shelf block |
+| Hint | ` · p. {n}` or the passage's first line, faint, one line, ellipsis; the whole chip is one line and never breaks inside its name: past the column's width the hint gives way, then the name ends in an ellipsis (`title` = the full name; owner, phase 3 review) | PDF form: the literal `, page {n}` drawn faint. Page form: the `>` lines drawn as the chip's passage body, graphite italic, markers transparent, on the same shelf block |
 | Hover | name underline ink 40% → ink (as links) | none (not a link) |
 | Focus | 2px `--nb-focus` outline, offset 2px | the field's caret only |
 | Coarse pointer | 44px hit box (inline-flex, transparent padding) | n/a |

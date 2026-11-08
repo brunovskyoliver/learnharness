@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { GitRemote, skipReason } from "../../fixtures/git-remote";
-import { chatView, clearStudyKey, createPage, interceptModel, noPageOverflow, openChat, seedReferenceLesson, studySettings, visible, type ReferenceLesson } from "./helpers";
+import { chatView, clearStudyKey, createPage, hydrated, interceptModel, noPageOverflow, openChat, seedReferenceLesson, studySettings, visible, type ReferenceLesson } from "./helpers";
 
 // Feature 027, US1 (T032, T055, T056): chips in sent messages and reference
 // rows open the Library's full view at the passage; the Back pill and the
@@ -64,7 +64,7 @@ test.describe("Study: reference chips in sent messages", () => {
 	test.beforeAll(async () => {
 		if (!skipReason()) remote = await GitRemote.start();
 	});
-	test.afterAll(async () => { await remote?.close(); });
+	test.afterAll(async () => { await remote?.close(); remote = undefined; });
 	test.beforeEach(async ({ request, page }) => {
 		await studySettings(request);
 		await page.setViewportSize({ width: 1440, height: 900 });
@@ -358,5 +358,305 @@ test.describe("Study: reference chips in sent messages", () => {
 		await expect(side).toBeVisible({ timeout: 20_000 });
 		await expect(side).toHaveAttribute("aria-label", "Notes.pdf");
 		await expect(page).toHaveURL(`/library?item=${encodeURIComponent(cited.id)}`);
+	});
+});
+
+// Feature 027, US2 (T042, T057): chips drawn over the composer's text field.
+// The field is today's textarea; a mirror behind it draws the same characters.
+
+const field = (page: Page) => visible(page, '[data-testid="composer"] textarea');
+const fieldBox = (page: Page) => visible(page, '[data-testid="composer"] .lh-ref-field');
+const mirrorChips = (page: Page) => page.locator('[data-testid="composer"] .lh-ref-field[data-overlay="on"] [data-testid="ref-field-chip"]').filter({ visible: true });
+
+/** Forces the overlay off, as a browser without `field-sizing` sees it. */
+async function overlayOff(page: Page) {
+	await page.addInitScript(() => {
+		const supports = CSS.supports.bind(CSS);
+		CSS.supports = ((...args: [string, string?]) => (args[0] === "field-sizing" ? false : supports(...(args as [string, string])))) as typeof CSS.supports;
+	});
+}
+
+/** The caret's x/y in the field, measured by a full-style clone of the textarea
+ *  (independent of the mirror), against the right edge of the chip that ends there. */
+async function caretAgainstChip(page: Page, chipIndex: number) {
+	return page.evaluate((index) => {
+		const textarea = [...document.querySelectorAll<HTMLTextAreaElement>('[data-testid="composer"] textarea')].find((el) => el.getClientRects().length > 0)!;
+		const chip = [...textarea.parentElement!.querySelectorAll<HTMLElement>('[data-testid="ref-field-chip"]')][index]!;
+		const end = chip.textContent!.length + textarea.value.indexOf(chip.textContent!);
+		const clone = document.createElement("div");
+		const style = getComputedStyle(textarea);
+		for (const name of style) clone.style.setProperty(name, style.getPropertyValue(name));
+		const box = textarea.getBoundingClientRect();
+		Object.assign(clone.style, { display: "block", position: "fixed", left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: "auto", maxHeight: "none", visibility: "hidden", overflow: "hidden" });
+		clone.textContent = textarea.value.slice(0, end);
+		const marker = document.createElement("span");
+		marker.textContent = "​";
+		clone.append(marker);
+		document.body.append(clone);
+		const caret = marker.getBoundingClientRect();
+		clone.remove();
+		const rects = [...chip.getClientRects()];
+		const last = rects.at(-1)!;
+		return { caretX: caret.left, caretY: caret.top, chipRight: last.right, chipTop: last.top, scroll: textarea.scrollTop };
+	}, chipIndex);
+}
+
+/** The values a field goes through for one fixed key sequence. */
+async function editSequence(page: Page, chatId: string): Promise<string[]> {
+	await openChat(page, chatId);
+	await hydrated(page, '[data-testid="composer"] textarea');
+	const input = field(page);
+	await input.click();
+	await input.fill("");
+	const values: string[] = [];
+	const read = async () => values.push(await input.inputValue());
+	await page.keyboard.type("Read @Untit");
+	await expect(visible(page, '[data-testid="mention-menu"]')).toBeVisible();
+	await page.keyboard.press("Enter");
+	await read();
+	await page.keyboard.type("and ");
+	await page.keyboard.insertText("a pasted line\nwith @Notes.pdf in it");
+	await read();
+	await page.keyboard.press("Control+z");
+	await read();
+	await page.keyboard.press("Control+Shift+z");
+	await read();
+	// IME: a composition, then its commit.
+	const cdp = await page.context().newCDPSession(page);
+	await cdp.send("Input.imeSetComposition", { text: "かな", selectionStart: 2, selectionEnd: 2 });
+	await read();
+	await cdp.send("Input.insertText", { text: "仮名" });
+	await read();
+	await cdp.detach();
+	return values;
+}
+
+test.describe("Study: reference chips in the composer", () => {
+	test.beforeAll(async () => {
+		if (!skipReason() && !remote) remote = await GitRemote.start();
+	});
+	test.afterAll(async () => { await remote?.close(); remote = undefined; });
+	test.beforeEach(async ({ request, page }) => {
+		await studySettings(request);
+		await page.setViewportSize({ width: 1440, height: 900 });
+	});
+	test.afterEach(async ({ request }) => { await clearStudyKey(request); });
+
+	test("composer: the @ list inserts a chip; typing, paste, undo, redo and IME give the same values as with the overlay off", async ({ page, browser, request }) => {
+		test.setTimeout(240_000);
+		const lesson = await seedReferenceLesson(request, { remote });
+		await interceptModel(page);
+		const on = await editSequence(page, lesson.chatId);
+		await expect(fieldBox(page)).toHaveAttribute("data-overlay", "on");
+
+		const context = await browser.newContext({ baseURL: test.info().project.use.baseURL, viewport: { width: 1440, height: 900 } });
+		const other = await context.newPage();
+		await overlayOff(other);
+		await interceptModel(other);
+		const off = await editSequence(other, lesson.chatId);
+		await expect(fieldBox(other)).not.toHaveAttribute("data-overlay", "on");
+		await context.close();
+
+		expect(on).toEqual(off);
+		expect(on[0]).toBe("Read @Untitled note ");
+		expect(on[1]).toBe("Read @Untitled note and a pasted line\nwith @Notes.pdf in it");
+		expect(on.at(-1)).toContain("仮名");
+	});
+
+	test("composer: chips, caret, whole-chip Backspace, reload and send", async ({ page, request }) => {
+		test.setTimeout(240_000);
+		const lesson = await seedReferenceLesson(request, { remote });
+		const posts = await interceptModel(page);
+		await openChat(page, lesson.chatId);
+		await hydrated(page, '[data-testid="composer"] textarea');
+		const input = field(page);
+		await input.click();
+		await page.keyboard.type("Read @Untit");
+		await expect(visible(page, '[data-testid="mention-menu"]')).toBeVisible();
+		await shot(page, "composer-list-open-light-1440");
+		await page.keyboard.press("Enter");
+		await page.keyboard.type("then @Notes.pdf");
+		await expect(mirrorChips(page)).toHaveCount(2);
+		await expect(mirrorChips(page).nth(0)).toHaveText("@Untitled note");
+		await expect(mirrorChips(page).nth(0)).toHaveAttribute("data-kind", "page");
+		await expect(mirrorChips(page).nth(1)).toHaveAttribute("data-kind", "pdf");
+		// The textarea's own text is transparent; the field is still the combobox.
+		expect(await input.evaluate((el) => getComputedStyle(el).color)).toBe("rgba(0, 0, 0, 0)");
+		await expect(input).toHaveAttribute("role", "combobox");
+
+		// The caret sits at the chip's end, within 1px (both chips).
+		for (const index of [0, 1]) {
+			const at = await caretAgainstChip(page, index);
+			expect(Math.abs(at.caretX - at.chipRight), `chip ${index} x`).toBeLessThanOrEqual(1);
+			expect(Math.abs(at.caretY - at.chipTop), `chip ${index} y`).toBeLessThanOrEqual(2);
+		}
+
+		// Backspace at a chip's end removes it whole; one undo brings it back.
+		await page.keyboard.press("Backspace");
+		await expect(input).toHaveValue("Read @Untitled note then ");
+		await expect(mirrorChips(page)).toHaveCount(1);
+		await page.keyboard.press("Control+z");
+		await expect(input).toHaveValue("Read @Untitled note then @Notes.pdf");
+		await expect(mirrorChips(page)).toHaveCount(2);
+		// Delete right before a chip removes it whole too.
+		await input.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(5, 5));
+		await page.keyboard.press("Delete");
+		await expect(input).toHaveValue("Read  then @Notes.pdf");
+		await page.keyboard.press("Control+z");
+		await expect(input).toHaveValue("Read @Untitled note then @Notes.pdf");
+
+		// Caret mid-text and a selection across a chip, as the browser draws them.
+		await input.evaluate((el: HTMLTextAreaElement) => { el.focus(); el.setSelectionRange(12, 12); });
+		await shot(page, "composer-caret-mid-light-1440");
+		await input.evaluate((el: HTMLTextAreaElement) => { el.focus(); el.setSelectionRange(2, 24); });
+		await shot(page, "composer-selection-light-1440");
+
+		// A deleted and a removed item are drawn faint (M1).
+		await input.evaluate((el: HTMLTextAreaElement) => el.setSelectionRange(el.value.length, el.value.length));
+		await page.keyboard.type(` and @${lesson.items.gone.name}`);
+		await page.keyboard.press("Escape");
+		if (lesson.mirrored) await page.keyboard.insertText(` with @${lesson.mirrored.removedPath}`);
+		const gone = mirrorChips(page).filter({ hasText: lesson.items.gone.name });
+		await expect(gone).toHaveAttribute("data-state", "deleted");
+		if (lesson.mirrored) await expect(mirrorChips(page).filter({ hasText: lesson.mirrored.removedPath })).toHaveAttribute("data-state", "removed");
+		await shot(page, "composer-deleted-removed-light-1440");
+
+		// A reload keeps the draft, and its chips come back.
+		const draft = await input.inputValue();
+		await page.reload();
+		await hydrated(page, '[data-testid="composer"] textarea');
+		await expect(field(page)).toHaveValue(draft, { timeout: 20_000 });
+		await expect(mirrorChips(page)).toHaveCount(lesson.mirrored ? 4 : 3, { timeout: 20_000 });
+
+		// Send: the body carries the draft's characters exactly.
+		await field(page).click();
+		await page.keyboard.press("Control+End");
+		await page.keyboard.press("Enter");
+		await expect.poll(() => posts.filter((p) => p.path === "/api/chat").length).toBe(1);
+		const sent = posts.find((p) => p.path === "/api/chat")!.body.input as { type: string; text: string };
+		expect(sent).toEqual({ type: "text", text: draft.trim() });
+	});
+
+	test("composer: Ask… forms on a page and a PDF, at 320, 390 and 1440, light and dark", async ({ page, request }) => {
+		test.setTimeout(300_000);
+		const lesson = await seedReferenceLesson(request, { remote });
+		await interceptModel(page);
+		const pageAsk = `About this part of @${lesson.items.note.name}:\n\n> Second paragraph, the one he quoted.\n\n`;
+		const pdfAsk = `About this part of @${lesson.items.pdf.name}, page 4:\n\n<library_passage item="${lesson.items.pdf.id}" page="4">\nPage 4: the passage he sent sits here.\n</library_passage>\n\n`;
+		for (const appearance of ["light", "dark"] as const) {
+			await studySettings(request, { appearance });
+			for (const [width, height] of [[1440, 900], [390, 844], [320, 700]] as const) {
+				await page.setViewportSize({ width, height });
+				for (const [name, draft] of [["page", pageAsk], ["pdf", pdfAsk]] as const) {
+					await page.goto(`/chat/new?draft=${encodeURIComponent(draft)}`);
+					await hydrated(page, '[data-testid="composer"] textarea');
+					await expect(field(page)).toHaveValue(draft, { timeout: 60_000 });
+					await expect(fieldBox(page)).toHaveAttribute("data-overlay", "on");
+					const head = mirrorChips(page).first();
+					await expect(head).toBeVisible({ timeout: 20_000 });
+					await expect(visible(page, '[data-testid="composer"] .lh-ref-chip-body')).toBeVisible();
+					if (name === "pdf") await expect(head.locator(".lh-ref-chip-page")).toHaveText(", page 4");
+					// The caret after the chip's head sits at its end.
+					const at = await caretAgainstChip(page, 0);
+					expect(Math.abs(at.caretX - at.chipRight), `${name} ${width} x`).toBeLessThanOrEqual(1);
+					await noPageOverflow(page, `composer ${name} ${width}`);
+					await field(page).focus();
+					await shot(page, `composer-${name}-form-${appearance}-${width}`);
+					// One Backspace at the form's end removes it whole, LEAD words kept.
+					await field(page).evaluate((el: HTMLTextAreaElement) => { const end = el.value.trimEnd().length; el.setSelectionRange(end, end); });
+					await page.keyboard.press("Backspace");
+					await expect(field(page)).toHaveValue(/^About this part of \n\n$/);
+				}
+			}
+		}
+	});
+
+	test("composer: a mirrored item from the @ list is one chip over its whole path (T057)", async ({ page, browser, request }) => {
+		test.skip(Boolean(skipReason()), skipReason() ?? "");
+		test.setTimeout(240_000);
+		const lesson = await seedReferenceLesson(request, { remote });
+		const mirrored = lesson.mirrored!;
+		const run = async (target: Page) => {
+			const posts = await interceptModel(target);
+			await openChat(target, lesson.chatId);
+			await hydrated(target, '[data-testid="composer"] textarea');
+			await field(target).click();
+			await field(target).fill("");
+			// The linked folder's name keeps another spec's week1/notes.md out of the rows.
+			await target.keyboard.type(`Compare @${mirrored.folder.split(" ").at(-1)}/week1/no`);
+			await expect(visible(target, '[data-testid="mention-menu"]')).toBeVisible();
+			// The row for the live week1 notes.md.
+			await visible(target, '[data-testid="mention-option"]').waitFor();
+			const option = target.locator('[data-testid="mention-option"]').filter({ visible: true }).filter({ hasText: "week1" }).first();
+			await option.click();
+			return { posts, value: await field(target).inputValue() };
+		};
+		const { posts, value } = await run(page);
+		expect(value).toBe(`Compare @${mirrored.livePath} `);
+		await expect(mirrorChips(page)).toHaveCount(1);
+		await expect(mirrorChips(page).first()).toHaveText(`@${mirrored.livePath}`);
+		await expect(mirrorChips(page).first()).toHaveAttribute("data-kind", "markdown");
+		await page.keyboard.type(`and @${mirrored.folder}/week2/notes.md`);
+		await expect(mirrorChips(page)).toHaveCount(2);
+		await shot(page, "composer-mirrored-paths-light-1440");
+		// Backspace removes the removed path whole, then (after the space) the live one.
+		await page.keyboard.press("Backspace");
+		await expect(field(page)).toHaveValue(`Compare @${mirrored.livePath} and `);
+		await page.keyboard.press("Backspace");
+		await page.keyboard.press("Backspace");
+		await page.keyboard.press("Backspace");
+		await page.keyboard.press("Backspace");
+		await page.keyboard.press("Backspace");
+		await expect(field(page)).toHaveValue(`Compare @${mirrored.livePath}`);
+		await page.keyboard.press("Backspace");
+		await expect(field(page)).toHaveValue("Compare ");
+		await page.keyboard.press("Control+z");
+		await expect(field(page)).toHaveValue(`Compare @${mirrored.livePath}`);
+		await page.keyboard.press("Enter");
+		await expect.poll(() => posts.filter((p) => p.path === "/api/chat").length).toBe(1);
+		const sentOn = (posts.find((p) => p.path === "/api/chat")!.body.input as { text: string }).text;
+
+		// The same with the overlay off.
+		const context = await browser.newContext({ baseURL: test.info().project.use.baseURL, viewport: { width: 1440, height: 900 } });
+		const other = await context.newPage();
+		await overlayOff(other);
+		const off = await run(other);
+		await other.keyboard.press("Enter");
+		await expect.poll(() => off.posts.filter((p) => p.path === "/api/chat").length).toBe(1);
+		const sentOff = (off.posts.find((p) => p.path === "/api/chat")!.body.input as { text: string }).text;
+		await context.close();
+		expect(sentOn).toBe(`Compare @${mirrored.livePath}`);
+		expect(sentOff).toBe(`Compare @${mirrored.livePath}`);
+	});
+
+	test("composer: dark and phone widths", async ({ page, request }) => {
+		test.setTimeout(240_000);
+		const lesson = await seedReferenceLesson(request, { remote });
+		await interceptModel(page);
+		for (const appearance of ["light", "dark"] as const) {
+			await studySettings(request, { appearance });
+			for (const [width, height] of [[1440, 900], [390, 844], [320, 700]] as const) {
+				await page.setViewportSize({ width, height });
+				await openChat(page, lesson.chatId);
+				await hydrated(page, '[data-testid="composer"] textarea');
+				await field(page).click();
+				await field(page).fill("");
+				await page.keyboard.type(`What does @${lesson.items.note.name} say about @${lesson.items.pdf.name}? And @${lesson.items.gone.name}`);
+				await expect(mirrorChips(page)).toHaveCount(3);
+				for (const index of [0, 1]) {
+					const at = await caretAgainstChip(page, index);
+					expect(Math.abs(at.caretX - at.chipRight), `${appearance} ${width} chip ${index}`).toBeLessThanOrEqual(1);
+				}
+				await noPageOverflow(page, `composer ${appearance} ${width}`);
+				await shot(page, `composer-chips-${appearance}-${width}`);
+				if (width === 390) {
+					await page.keyboard.type(" and @Untit");
+					await expect(visible(page, '[data-testid="mention-menu"]')).toBeVisible();
+					await shot(page, `composer-list-open-${appearance}-390`);
+					await page.keyboard.press("Escape");
+				}
+				await field(page).fill("");
+			}
+		}
 	});
 });

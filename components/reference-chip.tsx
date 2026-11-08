@@ -14,9 +14,9 @@
  */
 import { createContext, useContext, useMemo, type MouseEvent, type ReactNode } from "react";
 import { useWorkspace } from "@/components/workspace/workspace-context";
-import { FileCodeIcon, FileIcon, FileTextIcon, FileTypeIcon, ImageIcon, NetworkIcon, NotebookTextIcon, SheetIcon, type LucideIcon } from "lucide-react";
+import { KIND_ICON } from "@/components/reference-icons";
 import { cn } from "@/lib/utils";
-import { NO_LONGER_IN_LIBRARY, REMOVED_FROM_REPO, UNTITLED_SESSION, type ChipTarget, type LibraryKind } from "@/src/core";
+import { NO_LONGER_IN_LIBRARY, REMOVED_FROM_REPO, UNTITLED_SESSION, type ChipTarget } from "@/src/core";
 import { markNextEntry, newNonce, saveReturnPoint } from "@/components/reference-return";
 
 /** The lesson a chip sits in. Without one (render tests, other routes) a
@@ -55,17 +55,7 @@ function useOpenReference(href: string | null, chipId: string | undefined, own =
 }
 
 /** Approved by the owner at gate 2 (ui-contract §1). */
-export const KIND_ICON: Record<LibraryKind, LucideIcon> = {
-	page: NotebookTextIcon,
-	markdown: FileTextIcon,
-	text: FileTextIcon,
-	code: FileCodeIcon,
-	csv: SheetIcon,
-	pdf: FileTypeIcon,
-	image: ImageIcon,
-	diagram: NetworkIcon,
-	other: FileIcon,
-};
+export { KIND_ICON };
 
 export interface ReferenceChipProps {
 	target: ChipTarget;
@@ -90,28 +80,28 @@ export function ReferenceChip({ target, chipId, source, className, citation = fa
 		"data-source": source,
 		className: cn("lh-ref-chip", className),
 	};
-	// The icon stays on the line of the name's first word; the rest may wrap.
-	const space = target.name.search(/\s/);
-	const head = space === -1 ? target.name : target.name.slice(0, space);
-	const icon = <span className="lh-ref-chip-head"><Icon className="lh-ref-chip-icon" aria-hidden="true" focusable="false" />{head}</span>;
-	const rest = space === -1 ? "" : target.name.slice(space);
+	// One line, never broken inside the name: past the column's width the name
+	// ends in an ellipsis, and its title (and the accessible name) keeps it whole.
+	const icon = <Icon className="lh-ref-chip-icon" aria-hidden="true" focusable="false" />;
+	const name = <span className="lh-ref-chip-name" title={target.name}>{target.name}</span>;
+	const folder = target.folderHint && <span className="lh-ref-chip-folder">{` ${target.folderHint}`}</span>;
 	if (target.href === null) {
 		const suffix = target.state === "removed" ? REMOVED_FROM_REPO : NO_LONGER_IN_LIBRARY;
 		return (
 			<span {...common}>
 				{icon}
-				{rest}
-				{target.folderHint && <>{" "}<span className="lh-ref-chip-folder">{target.folderHint}</span></>}
-				{suffix}
+				{name}
+				{folder}
+				<span className="lh-ref-chip-suffix">{suffix}</span>
 			</span>
 		);
 	}
 	return (
 		<a {...common} href={target.href} onClick={open} aria-label={target.label} aria-description={target.description}>
 			{icon}
-			{rest}
-			{target.folderHint && <>{" "}<span className="lh-ref-chip-folder">{target.folderHint}</span></>}
-			{target.hint && <>{" "}<span className="lh-ref-chip-hint" data-testid="ref-chip-hint">{target.hint}</span></>}
+			{name}
+			{folder}
+			{target.hint && <span className="lh-ref-chip-hint" data-testid="ref-chip-hint">{` ${target.hint}`}</span>}
 		</a>
 	);
 }

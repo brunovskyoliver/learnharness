@@ -38,11 +38,18 @@ describe("ReferenceChip", () => {
 	});
 	it("a page hint and a passage hint sit in the truncating hint span", () => {
 		const page = render({ ...base, name: "Notes.pdf", kind: "pdf", page: 4, quote: "words" });
-		assert.match(page, /<span class="lh-ref-chip-hint" data-testid="ref-chip-hint">· p. 4<\/span>/);
+		assert.match(page, /<span class="lh-ref-chip-hint" data-testid="ref-chip-hint"> · p. 4<\/span>/);
 		assert.match(page, /aria-description="words"/);
 		const passage = render({ ...base, quote: "The first line\nmore" });
 		assert.equal(text(passage), "Untitled note · The first line");
 		assert.match(passage, /aria-label="Open Untitled note at the passage &quot;The first line more&quot;"/);
+	});
+	it("one line: the name is one truncating span titled with the whole name (phase 3 review)", () => {
+		const html = render({ ...base, name: "A rather long note name" });
+		assert.match(html, /<span class="lh-ref-chip-name" title="A rather long note name">A rather long note name<\/span>/);
+		assert.ok(!html.includes("lh-ref-chip-head"), "the name is no longer split at its first word");
+		const gone = render({ ...base, name: "Gone note", state: "deleted" });
+		assert.match(gone, /<span class="lh-ref-chip-name" title="Gone note">Gone note<\/span><span class="lh-ref-chip-suffix"> · no longer in your Library<\/span>/);
 	});
 	it("trashed links to its Trash entry", () => {
 		const html = render({ ...base, state: "trashed", trashEntryId: "tr_1" });
@@ -84,7 +91,7 @@ describe("feature 026 (T054) and equal names (M2)", () => {
 	it("two notes.md chips show their folder faintly and speak their paths", () => {
 		const [one, two] = chipTargets([mirrored("a", "week1"), mirrored("b", "week2")]).map((target) => renderToStaticMarkup(<ReferenceChip target={target} source="" />));
 		assert.equal(text(one!), "notes.md · week1");
-		assert.match(one!, /<span class="lh-ref-chip-folder">· week1<\/span>/);
+		assert.match(one!, /<span class="lh-ref-chip-folder"> · week1<\/span>/);
 		assert.match(two!, /aria-label="Open Lecture notes\/week2\/notes.md, Markdown"/);
 	});
 });

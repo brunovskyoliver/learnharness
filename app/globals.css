@@ -1742,7 +1742,7 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 .lh-check-answer { display: flex; flex-direction: column; gap: 12px; }
 .lh-paper .lh-check-field { border-bottom: 1px solid var(--nb-control-edge); cursor: text; }
 /* Phones: the reply line is a 44px target (feature 025, T061). */
-@media (pointer: coarse) { .lh-paper .lh-check-field > textarea { min-height: 43px; } }
+@media (pointer: coarse) { .lh-paper .lh-check-field textarea { min-height: 43px; } }
 .lh-check-input {
 	display: block;
 	width: 100%;

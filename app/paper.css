@@ -3031,37 +3031,41 @@ html.lh-paper[data-theme="dark"] .lh-mark-on-dark { display: inline-block; }
    composer (.lh-ref-mirror) it may only restyle the characters it covers: the
    ground is a shelf box-shadow, no padding or margin (research R3). */
 .lh-paper .lh-ref-chip {
+	/* One line: a chip never breaks inside its name (owner, phase 3 review). Past
+	   the column's width the name ends in an ellipsis; its title keeps it whole. */
+	display: inline-flex;
+	max-width: 100%;
+	align-items: baseline;
 	padding: 0 6px;
 	border-radius: 6px;
 	background: var(--shelf);
 	color: var(--ink);
 	font: inherit;
+	line-height: 1.3;
+	text-decoration: none;
+	white-space: nowrap;
+	vertical-align: baseline;
+}
+.lh-paper .lh-ref-chip-name {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
 	text-decoration: underline;
 	text-decoration-color: color-mix(in srgb, var(--ink) 40%, transparent);
 	text-decoration-thickness: 1px;
 	text-underline-offset: 3px;
-	-webkit-box-decoration-break: clone;
-	box-decoration-break: clone;
-	overflow-wrap: anywhere;
 	transition: text-decoration-color 150ms;
 }
-.lh-paper a.lh-ref-chip:hover { text-decoration-color: var(--ink); }
+.lh-paper a.lh-ref-chip:hover .lh-ref-chip-name { text-decoration-color: var(--ink); }
 .lh-paper .lh-ref-chip:focus-visible, .lh-paper [data-focus-return]:focus { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
-.lh-paper .lh-ref-chip-icon { display: inline-block; width: 12px; height: 12px; margin-right: 4px; color: var(--graphite); vertical-align: -1px; }
-.lh-paper .lh-ref-chip-hint {
-	display: inline-block;
-	max-width: 100%;
-	overflow: hidden;
-	color: var(--faint);
-	text-decoration: none;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-	vertical-align: bottom;
-}
-.lh-paper .lh-ref-chip-folder { display: inline-block; color: var(--faint); text-decoration: none; }
-.lh-paper .lh-ref-chip-head { white-space: nowrap; }
+.lh-paper .lh-ref-chip-icon { flex-shrink: 0; align-self: center; width: 12px; height: 12px; margin-right: 4px; color: var(--graphite); }
+/* The hint gives way first, then the name; the words after a gone name stay. */
+.lh-paper .lh-ref-chip-hint { flex-shrink: 100; min-width: 0; margin-left: .25em; overflow: hidden; color: var(--faint); text-overflow: ellipsis; }
+.lh-paper .lh-ref-chip-folder { flex-shrink: 50; min-width: 0; margin-left: .25em; overflow: hidden; color: var(--faint); text-overflow: ellipsis; }
+.lh-paper .lh-ref-chip-suffix { flex-shrink: 0; margin-left: .25em; }
 /* Deleted for good, or removed from the repo: the name as written, faint, not a link. */
-.lh-paper .lh-ref-chip:is([data-state="deleted"], [data-state="removed"]) { padding: 0; background: none; color: var(--faint); text-decoration: none; }
+.lh-paper .lh-ref-chip:is([data-state="deleted"], [data-state="removed"]) { padding: 0; background: none; color: var(--faint); }
+.lh-paper .lh-ref-chip:is([data-state="deleted"], [data-state="removed"]) .lh-ref-chip-name { text-decoration: none; }
 .lh-paper .lh-ref-chip:is([data-state="deleted"], [data-state="removed"]) .lh-ref-chip-icon { color: var(--faint); }
 
 /* Coarse pointers: a 44px hit box around the chip, drawn by nothing. */
@@ -3070,24 +3074,54 @@ html.lh-paper[data-theme="dark"] .lh-mark-on-dark { display: inline-block; }
 	.lh-paper a.lh-ref-chip::before { content: ""; position: absolute; top: 50%; left: 50%; width: max(100%, 44px); height: 44px; transform: translate(-50%, -50%); }
 }
 
-/* The composer: a mirror layer under a transparent-text textarea, the same
-   grid cell and the same text metrics. Off (no data-overlay) it is today's field. */
-.lh-paper .lh-ref-field { display: grid; min-width: 0; }
-.lh-paper .lh-ref-field > :is(textarea, .lh-ref-mirror) { grid-area: 1 / 1; }
+/* The composer (research R3): a mirror layer under a transparent-text textarea,
+   with the textarea's own text metrics (copied from it by reference-field.tsx).
+   The mirror sits behind the field's box and never sizes it. A chip there may
+   only restyle the characters it covers: no padding, margin or line break of its
+   own. Off (no data-overlay) the field is today's. */
+.lh-paper .lh-ref-field { position: relative; display: grid; width: 100%; min-width: 0; }
 .lh-paper .lh-ref-field:not([data-overlay="on"]) > .lh-ref-mirror { display: none; }
-.lh-paper .lh-ref-field[data-overlay="on"] > textarea { color: transparent; caret-color: var(--ink); }
+.lh-paper .lh-ref-field[data-overlay="on"] > textarea { position: relative; color: transparent; caret-color: var(--ink); }
+/* The selection is the app's (ink 24% over the ground), see-through so the
+   mirror's characters show under it. */
+.lh-paper .lh-ref-field[data-overlay="on"] > textarea::selection { background: color-mix(in srgb, var(--ink) 24%, transparent); color: transparent; }
 .lh-paper .lh-ref-mirror {
+	position: absolute;
+	inset: 0;
 	overflow: hidden;
+	border-color: transparent;
 	color: var(--ink);
-	white-space: pre-wrap;
-	overflow-wrap: break-word;
 	pointer-events: none;
+	user-select: none;
 	scrollbar-width: none;
 }
 .lh-paper .lh-ref-mirror::-webkit-scrollbar { display: none; }
-.lh-paper .lh-ref-mirror .lh-ref-chip { padding: 0; background: var(--shelf); box-shadow: 0 0 0 3px var(--shelf); text-decoration: none; }
-.lh-paper .lh-ref-mirror .lh-ref-chip-passage { color: var(--graphite); font-style: italic; }
+.lh-paper .lh-ref-mirror .lh-ref-chip {
+	display: inline;
+	max-width: none;
+	padding: 0;
+	background: var(--lh-ref-ground, var(--shelf));
+	box-shadow: 0 0 0 3px var(--lh-ref-ground, var(--shelf));
+	line-height: inherit;
+	white-space: inherit;
+	-webkit-box-decoration-break: clone;
+	box-decoration-break: clone;
+}
+/* On the prompt shell, itself shelf, the chip takes the paper: the other surface,
+   as a sent chip's shelf is on the paper. */
+.lh-paper .prompt-shell .lh-ref-mirror { --lh-ref-ground: var(--paper); }
+/* The `@` stays, transparent, and the kind icon is drawn over it. */
+.lh-paper .lh-ref-mirror .lh-ref-chip-at { position: relative; color: transparent; }
+.lh-paper .lh-ref-mirror .lh-ref-chip-at > svg { position: absolute; top: 50%; left: 50%; width: 12px; height: 12px; color: var(--graphite); transform: translate(-50%, -50%); }
+.lh-paper .lh-ref-mirror .lh-ref-chip-page { color: var(--faint); }
+/* The passage under a quote form's head: its words on the chip's ground, the
+   markers (`> `, the passage tags) transparent and off it. */
+.lh-paper .lh-ref-mirror .lh-ref-chip-body { background: none; box-shadow: none; }
+.lh-paper .lh-ref-mirror .lh-ref-chip-passage { border-radius: 6px; background: var(--lh-ref-ground, var(--shelf)); box-shadow: 0 0 0 3px var(--lh-ref-ground, var(--shelf)); color: var(--graphite); font-style: italic; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.lh-paper .lh-ref-mirror .lh-ref-chip:is([data-state="deleted"], [data-state="removed"]) .lh-ref-chip-passage { background: none; box-shadow: none; color: var(--faint); }
 .lh-paper .lh-ref-mirror .lh-ref-chip-marker { color: transparent; }
+.lh-paper .lh-ref-mirror .lh-ref-chip:is([data-state="deleted"], [data-state="removed"]) { background: none; box-shadow: none; color: var(--faint); }
+.lh-paper .lh-ref-mirror .lh-ref-chip:is([data-state="deleted"], [data-state="removed"]) .lh-ref-chip-at > svg { color: var(--faint); }
 .lh-paper .lh-ref-mirror .lh-ref-composing { text-decoration: underline 1px; text-underline-offset: 3px; }
 
 /* The Back pill (ui-contract §5): the primary pill at the content column's
@@ -3108,6 +3142,6 @@ html.lh-paper[data-theme="dark"] .lh-mark-on-dark { display: inline-block; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.lh-paper .lh-ref-chip { transition: none; }
+	.lh-paper .lh-ref-chip-name { transition: none; }
 	.lh-paper .lh-back-pill { transition: none; }
 }

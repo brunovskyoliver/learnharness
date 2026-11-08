@@ -6,6 +6,7 @@ import { InputGroup, InputGroupTextarea } from "@/components/ui/input-group";
 import { AnswerWell, PrimaryAction, PromptSubmit, PromptToolbar } from "@/components/prompt-controls";
 import { focusSurfaceInput } from "@/components/input-surface";
 import { useLibraryMention } from "@/components/library/use-library-mention.ts";
+import { ReferenceField } from "@/components/reference-field";
 
 /**
  * Composer content and toolbar. The persistent shell belongs to the caller
@@ -103,6 +104,7 @@ export function Composer({
 			<InputGroup className="h-auto flex-col border-0 bg-transparent shadow-none ring-0 has-[[data-slot=input-group-control]:focus-visible]:ring-0">
 			<AnswerWell>
 			{mention.menu}
+			<ReferenceField value={value} catalog={mention.catalog} inputRef={mention.ref}>
 			<InputGroupTextarea
 				{...mention.inputProps}
 				ref={mention.ref}
@@ -134,6 +136,7 @@ export function Composer({
 				rows={1}
 				className="prompt-input field-sizing-content lh-input max-h-48 min-h-11 w-full resize-none bg-transparent px-4 pt-3 pb-1 outline-none"
 			/>
+			</ReferenceField>
 			{mention.line}
 			</AnswerWell>
 			<PromptToolbar controls={controls} setup={setup}>

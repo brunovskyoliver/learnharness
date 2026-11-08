@@ -61,16 +61,22 @@ async function guarded(run: () => Promise<Response>): Promise<Response> {
 export { refusal as libraryRefusal, guarded as libraryGuarded };
 
 export function libraryListResponse(): Promise<Response> {
-	return guarded(async () => json({
+	return guarded(async () => {
+		const catalog = await libraryStore.catalog();
+		return json({
 		items: await libraryStore.list(),
 		folders: await libraryStore.folders(),
 		recentIds: (await libraryStore.recent()).map((item) => item.id),
 		links: await repoLinkViews(),
 		// Feature 027: files removed from a linked repo, by the paths a sent
 		// message still names them by, so its chip reads "Removed from the repo".
-		removed: (await libraryStore.catalog()).flatMap((entry) => (isTombstone(entry) && entry.mirror && entry.removedBecause ? [{ id: entry.id, names: entry.kept?.previousNames ?? [] }] : [])),
+		removed: catalog.flatMap((entry) => (isTombstone(entry) && entry.mirror && entry.removedBecause ? [{ id: entry.id, kind: entry.kind, names: entry.kept?.previousNames ?? [] }] : [])),
+		// Feature 027 (analyze M1): the other names the server still resolves, of
+		// items in the Trash or deleted for good, so the composer draws them faint.
+		gone: catalog.flatMap((entry) => (isTombstone(entry) && !entry.mirror ? [{ id: entry.id, name: entry.name, kind: entry.kind }] : [])),
 		limits: { maxFileBytes: MAX_FILE_BYTES, inlineItemBytes: REFERENCE_INLINE_MAX_BYTES, accepted: ACCEPTED_EXTENSIONS },
-	}));
+		});
+	});
 }
 
 export function libraryUploadResponse(request: Request): Promise<Response> {

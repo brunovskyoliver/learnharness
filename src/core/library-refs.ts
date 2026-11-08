@@ -126,6 +126,27 @@ function nameTable<T extends CatalogEntry>(entries: readonly T[], folders: reado
 	return [...table.values()].sort((a, b) => b.length - a.length);
 }
 
+/** The name table grouped by length, longest first. Kept per entries and
+ *  folders list, so a field running this on every keystroke over the same
+ *  loaded list builds it once (T041). */
+const tables = new WeakMap<readonly CatalogEntry[], WeakMap<readonly LibraryFolder[], Array<[number, Map<string, CatalogEntry>]>>>();
+const NO_FOLDERS: readonly LibraryFolder[] = [];
+function namesByLength<T extends CatalogEntry>(entries: readonly T[], folders: readonly LibraryFolder[]): Array<[number, Map<string, T>]> {
+	const byFolders = tables.get(entries) ?? new WeakMap();
+	tables.set(entries, byFolders);
+	const cached = byFolders.get(folders.length === 0 ? NO_FOLDERS : folders);
+	if (cached) return cached as Array<[number, Map<string, T>]>;
+	const grouped = new Map<number, Map<string, T>>();
+	for (const { key, length, entry } of nameTable(entries, folders)) {
+		const byKey = grouped.get(length) ?? new Map<string, T>();
+		grouped.set(length, byKey);
+		if (!byKey.has(key)) byKey.set(key, entry);
+	}
+	const table = [...grouped].sort((a, b) => b[0] - a[0]);
+	byFolders.set(folders.length === 0 ? NO_FOLDERS : folders, table);
+	return table;
+}
+
 /** One `@name` the text holds (feature 027, data-model.md). Offsets index the
  *  raw text as given: `start` is the `@`, `end` the index after the name. */
 export interface ReferenceSpan<T extends CatalogEntry = CatalogEntry> {
@@ -183,15 +204,18 @@ export function referenceSpans<T extends CatalogEntry>(rawText: string, entries:
 	const text = rawText.normalize("NFC");
 	// A passage from a PDF is material: an @name inside it attaches nothing (feature 020).
 	const code = [...codeRanges(text), ...[...text.matchAll(PASSAGE_BLOCK)].map((match): [number, number] => [match.index, match.index + match[0].length])];
-	const table = nameTable(entries, folders);
+	const table = namesByLength(entries, folders);
 	const toRaw = rawOffsets(rawText, text);
 	const spans: ReferenceSpan<T>[] = [];
 	for (let at = text.indexOf("@"); at !== -1; at = text.indexOf("@", at + 1)) {
 		if (!boundaryBefore(text, at) || inRanges(code, at)) continue;
 		const start = at + 1;
-		for (const { key, length, entry } of table) {
+		// Longest first: one key per length can equal the text there.
+		for (const [length, byKey] of table) {
 			const end = start + length;
-			if (end > text.length || nameKey(text.slice(start, end)) !== key) continue;
+			if (end > text.length) continue;
+			const entry = byKey.get(nameKey(text.slice(start, end)));
+			if (!entry) continue;
 			const next = String.fromCodePoint(text.codePointAt(end) ?? 0x20);
 			if (LETTER_OR_DIGIT.test(next)) continue;
 			spans.push({ start: toRaw(at, false), end: toRaw(end, true), entry });
