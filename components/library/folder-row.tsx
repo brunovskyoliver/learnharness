@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FolderIcon, PencilIcon, PinIcon, StarIcon, Trash2Icon } from "lucide-react";
+import { FolderGit2Icon, FolderIcon, PencilIcon, PinIcon, StarIcon, Trash2Icon } from "lucide-react";
 import type { LibraryFolder } from "@/src/core";
 import { DRAG_TYPE, type EntryKey } from "./library-filter.ts";
 import { LibraryEntryMenu, LibraryMoreButton, LibrarySelectBox, moreButton, type LibraryMenuAction } from "./library-menu.tsx";
@@ -26,7 +26,9 @@ export function FolderRow({ folder, count, location, actions = [], selection, dr
 		...actions,
 		{ label: "Move to the trash", destructive: true, onSelect: () => onDelete(folder, moreButton(`More actions for ${folder.name}`)) },
 	];
-	const meta = [`Folder · ${count} ${count === 1 ? "item" : "items"}`, folder.archivedAt ? "Archived" : "", location].filter(Boolean).join(" · ");
+	const linked = folder.mirror?.path === "";
+	const meta = [`${linked ? "Repo" : "Folder"} · ${count} ${count === 1 ? "item" : "items"}`, folder.archivedAt ? "Archived" : "", location].filter(Boolean).join(" · ");
+	const Icon = linked ? FolderGit2Icon : FolderIcon;
 	return (
 		<LibraryEntryMenu actions={menuActions}>
 		<li
@@ -52,7 +54,7 @@ export function FolderRow({ folder, count, location, actions = [], selection, dr
 			<div className="flex items-center gap-0.5 pr-2">
 				{selection && <LibrarySelectBox label={`Select folder ${folder.name}`} checked={selection.selected} onChange={selection.toggle} />}
 				<Link href={folderHref(folder.id)} aria-label={`Open folder ${folder.name}`} className="lh-row-open lh-row-folder">
-					<FolderIcon className="size-[15px] shrink-0 text-faint" aria-hidden="true" />
+					<Icon className="size-[15px] shrink-0 text-faint" aria-hidden="true" />
 					<span className="flex min-w-0 flex-col gap-0.5">
 						<span className="lh-row-name flex items-start gap-1.5">
 							{folder.pinned && <PinIcon className="mt-[3px] size-3.5 shrink-0 text-graphite" role="img" aria-label="Pinned" />}

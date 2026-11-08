@@ -268,3 +268,21 @@ async function snapshot(request: RepoSnapshotRequest, visit: (entry: RepoTreeEnt
 
 /** The real remote. Tests and the scheduler use the RepoRemote port. */
 export const repoRemote: RepoRemote = { tip, snapshot };
+
+/** The hosted address block before any fetch (FR-030): false when the hosted
+ *  app must refuse the address's host. Local and Electron allow everything. An
+ *  unresolvable host passes here; the pull then fails it as `network`. The
+ *  connect-time check above still guards every request and redirect. */
+export async function hostedAddressAllowed(raw: string): Promise<boolean> {
+	if (!hostedMode()) return true;
+	const host = new URL(raw).hostname.replace(/^\[|\]$/g, "");
+	// Only the literal 127.0.0.1 passes under the test flag, never a name resolving to it.
+	if (loopbackTestMode() && host === "127.0.0.1") return true;
+	if (net.isIP(host)) return !isBlockedAddress(host);
+	try {
+		const addresses = await dns.promises.lookup(host, { all: true });
+		return addresses.every((a) => !isBlockedAddress(a.address));
+	} catch {
+		return true;
+	}
+}

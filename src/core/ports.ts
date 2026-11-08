@@ -30,7 +30,8 @@ import type {
 import type { UserSettings } from "./settings.ts";
 import type { DiagramDoc, DiagramProposal, DiagramProposalStatus, DiagramRefusalCode } from "./diagram.ts";
 import type { PageProposal, PageProposalStatus } from "./page-proposals.ts";
-import type { LibraryFolder, LibraryItem, LibraryMarks, LibraryTrashEntry, LibraryRefusal, LibraryTextState, LibraryTombstone, PageAuthor, PageHead, PageState, PageVersion, PageVersionCause, PageWriteResult } from "./library.ts";
+import type { RepoLink, RepoSyncState } from "./repo-link.ts";
+import type { LibraryFolder, LibraryItem, LibraryKind, LibraryMarks, LibraryTrashEntry, LibraryRefusal, LibraryTextState, LibraryTombstone, PageAuthor, PageHead, PageState, PageVersion, PageVersionCause, PageWriteResult } from "./library.ts";
 
 // ─── ChatStore — the session record's home (data/chats) ─────────────────────
 
@@ -218,6 +219,15 @@ export interface LibraryStore {
 	readDerived(id: string): Promise<unknown>;
 	writeDerived(id: string, value: unknown): Promise<void>;
 	documentPath(item: Pick<LibraryItem, "name" | "mirror">): string;
+	/** Every repo link in the catalog (feature 026). */
+	repoLinks(): Promise<RepoLink[]>;
+	/** A new snapshot directory under files/.mirrors/<linkId>/ to write one pull's blobs into (R4 step 1). */
+	stageSnapshot(linkId: string): Promise<SnapshotStage>;
+	/** Removes a snapshot directory that no catalog write took (a failed or refused pull). */
+	discardSnapshot(linkId: string, snapshot: string): Promise<void>;
+	/** Puts a staged snapshot in the catalog in one write (R4 step 2). `first` creates the
+	 *  link and its linked folder (the first pull); refusals change nothing. */
+	applyMirror(linkId: string, snapshot: MirrorSnapshot, first?: FirstLink): Promise<{ link: RepoLink; folder: LibraryFolder } | LibraryRefusal>;
 	/** A new page with its first version. */
 	createPage(name: string, content: string, options: PageCreateOptions): Promise<{ item: LibraryItem; head: PageHead } | LibraryRefusal>;
 	/** Head and draft, or null for an unknown id, a document or a tombstone. */
@@ -385,6 +395,26 @@ export interface PromptOverrideStore {
 	/** Remove the override file, if present (switches are untouched — an
 	 *  on-switch with no file composes the source default, inert). */
 	deleteOverride(segmentPath: string): void;
+}
+
+/** One supported file of a staged snapshot (feature 026). */
+export interface MirrorFile { path: string; oid: string; size: number; kind: LibraryKind }
+/** What a pull hands the store: the staged snapshot, its files and the link's new sync state. */
+export interface MirrorSnapshot {
+	snapshot: string;
+	files: MirrorFile[];
+	sync: RepoSyncState;
+}
+/** The first pull's link record and where its folder goes. */
+export interface FirstLink {
+	link: Omit<RepoLink, "folderId" | "sync">;
+	folderName: string;
+	parentId: string | null;
+}
+/** Writes one pull's blobs; a blob already in the current snapshot is hard-linked from it. */
+export interface SnapshotStage {
+	snapshot: string;
+	put(path: string, oid: string, bytes: Uint8Array): Promise<void>;
 }
 
 // ─── Repo tokens (feature 026, research R8) ────────────────────────────────

@@ -77,6 +77,8 @@ export default defineConfig({
 			LH_IGNORE_ENV_KEYS: "1",
 			LH_NOTEBOOK_FAUX: "1",
 			LH_NOTEBOOK_FAUX_MS: "1500",
+			// Feature 026: repo links may pull from the 127.0.0.1 fixture remote over http (never in production).
+			LH_TEST_GIT_LOOPBACK_HTTP: "1",
 			NEXT_TELEMETRY_DISABLED: "1",
 			TMPDIR: tmpRoot,
 		},

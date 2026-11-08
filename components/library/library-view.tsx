@@ -4,14 +4,16 @@ import { useCallback, useEffect, useRef, useState, type DragEvent } from "react"
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckSquareIcon, FilePlusIcon, FolderPlusIcon, LayoutGridIcon, ListIcon, NetworkIcon, SearchIcon, UploadIcon, XIcon } from "lucide-react";
+import { CheckSquareIcon, FilePlusIcon, FolderGit2Icon, FolderPlusIcon, GitBranchIcon, LayoutGridIcon, ListIcon, NetworkIcon, SearchIcon, UploadIcon, XIcon } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import { LibraryContextSlot } from "@/components/workspace/context-slot";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useServerEvent, useServerResync } from "@/components/server-events";
 import { useWorkspace } from "@/components/workspace/workspace-context";
-import { folderPathLabel, folderTrail, KIND_LABEL, liveFolderId, MAX_FILE_BYTES, parseCitationHref, type LibraryFolder, type LibraryItem, type LibraryKind, type LibraryMarks, type LibraryTrashEntry } from "@/src/core";
+import { folderPathLabel, folderTrail, inMirror, KIND_LABEL, liveFolderId, MAX_FILE_BYTES, parseCitationHref, parseRepoAddress, type LibraryFolder, type LibraryItem, type LibraryKind, type LibraryMarks, type LibraryTrashEntry, type PendingLinkView, type RepoLinkView, type SyncFailure } from "@/src/core";
+import { BlotGlyph } from "@/components/paper/blot";
+import { useSettingsDialog } from "@/components/settings/settings-dialog.tsx";
 import { DeleteItemDialog, DESTRUCTIVE_BUTTON } from "./delete-item-dialog.tsx";
 import { FolderNameDialog, MoveDialog, sendLibraryChange } from "./folder-dialogs.tsx";
 import { FolderBreadcrumbs, folderHref, FolderRow } from "./folder-row.tsx";
@@ -19,6 +21,7 @@ import { allTags, DRAG_TYPE, parseTags, parseView, runBulk, selectEntries, SORT_
 import { LibraryChoice, type LibraryMenuAction } from "./library-menu.tsx";
 import { LibraryRow } from "./library-row.tsx";
 import { LibraryTrash } from "./library-trash.tsx";
+import type { LinkAnswer, LinkFields } from "./repo-link-dialog.tsx";
 import { createBlankPage, PagePaneSlot, usePagePane } from "./page-pane-context.tsx";
 import { runUploadQueue, sendFile } from "./upload.ts";
 
@@ -27,6 +30,8 @@ import { DiagramProposalsLine } from "@/components/diagram/diagram-proposals-lin
 /** Page edits waiting for him (feature 023): loads after the list, so /library's first load stays as it was. */
 const PageProposalsLine = dynamic(() => import("./page-proposals-line.tsx").then((m) => m.PageProposalsLine), { ssr: false });
 /** Loads on the click: the dialog and its form list aren't part of the Library's first load. */
+/** Loads on the click, like New diagram (feature 026). */
+const RepoLinkDialog = dynamic(() => import("./repo-link-dialog.tsx").then((m) => m.RepoLinkDialog), { ssr: false });
 const NewDiagramDialog = dynamic(() => import("@/components/diagram/new-diagram-dialog.tsx").then((m) => m.NewDiagramDialog), { ssr: false });
 
 const DocumentSearchPanel = dynamic(() => import("./document-search.tsx").then((m) => m.DocumentSearchPanel), {
@@ -66,6 +71,34 @@ export interface LibraryBodyProps {
 	onRetry: () => void;
 	onChanged: () => void;
 	onDelete: (item: LibraryItem, opener: HTMLElement) => void;
+	/** Repo links (feature 026): a mirrored file's row knows its repo. */
+	links?: readonly RepoLinkView[];
+	/** First links still pulling, shown in their target folder. */
+	pending?: readonly PendingLinkView[];
+	/** First links that failed while their dialog was closed. */
+	linkFailures?: readonly LinkFailure[];
+	onDismissLinkFailure?: (id: string) => void;
+}
+
+/** "Couldn't link {display} · {sentence}" on the spot a pending row held (ui-contract.md). */
+export interface LinkFailure { id: string; display: string; sentence: string; parentId: string | null }
+
+/** A first link still pulling: the folder's name and the status, never openable. */
+function PendingLinkRow({ pending }: { pending: PendingLinkView }) {
+	return (
+		<li className="lh-row" data-testid="library-pending-link">
+			<div className="lh-row-open lh-row-folder" aria-disabled="true">
+				<FolderGit2Icon className="size-[15px] shrink-0 text-faint" aria-hidden="true" />
+				<span className="flex min-w-0 flex-col gap-0.5">
+					<span className="lh-row-name min-w-0">{pending.folderName}</span>
+					<span role="status" className="lh-row-meta flex items-center gap-1.5">
+						<span className="nb-ink-wait" aria-hidden="true"><BlotGlyph className="nb-ink-wait-blot" size={11} /></span>
+						Syncing for the first time…
+					</span>
+				</span>
+			</div>
+		</li>
+	);
 }
 
 const EMPTY: Record<LibraryViewName, string> = {
@@ -78,7 +111,7 @@ const EMPTY: Record<LibraryViewName, string> = {
 
 /** The list's states, pure for SSR tests. Loading, empty and failed stay
  *  distinct, and a failed refresh keeps the list. */
-export function LibraryBody({ items, folders = [], folderId = null, view = "all", tag = null, kind = null, sort = "name", descending = false, recentIds = [], layout = "list", selected = null, onToggle = noop, itemActions, folderActions, onDragStartEntry, onDropOnFolder, onRenameFolder = noop, onDeleteFolder = noop, loadFailed, refreshFailed, query, onRetry, onChanged, onDelete }: LibraryBodyProps) {
+export function LibraryBody({ items, folders = [], folderId = null, view = "all", tag = null, kind = null, sort = "name", descending = false, recentIds = [], layout = "list", selected = null, onToggle = noop, itemActions, folderActions, onDragStartEntry, onDropOnFolder, onRenameFolder = noop, onDeleteFolder = noop, loadFailed, refreshFailed, query, onRetry, onChanged, onDelete, links = [], pending = [], linkFailures = [], onDismissLinkFailure = noop }: LibraryBodyProps) {
 	const [overFolder, setOverFolder] = useState<string | null>(null);
 	const failedLine = (
 		<div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-md text-ink">
@@ -101,7 +134,12 @@ export function LibraryBody({ items, folders = [], folderId = null, view = "all"
 	const countIn = (id: string) => folders.filter((f) => f.parentId === id).length + items.filter((i) => i.folderId === id).length;
 	// A search covers the whole Library, and says where each match lives.
 	const whereIs = (id: string | null | undefined) => (wide ? folderPathLabel(id, folders) || "Library" : undefined);
-	const nothing = shown.items.length === 0 && shown.folders.length === 0;
+	// Pending links and their failures sit in the folder they were linked into, outside filters.
+	const here = (parentId: string | null) => !filtering && view === "all" && (parentId ?? null) === folderId;
+	const pendingHere = pending.filter((p) => here(p.parentId));
+	const failuresHere = linkFailures.filter((f) => here(f.parentId));
+	const repoOf = (item: LibraryItem) => (item.mirror ? links.find((l) => l.id === item.mirror!.linkId)?.display : undefined);
+	const nothing = shown.items.length === 0 && shown.folders.length === 0 && pendingHere.length === 0 && failuresHere.length === 0;
 	return (
 		<>
 			{refreshFailed && failedLine}
@@ -111,6 +149,16 @@ export function LibraryBody({ items, folders = [], folderId = null, view = "all"
 				<p className="text-md text-faint">{folderId ? "This folder is empty." : EMPTY[view]}</p>
 			) : (
 				<ul className={layout === "grid" ? "lh-grid grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col"} data-testid="library-list">
+					{failuresHere.map((failure) => (
+						<li key={failure.id} role="alert" className="lh-line-card justify-between gap-3 py-1.5 pr-1.5" data-testid="library-link-failure">
+							<p className="min-w-0 text-sm [overflow-wrap:anywhere]">
+								<span className="font-medium text-ink">Couldn&apos;t link {failure.display}</span>
+								<span className="text-red"> · {failure.sentence}</span>
+							</p>
+							<button type="button" className="lh-text-action shrink-0" onClick={() => onDismissLinkFailure(failure.id)}>Dismiss</button>
+						</li>
+					))}
+					{pendingHere.map((p) => <PendingLinkRow key={p.requestId} pending={p} />)}
 					{shown.folders.map((folder) => (
 						<FolderRow
 							key={folder.id}
@@ -131,6 +179,7 @@ export function LibraryBody({ items, folders = [], folderId = null, view = "all"
 							item={item}
 							grid={layout === "grid"}
 							location={whereIs(item.folderId)}
+							repo={repoOf(item)}
 							actions={itemActions?.(item)}
 							selection={selected ? { selected: selected.has(`item:${item.id}`), toggle: () => onToggle(`item:${item.id}`) } : undefined}
 							onDragStartEntry={onDragStartEntry}
@@ -184,6 +233,14 @@ export function LibraryView() {
 	const [deletingFolder, setDeletingFolder] = useState<LibraryFolder | null>(null);
 	const [folderFailure, setFolderFailure] = useState<string | null>(null);
 	const newFolderButton = useRef<HTMLButtonElement>(null);
+	// Repo links (feature 026).
+	const { hosted } = useSettingsDialog();
+	const [links, setLinks] = useState<RepoLinkView[]>([]);
+	const [pendingLinks, setPendingLinks] = useState<PendingLinkView[]>([]);
+	const [linkFailures, setLinkFailures] = useState<LinkFailure[]>([]);
+	const [linkOpen, setLinkOpen] = useState(false);
+	const linkOpenRef = useRef(false);
+	const linkButton = useRef<HTMLButtonElement>(null);
 	const params = useSearchParams();
 	const openFolderId = params.get("folder");
 	const view = parseView(params.get("view"));
@@ -221,8 +278,9 @@ export function LibraryView() {
 		try {
 			const response = await fetch("/api/library", { cache: "no-store" });
 			if (!response.ok) throw new Error(String(response.status));
-			const body = await response.json() as { items: LibraryItem[]; folders: LibraryFolder[]; recentIds: string[]; limits: { maxFileBytes: number } };
+			const body = await response.json() as { items: LibraryItem[]; folders: LibraryFolder[]; recentIds: string[]; links?: RepoLinkView[]; limits: { maxFileBytes: number } };
 			if (id !== request.current) return;
+			setLinks(body.links ?? []);
 			maxFileBytes.current = body.limits.maxFileBytes;
 			loaded.current = true;
 			setItems(body.items);
@@ -257,10 +315,59 @@ export function LibraryView() {
 	useEffect(() => { refreshAll(); }, [refreshAll]);
 	useServerEvent("library-changed", refreshAll);
 	useServerResync(refreshAll);
+	const refreshLinks = useCallback(async () => {
+		try {
+			const response = await fetch("/api/library/links", { cache: "no-store" });
+			if (!response.ok) return;
+			const body = await response.json() as { links: RepoLinkView[]; pending: PendingLinkView[] };
+			setLinks(body.links);
+			setPendingLinks(body.pending);
+		} catch { /* the next event or reload tries again */ }
+	}, []);
+	useEffect(() => { void refreshLinks(); }, [refreshLinks]);
+	useServerEvent("library-sync", () => void refreshLinks());
+	useServerResync(() => void refreshLinks());
 	// Known only once loaded: a missing folder says so instead of showing the top level.
 	const folderMissing = openFolderId !== null && items !== null && !folders.some((folder) => folder.id === openFolderId);
 	const folderId = openFolderId !== null && !folderMissing ? openFolderId : null;
 	const trail = folderTrail(folderId, folders);
+	const openLinkDialog = (open: boolean) => {
+		linkOpenRef.current = open;
+		setLinkOpen(open);
+	};
+	/** POST the link; the first pull runs in the request. A failure after the dialog closed stays on the spot. */
+	const submitLink = async (fields: LinkFields): Promise<LinkAnswer> => {
+		const parentId = folderId;
+		const parsed = parseRepoAddress(fields.url);
+		const display = "display" in parsed ? parsed.display : fields.url.trim();
+		const requestId = `req_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+		const sending = fetch("/api/library/links", {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify({ url: fields.url.trim(), folderName: fields.folderName.trim(), token: fields.token.trim() || undefined, branch: fields.branch.trim() || undefined, parentId, requestId }),
+		});
+		// The pending row shows while the first pull runs.
+		setTimeout(() => void refreshLinks(), 150);
+		let answer: LinkAnswer;
+		try {
+			const response = await sending;
+			const body = await response.json().catch(() => ({})) as { link?: RepoLinkView; folder?: LibraryFolder; code?: string; error?: string; suggestedName?: string; failure?: SyncFailure };
+			answer = response.status === 201 && body.link && body.folder
+				? { ok: true, link: body.link, folder: body.folder }
+				: { ok: false, code: body.code ?? "server", error: body.error ?? "The repo couldn't be pulled.", ...(body.suggestedName ? { suggestedName: body.suggestedName } : {}), ...(body.failure ? { failure: body.failure } : {}) };
+		} catch {
+			answer = { ok: false, code: "network", error: "That could not be done. Check your connection and try again." };
+		}
+		void refreshLinks();
+		if (answer.ok) {
+			if (linkOpenRef.current) openLinkDialog(false);
+			void refresh();
+		} else if (!linkOpenRef.current) {
+			const sentence = answer.failure?.message ?? answer.error;
+			setLinkFailures((list) => [...list, { id: requestId, display, sentence, parentId }]);
+		}
+		return answer;
+	};
 	const returnFolderFocus = () => (opener.current?.isConnected ? opener.current : newFolderButton.current)?.focus();
 	const finishChange = (refused: string | null, close: () => void) => {
 		if (!refused) {
@@ -419,7 +526,7 @@ export function LibraryView() {
 	const openItem = pane?.item;
 	const listed = openItem && items?.find((item) => item.id === openItem.id);
 	useEffect(() => {
-		if (openItem && listed && (listed.name !== openItem.name || listed.size !== openItem.size)) pane?.update({ id: listed.id, name: listed.name, kind: listed.kind, size: listed.size });
+		if (openItem && listed && (listed.name !== openItem.name || listed.size !== openItem.size)) pane?.update({ id: listed.id, name: listed.name, kind: listed.kind, size: listed.size, ...(openItem.repo ? { repo: openItem.repo } : {}) });
 	}, [listed, openItem, pane]);
 	// A citation's address (feature 020): opens the viewer there, then steps out of
 	// the URL, so a reload doesn't jump again. A missing document says so.
@@ -481,6 +588,12 @@ export function LibraryView() {
 								<FolderPlusIcon aria-hidden="true" />
 								New folder
 							</button>
+							{!inMirror(folderId, folders) && (
+								<button ref={linkButton} type="button" className="lh-tool" onClick={() => openLinkDialog(true)} data-testid="library-link-repo">
+									<GitBranchIcon aria-hidden="true" />
+									Link a repo
+								</button>
+							)}
 							<button ref={uploadButton} type="button" className="lh-tool" onClick={() => picker.current?.click()} data-testid="library-upload">
 								<UploadIcon aria-hidden="true" />
 								Upload
@@ -649,6 +762,10 @@ export function LibraryView() {
 								opener.current = button;
 								setDeleting(item);
 							}}
+							links={links}
+							pending={pendingLinks}
+							linkFailures={linkFailures}
+							onDismissLinkFailure={(id) => setLinkFailures((list) => list.filter((f) => f.id !== id))}
 						/>
 					)}
 				</div>
@@ -663,6 +780,17 @@ export function LibraryView() {
 				}}
 				returnFocus={() => (opener.current?.isConnected ? opener.current : uploadButton.current)?.focus()}
 			/>
+			{linkOpen && (
+				<RepoLinkDialog
+					open={linkOpen}
+					location={trail.length > 0 ? `In ${trail.map((f) => f.name).join(" / ")}` : "In Library"}
+					linkCount={links.length}
+					hosted={hosted}
+					onClose={() => openLinkDialog(false)}
+					onSubmit={submitLink}
+					returnFocus={() => (linkButton.current ?? newFolderButton.current)?.focus()}
+				/>
+			)}
 			<FolderNameDialog
 				title={naming?.folder ? `Rename ${naming.folder.name}` : "New folder"}
 				action={naming?.folder ? "Rename" : "Create"}

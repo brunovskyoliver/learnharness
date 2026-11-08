@@ -21,8 +21,10 @@ function metaLine(item: LibraryItem): string {
 }
 
 /** One Library item. Every action's accessible name includes the item's name. */
-export function LibraryRow({ item, location, onRenamed, actions = [], grid = false, selection, onDragStartEntry, onDelete }: {
+export function LibraryRow({ item, location, repo, onRenamed, actions = [], grid = false, selection, onDragStartEntry, onDelete }: {
 	item: LibraryItem;
+	/** A mirrored file's repo, "github.com/oliver/notes" (feature 026). */
+	repo?: string;
 	/** The item's folder path, shown while searching the whole Library. */
 	location?: string;
 	onRenamed: () => void;
@@ -136,7 +138,7 @@ export function LibraryRow({ item, location, onRenamed, actions = [], grid = fal
 				) : newTab ? (
 					<a href={contentUrl(item.id)} target="_blank" rel="noreferrer" aria-label={`Open ${item.name}`} className={OPEN} onClick={opened}>{body}</a>
 				) : readable ? (
-					<button type="button" aria-label={`Open ${item.name}`} className={OPEN} onClick={() => { pane?.open({ id: item.id, name: item.name, kind: item.kind, size: item.size }); }}>{body}</button>
+					<button type="button" aria-label={`Open ${item.name}`} className={OPEN} onClick={() => { pane?.open({ id: item.id, name: item.name, kind: item.kind, size: item.size, ...(repo ? { repo } : {}) }); }}>{body}</button>
 				) : (
 					<a href={contentUrl(item.id, true)} aria-label={`Open ${item.name}`} className={OPEN} onClick={opened}>{body}</a>
 				)}

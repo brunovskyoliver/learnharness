@@ -22,12 +22,16 @@ export function splitAtLine(text: string, line: number): [string, string, string
 export function ReadOnlyView({ item }: { item: PaneItem }) {
 	const [text, setText] = useState<string | null>(null);
 	const [failed, setFailed] = useState(false);
+	// A mirrored file (feature 026): known from the row that opened it, or from the content's header.
+	const [repo, setRepo] = useState(item.repo ?? null);
 	const tooLong = item.size > PAGE_MAX_BYTES;
 	const load = useCallback(async () => {
 		setFailed(false);
 		try {
 			const response = await fetch(contentUrl(item.id), { cache: "no-store" });
 			if (!response.ok) throw new Error(String(response.status));
+			const from = response.headers.get("X-Library-Repo");
+			if (from) setRepo(decodeURIComponent(from));
 			setText(await response.text());
 		} catch {
 			setFailed(true);
@@ -41,7 +45,7 @@ export function ReadOnlyView({ item }: { item: PaneItem }) {
 	const lines = text !== null && jumpLine !== null ? splitAtLine(text, jumpLine) : null;
 	return (
 		<div className="flex min-h-0 flex-1 flex-col gap-2 px-4 pb-4" data-testid="library-read-only">
-			<p className="text-sm text-faint">This is your original; it can&apos;t be edited here.</p>
+			<p className="text-sm text-faint [overflow-wrap:anywhere]" data-testid="library-read-only-source">{repo ? `This comes from ${repo}. Change it in the repo.` : "This is your original; it can't be edited here."}</p>
 			{tooLong ? (
 				<p className="flex flex-wrap items-center gap-2 text-sm text-graphite">
 					Too long to preview

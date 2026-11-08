@@ -12,7 +12,7 @@ import { nanoid } from "nanoid";
 import { PATHS, tenantScoped } from "../../config.ts";
 import { emit } from "../core/events.ts";
 import {
-	CATALOG_VERSION, CONTENT_CHECK_BYTES, contentMatches, folderSubtree, isTombstone, isVersionedKind, liveFolderId, withMarks, wouldCycle, isUnseenTutorVersion, kindForName, LIBRARY_REFUSALS, LibraryCatalogError,
+	CATALOG_VERSION, CONTENT_CHECK_BYTES, contentMatches, folderSubtree, folderTrail, inMirror, isTombstone, REPO_REFUSALS, isVersionedKind, liveFolderId, withMarks, wouldCycle, isUnseenTutorVersion, kindForName, LIBRARY_REFUSALS, LibraryCatalogError,
 	nameKey, PAGE_MAX_BYTES, suggestName, uploadName,
 	type LibraryCatalog, type LibraryFolder, type LibraryItem, type LibraryMarks, type LibraryTrashEntry, type LibraryKind, type LibraryOrigin, type LibraryRefusal, type LibraryTextState, type LibraryTombstone,
 	type PageDraft, type PageHead, type PageState, type PageStale, type PageVersion, type PageVersionCause, type PageWriteResult,
@@ -21,7 +21,8 @@ import { diagramIdeaLinks, diagramOutline, diagramScanText, parseDiagram } from 
 import { scanWikiLinks, type WikiPins } from "../core/note-links.ts";
 import { appendBlock } from "../core/note-sources.ts";
 import { removeCompanionFile } from "./notebook.ts";
-import type { AgentRevision, AgentRevisionResult, LibraryStore, PageCreateOptions, PageText } from "../core/ports.ts";
+import type { AgentRevision, AgentRevisionResult, FirstLink, LibraryStore, MirrorSnapshot, PageCreateOptions, PageText, SnapshotStage } from "../core/ports.ts";
+import type { RepoLink } from "../core/repo-link.ts";
 
 const STALE_UPLOAD_MS = 24 * 60 * 60 * 1000;
 
@@ -194,9 +195,111 @@ const MIRRORS_DIR = ".mirrors";
 function documentPath(item: Pick<LibraryItem, "name" | "mirror">): string {
 	if (!item.mirror) return path.join(PATHS.files, item.name);
 	const { linkId, snapshot, path: repoPath } = item.mirror;
-	const parts = [linkId, snapshot ?? "", ...repoPath.split("/")];
+	return mirrorPath(linkId, snapshot ?? "", ...repoPath.split("/"));
+}
+
+/** files/.mirrors/<parts…>, refusing any part that could leave it. */
+function mirrorPath(...parts: string[]): string {
 	if (parts.some((part) => !part || part === "." || part === ".." || /[\\/\x00]/.test(part))) throw new Error("A mirrored item's path is damaged.");
 	return path.join(PATHS.files, MIRRORS_DIR, ...parts);
+}
+
+// ── Mirrors (feature 026, research R1-R4) ──
+
+const linksOf = (catalog: LibraryCatalog) => catalog.repoLinks ?? [];
+
+/** A fresh snapshot directory for one pull. Each blob is written `wx` and
+ *  fsynced, or hard-linked from the current snapshot when its oid is there already. */
+async function stageSnapshot(linkId: string): Promise<SnapshotStage> {
+	const snapshot = `snp_${nanoid(10)}`;
+	const root = mirrorPath(linkId, snapshot);
+	await fs.mkdir(root, { recursive: true });
+	const current = new Map<string, string>();
+	for (const item of liveItems(await withLock(readCatalog))) {
+		if (item.mirror?.linkId === linkId && item.mirror.oid && item.mirror.snapshot) current.set(item.mirror.oid, documentPath(item));
+	}
+	return {
+		snapshot,
+		put: async (repoPath, oid, bytes) => {
+			const target = mirrorPath(linkId, snapshot, ...repoPath.split("/"));
+			await fs.mkdir(path.dirname(target), { recursive: true });
+			const from = current.get(oid);
+			if (from) {
+				try {
+					await fs.link(from, target);
+					return;
+				} catch (err) {
+					// The old snapshot lost the file: write the bytes instead.
+					if (!isCode(err, "ENOENT")) throw err;
+				}
+			}
+			const handle = await fs.open(target, "wx");
+			try {
+				await handle.writeFile(bytes);
+				await handle.sync();
+			} finally {
+				await handle.close();
+			}
+		},
+	};
+}
+
+const discardSnapshot = (linkId: string, snapshot: string) => fs.rm(mirrorPath(linkId, snapshot), { recursive: true, force: true });
+
+/** The linked folder holding a folder id, for the "mirrors a repo" sentence. */
+const linkedAncestor = (folderId: string, folders: readonly LibraryFolder[]) =>
+	[...folderTrail(folderId, folders)].reverse().find((f) => f.mirror?.path === "") ?? folders.find((f) => f.id === folderId);
+
+/** The first pull's catalog write: the link, its linked folder, one mirror folder
+ *  per directory holding a supported file at any depth, one item per file. */
+async function applyMirror(linkId: string, snap: MirrorSnapshot, first?: FirstLink): Promise<{ link: RepoLink; folder: LibraryFolder } | LibraryRefusal> {
+	// The update path (an existing link's later pulls) is feature 026's T025.
+	if (!first) throw new Error("Only a link's first pull can be applied yet.");
+	const result = await withLock(async (): Promise<{ link: RepoLink; folder: LibraryFolder } | LibraryRefusal> => {
+		const catalog = await readCatalog();
+		if (linksOf(catalog).some((l) => l.id === linkId)) throw new Error("That link is already in the catalog.");
+		const folders = foldersOf(catalog);
+		const { parentId } = first;
+		if (parentId && !folders.some((f) => f.id === parentId)) return LIBRARY_REFUSALS.folderMissing;
+		if (inMirror(parentId, folders)) return REPO_REFUSALS.repoFolder(linkedAncestor(parentId!, folders)!.name);
+		const name = uploadName(first.folderName);
+		if (!name) return LIBRARY_REFUSALS.invalidName;
+		const taken = siblingKeys(catalog, parentId);
+		if (taken.has(nameKey(name))) return folderClash(name, taken);
+		const now = new Date().toISOString();
+		const { repoKey } = first.link;
+		const linked: LibraryFolder = { id: `fld_${nanoid()}`, name, parentId, createdAt: now, updatedAt: now, mirror: { linkId, repoKey, path: "" } };
+		const added: LibraryFolder[] = [linked];
+		const dirs = new Map<string, string>([["", linked.id]]);
+		const dirOf = (dir: string): string => {
+			const known = dirs.get(dir);
+			if (known) return known;
+			const cut = dir.lastIndexOf("/");
+			const parent = dirOf(cut < 0 ? "" : dir.slice(0, cut));
+			const folder: LibraryFolder = { id: `fld_${nanoid()}`, name: dir.slice(cut + 1), parentId: parent, createdAt: now, updatedAt: now, mirror: { linkId, repoKey, path: dir } };
+			added.push(folder);
+			dirs.set(dir, folder.id);
+			return folder.id;
+		};
+		const items: LibraryItem[] = [...snap.files].sort((a, b) => a.path.localeCompare(b.path)).map((file) => {
+			const cut = file.path.lastIndexOf("/");
+			return {
+				id: newId(), name: file.path.slice(cut + 1), kind: file.kind, size: file.size, createdAt: now, updatedAt: now,
+				origin: { type: "repo", linkId }, ...(file.kind === "pdf" ? { textState: "pending" as const } : {}),
+				folderId: dirOf(cut < 0 ? "" : file.path.slice(0, cut)),
+				mirror: { linkId, repoKey, path: file.path, oid: file.oid, snapshot: snap.snapshot },
+			};
+		});
+		const link: RepoLink = { ...first.link, id: linkId, folderId: linked.id, sync: snap.sync };
+		catalog.folders = [...folders, ...added];
+		catalog.items.push(...items);
+		catalog.repoLinks = [...linksOf(catalog), link];
+		await writeCatalog(catalog);
+		return { link, folder: linked };
+	});
+	// One event for the folder: nothing new can be open yet, and the index reacts to any.
+	if ("folder" in result) emit("library-changed", { itemId: result.folder.id });
+	return result;
 }
 
 const nameTaken = (name: string, taken: Set<string>): LibraryRefusal => ({
@@ -1164,6 +1267,10 @@ export const libraryStore: LibraryStore = {
 		await fs.rename(temp, derivedFile(id));
 	},
 	documentPath,
+	repoLinks: () => withLock(async () => linksOf(await readCatalog())),
+	stageSnapshot,
+	discardSnapshot,
+	applyMirror,
 };
 
 /** A read stream for a document, refusing anything but a regular file. */

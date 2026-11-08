@@ -258,6 +258,17 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 	const chat = useContext(ChatActionsContext);
 	const router = useRouter();
 	const [pdfjs, setPdfjs] = useState<PdfJs | null>(null);
+	// A mirrored PDF names its repo (feature 026): from the row that opened it, or the content's header.
+	const [repo, setRepo] = useState(item.repo ?? null);
+	useEffect(() => {
+		if (item.repo) return;
+		let live = true;
+		void fetch(contentUrl(item.id), { method: "HEAD", cache: "no-store" }).then((response) => {
+			const from = response.headers.get("X-Library-Repo");
+			if (live && from) setRepo(decodeURIComponent(from));
+		}).catch(() => {});
+		return () => { live = false; };
+	}, [item.id, item.repo]);
 	const [doc, setDoc] = useState<PdfDocument | null>(null);
 	const [failure, setFailure] = useState<"load" | "password" | null>(null);
 	const [attempt, setAttempt] = useState(0);
@@ -627,6 +638,7 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 				else if (panel) { event.preventDefault(); event.stopPropagation(); setPanel(false); }
 			}}
 		>
+			{repo && <p className="mx-4 pb-1 text-sm text-faint [overflow-wrap:anywhere]" data-testid="pdf-repo-source">From {repo}</p>}
 			<div role="toolbar" aria-label="PDF controls" className="lh-tools shrink-0 gap-x-1 mx-4 pb-1.5">
 				<button type="button" className={TEXT_BUTTON} aria-pressed={keyboardPage !== null} disabled={noText} onClick={() => { if (keyboardPage !== null) clearSelection(); else startKeyboardSelection(); }} data-testid="pdf-keyboard-select" title="Select text with the keyboard">
 					<TextCursorInputIcon aria-hidden="true" />

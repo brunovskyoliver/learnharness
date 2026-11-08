@@ -59,6 +59,20 @@ export interface RepoLink {
 	sync: RepoSyncState;
 }
 
+/** What the client sees of a link (contracts/api.md): never a token, only its mask. */
+export interface RepoLinkView {
+	id: string;
+	folderId: string;
+	display: string;
+	url: string;
+	branch: string;
+	branchGiven: boolean;
+	tokenMask: string | null;
+	sync: RepoSyncState;
+}
+/** A first link still pulling (US1 #5). */
+export interface PendingLinkView { requestId: string; display: string; folderName: string; parentId: string | null; startedAt: string }
+
 // ── Addresses (R7) ──
 
 export interface RepoAddress {

@@ -12,6 +12,7 @@ import {
 } from "../core/library.ts";
 import { libraryStore, openDocumentStream } from "../store/library.ts";
 import { indexAfterUpload } from "./library-text.ts";
+import { repoLinkViews } from "./repo-link-views.ts";
 
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
@@ -56,11 +57,15 @@ async function guarded(run: () => Promise<Response>): Promise<Response> {
 	}
 }
 
+/** For the repo-link routes (feature 026): the same refusal shape and catalog guard. */
+export { refusal as libraryRefusal, guarded as libraryGuarded };
+
 export function libraryListResponse(): Promise<Response> {
 	return guarded(async () => json({
 		items: await libraryStore.list(),
 		folders: await libraryStore.folders(),
 		recentIds: (await libraryStore.recent()).map((item) => item.id),
+		links: await repoLinkViews(),
 		limits: { maxFileBytes: MAX_FILE_BYTES, inlineItemBytes: REFERENCE_INLINE_MAX_BYTES, accepted: ACCEPTED_EXTENSIONS },
 	}));
 }
@@ -237,12 +242,22 @@ function contentHeaders(item: LibraryItem, size: number, download: boolean): Hea
 export function libraryContentResponse(request: Request, id: string): Promise<Response> {
 	return guarded(async () => {
 		const missing = () => json({ error: "That item is no longer in your Library." }, 404);
-		const item = await libraryStore.get(id);
+		let item = await libraryStore.get(id);
 		if (!item || isVersionedKind(item.kind)) return missing();
-		const opened = await openDocumentStream(libraryStore.documentPath(item));
-		if (!opened) return missing();
+		let opened = await openDocumentStream(libraryStore.documentPath(item));
+		// A pull may have swapped the snapshot between the read and the open (R4): once more from a fresh catalog.
+		if (!opened && item.mirror) {
+			item = await libraryStore.get(id);
+			if (item?.mirror) opened = await openDocumentStream(libraryStore.documentPath(item));
+		}
+		if (!item || !opened) return missing();
 		const download = new URL(request.url).searchParams.get("download") === "1";
-		return new Response(Readable.toWeb(opened.stream) as ReadableStream<Uint8Array>, { headers: contentHeaders(item, opened.size, download) });
+		const headers = contentHeaders(item, opened.size, download);
+		// A mirrored file names its repo, so a reader opened from anywhere can say where it comes from.
+		const linkId = item.mirror?.linkId;
+		const display = linkId ? (await libraryStore.repoLinks()).find((l) => l.id === linkId)?.display : undefined;
+		if (display) headers.set("X-Library-Repo", encodeURIComponent(display));
+		return new Response(Readable.toWeb(opened.stream) as ReadableStream<Uint8Array>, { headers });
 	});
 }
 

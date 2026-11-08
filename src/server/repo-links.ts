@@ -1,0 +1,70 @@
+/**
+ * The repo-link routes' logic (feature 026, contracts/api.md): list and
+ * create. Every refusal is decided before any fetch; the first pull runs in
+ * the request. No response carries a token or an address with credentials.
+ */
+import { inMirror, LIBRARY_REFUSALS, liveFolderId, nameKey, REPO_REFUSALS, suggestName, uploadName, type LibraryFolder } from "../core/library.ts";
+import { isBranchName, parseRepoAddress, REPO_MAX_BYTES, REPO_MAX_FILES, REPO_MAX_LINKS, type PendingLinkView } from "../core/repo-link.ts";
+import { libraryStore } from "../store/library.ts";
+import { libraryGuarded, libraryRefusal } from "./library.ts";
+import { hostedAddressAllowed, loopbackTestMode } from "./repo-git.ts";
+import { repoLinkView, repoLinkViews } from "./repo-link-views.ts";
+import { linkRepo, pendingLinks } from "./repo-sync.ts";
+
+const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
+
+const LIMITS = { maxLinks: REPO_MAX_LINKS, maxFiles: REPO_MAX_FILES, maxBytes: REPO_MAX_BYTES };
+
+export function repoLinksListResponse(): Promise<Response> {
+	return libraryGuarded(async () => {
+		const pending: PendingLinkView[] = pendingLinks();
+		return json({ links: await repoLinkViews(), pending, limits: LIMITS });
+	});
+}
+
+const optionalText = (value: unknown): string | undefined | null => {
+	if (value === undefined || value === null) return undefined;
+	if (typeof value !== "string") return null;
+	return value.trim() || undefined;
+};
+
+/** The "mirrors a repo" refusal names the linked folder the parent sits in. */
+function parentInMirror(parentId: string, folders: readonly LibraryFolder[]): string {
+	let current = folders.find((f) => f.id === parentId);
+	while (current && current.mirror?.path !== "") current = folders.find((f) => f.id === current!.parentId);
+	return (current ?? folders.find((f) => f.id === parentId))!.name;
+}
+
+/** POST /api/library/links: validate, then the first pull. */
+export function repoLinkCreateResponse(request: Request): Promise<Response> {
+	return libraryGuarded(async () => {
+		const body = await request.json().catch(() => null) as Record<string, unknown> | null;
+		if (!body || typeof body !== "object" || Array.isArray(body)) return libraryRefusal(LIBRARY_REFUSALS.invalidAddress);
+		const address = parseRepoAddress(typeof body.url === "string" ? body.url : "", { allowLoopbackHttp: loopbackTestMode() });
+		if ("refused" in address) return libraryRefusal(address);
+		const branch = optionalText(body.branch);
+		if (branch === null || (branch !== undefined && !isBranchName(branch))) return libraryRefusal(LIBRARY_REFUSALS.invalidBranch);
+		const token = optionalText(body.token);
+		if (token === null) return json({ error: "That token can't be used.", code: "invalid_token" }, 400);
+		const folderName = uploadName(typeof body.folderName === "string" ? body.folderName : "");
+		if (!folderName) return libraryRefusal(LIBRARY_REFUSALS.invalidName);
+		const parentId = body.parentId === null || body.parentId === undefined ? null : typeof body.parentId === "string" && body.parentId ? body.parentId : undefined;
+		if (parentId === undefined) return libraryRefusal(LIBRARY_REFUSALS.folderMissing, 400);
+		const requestId = typeof body.requestId === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(body.requestId) ? body.requestId : null;
+		if (!requestId) return json({ error: "The request needs an id.", code: "invalid_request" }, 400);
+
+		const folders = await libraryStore.folders();
+		if (parentId && !folders.some((f) => f.id === parentId)) return libraryRefusal(LIBRARY_REFUSALS.folderMissing);
+		if (parentId && inMirror(parentId, folders)) return libraryRefusal(REPO_REFUSALS.repoFolder(parentInMirror(parentId, folders)));
+		const taken = new Set(folders.filter((f) => liveFolderId(f.parentId, folders) === parentId).map((f) => nameKey(f.name)));
+		if (taken.has(nameKey(folderName))) {
+			return libraryRefusal({ refused: "name_taken", message: `${folderName} is already a folder here.`, name: folderName, suggestedName: suggestName(folderName, (c) => taken.has(nameKey(c))) });
+		}
+		if (!await hostedAddressAllowed(address.url)) return libraryRefusal(LIBRARY_REFUSALS.addressBlocked);
+
+		const outcome = await linkRepo({ requestId, url: address.url, display: address.display, repoBase: address.repoBase, ...(token ? { token } : {}), ...(branch ? { branch } : {}), folderName, parentId });
+		if (outcome.ok) return json({ link: repoLinkView(outcome.link), folder: outcome.folder }, 201);
+		if ("refusal" in outcome) return libraryRefusal(outcome.refusal);
+		return json({ error: outcome.failure.message, code: "sync_failed", refused: "sync_failed", failure: outcome.failure }, 422);
+	});
+}

@@ -2002,6 +2002,8 @@ html.lh-paper {
 }
 .lh-paper .nb-pill:hover { opacity: 0.85; }
 .lh-paper .nb-pill[aria-disabled="true"] { opacity: 0.6; cursor: progress; }
+/* A blot waiting inside a pill ("Linking…", feature 026) takes the pill's text colour. */
+.lh-paper .nb-pill .nb-ink-wait { color: currentColor; }
 
 @media (max-width: 479px) {
 	.lh-paper .nb-set-grid[data-testid="nb-set-layout"] { grid-template-columns: 1fr; }

@@ -66,6 +66,8 @@ export class GitRemote {
 	private readonly tokens = new Map<string, string>();
 	private readonly redirects = new Map<string, string>();
 	private server: http.Server | null = null;
+	/** Hold every request this long first, so a pull is slow enough to watch (e2e). */
+	delayMs = 0;
 	private port = 0;
 
 	private constructor(root: string) {
@@ -161,7 +163,7 @@ export class GitRemote {
 
 	private listen(): Promise<void> {
 		const backend = path.join(execFileSync("git", ["--exec-path"], { encoding: "utf8" }).trim(), "git-http-backend");
-		this.server = http.createServer((req, res) => {
+		const handle = (req: http.IncomingMessage, res: http.ServerResponse) => {
 			const url = new URL(req.url ?? "/", "http://127.0.0.1");
 			const authorization = req.headers.authorization ?? null;
 			this.requests.push({ method: req.method ?? "GET", path: url.pathname + url.search, authorization });
@@ -224,6 +226,10 @@ export class GitRemote {
 				res.end();
 			});
 			child.on("error", () => { if (!res.headersSent) res.writeHead(500); res.end(); });
+		};
+		this.server = http.createServer((req, res) => {
+			if (this.delayMs > 0) setTimeout(() => handle(req, res), this.delayMs);
+			else handle(req, res);
 		});
 		return new Promise((resolve) => {
 			this.server!.listen(0, "127.0.0.1", () => {
