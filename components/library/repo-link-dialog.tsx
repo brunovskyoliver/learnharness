@@ -87,17 +87,20 @@ export function RepoLinkDialog({ open, location, linkCount, hosted, onClose, onS
 		setBusy(false);
 		if (!answer.ok) {
 			setRefusal(answer);
-			if (fieldOf(answer) === "branch") setBranchOpen(true);
+			const field = fieldOf(answer);
+			if (field === "branch") setBranchOpen(true);
+			// The field the refusal sits under takes focus, so the sentence is read with it.
+			if (field !== "form") requestAnimationFrame(() => document.querySelector<HTMLInputElement>(`[data-testid="repo-link-dialog"] input[name="repo-${field}"]`)?.focus());
 		}
 	};
 	const where = refusal ? fieldOf(refusal) : null;
 	const line = (field: Field) => {
-		if (field === "form" && atLimit) return <p role="alert" className="text-sm text-red" data-testid="repo-link-refusal">{LIMIT_SENTENCE}</p>;
+		if (field === "form" && atLimit) return <p role="alert" id="repo-link-error-form" className="text-sm text-red" data-testid="repo-link-refusal">{LIMIT_SENTENCE}</p>;
 		if (!refusal || where !== field) return null;
 		const sentence = refusal.failure?.message ?? refusal.error;
 		const detail = refusal.failure?.detail;
 		return (
-			<div className="flex flex-col gap-1" data-testid="repo-link-refusal">
+			<div className="flex flex-col gap-1" id={`repo-link-error-${field}`} data-testid="repo-link-refusal">
 				<p role="alert" className="text-sm text-red [overflow-wrap:anywhere]">{sentence}</p>
 				<div className="flex flex-wrap gap-x-4">
 					{refusal.code === "name_taken" && refusal.suggestedName && (
@@ -127,6 +130,8 @@ export function RepoLinkDialog({ open, location, linkCount, hosted, onClose, onS
 							autoCapitalize="off"
 							spellCheck={false}
 							aria-invalid={where === "url" ? true : undefined}
+							aria-describedby={where === "url" ? "repo-link-error-url" : undefined}
+							name="repo-url"
 							data-testid="repo-link-url"
 							onChange={(event) => set("url", event.target.value)}
 							className="lh-line-field"
@@ -140,6 +145,8 @@ export function RepoLinkDialog({ open, location, linkCount, hosted, onClose, onS
 							autoComplete="off"
 							spellCheck={false}
 							aria-invalid={where === "folderName" ? true : undefined}
+							aria-describedby={where === "folderName" ? "repo-link-error-folderName" : undefined}
+							name="repo-folderName"
 							data-testid="repo-link-folder"
 							onChange={(event) => set("folderName", event.target.value)}
 							className="lh-line-field"
@@ -154,6 +161,8 @@ export function RepoLinkDialog({ open, location, linkCount, hosted, onClose, onS
 							autoComplete="off"
 							spellCheck={false}
 							aria-invalid={where === "token" ? true : undefined}
+							aria-describedby={where === "token" ? "repo-link-error-token" : undefined}
+							name="repo-token"
 							data-testid="repo-link-token"
 							onChange={(event) => set("token", event.target.value)}
 							className="lh-line-field"
@@ -171,6 +180,8 @@ export function RepoLinkDialog({ open, location, linkCount, hosted, onClose, onS
 								autoCapitalize="off"
 								spellCheck={false}
 								aria-invalid={where === "branch" ? true : undefined}
+								aria-describedby={where === "branch" ? "repo-link-error-branch" : undefined}
+								name="repo-branch"
 								data-testid="repo-link-branch"
 								onChange={(event) => set("branch", event.target.value)}
 								className="lh-line-field"

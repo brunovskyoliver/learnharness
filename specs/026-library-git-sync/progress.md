@@ -1,6 +1,6 @@
 # Feature 026: Library git sync
-Stage: implement
-Updated: 2026-11-08T20:30:00Z
+Stage: done
+Updated: 2026-11-08T23:30:00Z
 
 ## Decisions
 - Owner (with the request, 2026-11-08): a read-only mirror; the repo is the only source, every sync overwrites, upstream deletes disappear; files can be read, @-referenced, quoted and annotated, never edited.
@@ -57,6 +57,11 @@ Updated: 2026-11-08T20:30:00Z
 - Agent (phase 6, reversible): PATCH answers 400 `invalid_token` ("That token can't be used.", the create route's sentence) for an empty token, one with whitespace or a missing `token`; `hasToken` on the link follows. Remove token has no confirm.
 - Agent (phase 6, reversible): Repo details opens from the linked folder's menu ("Repo details…", after Sync now) and a "Repo details" toolbar word (lucide `Info`) inside the linked folder. The replace field is a password line field named "Personal access token" (aria-label; the row's "Token" is its visible label). Escape in that field closes the field, not the dialog. "Unlink…" is `lh-text-action data-danger` (DESIGN.md: graphite, red on hover), not always-red text. The unlink confirm stacks over the details dialog; Escape closes the innermost first; cancelling returns focus to "Unlink…". After an unlink from inside the linked folder the view goes to its parent. The confirm's `{n}` is the live mirrored items of the link.
 
+- Agent (phase 7, reversible): an `auth` failure from isomorphic-git's cancelled credential prompt carries the detail "HTTP 401 Unauthorized: the server asked for credentials." instead of `UserCanceledError: The operation was canceled.` (read as if the learner cancelled). The unlink confirm says "its 1 file" for one file; every other count keeps the approved sentence. The link dialog's refusal is tied to its field (`aria-describedby`) and the field takes focus (reviews.md).
+- Agent (phase 7, note): the Electron/standalone smoke reaches the fixture remote over https through a throwaway self-signed proxy trusted by `NODE_EXTRA_CA_CERTS`, because production refuses plain http and `LH_TEST_GIT_LOOPBACK_HTTP` is ignored there. isomorphic-git is bundled into the server chunks (not a separate `node_modules/isomorphic-git` in the standalone); the sync passing proves it ships.
+- Owner review needed (phase 7, reviews.md O1, O2): the Repo details token field has no visible label at the line (needs a new string), and "Remove token" has no confirm or undo (phase-6 agent decision).
+- Owner review (converge, carried, no task): FR-014 local schedule arms on the first window (R9), not at process start; dot-files counted, not named; a duplicate link whose default branch equals an existing explicit branch is caught only at the first pull's catalog write (after the download); an empty repo's first link fails `not-found`; `SyncFailure` code `address-blocked`; analyze L1–L4.
+
 ## Log
 - 2026-11-08T12:08Z specify: spec.md and checklists/requirements.md written from the owner's request and six decisions.
 - 2026-11-08T12:20Z clarify: gate-1 answers Q1–Q5 ("ok" = all recommendations) encoded in spec.md (Clarifications, US2/US3/US4 scenarios, edge cases, FR-006/010/012/014/023, new FR-028/029, key entities, SC-002, new SC-009–011, scheduler assumption). Checklist 14/16, unchanged (two accepted implementation-detail exceptions).
@@ -72,6 +77,8 @@ Updated: 2026-11-08T20:30:00Z
 - 2026-11-08T19:00Z implement phase 5 (T034-T043, T059, US3 synced notes work like the Library): store refusals in src/store/library.ts (`repo_file` for rename/move/trash/remove of mirrored items and mirror folders; `repo_linked` for trashing/deleting the linked folder; `repo_folder` for upload, new folder/page/diagram, move and restore into a mirror; `holds_linked` at any depth), `keepMirrorNames` (T059) and `removedEntry`; trash/remove/restore return a refusal in ports.ts and the routes map it (409); `libraryPathName` in core/library.ts; `mentionNames`/`mentionName`, `fromRepo`, `REMOVED_FROM_REPO`/`goneSuffix` in src/core/library-refs.ts; server resolver passes folders and marks `fromRepo`; @ list rows with folder-path meta (use-library-mention.ts, mention-menu.tsx); "Removed from the repo" in references-card.tsx; menus, no Rename/Delete icons, no drag/drop and hidden adding words inside a mirror (folder-row.tsx, library-row.tsx, library-view.tsx, folder-dialogs.tsx); `library_list` `fromRepo`/`file`. Tests: library-mirror-refusals (10, new), library-refs (+5), library-references (+3), document-index (+2: index and highlights), tenant-files (+3: jailed tools and library tools), render-library (+2); tests/fixtures/mirror.ts; five existing tests cast trash/restore results. `npm test` 4280: 4277 pass, 1 fail (my changed library_list description vs the approved string; reverted, file passes) / 2 skipped; typecheck, lint, build clean. Playwright study 45/45 (part 3: 7 tests). Screenshots in ~/agent-runs/2026-11-08-library-git-sync/phase5/ (mirror rows and menu, bulk refusal, @ list, Removed from the repo reference; light/dark; 1440/390).
 
 - 2026-11-08T20:30Z implement phase 6 (T044-T048, US4 manage the link): store `unlinkMirror`, `dropMirrorFiles`, `setLinkToken` and relink revival plus the repoKey duplicate check in `applyFirst` (src/store/library.ts, ports.ts); `unlinkLink` in src/server/repo-sync.ts; `repoLinkPatchResponse`/`repoLinkDeleteResponse` and the create route's `limit_links`/`already_linked` checks in src/server/repo-links.ts; app/api/library/links/[id]/route.ts (PATCH, DELETE); components/library/repo-details-dialog.tsx (details, token replace/add/remove, unlink confirm); library-view.tsx wiring ("Repo details…" menu entry and toolbar word, the linked folder's Delete folder → unlink). Tests: repo-links-api (+5: token replace/remove, unlink and relink, duplicate, 11th link, unlink during a pull), render-library (+3); e2e part 4 (3 tests). `npm test` 4288: 4286 pass / 0 fail / 2 skipped; typecheck, lint, build clean (no isomorphic-git in .next/static). Playwright study: first full run 46/48, both failures in library-git-sync (part 3 expected the menu without "Repo details…"; a full-text hit matched a repeat link after a worker restart), fixed, spec 20/20, full rerun 48/48. Screenshots in ~/agent-runs/2026-11-08-library-git-sync/phase6/ (details, token field, token saved, unlink confirm; light/dark; 1440/390).
+
+- 2026-11-08T23:30Z implement phase 7 (T049–T057): tests/tenant-repo-links.test.ts (6: links, tokens, mirrors, pending rows, SSE events and window schedules per tenant; hosted no-tenant throws), tests/repo-secrets.test.ts (2: real token-protected fixture remote, link → wrong token → replace → sync → unlink; the sentinel is in no response, console line, or data-dir file but git-tokens.json (0600), nor auth.json, process.env or the keys listing; zero fetch calls = no model call), `git-tokens.json` on build-server.mjs's refusal list; startup-module-graph asserts isomorphic-git (and pako, sha.js) out of startup and every client chunk (Library route included); smoke-server.mjs links a token-protected fixture repo over https and reads a synced file (host Node and Electron's Node with the gnome-46-2404/mesa-2404 snaps on LD_LIBRARY_PATH: both pass); DESIGN.md "Linked repos"; reviews.md (5 fixed, 2 owner). The e2e per-width tests now run at 320/390/1440. Startup JS (startup-after.md): / +0.19%, /chat/new +0.19%, /library +1.83% gzip. Live check (fixture only, production `next start`, ~/agent-runs/2026-11-08-library-git-sync/live/): 9/9. Converge: no gaps, tasks.md unchanged by it. Gates below.
 
 ## Report
 Analyze rerun (read-only), 2026-11-08, after gate 2:
@@ -90,4 +97,21 @@ Analyze rerun (read-only), 2026-11-08, after gate 2:
 
 Coverage: 30/30 FRs have tasks; 11/11 SCs have tasks. Constitution I–VIII: no conflicts. 59 tasks in 7 phases.
 
-Not implemented, not committed.
+### Final report (2026-11-08)
+
+**What changed.** A Library folder can be linked to an HTTPS git repo (optional personal access token). It is a read-only mirror, pulled server-side every 15 minutes while the app runs (hosted: once on open, then every 15 minutes while a window is open), plus Sync now. Status line, Repo details (token replace/remove, unlink), relink revival of marks, highlights, cards and references, "Removed from the repo" references, @ by Library path, and limits (2,000 files, 500 MB, 10 links). Server-only isomorphic-git 1.44.4. Phases 1–7: T001–T059.
+
+**How verified (phase 7, on the working tree over 7f62095).**
+- `npm test`: 4,298 tests, 4,296 pass, 0 fail, 2 skipped (the pre-existing live tests).
+- `npm run lint` clean. `npm run typecheck` clean. `npm run build` clean; no isomorphic-git in `.next/static`.
+- `npm run test:e2e`: 105/105 (notebook + study). Earlier, while editing, library-git-sync "status states fit at 390px" failed once ("Synced 6 min ago", a 1.8 min run during a hot reload). It passed alone, so it was a flake, not a regression.
+- scripts/check-library-folders-ui.mjs passed at 1440/390/320. scripts/check-library-ui.mjs failed once in the full run, at "390px sent labels" (a 30 s wait). Rerun alone (`LH_UI_MENTIONS_ONLY=1`) every @ list and sent-labels check passed at 1440/390/320, and the Settings part it hadn't reached passed (`LH_UI_SETTINGS_ONLY=1`). So that was a flake, not a regression.
+- smoke-server.mjs: host Node and Electron's Node both pass, including the repo sync.
+- Startup JS: within +5% on every route (+0.19%, +0.19%, +1.83%).
+- Live check: T056 used a local fixture repo only, because the owner provided no live private repo (gate 2). Against the production build over https with a token: tree in 290 ms (SC-001), push + Sync now in 82 ms (SC-002), revoked token → "Sync failed · The repo refused the token…" with the files kept, replaced token → next sync works, and no token in the page, data dir or server log (SC-006). Hosted step 5 (Clerk) was not run live; tenant-repo-links and repo-sync-scheduler cover it.
+- Reviews: impeccable + web-design-guidelines at 320/390/1440, light and dark (reviews.md, screenshots ~/agent-runs/2026-11-08-library-git-sync/phase7/).
+
+**What is left.** Owner review of reviews.md O1–O2 and of the converge notes above. Analyze lows L1–L4 are still open.
+
+**Status.** Implementation: done. Commit: on `unified-redesign` (see git log, `feat(026): phase 7 polish, gates and report`). Merge: not merged. Deploy: not deployed.
+

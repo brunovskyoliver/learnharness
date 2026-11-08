@@ -100,15 +100,15 @@
 
 ## Phase 7: Polish & cross-cutting
 
-- [ ] T049 [P] Tenancy: tests/tenant-repo-links.test.ts — two tenants' links, tokens, pending rows, mirrors, events and schedules are invisible to each other; no-tenant access in hosted mode throws (SC-007)
-- [ ] T050 [P] Secrets: tests/repo-secrets.test.ts — a sync with a sentinel token, then scan captured console output, every response body from the links/library routes, catalog.json, index shards, the mirror and git-work leftovers for it (SC-006); assert the token is never in `auth.json`, never in `process.env`, and absent from the Settings keys listing (FR-004, R8); assert no model call happens during link, pull or unlink (FR-026); add `git-tokens.json` to the secret refusal list in scripts/build-server.mjs
-- [ ] T051 [P] Startup: assert in tests/startup-module-graph.test.ts that `isomorphic-git` is absent from startup and client graphs; re-measure with the 025 script into `~/agent-runs/2026-11-08-library-git-sync/startup-after.md` (≤ +5%, SC-008)
-- [ ] T052 [P] Electron standalone: extend scripts/smoke-server.mjs to run one fixture sync against the built standalone server (proves the trace carries isomorphic-git)
-- [ ] T053 [P] DESIGN.md Library section: linked folders, status line, repo menus, unlink confirm, read-only line (from ui-contract.md)
-- [ ] T054 Run impeccable and web-design-guidelines on the Library changes at 320/390/1440 (light/dark); record findings and fixes in specs/026-library-git-sync/reviews.md
-- [ ] T055 Gates: `npm test`, `npm run lint`, `npm run typecheck`, `npm run build`, `npm run test:e2e`, scripts/check-library-ui.mjs and scripts/check-library-folders-ui.mjs; pre-existing failures recorded separately in progress.md
-- [ ] T056 Live check per quickstart.md "Manual" against a local fixture repo only (served by tests/fixtures/git-remote.ts, with a token-protected variant): no live private repo was provided by the owner (gate 2, 2026-11-08); record that in progress.md and the Report; evidence under `~/agent-runs/2026-11-08-library-git-sync/`
-- [ ] T057 Write the Report in specs/026-library-git-sync/progress.md (what changed, how verified, what is left; implementation/commit/merge/deploy status separately)
+- [X] T049 [P] Tenancy: tests/tenant-repo-links.test.ts — two tenants' links, tokens, pending rows, mirrors, events and schedules are invisible to each other; no-tenant access in hosted mode throws (SC-007)
+- [X] T050 [P] Secrets: tests/repo-secrets.test.ts — a sync with a sentinel token, then scan captured console output, every response body from the links/library routes, catalog.json, index shards, the mirror and git-work leftovers for it (SC-006); assert the token is never in `auth.json`, never in `process.env`, and absent from the Settings keys listing (FR-004, R8); assert no model call happens during link, pull or unlink (FR-026); add `git-tokens.json` to the secret refusal list in scripts/build-server.mjs
+- [X] T051 [P] Startup: assert in tests/startup-module-graph.test.ts that `isomorphic-git` is absent from startup and client graphs; re-measure with the 025 script into `~/agent-runs/2026-11-08-library-git-sync/startup-after.md` (≤ +5%, SC-008)
+- [X] T052 [P] Electron standalone: extend scripts/smoke-server.mjs to run one fixture sync against the built standalone server (proves the trace carries isomorphic-git)
+- [X] T053 [P] DESIGN.md Library section: linked folders, status line, repo menus, unlink confirm, read-only line (from ui-contract.md)
+- [X] T054 Run impeccable and web-design-guidelines on the Library changes at 320/390/1440 (light/dark); record findings and fixes in specs/026-library-git-sync/reviews.md
+- [X] T055 Gates: `npm test`, `npm run lint`, `npm run typecheck`, `npm run build`, `npm run test:e2e`, scripts/check-library-ui.mjs and scripts/check-library-folders-ui.mjs; pre-existing failures recorded separately in progress.md
+- [X] T056 Live check per quickstart.md "Manual" against a local fixture repo only (served by tests/fixtures/git-remote.ts, with a token-protected variant): no live private repo was provided by the owner (gate 2, 2026-11-08); record that in progress.md and the Report; evidence under `~/agent-runs/2026-11-08-library-git-sync/`
+- [X] T057 Write the Report in specs/026-library-git-sync/progress.md (what changed, how verified, what is left; implementation/commit/merge/deploy status separately)
 
 ## Dependencies & execution order
 

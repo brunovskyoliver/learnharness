@@ -184,7 +184,8 @@ export function toFailure(err: unknown, client: PullClient | null, token: string
 	if (stop === "too-large-download") return make("too-large-download");
 	if (stop === "timeout") return make("network");
 	if (stop === "insecure") return make("server");
-	if (e?.code === "UserCanceledError") return make("auth");
+	// onAuth/onAuthFailure cancel on a 401; isomorphic-git's own "UserCanceledError" would read as if the learner cancelled.
+	if (e?.code === "UserCanceledError") return { ...make("auth"), detail: "HTTP 401 Unauthorized: the server asked for credentials." };
 	if (e?.code === "HttpError") {
 		const status = e.data?.statusCode ?? 0;
 		if (status === 401 || status === 403) return make("auth");

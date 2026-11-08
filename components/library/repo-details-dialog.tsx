@@ -154,7 +154,7 @@ export function UnlinkBody({ folderName, files, busy, failure, onCancel, onConfi
 	return (
 		<>
 			<DialogTitle className="[overflow-wrap:anywhere]">Unlink {folderName}?</DialogTitle>
-			<DialogDescription>The folder and its {files} files leave your Library. Your highlights, notes and flashcards stay, and come back if you link this repo again. The repo isn&apos;t changed.</DialogDescription>
+			<DialogDescription>The folder and its {files} {files === 1 ? "file" : "files"} leave your Library. Your highlights, notes and flashcards stay, and come back if you link this repo again. The repo isn&apos;t changed.</DialogDescription>
 			{failure && <p role="alert" className="text-sm text-red">{failure}</p>}
 			<div className="mt-2 flex items-center justify-end gap-5">
 				<button ref={cancelRef} type="button" className="lh-text-action" disabled={busy} onClick={onCancel} data-testid="repo-unlink-cancel">Cancel</button>

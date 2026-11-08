@@ -314,6 +314,17 @@ Features 019-020. Every string is in [their plan](specs/019-document-intelligenc
 - **Highlights list**: a shelf block above the pages, 40dvh at most: page, quote, note, then Go to, Add or Edit note, Remove. A row whose words have gone adds "This text is no longer on that page." Remove offers Undo.
 - **Citation line**: a faint status above the pages saying whether the quote was found on that page, with Dismiss.
 
+### Linked repos
+
+Feature 026. Every string is in [its UI contract](specs/026-library-git-sync/contracts/ui-contract.md).
+
+- **Entry**: "Link a repo" (lucide `GitBranch`) is a toolbar word after "New folder". The dialog is the lifted dialog: Repo address (HTTPS), Folder name (prefilled from the repo name), Personal access token (password field, private repos only), a Branch disclosure ("Default branch" until opened), "In {folder path}", then Link (ink pill, "Linking…" with the blot) and Cancel. Refusals sit under their field in `--text-red`, with the raw detail behind "Show details". While the first pull runs, the target folder shows a pending row, "Syncing for the first time…", that can't be opened.
+- **Linked folder**: the row has lucide `FolderGit2` and the meta `Repo · {n} items` plus the status. Inside it, a faint `role="status"` line under the title reads "Syncing…", "Synced {n} min ago" (only the time part is `aria-live="off"`, so the minute tick isn't announced) or "Sync failed · {sentence}" with "Show details" and "Sync now". A skipped count adds "· {n} files skipped" with "Show which". Toolbar words inside: "Sync now" (aria-disabled "Syncing…" while one runs) and "Repo details". Upload, New page, New folder, New diagram and Link a repo hide inside a mirror.
+- **Read-only mirror**: mirror folders and mirrored files have no Rename or Delete icons, aren't drag sources or drop targets, and are left out of Move to…. Their menus offer only Open, favorites, pin, Tags… (files), Archive and Download. Bulk Move to… and Move to the trash refuse them as "{name}: comes from the repo.". The linked folder keeps Rename and Move, and its Delete folder opens the unlink confirm.
+- **Repo details**: a lifted dialog titled with the folder name: Address (a link, no credentials), Branch, Last sync, Commit (7 characters), Token (the mask with "Replace token" and "Remove token", or "No token" with "Add token"). Footer: "Sync now", "Unlink…" (`lh-text-action data-danger`), Close.
+- **Unlink confirm**: "Unlink {folder name}?", the body says the files go and highlights, notes and flashcards stay, red Unlink pill, focus starts on Cancel. It stacks over Repo details; Escape closes the innermost first.
+- **Opening**: text opens read-only with "This comes from {display}. Change it in the repo.", and PDFs show "From {display}" in the reader header. If a pull changes the open file, a faint "Updated from the repo" line appears with Reload. If a pull removes it, the line says "Removed from the repo" and the view keeps what it was showing. A reference to a removed file reads "{name} · Removed from the repo".
+
 ## Review
 
 Feature 021. Every string is in [its plan](specs/021-spaced-repetition/plan.md).

@@ -19,6 +19,7 @@ Owner goal, 2026-10-31: evolve the app into one workspace connecting learning, d
 | 023 | Integration polish: held AI edits, PDF keyboard path, Electron and hosted verification across the slices | all | Implemented on `feat/023-integration-polish`, not merged or deployed |
 | 024 | Notebook mode: a Riddled-style writing page with margin threads, automatic reads, sketches, note chat, export; Study unchanged | 016, 021, 023 | Implemented on `notebook-mode` and verified against a real model (T047, 2026-11-07, verification-only codex engine); not merged or deployed |
 | 025 | Unified redesign: one paper design system for both modes (Notebook's tokens, fonts, chrome, overlay sidebar, settings modal; checks as margin threads); Study ink removed | 024 | Implemented on `unified-redesign`, verified against a real model with the codex-verify switch (T063, 2026-11-08); not merged or deployed |
+| 026 | Library git sync: link an HTTPS git repo as a read-only, auto-pulled Library folder (isomorphic-git, token per link) | 009, 011, 019, 020, 025 | Done: implemented and committed on `unified-redesign` (2026-11-08); live check against a local fixture repo only (no private repo provided); not merged or deployed |
 
 ## Dependency decisions to make with the owner
 

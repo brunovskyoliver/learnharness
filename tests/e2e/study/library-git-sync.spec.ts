@@ -273,7 +273,7 @@ test.describe("Study: link a repo into the Library", () => {
 			await expect(page.getByTestId("library-folder-row").first()).toBeVisible();
 		});
 
-		for (const width of [390, 1440]) {
+		for (const width of [320, 390, 1440]) {
 			test(`the status states fit at ${width}px, light and dark`, async ({ page, request, browser, baseURL }) => {
 				test.setTimeout(180_000);
 				await page.setViewportSize({ width, height: width < 500 ? 780 : 900 });
@@ -428,7 +428,7 @@ test.describe("Study: link a repo into the Library", () => {
 			expect(posts[0]!.body).toMatchObject({ chatId: CHATS.plain, input: { type: "text", text: `Compare @${folder}/week1/notes.md` } });
 		});
 
-		for (const width of [390, 1440]) {
+		for (const width of [320, 390, 1440]) {
 			test(`mirror rows fit at ${width}px, light and dark`, async ({ page, request }) => {
 				test.setTimeout(120_000);
 				await page.setViewportSize({ width, height: width < 500 ? 780 : 900 });
@@ -501,7 +501,7 @@ test.describe("Study: link a repo into the Library", () => {
 			await expect(page.getByTestId("repo-details-dialog")).toBeVisible();
 		};
 
-		for (const width of [390, 1440]) {
+		for (const width of [320, 390, 1440]) {
 			test(`Repo details and the unlink confirm fit at ${width}px, light and dark`, async ({ page, request }) => {
 				test.setTimeout(150_000);
 				await page.setViewportSize({ width, height: width < 500 ? 780 : 900 });
