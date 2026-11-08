@@ -115,6 +115,19 @@ export function PaperAppearanceProvider({ initial, loaded = true, children }: {
 		if (background && symbol) setChrome({ background, symbol });
 	}, [resolvedTheme, appearance.theme]);
 
+	// Browsers (phones' toolbars): theme-color is the paper of the theme in use.
+	useEffect(() => {
+		const background = hexOf(getComputedStyle(document.documentElement).getPropertyValue("--paper"));
+		if (!background) return;
+		let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+		if (!meta) {
+			meta = document.createElement("meta");
+			meta.name = "theme-color";
+			document.head.append(meta);
+		}
+		meta.content = background;
+	}, [resolvedTheme, appearance.theme]);
+
 	// Without a server read (it failed), read the record once per app load.
 	useEffect(() => {
 		if (loaded) return;
