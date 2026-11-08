@@ -14,6 +14,8 @@ const { runAsTenant } = await import("../config.ts");
 const { repoLinkCreateResponse, repoLinksListResponse } = await import("../src/server/repo-links.ts");
 const { libraryContentResponse, libraryListResponse } = await import("../src/server/library.ts");
 const { setRepoRemote } = await import("../src/server/repo-sync.ts");
+const routes = await import("../src/server/repo-links.ts");
+const { pullLink, repoSyncIdle } = await import("../src/server/repo-sync.ts");
 const { libraryStore } = await import("../src/store/library.ts");
 const { libraryTextIdle } = await import("../src/server/library-text.ts");
 const { RepoRemoteError } = await import("../src/core/repo-link.ts");
@@ -291,5 +293,131 @@ describe("POST /api/library/links/:id/sync (Sync now, T030)", () => {
 		const response = await libraryContentResponse(new Request(`http://app.test/api/library/items/${item.id}/content`), item.id);
 		assert.equal(response.headers.get("X-Library-Version"), item.mirror!.oid);
 		await response.body?.cancel();
+	});
+});
+
+describe("manage a link (US4, T044)", () => {
+	const patch = (id: string, body: unknown) => routes.repoLinkPatchResponse(new Request(`http://app.test/api/library/links/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }), id);
+	const tokens = () => (fs.existsSync(tokensFile()) ? JSON.parse(fs.readFileSync(tokensFile(), "utf8")) as Record<string, string> : {});
+	const created = async (body: Record<string, unknown> = {}) => {
+		const response = await post(body);
+		assert.equal(response.status, 201);
+		return (await response.json() as { link: { id: string; tokenMask: string | null }; folder: { id: string } });
+	};
+
+	it("PATCH replaces the token: the old one is gone, the mask changes, the next pull uses it; null removes it", async () => {
+		const { remote, calls } = fakeRemote();
+		setRepoRemote(remote);
+		const { link } = await created({ token: TOKEN });
+		const NEXT = "ghp_replacedTOKEN5151yy";
+		const replaced = await patch(link.id, { token: `  ${NEXT} ` });
+		assert.equal(replaced.status, 200);
+		const text = await replaced.text();
+		assert.ok(!text.includes(NEXT) && !text.includes(TOKEN), "only the mask comes back");
+		const view = (JSON.parse(text) as { link: { tokenMask: string } }).link;
+		assert.notEqual(view.tokenMask, link.tokenMask);
+		assert.equal(view.tokenMask, "…51yy");
+		assert.deepEqual(tokens(), { [link.id]: NEXT });
+		assert.ok(!catalogText().includes(NEXT));
+		await pullLink(link.id).done;
+		assert.equal(calls.tokens.at(-1), NEXT, "the next pull sends the new token");
+
+		const removed = await patch(link.id, { token: null });
+		assert.equal(removed.status, 200);
+		assert.equal((await removed.json() as { link: { tokenMask: null } }).link.tokenMask, null);
+		assert.deepEqual(tokens(), {});
+		await pullLink(link.id).done;
+		assert.equal(calls.tokens.at(-1), undefined, "and then none");
+
+		assert.equal((await patch(link.id, { token: "   " })).status, 400);
+		assert.equal((await patch(link.id, {})).status, 400);
+		assert.equal((await patch("rpl_nope", { token: NEXT })).status, 404);
+	});
+
+	it("DELETE unlinks: token, folder and bytes go; items become removed entries keeping marks and highlights; a relink revives them", async () => {
+		const { remote } = fakeRemote();
+		setRepoRemote(remote);
+		const { link, folder } = await created({ token: TOKEN });
+		const readme = (await libraryStore.list()).find((i) => i.name === "README.md")!;
+		await libraryStore.markItem(readme.id, { favorite: true, tags: ["waves"] });
+		const annotations = path.join(dir, "library", "annotations", `${readme.id}.json`);
+		fs.mkdirSync(path.dirname(annotations), { recursive: true });
+		fs.writeFileSync(annotations, "[]");
+		const mirrors = path.join(dir, "files", ".mirrors", link.id);
+		assert.ok(fs.existsSync(mirrors));
+
+		const response = await routes.repoLinkDeleteResponse(link.id);
+		assert.equal(response.status, 200);
+		assert.deepEqual(await response.json(), { ok: true });
+		assert.deepEqual((await listLinks()).links, []);
+		assert.deepEqual(tokens(), {});
+		assert.equal(fs.existsSync(mirrors), false, "files/.mirrors/<linkId> is deleted");
+		assert.ok(!(await libraryStore.folders()).some((f) => f.id === folder.id || f.mirror), "the linked folder and its mirror folders leave the Library");
+		assert.deepEqual((await libraryStore.list()).filter((i) => i.mirror), []);
+		const entry = (await libraryStore.catalog()).find((e) => e.id === readme.id)!;
+		assert.ok("deletedAt" in entry);
+		assert.equal((entry as { removedBecause?: string }).removedBecause, "unlinked");
+		assert.ok(fs.existsSync(annotations), "highlights stay");
+		assert.equal((await routes.repoLinkDeleteResponse(link.id)).status, 404);
+
+		const again = await created({ folderName: "Notes again" });
+		const back = (await libraryStore.list()).find((i) => i.name === "README.md")!;
+		assert.equal(back.id, readme.id, "the same path gets its old id");
+		assert.equal(back.favorite, true);
+		assert.deepEqual(back.tags, ["waves"]);
+		assert.equal(again.folder.id, folder.id, "the linked folder too");
+		assert.equal((await libraryStore.folders()).find((f) => f.id === folder.id)?.name, "Notes again");
+		assert.ok(fs.existsSync(annotations));
+	});
+
+	it("the same address and branch while linked → 409 already_linked before any fetch; another branch is allowed", async () => {
+		const { remote, calls } = fakeRemote();
+		setRepoRemote(remote);
+		await created({});
+		const before = calls.tip;
+		const twin = await post({ folderName: "Twin" });
+		assert.equal(twin.status, 409);
+		assert.deepEqual(await twin.json(), { error: "github.com/oliver/notes (main) is already linked as Lecture notes.", code: "already_linked", name: "Lecture notes" });
+		const named = await post({ folderName: "Twin", branch: "main" });
+		assert.equal(named.status, 409, "the default branch named");
+		assert.equal(calls.tip, before);
+		assert.equal((await post({ folderName: "Dev", branch: "dev" })).status, 201);
+	});
+
+	it("an 11th link → 409 limit_links before any fetch (SC-010)", async () => {
+		const { remote, calls } = fakeRemote();
+		setRepoRemote(remote);
+		for (let n = 1; n <= 10; n++) await created({ url: `https://github.com/oliver/repo${n}`, folderName: `Repo ${n}` });
+		const before = calls.tip;
+		const eleventh = await post({ url: "https://github.com/oliver/repo11", folderName: "Repo 11" });
+		assert.equal(eleventh.status, 409);
+		assert.deepEqual(await eleventh.json(), { error: "You have 10 linked repos, the most allowed. Unlink one to add another.", code: "limit_links" });
+		assert.equal(calls.tip, before);
+	});
+
+	it("DELETE while a pull of the link runs awaits it and discards its result", async () => {
+		const { remote } = fakeRemote();
+		setRepoRemote(remote);
+		const { link } = await created({});
+		let release!: () => void;
+		const gate = new Promise<void>((resolve) => { release = resolve; });
+		// A moved tip and a held snapshot: the pull is mid-fetch when the unlink lands.
+		const moving: RepoRemote = {
+			tip: async (request) => ({ ...(await remote.tip(request)), commit: "d".repeat(40) }),
+			snapshot: async (request, visit) => { await gate; return remote.snapshot(request, visit); },
+		};
+		setRepoRemote(moving);
+		const pull = pullLink(link.id);
+		assert.equal((await pull.started)?.sync.state, "syncing");
+		let unlinked = false;
+		const deleting = routes.repoLinkDeleteResponse(link.id).then((response) => { unlinked = true; return response; });
+		await new Promise((resolve) => setTimeout(resolve, 30));
+		assert.equal(unlinked, false, "the unlink waits for the running pull");
+		release();
+		assert.equal((await deleting).status, 200);
+		await repoSyncIdle();
+		assert.deepEqual((await listLinks()).links, []);
+		assert.deepEqual((await libraryStore.list()).filter((i) => i.mirror), [], "the pull's result was discarded");
+		assert.equal(fs.existsSync(path.join(dir, "files", ".mirrors", link.id)), false);
 	});
 });

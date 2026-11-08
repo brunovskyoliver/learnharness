@@ -353,7 +353,7 @@ test.describe("Study: link a repo into the Library", () => {
 			test.setTimeout(120_000);
 			await page.goto("/library");
 			await hydrated(page, '[data-testid="library-link-repo"]');
-			expect(await menuOf(page, folder)).toEqual(["Open folder", "Sync now", "Rename folder", "Move folder", "Add to favorites", "Pin to top", "Archive", "Delete folder"]);
+			expect(await menuOf(page, folder)).toEqual(["Open folder", "Sync now", "Repo details…", "Rename folder", "Move folder", "Add to favorites", "Pin to top", "Archive", "Delete folder"]);
 			await page.goto(`/library?folder=${encodeURIComponent(folderId)}`);
 			await hydrated(page, '[data-testid="library-sync-now"]');
 			for (const word of ["library-new-folder", "library-link-repo", "library-upload", "library-new-page", "library-new-diagram"]) await expect(page.getByTestId(word)).toHaveCount(0);
@@ -385,7 +385,8 @@ test.describe("Study: link a repo into the Library", () => {
 			await hydrated(page, '[data-testid="library-search-mode-text"]');
 			await page.getByTestId("library-search-mode-text").click();
 			await page.getByTestId("library-search").fill("resonate");
-			const hit = page.getByTestId("doc-search-result").filter({ hasText: "notes.md" });
+			// A rerun links the fixture again at a new address: this link's hit by its folder.
+			const hit = page.getByTestId("doc-search-result").filter({ hasText: "notes.md" }).filter({ hasText: folder });
 			await expect(hit).toBeVisible({ timeout: 60_000 });
 			await expect(hit).toContainText("Standing waves resonate");
 			await page.getByTestId("library-search-mode-names").click();
@@ -470,6 +471,129 @@ test.describe("Study: link a repo into the Library", () => {
 				await row.scrollIntoViewIfNeeded();
 				await shot(page, `reference-removed-${width}-${appearance}`);
 			}
+		});
+	});
+
+	test.describe("part 4: manage the link", () => {
+		const FIRST = "ghp_e2eMANAGE1111aa";
+		const SECOND = "ghp_e2eMANAGE2222bb";
+		let folder = "";
+		let folderId = "";
+		const listed = async (request: import("@playwright/test").APIRequestContext) => (await (await request.get("/api/library")).json()) as { items: { id: string; name: string; folderId?: string }[]; folders: { id: string; name: string; parentId: string | null }[] };
+		test.beforeAll(async ({ request }) => {
+			await seedStudy();
+			remote.createRepo("managed", {
+				"notes.md": "# Managed\n\nThe tide turns twice a day.\n",
+				"paper.pdf": readFileSync(path.join(process.cwd(), "tests/fixtures/sample-3page.pdf")),
+			}, { token: FIRST });
+			folder = `Managed ${Date.now().toString(36)}`;
+			await studySettings(request);
+			const response = await request.post("/api/library/links", { data: { url: remote.url("managed"), token: FIRST, folderName: folder, parentId: null, requestId: `req_managed${Date.now().toString(36)}` } });
+			expect(response.status()).toBe(201);
+			folderId = ((await response.json()) as { folder: { id: string } }).folder.id;
+		});
+		test.afterAll(() => { remote.setToken("managed", SECOND); });
+
+		const openDetails = async (page: Page) => {
+			await page.goto(`/library?folder=${encodeURIComponent(folderId)}`);
+			await hydrated(page, '[data-testid="library-repo-details"]');
+			await page.getByTestId("library-repo-details").click();
+			await expect(page.getByTestId("repo-details-dialog")).toBeVisible();
+		};
+
+		for (const width of [390, 1440]) {
+			test(`Repo details and the unlink confirm fit at ${width}px, light and dark`, async ({ page, request }) => {
+				test.setTimeout(150_000);
+				await page.setViewportSize({ width, height: width < 500 ? 780 : 900 });
+				for (const appearance of ["light", "dark"] as const) {
+					await studySettings(request, { appearance });
+					await openDetails(page);
+					await noPageOverflow(page, `details ${width} ${appearance}`);
+					await shot(page, `details-${width}-${appearance}`);
+					await page.getByTestId("repo-details-token-edit").click();
+					await expect(page.getByTestId("repo-details-token-field")).toBeFocused();
+					await shot(page, `token-field-${width}-${appearance}`);
+					await page.keyboard.press("Escape");
+					await expect(page.getByTestId("repo-details-dialog")).toBeVisible();
+					await page.getByTestId("repo-details-unlink").click();
+					await expect(page.getByTestId("repo-unlink-cancel")).toBeFocused();
+					await shot(page, `unlink-${width}-${appearance}`);
+					// Escape closes the innermost dialog first.
+					await page.keyboard.press("Escape");
+					await expect(page.getByTestId("repo-unlink-dialog")).toBeHidden();
+					await expect(page.getByTestId("repo-details-dialog")).toBeVisible();
+					await page.keyboard.press("Escape");
+					await expect(page.getByTestId("repo-details-dialog")).toBeHidden();
+					await expect(page.getByTestId("library-repo-details")).toBeFocused();
+				}
+			});
+		}
+
+		test("details show the mask only; a wrong token fails, a right one syncs; unlink keeps references and highlights; a relink brings them back", async ({ page, request }) => {
+			test.setTimeout(240_000);
+			const before = await listed(request);
+			const pdf = before.items.find((i) => i.name === "paper.pdf" && i.folderId === folderId)!;
+			const note = before.items.find((i) => i.name === "notes.md" && i.folderId === folderId)!;
+			const made = await request.post(`/api/library/items/${pdf.id}/annotations`, { data: { anchor: { page: 1, quote: "force", prefix: "", suffix: "", start: 0, rects: [[0.1, 0.1, 0.2, 0.05]] }, note: "Kept through an unlink" } });
+			expect(made.status()).toBe(201);
+			const plain = JSON.parse(readFileSync(path.join(dataDir(), "chats", `${CHATS.plain}.json`), "utf8")) as { messages: unknown[] } & Record<string, unknown>;
+			const chatId = `e2e-unlink-ref-${Date.now().toString(36)}`;
+			writeFileSync(path.join(dataDir(), "chats", `${chatId}.json`), JSON.stringify({ ...plain, id: chatId, title: "E2E · Unlinked reference", messages: [...plain.messages, {
+				id: "e2e_unlink_user", role: "user", content: `Summarise @${folder}/notes.md`, timestamp: Date.now(),
+				references: [{ itemId: note.id, name: "notes.md", kind: "markdown", size: 40, mode: "inline", fromRepo: true }],
+			}] }));
+
+			await openDetails(page);
+			await expect(page.getByTestId("repo-details-token")).toHaveText("…11aa");
+			await expect(page.getByTestId("repo-details-address")).toHaveText(display("managed"));
+			await expect(page.getByTestId("repo-details-branch")).toHaveText("main (default)");
+			await expect(page.getByTestId("repo-details-commit")).toHaveText(/^[0-9a-f]{7}$/);
+			expect(await page.content()).not.toContain(FIRST);
+
+			// The repo moves to a new token; the old one now fails.
+			remote.setToken("managed", SECOND);
+			await page.getByTestId("repo-details-sync-now").click();
+			await expect(page.getByTestId("repo-details-sync")).toContainText("Sync failed · The repo refused the token.", { timeout: 60_000 });
+			await page.getByTestId("repo-details-token-edit").click();
+			await page.getByTestId("repo-details-token-field").fill(SECOND);
+			await page.getByTestId("repo-details-token-save").click();
+			await expect(page.getByTestId("repo-details-token-saved")).toHaveText("Saved. The next sync uses it.");
+			await expect(page.getByTestId("repo-details-token")).toHaveText("…22bb");
+			await expect(page.getByTestId("repo-details-token-field")).toHaveCount(0);
+			expect(await page.content()).not.toContain(SECOND);
+			await shot(page, "token-saved-1440-light");
+			await page.getByTestId("repo-details-sync-now").click();
+			await expect(page.getByTestId("repo-details-sync")).toHaveText("Synced just now", { timeout: 60_000 });
+
+			// Unlink from the details dialog.
+			await page.getByTestId("repo-details-unlink").click();
+			await expect(page.getByTestId("repo-unlink-dialog")).toContainText(`Unlink ${folder}?`);
+			await expect(page.getByTestId("repo-unlink-dialog")).toContainText("The folder and its 2 files leave your Library.");
+			await page.getByTestId("repo-unlink-confirm").click();
+			await expect(page.getByTestId("repo-unlink-dialog")).toBeHidden({ timeout: 30_000 });
+			await expect(page.getByTestId("repo-details-dialog")).toBeHidden();
+			await expect(page).toHaveURL(/\/library$/);
+			await expect(page.getByTestId("library-folder-row").filter({ hasText: folder })).toHaveCount(0);
+			const after = await listed(request);
+			expect(after.items.some((i) => i.id === note.id || i.id === pdf.id)).toBe(false);
+			expect(((await (await request.get("/api/library/links")).json()) as { links: unknown[] }).links.some((l) => (l as { folderId: string }).folderId === folderId)).toBe(false);
+
+			await page.goto(`/chat/${chatId}`);
+			await expect(page.getByTestId("reference-row").filter({ hasText: "notes.md" }).last()).toHaveText("Used notes.md · in full · Removed from the repo", { timeout: 60_000 });
+
+			// Relink the same repo: the same ids, and the highlight is back.
+			const relinked = await request.post("/api/library/links", { data: { url: remote.url("managed"), token: SECOND, folderName: `${folder} again`, parentId: null, requestId: `req_relink${Date.now().toString(36)}` } });
+			expect(relinked.status()).toBe(201);
+			const again = await listed(request);
+			expect(again.items.some((i) => i.id === pdf.id)).toBe(true);
+			expect(again.items.some((i) => i.id === note.id)).toBe(true);
+			const relinkedFolder = ((await relinked.json()) as { folder: { id: string } }).folder.id;
+			await page.goto(`/library?folder=${encodeURIComponent(relinkedFolder)}`);
+			await hydrated(page, '[data-testid="library-repo-details"]');
+			await page.getByRole("button", { name: "Open paper.pdf" }).click();
+			await expect(page.getByTestId("pdf-page-count")).toHaveText("of 3", { timeout: 60_000 });
+			await page.getByTestId("pdf-highlights-toggle").click();
+			await expect(page.getByTestId("pdf-highlight-note")).toHaveText("Kept through an unlink");
 		});
 	});
 });

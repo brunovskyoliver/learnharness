@@ -92,11 +92,11 @@
 
 **Independent Test**: spec US4 — replace a token (valid, invalid), unlink after confirm, folder and files gone while highlights/references remain ("Removed from the repo"), relink reattaches.
 
-- [ ] T044 [P] [US4] Extend tests/repo-links-api.test.ts: PATCH token replace/remove (old one gone from git-tokens.json, mask changes, next pull uses it); DELETE unlinks: schedule stopped, token deleted, linked folder + mirror folders + items become removed entries with `removedBecause:"unlinked"` keeping annotations/cards, `files/.mirrors/<linkId>` deleted; relink of the same address+branch revives ids and marks; same address+branch while linked → `already_linked` before any fetch, same address on another branch allowed (FR-001); DELETE while a pull of that link runs awaits it and discards its result; 11th link → `limit_links` before any fetch (SC-010)
-- [ ] T045 [US4] Implement `unlinkMirror(linkId)` in src/store/library.ts and PATCH/DELETE in src/server/repo-links.ts and app/api/library/links/[id]/route.ts; limit and duplicate checks in create
-- [ ] T046 [P] [US4] Build components/library/repo-details-dialog.tsx per ui-contract.md (address without credentials, branch, last sync, commit, token mask, Replace/Add/Remove token, Sync now, Unlink…)
-- [ ] T047 [US4] Unlink confirm: variant of components/library/delete-item-dialog.tsx with "Unlink {folder}?" text, red pill, focus on Cancel; linked folder's "Delete folder" and the details dialog's "Unlink…" open it, in components/library/library-view.tsx
-- [ ] T048 [US4] Playwright journey part 4 in tests/e2e/study/library-git-sync.spec.ts: details dialog shows mask only; replace token; unlink confirm → folder gone, reference reads "Removed from the repo"; relink → highlight back
+- [X] T044 [P] [US4] Extend tests/repo-links-api.test.ts: PATCH token replace/remove (old one gone from git-tokens.json, mask changes, next pull uses it); DELETE unlinks: schedule stopped, token deleted, linked folder + mirror folders + items become removed entries with `removedBecause:"unlinked"` keeping annotations/cards, `files/.mirrors/<linkId>` deleted; relink of the same address+branch revives ids and marks; same address+branch while linked → `already_linked` before any fetch, same address on another branch allowed (FR-001); DELETE while a pull of that link runs awaits it and discards its result; 11th link → `limit_links` before any fetch (SC-010)
+- [X] T045 [US4] Implement `unlinkMirror(linkId)` in src/store/library.ts and PATCH/DELETE in src/server/repo-links.ts and app/api/library/links/[id]/route.ts; limit and duplicate checks in create
+- [X] T046 [P] [US4] Build components/library/repo-details-dialog.tsx per ui-contract.md (address without credentials, branch, last sync, commit, token mask, Replace/Add/Remove token, Sync now, Unlink…)
+- [X] T047 [US4] Unlink confirm: variant of components/library/delete-item-dialog.tsx with "Unlink {folder}?" text, red pill, focus on Cancel; linked folder's "Delete folder" and the details dialog's "Unlink…" open it, in components/library/library-view.tsx
+- [X] T048 [US4] Playwright journey part 4 in tests/e2e/study/library-git-sync.spec.ts: details dialog shows mask only; replace token; unlink confirm → folder gone, reference reads "Removed from the repo"; relink → highlight back
 
 ## Phase 7: Polish & cross-cutting
 

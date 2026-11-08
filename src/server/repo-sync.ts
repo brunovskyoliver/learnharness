@@ -319,6 +319,20 @@ async function runPull(linkId: string, markStarted: (link: RepoLink | null) => v
 	}
 }
 
+/** Unlink (US4, contracts/api.md DELETE): the link and its schedule go at
+ *  once; a pull of it still running is awaited, and its result is discarded
+ *  (its catalog write finds no link). Then the token and the bytes go. */
+export async function unlinkLink(linkId: string): Promise<boolean> {
+	const running = registry().running.get(linkId);
+	const unlinked = await libraryStore.unlinkMirror(linkId);
+	if (!unlinked) return false;
+	await running?.done;
+	repoTokens.delete(linkId);
+	await libraryStore.dropMirrorFiles(linkId);
+	emit("library-sync", { linkId });
+	return true;
+}
+
 /** The mirror, commit and `lastSuccessAt` stay; the failure says why (US2 #4). */
 async function failed(linkId: string, err: unknown, token: string | undefined): Promise<void> {
 	const failure = asFailure(err, token);

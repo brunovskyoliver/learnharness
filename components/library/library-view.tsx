@@ -4,14 +4,14 @@ import { useCallback, useEffect, useRef, useState, type DragEvent } from "react"
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { CheckSquareIcon, FilePlusIcon, FolderGit2Icon, FolderPlusIcon, GitBranchIcon, LayoutGridIcon, ListIcon, NetworkIcon, RefreshCwIcon, SearchIcon, UploadIcon, XIcon } from "lucide-react";
+import { CheckSquareIcon, FilePlusIcon, FolderGit2Icon, FolderPlusIcon, GitBranchIcon, InfoIcon, LayoutGridIcon, ListIcon, NetworkIcon, RefreshCwIcon, SearchIcon, UploadIcon, XIcon } from "lucide-react";
 import { TopBar } from "@/components/top-bar";
 import { LibraryContextSlot } from "@/components/workspace/context-slot";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useServerEvent, useServerResync } from "@/components/server-events";
 import { useWorkspace } from "@/components/workspace/workspace-context";
-import { folderPathLabel, folderTrail, inMirror, KIND_LABEL, liveFolderId, MAX_FILE_BYTES, parseCitationHref, parseRepoAddress, type LibraryFolder, type LibraryItem, type LibraryKind, type LibraryMarks, type LibraryTrashEntry, type PendingLinkView, type RepoLinkView, type SyncFailure } from "@/src/core";
+import { folderPathLabel, folderSubtree, folderTrail, inMirror, KIND_LABEL, liveFolderId, MAX_FILE_BYTES, parseCitationHref, parseRepoAddress, type LibraryFolder, type LibraryItem, type LibraryKind, type LibraryMarks, type LibraryTrashEntry, type PendingLinkView, type RepoLinkView, type SyncFailure } from "@/src/core";
 import { BlotGlyph } from "@/components/paper/blot";
 import { useSettingsDialog } from "@/components/settings/settings-dialog.tsx";
 import { DeleteItemDialog, DESTRUCTIVE_BUTTON } from "./delete-item-dialog.tsx";
@@ -33,6 +33,8 @@ const PageProposalsLine = dynamic(() => import("./page-proposals-line.tsx").then
 /** Loads on the click: the dialog and its form list aren't part of the Library's first load. */
 /** Loads on the click, like New diagram (feature 026). */
 const RepoLinkDialog = dynamic(() => import("./repo-link-dialog.tsx").then((m) => m.RepoLinkDialog), { ssr: false });
+const RepoDetailsDialog = dynamic(() => import("./repo-details-dialog.tsx").then((m) => m.RepoDetailsDialog), { ssr: false });
+const UnlinkDialog = dynamic(() => import("./repo-details-dialog.tsx").then((m) => m.UnlinkDialog), { ssr: false });
 const NewDiagramDialog = dynamic(() => import("@/components/diagram/new-diagram-dialog.tsx").then((m) => m.NewDiagramDialog), { ssr: false });
 
 const DocumentSearchPanel = dynamic(() => import("./document-search.tsx").then((m) => m.DocumentSearchPanel), {
@@ -243,6 +245,11 @@ export function LibraryView() {
 	const [linkOpen, setLinkOpen] = useState(false);
 	const linkOpenRef = useRef(false);
 	const linkButton = useRef<HTMLButtonElement>(null);
+	// Repo details and unlink (feature 026, US4): by link id, so they follow the live link.
+	const [detailsId, setDetailsId] = useState<string | null>(null);
+	const [unlinkId, setUnlinkId] = useState<string | null>(null);
+	const detailsButton = useRef<HTMLButtonElement>(null);
+	const linkOpener = useRef<HTMLElement | null>(null);
 	const params = useSearchParams();
 	const openFolderId = params.get("folder");
 	const view = parseView(params.get("view"));
@@ -345,6 +352,42 @@ export function LibraryView() {
 			if (body.link) setLinks((list) => list.map((l) => (l.id === body.link!.id ? body.link! : l)));
 		} catch { /* the status line stays as it was; the next event refetches */ }
 		void refreshLinks();
+	};
+	const detailsLink = detailsId ? links.find((l) => l.id === detailsId) ?? null : null;
+	const unlinkLink = unlinkId ? links.find((l) => l.id === unlinkId) ?? null : null;
+	const linkedName = (link: RepoLinkView) => folders.find((f) => f.id === link.folderId)?.name ?? link.display;
+	const openDetails = (link: RepoLinkView, from: HTMLElement | null) => {
+		linkOpener.current = from;
+		setDetailsId(link.id);
+	};
+	const openUnlink = (link: RepoLinkView, from: HTMLElement | null) => {
+		// From the details dialog, focus goes back into it; otherwise to what opened it.
+		if (!detailsId) linkOpener.current = from;
+		setUnlinkId(link.id);
+	};
+	const sendToken = async (link: RepoLinkView, token: string | null) => {
+		try {
+			const response = await fetch(`/api/library/links/${encodeURIComponent(link.id)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) });
+			const body = await response.json().catch(() => ({})) as { link?: RepoLinkView; error?: string };
+			if (!response.ok || !body.link) return { ok: false as const, error: body.error ?? "That could not be done." };
+			setLinks((list) => list.map((l) => (l.id === body.link!.id ? body.link! : l)));
+			return { ok: true as const, link: body.link };
+		} catch {
+			return { ok: false as const, error: "That could not be done. Check your connection and try again." };
+		}
+	};
+	/** DELETE the link after the confirm. Inside the folder, the view steps out to where it was. */
+	const confirmUnlink = async (): Promise<string | null> => {
+		if (!unlinkLink) return null;
+		const linked = folders.find((f) => f.id === unlinkLink.folderId);
+		const refused = await sendLibraryChange(`/api/library/links/${encodeURIComponent(unlinkLink.id)}`, "DELETE");
+		if (refused) return refused;
+		setUnlinkId(null);
+		setDetailsId(null);
+		if (linked && folderId && folderSubtree(linked.id, folders).has(folderId)) router.push(folderHref(liveFolderId(linked.parentId, folders)));
+		void refresh();
+		void refreshLinks();
+		return null;
 	};
 	const openLinkDialog = (open: boolean) => {
 		linkOpenRef.current = open;
@@ -473,7 +516,10 @@ export function LibraryView() {
 			const link = links.find((l) => l.folderId === folder.id);
 			return [
 				openFolder(folder),
-				...(link ? [{ label: "Sync now", onSelect: () => void syncNow(link) }] : []),
+				...(link ? [
+					{ label: "Sync now", onSelect: () => void syncNow(link) },
+					{ label: "Repo details…", testId: "library-action-repo-details", onSelect: () => openDetails(link, moreButton(`More actions for ${folder.name}`)) },
+				] : []),
 				{ label: "Rename folder", onSelect: () => { opener.current = moreButton(`More actions for ${folder.name}`); setNaming({ folder }); } },
 				moveFolder,
 				...folderMarks(folder),
@@ -633,6 +679,12 @@ export function LibraryView() {
 								<button type="button" className="lh-tool" aria-disabled={linkSyncing || undefined} onClick={() => { if (!linkSyncing) void syncNow(openLink); }} data-testid="library-sync-now">
 									<RefreshCwIcon aria-hidden="true" />
 									{linkSyncing ? "Syncing…" : "Sync now"}
+								</button>
+							)}
+							{openLink && (
+								<button ref={detailsButton} type="button" className="lh-tool" onClick={(event) => openDetails(openLink, event.currentTarget)} data-testid="library-repo-details">
+									<InfoIcon aria-hidden="true" />
+									Repo details
 								</button>
 							)}
 							<button type="button" className="lh-tool" aria-pressed={selected !== null} onClick={() => setSelected(selected ? null : new Set())} data-testid="library-select-mode">
@@ -810,7 +862,14 @@ export function LibraryView() {
 							onDragStartEntry={startDrag}
 							onDropOnFolder={(target, event) => void dropOn(target, event)}
 							onRenameFolder={(folder, button) => { opener.current = button; setNaming({ folder }); }}
-							onDeleteFolder={(folder, button) => { opener.current = button; setFolderFailure(null); setDeletingFolder(folder); }}
+							onDeleteFolder={(folder, button) => {
+								// A linked folder's "Delete folder" means unlink (Q5).
+								const link = folder.mirror?.path === "" ? links.find((l) => l.folderId === folder.id) : undefined;
+								if (link) return openUnlink(link, button);
+								opener.current = button;
+								setFolderFailure(null);
+								setDeletingFolder(folder);
+							}}
 							loadFailed={loadFailed}
 							refreshFailed={refreshFailed}
 							query={query}
@@ -847,6 +906,29 @@ export function LibraryView() {
 					onClose={() => openLinkDialog(false)}
 					onSubmit={submitLink}
 					returnFocus={() => (linkButton.current ?? newFolderButton.current)?.focus()}
+				/>
+			)}
+			{detailsLink && (
+				<RepoDetailsDialog
+					link={detailsLink}
+					folderName={linkedName(detailsLink)}
+					onClose={() => setDetailsId(null)}
+					onSyncNow={() => void syncNow(detailsLink)}
+					onToken={(token) => sendToken(detailsLink, token)}
+					onUnlink={() => openUnlink(detailsLink, null)}
+					returnFocus={() => (linkOpener.current?.isConnected ? linkOpener.current : detailsButton.current ?? newFolderButton.current)?.focus()}
+				/>
+			)}
+			{unlinkLink && (
+				<UnlinkDialog
+					target={{ folderName: linkedName(unlinkLink), files: items?.filter((i) => i.mirror?.linkId === unlinkLink.id).length ?? unlinkLink.sync.counts?.files ?? 0 }}
+					onClose={() => setUnlinkId(null)}
+					onConfirm={confirmUnlink}
+					returnFocus={() => {
+						// Cancelled over Repo details: back to its "Unlink…".
+						if (detailsId) return document.querySelector<HTMLElement>('[data-testid="repo-details-unlink"]')?.focus();
+						(linkOpener.current?.isConnected ? linkOpener.current : newFolderButton.current ?? linkButton.current)?.focus();
+					}}
 				/>
 			)}
 			<FolderNameDialog

@@ -529,7 +529,7 @@ async function applyUpdate(linkId: string, snap: MirrorSnapshot): Promise<Applie
 /** The first pull's catalog write: the link, its linked folder, one mirror folder
  *  per directory holding a supported file at any depth, one item per file. */
 async function applyFirst(linkId: string, snap: MirrorSnapshot, first: FirstLink): Promise<Applied | LibraryRefusal> {
-	const result = await withLock(async (): Promise<{ link: RepoLink; folder: LibraryFolder } | LibraryRefusal> => {
+	const result = await withLock(async (): Promise<{ link: RepoLink; folder: LibraryFolder; revived: string[] } | LibraryRefusal> => {
 		const catalog = await readCatalog();
 		if (linksOf(catalog).some((l) => l.id === linkId)) throw new Error("That link is already in the catalog.");
 		const folders = foldersOf(catalog);
@@ -542,7 +542,22 @@ async function applyFirst(linkId: string, snap: MirrorSnapshot, first: FirstLink
 		if (taken.has(nameKey(name))) return folderClash(name, taken);
 		const now = new Date().toISOString();
 		const { repoKey } = first.link;
-		const linked: LibraryFolder = { id: `fld_${nanoid()}`, name, parentId, createdAt: now, updatedAt: now, mirror: { linkId, repoKey, path: "" } };
+		// The same address and branch twice (FR-001); the default branch is known only now.
+		const twin = linksOf(catalog).find((l) => l.repoKey === repoKey);
+		if (twin) return REPO_REFUSALS.alreadyLinked(twin.display, twin.branch, folders.find((f) => f.id === twin.folderId)?.name ?? twin.display);
+		// A relink of a repo that was unlinked (or whose paths left it): the same
+		// (repoKey, path) gets its old id and marks back, so highlights, notes,
+		// cards and references reattach (FR-028, Q2).
+		const removedDirs = new Map((catalog.removedMirrorFolders ?? []).filter((f) => f.mirror.repoKey === repoKey).map((f) => [f.mirror.path, f]));
+		const revivedDirs = new Set<string>();
+		const folderAt = (dir: string, folderName: string, folderParent: string | null): LibraryFolder => {
+			const back = removedDirs.get(dir);
+			if (!back) return { id: `fld_${nanoid()}`, name: folderName, parentId: folderParent, createdAt: now, updatedAt: now, mirror: { linkId, repoKey, path: dir } };
+			revivedDirs.add(dir);
+			const { removedAt: _r, removedBecause: _b, ...kept } = back;
+			return { ...kept, name: folderName, parentId: folderParent, updatedAt: now, mirror: { linkId, repoKey, path: dir } };
+		};
+		const linked = folderAt("", name, parentId);
 		const added: LibraryFolder[] = [linked];
 		const dirs = new Map<string, string>([["", linked.id]]);
 		const dirOf = (dir: string): string => {
@@ -550,15 +565,21 @@ async function applyFirst(linkId: string, snap: MirrorSnapshot, first: FirstLink
 			if (known) return known;
 			const cut = dir.lastIndexOf("/");
 			const parent = dirOf(cut < 0 ? "" : dir.slice(0, cut));
-			const folder: LibraryFolder = { id: `fld_${nanoid()}`, name: dir.slice(cut + 1), parentId: parent, createdAt: now, updatedAt: now, mirror: { linkId, repoKey, path: dir } };
+			const folder = folderAt(dir, dir.slice(cut + 1), parent);
 			added.push(folder);
 			dirs.set(dir, folder.id);
 			return folder.id;
 		};
+		const removedItems = new Map<string, LibraryTombstone>();
+		for (const entry of catalog.items) if (isTombstone(entry) && entry.mirror?.repoKey === repoKey) removedItems.set(entry.mirror.path, entry);
+		const revived = new Set<string>();
 		const items: LibraryItem[] = [...snap.files].sort((a, b) => a.path.localeCompare(b.path)).map((file) => {
 			const cut = file.path.lastIndexOf("/");
+			const back = removedItems.get(file.path);
+			if (back) revived.add(back.id);
+			const { createdAt, ...marks } = back?.kept ?? { createdAt: now };
 			return {
-				id: newId(), name: file.path.slice(cut + 1), kind: file.kind, size: file.size, createdAt: now, updatedAt: now,
+				id: back?.id ?? newId(), name: file.path.slice(cut + 1), kind: file.kind, size: file.size, createdAt, updatedAt: now, ...marks,
 				origin: { type: "repo", linkId }, ...(file.kind === "pdf" ? { textState: "pending" as const } : {}),
 				folderId: dirOf(cut < 0 ? "" : file.path.slice(0, cut)),
 				mirror: { linkId, repoKey, path: file.path, oid: file.oid, snapshot: snap.snapshot },
@@ -566,14 +587,68 @@ async function applyFirst(linkId: string, snap: MirrorSnapshot, first: FirstLink
 		});
 		const link: RepoLink = { ...first.link, id: linkId, folderId: linked.id, sync: snap.sync };
 		catalog.folders = [...folders, ...added];
-		catalog.items.push(...items);
+		catalog.items = [...catalog.items.filter((entry) => !revived.has(entry.id)), ...items];
+		const stillRemoved = (catalog.removedMirrorFolders ?? []).filter((f) => !(f.mirror.repoKey === repoKey && revivedDirs.has(f.mirror.path)));
+		if (stillRemoved.length > 0) catalog.removedMirrorFolders = stillRemoved;
+		else delete catalog.removedMirrorFolders;
 		catalog.repoLinks = [...linksOf(catalog), link];
 		await writeCatalog(catalog);
-		return { link, folder: linked };
+		return { link, folder: linked, revived: [...revived] };
 	});
-	// One event for the folder: nothing new can be open yet, and the index reacts to any.
-	if ("folder" in result) emit("library-changed", { itemId: result.folder.id });
-	return result;
+	if ("refused" in result) return result;
+	// One event for the folder, and one per revived item: a reference or reader may be waiting on it.
+	for (const id of result.revived) emit("library-changed", { itemId: id });
+	emit("library-changed", { itemId: result.folder.id });
+	return { link: result.link, folder: result.folder };
+}
+
+/** Unlink (US4, FR-023): the link leaves the catalog; its linked folder, mirror
+ *  folders and items become removed entries ("unlinked") keeping ids, marks,
+ *  annotations, derived text and card links, so a relink reattaches them.
+ *  The bytes go with dropMirrorFiles once no pull of the link is running. */
+async function unlinkMirror(linkId: string): Promise<{ folder: LibraryFolder; files: number } | null> {
+	const result = await withLock(async () => {
+		const catalog = await readCatalog();
+		const link = linksOf(catalog).find((l) => l.id === linkId);
+		if (!link) return null;
+		const folders = foldersOf(catalog);
+		const now = new Date().toISOString();
+		const ours = folders.filter((f) => f.mirror?.linkId === linkId);
+		const linked = ours.find((f) => f.mirror!.path === "") ?? folders.find((f) => f.id === link.folderId);
+		const gone = liveItems(catalog).filter((i) => i.mirror?.linkId === linkId);
+		const tombstones = new Map(gone.map((item) => [item.id, removedEntry(item, folders, now, "unlinked")]));
+		catalog.items = catalog.items.map((entry) => tombstones.get(entry.id) ?? entry);
+		const leaving = new Set(ours.map((f) => f.id));
+		catalog.folders = folders.filter((f) => !leaving.has(f.id));
+		const removed: RemovedMirrorFolder[] = ours.map((f) => ({ ...f, mirror: f.mirror!, removedAt: now, removedBecause: "unlinked" }));
+		if (removed.length > 0) catalog.removedMirrorFolders = [...(catalog.removedMirrorFolders ?? []), ...removed];
+		catalog.repoLinks = linksOf(catalog).filter((l) => l.id !== linkId);
+		await writeCatalog(catalog);
+		inFlight().pulling.delete(linkId);
+		return { folder: linked!, files: gone.length, touched: [...gone.map((i) => i.id), ...ours.map((f) => f.id)] };
+	});
+	if (!result) return null;
+	for (const id of result.touched) emit("library-changed", { itemId: id });
+	return { folder: result.folder, files: result.files };
+}
+
+/** files/.mirrors/<linkId>, after an unlink and once its last pull is done. */
+async function dropMirrorFiles(linkId: string): Promise<void> {
+	await fs.rm(mirrorPath(linkId), { recursive: true, force: true });
+	for (const key of [...inFlight().staged]) if (key.startsWith(`${linkId}/`)) inFlight().staged.delete(key);
+}
+
+/** Whether a link has a token (the token itself lives only in git-tokens.json). */
+async function setLinkToken(linkId: string, hasToken: boolean): Promise<RepoLink | null> {
+	return withLock(async () => {
+		const catalog = await readCatalog();
+		const link = linksOf(catalog).find((l) => l.id === linkId);
+		if (!link) return null;
+		const updated: RepoLink = { ...link, hasToken };
+		catalog.repoLinks = linksOf(catalog).map((l) => (l.id === linkId ? updated : l));
+		await writeCatalog(catalog);
+		return readLink(updated);
+	});
 }
 
 const nameTaken = (name: string, taken: Set<string>): LibraryRefusal => ({
@@ -1574,6 +1649,9 @@ export const libraryStore: LibraryStore = {
 	stageSnapshot,
 	discardSnapshot,
 	applyMirror,
+	unlinkMirror,
+	dropMirrorFiles,
+	setLinkToken,
 };
 
 /** A read stream for a document, refusing anything but a regular file. */

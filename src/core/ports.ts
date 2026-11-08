@@ -234,6 +234,12 @@ export interface LibraryStore {
 	mirrorWhole(linkId: string): Promise<boolean>;
 	/** Removes snapshot dirs no catalog entry names and stale git-work dirs (R4 step 4). */
 	sweepMirrors(): Promise<void>;
+	/** Unlink: the link goes; its folders and items become removed entries ("unlinked") that a relink revives. Null: no such link. */
+	unlinkMirror(linkId: string): Promise<{ folder: LibraryFolder; files: number } | null>;
+	/** Deletes files/.mirrors/<linkId> (after an unlink, once no pull of it runs). */
+	dropMirrorFiles(linkId: string): Promise<void>;
+	/** Records whether a link has a token. Null: no such link. */
+	setLinkToken(linkId: string, hasToken: boolean): Promise<RepoLink | null>;
 	/** A new page with its first version. */
 	createPage(name: string, content: string, options: PageCreateOptions): Promise<{ item: LibraryItem; head: PageHead } | LibraryRefusal>;
 	/** Head and draft, or null for an unknown id, a document or a tombstone. */
