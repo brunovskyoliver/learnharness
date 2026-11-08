@@ -1,5 +1,5 @@
 # Feature 025: Unified redesign
-Stage: implement
+Stage: done
 Updated: 2026-11-08
 
 ## Decisions
@@ -158,4 +158,41 @@ Updated: 2026-11-08
   - Probes on `next start`: rendered text contrast passes in both themes (dark faint 4.54:1); rendered control edges 3.0-3.1:1; overflow 0 at 1440 and 390 in both modes (Notebook was 6px); keyboard walk 19/19 layers.
   - Screenshots: the whole after/ set re-shot with `SERVER=start`: 576/600. The 24 misses are the expected ones: Home's sections under Notebook mode, and the math-check row the seed lacks. Pairs and before/after rebuilt (288 before | after, 24 Notebook | Study).
 
+- 2026-11-08 final: live Electron shell check passes (server and dev passes) with GTK/mesa from the gnome-46-2404 and mesa-2404 snaps on LD_LIBRARY_PATH (headless: CSS drag regions, tab strip at 72px, preload, API gate, palette; title-bar colours can't be seen headless). Stale Study-font comments removed; diagram SVG export in Instrument Sans (42810f5). Final gate on 261f7cb + that change: lint, typecheck, unit 4168 (4166 pass, 2 skipped, 0 fail), build, e2e 82/82 (logs ~/agent-runs/2026-11-07-unified-redesign/final-gate/). T070: production standalone copy running detached on http://ai.tailf15b6.ts.net:3131 (100.89.138.0:3131), seeded data ~/agent-runs/2026-11-07-unified-redesign/try-data, restart with ~/agent-runs/2026-11-07-unified-redesign/start-3131.sh.
+
 ## Report
+
+### What changed (commits on `unified-redesign`, d07f0c8..42810f5)
+
+| Phase | Commits | What |
+|---|---|---|
+| Spec, plan, tasks | d07f0c8, b27bc71, de709b4 | spec with gate-1 answers, plan, research R1-R16, contract, 70 tasks; before/after screenshot script; baselines |
+| 1 Foundation | 31583f2 | Notebook's tokens, grain, lift, focus, motion at the root (`html.lh-paper` + `data-theme/ink/text-size/lettering`), `app/paper.css`, Instrument Sans + Newsreader for the whole app, shared Appearance provider (system theme, cross-fade, Electron `setChrome`), Study ink deleted |
+| 2 Codemod | 39373cc | every component on paper utilities and the type scale (≈2,500 replacements, `scripts/paper-codemod.mjs`), components/ui restyled, `tests/token-hygiene.test.ts` |
+| 3 Shell | fec1bcd | Notebook's overlay sidebar, ☰ + wordmark and corner hint in Study (lifted to `components/paper/`), TopBar, tabs, palette, menus, right pane as a paper panel |
+| 4 Transcript | fa09ddf | tutor prose in the voice with ink-in streaming (rehype plugin), learner turns in sans without a bubble, quiet rows, blot, 660px column |
+| 5 Check threads | e694e16 | lesson checks and practice problems as Notebook margin threads (inline when there is no room), same state owners and request bodies |
+| 6 Settings | 8f7d5b9 | one settings modal for both modes (Customize · Reviewers · Providers · Agent · Graph · Keyboard · General, search across all), Study Appearance retired |
+| 7 Library and notes | d732d02 | Library, editor, selection card, export dialog, held edits, Links, PDF reader, diagrams |
+| 8 Home, Review, demos | edaf062 | Home, Review, @ list, demo bridge and kit in both schemes (no reload), Shiki from paper variables |
+| 9 Dialogs, states, phones | 559609c | every dialog on the paper dialog with focus handling, states, Clerk on paper variables, phones at 320/390, `--bulb-ink` |
+| 10 Verification | e635b5c, c47acbe, 18a555e, 7909653, f864605, 7046ade | 22 Study Playwright journeys, startup budget fix (lazy sidebar and run list), codex-verify reaches Study, three real-model bugs fixed, after set and pairs |
+| 11 Docs and reviews | 18da79f, 8473e34, d7ef54d, 3150a9b, 2bb3d93, 261f7cb, 42810f5 | ☰/wordmark aligned in both modes, DESIGN.md rewritten as one system, constitution 1.1.3, reviews and fixes, owner rulings N1-N5 |
+
+### How it was verified
+
+1. **One system (SC-001)**: `tests/token-hygiene.test.ts` (in `npm test`) fails on any Study ink token or one-off colour, size or font in components/app outside the token blocks, with a reasoned allowlist for data colours. Manual grep `~/agent-runs/2026-11-07-unified-redesign/sc001-grep.md`: surface-raised, ink-2, amber, font-title/prose/ui, Study shadcn names in components: 0 files.
+2. **Screenshots (SC-002)**: before set (Study old dark) and after set, 4 combos per mode (light/dark × 1440/390), 576/600 after shots ok (the 24 misses are the math-check row the seed lacks and Home sections that don't exist in Notebook mode, as before); 24 Notebook | Study pairs and 288 before | after pairs; index `~/agent-runs/2026-11-07-unified-redesign/index.md`. Chrome identical within ±0.5px across modes at 1440/1024/768/390/320 (e2e `chrome-alignment.spec.ts`).
+3. **Features end to end (SC-003)**: real model (`LH_NOTEBOOK_ENGINE=codex-verify`, gpt-5.6-sol): 15/16 items pass, the math check skipped (no Wolfram key) — `real-model/index.md`. ~/.codex/auth.json unchanged (sha256 15b3ead8…74d4). Playwright: Notebook 54 + Study 28 = 82/82. Browser regressions in scripts/ all pass locally (check-electron-shell live; smoke-demo-runtime --browser and desktop:dist need packaging).
+4. **Gates (SC-004)**: lint, typecheck, build, unit 4168 (4166 pass, 2 skipped, 0 fail), e2e 82/82. Startup JS vs 7da16e6: `/` +0.29% raw / +1.52% gzip, `/chat/new` +0.37% / +1.16%, `/library` +0.41% / +1.49% (≤5%).
+5. **Reviews (SC-005)**: impeccable 16/20 → 20/20, web-design-guidelines and accessibility pass (keyboard walk of 19 layers, names, landmarks, live regions, rendered and token contrast, reduced motion, scrollbars, 44px targets, overflow) in reviews.md; 26 findings: 11 fixed, 10 kept by design with their rulings, 5 decided by the owner 2026-11-08 (N1 control edge token, N2 switch off track, N5 Tab → Go to it; N3 and N4 under existing rulings) and fixed. No open findings.
+
+### What is left
+
+- Not merged, pushed or deployed. `~/learnharness` untouched.
+- Electron title-bar colours and macOS traffic-light position (moved to the new 36px centre line) were checked only headless on Linux; a look on a Mac is still owed.
+- Hosted sign-in with real Clerk keys was not rendered (no keys here); Clerk uses paper variables only.
+- Math check rows not exercised against Wolfram (no key).
+- Pre-existing, not changed by 025: the answer request carries `correctIndices`/explanation on the client while a question is open (constitution II asks otherwise); page-proposal rows keep "waiting for your review" after Accept/Reject; flashcard drafts get loosely matched idea suggestions.
+- Agent wording that the owner may want to revisit: Study sidebar search "Find a session" (the field only filters sessions), settings search hints for Customize/Reviewers rows, "Draft kept", "Answer the check above"/"beside the lesson", "Go to it"; Study keeps Mod+B for the sidebar (Mod+\ is the right pane).
+- The review server on :3131 runs a production build, so codex-verify is off there; add a provider key in Settings to use a model. It does not restart after a reboot (`start-3131.sh`).

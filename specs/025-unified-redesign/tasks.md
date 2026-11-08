@@ -103,4 +103,4 @@ Inputs: spec.md, plan.md, research.md (R1-R16), data-model.md, contracts/ui-cont
 - [X] T067 DESIGN.md rewritten as one system (tokens, type, layout, components, motion, focus/scroll, then each surface's rules in the paper language, keeping every behavioural rule and string reference from the old file).
 - [X] T068 Constitution PATCH 1.1.3 (R16); PRODUCT.md, docs/ui-review.md, design-system/README.md note, ROADMAP row 025.
 - [X] T069 impeccable audit + web-design-guidelines review + accessibility pass (keyboard, screen reader names/landmarks/live regions, 4.5:1 / 3:1 computed) → `specs/025-unified-redesign/reviews.md`; fix; re-run until no open findings.
-- [ ] T070 Report in progress.md; leave `next start` of this branch running on Tailscale port 3131 (detached, survives the session; throwaway data dir seeded with the review data and the codex-verify engine so it is usable).
+- [X] T070 Report in progress.md; leave `next start` of this branch running on Tailscale port 3131 (detached, survives the session; throwaway data dir seeded with the review data and the codex-verify engine so it is usable).
