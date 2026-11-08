@@ -313,3 +313,15 @@ No open review findings remain.
 | Notebook vs Study side-by-side pairs (`~/agent-runs/2026-11-07-unified-redesign/pairs/`) | "Yes, one product" |
 
 With these, no review finding is open and every exception is owner-approved.
+
+## Re-review of the final changes (2026-11-08)
+
+Scope: `git diff 5991b15..86abfb1 -- components app src scripts/seed-review.mjs` (the token one-offs moved to `@theme` steps, the "UI review · Math check" seed chat) and 42810f5 (stale Study-font comments, the diagram SVG export in Instrument Sans). Run in order: `impeccable` (audit, its detector over the 18 changed files), `web-design-guidelines` (fetched fresh) on the changed lines, then a check of the built CSS and of the Math check rows.
+
+- **Detector**: 3 hits, all kept above: the page editor's quote rule (`app/globals.css:1308`), the check column shift (`:1552`) and the border spinner (`components/md-blocks.tsx:194`). Nothing new.
+- **Tokens compile to the old values** (`.next/static/chunks/2anj1qr3jjmek.css`, the build of the token change): `.leading-title` 1.2, `.leading-heading` 1.35, `.leading-row` 1.6, `.leading-card` 1.7, `.rounded-lg` 10px (`--radius-lg: 10px`), `.leading-4.5` `calc(var(--spacing) * 4.5)` = 18px (`--spacing: .25rem`, no root font-size override), `.text-inline-code` .88em. Same rendering as the literals they replace, with one exception: Home's teaser inline code moved from .9em to .88em, the size the page editor and Markdown inline code already use. It was a deliberate change, recorded in progress.md. **Kept**: a 0.3px difference at the note size, and it puts all inline code on one size (DESIGN.md Hygiene). The owner can still reverse it.
+- **Math check seed** (`review-math-check`, rendered by `components/artifacts/math-check-card.tsx`; shots `after/*/30-math-check-rows*.png`, `tests/review-seed.test.ts`, `tests/render-math-check.test.tsx`): the headlines read "Wolfram · equal" (with a check mark), "not equal", "couldn't decide", "check failed" and "check not finished" (a settled call with no result is `input-available`, which has no details). Every row is collapsed by default (`SessionDetails` `initialOpen` false; the shot script opens "not equal" itself). The rows use no amber: the summary is faint, and `text-bulb` appears only on Home. The failure headline and its reason are `text-red` (`--text-red`), and the reason is a sans sentence. Checked, Assuming, Counterexample, Reduced and Wolfram's reply are mono, and the reply appears only for "couldn't decide". The question check shows once its quiz is answered, and the card ends with "Checked with Wolfram". ✓
+- **web-design-guidelines**: the changed lines swap class names and edit comments, add a seed script and change one SVG font attribute. They don't touch any rule. ✓ pass.
+- **42810f5**: comments and a JSDoc only, plus the export SVG's `font-family` ('Instrument Sans', Helvetica Neue, Arial). The SVG names the app's UI face, and the fallbacks cover viewers without it. ✓
+
+Findings: 1 (the teaser's inline code size), kept. Fixes: none. `tests/review-seed`, `render-math-check` and `token-hygiene` pass (20/20). Scores unchanged at 20/20.
