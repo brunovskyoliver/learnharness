@@ -628,6 +628,9 @@ html.lh-paper,
 .lh-paper .nb-tether-reveal-spine { animation: 0.7s cubic-bezier(0.3, 0.7, 0.3, 1) 0.64s forwards nb-tether-draw; }
 .lh-paper .nb-tether-faint .nb-tether-tie { stroke-opacity: 0.26; stroke-width: 1.5px; }
 .lh-paper .nb-tether-faint .nb-tether-reveal-tie { animation-duration: 0.32s; animation-delay: 60ms; }
+/* Where a Study check's line lands: a small mark just past the passage's last word, once the line reaches it. */
+.lh-paper .nb-tether .nb-tether-end { fill: var(--riddle); fill-opacity: 0.5; opacity: 0; animation: 0.2s ease-out 1.3s forwards nb-fade-in; }
+.lh-paper .nb-tether-faint .nb-tether-end { fill-opacity: 0.32; animation-delay: 0.4s; }
 
 /* ── 14 Transient "?" ───────────────────────────────────────────────────── */
 
@@ -758,6 +761,7 @@ html.lh-paper,
 		stroke-dashoffset: 0;
 		animation: none;
 	}
+	.lh-paper .nb-tether .nb-tether-end { animation: none; opacity: 1; }
 	.lh-paper .nb-tether .nb-tether-reveal {
 		stroke-dashoffset: 0;
 		animation: none;

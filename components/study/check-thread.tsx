@@ -27,7 +27,7 @@ import { useMeasuredRefs } from "@/components/paper/use-measured-refs";
 import { useSessionState } from "@/components/session-state";
 import { cn } from "@/lib/utils";
 import { DEFAULT_CONFIDENCE_INDEX } from "@/src/core";
-import { CHECK_COLLAPSED_WIDTH, CHECK_OPEN_WIDTH, checkColumn } from "./check-geometry";
+import { CHECK_COLLAPSED_WIDTH, CHECK_OPEN_WIDTH, CHECK_PAD, checkColumn } from "./check-geometry";
 
 export const REVEAL_LINE = "Check your understanding";
 /** On the collapsed line when the closed thread holds a draft. */
@@ -79,7 +79,7 @@ export interface CheckThreadProps {
 	children: ReactNode;
 }
 
-interface Placement { top: number; left: number; width: number; passageY: number; column: { left: number; right: number } }
+interface Placement { top: number; left: number; width: number; passageY: number; passageX?: number; column: { left: number; right: number } }
 
 /** How to find a focused control again in a remounted thread, and where its caret was. */
 type FocusMark = { selector: string; index: number; start: number | null; end: number | null };
@@ -217,15 +217,20 @@ function ThreadBody({ id, kind, label, teaser, reveal, open, fresh, variant, lay
 		const lesson = layer.parentElement?.querySelector<HTMLElement>('[data-testid="lesson-content"]');
 		const anchor = (anchorId ? layer.parentElement?.querySelector<HTMLElement>(`[data-answer-part-id="${CSS.escape(anchorId)}"]`) : null) ?? slotRef.current;
 		if (!anchor || !lesson) return;
-		const passageY = lastLineCentre(anchor) - box.top;
+		const end = lastLineEnd(anchor);
+		const passageY = end.y - box.top;
 		const height = elements.get(id)?.offsetHeight ?? NOTE_LINE * 3;
 		const bottom = lesson.getBoundingClientRect().bottom - box.top;
 		const wanted = placeStack([{ id, want: passageY - NOTE_LINE / 2, height }]).get(id) ?? 0;
 		// Never past the lesson's end, where the bottom bar covers it.
 		const top = Math.max(0, Math.min(wanted, bottom - height));
 		const column = checkColumn(lessonWidth, shift);
-		const next = { top, left: column.right + RIGHT_TEXT_GAP, width: open ? CHECK_OPEN_WIDTH : CHECK_COLLAPSED_WIDTH, passageY, column };
-		setPlace((prev) => (prev && Math.abs(prev.top - next.top) < 0.5 && prev.left === next.left && prev.width === next.width && Math.abs(prev.passageY - next.passageY) < 0.5 && prev.column.left === next.column.left ? prev : next));
+		// Just past the last word, in the column's coordinates (the tether's x = 0 is the column's left edge).
+		// Measured from the lesson's own edge, not the layer's: the lesson eases left (margin-left
+		// transition) when it makes room for the thread, and the words move with it.
+		const passageX = end.x === null ? undefined : end.x - lesson.getBoundingClientRect().left - CHECK_PAD + 6;
+		const next = { top, left: column.right + RIGHT_TEXT_GAP, width: open ? CHECK_OPEN_WIDTH : CHECK_COLLAPSED_WIDTH, passageY, passageX, column };
+		setPlace((prev) => (prev && Math.abs(prev.top - next.top) < 0.5 && prev.left === next.left && prev.width === next.width && Math.abs(prev.passageY - next.passageY) < 0.5 && Math.abs((prev.passageX ?? 0) - (next.passageX ?? 0)) < 0.5 && prev.column.left === next.column.left ? prev : next));
 	}, [margin, layer, anchorId, id, elements, bump, tick, lessonWidth, shift, open, slotRef]);
 
 	const action = kind === "problem" ? "Solve" : "Answer";
@@ -280,7 +285,7 @@ function ThreadBody({ id, kind, label, teaser, reveal, open, fresh, variant, lay
 			{place && (
 				<div className="lh-check-tether" aria-hidden="true" style={{ left: place.column.left, width: place.column.right - place.column.left }}>
 					<svg className="nb-tether">
-						<Tether key={open ? "open" : "closed"} threadId={id} side="right" columnWidth={place.column.right - place.column.left} noteY={place.top + NOTE_LINE / 2} passageY={place.passageY} faint={!open} />
+						<Tether key={open ? "open" : "closed"} threadId={id} side="right" columnWidth={place.column.right - place.column.left} noteY={place.top + NOTE_LINE / 2} passageY={place.passageY} passageX={place.passageX} faint={!open} />
 					</svg>
 				</div>
 			)}
@@ -289,19 +294,29 @@ function ThreadBody({ id, kind, label, teaser, reveal, open, fresh, variant, lay
 	);
 }
 
-/** The vertical centre of an element's last line of text (its last box when it has no text). */
-function lastLineCentre(element: HTMLElement): number {
+/**
+ * The centre of an element's last line of words and where that line ends.
+ * Only text counts, never the response's copy row under it, so the tether
+ * ends on the tutor's last word. With no text, the element's box (x null).
+ */
+function lastLineEnd(element: HTMLElement): { y: number; x: number | null } {
 	try {
-		const range = document.createRange();
-		range.selectNodeContents(element);
-		const rects = [...range.getClientRects()].filter((rect) => rect.height > 0 && rect.width > 0);
-		const last = rects.at(-1);
-		if (last) return (last.top + last.bottom) / 2;
+		const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
+			acceptNode: (node) => (!node.textContent?.trim() || node.parentElement?.closest('[data-testid="response-actions"], .katex-mathml, .sr-only') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+		});
+		let last: Node | null = null;
+		for (let node = walker.nextNode(); node; node = walker.nextNode()) last = node;
+		if (last) {
+			const range = document.createRange();
+			range.selectNodeContents(last);
+			const rect = [...range.getClientRects()].filter((r) => r.height > 0 && r.width > 0).at(-1);
+			if (rect) return { y: (rect.top + rect.bottom) / 2, x: rect.right };
+		}
 	} catch {
 		// fall through to the box
 	}
 	const box = element.getBoundingClientRect();
-	return box.bottom - NOTE_LINE / 2;
+	return { y: box.bottom - NOTE_LINE / 2, x: null };
 }
 
 /**

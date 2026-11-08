@@ -90,22 +90,25 @@ export interface TetherPaths { tie: string; spine: string | null }
  * gentle S that turns into the passage's line at the column edge. Points
  * are in column coordinates (x = 0 is the column's left edge).
  */
-export function tetherPaths(input: { side: Side; columnWidth: number; noteY: number; passageY: number }): TetherPaths {
-	const { side, columnWidth, noteY, passageY } = input;
+export function tetherPaths(input: { side: Side; columnWidth: number; noteY: number; passageY: number; passageX?: number }): TetherPaths {
+	const { side, columnWidth, noteY, passageY, passageX } = input;
 	const dir = side === "left" ? -1 : 1;
 	const edge = side === "left" ? 0 : columnWidth;
 	const dotX = edge + dir * (side === "left" ? LEFT_DOT : RIGHT_DOT);
 	const startX = dotX - dir * 7; // just outside the 14px dot
 	const endX = edge + dir * 6;
+	// Study's checks (feature 025): the line runs on along the passage's last
+	// line to just past its last word, so it ends at the words it points to.
+	const tail = passageX !== undefined && dir * (endX - passageX) > 0 ? ` L ${r(passageX)} ${r(passageY)}` : "";
 	if (Math.abs(noteY - passageY) <= DISPLACED_PX) {
-		return { tie: `M ${r(startX)} ${r(noteY)} L ${r(endX)} ${r(passageY)}`, spine: null };
+		return { tie: `M ${r(startX)} ${r(noteY)} L ${r(endX)} ${r(passageY)}${tail}`, spine: null };
 	}
 	const down = passageY > noteY ? 1 : -1;
 	const gutterX = edge + dir * 15;
 	const knee = { x: gutterX, y: noteY + down * Math.min(12, Math.abs(passageY - noteY) / 3) };
 	const tie = `M ${r(startX)} ${r(noteY)} C ${r(gutterX)} ${r(noteY)}, ${r(knee.x)} ${r(noteY)}, ${r(knee.x)} ${r(knee.y)}`;
 	const midY = (knee.y + passageY) / 2;
-	const spine = `M ${r(knee.x)} ${r(knee.y)} C ${r(knee.x)} ${r(midY)}, ${r(endX)} ${r(midY)}, ${r(endX)} ${r(passageY)}`;
+	const spine = `M ${r(knee.x)} ${r(knee.y)} C ${r(knee.x)} ${r(midY)}, ${r(endX)} ${r(midY)}, ${r(endX)} ${r(passageY)}${tail}`;
 	return { tie, spine };
 }
 

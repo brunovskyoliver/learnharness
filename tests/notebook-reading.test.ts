@@ -219,6 +219,14 @@ describe("margin widths and sides", () => {
 });
 
 describe("tetherPaths (§11)", () => {
+	it("a passage end runs the line on to just past the last word (Study checks, feature 025)", () => {
+		const level = tetherPaths({ side: "right", columnWidth: 660, noteY: 100, passageY: 100, passageX: 420 });
+		assert.ok(level.tie.endsWith("L 420 100"));
+		const lower = tetherPaths({ side: "right", columnWidth: 660, noteY: 50, passageY: 300, passageX: 420 });
+		assert.ok(lower.spine?.endsWith("L 420 300"));
+		// A last line that reaches the column edge adds nothing.
+		assert.equal(tetherPaths({ side: "right", columnWidth: 660, noteY: 50, passageY: 300, passageX: 670 }).spine, tetherPaths({ side: "right", columnWidth: 660, noteY: 50, passageY: 300 }).spine);
+	});
 	it("a note level with its line gets only a short tie to the column edge", () => {
 		const paths = tetherPaths({ side: "left", columnWidth: 660, noteY: 100, passageY: 100 + DISPLACED_PX });
 		assert.equal(paths.spine, null);

@@ -222,7 +222,8 @@
 	align-items: center;
 	justify-content: center;
 	gap: 8px;
-	border-radius: var(--radius-sm);
+	/* Pills, like Submit answer and every other primary (ui-contract: "Stop as ink pill"). */
+	border-radius: 999px;
 	background: var(--prompt-action, var(--ink));
 	padding: 0 16px;
 	color: var(--prompt-action-foreground, var(--paper));
@@ -289,6 +290,11 @@
 	transition: background-color 0.12s;
 }
 .waiting-row:hover { background: var(--shelf); }
+/* The whole row opens it: the row's link stretches over the row (one link, one tab stop). */
+.waiting-row { position: relative; cursor: pointer; }
+.waiting-row-action::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.waiting-row-action:focus-visible { outline: none; }
+.waiting-row:has(.waiting-row-action:focus-visible) { box-shadow: inset 0 0 0 2px var(--nb-focus); }
 .waiting-row:hover .waiting-row-action:not(:disabled) { color: var(--ink); }
 @media (prefers-reduced-motion: reduce) { .waiting-row { transition: none; } }
 .waiting-row-kind { grid-area: kind; }
