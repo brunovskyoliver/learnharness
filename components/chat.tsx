@@ -2086,11 +2086,16 @@ function DockFooter({
 	// no fold: its bar is one line, and the check itself is in its thread.
 	const [expanded, setExpanded] = useSessionState("dock/composer/expanded", true);
 	// Back to the composer at the bottom (the check was answered): it opens.
+	// In a layout effect, not during render: `expanded` lives in the session
+	// store, and writing it mid-render updates its other subscribers (React's
+	// "Cannot update a component while rendering a different component").
+	// Before paint, so the bar never shows folded for a frame.
 	const prevCheckRef = useRef(checkId);
-	if (checkId !== prevCheckRef.current) {
+	useLayoutEffect(() => {
+		if (checkId === prevCheckRef.current) return;
 		prevCheckRef.current = checkId;
-		if (!checkId && atBottomRef.current && !expanded) setExpanded(true);
-	}
+		if (!checkId && atBottomRef.current && !expandedRef.current) setExpanded(true);
+	}, [checkId, setExpanded]);
 
 	// ── Fold machine (position, not velocity — owner, scroll round 1) ──
 	// Footer reflow is covered by geometry mute while the fold settles. Leave it → fold; reach it
