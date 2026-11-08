@@ -173,6 +173,22 @@
 	flex: 1;
 }
 
+/* At 360px and below, when the compact row also shows the model/usage
+   controls (no models set up), they move below the field so the
+   placeholder gets the full width (owner, 2026-11-08). */
+@media (max-width: 360px) {
+	[data-compact="true"] [data-testid="composer"] [data-slot="input-group"]:has(.prompt-setup) {
+		flex-wrap: wrap;
+	}
+	[data-compact="true"] [data-testid="composer"] [data-slot="input-group"]:has(.prompt-setup) .answer-well {
+		flex-basis: 100%;
+	}
+	[data-compact="true"] [data-testid="composer"] [data-slot="input-group"]:has(.prompt-setup) .prompt-toolbar {
+		width: 100%;
+		padding-top: 0;
+	}
+}
+
 /* Controls and the primary action share one centered row. */
 .prompt-toolbar {
 	display: flex;

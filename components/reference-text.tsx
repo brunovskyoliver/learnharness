@@ -75,6 +75,9 @@ export function copySource(event: ClipboardEvent<HTMLElement>) {
 	event.clipboardData.setData("text/plain", fragment.textContent ?? "");
 }
 
+/** The punctuation a line may not start with, kept beside the chip before it. */
+export const trailingPunctuation = (text: string): string => /^[.,:;!?…)\]}»”’"']+/u.exec(text)?.[0] ?? "";
+
 export function ReferenceText({ text, references, messageId }: { text: string; references: readonly LibraryReference[]; messageId: string }) {
 	// Passages on their own name their item by id; it may not be among the references.
 	const passageIds = useMemo(() => [...text.matchAll(/<library_passage item="([^"]*)"/g)].map((m) => m[1]!.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")), [text]);
@@ -98,15 +101,17 @@ export function ReferenceText({ text, references, messageId }: { text: string; r
 			if (start < at) return;
 			if (start > at) out.push(text.slice(at, start));
 			const head = headEnd(text, form);
-			out.push(<ReferenceChip key={`chip-${index}`} target={targets[index]!} chipId={`${messageId}:${index}`} source={text.slice(start, head)} />);
-			if (head < end) {
-				// The tail words of the form's first line, then the passage, carried by the chip.
-				const lineEnd = text.indexOf("\n", head);
-				const tailEnd = lineEnd === -1 || lineEnd > end ? end : lineEnd;
-				if (tailEnd > head) out.push(text.slice(head, tailEnd));
-				if (end > tailEnd) out.push(<span key={`body-${index}`} hidden data-source={text.slice(tailEnd, end)} />);
-			}
-			at = end;
+			const chip = <ReferenceChip key={`chip-${index}`} target={targets[index]!} chipId={`${messageId}:${index}`} source={text.slice(start, head)} />;
+			// The tail words of the form's first line, then the passage, carried by the chip.
+			const lineEnd = text.indexOf("\n", head);
+			const tailEnd = head === end || lineEnd === -1 || lineEnd > end ? end : lineEnd;
+			// The punctuation right after a chip stays on its line (owner, 2026-11-08):
+			// the start of the form's own tail (the quote form's ":"), or of the text after it.
+			const glued = trailingPunctuation(head < end ? text.slice(head, tailEnd) : text.slice(end, forms[index + 1]?.range[0] ?? text.length));
+			out.push(glued ? <span key={`glue-${index}`} className="lh-ref-chip-glue">{chip}<span className="lh-ref-chip-glued">{glued}</span></span> : chip);
+			if (tailEnd > head + glued.length) out.push(text.slice(head + glued.length, tailEnd));
+			if (end > tailEnd) out.push(<span key={`body-${index}`} hidden data-source={text.slice(tailEnd, end)} />);
+			at = head === end ? end + glued.length : end;
 		});
 		if (at < text.length) out.push(text.slice(at));
 		return out;

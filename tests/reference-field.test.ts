@@ -160,3 +160,22 @@ describe("the mirror before its icons load", () => {
 		assert.equal(text(bare), value);
 	});
 });
+
+describe("the composer's gone lines (owner, 2026-11-08)", async () => {
+	const { attachingLines, goneNames } = await import("../components/library/use-library-mention.ts");
+	const { parseReferences } = await import("../src/core/library-refs.ts");
+	const live = { id: "lib_a", name: "Untitled note", kind: "page", size: 1, createdAt: "", updatedAt: "", origin: { type: "upload" } } as unknown as LibraryItem;
+	const gone = goneNames({ gone: [{ id: "lib_t", name: "Trashed note", kind: "markdown" }], removed: [{ id: "lib_r", kind: "markdown", names: ["Lecture notes/week2/notes.md"] }] });
+	const entries = [live, ...gone.map(({ id, name, kind }): LibraryTombstone => ({ id, name, kind, deletedAt: "" }))];
+	const removedIds = new Set(gone.filter((g) => g.removed).map((g) => g.id));
+	it("a trashed or deleted name says it is no longer in the Library; a removed one, that it left the repo; live names stay on the Attaching line", () => {
+		const value = "Compare @Untitled note with @Trashed note and @Lecture notes/week2/notes.md";
+		assert.deepEqual(attachingLines(parseReferences(value, entries), removedIds), {
+			attaching: ["Untitled note"],
+			gone: ["Trashed note is no longer in your Library", "Lecture notes/week2/notes.md was removed from the repo"],
+		});
+	});
+	it("nothing gone, no gone line", () => {
+		assert.deepEqual(attachingLines(parseReferences("Read @Untitled note", entries), removedIds), { attaching: ["Untitled note"], gone: [] });
+	});
+});

@@ -73,6 +73,10 @@ Title "{folder name}". Rows: "Address" {display} (link opens the https URL in a 
 
 Replace token: line field, "Save token" ink pill; after saving the field clears and the mask shows ("Saved. The next sync uses it.").
 
+**Owner-approved 2026-11-08 (review items O1, O2):**
+- Replace/Add token: the line field has a visible faint label "New token" above it (`lh-float-label`, as the link dialog's field labels); the label is the field's accessible name.
+- Remove token: removes at once (no confirm) and shows a status line "Token removed" with an "Undo" text action for 6 s; focus moves to Undo and, if still there when the line goes, to "Add token". Undo brings back the same token: the server holds the removed token in process memory for 10 s (the 6 s Undo plus slack for the round trip), never on disk after removal and never in a response. Too late: "The token can no longer be brought back. Add it again." (agent wording, flag for owner).
+
 ## Unlink confirm (destructive, lifted dialog)
 
 - Title: Unlink {folder name}?

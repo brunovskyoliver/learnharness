@@ -7,6 +7,12 @@ import { DESTRUCTIVE_BUTTON } from "./delete-item-dialog.tsx";
 
 /** What a token change answered: the link as it is now, or why not. */
 export type TokenAnswer = { ok: true; link: RepoLinkView } | { ok: false; error: string };
+/** A new token, null to remove it, or the Undo of a removal (the server still holds it). */
+export type TokenChange = { token: string | null } | { restore: true };
+
+/** How long "Token removed" offers Undo (as the app's other Undo lines do). */
+export const TOKEN_UNDO_MS = 6000;
+export const TOKEN_REMOVED_LINE = "Token removed";
 
 const LABEL = "text-sm text-faint";
 const VALUE = "min-w-0 text-md text-ink [overflow-wrap:anywhere]";
@@ -17,8 +23,7 @@ export function RepoDetailsBody({ link, folderName, now, onSyncNow, onToken, onU
 	folderName: string;
 	now: Date;
 	onSyncNow: () => void;
-	/** A new token, or null to remove it. */
-	onToken: (token: string | null) => Promise<TokenAnswer>;
+	onToken: (change: TokenChange) => Promise<TokenAnswer>;
 	onUnlink: () => void;
 	onClose: () => void;
 }) {
@@ -27,23 +32,42 @@ export function RepoDetailsBody({ link, folderName, now, onSyncNow, onToken, onU
 	const [busy, setBusy] = useState(false);
 	const [saved, setSaved] = useState(false);
 	const [failure, setFailure] = useState<string | null>(null);
+	const [removed, setRemoved] = useState(false);
 	const field = useRef<HTMLInputElement>(null);
+	const undoButton = useRef<HTMLButtonElement>(null);
+	const editButton = useRef<HTMLButtonElement>(null);
 	useEffect(() => { if (editing) field.current?.focus(); }, [editing]);
+	// "Token removed" offers Undo for a few seconds; focus waits on the Undo and,
+	// if it is still there when the line goes, moves to "Add token".
+	useEffect(() => {
+		if (!removed) return;
+		undoButton.current?.focus();
+		const timer = window.setTimeout(() => {
+			const focused = document.activeElement === undoButton.current;
+			setRemoved(false);
+			if (focused) requestAnimationFrame(() => editButton.current?.focus());
+		}, TOKEN_UNDO_MS);
+		return () => window.clearTimeout(timer);
+	}, [removed]);
 	const syncing = link.sync.state === "syncing" || link.sync.state === "never";
-	const send = async (token: string | null) => {
+	const send = async (change: TokenChange) => {
 		setBusy(true);
 		setFailure(null);
 		setSaved(false);
-		const answer = await onToken(token);
+		const undoing = "restore" in change;
+		const answer = await onToken(change);
 		setBusy(false);
+		if (undoing) setRemoved(false);
 		if (!answer.ok) return setFailure(answer.error);
 		setValue("");
 		setEditing(false);
-		if (token !== null) setSaved(true);
+		if (!undoing && change.token === null) setRemoved(true);
+		else if (!undoing) setSaved(true);
+		else requestAnimationFrame(() => editButton.current?.focus());
 	};
 	const submit = (event: FormEvent) => {
 		event.preventDefault();
-		if (!busy && value.trim()) void send(value.trim());
+		if (!busy && value.trim()) void send({ token: value.trim() });
 	};
 	return (
 		<>
@@ -66,34 +90,42 @@ export function RepoDetailsBody({ link, folderName, now, onSyncNow, onToken, onU
 						<span className={link.tokenMask ? "font-mono text-sm" : "text-graphite"} data-testid="repo-details-token">{link.tokenMask ?? "No token"}</span>
 						{!editing && (
 							<>
-								<button type="button" className="lh-text-action" disabled={busy} onClick={() => { setSaved(false); setFailure(null); setEditing(true); }} data-testid="repo-details-token-edit">{link.tokenMask ? "Replace token" : "Add token"}</button>
-								{link.tokenMask && <button type="button" className="lh-text-action" disabled={busy} onClick={() => void send(null)} data-testid="repo-details-token-remove">Remove token</button>}
+								<button ref={editButton} type="button" className="lh-text-action" disabled={busy} onClick={() => { setSaved(false); setFailure(null); setRemoved(false); setEditing(true); }} data-testid="repo-details-token-edit">{link.tokenMask ? "Replace token" : "Add token"}</button>
+								{link.tokenMask && <button type="button" className="lh-text-action" disabled={busy} onClick={() => void send({ token: null })} data-testid="repo-details-token-remove">Remove token</button>}
 							</>
 						)}
 					</span>
 					{editing && (
 						<form onSubmit={submit} className="flex flex-wrap items-end gap-x-4 gap-y-2">
-							<input
-								ref={field}
-								type="password"
-								value={value}
-								autoComplete="off"
-								spellCheck={false}
-								aria-label="Personal access token"
-								data-testid="repo-details-token-field"
-								onChange={(event) => setValue(event.target.value)}
-								onKeyDown={(event) => {
-									// Escape leaves the field, not the dialog; focus goes back to its action.
-									if (event.key !== "Escape") return;
-									event.preventDefault();
-									setEditing(false);
-									setValue("");
-									requestAnimationFrame(() => document.querySelector<HTMLElement>('[data-testid="repo-details-token-edit"]')?.focus());
-								}}
-								className="lh-line-field min-w-0 flex-[1_1_12rem]"
-							/>
+							<label className="flex min-w-0 flex-[1_1_12rem] flex-col gap-1">
+								<span className="lh-float-label" data-testid="repo-details-token-label">New token</span>
+								<input
+									ref={field}
+									type="password"
+									value={value}
+									autoComplete="off"
+									spellCheck={false}
+									data-testid="repo-details-token-field"
+									onChange={(event) => setValue(event.target.value)}
+									onKeyDown={(event) => {
+										// Escape leaves the field, not the dialog; focus goes back to its action.
+										if (event.key !== "Escape") return;
+										event.preventDefault();
+										setEditing(false);
+										setValue("");
+										requestAnimationFrame(() => document.querySelector<HTMLElement>('[data-testid="repo-details-token-edit"]')?.focus());
+									}}
+									className="lh-line-field min-w-0"
+								/>
+							</label>
 							<button type="submit" className="nb-pill" disabled={busy || !value.trim()} data-testid="repo-details-token-save">Save token</button>
 						</form>
+					)}
+					{removed && (
+						<p role="status" className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm text-graphite" data-testid="repo-details-token-removed">
+							<span>{TOKEN_REMOVED_LINE}</span>
+							<button ref={undoButton} type="button" className="lh-text-action" aria-disabled={busy || undefined} onClick={() => { if (!busy) void send({ restore: true }); }} data-testid="repo-details-token-undo">Undo</button>
+						</p>
 					)}
 					{saved && <p role="status" className="text-sm text-graphite" data-testid="repo-details-token-saved">Saved. The next sync uses it.</p>}
 					{failure && <p role="alert" className="text-sm text-red">{failure}</p>}
@@ -114,7 +146,7 @@ export function RepoDetailsDialog({ link, folderName, onClose, onSyncNow, onToke
 	folderName: string;
 	onClose: () => void;
 	onSyncNow: () => void;
-	onToken: (token: string | null) => Promise<TokenAnswer>;
+	onToken: (change: TokenChange) => Promise<TokenAnswer>;
 	onUnlink: () => void;
 	returnFocus: () => void;
 }) {

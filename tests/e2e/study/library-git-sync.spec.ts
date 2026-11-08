@@ -529,6 +529,58 @@ test.describe("Study: link a repo into the Library", () => {
 			});
 		}
 
+		test("owner fixes (2026-11-08): the replace field is labelled \"New token\"; Remove token removes at once with a short Undo that brings the same token back", async ({ page, request }) => {
+			test.setTimeout(240_000);
+			for (const [width, height] of [[1440, 900], [390, 844], [320, 700]] as const) {
+				await page.setViewportSize({ width, height });
+				for (const appearance of ["light", "dark"] as const) {
+					await studySettings(request, { appearance });
+					await openDetails(page);
+					await page.getByTestId("repo-details-token-edit").click();
+					await expect(page.getByTestId("repo-details-token-label")).toHaveText("New token");
+					await expect(page.getByLabel("New token", { exact: true })).toBeFocused();
+					await noPageOverflow(page, `new token ${width} ${appearance}`);
+					await shot(page, `token-label-${appearance}-${width}`);
+					await page.keyboard.press("Escape");
+
+					await page.getByTestId("repo-details-token-remove").click();
+					await expect(page.getByTestId("repo-details-token")).toHaveText("No token");
+					await expect(page.getByTestId("repo-details-token-removed")).toContainText("Token removed");
+					await expect(page.getByTestId("repo-details-token-undo")).toBeFocused();
+					expect(await page.content()).not.toContain(FIRST);
+					await noPageOverflow(page, `token removed ${width} ${appearance}`);
+					await shot(page, `token-removed-${appearance}-${width}`);
+					await page.getByTestId("repo-details-token-undo").click();
+					await expect(page.getByTestId("repo-details-token")).toHaveText("…11aa");
+					await expect(page.getByTestId("repo-details-token-removed")).toHaveCount(0);
+					await expect(page.getByTestId("repo-details-token-edit")).toBeFocused();
+					expect(await page.content()).not.toContain(FIRST);
+					await page.keyboard.press("Escape");
+					await expect(page.getByTestId("repo-details-dialog")).toBeHidden();
+				}
+			}
+
+			// Left alone, the Undo goes after a few seconds and focus lands on "Add token".
+			await page.setViewportSize({ width: 1440, height: 900 });
+			await studySettings(request);
+			await openDetails(page);
+			await page.getByTestId("repo-details-token-remove").click();
+			await expect(page.getByTestId("repo-details-token-undo")).toBeFocused();
+			await expect(page.getByTestId("repo-details-token-removed")).toHaveCount(0, { timeout: 10_000 });
+			await expect(page.getByTestId("repo-details-token-edit")).toHaveText("Add token");
+			await expect(page.getByTestId("repo-details-token-edit")).toBeFocused();
+			// Past the server's window, nothing is held to bring back.
+			await page.waitForTimeout(4_500);
+			const late = await request.patch(`/api/library/links/${(await (await request.get("/api/library/links")).json() as { links: { id: string; folderId: string }[] }).links.find((l) => l.folderId === folderId)!.id}`, { data: { restore: true } });
+			expect(late.status()).toBe(409);
+			expect(await late.text()).not.toContain(FIRST);
+			// Put it back for the journeys after this one.
+			await page.getByTestId("repo-details-token-edit").click();
+			await page.getByTestId("repo-details-token-field").fill(FIRST);
+			await page.getByTestId("repo-details-token-save").click();
+			await expect(page.getByTestId("repo-details-token")).toHaveText("…11aa");
+		});
+
 		test("details show the mask only; a wrong token fails, a right one syncs; unlink keeps references and highlights; a relink brings them back", async ({ page, request }) => {
 			test.setTimeout(240_000);
 			const before = await listed(request);

@@ -22,6 +22,7 @@ import { LibraryChoice, moreButton, type LibraryMenuAction } from "./library-men
 import { LibraryRow } from "./library-row.tsx";
 import { LibraryTrash } from "./library-trash.tsx";
 import type { LinkAnswer, LinkFields } from "./repo-link-dialog.tsx";
+import type { TokenChange } from "./repo-details-dialog.tsx";
 import { RepoStatusLine } from "./repo-status-line.tsx";
 import { createBlankPage, PagePaneSlot, usePagePane } from "./page-pane-context.tsx";
 import { runUploadQueue, sendFile } from "./upload.ts";
@@ -375,9 +376,9 @@ export function LibraryView() {
 		if (!detailsId) linkOpener.current = from;
 		setUnlinkId(link.id);
 	};
-	const sendToken = async (link: RepoLinkView, token: string | null) => {
+	const sendToken = async (link: RepoLinkView, change: TokenChange) => {
 		try {
-			const response = await fetch(`/api/library/links/${encodeURIComponent(link.id)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token }) });
+			const response = await fetch(`/api/library/links/${encodeURIComponent(link.id)}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(change) });
 			const body = await response.json().catch(() => ({})) as { link?: RepoLinkView; error?: string };
 			if (!response.ok || !body.link) return { ok: false as const, error: body.error ?? "That could not be done." };
 			setLinks((list) => list.map((l) => (l.id === body.link!.id ? body.link! : l)));
@@ -917,7 +918,7 @@ export function LibraryView() {
 					folderName={linkedName(detailsLink)}
 					onClose={() => setDetailsId(null)}
 					onSyncNow={() => void syncNow(detailsLink)}
-					onToken={(token) => sendToken(detailsLink, token)}
+					onToken={(change) => sendToken(detailsLink, change)}
 					onUnlink={() => openUnlink(detailsLink, null)}
 					returnFocus={() => (linkOpener.current?.isConnected ? linkOpener.current : detailsButton.current ?? newFolderButton.current)?.focus()}
 				/>

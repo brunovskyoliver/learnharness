@@ -636,6 +636,86 @@ test.describe("Study: reference chips in the composer", () => {
 		expect(sentOff).toBe(`Compare @${mirrored.livePath}`);
 	});
 
+	test("owner fixes (2026-11-08): gone lines under the field, the controls below the field at 360 and under, the quote chip keeps its ':'", async ({ page, request }) => {
+		test.setTimeout(300_000);
+		const lesson = await seedReferenceLesson(request, { remote });
+		await interceptModel(page);
+		const fixShot = (name: string) => shot(page, name);
+		const measured: string[] = [];
+		const goneLines = () => page.locator('[data-testid="attaching-gone-line"]').filter({ visible: true });
+		for (const appearance of ["light", "dark"] as const) {
+			await studySettings(request, { appearance });
+			for (const [width, height] of [[1440, 900], [390, 844], [360, 740], [320, 700]] as const) {
+				await page.setViewportSize({ width, height });
+				await openChat(page, lesson.chatId);
+				await hydrated(page, '[data-testid="composer"] textarea');
+
+				// The sent quote chip and its ':' share a line at every width.
+				await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+				const quote = chipsOf(page, lesson, "quote").first();
+				await quote.scrollIntoViewIfNeeded();
+				// Reading up the transcript folds the dock to its compact row.
+				await page.mouse.move(width / 2, 200);
+				for (let i = 0; i < 8 && (await visible(page, '[data-testid="dock-shell"]').getAttribute("data-compact")) !== "true"; i++) {
+					// From the end, then up: a real gesture away from the bottom.
+					if (i % 4 === 0) {
+						await page.mouse.wheel(0, 4000);
+						await page.waitForTimeout(400);
+					}
+					await page.mouse.wheel(0, -300);
+					await page.waitForTimeout(400);
+				}
+				await quote.scrollIntoViewIfNeeded();
+				const colon = await quote.evaluate((chip) => {
+					const glue = chip.parentElement!;
+					const glued = glue.querySelector<HTMLElement>(".lh-ref-chip-glued");
+					if (!glue.classList.contains("lh-ref-chip-glue") || !glued) return "not glued";
+					const a = chip.getBoundingClientRect();
+					const b = glued.getBoundingClientRect();
+					return { text: glued.textContent, sameLine: Math.abs(a.bottom - b.bottom) < 6, after: b.left >= a.right - 1 };
+				});
+				expect(colon, `${appearance} ${width}`).toEqual({ text: ":", sameLine: true, after: true });
+				await noPageOverflow(page, `sent ${appearance} ${width}`);
+				if (width !== 360) await fixShot(`quote-colon-${appearance}-${width}`);
+
+				// Compact composer: with the setup controls showing, at 360 and under
+				// they sit below the field and the placeholder has the whole width.
+				const shell = visible(page, '[data-testid="dock-shell"]');
+				if ((await shell.getAttribute("data-compact")) === "true" && (await visible(page, '[data-testid="composer"] .prompt-setup').count()) > 0) {
+					const area = (await field(page).boundingBox())!;
+					const bar = (await visible(page, '[data-testid="composer"] .prompt-toolbar').boundingBox())!;
+					const outer = (await shell.boundingBox())!;
+					if (width <= 360) {
+						expect(bar.y, `controls below the field at ${width}`).toBeGreaterThanOrEqual(area.y + area.height - 1);
+						expect(area.width, `the field's width at ${width}`).toBeGreaterThan(outer.width - 24);
+					} else {
+						expect(bar.y, `one row at ${width}`).toBeLessThan(area.y + area.height);
+					}
+					measured.push(`${appearance} ${width}`);
+					if (width !== 360) await fixShot(`composer-compact-${appearance}-${width}`);
+				}
+
+				// Gone names say so under the field, beside "Attaching"; sending stays open.
+				await field(page).click();
+				await field(page).fill("");
+				await page.keyboard.type(`Compare @${lesson.items.note.name} with @${lesson.items.gone.name}`);
+				await page.keyboard.press("Escape");
+				await page.keyboard.insertText(` and @${lesson.items.trashed.name}`);
+				if (lesson.mirrored) await page.keyboard.insertText(` and @${lesson.mirrored.removedPath}`);
+				await expect(visible(page, '[data-testid="attaching-line"]')).toHaveText(`Attaching ${lesson.items.note.name}`);
+				const expected = [`${lesson.items.gone.name} is no longer in your Library`, `${lesson.items.trashed.name} is no longer in your Library`];
+				if (lesson.mirrored) expected.push(`${lesson.mirrored.removedPath} was removed from the repo`);
+				await expect(goneLines()).toHaveText(expected);
+				await expect(visible(page, '[data-testid="composer"] button[type="submit"]')).toBeEnabled();
+				await noPageOverflow(page, `gone lines ${appearance} ${width}`);
+				if (width !== 360) await fixShot(`composer-gone-lines-${appearance}-${width}`);
+				await field(page).fill("");
+				await expect(goneLines()).toHaveCount(0);
+			}
+		}
+		expect(measured, "the compact row was measured at the narrow widths").toEqual(expect.arrayContaining(["light 320", "light 360", "dark 320"]));
+	});
+
 	test("composer: dark and phone widths", async ({ page, request }) => {
 		test.setTimeout(240_000);
 		const lesson = await seedReferenceLesson(request, { remote });

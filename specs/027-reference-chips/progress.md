@@ -3,6 +3,8 @@ Stage: done
 Updated: 2026-11-08T20:30:00Z
 
 ## Decisions
+- Owner (review answers, 2026-11-08): the composer shows a faint "{name} is no longer in your Library" line (trashed or deleted) or "{name} was removed from the repo" line with the "Attaching…" line, never blocking send; at ≤360px the composer's model/usage controls move below the field so "Message" gets the full width; the quote chip's trailing ":" stays attached to the chip (bug, no break between a chip and the punctuation after it).
+- Agent (owner fixes, reversible): gone names leave the Attaching list and get one line each (`attachingLines`, use-library-mention.ts); the ≤360px wrap applies only to the compact row while `.prompt-setup` shows (otherwise the controls are hidden there or already below); punctuation glue covers sent messages (`ReferenceText`), not tutor replies.
 - Owner (with the request, 2026-11-08): clicking a chip opens the item in the Library's full view at the quoted passage or PDF page, highlighted; "← Back to {lesson}" and the browser's Back return to the same message and scroll position. Same for every file type.
 - Owner (with the request): chips appear in the composer, in sent messages and in tutor replies. In the composer they are drawn over the existing text field (typing, paste, undo and IME unchanged); Backspace removes a whole chip; the "About this part of … >" form is one chip carrying the passage.
 - Owner (with the request): a chip shows the kind icon, the name and a hint ("· p. 4" or the start of the quoted passage).

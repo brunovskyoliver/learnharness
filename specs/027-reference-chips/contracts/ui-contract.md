@@ -85,6 +85,12 @@ Class names: `.lh-ref-chip`, `.lh-ref-chip-icon`, `.lh-ref-chip-hint`, `.lh-ref-
 | List failed | plain text, as today | as loading; nothing claims an item is gone |
 | Offline on click | n/a | the Library's existing failed state; the pill still works |
 
+## 6a. Owner fixes (owner-approved 2026-11-08)
+
+- Composer, under the field with the "Attaching {names}" line: each reference whose name reaches an item in the Trash or deleted for good adds a faint line "{name} is no longer in your Library"; one removed from its repo, "{name} was removed from the repo" ({name} as written, a mirrored path included). Gone names are no longer listed on the Attaching line. Sending is never blocked.
+- At 360px and below, when the compact composer row shows the model/usage controls (no models set up), they move below the field so the "Message" placeholder has the full width.
+- A chip and the punctuation right after it (`.,:;!?…)]}»”’"'`) never break apart: they share one `white-space: nowrap` group and the chip gives up width (bug fix, the quote form's ":" on phones).
+
 ## 7. Motion and scrolling
 
 Colour transitions 150ms; none under reduced motion. The mirror and the full view hide scrollbars like every scroller.

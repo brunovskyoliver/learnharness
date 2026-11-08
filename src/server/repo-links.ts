@@ -6,6 +6,7 @@
  */
 import { inMirror, LIBRARY_REFUSALS, liveFolderId, nameKey, REPO_REFUSALS, suggestName, uploadName, type LibraryFolder } from "../core/library.ts";
 import { isBranchName, parseRepoAddress, REPO_MAX_BYTES, REPO_MAX_FILES, REPO_MAX_LINKS, type PendingLinkView } from "../core/repo-link.ts";
+import { tenantScoped } from "../../config.ts";
 import { libraryStore } from "../store/library.ts";
 import { libraryGuarded, libraryRefusal } from "./library.ts";
 import { hostedAddressAllowed, loopbackTestMode } from "./repo-git.ts";
@@ -88,28 +89,79 @@ export function repoLinkSyncResponse(id: string): Promise<Response> {
 
 const linkMissing = () => json({ error: "That repo link is no longer in your Library.", code: "link_missing" }, 404);
 
+/** How long a removed token can be brought back (owner, 2026-11-08): the
+ *  client's 6 s Undo plus slack for the round trip. Kept in this process's
+ *  memory only, never written and never sent to the client. */
+export const TOKEN_UNDO_MS = 10_000;
+
+type RemovedToken = { token: string; until: number; timer: ReturnType<typeof setTimeout> };
+const removedTokens = () => tenantScoped("__lhRemovedRepoTokens", () => new Map<string, RemovedToken>());
+
+function forgetRemoved(id: string): void {
+	const map = removedTokens();
+	const held = map.get(id);
+	if (!held) return;
+	clearTimeout(held.timer);
+	map.delete(id);
+}
+
+function holdRemoved(id: string, token: string, now = Date.now()): void {
+	forgetRemoved(id);
+	const map = removedTokens();
+	const timer = setTimeout(() => { if (map.get(id)?.timer === timer) map.delete(id); }, TOKEN_UNDO_MS);
+	timer.unref?.();
+	map.set(id, { token, until: now + TOKEN_UNDO_MS, timer });
+}
+
+/** The removed token, once, while its Undo window is open. */
+function takeRemoved(id: string, now = Date.now()): string | null {
+	const held = removedTokens().get(id);
+	forgetRemoved(id);
+	return held && held.until > now ? held.token : null;
+}
+
 /** PATCH /api/library/links/:id: `{ token }` replaces the token (the next pull
- *  uses it), `{ token: null }` removes it. Only the mask ever comes back. */
+ *  uses it), `{ token: null }` removes it, `{ restore: true }` brings a just
+ *  removed token back (the Undo). Only the mask ever comes back. */
 export function repoLinkPatchResponse(request: Request, id: string): Promise<Response> {
 	return libraryGuarded(async () => {
 		const body = await request.json().catch(() => null) as Record<string, unknown> | null;
-		const raw = body && typeof body === "object" && !Array.isArray(body) && "token" in body ? body.token : undefined;
+		const record = body && typeof body === "object" && !Array.isArray(body) ? body : null;
+		const restore = record?.restore === true && !("token" in record);
+		const raw = record && "token" in record ? record.token : undefined;
 		const token = typeof raw === "string" ? raw.trim() : raw;
-		if (token !== null && (typeof token !== "string" || !token || /\s/.test(token))) return json({ error: "That token can't be used.", code: "invalid_token" }, 400);
+		if (!restore && token !== null && (typeof token !== "string" || !token || /\s/.test(token))) return json({ error: "That token can't be used.", code: "invalid_token" }, 400);
 		if (!(await libraryStore.repoLinks()).some((l) => l.id === id)) return linkMissing();
-		if (token === null) repoTokens.delete(id);
-		else repoTokens.set(id, token);
-		const link = await libraryStore.setLinkToken(id, token !== null);
+		if (restore) {
+			const held = takeRemoved(id);
+			if (held === null) return json({ error: TOKEN_UNDO_EXPIRED, code: "undo_expired" }, 409);
+			repoTokens.set(id, held);
+		} else if (token === null) {
+			const current = repoTokens.get(id);
+			repoTokens.delete(id);
+			if (current !== null) holdRemoved(id, current);
+		} else {
+			forgetRemoved(id);
+			repoTokens.set(id, token as string);
+		}
+		const link = await libraryStore.setLinkToken(id, restore || token !== null);
 		if (!link) {
 			// Unlinked meanwhile: nothing of it may stay.
 			repoTokens.delete(id);
+			forgetRemoved(id);
 			return linkMissing();
 		}
 		return json({ link: repoLinkView(link) });
 	});
 }
 
+/** The Undo came too late, or there was nothing to bring back (owner-approved wording pending; ui-contract). */
+export const TOKEN_UNDO_EXPIRED = "The token can no longer be brought back. Add it again.";
+
 /** DELETE /api/library/links/:id: unlink, after the client's confirm. */
 export function repoLinkDeleteResponse(id: string): Promise<Response> {
-	return libraryGuarded(async () => ((await unlinkLink(id)) ? json({ ok: true }) : linkMissing()));
+	return libraryGuarded(async () => {
+		forgetRemoved(id);
+		return (await unlinkLink(id)) ? json({ ok: true }) : linkMissing();
+	});
 }

@@ -3,6 +3,8 @@ Stage: done
 Updated: 2026-11-08T23:30:00Z
 
 ## Decisions
+- Owner (review answers, 2026-11-08): O1 approved: Repo details' replace/add field gets a visible faint label "New token" above it, as the link dialog's labels. O2 approved: "Remove token" removes immediately and shows "Token removed" with Undo for a few seconds (the app's existing 6 s Undo status line); Undo restores the same token server-side, held in memory for the undo window only, never sent to the client.
+- Agent (owner fixes, reversible): the server holds a removed token for 10 s (`TOKEN_UNDO_MS`, the 6 s Undo plus round-trip slack) in a tenant-scoped in-memory map; `PATCH { restore: true }` takes it once, 409 `undo_expired` after; a new token or unlink clears it. Late-Undo wording "The token can no longer be brought back. Add it again." is agent-written, flag for owner.
 - Owner (with the request, 2026-11-08): a read-only mirror; the repo is the only source, every sync overwrites, upstream deletes disappear; files can be read, @-referenced, quoted and annotated, never edited.
 - Owner (with the request): pulls every 15 minutes server-side while the app runs, plus "Sync now" and a faint "Synced {n} min ago"; a failed pull says why.
 - Owner (with the request): access by HTTPS URL plus optional personal access token, stored like provider keys, never shown after saving; same in local, Electron and hosted.

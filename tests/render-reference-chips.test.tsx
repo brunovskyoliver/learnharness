@@ -126,3 +126,31 @@ describe("sent messages find what was attached (T026, T055)", () => {
 		assert.equal(forms[0]!.quote, "Second paragraph.");
 	});
 });
+
+describe("punctuation after a chip stays on its line (owner, 2026-11-08)", async () => {
+	const { ReferenceText, trailingPunctuation } = await import("../components/reference-text.tsx");
+	const ref = (itemId: string, name: string, kind: LibraryKind = "markdown"): LibraryReference => ({ itemId, name, kind, mode: "inline" });
+	it("takes the run of closing punctuation only", () => {
+		assert.equal(trailingPunctuation(": then"), ":");
+		assert.equal(trailingPunctuation("?), and"), "?),");
+		assert.equal(trailingPunctuation(" and"), "");
+		assert.equal(trailingPunctuation(""), "");
+	});
+	it("the quote form's ':' sits in one unbreakable group with its chip", () => {
+		const message = "About this part of @Untitled note:\n\n> Second paragraph.\n\nWhy?";
+		const html = renderToStaticMarkup(<ReferenceText text={message} references={[ref("a", "Untitled note", "page")]} messageId="m1" />);
+		assert.match(html, /<span class="lh-ref-chip-glue"><a [^>]*data-testid="ref-chip"[\s\S]*?<\/a><span class="lh-ref-chip-glued">:<\/span><\/span>/);
+		assert.ok(!/<\/span>:/.test(html.replace(/<span class="lh-ref-chip-glued">:<\/span>/, "")), "no loose ':' after the group");
+	});
+	it("a plain chip keeps the ',' or '.' that follows it; words stay outside", () => {
+		const message = "Compare @Untitled note, then @Other.";
+		const html = renderToStaticMarkup(<ReferenceText text={message} references={[ref("a", "Untitled note"), ref("b", "Other")]} messageId="m1" />);
+		assert.equal((html.match(/lh-ref-chip-glue"/g) ?? []).length, 2);
+		assert.match(html, /<span class="lh-ref-chip-glued">,<\/span><\/span> then /);
+		assert.match(html, /<span class="lh-ref-chip-glued">\.<\/span><\/span>$/);
+	});
+	it("no group when a word follows", () => {
+		const html = renderToStaticMarkup(<ReferenceText text="Read @Other now" references={[ref("b", "Other")]} messageId="m1" />);
+		assert.ok(!html.includes("lh-ref-chip-glue"));
+	});
+});

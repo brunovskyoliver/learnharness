@@ -3067,6 +3067,11 @@ html.lh-paper[data-theme="dark"] .lh-mark-on-dark { display: inline-block; }
 .lh-paper .lh-ref-chip-hint { flex-shrink: 1000000000; min-width: 0; margin-left: .25em; overflow: hidden; color: var(--faint); text-overflow: ellipsis; }
 .lh-paper .lh-ref-chip-folder { flex-shrink: 100000; min-width: 0; margin-left: .25em; overflow: hidden; color: var(--faint); text-overflow: ellipsis; }
 .lh-paper .lh-ref-chip-suffix { flex-shrink: 0; margin-left: .25em; }
+/* A chip and the punctuation right after it share one line (owner, 2026-11-08):
+   the chip gives up width to keep its ":" or "," beside it. */
+.lh-paper .lh-ref-chip-glue { display: inline-flex; max-width: 100%; align-items: baseline; white-space: nowrap; vertical-align: baseline; }
+.lh-paper .lh-ref-chip-glue > .lh-ref-chip { min-width: 0; }
+.lh-paper .lh-ref-chip-glued { flex-shrink: 0; }
 /* Deleted for good, or removed from the repo: the name as written, faint, not a link. */
 .lh-paper .lh-ref-chip:is([data-state="deleted"], [data-state="removed"]) { padding: 0; background: none; color: var(--faint); }
 .lh-paper .lh-ref-chip:is([data-state="deleted"], [data-state="removed"]) .lh-ref-chip-name { text-decoration: none; }

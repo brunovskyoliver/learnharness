@@ -43,7 +43,7 @@ Runs the first pull in the request (≤ the 10 min transport timeout; SC-001 exp
 
 ## PATCH /api/library/links/:id
 
-Body `{ token: string }` replaces the token (stored only; the next pull uses it) or `{ token: null }` removes it. 200 `{ link }`; 400 empty token; 404 unknown.
+Body `{ token: string }` replaces the token (stored only; the next pull uses it) or `{ token: null }` removes it. `{ restore: true }` (owner, 2026-11-08: the Undo of "Remove token") puts back the token removed within the last 10 s, held only in server memory; once only; a new token or an unlink ends the window. 200 `{ link }`; 400 empty token; 404 unknown; 409 `{ code: "undo_expired" }` when nothing is held.
 
 ## DELETE /api/library/links/:id
 

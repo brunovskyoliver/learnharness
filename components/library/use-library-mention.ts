@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { createElement, Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
-import { folderPathLabel, hasMentionTrigger, matchMentions, mentionName, mentionQuery, parseReferences, type LibraryFolder, type LibraryItem, type LibraryKind, type LibraryTombstone } from "@/src/core";
+import { folderPathLabel, hasMentionTrigger, isTombstone, matchMentions, mentionName, mentionQuery, parseReferences, type LibraryFolder, type LibraryItem, type LibraryKind, type LibraryTombstone } from "@/src/core";
 import type { CreateMentionPage, MentionItem } from "./mention-menu.tsx";
 
 /**
@@ -93,6 +93,21 @@ export function placeNewPageReference(current: string, token: { start: number; t
 	}
 	const start = current.length + (!current || /\s$/.test(current) ? 0 : 1);
 	return { value: current.padEnd(start, " ") + inserted, start, caret: start + inserted.length };
+}
+
+/** Owner, 2026-11-08: the composer says before send when a name reaches an
+ *  item that is gone (in the Trash, deleted for good, or removed from its repo). */
+export const goneLine = (name: string, removed: boolean): string => (removed ? `${name} was removed from the repo` : `${name} is no longer in your Library`);
+
+/** The names the "Attaching" line lists, and one line per gone item, in text order. */
+export function attachingLines(found: readonly (LibraryItem | LibraryTombstone)[], removedIds: ReadonlySet<string>): { attaching: string[]; gone: string[] } {
+	const attaching: string[] = [];
+	const gone: string[] = [];
+	for (const entry of found) {
+		if (isTombstone(entry)) gone.push(goneLine(entry.name, removedIds.has(entry.id)));
+		else attaching.push(entry.name);
+	}
+	return { attaching, gone };
 }
 
 export function useLibraryMention({ value, onValueChange, inputRef }: {
@@ -251,17 +266,6 @@ export function useLibraryMention({ value, onValueChange, inputRef }: {
 		? createElement(MentionMenu, { listId, status, hasItems: (items?.length ?? 0) > 0, options, activeIndex, onPick: insert, onNewPage: () => void createPage(), createPageRef })
 		: null;
 
-	/** Pre-send line: only names, since the mode is decided at send. */
-	const attaching = useMemo(() => (items && hasTrigger ? parseReferences(value, items, folders).map((item) => item.name) : []), [items, folders, value, hasTrigger]);
-	const line: ReactNode = createElement(
-		Fragment,
-		null,
-		refusal ? createElement("div", { role: "alert", "data-testid": "mention-new-page-refusal", className: "px-4 pb-1 text-sm [overflow-wrap:anywhere]" }, createElement("span", { className: "font-medium text-ink" }, "New page"), createElement("span", { className: "text-red" }, ` · ${refusal}`)) : null,
-		attaching.length > 0
-			? createElement("div", { "data-testid": "attaching-line", className: "px-4 pb-1 text-sm text-faint [overflow-wrap:anywhere]" }, `Attaching ${attaching.join(", ")}`)
-			: null,
-	);
-
 	/** The loaded list for the field's chips (feature 027, T036): nothing is
 	 *  fetched for it, so it is null until a trigger loads the @ list. */
 	const catalog = useMemo((): MentionCatalog | null => items && {
@@ -269,6 +273,19 @@ export function useLibraryMention({ value, onValueChange, inputRef }: {
 		folders,
 		removedIds: new Set(gone.filter((g) => g.removed).map((g) => g.id)),
 	}, [items, gone, folders]);
+
+	/** Pre-send lines: only names, since the mode is decided at send. A name
+	 *  that reaches a gone item gets its own faint line; it never blocks sending. */
+	const found = useMemo(() => attachingLines(catalog && hasTrigger ? parseReferences(value, catalog.entries, folders) : [], catalog?.removedIds ?? new Set()), [catalog, folders, value, hasTrigger]);
+	const line: ReactNode = createElement(
+		Fragment,
+		null,
+		refusal ? createElement("div", { role: "alert", "data-testid": "mention-new-page-refusal", className: "px-4 pb-1 text-sm [overflow-wrap:anywhere]" }, createElement("span", { className: "font-medium text-ink" }, "New page"), createElement("span", { className: "text-red" }, ` · ${refusal}`)) : null,
+		found.attaching.length > 0
+			? createElement("div", { "data-testid": "attaching-line", className: "px-4 pb-1 text-sm text-faint [overflow-wrap:anywhere]" }, `Attaching ${found.attaching.join(", ")}`)
+			: null,
+		...found.gone.map((text, index) => createElement("div", { key: `gone-${index}`, "data-testid": "attaching-gone-line", className: "px-4 pb-1 text-sm text-faint [overflow-wrap:anywhere]" }, text)),
+	);
 
 	return { ref, inputProps, onKeyDown, menu, line, catalog };
 }

@@ -334,6 +334,45 @@ describe("manage a link (US4, T044)", () => {
 		assert.equal((await patch("rpl_nope", { token: NEXT })).status, 404);
 	});
 
+	it("Undo of a removal (owner, 2026-11-08): the same token comes back from memory, once, within the window; never in a response", async () => {
+		const { remote, calls } = fakeRemote();
+		setRepoRemote(remote);
+		const { link } = await created({ token: TOKEN });
+		const removed = await patch(link.id, { token: null });
+		assert.equal(removed.status, 200);
+		assert.deepEqual(tokens(), {}, "removed from disk at once");
+		const restored = await patch(link.id, { restore: true });
+		assert.equal(restored.status, 200);
+		const text = await restored.text();
+		assert.ok(!text.includes(TOKEN), "the restored token never reaches the client");
+		assert.equal((JSON.parse(text) as { link: { tokenMask: string } }).link.tokenMask, link.tokenMask);
+		assert.deepEqual(tokens(), { [link.id]: TOKEN });
+		await pullLink(link.id).done;
+		assert.equal(calls.tokens.at(-1), TOKEN, "the next pull uses it again");
+
+		// Once only.
+		const again = await patch(link.id, { restore: true });
+		assert.equal(again.status, 409);
+		assert.equal((await again.json() as { code: string }).code, "undo_expired");
+
+		// A new token in between ends the window.
+		await patch(link.id, { token: null });
+		await patch(link.id, { token: "ghp_otherTOKEN0000zz" });
+		assert.equal((await patch(link.id, { restore: true })).status, 409);
+		assert.deepEqual(tokens(), { [link.id]: "ghp_otherTOKEN0000zz" });
+
+		// Past the window, nothing is held.
+		await patch(link.id, { token: null });
+		const realNow = Date.now;
+		Date.now = () => realNow() + routes.TOKEN_UNDO_MS + 1;
+		try {
+			assert.equal((await patch(link.id, { restore: true })).status, 409);
+		} finally {
+			Date.now = realNow;
+		}
+		assert.deepEqual(tokens(), {});
+	});
+
 	it("DELETE unlinks: token, folder and bytes go; items become removed entries keeping marks and highlights; a relink revives them", async () => {
 		const { remote } = fakeRemote();
 		setRepoRemote(remote);
