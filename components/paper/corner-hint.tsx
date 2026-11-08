@@ -7,11 +7,15 @@
  * is visible, priced and stoppable); a click on the running line opens the
  * full list in a small lifted popover. A mode may put its own line in place
  * of the idle one (a refusal, a failed read, Just my words).
+ *
+ * The popover (Radix Popover) loads on the first click of the running line
+ * and stays mounted after, so the hint costs no startup JS (feature 025, T065).
  */
-import { Popover } from "radix-ui";
-import { useState, type ReactNode } from "react";
+import { lazy, Suspense, useRef, useState, type ReactNode } from "react";
 import { formatUsd } from "@/components/usage-format";
 import { useSurfaceRoot } from "./surface-root";
+
+const CornerHintPopover = lazy(() => import("./corner-hint-popover").then((m) => ({ default: m.CornerHintPopover })));
 
 export const costLabel = (cost: number | null | undefined): string => (cost === null || cost === undefined ? "cost not known" : formatUsd(cost));
 
@@ -37,17 +41,26 @@ export function CornerHint({ running, notice, state, idle, list }: {
 }) {
 	const container = useSurfaceRoot();
 	const [listOpen, setListOpen] = useState(false);
+	const [armed, setArmed] = useState(false);
+	const anchor = useRef<HTMLDivElement>(null);
+	const trigger = useRef<HTMLButtonElement>(null);
 	let body: ReactNode;
 	if (running) {
 		body = (
 			<span className="nb-hint-running" data-testid="nb-hint-running">
-				<Popover.Trigger asChild>
-					<button type="button" className="nb-hint-button" data-testid="nb-hint-activity" aria-haspopup="dialog">
-						<span>{running.word}</span>
-						<span aria-hidden="true"> · </span>
-						<span data-testid="nb-hint-cost">{running.cost}</span>
-					</button>
-				</Popover.Trigger>
+				<button
+					ref={trigger}
+					type="button"
+					className="nb-hint-button"
+					data-testid="nb-hint-activity"
+					aria-haspopup="dialog"
+					aria-expanded={listOpen}
+					onClick={() => { setArmed(true); setListOpen((open) => !open); }}
+				>
+					<span>{running.word}</span>
+					<span aria-hidden="true"> · </span>
+					<span data-testid="nb-hint-cost">{running.cost}</span>
+				</button>
 				{running.onStop && (
 					<>
 						<span aria-hidden="true"> · </span>
@@ -60,15 +73,15 @@ export function CornerHint({ running, notice, state, idle, list }: {
 		body = notice ?? <span className="nb-hint-idle">{idle}</span>;
 	}
 	return (
-		<Popover.Root open={listOpen} onOpenChange={setListOpen}>
-			<Popover.Anchor asChild>
-				<div className="nb-corner-hint" data-testid="nb-corner-hint" data-state={state}>{body}</div>
-			</Popover.Anchor>
-			<Popover.Portal container={container}>
-				<Popover.Content className="nb-activity" side="top" align="end" sideOffset={8} data-testid="nb-activity">
-					{list}
-				</Popover.Content>
-			</Popover.Portal>
-		</Popover.Root>
+		<>
+			<div ref={anchor} className="nb-corner-hint" data-testid="nb-corner-hint" data-state={state}>{body}</div>
+			{armed && (
+				<Suspense fallback={null}>
+					<CornerHintPopover anchor={anchor} trigger={trigger} open={listOpen} onOpenChange={setListOpen} container={container}>
+						{list}
+					</CornerHintPopover>
+				</Suspense>
+			)}
+		</>
 	);
 }

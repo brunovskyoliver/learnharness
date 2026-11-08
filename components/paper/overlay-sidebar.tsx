@@ -8,10 +8,13 @@
  * and a click outside close it, and so does the pointer leaving it after a
  * hover-open, until he clicks or types inside. Each mode fills the body
  * with its own list and footer.
+ *
+ * The dialog itself (Radix Dialog, scroll lock, focus trap) loads on the
+ * first open, and on the edge hover's wait before it, so neither mode's
+ * startup JS carries it (feature 025, T065).
  */
 import { CheckIcon } from "lucide-react";
-import { Dialog } from "radix-ui";
-import { useEffect, useRef, type ReactNode, type RefObject } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { CloseGlyph } from "./chrome";
 import { keyLabel } from "./shared";
 
@@ -36,6 +39,7 @@ export function EdgeStrip({ onOpen }: { onOpen: () => void }) {
 	const enter = (event: React.PointerEvent) => {
 		if (event.pointerType !== "mouse" || !window.matchMedia("(pointer: fine)").matches) return;
 		if (timer.current) return;
+		preloadOverlaySidebar();
 		timer.current = window.setTimeout(() => {
 			timer.current = null;
 			open.current();
@@ -116,51 +120,30 @@ export interface OverlaySidebarShellProps {
 	children: ReactNode;
 }
 
-export function OverlaySidebarShell({ state, onClose, onPromote, title, returnFocus, searchRef, query = "", onClearQuery, holdEscape = false, dim = false, container, contentRef, children }: OverlaySidebarShellProps) {
-	const before = useRef<Element | null>(null);
-	const open = state !== null;
-	const hover = state?.via === "hover";
 
-	// Mod+K (or the search shortcut) while open moves to the search too.
-	const wantsSearch = state?.search ?? false;
-	useEffect(() => {
-		if (wantsSearch) searchRef?.current?.focus();
-	}, [wantsSearch, state, searchRef]);
+const loadDialog = () => import("./overlay-sidebar-dialog");
+const OverlaySidebarDialog = lazy(() => loadDialog().then((m) => ({ default: m.OverlaySidebarDialog })));
+/** Starts loading the sidebar's dialog ahead of its first open. */
+export function preloadOverlaySidebar(): void {
+	void loadDialog();
+}
 
+/** Renders nothing until the sidebar first opens; from then on the dialog stays mounted (open or closed). */
+export function OverlaySidebarShell(props: OverlaySidebarShellProps) {
+	const [armed, setArmed] = useState(false);
+	const open = props.state !== null;
+	if (open && !armed) setArmed(true);
+	// Where the focus was as it opens, read in the opening commit: the page under
+	// it may turn inert, and the browser's focus fixup would blur it before a
+	// dialog that is still loading could look.
+	const openedFrom = useRef<Element | null>(null);
+	useLayoutEffect(() => {
+		if (open) openedFrom.current = document.activeElement;
+	}, [open]);
+	if (!armed && !open) return null;
 	return (
-		<Dialog.Root open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-			<Dialog.Portal container={container ?? undefined}>
-				<Dialog.Overlay className="nb-side-dim" data-testid="nb-sidebar-dim" data-dim={dim ? "" : undefined} />
-				<Dialog.Content
-					ref={contentRef}
-					className="nb-sidebar"
-					data-testid="nb-sidebar"
-					aria-describedby={undefined}
-					onOpenAutoFocus={(event) => {
-						before.current = document.activeElement;
-						if (state?.search) { event.preventDefault(); searchRef?.current?.focus(); }
-						else if (hover) { event.preventDefault(); (event.currentTarget as HTMLElement | null)?.focus(); }
-					}}
-					onCloseAutoFocus={(event) => {
-						event.preventDefault();
-						const back = before.current;
-						if (back instanceof HTMLElement && back.isConnected && back !== document.body && !back.closest(".nb-sidebar")) back.focus();
-						else returnFocus()?.focus();
-					}}
-					// Escape in a search with words clears it first; the next one closes.
-					onEscapeKeyDown={(event) => {
-						if (holdEscape) { event.preventDefault(); return; }
-						if (query && searchRef?.current && document.activeElement === searchRef.current) { event.preventDefault(); onClearQuery?.(); }
-					}}
-					// A hover-open closes when the pointer leaves, until he clicks or types inside.
-					onPointerLeave={(event) => { if (hover && event.pointerType === "mouse") onClose(); }}
-					onPointerDown={() => { if (hover) onPromote(); }}
-					onKeyDown={(event) => { if (hover && event.key !== "Escape") onPromote(); }}
-				>
-					<Dialog.Title className="sr-only">{title}</Dialog.Title>
-					{children}
-				</Dialog.Content>
-			</Dialog.Portal>
-		</Dialog.Root>
+		<Suspense fallback={null}>
+			<OverlaySidebarDialog {...props} openedFrom={openedFrom} />
+		</Suspense>
 	);
 }

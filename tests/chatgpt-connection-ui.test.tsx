@@ -108,7 +108,7 @@ test("disconnected row uses shared Connect action; initial default is ON; cancel
  assert.match(trigger.className, /cursor-pointer/); assert.match(trigger.className, /hover:text-ink/); assert.match(trigger.className, /focus-visible:outline/);
  await click(trigger); assert.equal(f.calls.login.length, 0); assert(document.body.textContent?.includes(CHATGPT_NOTICE));
  assert.equal(byTest("chatgpt-account-dialog").querySelector("h2")?.textContent, "ChatGPT");
- assert.equal(byTest("chatgpt-proceed").textContent, "Continue with ChatGPT"); assert(byTest("chatgpt-proceed").querySelector('img[src="/siwc/chatgpt-logo-white.svg"]'));
+ assert.equal(byTest("chatgpt-proceed").textContent, "Continue with ChatGPT"); assert(byTest("chatgpt-proceed").querySelector('img.lh-mark-on-light[src="/siwc/chatgpt-logo-black.svg"]')); assert(byTest("chatgpt-proceed").querySelector('img.lh-mark-on-dark[src="/siwc/chatgpt-logo-white.svg"]'));
  assert(!button("Continue", byTest("chatgpt-account-dialog")), "ChatGPT remains one step, with disclosure and toggle together");
  assert.equal(toggle().getAttribute("aria-checked"), "true");
  assert.equal(toggle().getAttribute("aria-label"), "Allow background use for all ChatGPT accounts");

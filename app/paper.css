@@ -2986,3 +2986,14 @@ html.lh-paper {
 .lh-paper .lh-state { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin: 0; color: var(--faint); font-size: var(--text-md); line-height: 1.5; text-align: left; }
 .lh-paper .lh-state[data-kind="error"] { color: var(--ink); }
 .lh-paper .lh-state-detail { flex-basis: 100%; margin: 2px 0 0; color: var(--graphite); font-family: var(--nb-mono); font-size: var(--text-xs); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* ── Brand marks per theme (feature 025, phase 10) ─────────────────────────
+   OpenAI's official black mark on light paper, the white one on dark; the
+   shape is never altered, only which official file shows. */
+.lh-paper .lh-mark-on-dark { display: none; }
+html.lh-paper[data-theme="dark"] .lh-mark-on-light { display: none; }
+html.lh-paper[data-theme="dark"] .lh-mark-on-dark { display: inline-block; }
+@media (prefers-color-scheme: dark) {
+	html.lh-paper[data-theme="system"] .lh-mark-on-light { display: none; }
+	html.lh-paper[data-theme="system"] .lh-mark-on-dark { display: inline-block; }
+}

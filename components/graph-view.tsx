@@ -1246,7 +1246,7 @@ export function GraphView({
 					key={run.id}
 					className="flex items-center gap-2 rounded-full bg-paper px-3 py-1.5 text-sm text-faint shadow-lift"
 				>
-					<Loader2Icon className="size-3.5 shrink-0 animate-spin" />
+					<Loader2Icon className="size-3.5 shrink-0 animate-spin motion-reduce:animate-none" />
 					<span className="capitalize">{run.phase}</span>
 					<span className="max-w-48 truncate text-ink">{run.title}</span>
 					<span className="tabular-nums">{Math.max(0, Math.round((Date.now() - run.startedAt) / 1000))}s</span>

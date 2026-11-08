@@ -18,11 +18,19 @@ const NEUTRALS = Object.keys(DEMO_PAPER.light) as (keyof typeof DEMO_PAPER.light
 /** The default data series per scheme. Dark keeps the kit's original
  *  palette (tuned for a dark ground); light has the same hues with HSL
  *  lightness lowered by the smallest 0.1% step that reaches 3:1 against
- *  light paper (WCAG 1.4.11, feature 025). A demo's own colours still win. */
+ *  both light paper and shelf (WCAG 1.4.11, feature 025). A demo's own
+ *  colours still win. */
 export const DEMO_SERIES = {
-	light: { "--lh-blue": "#4d8ef5", "--lh-teal": "#2ba090", "--lh-amber": "#bc851e", "--lh-red": "#ed6357", "--lh-green": "#3ba34a" },
+	light: { "--lh-blue": "#4488f5", "--lh-teal": "#299a8b", "--lh-amber": "#b5811d", "--lh-red": "#ec5a4d", "--lh-green": "#389d47" },
 	dark: { "--lh-blue": "#7cacf8", "--lh-teal": "#5fd4c4", "--lh-amber": "#e5b55a", "--lh-red": "#f28b82", "--lh-green": "#7fd18b" },
 } as const;
+/** The kit's error text (`.k-error`, chrome, not data): the dark red series
+ *  colour; on light, the same hue and saturation at the first 0.1% HSL-
+ *  lightness step reaching 4.5:1 on paper, shelf and the error's own red
+ *  tint over each (WCAG 1.4.3, feature 025). */
+export const DEMO_ERROR_INK = { light: "#c92315", dark: "#f28b82" } as const;
+/** The tint under `.k-error` text: the dark red at 12%. */
+export const DEMO_ERROR_TINT = "rgba(242,139,130,.12)";
 export const DEMO_SERIES_NAMES = Object.keys(DEMO_SERIES.light) as (keyof typeof DEMO_SERIES.light)[];
 
 /** Defaults: each neutral and each series colour is `light-dark(light, dark)`,

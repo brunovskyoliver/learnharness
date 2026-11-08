@@ -4,7 +4,7 @@
  *  same folder only when a panel needs them. Colors and fonts come from the
  *  --lh-* variables injected ahead of the demo (src/core/demo-theme.ts). */
 
-import { DEMO_PAPER, DEMO_SCROLLBAR_CSS, DEMO_SERIES, DEMO_SERIES_NAMES } from "../core/demo-theme.ts";
+import { DEMO_ERROR_INK, DEMO_ERROR_TINT, DEMO_PAPER, DEMO_SCROLLBAR_CSS, DEMO_SERIES, DEMO_SERIES_NAMES } from "../core/demo-theme.ts";
 import { distribution, sample, type SamplingOptions, type SamplingToken, type SamplingRow } from "../core/ml-sampling.ts";
 import { forward, backward, steps, type NetworkSpec, type ForwardPass, type BackwardPass } from "../core/ml-net.ts";
 import { arithmetic, nearest, coordinates, validatePoints, type Point, type Arithmetic } from "../core/ml-vectors.ts";
@@ -157,7 +157,7 @@ ${DEMO_SCROLLBAR_CSS}
 button:focus-visible,input:focus-visible{outline:2px solid var(--lh-muted);outline-offset:3px}
 @media(max-width:640px){#lh-kit.k-focus{grid-template-columns:1fr;grid-template-rows:minmax(180px,1fr) auto;gap:12px}.k-focus .k-controls{grid-column:1;grid-row:2;padding:12px 0 0;max-height:45dvh}.k-focus .k-parameters-toggle{display:block;width:100%;text-align:left;margin-bottom:12px}.k-controls.k-collapsed>:not(.k-parameters-toggle){display:none}}
 @media(prefers-reduced-motion:reduce){.react-flow__edge-path{animation:none!important}}
-.k-error{padding:8px 10px;border-radius:6px;background:rgba(242,139,130,.12);color:var(--lh-red);font:12px var(--lh-mono)}
+.k-error{padding:8px 10px;border-radius:6px;background:${DEMO_ERROR_TINT};color:light-dark(${DEMO_ERROR_INK.light},${DEMO_ERROR_INK.dark});font:12px var(--lh-mono)}
 .k-token-text{resize:none;box-sizing:border-box;width:100%;border:1px solid var(--lh-border);border-radius:6px;background:var(--lh-bg);color:var(--lh-text);padding:8px 10px;font:inherit;line-height:1.6}
 .k-token-text:focus-visible{outline:2px solid var(--lh-muted);outline-offset:3px}
 .k-token-controls{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin:12px 0}

@@ -1,5 +1,6 @@
 /**
- * Playwright for Notebook mode (feature 024, research R11).
+ * Playwright for Notebook mode (feature 024, research R11) and Study
+ * (feature 025, T062): projects `notebook` and `study`.
  *
  * - Browser: the system Chromium (CHROME_PATH or /usr/bin/chromium-browser).
  *   Playwright never downloads browsers here (install with
@@ -49,18 +50,19 @@ export default defineConfig({
 		trace: "retain-on-failure",
 		screenshot: "only-on-failure",
 	},
-	projects: [
-		{
-			name: "chromium",
-			use: {
-				...devices["Desktop Chrome"],
-				launchOptions: {
-					executablePath: process.env.CHROME_PATH ?? "/usr/bin/chromium-browser",
-					env: { ...process.env, TMPDIR: tmpRoot },
-				},
+	// Feature 024's Notebook journeys and feature 025's Study journeys, on one
+	// isolated server (Study seeds its own chats and pages into the data dir).
+	projects: ["notebook", "study"].map((name) => ({
+		name,
+		testDir: `tests/e2e/${name}`,
+		use: {
+			...devices["Desktop Chrome"],
+			launchOptions: {
+				executablePath: process.env.CHROME_PATH ?? "/usr/bin/chromium-browser",
+				env: { ...process.env, TMPDIR: tmpRoot },
 			},
 		},
-	],
+	})),
 	webServer: {
 		command: `node node_modules/next/dist/bin/next dev -p ${PORT} -H ${HOST}`,
 		url: `http://${HOST}:${PORT}`,

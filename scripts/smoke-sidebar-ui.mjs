@@ -167,7 +167,8 @@ try {
 		return { measure: element.getBoundingClientRect().width, limit: getComputedStyle(element).maxWidth, parent: element.parentElement.getBoundingClientRect().width, size: getComputedStyle(prose).fontSize,
 			note: getComputedStyle(document.documentElement).getPropertyValue("--note-size").trim(), heading: getComputedStyle(heading).fontWeight };
 	});
-	assert.equal(typography.size, typography.note, "prose follows the shared note size");
+	// Tutor prose is the voice at the inline-reply size: 1.06× the shared note size (feature 025, R9).
+	assert.ok(Math.abs(parseFloat(typography.size) - parseFloat(typography.note) * 1.06) < 0.01, `prose is 1.06× the shared note size: ${typography.size} vs ${typography.note}`);
 	assert.ok(Math.abs(typography.measure - Math.min(parseFloat(typography.limit), typography.parent)) < 1, `reading column reaches its cap or the shell: ${JSON.stringify(typography)}`);
 	console.log(`PASS crowded rows and the reading column: ${JSON.stringify(typography)}`);
 
@@ -177,7 +178,7 @@ try {
 		const filter = document.querySelector('[data-testid="kind-filter"]');
 		const dot = document.querySelector('[data-session-id="sidebar-question-ui"] [role="img"][aria-label="Waiting for you"]');
 		const bulb = document.createElement("span");
-		bulb.style.color = "var(--bulb)";
+		bulb.style.color = "var(--bulb-ink)"; // the waiting dot's ink (feature 025, phase 9: --bulb-ink)
 		document.body.append(bulb);
 		const bulbColor = getComputedStyle(bulb).color;
 		bulb.remove();
@@ -195,7 +196,7 @@ try {
 	assert.equal(header.oldIcons, false, "the separate new-lesson and new-practice icons are gone");
 	assert.equal(header.newLabel, "New");
 	assert.match(header.shelfFont, /Instrument Sans/, "date shelves use the shared sans");
-	assert.equal(header.dot, header.bulbColor, "a waiting session shows the bulb dot");
+	assert.equal(header.dot, header.bulbColor, "a waiting session shows the bulb-ink dot");
 	assert.deepEqual(header.footer, ["settings-entry", "command-palette-entry", "switch-to-notebook"]);
 	await page.focus('[data-testid="new-menu"]');
 	await page.keyboard.press("Enter");

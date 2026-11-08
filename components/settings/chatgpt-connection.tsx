@@ -345,9 +345,11 @@ export function ChatGPTUIProvider({ children }: { children: React.ReactNode }) {
 
 function ContinueButton({ onClick, disabled, testid = "chatgpt-login" }: { onClick: () => void; disabled: boolean; testid?: string }) {
 	return <Button type="button" variant="outline" size="sm" data-testid={testid} onClick={onClick} disabled={disabled} className="cursor-pointer disabled:cursor-not-allowed">
-		{/* Official unmodified mark; existing secondary button hover/focus treatment. */}
+		{/* Official unmodified marks: black on light paper, white on dark (app/paper.css picks one). */}
 		{/* eslint-disable-next-line @next/next/no-img-element */}
-		<img src="/siwc/chatgpt-logo-white.svg" width="16" height="16" alt="" aria-hidden="true" />
+		<img className="lh-mark-on-light" src="/siwc/chatgpt-logo-black.svg" width="16" height="16" alt="" aria-hidden="true" />
+		{/* eslint-disable-next-line @next/next/no-img-element */}
+		<img className="lh-mark-on-dark" src="/siwc/chatgpt-logo-white.svg" width="16" height="16" alt="" aria-hidden="true" />
 		Continue with ChatGPT
 	</Button>;
 }

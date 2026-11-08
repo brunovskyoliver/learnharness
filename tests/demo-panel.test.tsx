@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
-import { DEMO_PAPER, DEMO_SERIES, DEMO_SERIES_NAMES, demoDeclaredScheme, demoPrefersInvert, injectDemoTheme } from "../src/core/demo-theme.ts";
+import { DEMO_ERROR_INK, DEMO_ERROR_TINT, DEMO_PAPER, DEMO_SERIES, DEMO_SERIES_NAMES, demoDeclaredScheme, demoPrefersInvert, injectDemoTheme } from "../src/core/demo-theme.ts";
 import { PaperAppearanceProvider } from "../components/paper/appearance.tsx";
 import { DEFAULT_SHARED_APPEARANCE } from "../src/core/index.ts";
 import { buildSubagentSteer } from "../src/core/contracts.ts";
@@ -29,8 +29,8 @@ describe("demo theme", () => {
 		assert.match(out, /:root\{color-scheme:light dark;/);
 		assert.match(out, /--lh-bg:light-dark\(#f8f7f4,#1a1a19\)/);
 		assert.match(out, /--lh-text:light-dark\(#1d1c1a,#e9e7e2\)/);
-		// Series per scheme (feature 025): the dark palette as before, the light one deepened to 3:1 on paper.
-		assert.match(out, /--lh-blue:light-dark\(#4d8ef5,#7cacf8\)/, "series colours follow the scheme");
+		// Series per scheme (feature 025): the dark palette as before, the light one deepened to 3:1 on paper and shelf.
+		assert.match(out, /--lh-blue:light-dark\(#4488f5,#7cacf8\)/, "series colours follow the scheme");
 		assert.ok(!out.includes("@font-face"), "no font without an app server");
 		assert.match(injectDemoTheme(LIGHT, true), /@font-face\{font-family:"LH Sans";src:url\("\/fonts\/instrument-sans-latin\.woff2"\)/);
 	});
@@ -92,7 +92,7 @@ describe("demos of the other scheme open inverted", () => {
 		}
 	});
 
-	it("gives each scheme a series that reaches 3:1 on its paper, the same hues, lightness moved by the smallest step", () => {
+	it("gives each scheme a series that reaches 3:1 on its paper and shelf, the same hues, lightness moved by the smallest step; error text 4.5:1", () => {
 		const channel = (c: number) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
 		const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255) as [number, number, number];
 		const lum = (hex: string) => { const [r, g, b] = rgb(hex).map(channel) as [number, number, number]; return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
@@ -106,8 +106,10 @@ describe("demos of the other scheme open inverted", () => {
 		const hex = ([h, s, l]: readonly [number, number, number]) => `#${[0, 8, 4].map((n) => { const k = (n + h * 12) % 12, a = s * Math.min(l, 1 - l); return Math.round((l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))) * 255).toString(16).padStart(2, "0"); }).join("")}`;
 		for (const scheme of ["light", "dark"] as const) {
 			for (const name of DEMO_SERIES_NAMES) {
-				const ratio = contrast(DEMO_SERIES[scheme][name], DEMO_PAPER[scheme]["--lh-bg"]);
-				assert.ok(ratio >= 3, `${scheme} ${name} ${DEMO_SERIES[scheme][name]} is ${ratio.toFixed(2)}:1`);
+				for (const ground of ["--lh-bg", "--lh-surface"] as const) {
+					const ratio = contrast(DEMO_SERIES[scheme][name], DEMO_PAPER[scheme][ground]);
+					assert.ok(ratio >= 3, `${scheme} ${name} ${DEMO_SERIES[scheme][name]} is ${ratio.toFixed(2)}:1 on ${ground}`);
+				}
 			}
 		}
 		for (const name of DEMO_SERIES_NAMES) {
@@ -116,9 +118,25 @@ describe("demos of the other scheme open inverted", () => {
 			assert.ok(l2 < l, `${name}: light is deeper than dark`);
 			// The first 0.1% lightness step down from the dark colour that reaches 3:1.
 			let first = "";
-			for (let i = 0; i <= 1000 && !first; i++) { const step = hex([h, s, l - i / 1000]); if (contrast(step, DEMO_PAPER.light["--lh-bg"]) >= 3) first = step; }
+			for (let i = 0; i <= 1000 && !first; i++) { const step = hex([h, s, l - i / 1000]); if (contrast(step, DEMO_PAPER.light["--lh-bg"]) >= 3 && contrast(step, DEMO_PAPER.light["--lh-surface"]) >= 3) first = step; }
 			assert.equal(DEMO_SERIES.light[name], first, name);
 		}
+		// Error text: 4.5:1 on paper, shelf and its red tint over each, in both schemes;
+		// light is the dark red's hue at the first lightness step that gets there.
+		const tint = DEMO_ERROR_TINT.match(/[\d.]+/g)!.map(Number) as [number, number, number, number];
+		const over = (ground: string) => `#${rgb(ground).map((c, i) => Math.round((c * (1 - tint[3]) + (tint[i]! / 255) * tint[3]) * 255).toString(16).padStart(2, "0")).join("")}`;
+		const grounds = (scheme: "light" | "dark") => [DEMO_PAPER[scheme]["--lh-bg"], DEMO_PAPER[scheme]["--lh-surface"]].flatMap((g) => [g, over(g)]);
+		for (const scheme of ["light", "dark"] as const) {
+			for (const ground of grounds(scheme)) {
+				const ratio = contrast(DEMO_ERROR_INK[scheme], ground);
+				assert.ok(ratio >= 4.5, `${scheme} error ${DEMO_ERROR_INK[scheme]} is ${ratio.toFixed(2)}:1 on ${ground}`);
+			}
+		}
+		assert.equal(DEMO_ERROR_INK.dark, DEMO_SERIES.dark["--lh-red"]);
+		const [eh, es, el] = hsl(DEMO_ERROR_INK.dark);
+		let firstError = "";
+		for (let i = 0; i <= 1000 && !firstError; i++) { const step = hex([eh, es, el - i / 1000]); if (grounds("light").every((g) => contrast(step, g) >= 4.5)) firstError = step; }
+		assert.equal(DEMO_ERROR_INK.light, firstError, "error ink");
 	});
 });
 
