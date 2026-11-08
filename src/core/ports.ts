@@ -217,7 +217,7 @@ export interface LibraryStore {
 	/** Cached text info: rebuildable, null when absent or damaged. */
 	readDerived(id: string): Promise<unknown>;
 	writeDerived(id: string, value: unknown): Promise<void>;
-	documentPath(item: Pick<LibraryItem, "name">): string;
+	documentPath(item: Pick<LibraryItem, "name" | "mirror">): string;
 	/** A new page with its first version. */
 	createPage(name: string, content: string, options: PageCreateOptions): Promise<{ item: LibraryItem; head: PageHead } | LibraryRefusal>;
 	/** Head and draft, or null for an unknown id, a document or a tombstone. */
@@ -385,6 +385,58 @@ export interface PromptOverrideStore {
 	/** Remove the override file, if present (switches are untouched — an
 	 *  on-switch with no file composes the source default, inert). */
 	deleteOverride(segmentPath: string): void;
+}
+
+// ─── Repo tokens (feature 026, research R8) ────────────────────────────────
+
+/** Personal access tokens for repo links: { [linkId]: token } in a 0600 file
+ *  beside auth.json, never in it, so a token is never reflected into
+ *  process.env nor listed on the keys page. Per tenant in hosted mode. */
+export interface RepoTokenStore {
+	get(linkId: string): string | null;
+	set(linkId: string, token: string): void;
+	/** Absent = silent success. */
+	delete(linkId: string): void;
+	/** `maskKey` of the token, or null when none is stored. The only form the client sees. */
+	mask(linkId: string): string | null;
+}
+
+/** Library git sync's transport (feature 026, research R5): the branch tip
+ *  without a fetch, and a shallow read of one commit's tree. Failures throw
+ *  `RepoRemoteError` (core/repo-link.ts) carrying a `SyncFailure`. */
+export interface RepoRemoteRequest {
+	url: string;
+	/** Sent as Basic `x-access-token:<token>`; never logged or echoed. */
+	token?: string;
+	/** Omitted: the remote's default branch (its HEAD). */
+	branch?: string;
+}
+export interface RepoTip { branch: string; commit: string }
+export interface RepoTreeEntry {
+	/** Repo-relative, "/"-separated. */
+	path: string;
+	/** git mode: "100644", "100755", "120000", "160000". */
+	mode: string;
+	oid: string;
+	type: "blob" | "commit";
+	/** The blob's bytes (blobs only), read from the local shallow clone. */
+	read(): Promise<Uint8Array>;
+}
+export interface RepoSnapshotRequest extends RepoRemoteRequest {
+	branch: string;
+	/** Names the temp gitdir under library/git-work/. */
+	linkId: string;
+	/** Directories not walked (counted by the caller). */
+	skipDirectory?(path: string, name: string): boolean;
+	/** Download cap; default REPO_MAX_BYTES. Tests lower it. */
+	maxDownloadBytes?: number;
+}
+export interface RepoRemote {
+	tip(request: RepoRemoteRequest): Promise<RepoTip>;
+	/** Depth-1, single-branch clone into a temp gitdir, every non-directory entry
+	 *  of the tip's tree handed to `visit` while the clone exists, then the gitdir
+	 *  is deleted. Resolves with the commit read. */
+	snapshot(request: RepoSnapshotRequest, visit: (entry: RepoTreeEntry) => Promise<void> | void): Promise<RepoTip>;
 }
 
 // ─── AuthStore — BYOK provider keys (auth-keys wave, 2026-09-19) ────────────

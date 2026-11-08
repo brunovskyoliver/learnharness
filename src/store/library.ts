@@ -57,19 +57,47 @@ async function readCatalog(): Promise<LibraryCatalog> {
 	}
 	if (typeof parsed?.version !== "number" || !Array.isArray(parsed.items)) throw new LibraryCatalogError("The Library catalog is damaged.");
 	if (parsed.version > CATALOG_VERSION) throw new LibraryCatalogError("The Library catalog comes from a newer version of the app.");
-	// Diagrams live beside `items` on disk (feature 022). In memory they are items.
-	const { diagrams, ...rest } = parsed;
-	if (!Array.isArray(diagrams)) return rest;
-	const known = new Set(diagrams.map((entry) => entry.id));
-	return { ...rest, items: [...rest.items.filter((entry) => !known.has(entry.id)), ...diagrams] };
+	// Diagrams live beside `items` on disk (feature 022), and so do mirrored
+	// folders and items (feature 026). In memory they are items and folders.
+	const { diagrams, mirrored, ...rest } = parsed;
+	const beside = [...(Array.isArray(diagrams) ? diagrams : []), ...(Array.isArray(mirrored?.items) ? mirrored.items : [])];
+	const besideFolders = Array.isArray(mirrored?.folders) ? mirrored.folders : [];
+	const catalog: LibraryCatalog = rest;
+	if (beside.length > 0) {
+		const known = new Set(beside.map((entry) => entry.id));
+		catalog.items = [...rest.items.filter((entry) => !known.has(entry.id)), ...beside];
+	}
+	if (besideFolders.length > 0) {
+		const known = new Set(besideFolders.map((folder) => folder.id));
+		catalog.folders = [...(rest.folders ?? []).filter((folder) => !known.has(folder.id)), ...besideFolders];
+	}
+	return catalog;
+}
+
+/** The on-disk shape: diagrams and mirrored entries split out of `items` and `folders`. */
+function diskShape(catalog: LibraryCatalog): LibraryCatalog {
+	const { diagrams: _d, mirrored: _m, ...rest } = catalog;
+	const mirroredItems = catalog.items.filter((entry) => entry.mirror !== undefined);
+	const mirroredFolders = foldersOf(catalog).filter((folder) => folder.mirror !== undefined);
+	const diagrams = catalog.items.filter((entry) => entry.kind === "diagram" && entry.mirror === undefined);
+	if (mirroredItems.length === 0 && mirroredFolders.length === 0 && diagrams.length === 0) return rest;
+	const onDisk: LibraryCatalog = { ...rest, items: catalog.items.filter((entry) => entry.mirror === undefined && entry.kind !== "diagram") };
+	if (mirroredFolders.length > 0) {
+		const plain = foldersOf(catalog).filter((folder) => folder.mirror === undefined);
+		// Absent and [] read the same to every app; absent keeps a catalog that never had plain folders as it was.
+		if (plain.length > 0) onDisk.folders = plain;
+		else delete onDisk.folders;
+	}
+	if (diagrams.length > 0) onDisk.diagrams = diagrams;
+	if (mirroredItems.length > 0 || mirroredFolders.length > 0) onDisk.mirrored = { folders: mirroredFolders, items: mirroredItems };
+	return onDisk;
 }
 
 async function writeCatalog(catalog: LibraryCatalog): Promise<void> {
 	await fs.mkdir(PATHS.library, { recursive: true });
 	const temp = `${catalogFile()}.${nanoid(8)}.tmp`;
 	const file = await fs.open(temp, "wx");
-	const diagrams = catalog.items.filter((entry) => entry.kind === "diagram");
-	const onDisk: LibraryCatalog = diagrams.length === 0 ? catalog : { ...catalog, items: catalog.items.filter((entry) => entry.kind !== "diagram"), diagrams };
+	const onDisk = diskShape(catalog);
 	try {
 		await file.writeFile(JSON.stringify(onDisk, null, "\t"));
 		await file.sync();
@@ -100,7 +128,8 @@ async function reconcile(catalog: LibraryCatalog): Promise<boolean> {
 		onDisk.set(entry.name, { size: stat.size, mtime: stat.mtime.toISOString() });
 	}
 	let changed = false;
-	const documents = liveItems(catalog).filter((i) => !isVersionedKind(i.kind));
+	// Mirrored items have no flat file: their bytes sit under files/.mirrors (feature 026).
+	const documents = liveItems(catalog).filter((i) => !isVersionedKind(i.kind) && !i.mirror);
 	const vanished: LibraryItem[] = [];
 	for (const item of documents) {
 		const file = onDisk.get(item.name);
@@ -152,10 +181,22 @@ async function sweepStaleUploads(): Promise<void> {
 }
 
 /** Every name a new item can't take: live items plus anything in the folder,
- *  including the symlinks and folders reconcile skips. */
+ *  including the symlinks and folders reconcile skips. Mirrored items don't
+ *  count: their bytes aren't in the flat folder (feature 026, FR-009). */
 async function takenKeys(catalog: LibraryCatalog): Promise<Set<string>> {
 	const disk = await fs.readdir(PATHS.files).catch(() => [] as string[]);
-	return new Set([...liveItems(catalog).map((i) => i.name), ...disk].map(nameKey));
+	return new Set([...liveItems(catalog).filter((i) => !i.mirror).map((i) => i.name), ...disk].map(nameKey));
+}
+
+const MIRRORS_DIR = ".mirrors";
+/** Where a document's bytes are: files/<name>, or for a mirrored item
+ *  files/.mirrors/<linkId>/<snapshot>/<repo path> (feature 026, R1). */
+function documentPath(item: Pick<LibraryItem, "name" | "mirror">): string {
+	if (!item.mirror) return path.join(PATHS.files, item.name);
+	const { linkId, snapshot, path: repoPath } = item.mirror;
+	const parts = [linkId, snapshot ?? "", ...repoPath.split("/")];
+	if (parts.some((part) => !part || part === "." || part === ".." || /[\\/\x00]/.test(part))) throw new Error("A mirrored item's path is damaged.");
+	return path.join(PATHS.files, MIRRORS_DIR, ...parts);
 }
 
 const nameTaken = (name: string, taken: Set<string>): LibraryRefusal => ({
@@ -243,7 +284,7 @@ async function kindAfterRename(item: LibraryItem, name: string): Promise<Library
 	const next = kindForName(name) ?? "other";
 	if (next === item.kind) return next;
 	if (next === "other") return null;
-	return contentMatches(name, await readHead(path.join(PATHS.files, item.name))) ? next : null;
+	return contentMatches(name, await readHead(documentPath(item))) ? next : null;
 }
 
 async function moveDocument(from: string, to: string): Promise<void> {
@@ -291,7 +332,7 @@ async function remove(id: string): Promise<boolean> {
 		const item = liveItems(catalog).find((i) => i.id === id);
 		if (!item) return false;
 		if (isVersionedKind(item.kind)) await fs.rm(pageDir(id), { recursive: true, force: true });
-		else await fs.rm(path.join(PATHS.files, item.name), { force: true });
+		else await fs.rm(documentPath(item), { force: true });
 		await fs.rm(proposalsDir(id), { recursive: true, force: true });
 		await fs.rm(pageProposalsDir(id), { recursive: true, force: true });
 		await fs.rm(derivedFile(id), { force: true });
@@ -432,7 +473,7 @@ const trashedBytes = (entryId: string, itemId: string) => path.join(trashDir(ent
 async function moveBytesToTrash(entry: LibraryTrashEntry): Promise<void> {
 	await fs.mkdir(trashDir(entry.id), { recursive: true });
 	for (const item of entry.items) {
-		if (!isVersionedKind(item.kind)) await fs.rename(path.join(PATHS.files, item.name), trashedBytes(entry.id, item.id)).catch((err) => { if (!isCode(err, "ENOENT")) throw err; });
+		if (!isVersionedKind(item.kind)) await fs.rename(documentPath(item), trashedBytes(entry.id, item.id)).catch((err) => { if (!isCode(err, "ENOENT")) throw err; });
 	}
 }
 
@@ -1023,7 +1064,7 @@ export const libraryStore: LibraryStore = {
 		return [...catalog.items, ...trashOf(catalog).flatMap((entry) => entry.items.map((item) => tombstone(item, entry.trashedAt)))];
 	}),
 	readText: async (item) => {
-		if (!isVersionedKind(item.kind)) return fs.readFile(path.join(PATHS.files, item.name), "utf8");
+		if (!isVersionedKind(item.kind)) return fs.readFile(documentPath(item), "utf8");
 		const last = (await readVersions(item.id)).at(-1);
 		const content = await readVersionText(item.id, last?.n ?? item.headVersion ?? 1);
 		if (item.kind !== "diagram") return content;
@@ -1122,7 +1163,7 @@ export const libraryStore: LibraryStore = {
 		await fs.writeFile(temp, JSON.stringify(value));
 		await fs.rename(temp, derivedFile(id));
 	},
-	documentPath: (item) => path.join(PATHS.files, item.name),
+	documentPath,
 };
 
 /** A read stream for a document, refusing anything but a regular file. */

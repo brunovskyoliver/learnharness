@@ -1,0 +1,67 @@
+# Feature 026: Library git sync
+Stage: implement
+Updated: 2026-11-08T14:10:00Z
+
+## Decisions
+- Owner (with the request, 2026-11-08): a read-only mirror; the repo is the only source, every sync overwrites, upstream deletes disappear; files can be read, @-referenced, quoted and annotated, never edited.
+- Owner (with the request): pulls every 15 minutes server-side while the app runs, plus "Sync now" and a faint "Synced {n} min ago"; a failed pull says why.
+- Owner (with the request): access by HTTPS URL plus optional personal access token, stored like provider keys, never shown after saving; same in local, Electron and hosted.
+- Owner (with the request): isomorphic-git, approved as a new server-only runtime dependency; shallow clone/fetch of one branch.
+- Owner (with the request): every file type the Library already opens (Markdown, text, PDF, images, code, CSV); everything else skipped, as are `.git` and `node_modules`.
+- Owner (with the request): the repo's directory tree becomes nested Library subfolders under the named folder; directories with no supported files are left out.
+- Owner gate 1 Q1 (2026-11-08, "ok" = A): a file deleted upstream leaves the folder; highlights, notes, flashcard links and @-references are kept; references say "Removed from the repo"; the same path returning gets the same identity and everything reattaches.
+- Owner gate 1 Q2 (A): unlinking removes the folder and synced files after a confirm dialog naming the folder; notes and references kept as in Q1; relinking the same repo reattaches.
+- Owner gate 1 Q3 (A): per link at most 2,000 supported files and 500 MB; at most 10 links per user in every mode; over a limit refuses that sync, keeps the last good mirror and says which limit and by how much.
+- Owner gate 1 Q4 (A): hosted pulls every 15 minutes only while that user has the app open, and once on open; local/Electron every 15 minutes while the process runs.
+- Owner gate 1 Q5 (A): inside the mirror favourite, pin, tag and archive are allowed; no rename, move or trash; the linked folder can be renamed and moved; its "Delete folder" means unlink.
+- Agent (plan, reversible, research.md): bytes at `files/.mirrors/<linkId>/<snapshotId>/` (R1); catalog additive keys `repoLinks` + `mirrored`, split on write like 022's diagrams (R2); removed entries kept as tombstones with `mirror` for reattach (R3); staged snapshot + one atomic catalog write + old snapshot delete (R4); isomorphic-git 1.44.4 exact (newest ≥ 2 weeks old), tip check before any fetch, fresh depth-1 clone on change (R5); `x-access-token` basic auth, https-only http wrapper with byte cap (R6); tokens in a sibling 0600 `git-tokens.json` so they are not reflected into `process.env` or listed on the keys page (R8); scheduler armed by the first SSE connection, no new startup hook (R9); store-level refusals (R11); `RepoRemote` port with a fake plus a real `git http-backend` fixture (R14).
+- Owner gate 2 (2026-11-08, "go"): every "Owner confirms" proposal in research.md and the analyze fixes approved:
+  - H1/R13: a mirrored item's @ name is its Library path `{linked folder}/{repo path}`; display name stays the file name; renaming the linked folder pushes old paths onto `previousNames`.
+  - H2/R6: hosted refuses loopback/private/link-local/unspecified addresses ("This address can't be reached from the hosted app."); local/Electron allow (new FR-030).
+  - H3/R11: nothing can be added, moved or restored into a mirror ("{folder} mirrors a repo. Add files in the repo instead."); trashing/deleting a folder that holds a linked folder at any depth is refused.
+  - R3: "same repo" = address + branch; a duplicate link is refused.
+  - R9: pool of 2 concurrent pulls per server, FIFO across tenants; R16: the download is also capped at 500 MB; the per-link 500 MB counts supported files after skips.
+  - R8: tokens in a separate 0600 `git-tokens.json`, never in `auth.json`. R5: isomorphic-git pinned 1.44.4, server-only.
+  - All strings in contracts/ui-contract.md approved.
+  - No live private repo was provided: T056 uses a local fixture repo only.
+
+- Analyze rerun MEDIUM findings, resolved as technical choices (2026-11-08, delegated by the feature thread; spec/research/plan/data-model/ui-contract/tasks text updated):
+  - M1: the hosted address block runs at connect time, in the request's own `lookup` hook (every resolved address checked before the socket connects to it; IP literals checked before the request; one fresh socket per request, `agent: false`; every redirect is a new request through the hook), closing DNS rebinding. T013 amended.
+  - M2: a mirrored item's @ name is its full Library path, every ancestor folder name + the linked folder's name + the repo path, `/`-joined; renaming or moving the linked folder or any ancestor pushes old paths onto `previousNames`. T037, T059 amended.
+  - M3: `LH_TEST_GIT_LOOPBACK_HTTP=1` (ignored when `NODE_ENV=production`) also lets 127.0.0.1, and only it, past the hosted block, so hosted checks run against the fixture. T013, quickstart amended.
+- Agent (phase 1-2, reversible): `src/server/repo-git.ts` uses its own `node:http`/`node:https` client in isomorphic-git's `HttpClient` shape instead of `isomorphic-git/http/node`, because M1 needs the `lookup` hook; isomorphic-git itself is still loaded only by `import("isomorphic-git")` there.
+- Agent (phase 1-2, reversible): the token is sent up front as Basic `x-access-token:<token>`; `onAuth` and `onAuthFailure` both cancel, so a 401 is one request and an `auth` failure, never a retry loop (R6 had `onAuth` supply the token; same result, one round trip fewer).
+- Agent (phase 1-2, flag for owner review): `SyncFailure.code` gains `"address-blocked"` (message: the approved "This address can't be reached from the hosted app."), for a scheduled pull of an existing link that the hosted block refuses (DNS changed, redirect); data-model's list had no code for it. The create route still answers 403 `address_blocked`.
+- Agent (phase 1-2, reversible): `parseRepoAddress` returns `{ url, display, repoBase }` and `repoKeyOf(repoBase, branch)` builds the key, because the default branch is known only after the first `tip()`.
+- Agent (phase 1-2, reversible): dot-files (e.g. `.gitignore`) count as `hiddenOrIgnored` rather than named `bad-name`; an ignored directory (`.git`, `node_modules`, `.x`) is not walked and is counted once.
+- Agent (phase 1-2, open for phase 4): a repo with no commits has no branch, so `tip()` fails it as `not-found` for now; T024's "empty repo leaves an empty linked folder" decides the final behaviour.
+- Agent (phase 1-2, reversible): on write, a catalog whose only folders are mirrored omits `folders` (absent and `[]` read the same everywhere), keeping round trips byte-stable.
+
+## Log
+- 2026-11-08T12:08Z specify: spec.md and checklists/requirements.md written from the owner's request and six decisions.
+- 2026-11-08T12:20Z clarify: gate-1 answers Q1–Q5 ("ok" = all recommendations) encoded in spec.md (Clarifications, US2/US3/US4 scenarios, edge cases, FR-006/010/012/014/023, new FR-028/029, key entities, SC-002, new SC-009–011, scheduler assumption). Checklist 14/16, unchanged (two accepted implementation-detail exceptions).
+- 2026-11-08T12:25Z plan: plan.md, research.md (R1–R16), data-model.md, contracts/api.md, contracts/ui-contract.md, quickstart.md. Files made by hand; .specify/feature.json left at 025. Constitution Check I–VIII pass (I with gate-2 items).
+- 2026-11-08T12:28Z tasks: tasks.md, 57 tasks in 7 phases; MVP = phases 1–4 (US1 + US2).
+- 2026-11-08T12:30Z analyze: 0 critical, 3 high, 6 medium, 5 low; 27/29 FRs with explicit tasks (FR-021, FR-026 implicit). Report below.
+- 2026-11-08T12:50Z gate 2: owner "go". Encoded: spec.md (Clarifications gate-2 session; US1 #5 pending row; edge cases for pool wording, hosted address block, duplicate link, adding into a mirror, folder holding a link, unlink during a pull, linked-folder rename; FR-001/004/010/012/015/019/024/029, new FR-030; key entities; Assumptions entry point and dependency pin). research.md "Owner confirms" → "Owner approved 2026-11-08" (plus redirect re-check in R6, "at any depth" in R11, what counts toward 500 MB in R16); contracts markers and the ui-contract header updated; data-model limits row; quickstart live check → local fixture. plan.md Summary, Constraints, Constitution I/VII. tasks.md: gate passed; T013, T016, T021, T024, T028, T034, T037, T038, T044, T050, T056 amended (fixes M1–M6, L2–L4); new T058 (Phase 2, 500 MB counting) and T059 (Phase 5, linked-folder rename keeps @ names). 59 tasks.
+- 2026-11-08T13:00Z analyze (rerun, read-only): 0 critical, 0 high, 3 medium, 6 low; 30/30 FRs with tasks. Report below replaces the first one.
+- 2026-11-08T14:10Z implement phases 1-2 (T001-T013, T058): isomorphic-git 1.44.4 exact (adds 18 packages + 2 nested, about 7.2 MB on disk: isomorphic-git 5.3 MB incl. its nested readable-stream/string_decoder, pako 0.8 MB, the rest under 0.25 MB each); startup JS baseline on adc0021 in ~/agent-runs/2026-11-08-library-git-sync/startup-before.md (/ 253,522 B gz, /chat/new 243,093, /library 261,308); fixture remote tests/fixtures/git-remote.ts; src/core/repo-link.ts, core/library.ts mirror types and refusals, `library-sync` event, catalog split/merge + `documentPath` in src/store/library.ts, src/store/repo-tokens.ts, src/server/repo-git.ts (connect-time hosted block, M1/M3). Tests: repo-link-core (19), library-mirror-catalog (7), repo-tokens (5), repo-git (14, real git http-backend) pass; npm test 4214 pass / 0 fail / 2 skipped (pre-existing live tests); typecheck, lint, build clean; no isomorphic-git in .next/static or .next/server. M1-M3 encoded in the docs.
+
+## Report
+Analyze rerun (read-only), 2026-11-08, after gate 2:
+
+| ID | Severity | Finding | Proposed fix |
+| --- | --- | --- | --- |
+| M1 | MEDIUM | FR-030 / T013 check the resolved address "before connecting" and per redirect, but a separate lookup then connect leaves a DNS-rebinding gap (VII). | Do the check inside the socket's `lookup` hook in the http wrapper so the checked address is the one connected; amend T013. |
+| M2 | MEDIUM | `{linked folder}/{repo path}` can still clash: two linked folders with the same name under different parents give the same @ name (folder names are unique per parent only). | Owner decides: full Library folder path in the @ name, or linked-folder names unique across the Library. |
+| M3 | MEDIUM | Hosted checks (quickstart step 5, any hosted run against the 127.0.0.1 fixture) are refused by FR-030 now that the live check is fixture-only. | Let `LH_TEST_GIT_LOOPBACK_HTTP=1` (never in production) also bypass the hosted address block for 127.0.0.1, or run hosted checks on the fake remote; note it in T013/quickstart. |
+| L1 | LOW | SC-001 "typical connection" not measurable (carried). | Name a bandwidth or keep the fixture timing. |
+| L2 | LOW | Bitbucket `x-token-auth` limitation is only in quickstart, not spec Out of scope (carried). | Add to Out of scope. |
+| L3 | LOW | SC-002 "within 1 minute of Sync now" can be broken by FR-015's queue behind 2 large pulls. | Qualify SC-002 "when no other pulls are queued". |
+| L4 | LOW | A queued pull shows as "Syncing…"; no distinct waiting state (IV). | Accept, or add "Waiting to sync…" to ui-contract (owner string). |
+| L5 | LOW | FR-030 sits before FR-024 (numbering out of order). | Cosmetic. |
+| L6 | LOW | checklists/requirements.md notes line still says clarify questions are pending (carried). | Leave (checkbox-only rule) or refresh at converge. |
+
+Coverage: 30/30 FRs have tasks; 11/11 SCs have tasks. Constitution I–VIII: no conflicts. 59 tasks in 7 phases.
+
+Not implemented, not committed.

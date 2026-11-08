@@ -26,6 +26,19 @@ const REFUSAL_STATUS: Record<LibraryRefusalCode, number> = {
 	folder_missing: 404,
 	folder_cycle: 409,
 	folder_not_empty: 409,
+	// Feature 026 (contracts/api.md)
+	repo_file: 409,
+	repo_folder: 409,
+	repo_linked: 409,
+	holds_linked: 409,
+	not_https: 400,
+	credential_in_address: 400,
+	invalid_address: 400,
+	invalid_branch: 400,
+	already_linked: 409,
+	limit_links: 409,
+	address_blocked: 403,
+	sync_failed: 422,
 };
 
 function refusal(r: LibraryRefusal, status = REFUSAL_STATUS[r.refused]): Response {

@@ -54,6 +54,9 @@ export interface ServerEvents {
 	"library-changed": { itemId?: string; version?: number; author?: "learner" | "agent" };
 	/** The search index moved on (feature 019). Open search views refetch. */
 	"library-index-changed": { building: boolean };
+	/** A repo pull started or ended (feature 026), pending first pulls
+	 *  included. Clients refetch the links. Carries no address or token. */
+	"library-sync": { linkId: string };
 	/** Flashcards changed (feature 021). Carries no card text. */
 	"cards-changed": Record<string, never>;
 	/** A Notebook companion changed: threads, messages, chat or a run's
@@ -78,6 +81,7 @@ export const SERVER_EVENT_TYPES = [
 	"compaction-changed",
 	"library-changed",
 	"library-index-changed",
+	"library-sync",
 	"cards-changed",
 	"notebook-changed",
 ] as const satisfies readonly ServerEventType[];

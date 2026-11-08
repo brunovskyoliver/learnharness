@@ -18,6 +18,7 @@
 export * from "./contracts.ts";
 export * from "./ports.ts";
 export * from "./library.ts";
+export * from "./repo-link.ts";
 export * from "./diagram.ts";
 export * from "./page-proposals.ts";
 export * from "./diagram-svg.ts";
