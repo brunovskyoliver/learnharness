@@ -2957,6 +2957,9 @@ html.lh-paper {
 	animation: 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both nb-menu-in;
 }
 .lh-paper .lh-dialog:focus { outline: none; }
+/* A dialog that takes the focus itself (a sheet with nothing to press, like the
+   keyboard cheat sheet) shows the ring inside its edge when reached by keyboard. */
+.lh-paper .lh-dialog:focus-visible { outline: 2px solid var(--nb-focus); outline-offset: -2px; }
 .lh-paper :is(.lh-dialog, .lh-dialog-grain) { isolation: isolate; }
 .lh-paper :is(.lh-dialog, .lh-dialog-grain)::after {
 	content: "";

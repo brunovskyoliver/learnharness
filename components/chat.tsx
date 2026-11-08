@@ -1454,6 +1454,8 @@ function ChatView({
 						</>
 					) : (
 					<>
+						{/* The session's title is the page's heading (screen-reader heading navigation). */}
+						<h1 className="flex min-w-4 shrink">
 						<Hint
 							// F2 renames (registry) — surfaced on the hover.
 							label="Rename session"
@@ -1472,6 +1474,7 @@ function ChatView({
 							<PencilIcon className="size-3.5 shrink-0 text-faint opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
 							</button>
 						</Hint>
+						</h1>
 							{/* flex-1 spacer: keeps the chips at the right edge AND stays a
 							    drag surface (no carve-out) — the freed bar is grippable. */}
 							<div className="min-w-4 flex-1" aria-hidden="true" />

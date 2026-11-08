@@ -403,6 +403,7 @@ export function LibraryView() {
 		setClash(null);
 	};
 	const [newDiagram, setNewDiagram] = useState(false);
+	const newDiagramButton = useRef<HTMLButtonElement>(null);
 	const newPage = async () => {
 		setCreating(true);
 		const result = await createBlankPage(folderId);
@@ -488,7 +489,7 @@ export function LibraryView() {
 								<FilePlusIcon aria-hidden="true" />
 								New page
 							</button>
-							<button type="button" className="lh-tool" onClick={() => setNewDiagram(true)} data-testid="library-new-diagram">
+							<button ref={newDiagramButton} type="button" className="lh-tool" onClick={() => setNewDiagram(true)} data-testid="library-new-diagram">
 								<NetworkIcon aria-hidden="true" />
 								New diagram
 							</button>
@@ -530,6 +531,7 @@ export function LibraryView() {
 						<NewDiagramDialog
 							folderId={folderId}
 							onClose={() => setNewDiagram(false)}
+							returnFocus={() => newDiagramButton.current?.focus()}
 							onCreated={(item) => {
 								setNewDiagram(false);
 								pane?.open({ id: item.id, name: item.name, kind: item.kind, size: item.size });

@@ -24,7 +24,10 @@ export async function createDiagram(name: string, form: DiagramForm, folderId: s
 	}
 }
 
-export function NewDiagramDialog({ folderId, onCreated, onClose }: { folderId: string | null; onCreated: (item: LibraryItem) => void; onClose: () => void }) {
+export function NewDiagramDialog({ folderId, onCreated, onClose, returnFocus }: { folderId: string | null; onCreated: (item: LibraryItem) => void; onClose: () => void; returnFocus?: () => void }) {
+	// Closing runs Radix's close first, so the focus goes back to the opener
+	// before the parent unmounts the dialog (constitution VI).
+	const [open, setOpen] = useState(true);
 	const [form, setForm] = useState<DiagramForm>("diagram");
 	const [name, setName] = useState("");
 	const [failure, setFailure] = useState<string | null>(null);
@@ -39,8 +42,8 @@ export function NewDiagramDialog({ folderId, onCreated, onClose }: { folderId: s
 		setFailure(result.suggestedName ? `${result.error} ${result.suggestedName} is free.` : result.error);
 	};
 	return (
-		<Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-			<DialogContent className="flex flex-col gap-3" data-testid="diagram-new-dialog">
+		<Dialog open={open} onOpenChange={(next) => { if (!next) setOpen(false); }}>
+			<DialogContent className="flex flex-col gap-3" data-testid="diagram-new-dialog" onCloseAutoFocus={(event) => { if (returnFocus) { event.preventDefault(); returnFocus(); } onClose(); }}>
 				<DialogTitle>New diagram</DialogTitle>
 				<DialogDescription>Choose how it starts. You can use every tool in any of them.</DialogDescription>
 				<form className="flex flex-col gap-3" onSubmit={(event) => { event.preventDefault(); if (!busy) void create(); }}>
@@ -58,7 +61,7 @@ export function NewDiagramDialog({ folderId, onCreated, onClose }: { folderId: s
 					</label>
 					{failure && <p role="alert" className="text-sm text-red [overflow-wrap:anywhere]" data-testid="diagram-new-failure">{failure}</p>}
 					<div className="mt-1 flex items-center justify-end gap-5">
-						<button type="button" className="lh-text-action" onClick={onClose}>Cancel</button>
+						<button type="button" className="lh-text-action" onClick={() => setOpen(false)}>Cancel</button>
 						<button type="submit" className="nb-pill" disabled={busy} data-testid="diagram-new-create">{busy ? "Creating…" : "Create"}</button>
 					</div>
 				</form>

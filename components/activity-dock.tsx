@@ -520,11 +520,15 @@ export function ActivityCornerHint() {
 		? { word: blobLabel(only), cost, onStop: abortStates[only.id] ? undefined : () => void abort(only), stopLabel: `Stop ${blobLabel(only)} in ${only.title}` }
 		: { word: `${blobs.length} running`, cost };
 	return (
-		<CornerHint
-			running={running}
-			state={running ? "running" : "idle"}
-			idle={`${keyLabel(bindingForAction("command-palette"), mac)} searches everything`}
-			list={<ActivitySection feed={feed} abortStates={abortStates} onAbort={(blob) => void abort(blob)} />}
-		/>
+		<>
+			<CornerHint
+				running={running}
+				state={running ? "running" : "idle"}
+				idle={`${keyLabel(bindingForAction("command-palette"), mac)} searches everything`}
+				list={<ActivitySection feed={feed} abortStates={abortStates} onAbort={(blob) => void abort(blob)} />}
+			/>
+			{/* Screen readers hear a run start (the hint's own word, not its ticking cost). */}
+			<p className="sr-only" aria-live="polite" data-testid="corner-hint-live">{running?.word ?? ""}</p>
+		</>
 	);
 }

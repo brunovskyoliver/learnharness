@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { CHATS, chord, clearStudyKey, interceptModel, openChat, seedStudy, studySettings } from "./helpers";
+import { CHATS, chord, clearStudyKey, hydrated, interceptModel, openChat, seedStudy, studySettings } from "./helpers";
 
 // Feature 025, T062 (FR-040, FR-041): Study by keyboard alone, with the
 // focus always seen (2px outline in --nb-focus, offset 2px; fields show their
@@ -182,6 +182,46 @@ test.describe("Study: accessibility", () => {
 		await expect(page.getByTestId("nb-sidebar")).toBeVisible();
 		expect(await small('[data-testid="nb-sidebar"]'), "sidebar").toEqual([]);
 		await context.close();
+	});
+
+	// T069 (reviews.md): the lesson's title is its one h1, Study's corner hint has
+	// a polite live region, and a dialog the Library opens gives the focus back.
+	test("headings, live regions and focus return found by the T069 review", async ({ page }) => {
+		test.setTimeout(180_000);
+		await interceptModel(page);
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await openChat(page, CHATS.check);
+		const h1 = page.locator("h1").filter({ visible: true });
+		await expect(h1).toHaveCount(1);
+		await expect(h1).toHaveText("UI review · Knowledge check");
+		await expect(page.getByTestId("corner-hint-live")).toHaveAttribute("aria-live", "polite");
+
+		await page.goto("/library");
+		await hydrated(page, '[data-testid="library-new-diagram"]');
+		const opener = page.getByTestId("library-new-diagram");
+		await opener.focus();
+		await page.keyboard.press("Enter");
+		await expect(page.getByTestId("diagram-new-dialog")).toBeVisible();
+		await page.keyboard.press("Escape");
+		await expect(page.getByTestId("diagram-new-dialog")).toBeHidden();
+		await expect(opener).toBeFocused();
+		await opener.focus();
+		await page.keyboard.press("Enter");
+		await expect(page.getByTestId("diagram-new-dialog")).toBeVisible();
+		await page.getByTestId("diagram-new-dialog").getByRole("button", { name: "Cancel", exact: true }).click();
+		await expect(page.getByTestId("diagram-new-dialog")).toBeHidden();
+		await expect(opener).toBeFocused();
+
+		// The keyboard cheat sheet takes the focus itself: its ring shows, inset.
+		await page.evaluate(() => (document.activeElement as HTMLElement | null)?.blur());
+		await page.keyboard.press("Shift+?");
+		const sheet = page.getByTestId("cheat-sheet").getByRole("dialog");
+		await expect(sheet).toBeFocused();
+		const ring = await sheet.evaluate((el) => { const cs = getComputedStyle(el); return { style: cs.outlineStyle, width: parseFloat(cs.outlineWidth), offset: parseFloat(cs.outlineOffset) }; });
+		expect(ring.style).toBe("solid");
+		expect(ring.width).toBe(2);
+		expect(ring.offset).toBeLessThan(0);
+		await page.keyboard.press("Escape");
 	});
 
 	test("reduced motion: no animation runs after opening each layer", async ({ page }) => {
