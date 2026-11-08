@@ -190,12 +190,14 @@ Updated: 2026-11-08
 4. **Gates (SC-004)**: lint, typecheck, build, unit 4170 (4168 pass, 2 skipped, 0 fail), e2e 82/82. Startup JS vs 7da16e6: `/` +0.29% raw / +1.52% gzip, `/chat/new` +0.37% / +1.16%, `/library` +0.41% / +1.49% (≤5%).
 5. **Reviews (SC-005)**: impeccable 16/20 → 20/20, web-design-guidelines and accessibility pass (keyboard walk of 19 layers, names, landmarks, live regions, rendered and token contrast, reduced motion, scrollbars, 44px targets, overflow) in reviews.md; 26 findings: 11 fixed, 10 kept by design with their rulings, 5 decided by the owner 2026-11-08 (N1 control edge token, N2 switch off track, N5 Tab → Go to it; N3 and N4 under existing rulings) and fixed. No open findings.
 
+- Final re-review of the last changes (24e3fa0): no new findings. Owner: Notebook | Study pairs read as one product (2026-11-08). No open review findings.
+
 ### What is left
 
 - Not merged, pushed or deployed. `~/learnharness` untouched.
-- Electron title-bar colours and macOS traffic-light position (moved to the new 36px centre line) were checked only headless on Linux; a look on a Mac is still owed.
-- Hosted sign-in with real Clerk keys was not rendered (no keys here); Clerk uses paper variables only.
-- Math check rows not exercised against Wolfram (no key); their rendering is covered by the seeded review chat and its shots.
+- Owner-approved exceptions (2026-11-08, reviews.md): Electron title-bar colours and the macOS traffic-light position are verified headless on Linux only (check-electron-shell passes); the owner checks them on a Mac.
+- Owner-approved exception: hosted sign-in with real Clerk keys not rendered here (no keys); Clerk uses paper variables only; the owner checks on a hosted deploy.
+- Owner-approved exception: math check verified with the seeded "UI review · Math check" chat (every state, screenshots, render and seed tests), not a live Wolfram call (no App ID). Every other real-model item passed (15/15).
 - Pre-existing, not changed by 025: the answer request carries `correctIndices`/explanation on the client while a question is open (constitution II asks otherwise); page-proposal rows keep "waiting for your review" after Accept/Reject; flashcard drafts get loosely matched idea suggestions.
 - Agent wording that the owner may want to revisit: Study sidebar search "Find a session" (the field only filters sessions), settings search hints for Customize/Reviewers rows, "Draft kept", "Answer the check above"/"beside the lesson", "Go to it"; Study keeps Mod+B for the sidebar (Mod+\ is the right pane).
-- The review server on :3131 runs a production build, so codex-verify is off there; add a provider key in Settings to use a model. It does not restart after a reboot (`start-3131.sh`).
+- The review server on :3131 runs a production build, so codex-verify is off there; add a provider key in Settings to use a model. Redeployed on the final build (86abfb1 tree) with the math-check chat seeded. It does not restart after a reboot (`start-3131.sh`).
