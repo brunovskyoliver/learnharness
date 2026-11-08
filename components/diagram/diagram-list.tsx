@@ -31,7 +31,7 @@ export function DiagramList({ doc, readOnly, focusRequest, onText, onLabel, onRe
 		<div ref={root} className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-4 pb-6" data-testid="diagram-list">
 			<section aria-label={`${noun}s`} className="flex flex-col gap-2">
 				<h3 className="text-xs font-medium text-faint">{noun[0]!.toUpperCase()}{noun.slice(1)}s</h3>
-				{doc.nodes.length === 0 && <p className="text-sm text-graphite">Nothing here yet. Add a {noun} to start.</p>}
+				{doc.nodes.length === 0 && <p className="text-md text-faint">Nothing here yet. Add a {noun} to start.</p>}
 				<ul className="flex flex-col gap-2">
 					{doc.nodes.map((node, index) => (
 						<li key={node.id} className="flex items-center gap-1 [content-visibility:auto] [contain-intrinsic-size:auto_44px]" data-testid="diagram-list-node">

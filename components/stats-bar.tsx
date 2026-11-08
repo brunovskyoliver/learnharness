@@ -188,7 +188,7 @@ export function StatsBarDetails({
 								href="https://chatgpt.com/settings/usage"
 								target="_blank"
 								rel="noreferrer"
-								className="mt-3 block border-t border-rule pt-2 text-faint transition-colors hover:text-ink"
+								className="mt-3 block text-faint transition-colors hover:text-ink"
 							>
 								Manage usage ↗
 							</a>

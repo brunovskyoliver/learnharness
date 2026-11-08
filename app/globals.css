@@ -39,11 +39,13 @@
 	border-radius: 1px;
 	background: var(--faint);
 	opacity: 0.5;
-	transition: width 160ms ease-out, opacity 160ms ease-out;
+	/* The hover tick doubles by transform (compositor only), from its left end. */
+	transform-origin: left center;
+	transition: transform 160ms ease-out, opacity 160ms ease-out;
 }
 
 .session-turn-marker:hover > span {
-	width: 1.5rem;
+	transform: scaleX(2);
 }
 
 .session-turn-marker:is(:hover, :focus-visible, [aria-current="step"]) > span {
@@ -1741,7 +1743,7 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 .lh-check-input::placeholder { color: var(--faint); opacity: 1; }
 .lh-check-actions { display: flex; align-items: center; justify-content: flex-end; gap: 18px; user-select: none; }
 .lh-paper .lh-check-skip { font-size: var(--text-meta); }
-.lh-paper .nb-pill.lh-check-submit:disabled { opacity: 0.45; cursor: default; }
+/* Disabled, the submit is the shared pill's unavailable state (.nb-pill:disabled, app/paper.css): no one-off fade. */
 .lh-paper .nb-pill.lh-check-submit:focus-visible { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
 /* The question inks in once, on its first opening (block by block; R9's word ink is for streamed prose). */
 .lh-check-inking .lh-check-prompt > * > * { animation: 0.52s cubic-bezier(0.2, 0.7, 0.2, 1) both nb-ink-in; }

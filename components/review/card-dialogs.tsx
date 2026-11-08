@@ -200,7 +200,7 @@ export function CardHistoryDialog({ cardId, onClose }: { cardId: string | null; 
 				<DialogTitle>Review history</DialogTitle>
 				{failure && <p role="alert" className="text-sm text-red">{failure}</p>}
 				{!failure && rows === null && <div role="status" aria-label="Loading history"><Skeleton className="h-16 w-full" /></div>}
-				{rows?.length === 0 && <p className="text-graphite">Not reviewed yet.</p>}
+				{rows?.length === 0 && <p className="text-md text-faint">Not reviewed yet.</p>}
 				{rows && rows.length > 0 && (
 					<ul className="flex flex-col gap-1 text-md">
 						{rows.map((row) => (

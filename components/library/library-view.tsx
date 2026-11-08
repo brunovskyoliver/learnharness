@@ -579,7 +579,7 @@ export function LibraryView() {
 						</div>
 					)}
 					{inFlight && (
-						<div className="flex items-center justify-between gap-3 border-b border-rule px-1 py-2" data-testid="library-upload-row">
+						<div className="flex items-center justify-between gap-3 px-1 py-2" data-testid="library-upload-row">
 							<span className="min-w-0 text-md text-ink [overflow-wrap:anywhere]">{inFlight.name}</span>
 							<span
 								role="progressbar"

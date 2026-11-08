@@ -627,7 +627,7 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 				else if (panel) { event.preventDefault(); event.stopPropagation(); setPanel(false); }
 			}}
 		>
-			<div role="toolbar" aria-label="PDF controls" className="lh-tools shrink-0 gap-x-1 border-b border-rule mx-4 pb-1.5">
+			<div role="toolbar" aria-label="PDF controls" className="lh-tools shrink-0 gap-x-1 mx-4 pb-1.5">
 				<button type="button" className={TEXT_BUTTON} aria-pressed={keyboardPage !== null} disabled={noText} onClick={() => { if (keyboardPage !== null) clearSelection(); else startKeyboardSelection(); }} data-testid="pdf-keyboard-select" title="Select text with the keyboard">
 					<TextCursorInputIcon aria-hidden="true" />
 					Select text

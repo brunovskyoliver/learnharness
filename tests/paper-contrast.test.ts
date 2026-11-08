@@ -99,4 +99,12 @@ describe("paper contrast", () => {
 		assert.match(paper, /\.nb-side-waiting \{[^}]*background: var\(--bulb-ink\)/);
 		assert.match(notebook, /\.nb-bulb-lit \{\s*color: var\(--bulb\);/);
 	});
+
+	// T069 (reviews.md): the ring for a dialog that takes the focus itself, and
+	// no one-off fade on the check's disabled submit (the shared pill's state).
+	it("a focused dialog shows the --nb-focus ring inside its edge; the check submit has no fade of its own", () => {
+		assert.match(paper, /\.lh-paper \.lh-dialog:focus-visible \{ outline: 2px solid var\(--nb-focus\); outline-offset: -2px; \}/);
+		assert.doesNotMatch(globals, /\.lh-check-submit:disabled \{[^}]*opacity/);
+		assert.match(paper, /\.lh-paper \.nb-pill:disabled \{ opacity: 0\.6;/);
+	});
 });

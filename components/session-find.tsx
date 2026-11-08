@@ -168,7 +168,7 @@ export function SessionFind({ scopeRef, scrollContextRef }: {
 			role="search"
 			aria-label="Session Find"
 			data-testid="session-find"
-			className="lh-no-drag flex h-10 shrink-0 items-center gap-2 border-b border-rule px-6 font-sans text-sm"
+			className="lh-no-drag flex h-10 shrink-0 items-center gap-2 px-6 font-sans text-sm"
 			onKeyDown={(event) => {
 				if (event.key === "Enter") {
 					event.stopPropagation(); // NEVER reach question/global Enter submits.

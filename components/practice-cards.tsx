@@ -138,12 +138,11 @@ export function ConcludeCard({ part }: ArtifactPartProps) {
 					<ToolContentResponse>{verdict}</ToolContentResponse>
 				</div>
 			)}
-			{/* Then the divider, then the labeled model solution (Slice G: the
+			{/* Then, after a gap (no rule: DESIGN.md "Separators"), the labeled model solution (Slice G: the
 			    hero is the pose's commitment, verbatim). */}
 			{reveal.length > 0 && (
 				<>
-					<div className="my-3 border-t" />
-					<div>
+					<div className="mt-4">
 						<div className="mb-0.5 text-sm font-medium text-faint">Model solution</div>
 						<div className="lh-prose">
 							<ToolContentResponse>{reveal}</ToolContentResponse>

@@ -47,7 +47,7 @@ export function CalibrationSectionView({ chats }: { chats: readonly ChatListItem
 			</ul>
 			<h3 id={missesId} className="pt-2 text-sm font-medium text-faint">Wrong while Certain</h3>
 			{merged.misses.length === 0 ? (
-				<p className="text-graphite">None yet. Every answer you marked Certain was right.</p>
+				<p className="text-md text-faint">None yet. Every answer you marked Certain was right.</p>
 			) : (
 				<>
 					<ul aria-labelledby={missesId} className="waiting-list flex flex-col">

@@ -105,7 +105,7 @@ export function WaitingSectionView({ chats, loadError, onRetry, cards }: { chats
 					</div>
 				)
 			) : open === 0 ? (
-				<p className="text-graphite">Nothing is waiting. Every check is answered and every problem solved.</p>
+				<p className="text-md text-faint">Nothing is waiting. Every check is answered and every problem solved.</p>
 			) : (
 				<ul className="waiting-list flex flex-col">
 					{items.map((chat) => <WaitingRow key={chat.id} chat={chat} />)}

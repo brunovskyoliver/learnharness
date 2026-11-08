@@ -54,7 +54,7 @@ export function DiagramOutline({ doc, className, onPick }: { doc: DiagramDoc; cl
 	return (
 		<section aria-label="Text outline of the diagram" data-testid="diagram-outline" className={cn("flex flex-col gap-2 text-sm", className)}>
 			<h3 className="text-xs font-medium text-faint">Outline</h3>
-			{rows.length === 0 && <p className="text-graphite">Nothing here yet.</p>}
+			{rows.length === 0 && <p className="text-md text-faint">Nothing here yet.</p>}
 			<ul className="flex flex-col gap-1.5">
 				{rows.map((row) => (
 					<li key={row.id}>
@@ -217,7 +217,7 @@ export function DiagramEditor({ doc: initial, resetKey, name, readOnly = false, 
 		<div ref={root} className="flex min-h-0 min-w-0 flex-1 flex-col" onKeyDownCapture={shortcuts} onKeyDown={escape} data-testid="diagram-editor" data-view={view} data-diagram-layer={drawing || connecting || undefined}>
 			<p role="status" aria-live="polite" className="sr-only" data-testid="diagram-announcement">{announcement}</p>
 			{!readOnly && (
-				<div role="group" aria-label="Diagram tools" className="lh-tools mx-4 mb-2 gap-x-1 border-b border-rule pb-1.5" data-testid="diagram-toolbar">
+				<div role="group" aria-label="Diagram tools" className="lh-tools mx-4 mb-2 gap-x-1 pb-1.5" data-testid="diagram-toolbar">
 					<button type="button" className="lh-tool" aria-disabled={history.past.length === 0} aria-keyshortcuts="Control+Z Meta+Z" aria-label="Undo" title="Undo (Ctrl or Cmd+Z)" data-testid="diagram-undo" onClick={undo}><Undo2Icon aria-hidden="true" /></button>
 					<button type="button" className="lh-tool" aria-disabled={history.future.length === 0} aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z" aria-label="Redo" title="Redo (Ctrl or Cmd+Shift+Z)" data-testid="diagram-redo" onClick={redo}><Redo2Icon aria-hidden="true" /></button>
 					<button type="button" className="lh-tool" data-testid="diagram-add-node" onClick={addNode}><PlusIcon aria-hidden="true" /><span className={label}>Add {noun}</span></button>

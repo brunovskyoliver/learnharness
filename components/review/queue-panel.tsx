@@ -24,7 +24,7 @@ export function QueueEmpty({ queue, focus, now, onNew, onShowAll }: { queue: Rev
 	if (queue.total === 0) {
 		return (
 			<div data-testid="queue-empty" className="flex flex-col items-start gap-3">
-				<p className="text-graphite">No flashcards yet. Write one, or make some from a note, a PDF passage or a lesson.</p>
+				<p className="text-md text-faint">No flashcards yet. Write one, or make some from a note, a PDF passage or a lesson.</p>
 				<button type="button" className="nb-pill" onClick={onNew} data-testid="queue-empty-new">New card</button>
 			</div>
 		);
@@ -32,7 +32,7 @@ export function QueueEmpty({ queue, focus, now, onNew, onShowAll }: { queue: Rev
 	if (focus === "weak-only" && queue.due > 0) {
 		return (
 			<div data-testid="queue-no-weak" className="flex flex-col items-start gap-3">
-				<p className="text-graphite">None of the {queue.due} due {queue.due === 1 ? "card links" : "cards link"} to a weak idea.</p>
+				<p className="text-md text-faint">None of the {queue.due} due {queue.due === 1 ? "card links" : "cards link"} to a weak idea.</p>
 				<button type="button" className="lh-text-action" onClick={onShowAll}>Show all due</button>
 			</div>
 		);

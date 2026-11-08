@@ -52,7 +52,7 @@ export function AllCards({ cards, onEdit, onHistory, onChanged, onFailure }: { c
 	const hasWeak = live.some((card) => card.concepts.some((concept) => concept.weak));
 	const needle = query.trim().toLowerCase();
 	const shown = live.filter((card) => (!needle || card.front.toLowerCase().includes(needle)) && (!weakOnly || card.concepts.some((concept) => concept.weak)));
-	if (live.length === 0) return <p className="text-graphite" data-testid="cards-empty">No flashcards yet.</p>;
+	if (live.length === 0) return <p className="text-md text-faint" data-testid="cards-empty">No flashcards yet.</p>;
 	const suspend = async (card: CardRow) => {
 		const result = await cardFetch(`/api/cards/${encodeURIComponent(card.id)}`, { method: "PATCH", body: { suspended: !card.suspended } });
 		if (failed(result)) onFailure(result.failure); else onChanged(card.suspended ? "Card back in the schedule." : "Card suspended.");
@@ -67,7 +67,7 @@ export function AllCards({ cards, onEdit, onHistory, onChanged, onFailure }: { c
 				<input aria-label="Search your cards" name="card-search" data-testid="cards-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search your cards…" autoComplete="off" className="lh-line-field min-w-0 flex-1 sm:max-w-80" />
 				{hasWeak && <button type="button" aria-pressed={weakOnly} data-testid="cards-weak" className="nb-set-pill" onClick={() => setWeakOnly((on) => !on)}>Only weak ideas</button>}
 			</div>
-			{shown.length === 0 ? <p role="status" className="text-graphite">Nothing matched</p> : (
+			{shown.length === 0 ? <p role="status" className="text-md text-faint">Nothing matched</p> : (
 				<ul className="lh-row-list flex flex-col" data-testid="cards-list">
 					{shown.slice(0, limit).map((card) => (
 						<li key={card.id} data-testid="card-row" className="lh-row flex items-start gap-2 py-2.5 pl-3 pr-1">
@@ -93,7 +93,7 @@ export function AllCards({ cards, onEdit, onHistory, onChanged, onFailure }: { c
 
 export function DeletedCards({ cards, onDeleteForGood, onChanged, onFailure }: { cards: CardRow[]; onDeleteForGood: (id: string) => void; onChanged: (message: string) => void; onFailure: (text: string) => void }) {
 	const deleted = cards.filter((card) => card.deletedAt);
-	if (deleted.length === 0) return <p className="text-graphite" data-testid="deleted-empty">No deleted cards.</p>;
+	if (deleted.length === 0) return <p className="text-md text-faint" data-testid="deleted-empty">No deleted cards.</p>;
 	const restore = async (id: string) => {
 		const result = await cardFetch(`/api/cards/${encodeURIComponent(id)}`, { method: "PATCH", body: { restore: true } });
 		if (failed(result)) onFailure(result.failure); else onChanged("Card restored.");
@@ -155,7 +155,7 @@ export function DraftList({ drafts, runs, onEdit, onChanged, onFailure }: { draf
 					))}
 				</ul>
 			)}
-			{drafts.length === 0 ? <p className="text-graphite" data-testid="drafts-empty">No drafts waiting. Make flashcards from a note, a PDF passage or a lesson, and they wait here for you to read.</p> : (
+			{drafts.length === 0 ? <p className="text-md text-faint" data-testid="drafts-empty">No drafts waiting. Make flashcards from a note, a PDF passage or a lesson, and they wait here for you to read.</p> : (
 				<ul className="flex flex-col gap-3" data-testid="drafts-list">
 					{drafts.map((draft) => (
 						<li key={draft.id} data-testid="draft-row" className="lh-card-block flex flex-col gap-3">

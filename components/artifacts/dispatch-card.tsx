@@ -77,7 +77,7 @@ function DispatchRefusedCard({ label, line, button }: { label: string; line: str
 					type="button"
 					data-testid="dispatch-setup-link"
 					onClick={ctx.openSetup}
-					className="ml-1 rounded-md border border-rule bg-shelf px-2 py-0.5 font-sans normal-case tracking-normal text-ink transition-colors hover:border-faint/50"
+					className="lh-text-action ml-1"
 				>
 					{button}
 				</button>
@@ -97,29 +97,24 @@ function DispatchActivityCard({ job, label }: { job: JobRecord | null; label: st
 	}, []);
 	const elapsed = job && job.createdAt ? formatElapsed(now - Date.parse(job.createdAt)) : null;
 	const activity = activityText(job?.activity);
+	// A running row in the quiet register (DESIGN.md "Quiet rows"): the
+	// spinner and the label, then the elapsed time and the live activity.
 	return (
-		<div
-			className="rounded-lg bg-shelf p-4 text-ink"
-			data-testid="dispatch-card"
-		>
-			<div className="flex items-center gap-2 text-sm font-medium text-faint">
-				{/* The working-state grammar (owner, streaming round 2026-10-01):
-				    the Braille spinner replaces the pulsing dot — one indicator
-				    everywhere. This is the ONLY dispatch-card change; the card's
-				    shape is untouched. */}
-				<BrailleSpinner label={`${label} running`} />
-				{label}
-				{elapsed !== null && <span className="font-normal tabular-nums">· {elapsed}</span>}
-			</div>
+		<div className="lh-quiet-line min-w-0" data-testid="dispatch-card">
+			{/* The working-state grammar (owner, streaming round 2026-10-01):
+			    the Braille spinner, one indicator everywhere. */}
+			<BrailleSpinner label={`${label} running`} />
+			<span className="font-medium">{label}</span>
+			{elapsed !== null && <span className="tabular-nums">· {elapsed}</span>}
 			{activity && (
-				<div className="mt-1 truncate text-sm text-faint" data-testid="dispatch-activity-line">
-					{activity}
-				</div>
+				<span className="min-w-0 truncate" data-testid="dispatch-activity-line">
+					· {activity}
+				</span>
 			)}
 			{!job && (
-				<div className="mt-1 text-sm text-faint" data-testid="dispatch-pending">
-					Dispatched…
-				</div>
+				<span data-testid="dispatch-pending">
+					· Dispatched…
+				</span>
 			)}
 		</div>
 	);
