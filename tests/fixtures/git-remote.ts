@@ -109,6 +109,12 @@ export class GitRemote {
 		return this.url(name);
 	}
 
+	/** Demand a different token from now on (a revoked one), or none with undefined. */
+	setToken(name: string, token: string | undefined): void {
+		if (token) this.tokens.set(name, token);
+		else this.tokens.delete(name);
+	}
+
 	/** An empty bare repo (no commits, no branches). */
 	createEmptyRepo(name: string): string {
 		run(this.bareRoot, ["init", "--bare", "-q", "-b", "main", this.bare(name)]);

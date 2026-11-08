@@ -137,6 +137,16 @@ export interface LibraryTombstone {
 	/** Feature 026: a removed mirrored entry, kept so a returning path reattaches. */
 	mirror?: MirrorRef;
 	removedBecause?: "repo" | "unlinked";
+	/** Feature 026: what a removed mirrored item had, so it comes back the same when its path returns. */
+	kept?: Pick<LibraryItem, "createdAt" | "previousNames" | "tags" | "favorite" | "pinned" | "archivedAt">;
+}
+
+/** A mirror folder whose directory left the repo (feature 026, R3): kept with
+ *  its id and marks, out of `folders`, so the same directory returning reattaches. */
+export interface RemovedMirrorFolder extends LibraryFolder {
+	mirror: MirrorRef;
+	removedAt: string;
+	removedBecause: "repo" | "unlinked";
 }
 
 export const CATALOG_VERSION = 1;
@@ -155,7 +165,9 @@ export interface LibraryCatalog {
 	/** …and every mirror folder and mirrored item, live or removed. Outside
 	 *  `items`/`folders` so an older app neither lists nor tombstones them; the
 	 *  store merges them in on read and splits them out on write by `mirror`. */
-	mirrored?: { folders: LibraryFolder[]; items: (LibraryItem | LibraryTombstone)[] };
+	mirrored?: { folders: LibraryFolder[]; items: (LibraryItem | LibraryTombstone)[]; removedFolders?: RemovedMirrorFolder[] };
+	/** In memory only: `mirrored.removedFolders` while the catalog is read. */
+	removedMirrorFolders?: RemovedMirrorFolder[];
 }
 
 export const isMirrored = (entry: { mirror?: MirrorRef }): boolean => entry.mirror !== undefined;

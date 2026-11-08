@@ -2,17 +2,20 @@
 
 import Link from "next/link";
 import { FolderGit2Icon, FolderIcon, PencilIcon, PinIcon, StarIcon, Trash2Icon } from "lucide-react";
-import type { LibraryFolder } from "@/src/core";
+import type { LibraryFolder, RepoLinkView } from "@/src/core";
 import { DRAG_TYPE, type EntryKey } from "./library-filter.ts";
 import { LibraryEntryMenu, LibraryMoreButton, LibrarySelectBox, moreButton, type LibraryMenuAction } from "./library-menu.tsx";
+import { RepoStatusText } from "./repo-status-line.tsx";
 
 export const folderHref = (id: string | null) => (id ? `/library?folder=${encodeURIComponent(id)}` : "/library");
 
-export function FolderRow({ folder, count, location, actions = [], selection, dropTarget, onDragStartEntry, onRename, onDelete }: {
+export function FolderRow({ folder, count, location, repoLink, actions = [], selection, dropTarget, onDragStartEntry, onRename, onDelete }: {
 	folder: LibraryFolder;
 	count: number;
 	/** The folder's path, shown while searching the whole Library. */
 	location?: string;
+	/** A linked folder's repo link (feature 026): its sync status joins the meta. */
+	repoLink?: RepoLinkView;
 	onRename: (folder: LibraryFolder, opener: HTMLElement) => void;
 	actions?: readonly LibraryMenuAction[];
 	selection?: { selected: boolean; toggle: () => void };
@@ -61,7 +64,7 @@ export function FolderRow({ folder, count, location, actions = [], selection, dr
 							{folder.favorite && <StarIcon className="mt-[3px] size-3.5 shrink-0 text-graphite" role="img" aria-label="Favorite" />}
 							<span className="min-w-0">{folder.name}</span>
 						</span>
-						<span className="lh-row-meta">{meta}</span>
+						<span className="lh-row-meta">{meta}{repoLink && <> · <RepoStatusText link={repoLink} /></>}</span>
 					</span>
 				</Link>
 				<button type="button" aria-label={`Rename folder ${folder.name}`} className="lh-tool max-sm:hidden" onClick={(event) => onRename(folder, event.currentTarget)}><PencilIcon aria-hidden="true" /></button>

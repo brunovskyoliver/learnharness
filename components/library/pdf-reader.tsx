@@ -16,6 +16,7 @@ import { SelectionAction } from "@/components/paper/selection-action";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ANCHOR_UNANCHORED_TEXT, anchorContext, CARD_PASSAGE_KEY, ANNOTATION_QUOTE_MAX, locateQuote, type AnchorRect, type DocumentAnnotation, type TextAnchor } from "@/src/core";
 import { pdfLoadOptions, PDF_WORKER_SRC } from "./pdf-options.ts";
+import { RepoFreshnessLine, useRepoFreshness } from "./repo-freshness.tsx";
 import type { PaneItem } from "./page-pane-context.tsx";
 import { DOCUMENT_TUTOR_ACTIONS, documentTutorMessage, TUTOR_ACTION_LABEL, TUTOR_BLOCKED_TEXT, type DocumentTutorAction } from "./page-tutor-actions.ts";
 import { firstPdfCursor, movePdfCursor, pdfCursorMoveFor, type PdfCursor } from "./pdf-keyboard-selection.ts";
@@ -260,18 +261,22 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 	const [pdfjs, setPdfjs] = useState<PdfJs | null>(null);
 	// A mirrored PDF names its repo (feature 026): from the row that opened it, or the content's header.
 	const [repo, setRepo] = useState(item.repo ?? null);
-	useEffect(() => {
-		if (item.repo) return;
-		let live = true;
-		void fetch(contentUrl(item.id), { method: "HEAD", cache: "no-store" }).then((response) => {
-			const from = response.headers.get("X-Library-Repo");
-			if (live && from) setRepo(decodeURIComponent(from));
-		}).catch(() => {});
-		return () => { live = false; };
-	}, [item.id, item.repo]);
 	const [doc, setDoc] = useState<PdfDocument | null>(null);
 	const [failure, setFailure] = useState<"load" | "password" | null>(null);
 	const [attempt, setAttempt] = useState(0);
+	// After a pull: "Updated from the repo" + Reload, or "Removed from the repo". The HEAD names the version shown.
+	const { freshness, record, reset } = useRepoFreshness(item.id);
+	useEffect(() => {
+		let live = true;
+		void fetch(contentUrl(item.id), { method: "HEAD", cache: "no-store" }).then((response) => {
+			if (!live) return;
+			const from = response.headers.get("X-Library-Repo");
+			if (from) setRepo(decodeURIComponent(from));
+			record(response);
+			reset();
+		}).catch(() => {});
+		return () => { live = false; };
+	}, [item.id, attempt, record, reset]);
 	const [ratio, setRatio] = useState(1.3);
 	const [paneWidth, setPaneWidth] = useState(0);
 	const [zoom, setZoom] = useState(1);
@@ -639,6 +644,7 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 			}}
 		>
 			{repo && <p className="mx-4 pb-1 text-sm text-faint [overflow-wrap:anywhere]" data-testid="pdf-repo-source">From {repo}</p>}
+			{repo && freshness !== "current" && <div className="mx-4 pb-1"><RepoFreshnessLine freshness={freshness} onReload={() => setAttempt((n) => n + 1)} /></div>}
 			<div role="toolbar" aria-label="PDF controls" className="lh-tools shrink-0 gap-x-1 mx-4 pb-1.5">
 				<button type="button" className={TEXT_BUTTON} aria-pressed={keyboardPage !== null} disabled={noText} onClick={() => { if (keyboardPage !== null) clearSelection(); else startKeyboardSelection(); }} data-testid="pdf-keyboard-select" title="Select text with the keyboard">
 					<TextCursorInputIcon aria-hidden="true" />

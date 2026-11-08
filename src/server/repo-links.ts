@@ -1,6 +1,6 @@
 /**
- * The repo-link routes' logic (feature 026, contracts/api.md): list and
- * create. Every refusal is decided before any fetch; the first pull runs in
+ * The repo-link routes' logic (feature 026, contracts/api.md): list,
+ * create and "Sync now". Every refusal is decided before any fetch; the first pull runs in
  * the request. No response carries a token or an address with credentials.
  */
 import { inMirror, LIBRARY_REFUSALS, liveFolderId, nameKey, REPO_REFUSALS, suggestName, uploadName, type LibraryFolder } from "../core/library.ts";
@@ -9,7 +9,7 @@ import { libraryStore } from "../store/library.ts";
 import { libraryGuarded, libraryRefusal } from "./library.ts";
 import { hostedAddressAllowed, loopbackTestMode } from "./repo-git.ts";
 import { repoLinkView, repoLinkViews } from "./repo-link-views.ts";
-import { linkRepo, pendingLinks } from "./repo-sync.ts";
+import { linkRepo, pendingLinks, pullLink } from "./repo-sync.ts";
 
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
@@ -66,5 +66,15 @@ export function repoLinkCreateResponse(request: Request): Promise<Response> {
 		if (outcome.ok) return json({ link: repoLinkView(outcome.link), folder: outcome.folder }, 201);
 		if ("refusal" in outcome) return libraryRefusal(outcome.refusal);
 		return json({ error: outcome.failure.message, code: "sync_failed", refused: "sync_failed", failure: outcome.failure }, 422);
+	});
+}
+
+/** POST /api/library/links/:id/sync ("Sync now"): 202 once the link reads
+ *  syncing; a pull already running is joined, not repeated (FR-015). */
+export function repoLinkSyncResponse(id: string): Promise<Response> {
+	return libraryGuarded(async () => {
+		const link = await pullLink(id).started;
+		if (!link) return json({ error: "That repo link is no longer in your Library.", code: "link_missing" }, 404);
+		return json({ link: repoLinkView(link) }, 202);
 	});
 }

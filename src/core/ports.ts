@@ -227,7 +227,13 @@ export interface LibraryStore {
 	discardSnapshot(linkId: string, snapshot: string): Promise<void>;
 	/** Puts a staged snapshot in the catalog in one write (R4 step 2). `first` creates the
 	 *  link and its linked folder (the first pull); refusals change nothing. */
-	applyMirror(linkId: string, snapshot: MirrorSnapshot, first?: FirstLink): Promise<{ link: RepoLink; folder: LibraryFolder } | LibraryRefusal>;
+	applyMirror(linkId: string, snapshot: MirrorSnapshot, first?: FirstLink): Promise<{ link: RepoLink; folder: LibraryFolder; changed?: LibraryItem[] } | LibraryRefusal>;
+	/** Writes one link's sync state (a pull starting, failing, or finding the tip unchanged). Null: no such link. */
+	setLinkSync(linkId: string, next: (sync: RepoSyncState) => RepoSyncState): Promise<RepoLink | null>;
+	/** Whether every live item of the link has its bytes on disk. */
+	mirrorWhole(linkId: string): Promise<boolean>;
+	/** Removes snapshot dirs no catalog entry names and stale git-work dirs (R4 step 4). */
+	sweepMirrors(): Promise<void>;
 	/** A new page with its first version. */
 	createPage(name: string, content: string, options: PageCreateOptions): Promise<{ item: LibraryItem; head: PageHead } | LibraryRefusal>;
 	/** Head and draft, or null for an unknown id, a document or a tombstone. */

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PAGE_MAX_BYTES } from "@/src/core";
 import type { PaneItem } from "./page-pane-context.tsx";
+import { RepoFreshnessLine, useRepoFreshness } from "./repo-freshness.tsx";
 
 const contentUrl = (id: string, download = false) => `/api/library/items/${id}/content${download ? "?download=1" : ""}`;
 
@@ -25,6 +26,8 @@ export function ReadOnlyView({ item }: { item: PaneItem }) {
 	// A mirrored file (feature 026): known from the row that opened it, or from the content's header.
 	const [repo, setRepo] = useState(item.repo ?? null);
 	const tooLong = item.size > PAGE_MAX_BYTES;
+	// After a pull: "Updated from the repo" + Reload, or "Removed from the repo".
+	const { freshness, record, reset } = useRepoFreshness(item.id);
 	const load = useCallback(async () => {
 		setFailed(false);
 		try {
@@ -32,11 +35,13 @@ export function ReadOnlyView({ item }: { item: PaneItem }) {
 			if (!response.ok) throw new Error(String(response.status));
 			const from = response.headers.get("X-Library-Repo");
 			if (from) setRepo(decodeURIComponent(from));
+			record(response);
 			setText(await response.text());
+			reset();
 		} catch {
 			setFailed(true);
 		}
-	}, [item.id]);
+	}, [item.id, record, reset]);
 	useEffect(() => { if (!tooLong) void load(); }, [load, tooLong]);
 	// A search hit lands on its line (feature 019), marked until another jump.
 	const jumpLine = item.jump?.line ?? null;
@@ -46,6 +51,7 @@ export function ReadOnlyView({ item }: { item: PaneItem }) {
 	return (
 		<div className="flex min-h-0 flex-1 flex-col gap-2 px-4 pb-4" data-testid="library-read-only">
 			<p className="text-sm text-faint [overflow-wrap:anywhere]" data-testid="library-read-only-source">{repo ? `This comes from ${repo}. Change it in the repo.` : "This is your original; it can't be edited here."}</p>
+			<RepoFreshnessLine freshness={freshness} onReload={() => void load()} />
 			{tooLong ? (
 				<p className="flex flex-wrap items-center gap-2 text-sm text-graphite">
 					Too long to preview

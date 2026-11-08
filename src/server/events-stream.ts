@@ -26,6 +26,7 @@
  */
 import { subscribe, type ServerEvent } from "../core/events.ts";
 import { currentTenant } from "../../config.ts";
+import { windowOpened } from "./repo-sync-hooks.ts";
 
 /** One window's subscription as an SSE Response. */
 export function eventsResponse(): Response {
@@ -36,10 +37,13 @@ export function eventsResponse(): Response {
 			let closed = false;
 			let heartbeat: ReturnType<typeof setInterval> | undefined;
 			let unsubscribe: (() => void) | undefined;
+			// Feature 026: an open window keeps this tenant's repo links pulling (R9).
+			const closeWindow = windowOpened();
 
 			const stop = () => {
 				if (closed) return;
 				closed = true;
+				closeWindow();
 				unsubscribe?.();
 				if (heartbeat) clearInterval(heartbeat);
 			};

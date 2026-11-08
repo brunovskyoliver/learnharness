@@ -257,6 +257,8 @@ export function libraryContentResponse(request: Request, id: string): Promise<Re
 		const linkId = item.mirror?.linkId;
 		const display = linkId ? (await libraryStore.repoLinks()).find((l) => l.id === linkId)?.display : undefined;
 		if (display) headers.set("X-Library-Repo", encodeURIComponent(display));
+		// Its blob oid: an open reader compares it after a pull ("Updated from the repo").
+		if (item.mirror?.oid) headers.set("X-Library-Version", item.mirror.oid);
 		return new Response(Readable.toWeb(opened.stream) as ReadableStream<Uint8Array>, { headers });
 	});
 }

@@ -6,17 +6,21 @@
  * one catalog write. A failure before the write discards the staged snapshot
  * and changes nothing.
  *
- * This file holds the first pull (US1). Later pulls of an existing link, the
- * 15-minute schedule and "Sync now" arrive with US2 (T025, T029, T030).
- * The remote and the clock are injectable for tests.
+ * Later pulls of a link run single-flight per link (a second "Sync now" joins
+ * the running one, FR-015): an unchanged tip moves only `lastSuccessAt`; a
+ * failure keeps the last good mirror and records why. The schedule (R9):
+ * local and Electron arm on the process's first window, pull what is over 15
+ * minutes old, then every 15 minutes and never disarm; hosted pulls once when
+ * a tenant's first window opens and every 15 minutes while one is open.
+ * The remote, the clock and the timers are injectable for tests.
  */
 import { nanoid } from "nanoid";
-import { tenantScoped } from "../../config.ts";
+import { hostedMode, tenantScoped } from "../../config.ts";
 import { emit } from "../core/events.ts";
 import type { LibraryFolder, LibraryRefusal } from "../core/library.ts";
-import type { FirstLink, MirrorFile, RepoRemote } from "../core/ports.ts";
+import type { FirstLink, MirrorFile, RepoRemote, RepoTip } from "../core/ports.ts";
 import {
-	classifyEntry, failureMessage, isIgnoredDirectory, limitFailure, redactSecrets, REPO_MAX_BYTES, REPO_MAX_FILES, REPO_PULL_POOL, RepoRemoteError, repoKeyOf,
+	classifyEntry, failureMessage, isIgnoredDirectory, limitFailure, redactSecrets, REPO_MAX_BYTES, REPO_MAX_FILES, REPO_PULL_POOL, REPO_SYNC_INTERVAL_MS, RepoRemoteError, repoKeyOf,
 	type RepoLink, type RepoSyncState, type SkippedFile, type SyncFailure,
 } from "../core/repo-link.ts";
 import { libraryStore } from "../store/library.ts";
@@ -40,7 +44,43 @@ export function setRepoRemote(next?: RepoRemote): void { remote = next ?? repoRe
 /** Tests: a fixed or stepping clock, or the real one again with no argument. */
 export function setRepoClock(next?: () => Date): void { clock = next ?? (() => new Date()); }
 
-const registry = () => tenantScoped("__lhRepoSync", () => ({ pending: new Map<string, PendingLink>() }));
+/** Repeats `run` every `ms` until the returned stop is called. */
+export interface RepoTimers { every(ms: number, run: () => void): () => void }
+const realTimers: RepoTimers = {
+	every(ms, run) {
+		const timer = setInterval(run, ms);
+		// The schedule never keeps a process (or a test run) alive by itself.
+		timer.unref?.();
+		return () => clearInterval(timer);
+	},
+};
+let timers: RepoTimers = realTimers;
+/** Tests: timers they tick by hand, or the real ones again with no argument. */
+export function setRepoTimers(next?: RepoTimers): void { timers = next ?? realTimers; }
+
+interface Pull { started: Promise<RepoLink | null>; done: Promise<void> }
+interface Registry {
+	pending: Map<string, PendingLink>;
+	/** linkId → the pull running now (single flight, FR-015). */
+	running: Map<string, Pull>;
+	/** Open windows (SSE connections) of this tenant. */
+	windows: number;
+	/** Local: armed once, for the life of the process. */
+	armed: boolean;
+	stopTimer?: () => void;
+	/** The last scan for due links, for repoSyncIdle(). */
+	scan?: Promise<void>;
+}
+const registry = () => tenantScoped("__lhRepoSync", (): Registry => ({ pending: new Map(), running: new Map(), windows: 0, armed: false }));
+
+/** Tests: forget windows, timers and the armed flag of the current tenant. */
+export function resetRepoSchedule(): void {
+	const reg = registry();
+	reg.stopTimer?.();
+	reg.stopTimer = undefined;
+	reg.windows = 0;
+	reg.armed = false;
+}
 
 /** This tenant's first links still pulling, oldest first. */
 export function pendingLinks(): PendingLink[] {
@@ -50,6 +90,9 @@ export function pendingLinks(): PendingLink[] {
 interface Pool { active: number; waiting: (() => void)[] }
 /** Process-wide, not per tenant: the pool bounds the server's memory (R5). */
 const pool = (): Pool => ((globalThis as { __lhRepoPool?: Pool }).__lhRepoPool ??= { active: 0, waiting: [] });
+
+/** Tests: how full the process-wide pool is. */
+export const repoPoolState = () => ({ active: pool().active, waiting: pool().waiting.length });
 
 async function inPool<T>(run: () => Promise<T>): Promise<T> {
 	const slots = pool();
@@ -76,8 +119,8 @@ interface ReadMirror {
 
 /** Reads the branch tip into a staged snapshot. Throws a RepoRemoteError
  *  (limits included), after discarding what it staged. */
-async function readMirror(linkId: string, request: { url: string; token?: string; branch?: string }): Promise<ReadMirror> {
-	const tip = await remote.tip(request);
+async function readMirror(linkId: string, request: { url: string; token?: string; branch?: string }, known?: RepoTip): Promise<ReadMirror> {
+	const tip = known ?? await remote.tip(request);
 	const stage = await libraryStore.stageSnapshot(linkId);
 	const files: MirrorFile[] = [];
 	const named: SkippedFile[] = [];
@@ -203,4 +246,143 @@ export async function linkRepo(request: LinkRequest): Promise<LinkOutcome> {
 		emit("library-sync", { linkId: request.requestId });
 		emit("library-sync", { linkId });
 	}
+}
+
+// ── Later pulls (US2, T029, T030) ──
+
+/** One pull of an existing link, or the one already running for it (FR-015).
+ *  `started` settles once the link reads "syncing" (null: no such link). */
+export function pullLink(linkId: string): Pull {
+	const reg = registry();
+	const running = reg.running.get(linkId);
+	if (running) return running;
+	let markStarted!: (link: RepoLink | null) => void;
+	const started = new Promise<RepoLink | null>((resolve) => { markStarted = resolve; });
+	const done = (async () => {
+		try {
+			await runPull(linkId, markStarted);
+		} catch (err) {
+			markStarted(null);
+			console.error("[repo-sync]", redactSecrets(String((err as Error)?.message ?? err), [repoTokens.get(linkId) ?? undefined]));
+		} finally {
+			reg.running.delete(linkId);
+		}
+	})();
+	const pull = { started, done };
+	reg.running.set(linkId, pull);
+	return pull;
+}
+
+async function runPull(linkId: string, markStarted: (link: RepoLink | null) => void): Promise<void> {
+	const attemptAt = clock().toISOString();
+	const link = await libraryStore.setLinkSync(linkId, ({ failure: _f, ...sync }) => ({ ...sync, state: "syncing", lastAttemptAt: attemptAt }));
+	markStarted(link);
+	if (!link) return;
+	emit("library-sync", { linkId });
+	const token = repoTokens.get(linkId) ?? undefined;
+	try {
+		await inPool(async () => {
+			await libraryStore.sweepMirrors().catch(() => {});
+			const request = { url: link.url, branch: link.branch, ...(token ? { token } : {}) };
+			let read: ReadMirror;
+			try {
+				const tip = await remote.tip(request);
+				// Nothing changed upstream: one small request, and only the time moves (US2 #5).
+				if (tip.commit === link.sync.commit && await libraryStore.mirrorWhole(linkId)) {
+					await libraryStore.setLinkSync(linkId, (sync) => ({ ...sync, state: "synced", lastSuccessAt: clock().toISOString() }));
+					return;
+				}
+				read = await readMirror(linkId, request, tip);
+			} catch (err) {
+				await failed(linkId, err, token);
+				return;
+			}
+			try {
+				const applied = await libraryStore.applyMirror(linkId, {
+					snapshot: read.snapshot,
+					files: read.files,
+					sync: { state: "synced", lastAttemptAt: attemptAt, lastSuccessAt: clock().toISOString(), commit: read.commit, skipped: read.skipped },
+				});
+				if ("refused" in applied) {
+					// Unlinked while it ran: the result is discarded.
+					await libraryStore.discardSnapshot(linkId, read.snapshot);
+					return;
+				}
+				for (const item of applied.changed ?? []) indexAfterUpload(item);
+			} catch (err) {
+				await libraryStore.discardSnapshot(linkId, read.snapshot).catch(() => {});
+				await failed(linkId, err, token);
+			}
+		});
+	} finally {
+		emit("library-sync", { linkId });
+	}
+}
+
+/** The mirror, commit and `lastSuccessAt` stay; the failure says why (US2 #4). */
+async function failed(linkId: string, err: unknown, token: string | undefined): Promise<void> {
+	const failure = asFailure(err, token);
+	await libraryStore.setLinkSync(linkId, (sync) => ({ ...sync, state: "failed", failure }));
+}
+
+/** Tests: settles when this tenant's scans and pulls are done. */
+export async function repoSyncIdle(): Promise<void> {
+	const reg = registry();
+	for (;;) {
+		await reg.scan;
+		const running = [...reg.running.values()];
+		if (running.length === 0) return;
+		await Promise.all(running.map((p) => p.done));
+	}
+}
+
+/** Pulls every link of this tenant; with `olderThanMs`, only those whose last attempt is older. */
+function pullAll(olderThanMs?: number): Promise<void> {
+	const reg = registry();
+	reg.scan = scanAndPull(olderThanMs);
+	return reg.scan;
+}
+
+async function scanAndPull(olderThanMs?: number): Promise<void> {
+	try {
+		const now = clock().getTime();
+		for (const link of await libraryStore.repoLinks()) {
+			const last = link.sync.lastAttemptAt ? Date.parse(link.sync.lastAttemptAt) : NaN;
+			if (olderThanMs !== undefined && Number.isFinite(last) && now - last < olderThanMs) continue;
+			void pullLink(link.id).done;
+		}
+	} catch (err) {
+		console.error("[repo-sync]", (err as Error)?.message ?? err);
+	}
+}
+
+/** A window of this tenant opened (an SSE connection). Returns its close. */
+export function openWindow(): () => void {
+	const reg = registry();
+	const hosted = hostedMode();
+	reg.windows++;
+	if (hosted) {
+		// Hosted: once on open, then every 15 minutes while a window is open (SC-011).
+		if (reg.windows === 1) {
+			void pullAll();
+			reg.stopTimer = timers.every(REPO_SYNC_INTERVAL_MS, () => void pullAll());
+		}
+	} else if (!reg.armed) {
+		// Local and Electron: soon after start, what is due; then every 15 minutes for the process's life.
+		reg.armed = true;
+		void libraryStore.sweepMirrors().catch(() => {});
+		void pullAll(REPO_SYNC_INTERVAL_MS);
+		reg.stopTimer = timers.every(REPO_SYNC_INTERVAL_MS, () => void pullAll());
+	}
+	let closed = false;
+	return () => {
+		if (closed) return;
+		closed = true;
+		reg.windows = Math.max(0, reg.windows - 1);
+		// A running pull finishes; only the ticks stop.
+		if (hosted && reg.windows === 0) {
+			reg.stopTimer?.();
+			reg.stopTimer = undefined;
+		}
+	};
 }

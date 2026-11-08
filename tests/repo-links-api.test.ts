@@ -247,3 +247,49 @@ describe("GET /api/library/items/:id/content for a mirrored file (R4)", () => {
 		}
 	});
 });
+
+describe("POST /api/library/links/:id/sync (Sync now, T030)", () => {
+	it("202 with the link syncing; a second press joins the running pull; 404 for an unknown id", async () => {
+		const { repoLinkSyncResponse } = await import("../src/server/repo-links.ts");
+		const { repoSyncIdle } = await import("../src/server/repo-sync.ts");
+		const { remote, calls } = fakeRemote();
+		setRepoRemote(remote);
+		const created = await (await post({ token: TOKEN })).json() as { link: { id: string } };
+		const id = created.link.id;
+		let release!: () => void;
+		const gate = new Promise<void>((resolve) => { release = resolve; });
+		const held: RepoRemote = { tip: async (request) => { await gate; return remote.tip(request); }, snapshot: remote.snapshot };
+		setRepoRemote(held);
+		const tipsBefore = calls.tip;
+		const first = await repoLinkSyncResponse(id);
+		assert.equal(first.status, 202);
+		const text = await first.text();
+		assert.ok(!text.includes(TOKEN));
+		const body = JSON.parse(text) as { link: { id: string; sync: { state: string }; tokenMask: string } };
+		assert.equal(body.link.id, id);
+		assert.equal(body.link.sync.state, "syncing");
+		assert.match(body.link.tokenMask, /…/);
+		const second = await repoLinkSyncResponse(id);
+		assert.equal(second.status, 202);
+		assert.equal((await listLinks()).links[0]!.sync.state, "syncing");
+		release();
+		await repoSyncIdle();
+		assert.equal(calls.tip - tipsBefore, 1, "one pull for two presses");
+		assert.deepEqual(calls.tokens.at(-1), TOKEN, "the stored token is used");
+		assert.equal((await listLinks()).links[0]!.sync.state, "synced");
+
+		const unknown = await repoLinkSyncResponse("rpl_nope");
+		assert.equal(unknown.status, 404);
+		assert.equal((await unknown.json() as { code: string }).code, "link_missing");
+	});
+
+	it("the content route names the mirrored file's version, so an open reader can tell it changed", async () => {
+		const { remote } = fakeRemote();
+		setRepoRemote(remote);
+		assert.equal((await post({})).status, 201);
+		const item = (await libraryStore.list()).find((i) => i.name === "README.md")!;
+		const response = await libraryContentResponse(new Request(`http://app.test/api/library/items/${item.id}/content`), item.id);
+		assert.equal(response.headers.get("X-Library-Version"), item.mirror!.oid);
+		await response.body?.cancel();
+	});
+});

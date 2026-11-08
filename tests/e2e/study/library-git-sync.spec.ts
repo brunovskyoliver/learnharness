@@ -5,6 +5,8 @@ import { GitRemote, skipReason } from "../../fixtures/git-remote";
 import { clearStudyKey, hydrated, noPageOverflow, studySettings } from "./helpers";
 
 // Feature 026, T023 (US1), journey part 1: link a repo from the Library.
+// T033 (US2), journey part 2: it keeps itself up to date (Sync now, the
+// status line, a changed and a removed open file, a revoked token).
 // The fixture remote (real `git http-backend` on 127.0.0.1) serves the repos;
 // the e2e server lets loopback http through (LH_TEST_GIT_LOOPBACK_HTTP=1).
 // Set LH_SHOTS_DIR to save screenshots of the new UI there.
@@ -173,4 +175,152 @@ test.describe("Study: link a repo into the Library", () => {
 			}
 		});
 	}
+
+	test.describe("part 2: it keeps itself up to date", () => {
+		const LIVE_TOKEN = "ghp_e2eLIVE7171zz";
+		let folderId = "";
+		let linkId = "";
+		let folder = "";
+		test.beforeAll(async ({ request }) => {
+			remote.createRepo("live", {
+				"README.md": "# Live notes\n\nFirst version.\n",
+				"week1/a.md": "# A\n",
+				"week1/b.md": "# B\n",
+			}, { token: LIVE_TOKEN });
+			folder = `Live ${Date.now().toString(36)}`;
+			await studySettings(request);
+			const response = await request.post("/api/library/links", {
+				data: { url: remote.url("live"), token: LIVE_TOKEN, folderName: folder, parentId: null, requestId: `req_live${Date.now().toString(36)}` },
+			});
+			expect(response.status()).toBe(201);
+			const created = await response.json() as { folder: { id: string }; link: { id: string } };
+			folderId = created.folder.id;
+			linkId = created.link.id;
+		});
+		test.afterAll(() => { remote.setToken("live", LIVE_TOKEN); });
+
+		const openFolder = async (page: Page) => {
+			await page.goto(`/library?folder=${encodeURIComponent(folderId)}`);
+			await hydrated(page, '[data-testid="library-sync-now"]');
+		};
+
+		test("push upstream → Sync now → tree and open file follow; a revoked token fails and the files stay", async ({ page }) => {
+			test.setTimeout(180_000);
+			await openFolder(page);
+			const status = page.getByTestId("repo-status");
+			await expect(status).toHaveText("Synced just now");
+			const list = page.getByTestId("library-list");
+			await expect(list.getByTestId("library-folder-row")).toHaveText([/week1/]);
+			await page.getByRole("button", { name: "Open README.md" }).click();
+			await expect(page.getByTestId("library-read-only")).toContainText("First version.");
+
+			// Change, add and delete upstream.
+			remote.commit("live", { "README.md": "# Live notes\n\nSecond version.\n", "week2/c.md": "# C\n", "week1/b.md": null });
+			remote.delayMs = 700;
+			await page.getByTestId("library-sync-now").click();
+			await expect(page.getByTestId("library-sync-now")).toHaveText("Syncing…");
+			await expect(page.getByTestId("library-sync-now")).toHaveAttribute("aria-disabled", "true");
+			await expect(status).toHaveText("Syncing…");
+			await shot(page, "sync-now-1440-light");
+			remote.delayMs = 0;
+			await expect(status).toHaveText("Synced just now", { timeout: 60_000 });
+			await expect(page.getByTestId("library-sync-now")).toHaveText("Sync now");
+			await expect(list.getByTestId("library-folder-row")).toHaveText([/week1/, /week2/]);
+			await expect(page.getByTestId("repo-freshness")).toHaveText(/Updated from the repo/);
+			await shot(page, "updated-1440-light");
+			await page.getByTestId("repo-freshness-reload").click();
+			await expect(page.getByTestId("library-read-only")).toContainText("Second version.");
+			await expect(page.getByTestId("repo-freshness")).toHaveCount(0);
+			await list.getByRole("link", { name: "Open folder week1" }).click();
+			await expect(page.getByTestId("library-list")).toContainText("a.md");
+			await expect(page.getByTestId("library-list")).not.toContainText("b.md");
+
+			// Removed upstream while open.
+			await page.getByTestId("library-breadcrumbs").getByRole("link", { name: folder }).click();
+			await hydrated(page, '[data-testid="library-sync-now"]');
+			remote.commit("live", { "README.md": null });
+			await page.getByTestId("library-sync-now").click();
+			await expect(page.getByTestId("repo-freshness")).toHaveText("Removed from the repo", { timeout: 60_000 });
+			await expect(page.getByTestId("library-read-only")).toContainText("Second version.");
+			await expect(page.getByTestId("library-list")).not.toContainText("README.md");
+			await shot(page, "removed-1440-light");
+
+			// The token is revoked upstream: the pull fails, the files stay.
+			remote.setToken("live", "ghp_rotatedAWAY0000");
+			await page.getByTestId("library-sync-now").click();
+			await expect(status).toContainText("Sync failed · The repo refused the token. Check that it can read this repo.", { timeout: 60_000 });
+			await expect(page.getByTestId("library-list").getByTestId("library-folder-row")).toHaveText([/week1/, /week2/]);
+			await page.getByTestId("repo-status-details").click();
+			await expect(page.getByTestId("repo-status-detail")).toBeVisible();
+			expect(await page.content()).not.toContain(LIVE_TOKEN);
+			await shot(page, "failed-1440-light");
+			await page.getByTestId("library-breadcrumbs").getByRole("link", { name: "Library" }).click();
+			await expect(page.getByTestId("library-folder-row").filter({ hasText: folder })).toContainText("Sync failed");
+
+			// Back to a good token: the status line's own Sync now clears the failure.
+			remote.setToken("live", LIVE_TOKEN);
+			await openFolder(page);
+			await page.getByTestId("repo-status-sync").click();
+			await expect(status).toHaveText("Synced just now", { timeout: 60_000 });
+		});
+
+		test("the time moves on its own: Synced {n} min ago", async ({ page }) => {
+			await page.clock.install();
+			await openFolder(page);
+			await expect(page.getByTestId("repo-status")).toHaveText("Synced just now");
+			await page.clock.fastForward("03:00");
+			await expect(page.getByTestId("repo-status")).toHaveText("Synced 3 min ago");
+			await expect(page.getByTestId("library-folder-row").first()).toBeVisible();
+		});
+
+		for (const width of [390, 1440]) {
+			test(`the status states fit at ${width}px, light and dark`, async ({ page, request, browser, baseURL }) => {
+				test.setTimeout(180_000);
+				await page.setViewportSize({ width, height: width < 500 ? 780 : 900 });
+				for (const appearance of ["light", "dark"] as const) {
+					await studySettings(request, { appearance });
+					// Synced N min ago, on a page whose clock runs ahead (the clock is per context).
+					const ahead = await browser.newContext({ baseURL, viewport: { width, height: width < 500 ? 780 : 900 } });
+					const timed = await ahead.newPage();
+					await timed.clock.install();
+					await openFolder(timed);
+					await timed.clock.fastForward("05:00");
+					await expect(timed.getByTestId("repo-status")).toHaveText("Synced 5 min ago");
+					await noPageOverflow(timed, `synced ${width} ${appearance}`);
+					await shot(timed, `synced-${width}-${appearance}`);
+					await ahead.close();
+					await openFolder(page);
+					// Sync now running.
+					remote.delayMs = 900;
+					await page.getByTestId("library-sync-now").click();
+					await expect(page.getByTestId("library-sync-now")).toHaveText("Syncing…");
+					await shot(page, `sync-now-${width}-${appearance}`);
+					remote.delayMs = 0;
+					await expect(page.getByTestId("library-sync-now")).toHaveText("Sync now", { timeout: 60_000 });
+					// A failed pull.
+					remote.setToken("live", "ghp_rotatedAWAY0000");
+					await page.getByTestId("library-sync-now").click();
+					await expect(page.getByTestId("repo-status")).toContainText("Sync failed", { timeout: 60_000 });
+					await page.getByTestId("repo-status-details").click();
+					await noPageOverflow(page, `failed ${width} ${appearance}`);
+					await shot(page, `failed-${width}-${appearance}`);
+					remote.setToken("live", LIVE_TOKEN);
+					// Removed from the repo, in an open reader.
+					const name = `gone-${width}-${appearance}.md`;
+					remote.commit("live", { [name]: "# Soon gone\n" });
+					await page.getByTestId("repo-status-sync").click();
+					await expect(page.getByTestId("repo-status")).toHaveText("Synced just now", { timeout: 60_000 });
+					await page.getByRole("button", { name: `Open ${name}` }).click();
+					await expect(page.getByTestId("library-read-only")).toContainText("Soon gone");
+					remote.commit("live", { [name]: null });
+					// On a phone the reader covers the toolbar: Sync now through the route.
+					expect((await request.post(`/api/library/links/${linkId}/sync`)).status()).toBe(202);
+					await expect(page.getByTestId("repo-freshness")).toHaveText("Removed from the repo", { timeout: 60_000 });
+					await shot(page, `removed-${width}-${appearance}`);
+					await page.locator("[data-testid=page-back], [data-testid=page-close]").filter({ visible: true }).first().click();
+					await expect(page.getByTestId("page-pane")).toBeHidden();
+				}
+			});
+		}
+	});
 });
