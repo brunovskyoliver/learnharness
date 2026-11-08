@@ -24,12 +24,21 @@ export function FolderRow({ folder, count, location, repoLink, actions = [], sel
 	onDragStartEntry?: (key: EntryKey, event: React.DragEvent) => void;
 	onDelete: (folder: LibraryFolder, opener: HTMLElement) => void;
 }) {
-	const menuActions: LibraryMenuAction[] = actions.length === 0 ? [] : [
+	const linked = folder.mirror?.path === "";
+	// Feature 026 (ui-contract.md Menus): a mirror folder changes only with the repo;
+	// the linked folder's "Delete folder" means unlink. The view gives their other entries.
+	const mirrorFolder = folder.mirror !== undefined && !linked;
+	const deleteFolder = () => onDelete(folder, moreButton(`More actions for ${folder.name}`));
+	const menuActions: LibraryMenuAction[] = actions.length === 0 ? [] : mirrorFolder ? [...actions] : linked ? [
+		...actions,
+		{ label: "Delete folder", destructive: true, testId: "library-action-delete-folder", onSelect: deleteFolder },
+	] : [
 		{ label: "Rename", onSelect: () => onRename(folder, document.body) },
 		...actions,
-		{ label: "Move to the trash", destructive: true, onSelect: () => onDelete(folder, moreButton(`More actions for ${folder.name}`)) },
+		{ label: "Move to the trash", destructive: true, onSelect: deleteFolder },
 	];
-	const linked = folder.mirror?.path === "";
+	// Nothing goes into a mirror, and nothing in it moves (R11).
+	const drop = folder.mirror ? undefined : dropTarget;
 	const meta = [`${linked ? "Repo" : "Folder"} · ${count} ${count === 1 ? "item" : "items"}`, folder.archivedAt ? "Archived" : "", location].filter(Boolean).join(" · ");
 	const Icon = linked ? FolderGit2Icon : FolderIcon;
 	return (
@@ -37,21 +46,21 @@ export function FolderRow({ folder, count, location, repoLink, actions = [], sel
 		<li
 			className="lh-row"
 			data-selected={selection?.selected ? "" : undefined}
-			data-drop={dropTarget?.over ? "" : undefined}
+			data-drop={drop?.over ? "" : undefined}
 			data-testid="library-folder-row"
-			draggable={Boolean(onDragStartEntry)}
-			onDragStart={(event) => onDragStartEntry?.(`folder:${folder.id}`, event)}
+			draggable={Boolean(onDragStartEntry) && !mirrorFolder}
+			onDragStart={(event) => { if (!mirrorFolder) onDragStartEntry?.(`folder:${folder.id}`, event); }}
 			onDragOver={(event) => {
-				if (!dropTarget || !event.dataTransfer.types.includes(DRAG_TYPE)) return;
+				if (!drop || !event.dataTransfer.types.includes(DRAG_TYPE)) return;
 				event.preventDefault();
-				dropTarget.onOver(true);
+				drop.onOver(true);
 			}}
-			onDragLeave={() => dropTarget?.onOver(false)}
+			onDragLeave={() => drop?.onOver(false)}
 			onDrop={(event) => {
-				if (!dropTarget || !event.dataTransfer.types.includes(DRAG_TYPE)) return;
+				if (!drop || !event.dataTransfer.types.includes(DRAG_TYPE)) return;
 				event.preventDefault();
-				dropTarget.onOver(false);
-				dropTarget.onDrop(event);
+				drop.onOver(false);
+				drop.onDrop(event);
 			}}
 		>
 			<div className="flex items-center gap-0.5 pr-2">
@@ -67,8 +76,12 @@ export function FolderRow({ folder, count, location, repoLink, actions = [], sel
 						<span className="lh-row-meta">{meta}{repoLink && <> · <RepoStatusText link={repoLink} /></>}</span>
 					</span>
 				</Link>
-				<button type="button" aria-label={`Rename folder ${folder.name}`} className="lh-tool max-sm:hidden" onClick={(event) => onRename(folder, event.currentTarget)}><PencilIcon aria-hidden="true" /></button>
-				<button type="button" aria-label={`Delete folder ${folder.name}`} className="lh-tool" onClick={(event) => onDelete(folder, event.currentTarget)}><Trash2Icon aria-hidden="true" /></button>
+				{!mirrorFolder && (
+					<>
+						<button type="button" aria-label={`Rename folder ${folder.name}`} className="lh-tool max-sm:hidden" onClick={(event) => onRename(folder, event.currentTarget)}><PencilIcon aria-hidden="true" /></button>
+						<button type="button" aria-label={`Delete folder ${folder.name}`} className="lh-tool" onClick={(event) => onDelete(folder, event.currentTarget)}><Trash2Icon aria-hidden="true" /></button>
+					</>
+				)}
 				{menuActions.length > 0 && <LibraryMoreButton name={folder.name} actions={menuActions} />}
 			</div>
 		</li>

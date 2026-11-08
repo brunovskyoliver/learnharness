@@ -196,12 +196,12 @@ export interface LibraryStore {
 	markItem(id: string, marks: LibraryMarks): Promise<LibraryItem | null>;
 	markFolder(id: string, marks: Omit<LibraryMarks, "tags">): Promise<LibraryFolder | null>;
 	/** Recoverable: bytes and versions are kept, and references read as deleted. */
-	trashItem(id: string): Promise<LibraryTrashEntry | null>;
+	trashItem(id: string): Promise<LibraryTrashEntry | LibraryRefusal | null>;
 	/** A folder and everything under it, as one entry. */
-	trashFolder(id: string): Promise<LibraryTrashEntry | null>;
+	trashFolder(id: string): Promise<LibraryTrashEntry | LibraryRefusal | null>;
 	listTrash(): Promise<LibraryTrashEntry[]>;
 	/** Puts everything back; a name now taken steps to a free one. Null when unknown. */
-	restoreTrash(entryId: string): Promise<{ items: LibraryItem[]; folders: LibraryFolder[] } | null>;
+	restoreTrash(entryId: string): Promise<{ items: LibraryItem[]; folders: LibraryFolder[] } | LibraryRefusal | null>;
 	/** Deletes for good, leaving tombstones. False when unknown. */
 	purgeTrash(entryId: string): Promise<boolean>;
 	/** Newest first, live items only. */
@@ -213,7 +213,7 @@ export interface LibraryStore {
 	/** Rename, moving the file too. Null for an unknown id. */
 	rename(id: string, name: string): Promise<LibraryItem | LibraryRefusal | null>;
 	/** Delete the bytes and leave a tombstone. False for an unknown id. */
-	remove(id: string): Promise<boolean>;
+	remove(id: string): Promise<boolean | LibraryRefusal>;
 	setTextState(id: string, state: LibraryTextState): Promise<void>;
 	/** Cached text info: rebuildable, null when absent or damaged. */
 	readDerived(id: string): Promise<unknown>;

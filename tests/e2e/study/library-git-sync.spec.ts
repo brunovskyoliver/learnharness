@@ -1,8 +1,8 @@
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { GitRemote, skipReason } from "../../fixtures/git-remote";
-import { clearStudyKey, hydrated, noPageOverflow, studySettings } from "./helpers";
+import { CHATS, clearStudyKey, dataDir, hydrated, interceptModel, noPageOverflow, seedStudy, studySettings } from "./helpers";
 
 // Feature 026, T023 (US1), journey part 1: link a repo from the Library.
 // T033 (US2), journey part 2: it keeps itself up to date (Sync now, the
@@ -322,5 +322,154 @@ test.describe("Study: link a repo into the Library", () => {
 				}
 			});
 		}
+	});
+
+	test.describe("part 3: synced notes work like the rest of the Library", () => {
+		let folder = "";
+		let folderId = "";
+		test.beforeAll(async ({ request }) => {
+			await seedStudy();
+			remote.createRepo("course", {
+				"README.md": "# Course\n",
+				"week1/notes.md": "# Week 1\n\nStanding waves resonate at their natural frequency.\n",
+				"week2/notes.md": "# Week 2\n\nBeats come from two close frequencies.\n",
+				"papers/sample.pdf": readFileSync(path.join(process.cwd(), "tests/fixtures/sample-3page.pdf")),
+			});
+			folder = `Course ${Date.now().toString(36)}`;
+			await studySettings(request);
+			const response = await request.post("/api/library/links", { data: { url: remote.url("course"), folderName: folder, parentId: null, requestId: `req_course${Date.now().toString(36)}` } });
+			expect(response.status()).toBe(201);
+			folderId = ((await response.json()) as { folder: { id: string } }).folder.id;
+		});
+
+		const menuOf = async (page: Page, name: string) => {
+			await page.getByRole("button", { name: `More actions for ${name}`, exact: true }).click();
+			const entries = await page.locator("[data-lh-menu] [role=menuitem]").allTextContents();
+			await page.keyboard.press("Escape");
+			return entries;
+		};
+
+		test("menus offer only what a mirror allows; adding words hide inside it; bulk names each refusal", async ({ page }) => {
+			test.setTimeout(120_000);
+			await page.goto("/library");
+			await hydrated(page, '[data-testid="library-link-repo"]');
+			expect(await menuOf(page, folder)).toEqual(["Open folder", "Sync now", "Rename folder", "Move folder", "Add to favorites", "Pin to top", "Archive", "Delete folder"]);
+			await page.goto(`/library?folder=${encodeURIComponent(folderId)}`);
+			await hydrated(page, '[data-testid="library-sync-now"]');
+			for (const word of ["library-new-folder", "library-link-repo", "library-upload", "library-new-page", "library-new-diagram"]) await expect(page.getByTestId(word)).toHaveCount(0);
+			expect(await menuOf(page, "week1")).toEqual(["Open folder", "Add to favorites", "Pin to top", "Archive"]);
+			expect(await menuOf(page, "README.md")).toEqual(["Open", "Add to favorites", "Pin to top", "Tags…", "Archive", "Download"]);
+			const row = page.getByTestId("library-row").filter({ hasText: "README.md" });
+			await expect(row.getByRole("button", { name: "Rename README.md" })).toHaveCount(0);
+			await expect(row.getByRole("button", { name: "Delete README.md" })).toHaveCount(0);
+			await expect(page.getByRole("button", { name: "Rename folder week1" })).toHaveCount(0);
+			await expect(row).toHaveAttribute("draggable", "false");
+			// A mark works.
+			await page.getByRole("button", { name: "More actions for README.md", exact: true }).click();
+			await page.locator("[data-lh-menu] [role=menuitem]", { hasText: "Pin to top" }).click();
+			await expect(row.getByRole("img", { name: "Pinned" })).toBeVisible();
+			await shot(page, "mirror-rows-1440-light");
+			// Bulk: each mirrored entry is refused by name.
+			await page.getByTestId("library-select-mode").click();
+			await page.getByRole("checkbox", { name: "Select README.md" }).click();
+			await page.getByRole("checkbox", { name: "Select folder week1" }).click();
+			await page.getByTestId("library-bulk-trash").click();
+			await expect(page.getByTestId("library-refusal")).toContainText("README.md: comes from the repo. week1: comes from the repo.");
+			await shot(page, "bulk-refusal-1440-light");
+			await expect(page.getByTestId("library-row").filter({ hasText: "README.md" })).toBeVisible();
+		});
+
+		test("a full-text search finds a line in a synced note", async ({ page }) => {
+			test.setTimeout(120_000);
+			await page.goto("/library");
+			await hydrated(page, '[data-testid="library-search-mode-text"]');
+			await page.getByTestId("library-search-mode-text").click();
+			await page.getByTestId("library-search").fill("resonate");
+			const hit = page.getByTestId("doc-search-result").filter({ hasText: "notes.md" });
+			await expect(hit).toBeVisible({ timeout: 60_000 });
+			await expect(hit).toContainText("Standing waves resonate");
+			await page.getByTestId("library-search-mode-names").click();
+		});
+
+		test("a highlight on a synced PDF shows in its reader", async ({ page, request }) => {
+			test.setTimeout(120_000);
+			const items = ((await (await request.get("/api/library")).json()) as { items: { id: string; name: string; folderId?: string }[] }).items;
+			const folders = ((await (await request.get("/api/library")).json()) as { folders: { id: string; name: string; parentId: string | null }[] }).folders;
+			const papers = folders.find((f) => f.name === "papers" && f.parentId === folderId)!;
+			const pdf = items.find((i) => i.name === "sample.pdf" && i.folderId === papers.id)!;
+			const made = await request.post(`/api/library/items/${pdf.id}/annotations`, { data: { anchor: { page: 1, quote: "force", prefix: "", suffix: "", start: 0, rects: [[0.1, 0.1, 0.2, 0.05]] }, note: "From the synced copy" } });
+			expect(made.status()).toBe(201);
+			await page.goto(`/library?folder=${encodeURIComponent(papers.id)}`);
+			await hydrated(page, '[data-testid="library-sync-now"], [data-testid="library-select-mode"]');
+			await page.getByRole("button", { name: "Open sample.pdf" }).click();
+			await expect(page.getByTestId("pdf-page-count")).toHaveText("of 3", { timeout: 60_000 });
+			await page.getByTestId("pdf-highlights-toggle").click();
+			await expect(page.getByTestId("pdf-highlight-note")).toHaveText("From the synced copy");
+		});
+
+		test("@ a synced note in a lesson: its Library path goes in the text, its file name on the line", async ({ page }) => {
+			test.setTimeout(150_000);
+			const posts = await interceptModel(page);
+			await page.goto(`/chat/${CHATS.plain}`);
+			await hydrated(page, '[data-testid="composer"] textarea');
+			const field = page.getByTestId("composer").locator("textarea");
+			await field.click();
+			await field.pressSequentially("Compare @week1");
+			// Other journeys link repos with a week1/ too: this link's row by its folder path.
+			const option = page.getByTestId("mention-option").filter({ hasText: `${folder} / week1` }).filter({ hasText: "notes.md" });
+			await expect(option).toBeVisible({ timeout: 30_000 });
+			await shot(page, "mention-1440-light");
+			await option.click();
+			await expect(field).toHaveValue(`Compare @${folder}/week1/notes.md `);
+			await expect(page.getByTestId("attaching-line")).toHaveText("Attaching notes.md");
+			await page.keyboard.press("Enter");
+			await expect.poll(() => posts.length, { timeout: 30_000 }).toBe(1);
+			expect(posts[0]!.body).toMatchObject({ chatId: CHATS.plain, input: { type: "text", text: `Compare @${folder}/week1/notes.md` } });
+		});
+
+		for (const width of [390, 1440]) {
+			test(`mirror rows fit at ${width}px, light and dark`, async ({ page, request }) => {
+				test.setTimeout(120_000);
+				await page.setViewportSize({ width, height: width < 500 ? 780 : 900 });
+				for (const appearance of ["light", "dark"] as const) {
+					await studySettings(request, { appearance });
+					await page.goto(`/library?folder=${encodeURIComponent(folderId)}`);
+					await hydrated(page, '[data-testid="library-sync-now"]');
+					await expect(page.getByTestId("library-row").filter({ hasText: "README.md" })).toBeVisible();
+					await noPageOverflow(page, `mirror rows ${width} ${appearance}`);
+					await shot(page, `mirror-rows-${width}-${appearance}`);
+					await page.getByRole("button", { name: "More actions for README.md", exact: true }).click();
+					await shot(page, `mirror-menu-${width}-${appearance}`);
+					await page.keyboard.press("Escape");
+				}
+			});
+		}
+
+		test("a reference to a synced note that left the repo reads Removed from the repo", async ({ page, request }) => {
+			test.setTimeout(150_000);
+			const listed = (await (await request.get("/api/library")).json()) as { items: { id: string; name: string; size: number; folderId?: string }[]; folders: { id: string; name: string; parentId: string | null }[] };
+			const week2 = listed.folders.find((f) => f.name === "week2" && f.parentId === folderId)!;
+			const note = listed.items.find((i) => i.name === "notes.md" && i.folderId === week2.id)!;
+			// A lesson where he attached it, as the server stores it (the model is never called here).
+			const plain = JSON.parse(readFileSync(path.join(dataDir(), "chats", `${CHATS.plain}.json`), "utf8")) as { messages: unknown[] } & Record<string, unknown>;
+			const id = `e2e-repo-ref-${Date.now().toString(36)}`;
+			writeFileSync(path.join(dataDir(), "chats", `${id}.json`), JSON.stringify({ ...plain, id, title: "E2E · Synced reference", messages: [...plain.messages, {
+				id: "e2e_ref_user", role: "user", content: `Compare @${folder}/week2/notes.md`, timestamp: Date.now(),
+				references: [{ itemId: note.id, name: "notes.md", kind: "markdown", size: note.size, mode: "inline", fromRepo: true }],
+			}] }));
+			remote.commit("course", { "week2/notes.md": null });
+			const link = ((await (await request.get("/api/library/links")).json()) as { links: { id: string; folderId: string }[] }).links.find((l) => l.folderId === folderId)!;
+			expect((await request.post(`/api/library/links/${link.id}/sync`)).status()).toBe(202);
+			await expect.poll(async () => ((await (await request.get("/api/library")).json()) as { items: { id: string }[] }).items.some((i) => i.id === note.id), { timeout: 60_000 }).toBe(false);
+			for (const [width, appearance] of [[1440, "light"], [1440, "dark"], [390, "light"], [390, "dark"]] as const) {
+				await studySettings(request, { appearance });
+				await page.setViewportSize({ width, height: width < 500 ? 780 : 900 });
+				await page.goto(`/chat/${id}`);
+				const row = page.getByTestId("reference-row").filter({ hasText: "notes.md" }).last();
+				await expect(row).toHaveText("Used notes.md · in full · Removed from the repo", { timeout: 60_000 });
+				await row.scrollIntoViewIfNeeded();
+				await shot(page, `reference-removed-${width}-${appearance}`);
+			}
+		});
 	});
 });

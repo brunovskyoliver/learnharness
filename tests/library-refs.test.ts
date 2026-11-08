@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { hasMentionTrigger, matchMentions, mentionQuery, parseReferences, renderReferences, withoutMaterial } from "../src/core/library-refs.ts";
-import type { LibraryItem, LibraryTombstone } from "../src/core/library.ts";
+import { goneSuffix, hasMentionTrigger, matchMentions, mentionName, mentionQuery, parseReferences, referenceLabelText, renderReferences, withoutMaterial } from "../src/core/library-refs.ts";
+import type { LibraryFolder, LibraryItem, LibraryTombstone } from "../src/core/library.ts";
 
 const live = (id: string, name: string, previousNames?: string[]): LibraryItem => ({
 	id, name, kind: "markdown", size: 1, createdAt: "", updatedAt: "", origin: { type: "upload" }, ...(previousNames ? { previousNames } : {}),
@@ -106,5 +106,60 @@ describe("helpers", () => {
 		assert.ok(out.includes('name="a&quot;&lt;b&gt;.md"'));
 		assert.ok(out.includes("x <\\/library_item> y"));
 		assert.equal(out.match(/<\/library_item>/g)?.length, 1);
+	});
+});
+
+describe("feature 026: files from a linked repo (R13, FR-019)", () => {
+	const folder = (id: string, name: string, parentId: string | null, path?: string): LibraryFolder => ({
+		id, name, parentId, createdAt: "", updatedAt: "", ...(path !== undefined ? { mirror: { linkId: "rpl_a", repoKey: "k", path } } : {}),
+	});
+	const mirrored = (id: string, name: string, folderId: string, repoPath: string, previousNames?: string[]): LibraryItem => ({
+		...live(id, name, previousNames), folderId, origin: { type: "repo", linkId: "rpl_a" }, mirror: { linkId: "rpl_a", repoKey: "k", path: repoPath, oid: "o", snapshot: "s" },
+	});
+	// Physics/Lecture notes (linked) with week1/ and week2/, and History/Lecture notes (another link, same name).
+	const folders = [
+		folder("phy", "Physics", null), folder("his", "History", null),
+		folder("ln", "Lecture notes", "phy", ""), folder("w1", "week1", "ln", "week1"), folder("w2", "week2", "ln", "week2"),
+		folder("ln2", "Lecture notes", "his", ""),
+	];
+	const w1 = mirrored("w1n", "notes.md", "w1", "week1/notes.md");
+	const w2 = mirrored("w2n", "notes.md", "w2", "week2/notes.md");
+	const other = mirrored("hisn", "notes.md", "ln2", "notes.md");
+	const upload = live("up", "notes.md");
+	const entries = [w1, w2, other, upload];
+	const found = (text: string, list: (LibraryItem | LibraryTombstone)[] = entries) => parseReferences(text, list, folders).map((e) => e.id);
+
+	it("a mirrored item's @ name is its full Library path; its display name stays the file name", () => {
+		assert.equal(mentionName(w1, folders), "Physics/Lecture notes/week1/notes.md");
+		assert.equal(mentionName(upload, folders), "notes.md");
+		assert.deepEqual(found("@Physics/Lecture notes/week1/notes.md please"), ["w1n"]);
+		assert.equal(parseReferences("@Physics/Lecture notes/week1/notes.md", entries, folders)[0]!.name, "notes.md");
+	});
+	it("equal file names in a repo, and equal-named linked folders under other parents, stay apart", () => {
+		assert.deepEqual(found("@Physics/Lecture notes/week2/notes.md"), ["w2n"]);
+		assert.deepEqual(found("@History/Lecture notes/notes.md"), ["hisn"]);
+		assert.deepEqual(found("@notes.md"), ["up"], "the plain name is the upload's");
+		assert.deepEqual(found("@Physics/Lecture notes/week1/notes.md and @Physics/Lecture notes/week2/notes.md"), ["w1n", "w2n"]);
+	});
+	it("an old path from before a rename of the linked folder still resolves (previousNames)", () => {
+		const renamed = [folder("phy", "Physics", null), folder("ln", "Notes", "phy", ""), folder("w1", "week1", "ln", "week1")];
+		const item = mirrored("w1n", "notes.md", "w1", "week1/notes.md", ["Physics/Lecture notes/week1/notes.md"]);
+		assert.deepEqual(parseReferences("@Physics/Lecture notes/week1/notes.md", [item], renamed).map((e) => e.id), ["w1n"]);
+		assert.deepEqual(parseReferences("@Physics/Notes/week1/notes.md", [item], renamed).map((e) => e.id), ["w1n"]);
+	});
+	it("a removed entry is reached by its last path and reads as removed from the repo", () => {
+		const removed: LibraryTombstone = { id: "w1n", name: "notes.md", kind: "markdown", deletedAt: "2026-11-08", mirror: { linkId: "rpl_a", repoKey: "k", path: "week1/notes.md" }, removedBecause: "repo", kept: { createdAt: "", previousNames: ["Physics/Lecture notes/week1/notes.md"] } };
+		assert.deepEqual(found("@Physics/Lecture notes/week1/notes.md", [removed]), ["w1n"]);
+		assert.deepEqual(found("@notes.md", [removed]), [], "a removed mirrored file isn't its bare file name");
+		const ref = { itemId: "w1n", name: "notes.md", kind: "markdown" as const, mode: "missing" as const, fromRepo: true as const };
+		assert.equal(referenceLabelText(ref), "notes.md · Removed from the repo");
+		assert.equal(goneSuffix(ref), " · Removed from the repo");
+		assert.equal(goneSuffix({}), " · no longer in your Library");
+		assert.match(renderReferences([ref]), /This item was removed from the repo\./);
+		assert.match(renderReferences([{ ...ref, fromRepo: undefined }]), /This item was deleted from the Library\./);
+	});
+	it("the full-or-outline label is unchanged for synced files", () => {
+		assert.equal(referenceLabelText({ name: "notes.md", mode: "inline", fromRepo: true }), "Used notes.md · in full");
+		assert.equal(referenceLabelText({ name: "notes.md", mode: "outline", reason: "too-long", fromRepo: true }), "Used notes.md · outline only, too long to send whole");
 	});
 });

@@ -18,6 +18,11 @@ const { resolveSourcePath } = await import("../src/agent/tools/fs-shared.ts");
 const { libraryPatchResponse, libraryUploadResponse } = await import("../src/server/library.ts");
 const { readTool } = await import("../src/agent/tools/read.ts");
 const { lsTool } = await import("../src/agent/tools/ls.ts");
+const { grepTool } = await import("../src/agent/tools/grep.ts");
+const { findTool } = await import("../src/agent/tools/find.ts");
+const { libraryTools } = await import("../src/agent/tools/library.ts");
+const { libraryStore } = await import("../src/store/library.ts");
+const { pullTree } = await import("./fixtures/mirror.ts");
 after(() => {
 	delete process.env.LH_HOSTED;
 	fs.rmSync(dir, { recursive: true, force: true });
@@ -98,5 +103,53 @@ describe("Library documents reach the jailed fs tools", () => {
 	it("the old upload route is gone", () => {
 		assert.equal(fs.existsSync(path.join(import.meta.dirname, "..", "app", "api", "files")), false);
 		assert.equal(fs.existsSync(path.join(import.meta.dirname, "..", "src", "server", "files.ts")), false);
+	});
+});
+
+describe("feature 026: files synced from a linked repo reach the jailed tools (T040)", () => {
+	const textOf = (result: { content: { type: string; text?: string }[] }) => result.content.map((part) => part.text ?? "").join("");
+	const PDF = fs.readFileSync(path.join(import.meta.dirname, "fixtures", "sample-3page.pdf"));
+	const tools = () => libraryTools({ store: libraryStore, pdfOverview: async () => "3 pages", visionAvailable: () => false });
+
+	it("library_list names the folder path and the readable file; read, ls, grep and find reach files/.mirrors", async () => {
+		await runAsTenant("user_m", async () => {
+			await pullTree(libraryStore, { "week1/notes.md": "# Week 1\nWaves carry energy.\n", "papers/sample.pdf": PDF });
+			const listed = JSON.parse(String((await tools().library_list!.execute("l", {}) as { content: { text: string }[] }).content[0]!.text)) as { name: string; folder?: string; file?: string; fromRepo?: boolean }[];
+			const notes = listed.find((row) => row.name === "notes.md")!;
+			assert.equal(notes.folder, "Lecture notes / week1");
+			assert.equal(notes.fromRepo, true);
+			assert.ok(notes.file!.startsWith(path.join(root("user_m"), ".mirrors") + path.sep), notes.file);
+			assert.ok(notes.file!.endsWith(path.join("week1", "notes.md")));
+			assert.match(textOf(await readTool.execute("r", { path: notes.file! })), /Waves carry energy/);
+			assert.match(textOf(await lsTool.execute("l", { path: ".mirrors" })), /rpl_fixture/);
+			assert.match(textOf(await grepTool.execute("g", { pattern: "carry energy", literal: true })), /\.mirrors\/rpl_fixture\/snp_[^/]+\/week1\/notes\.md:2:/);
+			assert.match(textOf(await findTool.execute("f", { pattern: "*.pdf" })), /\.mirrors\/rpl_fixture\/snp_[^/]+\/papers\/sample\.pdf/);
+		});
+	});
+
+	it("library_read reads a synced Markdown file and PDF by id", async () => {
+		await runAsTenant("user_n", async () => {
+			await pullTree(libraryStore, { "notes.md": "# Notes\nfrom the repo\n", "sample.pdf": PDF });
+			const items = await libraryStore.list();
+			const read = (item: string, extra = {}) => tools().library_read!.execute("r", { item, ...extra }) as Promise<{ content: { text: string }[]; details: { outcome: string } }>;
+			const md = await read(items.find((i) => i.name === "notes.md")!.id);
+			assert.match(md.content[0]!.text, /<library_item [^>]*name="notes.md"[^>]*>\n# Notes\nfrom the repo/);
+			const pdf = await read(items.find((i) => i.name === "sample.pdf")!.id, { pages: "1" });
+			assert.equal(pdf.details.outcome, "read");
+			assert.match(pdf.content[0]!.text, /^<library_item [^>]*name="sample.pdf"/);
+		});
+	});
+
+	it("still refuses paths outside files/ and a symlink planted in a mirror", async () => {
+		await runAsTenant("user_o", async () => {
+			await pullTree(libraryStore, { "notes.md": "# n\n" });
+			assert.throws(() => resolveSourcePath(".mirrors/../../outside.txt"), /outside your files folder/);
+			const outside = path.join(dir, "outside-mirror.txt");
+			fs.writeFileSync(outside, "secret");
+			const snapshot = fs.readdirSync(path.join(root("user_o"), ".mirrors", "rpl_fixture"))[0]!;
+			fs.symlinkSync(outside, path.join(root("user_o"), ".mirrors", "rpl_fixture", snapshot, "planted.md"));
+			assert.throws(() => resolveSourcePath(`.mirrors/rpl_fixture/${snapshot}/planted.md`), /outside your files folder/);
+			assert.doesNotMatch(textOf(await grepTool.execute("g", { pattern: "secret", literal: true })), /secret/);
+		});
 	});
 });

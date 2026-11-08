@@ -85,7 +85,7 @@ describe("a pre-011 Library through the workspace", () => {
 		await store.markItem(PAGE, { tags: ["physics"], favorite: true, pinned: true });
 		await store.markItem(UPLOAD, { archived: true });
 		await store.markItem(UPLOAD, { archived: false });
-		const trashed = await store.trashItem(PLAIN);
+		const trashed = (await store.trashItem(PLAIN) as TrashEntry | null);
 		assert.ok(trashed);
 		await store.restoreTrash(trashed.id);
 
@@ -184,3 +184,7 @@ describe("a pre-011 Library through the workspace", () => {
 		assert.doesNotMatch(raw, /"quote"/, "no annotation enters the catalog");
 	});
 });
+
+/** Feature 026: trash and restore can also answer a refusal; these tests never meet one. */
+type TrashEntry = import("../src/core/library.ts").LibraryTrashEntry;
+type Restored = { items: import("../src/core/library.ts").LibraryItem[]; folders: import("../src/core/library.ts").LibraryFolder[] };

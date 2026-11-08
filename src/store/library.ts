@@ -12,7 +12,7 @@ import { nanoid } from "nanoid";
 import { PATHS, tenantScoped } from "../../config.ts";
 import { emit } from "../core/events.ts";
 import {
-	CATALOG_VERSION, CONTENT_CHECK_BYTES, contentMatches, folderSubtree, folderTrail, inMirror, isTombstone, REPO_REFUSALS, isVersionedKind, liveFolderId, withMarks, wouldCycle, isUnseenTutorVersion, kindForName, LIBRARY_REFUSALS, LibraryCatalogError,
+	CATALOG_VERSION, CONTENT_CHECK_BYTES, contentMatches, folderSubtree, folderTrail, inMirror, isLinkedFolder, isTombstone, libraryPathName, REPO_REFUSALS, isVersionedKind, liveFolderId, withMarks, wouldCycle, isUnseenTutorVersion, kindForName, LIBRARY_REFUSALS, LibraryCatalogError,
 	nameKey, PAGE_MAX_BYTES, suggestName, uploadName,
 	type LibraryCatalog, type LibraryFolder, type MirrorRef, type RemovedMirrorFolder, type LibraryItem, type LibraryMarks, type LibraryTrashEntry, type LibraryKind, type LibraryOrigin, type LibraryRefusal, type LibraryTextState, type LibraryTombstone,
 	type PageDraft, type PageHead, type PageState, type PageStale, type PageVersion, type PageVersionCause, type PageWriteResult,
@@ -345,6 +345,46 @@ async function removeOldSnapshots(linkId: string, snapshot: string): Promise<voi
 const linkedAncestor = (folderId: string, folders: readonly LibraryFolder[]) =>
 	[...folderTrail(folderId, folders)].reverse().find((f) => f.mirror?.path === "") ?? folders.find((f) => f.id === folderId);
 
+// ── Read-only mirrors (R11): refused in the store, so every caller gets the same answer ──
+
+/** Adding, moving or restoring into the linked folder or a folder under it. */
+const intoMirror = (folderId: string | null | undefined, folders: readonly LibraryFolder[]): LibraryRefusal | null =>
+	folderId && inMirror(folderId, folders) ? REPO_REFUSALS.repoFolder(linkedAncestor(folderId, folders)!.name) : null;
+/** A mirror folder (not the linked folder) changes only with the repo. */
+const isMirrorFolder = (folder: LibraryFolder) => folder.mirror !== undefined && folder.mirror.path !== "";
+/** Trashing or deleting a folder: the linked folder means unlink, a mirror folder
+ *  comes from the repo, and a folder holding a linked folder at any depth waits. */
+function removalRefusal(folder: LibraryFolder, folders: readonly LibraryFolder[]): LibraryRefusal | null {
+	if (isMirrorFolder(folder)) return REPO_REFUSALS.repoFile(folder.name);
+	if (isLinkedFolder(folder)) return REPO_REFUSALS.repoLinked(folder.name);
+	const subtree = folderSubtree(folder.id, folders);
+	const held = folders.find((f) => f.id !== folder.id && subtree.has(f.id) && isLinkedFolder(f));
+	return held ? REPO_REFUSALS.holdsLinked(folder.name, held.name) : null;
+}
+
+/** T059: a folder rename or move changes the @ names of the mirrored items under
+ *  it; each one's old name joins `previousNames`, in the same catalog write. */
+function keepMirrorNames(catalog: LibraryCatalog, before: readonly LibraryFolder[], folderId: string): void {
+	const after = foldersOf(catalog);
+	const subtree = folderSubtree(folderId, before);
+	for (const item of liveItems(catalog)) {
+		if (!item.mirror || !item.folderId || !subtree.has(item.folderId)) continue;
+		const old = libraryPathName(item, before);
+		if (old === libraryPathName(item, after)) continue;
+		const previous = item.previousNames ?? [];
+		replace(catalog, item.id, { ...item, previousNames: previous.includes(old) ? previous : [...previous, old] });
+	}
+}
+
+/** A mirrored item's tombstone: its last @ name is kept with its marks, so old tokens still find it. */
+function removedEntry(item: LibraryItem, folders: readonly LibraryFolder[], now: string, because: "repo" | "unlinked"): LibraryTombstone {
+	const { snapshot: _s, ...mirror } = item.mirror!;
+	const kept = keptOf(item)!;
+	const last = libraryPathName(item, folders);
+	const previous = kept.previousNames ?? [];
+	return { ...tombstone(item, now), mirror, removedBecause: because, kept: { ...kept, previousNames: previous.includes(last) ? previous : [...previous, last] } };
+}
+
 type Applied = { link: RepoLink; folder: LibraryFolder; changed?: LibraryItem[] };
 
 /** Puts a staged snapshot in the catalog in one write: the first pull, or a later one. */
@@ -463,8 +503,7 @@ async function applyUpdate(linkId: string, snap: MirrorSnapshot): Promise<Applie
 		}
 		for (const [p, entry] of byPath) {
 			if (incoming.has(p) || isTombstone(entry)) continue;
-			const { snapshot: _s, ...mirror } = entry.mirror!;
-			next.set(entry.id, { ...tombstone(entry, now), mirror, removedBecause: "repo", kept: keptOf(entry) });
+			next.set(entry.id, removedEntry(entry, folders, now, "repo"));
 			touched.push(entry.id);
 			counts.removed++;
 		}
@@ -588,6 +627,8 @@ async function writeUpload(name: string, body: AsyncIterable<Uint8Array>, declar
 		const item = await withLock(async () => {
 			const catalog = await loadReconciled();
 			if (folderId && !foldersOf(catalog).some((f) => f.id === folderId)) return LIBRARY_REFUSALS.folderMissing;
+			const mirrored = intoMirror(folderId, foldersOf(catalog));
+			if (mirrored) return mirrored;
 			const taken = await takenKeys(catalog);
 			if (taken.has(nameKey(name))) return nameTaken(name, taken);
 			await fs.mkdir(PATHS.files, { recursive: true });
@@ -640,6 +681,7 @@ async function rename(id: string, raw: string): Promise<LibraryItem | LibraryRef
 		const catalog = await loadReconciled();
 		const item = liveItems(catalog).find((i) => i.id === id);
 		if (!item) return null;
+		if (item.mirror) return REPO_REFUSALS.repoFile(item.name);
 		if (!name) return LIBRARY_REFUSALS.invalidName;
 		if (name === item.name) return item;
 		const taken = await takenKeys(catalog);
@@ -664,11 +706,12 @@ async function rename(id: string, raw: string): Promise<LibraryItem | LibraryRef
 	});
 }
 
-async function remove(id: string): Promise<boolean> {
+async function remove(id: string): Promise<boolean | LibraryRefusal> {
 	return withLock(async () => {
 		const catalog = await readCatalog();
 		const item = liveItems(catalog).find((i) => i.id === id);
 		if (!item) return false;
+		if (item.mirror) return REPO_REFUSALS.repoFile(item.name);
 		if (isVersionedKind(item.kind)) await fs.rm(pageDir(id), { recursive: true, force: true });
 		else await fs.rm(documentPath(item), { force: true });
 		await fs.rm(proposalsDir(id), { recursive: true, force: true });
@@ -701,6 +744,8 @@ async function createFolder(raw: string, parentId: string | null): Promise<Libra
 	return withLock(async () => {
 		const catalog = await readCatalog();
 		if (parentId && !foldersOf(catalog).some((f) => f.id === parentId)) return LIBRARY_REFUSALS.folderMissing;
+		const mirrored = intoMirror(parentId, foldersOf(catalog));
+		if (mirrored) return mirrored;
 		const taken = siblingKeys(catalog, parentId);
 		if (taken.has(nameKey(name))) return folderClash(name, taken);
 		const now = new Date().toISOString();
@@ -716,14 +761,17 @@ async function renameFolder(id: string, raw: string): Promise<LibraryFolder | Li
 	const name = uploadName(raw);
 	return withLock(async () => {
 		const catalog = await readCatalog();
-		const folder = foldersOf(catalog).find((f) => f.id === id);
+		const before = foldersOf(catalog);
+		const folder = before.find((f) => f.id === id);
 		if (!folder) return null;
+		if (isMirrorFolder(folder)) return REPO_REFUSALS.repoFile(folder.name);
 		if (!name) return LIBRARY_REFUSALS.invalidName;
 		if (name === folder.name) return folder;
-		const taken = siblingKeys(catalog, liveFolderId(folder.parentId, foldersOf(catalog)), id);
+		const taken = siblingKeys(catalog, liveFolderId(folder.parentId, before), id);
 		if (taken.has(nameKey(name))) return folderClash(name, taken);
 		const next = { ...folder, name, updatedAt: new Date().toISOString() };
 		putFolder(catalog, next);
+		keepMirrorNames(catalog, before, id);
 		await writeCatalog(catalog);
 		emit("library-changed", { itemId: id });
 		return next;
@@ -736,13 +784,17 @@ async function moveFolder(id: string, parentId: string | null): Promise<LibraryF
 		const folders = foldersOf(catalog);
 		const folder = folders.find((f) => f.id === id);
 		if (!folder) return null;
+		if (isMirrorFolder(folder)) return REPO_REFUSALS.repoFile(folder.name);
 		if (parentId && !folders.some((f) => f.id === parentId)) return LIBRARY_REFUSALS.folderMissing;
 		if (wouldCycle(id, parentId, folders)) return LIBRARY_REFUSALS.folderCycle;
+		const mirrored = intoMirror(parentId, folders);
+		if (mirrored) return mirrored;
 		if (liveFolderId(folder.parentId, folders) === parentId) return folder;
 		const taken = siblingKeys(catalog, parentId, id);
 		if (taken.has(nameKey(folder.name))) return folderClash(folder.name, taken);
 		const next = { ...folder, parentId, updatedAt: new Date().toISOString() };
 		putFolder(catalog, next);
+		keepMirrorNames(catalog, folders, id);
 		await writeCatalog(catalog);
 		emit("library-changed", { itemId: id });
 		return next;
@@ -753,7 +805,10 @@ async function removeFolder(id: string): Promise<boolean | LibraryRefusal> {
 	return withLock(async () => {
 		const catalog = await loadReconciled();
 		const folders = foldersOf(catalog);
-		if (!folders.some((f) => f.id === id)) return false;
+		const folder = folders.find((f) => f.id === id);
+		if (!folder) return false;
+		const refused = removalRefusal(folder, folders);
+		if (refused) return refused;
 		if (folders.some((f) => f.parentId === id) || liveItems(catalog).some((i) => i.folderId === id)) return LIBRARY_REFUSALS.folderNotEmpty;
 		catalog.folders = folders.filter((f) => f.id !== id);
 		await writeCatalog(catalog);
@@ -767,7 +822,10 @@ async function moveItem(id: string, folderId: string | null): Promise<LibraryIte
 		const catalog = await loadReconciled();
 		const item = liveItems(catalog).find((i) => i.id === id);
 		if (!item) return null;
+		if (item.mirror) return REPO_REFUSALS.repoFile(item.name);
 		if (folderId && !foldersOf(catalog).some((f) => f.id === folderId)) return LIBRARY_REFUSALS.folderMissing;
+		const mirrored = intoMirror(folderId, foldersOf(catalog));
+		if (mirrored) return mirrored;
 		const { folderId: _old, ...rest } = item;
 		const next: LibraryItem = folderId ? { ...rest, folderId } : rest;
 		replace(catalog, id, next);
@@ -815,11 +873,12 @@ async function moveBytesToTrash(entry: LibraryTrashEntry): Promise<void> {
 	}
 }
 
-async function trashItem(id: string): Promise<LibraryTrashEntry | null> {
+async function trashItem(id: string): Promise<LibraryTrashEntry | LibraryRefusal | null> {
 	return withLock(async () => {
 		const catalog = await loadReconciled();
 		const item = liveItems(catalog).find((i) => i.id === id);
 		if (!item) return null;
+		if (item.mirror) return REPO_REFUSALS.repoFile(item.name);
 		const entry: LibraryTrashEntry = {
 			id: `trs_${nanoid()}`, name: item.name, kind: item.kind, trashedAt: new Date().toISOString(),
 			folderId: liveFolderId(item.folderId, foldersOf(catalog)), items: [item], folders: [],
@@ -833,12 +892,14 @@ async function trashItem(id: string): Promise<LibraryTrashEntry | null> {
 	});
 }
 
-async function trashFolder(id: string): Promise<LibraryTrashEntry | null> {
+async function trashFolder(id: string): Promise<LibraryTrashEntry | LibraryRefusal | null> {
 	return withLock(async () => {
 		const catalog = await loadReconciled();
 		const folders = foldersOf(catalog);
 		const root = folders.find((f) => f.id === id);
 		if (!root) return null;
+		const refused = removalRefusal(root, folders);
+		if (refused) return refused;
 		const subtree = folderSubtree(id, folders);
 		const items = liveItems(catalog).filter((i) => i.folderId && subtree.has(i.folderId));
 		const entry: LibraryTrashEntry = {
@@ -856,12 +917,14 @@ async function trashFolder(id: string): Promise<LibraryTrashEntry | null> {
 	});
 }
 
-async function restoreTrash(entryId: string): Promise<{ items: LibraryItem[]; folders: LibraryFolder[] } | null> {
+async function restoreTrash(entryId: string): Promise<{ items: LibraryItem[]; folders: LibraryFolder[] } | LibraryRefusal | null> {
 	return withLock(async () => {
 		const catalog = await loadReconciled();
 		const entry = trashOf(catalog).find((e) => e.id === entryId);
 		if (!entry) return null;
 		const parent = liveFolderId(entry.folderId, foldersOf(catalog));
+		const mirrored = intoMirror(parent, foldersOf(catalog));
+		if (mirrored) return mirrored;
 		const restoredFolders = entry.folders.map((folder, index) => {
 			if (index !== 0) return folder;
 			const taken = siblingKeys(catalog, parent);
@@ -1155,6 +1218,8 @@ async function createVersioned(kind: "page" | "diagram", rawName: string, conten
 			}
 		}
 		if (options.folderId && !foldersOf(catalog).some((f) => f.id === options.folderId)) return LIBRARY_REFUSALS.folderMissing;
+		const mirrored = intoMirror(options.folderId, foldersOf(catalog));
+		if (mirrored) return mirrored;
 		const taken = await takenKeys(catalog);
 		if (taken.has(nameKey(name))) return nameTaken(name, taken);
 		const now = new Date().toISOString();

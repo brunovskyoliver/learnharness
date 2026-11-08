@@ -3,7 +3,7 @@
  * resolver and the browser's list and pre-send line read text the same way.
  * Nothing here knows about the filesystem, KaTeX or TypeBox.
  */
-import { isTombstone, nameKey, type LibraryItem, type LibraryKind, type LibraryTombstone } from "./library.ts";
+import { isTombstone, libraryPathName, nameKey, type LibraryFolder, type LibraryItem, type LibraryKind, type LibraryTombstone } from "./library.ts";
 
 export type ReferenceMode = "inline" | "outline" | "image" | "missing" | "unreadable";
 export type ReferenceReason = "too-long" | "message-limit" | "no-room" | "over-count" | "no-text" | "no-vision" | "not-ready" | "unsupported";
@@ -24,6 +24,8 @@ export interface LibraryReference {
 	reason?: ReferenceReason;
 	/** `inline` and `outline` only. Never reaches the client. */
 	material?: string;
+	/** Feature 026: a file mirrored from a linked repo. Gone, it reads "Removed from the repo". */
+	fromRepo?: true;
 }
 
 type CatalogEntry = LibraryItem | LibraryTombstone;
@@ -90,9 +92,20 @@ export function codeRanges(text: string): Array<[number, number]> {
 
 const inRanges = (ranges: Array<[number, number]>, at: number) => ranges.some(([from, to]) => at >= from && at < to);
 
+/** The names an @ token reaches an entry by (R13). A mirrored item's is its
+ *  full Library path, so equal file names in a repo stay apart; its old paths
+ *  are in `previousNames`. A removed one keeps its last path in `kept`. */
+export function mentionNames(entry: CatalogEntry, folders: readonly LibraryFolder[]): { name: string | null; old: readonly string[] } {
+	if (isTombstone(entry)) return entry.mirror ? { name: null, old: entry.kept?.previousNames ?? [] } : { name: entry.name, old: [] };
+	return { name: entry.mirror ? libraryPathName(entry, folders) : entry.name, old: entry.previousNames ?? [] };
+}
+
+/** What the @ list inserts for an item: its name, or a mirrored item's Library path. */
+export const mentionName = (item: LibraryItem, folders: readonly LibraryFolder[]): string => mentionNames(item, folders).name ?? item.name;
+
 /** The entries a name can reach, longest first. A live item's current name
  *  beats its own or anyone's old name, and any live name beats a tombstone. */
-function nameTable<T extends CatalogEntry>(entries: readonly T[]): Array<{ key: string; length: number; entry: T }> {
+function nameTable<T extends CatalogEntry>(entries: readonly T[], folders: readonly LibraryFolder[]): Array<{ key: string; length: number; entry: T }> {
 	const rank = new Map<string, number>();
 	const table = new Map<string, { key: string; length: number; entry: T }>();
 	const offer = (name: string, entry: T, priority: number) => {
@@ -103,23 +116,25 @@ function nameTable<T extends CatalogEntry>(entries: readonly T[]): Array<{ key: 
 		table.set(key, { key, length: normalized.length, entry });
 	};
 	for (const entry of entries) {
-		if (isTombstone(entry)) offer(entry.name, entry, 0);
+		const { name, old } = mentionNames(entry, folders);
+		if (isTombstone(entry)) for (const each of [...(name === null ? [] : [name]), ...old]) offer(each, entry, 0);
 		else {
-			offer(entry.name, entry, 2);
-			for (const old of entry.previousNames ?? []) offer(old, entry, 1);
+			offer(name!, entry, 2);
+			for (const each of old) offer(each, entry, 1);
 		}
 	}
 	return [...table.values()].sort((a, b) => b.length - a.length);
 }
 
 /** Catalog entries the text names with @, first-seen, duplicates collapsed.
- *  No match means plain text: nothing happens and nothing is reported. */
-export function parseReferences<T extends CatalogEntry>(rawText: string, entries: readonly T[]): T[] {
+ *  No match means plain text: nothing happens and nothing is reported.
+ *  `folders` gives mirrored items their Library-path names (feature 026). */
+export function parseReferences<T extends CatalogEntry>(rawText: string, entries: readonly T[], folders: readonly LibraryFolder[] = []): T[] {
 	if (!rawText.includes("@") || entries.length === 0) return [];
 	const text = rawText.normalize("NFC");
 	// A passage from a PDF is material: an @name inside it attaches nothing (feature 020).
 	const code = [...codeRanges(text), ...[...text.matchAll(/<library_passage [^>]*>[\s\S]*?<\/library_passage>/g)].map((match): [number, number] => [match.index, match.index + match[0].length])];
-	const table = nameTable(entries);
+	const table = nameTable(entries, folders);
 	const found = new Map<string, T>();
 	for (let at = text.indexOf("@"); at !== -1; at = text.indexOf("@", at + 1)) {
 		if (!boundaryBefore(text, at) || inRanges(code, at)) continue;
@@ -214,7 +229,7 @@ function referenceSentence(ref: LibraryReference): string {
 		? "No text could be read from this item."
 		: `No text could be read from this PDF. It has ${ref.pages} ${ref.pages === 1 ? "page" : "pages"}.`;
 	if (ref.reason === "unsupported") return "This kind of file cannot be read.";
-	if (ref.mode === "missing") return "This item was deleted from the Library.";
+	if (ref.mode === "missing") return ref.fromRepo ? "This item was removed from the repo." : "This item was deleted from the Library.";
 	return "This item could not be read.";
 }
 
@@ -268,9 +283,13 @@ export function withoutMaterial<T>(message: T): T {
 // ─── labels (contracts/ui-contract.md) ───────────────────────────────────────
 
 export const NO_LONGER_IN_LIBRARY = " · no longer in your Library";
+/** Feature 026: a mirrored file that left the repo, or whose repo was unlinked. */
+export const REMOVED_FROM_REPO = " · Removed from the repo";
+/** What a reference gone since it was sent reads. */
+export const goneSuffix = (ref: Pick<LibraryReference, "fromRepo">): string => (ref.fromRepo ? REMOVED_FROM_REPO : NO_LONGER_IN_LIBRARY);
 
 /** A label around its name: `{prefix}{name}{suffix}`. */
-export function referenceLabel(ref: Pick<LibraryReference, "mode" | "reason">): { prefix: string; suffix: string } {
+export function referenceLabel(ref: Pick<LibraryReference, "mode" | "reason" | "fromRepo">): { prefix: string; suffix: string } {
 	const used = (suffix: string) => ({ prefix: "Used ", suffix: ` · ${suffix}` });
 	const plain = (suffix: string) => ({ prefix: "", suffix: ` · ${suffix}` });
 	switch (ref.mode) {
@@ -286,11 +305,12 @@ export function referenceLabel(ref: Pick<LibraryReference, "mode" | "reason">): 
 			if (ref.reason === "unsupported") return plain("this kind of file can't be read");
 			return plain("no text could be read");
 		case "missing":
-			return ref.reason === "over-count" ? plain("not attached, limit is 8 per message") : plain("no longer in your Library");
+			if (ref.reason === "over-count") return plain("not attached, limit is 8 per message");
+			return ref.fromRepo ? plain("Removed from the repo") : plain("no longer in your Library");
 	}
 }
 
-export const referenceLabelText = (ref: Pick<LibraryReference, "name" | "mode" | "reason">): string => {
+export const referenceLabelText = (ref: Pick<LibraryReference, "name" | "mode" | "reason" | "fromRepo">): string => {
 	const { prefix, suffix } = referenceLabel(ref);
 	return `${prefix}${ref.name}${suffix}`;
 };

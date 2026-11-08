@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSettingsDialog } from "@/components/settings/settings-dialog.tsx";
 import { opensInPane, usePagePane } from "@/components/library/page-pane-context";
-import { NO_LONGER_IN_LIBRARY, referenceLabel, type LibraryReference } from "@/src/core";
+import { goneSuffix, referenceLabel, type LibraryReference } from "@/src/core";
 
 /** Live ids, fetched only once a transcript has references and shared across
  *  its rows. Short-lived, so a deletion shows up on the next view. */
@@ -49,7 +49,7 @@ export function ReferenceRow({ reference, deleted = false }: { reference: Librar
 				<span className="text-ink">{reference.name}</span>
 			)}
 			{suffix}
-			{deleted && NO_LONGER_IN_LIBRARY}
+			{deleted && goneSuffix(reference)}
 			{reference.reason === "no-vision" && (
 				<>
 					{" · "}

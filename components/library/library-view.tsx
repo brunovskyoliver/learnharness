@@ -18,7 +18,7 @@ import { DeleteItemDialog, DESTRUCTIVE_BUTTON } from "./delete-item-dialog.tsx";
 import { FolderNameDialog, MoveDialog, sendLibraryChange } from "./folder-dialogs.tsx";
 import { FolderBreadcrumbs, folderHref, FolderRow } from "./folder-row.tsx";
 import { allTags, DRAG_TYPE, parseTags, parseView, runBulk, selectEntries, SORT_LABELS, VIEW_LABELS, type EntryKey, type LibraryLayout, type LibrarySort, type LibraryViewName } from "./library-filter.ts";
-import { LibraryChoice, type LibraryMenuAction } from "./library-menu.tsx";
+import { LibraryChoice, moreButton, type LibraryMenuAction } from "./library-menu.tsx";
 import { LibraryRow } from "./library-row.tsx";
 import { LibraryTrash } from "./library-trash.tsx";
 import type { LinkAnswer, LinkFields } from "./repo-link-dialog.tsx";
@@ -336,6 +336,7 @@ export function LibraryView() {
 	// Inside a linked folder (feature 026): its status line and "Sync now".
 	const openLink = folderId ? links.find((l) => l.folderId === folderId) : undefined;
 	const linkSyncing = openLink ? openLink.sync.state === "syncing" || openLink.sync.state === "never" : false;
+	const insideMirror = inMirror(folderId, folders);
 	const syncNow = async (link: RepoLinkView) => {
 		if (link.sync.state === "syncing") return;
 		try {
@@ -406,11 +407,19 @@ export function LibraryView() {
 		const id = key.slice(key.indexOf(":") + 1);
 		return (key.startsWith("folder:") ? folders.find((f) => f.id === id)?.name : items?.find((i) => i.id === id)?.name) ?? id;
 	};
+	/** A mirrored file or mirror folder (feature 026): bulk moves and trashing refuse it by name. */
+	const fromRepo = (key: EntryKey) => {
+		const id = key.slice(key.indexOf(":") + 1);
+		if (key.startsWith("item:")) return items?.find((i) => i.id === id)?.mirror !== undefined;
+		const folder = folders.find((f) => f.id === id);
+		return folder?.mirror !== undefined && folder.mirror.path !== "";
+	};
+	const FROM_REPO = "comes from the repo.";
 	/** Sentence for what failed, or null. The rest of the batch still happened. */
 	const bulkOutcome = (outcome: { done: number; failed: { name: string; reason: string }[] }) =>
 		outcome.failed.length === 0 ? null : outcome.failed.map((f) => `${f.name}: ${f.reason}`).join(" ");
 	const moveMany = async (targets: readonly EntryKey[], target: string | null) => {
-		const outcome = await runBulk(targets, (key) => moveOne(key, target), nameOfKey);
+		const outcome = await runBulk(targets, async (key) => (fromRepo(key) ? FROM_REPO : moveOne(key, target)), nameOfKey);
 		void refresh();
 		return bulkOutcome(outcome);
 	};
@@ -437,19 +446,42 @@ export function LibraryView() {
 		opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
 		setMoving({ targets, label, current });
 	};
-	const itemActions = (item: LibraryItem): LibraryMenuAction[] => [
+	const itemActions = (item: LibraryItem): LibraryMenuAction[] => item.mirror ? [
+		// A file from a linked repo: marks only (Q5); the row adds Open and Download.
+		{ label: item.favorite ? "Remove from favorites" : "Add to favorites", onSelect: () => void markItem(item, { favorite: !item.favorite }) },
+		{ label: item.pinned ? "Unpin" : "Pin to top", onSelect: () => void markItem(item, { pinned: !item.pinned }) },
+		{ label: "Tags…", onSelect: () => setTagging(item) },
+		{ label: item.archivedAt ? "Unarchive" : "Archive", onSelect: () => void markItem(item, { archived: !item.archivedAt }) },
+	] : [
 		{ label: item.favorite ? "Remove from favorites" : "Add to favorites", onSelect: () => void markItem(item, { favorite: !item.favorite }) },
 		{ label: item.pinned ? "Unpin" : "Pin to top", onSelect: () => void markItem(item, { pinned: !item.pinned }) },
 		{ label: "Tags…", onSelect: () => setTagging(item) },
 		{ label: "Move to…", testId: "library-action-move", onSelect: () => openMove([`item:${item.id}`], item.name, liveFolderId(item.folderId, folders)) },
 		{ label: item.archivedAt ? "Unarchive" : "Archive", onSelect: () => void markItem(item, { archived: !item.archivedAt }) },
 	];
-	const folderActions = (folder: LibraryFolder): LibraryMenuAction[] => [
+	const folderMarks = (folder: LibraryFolder): LibraryMenuAction[] => [
 		{ label: folder.favorite ? "Remove from favorites" : "Add to favorites", onSelect: () => void markFolder(folder, { favorite: !folder.favorite }) },
 		{ label: folder.pinned ? "Unpin" : "Pin to top", onSelect: () => void markFolder(folder, { pinned: !folder.pinned }) },
-		{ label: "Move to…", testId: "library-action-move", onSelect: () => openMove([`folder:${folder.id}`], folder.name, liveFolderId(folder.parentId, folders)) },
-		{ label: folder.archivedAt ? "Unarchive" : "Archive", onSelect: () => void markFolder(folder, { archived: !folder.archivedAt }) },
 	];
+	const archiveFolder = (folder: LibraryFolder): LibraryMenuAction => ({ label: folder.archivedAt ? "Unarchive" : "Archive", onSelect: () => void markFolder(folder, { archived: !folder.archivedAt }) });
+	const openFolder = (folder: LibraryFolder): LibraryMenuAction => ({ label: "Open folder", onSelect: () => router.push(folderHref(folder.id)) });
+	const folderActions = (folder: LibraryFolder): LibraryMenuAction[] => {
+		const moveFolder: LibraryMenuAction = { label: folder.mirror ? "Move folder" : "Move to…", testId: "library-action-move", onSelect: () => openMove([`folder:${folder.id}`], folder.name, liveFolderId(folder.parentId, folders)) };
+		// Feature 026 (ui-contract.md Menus). A mirror folder: marks only.
+		if (folder.mirror && folder.mirror.path !== "") return [openFolder(folder), ...folderMarks(folder), archiveFolder(folder)];
+		if (folder.mirror) {
+			const link = links.find((l) => l.folderId === folder.id);
+			return [
+				openFolder(folder),
+				...(link ? [{ label: "Sync now", onSelect: () => void syncNow(link) }] : []),
+				{ label: "Rename folder", onSelect: () => { opener.current = moreButton(`More actions for ${folder.name}`); setNaming({ folder }); } },
+				moveFolder,
+				...folderMarks(folder),
+				archiveFolder(folder),
+			];
+		}
+		return [...folderMarks(folder), moveFolder, archiveFolder(folder)];
+	};
 	const trashKey = (key: EntryKey) => {
 		const id = key.slice(key.indexOf(":") + 1);
 		return sendLibraryChange("/api/library/trash", "POST", key.startsWith("folder:") ? { folderId: id } : { itemId: id });
@@ -571,7 +603,7 @@ export function LibraryView() {
 			className={`flex min-h-0 min-w-0 flex-1 flex-col ${dragging ? "outline-2 -outline-offset-4 outline-rule" : ""}`}
 			data-testid="library-view"
 			onDragOver={(event) => {
-				if (!hasFiles(event)) return;
+				if (!hasFiles(event) || insideMirror) return;
 				event.preventDefault();
 				setDragging(true);
 			}}
@@ -607,28 +639,31 @@ export function LibraryView() {
 								<CheckSquareIcon aria-hidden="true" />
 								{selected ? "Done" : "Select"}
 							</button>
-							<button ref={newFolderButton} type="button" className="lh-tool" onClick={() => setNaming({ folder: null })} data-testid="library-new-folder">
-								<FolderPlusIcon aria-hidden="true" />
-								New folder
-							</button>
-							{!inMirror(folderId, folders) && (
-								<button ref={linkButton} type="button" className="lh-tool" onClick={() => openLinkDialog(true)} data-testid="library-link-repo">
-									<GitBranchIcon aria-hidden="true" />
-									Link a repo
-								</button>
+							{/* Nothing is added inside a mirror (R11): the repo is its only source. */}
+							{!insideMirror && (
+								<>
+									<button ref={newFolderButton} type="button" className="lh-tool" onClick={() => setNaming({ folder: null })} data-testid="library-new-folder">
+										<FolderPlusIcon aria-hidden="true" />
+										New folder
+									</button>
+									<button ref={linkButton} type="button" className="lh-tool" onClick={() => openLinkDialog(true)} data-testid="library-link-repo">
+										<GitBranchIcon aria-hidden="true" />
+										Link a repo
+									</button>
+									<button ref={uploadButton} type="button" className="lh-tool" onClick={() => picker.current?.click()} data-testid="library-upload">
+										<UploadIcon aria-hidden="true" />
+										Upload
+									</button>
+									<button type="button" className="lh-tool" disabled={creating} onClick={() => void newPage()} data-testid="library-new-page">
+										<FilePlusIcon aria-hidden="true" />
+										New page
+									</button>
+									<button ref={newDiagramButton} type="button" className="lh-tool" onClick={() => setNewDiagram(true)} data-testid="library-new-diagram">
+										<NetworkIcon aria-hidden="true" />
+										New diagram
+									</button>
+								</>
 							)}
-							<button ref={uploadButton} type="button" className="lh-tool" onClick={() => picker.current?.click()} data-testid="library-upload">
-								<UploadIcon aria-hidden="true" />
-								Upload
-							</button>
-							<button type="button" className="lh-tool" disabled={creating} onClick={() => void newPage()} data-testid="library-new-page">
-								<FilePlusIcon aria-hidden="true" />
-								New page
-							</button>
-							<button ref={newDiagramButton} type="button" className="lh-tool" onClick={() => setNewDiagram(true)} data-testid="library-new-diagram">
-								<NetworkIcon aria-hidden="true" />
-								New diagram
-							</button>
 						</div>
 						<input
 							ref={picker}
@@ -711,7 +746,7 @@ export function LibraryView() {
 							<button type="button" className="lh-text-action" disabled={selected.size === 0} onClick={() => void bulkMark({ favorite: true })}>Favorite</button>
 							<button type="button" className="lh-text-action" disabled={selectedItems.length === 0} onClick={() => setBulkTagging(true)}>Tags…</button>
 							<button type="button" className="lh-text-action" disabled={selected.size === 0} onClick={() => void bulkMark({ archived: true })}>Archive</button>
-							<button type="button" className="lh-text-action" data-danger="" disabled={selected.size === 0} onClick={async () => finishBulk(await runBulk(selectedKeys, trashKey, nameOfKey))} data-testid="library-bulk-trash">Move to the trash</button>
+							<button type="button" className="lh-text-action" data-danger="" disabled={selected.size === 0} onClick={async () => finishBulk(await runBulk(selectedKeys, async (key) => (fromRepo(key) ? FROM_REPO : trashKey(key)), nameOfKey))} data-testid="library-bulk-trash">Move to the trash</button>
 						</div>
 					)}
 					{inFlight && (

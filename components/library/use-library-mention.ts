@@ -2,8 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { createElement, Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
-import { hasMentionTrigger, matchMentions, mentionQuery, parseReferences, type LibraryItem } from "@/src/core";
-import type { CreateMentionPage } from "./mention-menu.tsx";
+import { folderPathLabel, hasMentionTrigger, matchMentions, mentionName, mentionQuery, parseReferences, type LibraryFolder, type LibraryItem } from "@/src/core";
+import type { CreateMentionPage, MentionItem } from "./mention-menu.tsx";
 
 /**
  * The @ list for one text field (feature 009, contracts/ui-contract.md). The
@@ -80,6 +80,7 @@ export function useLibraryMention({ value, onValueChange, inputRef }: {
 	const ref = inputRef ?? ownRef;
 	const listId = useId();
 	const [items, setItems] = useState<LibraryItem[] | null>(null);
+	const [folders, setFolders] = useState<LibraryFolder[]>([]);
 	const [status, setStatus] = useState<MentionStatus>("idle");
 	const [caret, setCaret] = useState<number | null>(null);
 	const [composing, setComposing] = useState(false);
@@ -93,11 +94,17 @@ export function useLibraryMention({ value, onValueChange, inputRef }: {
 	const latest = useRef({ value, onValueChange });
 	latest.current = { value, onValueChange };
 
-	const names = useMemo(() => items?.map((item) => item.name) ?? [], [items]);
+	// A mirrored item is reached by its Library path (feature 026, R13); its row
+	// still shows the file name, with the folder path as its meta.
+	const entries = useMemo((): MentionItem[] | null => items?.map((item) => {
+		if (!item.mirror) return item;
+		return { ...item, mention: mentionName(item, folders), place: folderPathLabel(item.folderId, folders) };
+	}) ?? null, [items, folders]);
+	const names = useMemo(() => entries?.map((item) => item.mention ?? item.name) ?? [], [entries]);
 	const token = caret === null || composing ? null : mentionQuery(value, Math.min(caret, value.length), names);
 	const open = token !== null && closedAt !== token.start;
 	const query = open ? token.query : null;
-	const options = useMemo(() => (query !== null && items ? matchMentions(items, query) : []), [query, items]);
+	const options = useMemo(() => (query !== null && entries ? matchMentions(entries.map((item) => ({ item, name: item.mention ?? item.name })), query).map((row) => row.item) : []), [query, entries]);
 	const activeIndex = activeMentionRow(cursor, options.length);
 
 	const load = useCallback(async () => {
@@ -105,7 +112,9 @@ export function useLibraryMention({ value, onValueChange, inputRef }: {
 		try {
 			const response = await fetch("/api/library", { cache: "no-store" });
 			if (!response.ok) throw new Error(String(response.status));
-			setItems(((await response.json()) as { items: LibraryItem[] }).items);
+			const body = (await response.json()) as { items: LibraryItem[]; folders?: LibraryFolder[] };
+			setItems(body.items);
+			setFolders(body.folders ?? []);
 			setStatus("ready");
 		} catch {
 			// A failed refresh keeps the last good list.
@@ -138,9 +147,9 @@ export function useLibraryMention({ value, onValueChange, inputRef }: {
 	// A refusal lasts until the learner carries on with the draft.
 	useEffect(() => { setRefusal(null); }, [value]);
 
-	const insert = useCallback((item: Pick<LibraryItem, "name">) => {
+	const insert = useCallback((item: Pick<MentionItem, "name" | "mention">) => {
 		if (!token || caret === null) return;
-		const inserted = `@${item.name} `;
+		const inserted = `@${item.mention ?? item.name} `;
 		pendingCaret.current = token.start + inserted.length;
 		setClosedAt(token.start);
 		onValueChange(value.slice(0, token.start) + inserted + value.slice(caret));
@@ -217,7 +226,7 @@ export function useLibraryMention({ value, onValueChange, inputRef }: {
 		: null;
 
 	/** Pre-send line: only names, since the mode is decided at send. */
-	const attaching = useMemo(() => (items && hasTrigger ? parseReferences(value, items).map((item) => item.name) : []), [items, value, hasTrigger]);
+	const attaching = useMemo(() => (items && hasTrigger ? parseReferences(value, items, folders).map((item) => item.name) : []), [items, folders, value, hasTrigger]);
 	const line: ReactNode = createElement(
 		Fragment,
 		null,

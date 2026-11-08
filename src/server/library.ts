@@ -134,6 +134,7 @@ export function libraryTrashResponse(request: Request): Promise<Response> {
 			: typeof body?.folderId === "string" ? await libraryStore.trashFolder(body.folderId) : undefined;
 		if (entry === undefined) return json({ error: "Say what to move to the trash.", code: "invalid_trash" }, 400);
 		if (!entry) return json({ error: "That is no longer in your Library." }, 404);
+		if (isRefusal(entry)) return refusal(entry);
 		return json({ entry }, 201);
 	});
 }
@@ -141,6 +142,7 @@ export function libraryTrashResponse(request: Request): Promise<Response> {
 export function libraryRestoreResponse(entryId: string): Promise<Response> {
 	return guarded(async () => {
 		const restored = await libraryStore.restoreTrash(entryId);
+		if (restored && isRefusal(restored)) return refusal(restored);
 		return restored ? json(restored) : json({ error: "That is no longer in the trash." }, 404);
 	});
 }
@@ -201,15 +203,16 @@ export function libraryPatchResponse(request: Request, id: string): Promise<Resp
 		const result = await libraryStore.rename(id, body.name);
 		if (!result) return json({ error: "That item is no longer in your Library." }, 404);
 		// The contract has no 415 here: a type the bytes don't fit is a bad name.
-		if (isRefusal(result)) return refusal(result, result.refused === "name_taken" ? 409 : 400);
+		if (isRefusal(result)) return refusal(result, result.refused === "name_taken" || result.refused === "repo_file" ? 409 : 400);
 		return json({ item: result });
 	});
 }
 
 export function libraryDeleteResponse(id: string): Promise<Response> {
 	return guarded(async () => {
-		if (!await libraryStore.remove(id)) return json({ error: "That item is no longer in your Library." }, 404);
-		return json({ ok: true });
+		const removed = await libraryStore.remove(id);
+		if (!removed) return json({ error: "That item is no longer in your Library." }, 404);
+		return removed === true ? json({ ok: true }) : refusal(removed);
 	});
 }
 

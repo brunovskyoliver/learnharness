@@ -74,7 +74,13 @@ export function LibraryRow({ item, location, repo, onRenamed, actions = [], grid
 
 	const opened = () => { void fetch(`/api/library/items/${item.id}/opened`, { method: "POST" }).catch(() => {}); };
 	// The right-click and phone paths: the Rename icon hides on narrow screens.
-	const menuActions: LibraryMenuAction[] = actions.length === 0 ? [] : [
+	// Feature 026: a file from a linked repo is read-only in content and place; the view gives its marks.
+	const mirrored = item.mirror !== undefined;
+	const menuActions: LibraryMenuAction[] = actions.length === 0 ? [] : mirrored ? [
+		{ label: "Open", onSelect: () => openItem() },
+		...actions,
+		{ label: "Download", onSelect: () => { window.location.assign(contentUrl(item.id, true)); } },
+	] : [
 		{ label: "Rename", onSelect: () => { discard.current = false; setRenaming(true); } },
 		...actions,
 		...(item.kind === "page" ? [{ label: "Make flashcards", onSelect: () => { window.location.assign(`/review?make=${encodeURIComponent(`page:${item.id}`)}`); } }] : []),
@@ -96,6 +102,12 @@ export function LibraryRow({ item, location, repo, onRenamed, actions = [], grid
 	);
 	const newTab = item.kind === "image";
 	const readable = opensInPane(item.kind);
+	/** What clicking the row does, for the menu's "Open" too. */
+	function openItem() {
+		if (newTab) { window.open(contentUrl(item.id), "_blank", "noreferrer"); opened(); }
+		else if (readable) pane?.open({ id: item.id, name: item.name, kind: item.kind, size: item.size, ...(repo ? { repo } : {}) });
+		else { window.location.assign(contentUrl(item.id, true)); opened(); }
+	}
 
 	return (
 		<LibraryEntryMenu actions={menuActions}>
@@ -103,8 +115,8 @@ export function LibraryRow({ item, location, repo, onRenamed, actions = [], grid
 			className="lh-row"
 			data-selected={selection?.selected ? "" : undefined}
 			data-testid="library-row"
-			draggable={Boolean(onDragStartEntry) && !renaming}
-			onDragStart={(event) => onDragStartEntry?.(`item:${item.id}`, event)}
+			draggable={Boolean(onDragStartEntry) && !renaming && !mirrored}
+			onDragStart={(event) => { if (!mirrored) onDragStartEntry?.(`item:${item.id}`, event); }}
 		>
 			<div className={`flex items-center gap-0.5 pr-2 ${grid ? "h-full" : ""}`}>
 				{selection && <LibrarySelectBox label={`Select ${item.name}`} checked={selection.selected} onChange={selection.toggle} />}
@@ -142,7 +154,7 @@ export function LibraryRow({ item, location, repo, onRenamed, actions = [], grid
 				) : (
 					<a href={contentUrl(item.id, true)} aria-label={`Open ${item.name}`} className={OPEN} onClick={opened}>{body}</a>
 				)}
-				{!renaming && !grid && (
+				{!renaming && !grid && !mirrored && (
 					<>
 						<button
 							ref={renameButton}

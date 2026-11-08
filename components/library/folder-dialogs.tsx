@@ -86,7 +86,8 @@ export function FolderNameDialog({ title, label = "Folder name", action, initial
 export function moveTargets(folders: readonly LibraryFolder[], moving: { folderIds?: readonly string[] } | null): { id: string | null; label: string; depth: number }[] {
 	const blocked = new Set((moving?.folderIds ?? []).flatMap((id) => [...folderSubtree(id, folders)]));
 	const rows = folders
-		.filter((folder) => !blocked.has(folder.id) && !folderTrail(folder.id, folders).some((f) => blocked.has(f.id)))
+		// Nothing moves into a mirror (feature 026, R11).
+		.filter((folder) => !folder.mirror && !blocked.has(folder.id) && !folderTrail(folder.id, folders).some((f) => blocked.has(f.id)))
 		.map((folder) => {
 			const trail = folderTrail(folder.id, folders);
 			return { id: folder.id as string | null, label: trail.map((f) => f.name).join(" / "), depth: trail.length };

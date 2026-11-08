@@ -18,6 +18,7 @@ const api = await import("../src/server/documents.ts");
 const files = await import("../src/store/library-index.ts");
 const { isRefusal } = await import("../src/core/library.ts");
 const { libraryTextIdle } = await import("../src/server/library-text.ts");
+const { pullTree } = await import("./fixtures/mirror.ts");
 after(async () => { delete process.env.LH_HOSTED; fs.rmSync(dir, { recursive: true, force: true }); });
 
 const store = stores.libraryStore;
@@ -199,7 +200,7 @@ describe("what triggers it", () => {
 			await store.moveItem(made.id, folder.id);
 			await settled();
 			assert.equal((await search("secondword")).results[0]!.location, "Box", "move");
-			const entry = await store.trashItem(made.id);
+			const entry = (await store.trashItem(made.id) as TrashEntry | null);
 			assert.ok(entry);
 			assert.equal((await search("secondword")).total, 0, "trash takes effect at once, before any sync");
 			await settled();
@@ -230,7 +231,7 @@ describe("trashed and archived", () => {
 		assert.ok(!isRefusal(made));
 		await sync();
 		assert.equal((await search("trashedword")).total, 1);
-		await store.trashFolder(folder.id);
+		(await store.trashFolder(folder.id) as TrashEntry | null);
 		assert.equal((await search("trashedword")).total, 0);
 		const status = await engine.documentIndexStatus();
 		assert.ok(!status.notSearched.some((row) => row.id === made.item.id), "and isn't listed");
@@ -358,13 +359,13 @@ describe("annotations", () => {
 		const uploaded = await upload("t.pdf", PDF);
 		await api.annotationCreateResponse(post({ anchor: anchor() }), uploaded.id);
 		const file = path.join(PATHS.library, "annotations", `${uploaded.id}.json`);
-		const entry = await store.trashItem(uploaded.id);
+		const entry = (await store.trashItem(uploaded.id) as TrashEntry | null);
 		assert.ok(entry);
 		assert.ok(fs.existsSync(file));
 		assert.equal((await api.annotationsListResponse(uploaded.id)).status, 404, "a trashed item reads as gone");
 		await store.restoreTrash(entry.id);
 		assert.equal((await (await api.annotationsListResponse(uploaded.id)).json() as { annotations: unknown[] }).annotations.length, 1);
-		const again = await store.trashItem(uploaded.id);
+		const again = (await store.trashItem(uploaded.id) as TrashEntry | null);
 		await store.purgeTrash(again!.id);
 		assert.ok(!fs.existsSync(file));
 	}));
@@ -404,6 +405,57 @@ describe("a passage into a note", () => {
 	}));
 });
 
+describe("feature 026: files synced from a linked repo", () => {
+	it("are indexed and found; a changed file reindexes; an unreadable one is named; a removed one drops out", () => asUser("u_mirror_index", async () => {
+		await pullTree(store, {
+			"week1/notes.md": "# Week 1\n\nWaves carry energy.",
+			"data.txt": "alpha\nneedlework\n",
+			"papers/sample.pdf": PDF,
+			"papers/broken.pdf": Buffer.from("%PDF-1.4\nnot really a pdf"),
+		});
+		await sync();
+		await libraryTextIdle();
+		const items = await store.list();
+		const notes = items.find((i) => i.mirror?.path === "week1/notes.md")!;
+		const broken = items.find((i) => i.mirror?.path === "papers/broken.pdf")!;
+		const found = await search("energy");
+		assert.equal(found.results[0]!.itemId, notes.id);
+		assert.equal(found.results[0]!.name, "notes.md");
+		assert.ok((await search("force")).results.some((r) => r.kind === "pdf"), "a synced PDF's pages are searched");
+		assert.equal(await stateOf(broken.id), "failed", "an unreadable synced file is named as not searched");
+
+		await pullTree(store, { "week1/notes.md": "# Week 1\n\nWaves interfere.", "papers/sample.pdf": PDF, "papers/broken.pdf": Buffer.from("%PDF-1.4\nnot really a pdf") });
+		await sync();
+		assert.equal((await search("energy")).total, 0, "the old text is gone");
+		assert.equal((await search("interfere")).results[0]!.itemId, notes.id, "the changed file was read again, same id");
+		assert.equal((await search("needlework")).total, 0, "a file removed upstream drops out");
+	}));
+});
+
+describe("feature 026: highlights on a synced PDF (T042)", () => {
+	it("save, keep their fingerprint through an unchanged pull, and see a new one after a change", () => asUser("u_mirror_ann", async () => {
+		await pullTree(store, { "papers/sample.pdf": PDF, "notes.md": "# n" });
+		const pdf = (await store.list()).find((i) => i.mirror?.path === "papers/sample.pdf")!;
+		const made = await api.annotationCreateResponse(post({ anchor: anchor(), note: "on a synced PDF" }), pdf.id);
+		assert.equal(made.status, 201);
+		const { annotation } = await made.json() as { annotation: { id: string; fingerprint: { size: number; updatedAt: string } } };
+		const list = async () => (await api.annotationsListResponse(pdf.id)).json() as Promise<{ annotations: { id: string }[]; fingerprint: { size: number; updatedAt: string } }>;
+
+		await pullTree(store, { "papers/sample.pdf": PDF, "notes.md": "# n" });
+		const unchanged = await list();
+		assert.deepEqual(unchanged.annotations.map((a) => a.id), [annotation.id]);
+		assert.deepEqual(unchanged.fingerprint, annotation.fingerprint, "an unchanged pull keeps the fingerprint, so nothing re-anchors");
+
+		await pullTree(store, { "papers/sample.pdf": Buffer.concat([PDF, Buffer.from("\n% changed\n")]), "notes.md": "# n" });
+		const changed = await list();
+		assert.deepEqual(changed.annotations.map((a) => a.id), [annotation.id], "the highlight stays with the same item");
+		assert.notDeepEqual(changed.fingerprint, annotation.fingerprint, "a changed file's new fingerprint makes the reader re-anchor by quote");
+		// Highlights are for PDFs (feature 020): a synced text file answers as an uploaded one does.
+		const text = (await store.list()).find((i) => i.mirror?.path === "notes.md")!;
+		assert.equal((await api.annotationCreateResponse(post({ anchor: anchor() }), text.id)).status, 404);
+	}));
+});
+
 describe("the reader's assets", () => {
 	it("serves the local worker and named assets, and nothing else", async () => {
 		const worker = await api.pdfjsAssetResponse(["legacy", "build", "pdf.worker.min.mjs"]);
@@ -414,3 +466,7 @@ describe("the reader's assets", () => {
 		}
 	});
 });
+
+/** Feature 026: trash and restore can also answer a refusal; these tests never meet one. */
+type TrashEntry = import("../src/core/library.ts").LibraryTrashEntry;
+type Restored = { items: import("../src/core/library.ts").LibraryItem[]; folders: import("../src/core/library.ts").LibraryFolder[] };

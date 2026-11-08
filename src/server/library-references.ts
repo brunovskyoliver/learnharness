@@ -8,7 +8,7 @@ import { composeInstructions } from "../agent/teacher-agent.ts";
 import { parseReferences, type LibraryReference } from "../core/library-refs.ts";
 import {
 	isTombstone, REFERENCE_INLINE_MAX_BYTES, REFERENCE_MAX_PER_MESSAGE, REFERENCE_MESSAGE_MAX_BYTES,
-	type LibraryItem, type LibraryTombstone,
+	type LibraryFolder, type LibraryItem, type LibraryTombstone,
 } from "../core/library.ts";
 import type { LhMessage } from "../core/native-messages.ts";
 import type { resolveConversationSpec } from "../core/settings-resolution.ts";
@@ -52,10 +52,11 @@ function base(item: LibraryItem): Pick<LibraryReference, "itemId" | "name" | "ki
 		kind: item.kind,
 		size: item.size,
 		...(item.headVersion !== undefined ? { version: item.headVersion } : {}),
+		...(item.mirror ? { fromRepo: true as const } : {}),
 	};
 }
 
-const missing = (entry: LibraryTombstone): LibraryReference => ({ itemId: entry.id, name: entry.name, kind: entry.kind, mode: "missing" });
+const missing = (entry: LibraryTombstone): LibraryReference => ({ itemId: entry.id, name: entry.name, kind: entry.kind, mode: "missing", ...(entry.mirror ? { fromRepo: true as const } : {}) });
 
 /** The running budget for one message. Outlines count too, so a later item
  *  doesn't go whole past the message limit. */
@@ -117,8 +118,11 @@ export async function resolveReferences(texts: string | readonly string[], optio
 	const list = typeof texts === "string" ? [texts] : texts;
 	if (!list.some((text) => text.includes("@"))) return [];
 	let catalog: (LibraryItem | LibraryTombstone)[];
+	let folders: LibraryFolder[];
 	try {
 		catalog = await stores.libraryStore.catalog();
+		// Mirrored items are named by their Library path (feature 026, R13).
+		folders = await stores.libraryStore.folders();
 	} catch (err) {
 		// With no catalog no token can be told from plain text. The input is
 		// still saved; the Library itself says it could not be loaded.
@@ -126,14 +130,14 @@ export async function resolveReferences(texts: string | readonly string[], optio
 		return [];
 	}
 	const seen = new Map<string, LibraryItem | LibraryTombstone>();
-	for (const text of list) for (const entry of parseReferences(text, catalog)) if (!seen.has(entry.id)) seen.set(entry.id, entry);
+	for (const text of list) for (const entry of parseReferences(text, catalog, folders)) if (!seen.has(entry.id)) seen.set(entry.id, entry);
 	const budget: Budget = { usedBytes: 0, roomTokens: options.roomTokens };
 	const out: LibraryReference[] = [];
 	let position = 0;
 	for (const entry of seen.values()) {
 		position++;
 		if (position > REFERENCE_MAX_PER_MESSAGE) {
-			out.push({ itemId: entry.id, name: entry.name, kind: entry.kind, ...(isTombstone(entry) ? {} : { size: entry.size }), mode: "missing", reason: "over-count" });
+			out.push({ itemId: entry.id, name: entry.name, kind: entry.kind, ...(isTombstone(entry) ? {} : { size: entry.size }), mode: "missing", reason: "over-count", ...(entry.mirror ? { fromRepo: true as const } : {}) });
 		} else if (isTombstone(entry)) {
 			out.push(missing(entry));
 		} else {

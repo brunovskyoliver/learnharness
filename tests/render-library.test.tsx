@@ -140,3 +140,23 @@ describe("Library folders (feature 011)", () => {
 		assert.ok(body({ items: [], folders: [folder("fld_c", "Empty")], folderId: "fld_c" }).includes("This folder is empty."));
 	});
 });
+
+describe("feature 026: rows inside a mirror (T036, ui-contract.md Menus)", () => {
+	const mirror = (path: string) => ({ linkId: "rpl_a", repoKey: "github.com/o/n#main", path });
+	const linked = { id: "fld_l", name: "Lecture notes", parentId: null, createdAt: "", updatedAt: "", mirror: mirror("") };
+	const week1 = { id: "fld_w", name: "week1", parentId: "fld_l", createdAt: "", updatedAt: "", mirror: mirror("week1") };
+	const synced = item({ id: "lib_m", name: "README.md", folderId: "fld_l", origin: { type: "repo", linkId: "rpl_a" }, mirror: { ...mirror("README.md"), oid: "o", snapshot: "s" } });
+	const marks = [{ label: "Add to favorites", onSelect: noop }];
+	it("a synced file and a mirror folder have no Rename or Delete buttons and can't be dragged", () => {
+		const html = body({ items: [synced], folders: [linked, week1], folderId: "fld_l", itemActions: () => marks, folderActions: () => marks, onDragStartEntry: noop, onDropOnFolder: noop });
+		assert.ok(html.includes("Open README.md") && html.includes("Open folder week1"));
+		assert.ok(!html.includes("Rename README.md") && !html.includes("Delete README.md"));
+		assert.ok(!html.includes("Rename folder week1") && !html.includes("Delete folder week1"));
+		assert.ok(!html.includes('draggable="true"'), "nothing in a mirror is draggable");
+	});
+	it("the linked folder keeps its Rename and Delete buttons and stays draggable", () => {
+		const html = body({ items: [synced], folders: [linked, week1], folderActions: () => marks, onDragStartEntry: noop });
+		assert.ok(html.includes("Rename folder Lecture notes") && html.includes("Delete folder Lecture notes"));
+		assert.ok(html.includes('draggable="true"'));
+	});
+});

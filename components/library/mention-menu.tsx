@@ -5,6 +5,10 @@ import { formatBytes, KIND_LABEL, type LibraryItem } from "@/src/core";
 import { createBlankPage, usePagePane } from "./page-pane-api.ts";
 import type { MentionStatus } from "./use-library-mention.ts";
 
+/** A row of the list. A mirrored item (feature 026) inserts `mention`, its
+ *  Library path, and shows `place`, its folder path, as its meta. */
+export type MentionItem = LibraryItem & { mention?: string; place?: string };
+
 /** Creates a blank page and opens it in the pane; sends nothing. */
 export type CreateMentionPage = () => ReturnType<typeof createBlankPage>;
 
@@ -13,9 +17,9 @@ export interface MentionMenuProps {
 	status: MentionStatus;
 	/** The Library holds something, so an empty list means no match. */
 	hasItems: boolean;
-	options: LibraryItem[];
+	options: MentionItem[];
 	activeIndex: number;
-	onPick: (item: LibraryItem) => void;
+	onPick: (item: MentionItem) => void;
 	onNewPage: () => void;
 	/** The hook's way to create a page: it can't import the pane into the startup graph. */
 	createPageRef?: RefObject<CreateMentionPage | null>;
@@ -74,7 +78,7 @@ export function MentionMenu({ listId, status, hasItems, options, activeIndex, on
 				>
 					<span className="nb-menu-text">
 						<span className="nb-menu-name [overflow-wrap:anywhere]">{item.name}</span>
-						<span className="nb-menu-description">{KIND_LABEL[item.kind]} · {formatBytes(item.size)}</span>
+						<span className="nb-menu-description [overflow-wrap:anywhere]">{item.place !== undefined ? item.place : `${KIND_LABEL[item.kind]} · ${formatBytes(item.size)}`}</span>
 					</span>
 				</div>
 			))}

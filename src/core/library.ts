@@ -179,6 +179,11 @@ export function inMirror(folderId: string | null | undefined, folders: readonly 
 	return folders.find((f) => f.id === folderId)?.mirror !== undefined;
 }
 
+/** A mirrored item's @ name (R13, analyze M2): every folder above it, the
+ *  linked folder and its repo path, "/"-joined: "Physics/Lecture notes/week1/notes.md". */
+export const libraryPathName = (item: Pick<LibraryItem, "name" | "folderId">, folders: readonly LibraryFolder[]): string =>
+	[...folderTrail(item.folderId, folders).map((f) => f.name), item.name].join("/");
+
 export const isTombstone = (item: LibraryItem | LibraryTombstone): item is LibraryTombstone => "deletedAt" in item;
 
 /** The catalog exists but can't be used: unparsable, unreadable or from a newer
