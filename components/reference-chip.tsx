@@ -85,7 +85,7 @@ export function ReferenceChip({ target, chipId, source, className, citation = fa
 	// One line, never broken inside the name: past the column's width the name
 	// ends in an ellipsis, and its title (and the accessible name) keeps it whole.
 	const icon = <Icon className="lh-ref-chip-icon" aria-hidden="true" focusable="false" />;
-	const name = <span className="lh-ref-chip-name" title={target.name}>{target.name}</span>;
+	const name = <span className="lh-ref-chip-name" title={target.name} translate="no">{target.name}</span>;
 	const folder = target.folderHint && <span className="lh-ref-chip-folder">{` ${target.folderHint}`}</span>;
 	if (target.href === null) {
 		const suffix = target.state === "removed" ? REMOVED_FROM_REPO : NO_LONGER_IN_LIBRARY;

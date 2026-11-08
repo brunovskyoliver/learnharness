@@ -11,6 +11,7 @@ import type { LibraryItem } from "../src/core/library.ts";
 import { chipDeleteRange } from "../src/core/reference-chips.ts";
 import type { LibraryTombstone } from "../src/core/library.ts";
 import { fieldChips, mirrorPieces } from "../components/reference-field.tsx";
+import { KIND_ICON } from "../components/reference-icons.ts";
 import type { MentionCatalog } from "../components/library/use-library-mention.ts";
 
 // Feature 027, T033: what one Backspace or Delete removes in a composer field (research R5).
@@ -82,7 +83,7 @@ describe("the mirror", () => {
 	const removed: LibraryTombstone = { id: "rm", name: "Lecture notes/week2/notes.md", kind: "markdown", deletedAt: "" };
 	const catalog: MentionCatalog = { entries: [page, pdf, gone, removed], folders: [], removedIds: new Set(["rm"]) };
 	const draw = (value: string, composition: { start: number; length: number } | null = null) => {
-		const html = renderToStaticMarkup(React.createElement("div", null, mirrorPieces(value, fieldChips(value, catalog), composition)));
+		const html = renderToStaticMarkup(React.createElement("div", null, mirrorPieces(value, fieldChips(value, catalog), composition, KIND_ICON)));
 		return parseHTML(`<html><body>${html}</body></html>`).document.body.firstElementChild!;
 	};
 	const drafts = [
@@ -143,5 +144,19 @@ describe("the mirror", () => {
 		const root = draw(value, { start: 1, length: 6 });
 		assert.equal([...root.querySelectorAll(".lh-ref-composing")].map((s) => s.textContent).join(""), "ee @Un");
 		assert.equal(root.textContent, value);
+	});
+});
+
+describe("the mirror before its icons load", () => {
+	it("draws the chip's characters with no icon, so nothing moves when it arrives", () => {
+		const value = "See @Untitled note";
+		const catalog = { entries: [{ id: "lib_a", name: "Untitled note", kind: "page", size: 1, createdAt: "", updatedAt: "", origin: { type: "upload" } } as LibraryItem], folders: [], removedIds: new Set<string>() } as unknown as MentionCatalog;
+		const bare = renderToStaticMarkup(React.createElement("div", null, mirrorPieces(value, fieldChips(value, catalog), null)));
+		const drawn = renderToStaticMarkup(React.createElement("div", null, mirrorPieces(value, fieldChips(value, catalog), null, KIND_ICON)));
+		assert.ok(!bare.includes("<svg"));
+		assert.ok(drawn.includes("<svg"));
+		const text = (html: string) => parseHTML(`<html><body>${html}</body></html>`).document.body.textContent;
+		assert.equal(text(bare), text(drawn));
+		assert.equal(text(bare), value);
 	});
 });

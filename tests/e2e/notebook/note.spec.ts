@@ -36,6 +36,8 @@ test.describe("Notebook: a note on paper", () => {
 		await page.goto("/library");
 		// Study's chrome is ready (feature 025: the sidebar is an overlay, opened from ☰).
 		await expect(page.getByRole("button", { name: "Open sidebar" })).toBeVisible();
+		// The server-rendered button shows before the shortcut listener is attached: wait for React.
+		await page.waitForFunction(() => [...document.querySelectorAll('[aria-label="Open sidebar"]')].some((el) => Object.keys(el).some((k) => k.startsWith("__reactProps"))));
 
 		// Study → Notebook with the one shortcut.
 		await page.keyboard.press(`${MOD}+Shift+O`);

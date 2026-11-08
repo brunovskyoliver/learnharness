@@ -124,11 +124,11 @@ description: "Tasks for feature 027, reference chips"
 
 ## Phase 6: Polish and cross-cutting
 
-- [ ] T048 [P] Add "Reference chip" to DESIGN.md under "Library, @ list, page pane and notes" and a Back pill line under Layout, per contracts/ui-contract.md §8
-- [ ] T049 Measure startup JS after (same script and conditions as T002); record both in progress.md; any route over +5% gzip blocks done (SC-006)
-- [ ] T050 Run the `shadcn`, `impeccable` and `web-design-guidelines` checks on the composer, a transcript with chips, the full view, Trash landing and the pill at 320, 390, 1440, light and dark, reduced motion on; fix findings in the files above
-- [ ] T051 Run `node scripts/check-hosted-tenants.mjs` (chips and the full view resolve only the current tenant's Library), `node scripts/check-library-ui.mjs`, `node scripts/check-transcript-scroll-ui.mjs`, `node scripts/check-documents-ui.mjs`, `node scripts/check-streaming-ui.mjs` and the Study Playwright suite; record pre-existing failures separately
-- [ ] T052 Full gate: `npm test`, `npm run lint`, `npm run typecheck`, `npm run build`; write the Report in specs/027-reference-chips/progress.md (what changed, how verified, what is left)
+- [X] T048 [P] Add "Reference chip" to DESIGN.md under "Library, @ list, page pane and notes" and a Back pill line under Layout, per contracts/ui-contract.md §8
+- [X] T049 Measure startup JS after (same script and conditions as T002); record both in progress.md; any route over +5% gzip blocks done (SC-006)
+- [X] T050 Run the `shadcn`, `impeccable` and `web-design-guidelines` checks on the composer, a transcript with chips, the full view, Trash landing and the pill at 320, 390, 1440, light and dark, reduced motion on; fix findings in the files above
+- [X] T051 Run `node scripts/check-hosted-tenants.mjs` (chips and the full view resolve only the current tenant's Library), `node scripts/check-library-ui.mjs`, `node scripts/check-transcript-scroll-ui.mjs`, `node scripts/check-documents-ui.mjs`, `node scripts/check-streaming-ui.mjs` and the Study Playwright suite; record pre-existing failures separately
+- [X] T052 Full gate: `npm test`, `npm run lint`, `npm run typecheck`, `npm run build`; write the Report in specs/027-reference-chips/progress.md (what changed, how verified, what is left)
 
 ---
 
@@ -155,3 +155,12 @@ description: "Tasks for feature 027, reference chips"
 - **Increment 2**: Phase 4 (US2), the composer overlay, the riskiest part, gated by its own e2e and byte tests.
 - **Increment 3**: Phase 5 (US3), after the owner approves the prompt sentence.
 - Phase 6 closes each increment that ships (DESIGN.md, budget, UI checks, full gate).
+
+---
+
+## Phase 7: Convergence
+
+Assessed 2026-11-08 by speckit-converge after phases 1-6 (spec FR-001-FR-021, SC-001-SC-006, plan, contracts, constitution I-VIII). Two gaps; everything else is met.
+
+- [X] T059 [US3] FR-017 / SC-002 (partial; found in the real-model check): going back to a lesson started with `?prompt=` (Home, new session) sent its first message again, and once that was stopped showed an empty session. The Back pill's `router.back()` and the browser's Back remount `Chat` from a router payload older than its turns, and the once-only guard was a per-mount ref. In components/chat.tsx: the first send is guarded once per session per tab, and when this tab has shown more of a session's record than the mounted payload holds, the lesson reads its record again (own effect, so a remount's cleanup can't leave it aborted). Regression journey in tests/e2e/study/reference-chips.spec.ts ("T059"); real-model pass in ~/agent-runs/2026-11-08-reference-chips/real-model/. The same happened without chips (sidebar → Library → Back), so it predates 027; 027 put it one click away.
+- [X] T060 [US3] FR-002 (partial): "Save to a page" on tutor prose reads the drawn DOM (components/passage-selection.ts), so a tutor chip would save its name and hint ("Notes.pdf · p. 3") instead of the link text it saved before. An element with `data-source` contributes that text; tests/passage-selection-chips.test.ts.

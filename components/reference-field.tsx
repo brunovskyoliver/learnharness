@@ -16,10 +16,12 @@
  * field's (a font not loaded, a style differing), the overlay turns off and the
  * field is exactly today's.
  *
- * In the composer's startup graph: no Library code, no navigation.
+ * In the composer's startup graph: no Library code, no navigation. The kind
+ * icons arrive with the first chip; each sits over its transparent `@`, so an
+ * icon drawn late moves nothing.
  */
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
-import { KIND_ICON } from "@/components/reference-icons";
+import type { KIND_ICON } from "@/components/reference-icons";
 import type { MentionCatalog } from "@/components/library/use-library-mention.ts";
 import { chipDeleteRange, referenceForms, referenceSpans, type ChipState, type LibraryItem, type LibraryKind, type LibraryTombstone, type ReferenceForm } from "@/src/core";
 
@@ -155,7 +157,15 @@ export function ReferenceField({ value, catalog, inputRef, children, className }
 		};
 	}, [on, inputRef]);
 
-	const drawn = useMemo(() => (on ? mirrorPieces(value, chips, composition) : null), [on, value, chips, composition]);
+	const [icons, setIcons] = useState<typeof KIND_ICON | null>(null);
+	const anyChip = chips.length > 0;
+	useEffect(() => {
+		if (!anyChip || icons) return;
+		let current = true;
+		void import("@/components/reference-icons").then((m) => { if (current) setIcons(m.KIND_ICON); });
+		return () => { current = false; };
+	}, [anyChip, icons]);
+	const drawn = useMemo(() => (on ? mirrorPieces(value, chips, composition, icons) : null), [on, value, chips, composition, icons]);
 
 	return (
 		<div className={className ? `lh-ref-field ${className}` : "lh-ref-field"} data-overlay={on ? "on" : undefined}>
@@ -166,7 +176,7 @@ export function ReferenceField({ value, catalog, inputRef, children, className }
 }
 
 /** The mirror's content: the value, character for character, chips restyled. */
-export function mirrorPieces(value: string, chips: ReturnType<typeof fieldChips>, composition: { start: number; length: number } | null): ReactNode[] {
+export function mirrorPieces(value: string, chips: ReturnType<typeof fieldChips>, composition: { start: number; length: number } | null, icons: typeof KIND_ICON | null = null): ReactNode[] {
 	const out: ReactNode[] = [];
 	let key = 0;
 	const comp = composition && composition.length > 0 ? [composition.start, composition.start + composition.length] as const : null;
@@ -203,13 +213,13 @@ export function mirrorPieces(value: string, chips: ReturnType<typeof fieldChips>
 		const [start, end] = form.range;
 		if (start < at) continue;
 		out.push(...text(at, start));
-		const Icon = KIND_ICON[kind];
+		const Icon = icons?.[kind];
 		if (form.span) {
 			const head = form.span.end;
 			const page = form.page !== undefined && !form.passageOnly ? /^, page \d+/.exec(value.slice(head))?.[0] ?? "" : "";
 			out.push(
 				<span key={key++} className="lh-ref-chip" data-state={state} data-kind={kind} data-testid="ref-field-chip">
-					<span className="lh-ref-chip-at">{text(start, start + 1)}<Icon aria-hidden="true" focusable="false" /></span>
+					<span className="lh-ref-chip-at">{text(start, start + 1)}{Icon && <Icon aria-hidden="true" focusable="false" />}</span>
 					{text(start + 1, head)}
 					{page && <span className="lh-ref-chip-page">{text(head, head + page.length)}</span>}
 				</span>,

@@ -11,19 +11,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeftIcon } from "lucide-react";
 import { useSessionList } from "@/components/session-list";
-import { readReturnPoint, returnRoute, RETURN_EVENT, type ReturnPoint } from "@/components/reference-return";
-
-/** The return point, kept in step with this tab's storage. */
-export function useReturnPoint(): ReturnPoint | null {
-	const [point, setPoint] = useState<ReturnPoint | null>(null);
-	useEffect(() => {
-		const read = () => setPoint(readReturnPoint());
-		read();
-		window.addEventListener(RETURN_EVENT, read);
-		return () => window.removeEventListener(RETURN_EVENT, read);
-	}, []);
-	return point;
-}
+import { returnRoute, type ReturnPoint } from "@/components/reference-return";
 
 export function BackPill({ point }: { point: ReturnPoint }) {
 	const router = useRouter();
@@ -45,7 +33,7 @@ export function BackPill({ point }: { point: ReturnPoint }) {
 		<div className="lh-back-pill-row">
 			<button type="button" className="nb-pill lh-back-pill" onClick={goBack} data-testid="back-pill">
 				<ArrowLeftIcon aria-hidden="true" />
-				<span className="min-w-0 truncate">{label}</span>
+				<span className="min-w-0 truncate" title={label}>{label}</span>
 			</button>
 			<p role="status" aria-live="polite" className="sr-only">{announced}</p>
 		</div>

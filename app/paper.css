@@ -3060,8 +3060,12 @@ html.lh-paper[data-theme="dark"] .lh-mark-on-dark { display: inline-block; }
 .lh-paper .lh-ref-chip:focus-visible, .lh-paper [data-focus-return]:focus { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
 .lh-paper .lh-ref-chip-icon { flex-shrink: 0; align-self: center; width: 12px; height: 12px; margin-right: 4px; color: var(--graphite); }
 /* The hint gives way first, then the name; the words after a gone name stay. */
-.lh-paper .lh-ref-chip-hint { flex-shrink: 100; min-width: 0; margin-left: .25em; overflow: hidden; color: var(--faint); text-overflow: ellipsis; }
-.lh-paper .lh-ref-chip-folder { flex-shrink: 50; min-width: 0; margin-left: .25em; overflow: hidden; color: var(--faint); text-overflow: ellipsis; }
+/* Flex shrinks by weight × width, so any shared share would cut the name by a
+   fraction of a pixel and its ellipsis would show while the hint still had
+   room to give: the weights keep the name's and folder's shares below a layout
+   unit until the hint is gone, then the folder's until it is (owner, phase 3). */
+.lh-paper .lh-ref-chip-hint { flex-shrink: 1000000000; min-width: 0; margin-left: .25em; overflow: hidden; color: var(--faint); text-overflow: ellipsis; }
+.lh-paper .lh-ref-chip-folder { flex-shrink: 100000; min-width: 0; margin-left: .25em; overflow: hidden; color: var(--faint); text-overflow: ellipsis; }
 .lh-paper .lh-ref-chip-suffix { flex-shrink: 0; margin-left: .25em; }
 /* Deleted for good, or removed from the repo: the name as written, faint, not a link. */
 .lh-paper .lh-ref-chip:is([data-state="deleted"], [data-state="removed"]) { padding: 0; background: none; color: var(--faint); }

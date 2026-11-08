@@ -8,7 +8,7 @@
  * (FR-018). The scroll position is the lesson's own reading anchor
  * (components/session-reading-state.tsx); this only adds the focus.
  */
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 export const RETURN_KEY = "lh:reference-return";
@@ -151,4 +151,17 @@ export function useFocusReturn(chatId: string): void {
 		timer = window.setTimeout(attempt, FOCUS_STEP_MS);
 		return () => window.clearTimeout(timer);
 	}, [here, chatId]);
+}
+
+/** The return point, kept in step with this tab's storage (the Library reads
+ *  it to show the Back pill, which loads only when there is one). */
+export function useReturnPoint(): ReturnPoint | null {
+	const [point, setPoint] = useState<ReturnPoint | null>(null);
+	useEffect(() => {
+		const read = () => setPoint(readReturnPoint());
+		read();
+		window.addEventListener(RETURN_EVENT, read);
+		return () => window.removeEventListener(RETURN_EVENT, read);
+	}, []);
+	return point;
 }

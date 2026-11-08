@@ -318,14 +318,29 @@ function ChatView({
 	setReattachSettled(() => reattachSettledRef.current());
 
 	// New chat with a topic: send the first message exactly once
-	// (initialPromptOwed — the pure gate, pinned in the test suite).
-	const sentInitial = useRef(false);
+	// (initialPromptOwed — the pure gate, pinned in the test suite). Once per
+	// session in this tab, not per mount: going back to a lesson (the
+	// browser's Back, or feature 027's Back pill) can remount it from a
+	// router payload older than its turns (the entry's own, or a prefetch
+	// made while it was new). When this tab has already shown more of the
+	// record than that payload holds, the record is read again (and a running
+	// turn reattached) instead of showing an empty or shortened session.
+	// Its own effect, so a remount's cleanup (which stops the session's
+	// reads) is followed by the read again rather than leaving it aborted.
 	useEffect(() => {
-		if (!sentInitial.current && initialPromptOwed(initialMessages, initialPrompt)) {
-			sentInitial.current = true;
-			void send({ type: "text", text: initialPrompt! });
-		}
-	}, [initialPrompt, initialMessages, send]);
+		if ((recordShown.get(chatId) ?? 0) > initialMessages.length) resumeStream();
+	}, [chatId, initialMessages, resumeStream]);
+	const initialHandled = useRef(false);
+	useEffect(() => {
+		if (initialHandled.current) return;
+		initialHandled.current = true;
+		if (initialPromptSent.has(chatId) || !initialPromptOwed(initialMessages, initialPrompt)) return;
+		initialPromptSent.add(chatId);
+		void send({ type: "text", text: initialPrompt! });
+	}, [chatId, initialPrompt, initialMessages, send]);
+	useEffect(() => {
+		recordShown.set(chatId, Math.max(recordShown.get(chatId) ?? 0, nativeMessages.length));
+	}, [chatId, nativeMessages.length]);
 
 	// A turn running server-side, attached to no live view of ours (navigate
 	// away mid-turn, or a wake turn discovered mid-session): the reattach
@@ -1981,6 +1996,11 @@ function usePhoneWidth(): boolean {
 export function answerOpensDock(target: string | undefined, pendingId: string | null): boolean {
 	return Boolean(target) && target === pendingId;
 }
+
+/** Sessions whose `?prompt` topic this tab has sent, and how many record
+ *  messages this tab has shown for each (see the effects in Chat). */
+const initialPromptSent = new Set<string>();
+const recordShown = new Map<string, number>();
 
 export function initialPromptOwed(messages: readonly { role: string }[], prompt: string | undefined): boolean {
 	if (!prompt) return false;

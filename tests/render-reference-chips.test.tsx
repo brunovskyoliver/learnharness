@@ -46,10 +46,10 @@ describe("ReferenceChip", () => {
 	});
 	it("one line: the name is one truncating span titled with the whole name (phase 3 review)", () => {
 		const html = render({ ...base, name: "A rather long note name" });
-		assert.match(html, /<span class="lh-ref-chip-name" title="A rather long note name">A rather long note name<\/span>/);
+		assert.match(html, /<span class="lh-ref-chip-name" title="A rather long note name" translate="no">A rather long note name<\/span>/);
 		assert.ok(!html.includes("lh-ref-chip-head"), "the name is no longer split at its first word");
 		const gone = render({ ...base, name: "Gone note", state: "deleted" });
-		assert.match(gone, /<span class="lh-ref-chip-name" title="Gone note">Gone note<\/span><span class="lh-ref-chip-suffix"> · no longer in your Library<\/span>/);
+		assert.match(gone, /<span class="lh-ref-chip-name" title="Gone note" translate="no">Gone note<\/span><span class="lh-ref-chip-suffix"> · no longer in your Library<\/span>/);
 	});
 	it("trashed links to its Trash entry", () => {
 		const html = render({ ...base, state: "trashed", trashEntryId: "tr_1" });

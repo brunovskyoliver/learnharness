@@ -25,7 +25,7 @@ import type { LinkAnswer, LinkFields } from "./repo-link-dialog.tsx";
 import { RepoStatusLine } from "./repo-status-line.tsx";
 import { createBlankPage, PagePaneSlot, usePagePane } from "./page-pane-context.tsx";
 import { runUploadQueue, sendFile } from "./upload.ts";
-import { BackPill, useReturnPoint } from "./back-pill.tsx";
+import { useReturnPoint } from "@/components/reference-return";
 import { stampPendingMark } from "@/components/reference-return";
 
 /** Any `/library?item=` address (feature 027): the item across the column. Loads with the first one. */
@@ -37,6 +37,8 @@ const LibraryFullView = dynamic(() => import("./library-full-view.tsx").then((m)
 /** Only loads once "Full text" is chosen: the search field itself stays small. */
 import { DiagramProposalsLine } from "@/components/diagram/diagram-proposals-line.tsx";
 /** Page edits waiting for him (feature 023): loads after the list, so /library's first load stays as it was. */
+// Loads only when a chip left a return point; the column's padding is set before it arrives.
+const BackPill = dynamic(() => import("./back-pill.tsx").then((m) => m.BackPill), { ssr: false });
 const PageProposalsLine = dynamic(() => import("./page-proposals-line.tsx").then((m) => m.PageProposalsLine), { ssr: false });
 /** Loads on the click: the dialog and its form list aren't part of the Library's first load. */
 /** Loads on the click, like New diagram (feature 026). */

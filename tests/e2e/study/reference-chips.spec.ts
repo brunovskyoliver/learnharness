@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import { GitRemote, skipReason } from "../../fixtures/git-remote";
-import { chatView, clearStudyKey, createPage, hydrated, interceptModel, noPageOverflow, openChat, seedReferenceLesson, studySettings, visible, type ReferenceLesson } from "./helpers";
+import { chatView, clearStudyKey, createPage, hydrated, interceptModel, noPageOverflow, openChat, openSidebar, seedReferenceLesson, studySettings, visible, type ReferenceLesson } from "./helpers";
 
 // Feature 027, US1 (T032, T055, T056): chips in sent messages and reference
 // rows open the Library's full view at the passage; the Back pill and the
@@ -136,6 +136,13 @@ test.describe("Study: reference chips in sent messages", () => {
 			await page.setViewportSize({ width, height });
 			await quote.scrollIntoViewIfNeeded();
 			await noPageOverflow(page, `sent ${width}`);
+			// The hint gives way before the name does (owner, phase 3 review).
+			const fit = await quote.evaluate((chip) => {
+				const name = chip.querySelector<HTMLElement>(".lh-ref-chip-name")!;
+				const hint = chip.querySelector<HTMLElement>(".lh-ref-chip-hint")!;
+				return { nameCut: name.scrollWidth > name.getBoundingClientRect().width + 0.5, hintShown: hint.getBoundingClientRect().width > 1 };
+			});
+			if (fit.hintShown) expect(fit.nameCut, `sent ${width}: the name is whole while the hint shows`).toBe(false);
 			await shot(page, `sent-light-${width}`);
 		}
 		await page.setViewportSize({ width: 1440, height: 900 });
@@ -742,6 +749,28 @@ test.describe("Study: reference chips in tutor replies", () => {
 		await expect(page).toHaveURL(`/library?item=${lesson.items.note.id}`);
 		await page.goBack();
 		await expectReturned(page, lesson, from);
+	});
+
+	test("tutor: going back to a lesson started from a topic never sends its first message again (T059)", async ({ page, request }) => {
+		test.setTimeout(180_000);
+		const lesson = await seedReferenceLesson(request);
+		const seen = await interceptModel(page);
+		// What Home and the new-session view do: make the session, then open it with its topic.
+		const topic = `What does @${lesson.items.note.name} say?`;
+		const created = await request.post("/api/chats", { data: { title: topic } });
+		const { id: chatId } = (await created.json()) as { id: string };
+		await openChat(page, chatId, `?prompt=${encodeURIComponent(topic)}`);
+		const sends = () => seen.filter((s) => s.path === "/api/chat").length;
+		await expect.poll(sends, { timeout: 30_000 }).toBe(1);
+		// Out to the Library in the app, then the browser's Back (the pill's way back is router.back too).
+		await expect(chatView(page, chatId)).toContainText(topic);
+		await openSidebar(page);
+		await page.getByTestId("nb-sidebar").getByRole("link", { name: "Library", exact: true }).first().click();
+		await expect(page).toHaveURL(/\/library$/, { timeout: 60_000 });
+		await page.goBack();
+		await expect(chatView(page, chatId)).toBeVisible();
+		await page.waitForTimeout(3000);
+		expect(sends(), "the first message went out once").toBe(1);
 	});
 
 	test("tutor: a reference turning into a chip leaves the lines around it where they were", async ({ page, request }) => {
