@@ -300,3 +300,16 @@ Re-run after the rulings, on a fresh `next build` and `next start`:
 | **Total** | | **20/20** | **Excellent** (18/20 after the first fixes, 16/20 at the start) |
 
 No open review findings remain.
+
+## Owner approvals 2026-11-08 (second batch)
+
+| Item | Owner answer |
+| --- | --- |
+| N3 dark `--faint` #858279 → #868379 (raise to pass on the grained paper; light faded-note opacities nudged by the same rule) | Approved |
+| N4 Notebook right-note hover ⋯ moved inside the note (removes 6px sideways scroll at 1440) | Approved |
+| Electron title-bar colours and macOS traffic-light position: verified headless on Linux only (check-electron-shell passes) | Approved as unverified; the owner checks on a Mac |
+| Hosted Clerk sign-in widget: not rendered (no Clerk keys here); styled only through paper variables | Approved as unverified; the owner checks on a hosted deploy |
+| Math check against a live Wolfram call (no App ID here) | Approved exception: verified with seeded rows in every state (screenshots, render tests, e2e), not a live call |
+| Notebook vs Study side-by-side pairs (`~/agent-runs/2026-11-07-unified-redesign/pairs/`) | "Yes, one product" |
+
+With these, no review finding is open and every exception is owner-approved.
