@@ -309,7 +309,7 @@ No open review findings remain.
 | N4 Notebook right-note hover ⋯ moved inside the note (removes 6px sideways scroll at 1440) | Approved |
 | Electron title-bar colours and macOS traffic-light position: verified headless on Linux only (check-electron-shell passes) | Approved as unverified; the owner checks on a Mac |
 | Hosted Clerk sign-in widget: not rendered (no Clerk keys here); styled only through paper variables | Approved as unverified; the owner checks on a hosted deploy |
-| Math check against a live Wolfram call (no App ID here) | Approved exception: verified with seeded rows in every state (screenshots, render tests, e2e), not a live call |
+| Math check against a live Wolfram call (no App ID here) | Approved exception: verified with seeded rows in every state (screenshots, render tests, e2e), not a live call. Later verified live (2026-11-08): the "no App ID" premise was wrong, since Wolfram Cloud MCP needs no authentication; three real `math_check` calls on gpt-5.6-sol answered `agreed`, with "Wolfram · equal" rows and "Checked with Wolfram" on the answered check (real-model/index.md item 13) |
 | Notebook vs Study side-by-side pairs (`~/agent-runs/2026-11-07-unified-redesign/pairs/`) | "Yes, one product" |
 
 With these, no review finding is open and every exception is owner-approved.
