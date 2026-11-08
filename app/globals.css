@@ -546,6 +546,14 @@
 	--font-mono: var(--nb-mono);
 	/* Titles: the sans at 500 with Notebook's tracking. */
 	--tracking-title: -0.032em;
+	/* Leading for the steps that do not take their size's own line height:
+	   page titles 1.2, section headings 1.35, list-row teasers 1.6 (as the
+	   learner's turn), the review card's front and back 1.7 (DESIGN.md
+	   Queue). */
+	--leading-title: 1.2;
+	--leading-heading: 1.35;
+	--leading-row: 1.6;
+	--leading-card: 1.7;
 	/* Radii: 8 controls, 10 cards and panels, 12 menus and the export
 	   dialog, 16 the settings modal; full only for dots and send. */
 	--radius-xs: 4px;
@@ -587,6 +595,9 @@
 	--text-2xl--line-height: 1.25;
 	--text-title: calc(var(--note-size) * 2.45);
 	--text-title--line-height: 1.12;
+	/* Inline code inside a line of text: relative to that line (the page
+	   editor's and the notebook's inline code use the same 0.88em). */
+	--text-inline-code: 0.88em;
 }
 
 @theme inline {

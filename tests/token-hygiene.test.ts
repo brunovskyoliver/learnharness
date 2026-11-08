@@ -1,8 +1,9 @@
 /**
- * Feature 025, SC-001: one design system. Every component and stylesheet in
- * components/** and app/** speaks the paper tokens (app/paper.css): no Study
- * ink names, no Study faces, no colour, size or face literals. Literal
- * colours live only in app/paper.css's token blocks (rules on
+ * Feature 025, SC-001: one design system. Every component, stylesheet and
+ * module in components/**, app/**, lib/**, src/** and electron/** speaks the
+ * paper tokens (app/paper.css): no Study ink names, no Study faces, no
+ * colour, size or face literals, no arbitrary radius, leading or tracking.
+ * Literal colours live only in app/paper.css's token blocks (rules on
  * `html.lh-paper…`), and data colours (charts, demo series, PDF marks,
  * export palettes, Electron, Clerk) are listed with a reason in
  * tests/token-hygiene-allow.json.
@@ -11,10 +12,12 @@ import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, it } from "node:test";
+import { COLOR as DIAGRAM_COLOR } from "../src/core/diagram-svg.ts";
+import { EXPORT_PALETTE } from "../src/core/notebook-export.ts";
 
 const ROOT = new URL("..", import.meta.url).pathname;
-const SCAN = ["components", "app"];
-const EXT = /\.(tsx|ts|css)$/;
+const SCAN = ["components", "app", "lib", "src", "electron"];
+const EXT = /\.(tsx|ts|css|cjs|mjs|js)$/;
 
 interface Allow { file: string; pattern: string; reason: string }
 const allow: Allow[] = JSON.parse(readFileSync(join(ROOT, "tests/token-hygiene-allow.json"), "utf8"));
@@ -84,6 +87,8 @@ const RULES: { name: string; re: RegExp; only?: (file: string) => boolean }[] = 
 	{ name: "rgb/hsl colour", re: /(?<![\w-])(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch)\((?!\))/ },
 	{ name: "font-size px", re: /font-size:\s*[\d.]+px/ },
 	{ name: "text-[…px]", re: /(?<![\w-])text-\[[\d.]+px\]/ },
+	{ name: "text-[…] arbitrary size", re: /(?<![\w-])text-\[[\d.]+(?:rem|em|pt)\]/ },
+	{ name: "arbitrary radius/leading/tracking", re: /(?<![\w-])(?:rounded(?:-[a-z]{1,2})?|leading|tracking)-\[[^\]]+\]/ },
 	{ name: "fontSize number", re: /fontSize:\s*(?:[\d.]+|["'`][\d.]+px)/ },
 	{ name: "font-family literal", re: /font-family:\s*(?=\S)(?!(?:var\([^;]*\)|inherit|initial|unset|revert)\s*(?:[;}"'`]|$))[^;}"'`]+/ },
 	{ name: "fontFamily literal", re: /fontFamily:\s*["'`](?!var\(|inherit)/ },
@@ -119,7 +124,7 @@ describe("token hygiene (feature 025, SC-001)", () => {
 		return at < 0;
 	});
 
-	it("components/** and app/** use only paper tokens", () => {
+	it("components, app, lib, src and electron use only paper tokens", () => {
 		assert.deepEqual(open.map((h) => `${h.file}:${h.line} [${h.rule}] ${h.text.trim().slice(0, 160)}`), []);
 	});
 
@@ -136,5 +141,31 @@ describe("token hygiene (feature 025, SC-001)", () => {
 		const masked = maskTokenBlocks(stripComments(css, true));
 		assert.match(css, /html\.lh-paper\[data-theme="light"\][^{]*\{[^}]*--paper:\s*#f8f7f4/);
 		assert.doesNotMatch(masked, /#f8f7f4/, "the masked sheet still shows a token value");
+	});
+
+	it("palettes that cannot read CSS variables mirror the paper tokens", () => {
+		const css = readFileSync(join(ROOT, "app/paper.css"), "utf8");
+		const tokens = (selector: string) => {
+			const open = css.indexOf("{", css.indexOf(`${selector} {`));
+			const body = css.slice(open + 1, css.indexOf("}", open));
+			return Object.fromEntries([...body.matchAll(/--([\w-]+):\s*(#[0-9a-fA-F]{6})\b/g)].map(([, n, hex]) => [n, hex!.toLowerCase()]));
+		};
+		const light = tokens('html.lh-paper[data-theme="light"]');
+		const dark = tokens('html.lh-paper[data-theme="dark"]');
+		// Exports (PDF, DOCX, sketch SVG): every colour entry is paper light.
+		for (const [name, value] of Object.entries(EXPORT_PALETTE)) {
+			if (value.startsWith("#")) assert.equal(value, light[name], `EXPORT_PALETTE.${name}`);
+		}
+		// Downloaded diagram SVG.
+		const roles = { ground: "paper", raised: "shelf", raised2: "paper", ink: "ink", ink2: "graphite", edge: "faint", rule: "rule" } as const;
+		for (const [role, name] of Object.entries(roles)) assert.equal(DIAGRAM_COLOR[role as keyof typeof roles], light[name], `diagram ${role}`);
+		// Electron window colours: --paper and --ink, light and dark.
+		const main = readFileSync(join(ROOT, "electron/main.cjs"), "utf8");
+		for (const [scheme, t] of [["light", light], ["dark", dark]] as const) {
+			const m = new RegExp(`${scheme}: Object\\.freeze\\(\\{ background: "(#[0-9a-f]{6})", symbol: "(#[0-9a-f]{6})" \\}\\)`).exec(main);
+			assert.ok(m, `electron PAPER_CHROME.${scheme} not found`);
+			assert.equal(m[1], t.paper, `electron ${scheme} background`);
+			assert.equal(m[2], t.ink, `electron ${scheme} symbol`);
+		}
 	});
 });

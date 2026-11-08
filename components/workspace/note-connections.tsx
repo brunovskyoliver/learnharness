@@ -45,7 +45,7 @@ export const CONNECTION_EMPTY = {
 
 const Empty = ({ children }: { children: ReactNode }) => <p className="px-2 text-sm text-graphite">{children}</p>;
 const Name = ({ children }: { children: ReactNode }) => <span className="text-ink [overflow-wrap:anywhere]">{children}</span>;
-const Meta = ({ children }: { children: ReactNode }) => <span className="text-meta leading-[18px] text-graphite [overflow-wrap:anywhere]">{children}</span>;
+const Meta = ({ children }: { children: ReactNode }) => <span className="text-meta leading-4.5 text-graphite [overflow-wrap:anywhere]">{children}</span>;
 
 /** Pure for render tests: every section, with its own empty line. */
 export function NoteConnectionsBody({ data, subject = "page", onOpenPage, onFollowLink, onSource, makeCardsHref }: {

@@ -77,7 +77,7 @@ export function ReviewView() {
 			<div data-testid="review-scroll" className="min-h-0 flex-1 overflow-y-auto">
 				<div className="mx-auto flex w-full max-w-[52rem] flex-col gap-4 px-4 pb-12 pt-3 sm:pt-11">
 					<div className="flex flex-wrap items-center justify-between gap-3">
-						<h1 className="tracking-title text-2xl font-medium leading-[1.2]">Review</h1>
+						<h1 className="tracking-title text-2xl font-medium leading-title">Review</h1>
 						<button type="button" className="lh-tool" data-testid="review-new" onClick={newCard}>
 							<PlusIcon aria-hidden="true" />
 							New card

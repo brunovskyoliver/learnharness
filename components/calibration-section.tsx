@@ -39,7 +39,7 @@ export function CalibrationSectionView({ chats }: { chats: readonly ChatListItem
 	const shown = showAll ? merged.misses : merged.misses.slice(0, FIRST_MISSES);
 	return (
 		<section aria-labelledby={headingId} data-testid="calibration-section" className="flex flex-col gap-2">
-			<h2 id={headingId} className="text-lg font-[550] leading-[1.35] text-ink">Calibration</h2>
+			<h2 id={headingId} className="text-lg font-[550] leading-heading text-ink">Calibration</h2>
 			<ul className="flex flex-col gap-0.5">
 				{merged.levels.map((level) => (
 					<li key={level.level} className="text-md text-ink">{levelLine(level)}</li>
@@ -69,7 +69,7 @@ function MissRow({ miss }: { miss: MergedMiss }) {
 	return (
 		<li className="waiting-row" data-testid="calibration-miss" data-no-kind="">
 			<RowMeta id={`${id}-meta`} title={miss.title} at={miss.answeredAt} />
-			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-base leading-[1.6] text-graphite">
+			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-base leading-row text-graphite">
 				<Teaser text={teaserPlain(miss.question)} />
 			</p>
 			<Link

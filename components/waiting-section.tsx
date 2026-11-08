@@ -89,7 +89,7 @@ export function WaitingSectionView({ chats, loadError, onRetry, cards }: { chats
 	return (
 		<section aria-labelledby={headingId} data-testid="waiting-section" className="flex flex-col gap-2">
 			<div className="flex items-baseline gap-2.5">
-				<h2 id={headingId} className="text-lg font-[550] leading-[1.35] text-ink">Waiting for you</h2>
+				<h2 id={headingId} className="text-lg font-[550] leading-heading text-ink">Waiting for you</h2>
 				{items && open > 0 && <span className="text-meta text-faint">{open} open</span>}
 			</div>
 			{items === null ? (
@@ -141,7 +141,7 @@ function WaitingRow({ chat }: { chat: Waiting }) {
 		<li className="waiting-row" data-testid="waiting-row" data-progress={chat.progress ? "" : undefined}>
 			<span className="waiting-row-kind text-sm font-medium text-bulb-ink">{kind}</span>
 			<RowMeta id={`${id}-meta`} title={chat.title} at={postedAt} />
-			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-base leading-[1.6] text-graphite">
+			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-base leading-row text-graphite">
 				<Teaser text={teaserPlain(teaser)} />
 			</p>
 			{chat.progress && <span className="waiting-row-progress min-w-0 text-sm text-faint">{progressLine(chat.progress, chat.course)}</span>}
@@ -164,7 +164,7 @@ function LessonRow({ chat }: { chat: Unfinished }) {
 		<li className="waiting-row" data-testid="waiting-row">
 			<span className="waiting-row-kind text-sm font-medium text-bulb-ink">Lesson</span>
 			<RowMeta id={`${id}-meta`} title={chat.title} at={chat.updatedAt} />
-			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-base leading-[1.6] text-graphite">
+			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-base leading-row text-graphite">
 				{progressLine(chat.progress, chat.course)}
 			</p>
 			<Link
@@ -185,7 +185,7 @@ function CardsRow({ due, weakDue }: { due: number; weakDue: number }) {
 		<li className="waiting-row" data-testid="waiting-cards-row">
 			<span className="waiting-row-kind text-sm font-medium text-bulb-ink">Flashcards</span>
 			<span id={`${id}-meta`} className="waiting-row-meta min-w-0 truncate text-meta text-faint">{weakDue > 0 ? `${weakDue} on weak ideas` : "Today"}</span>
-			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-base leading-[1.6] text-graphite">{dueRowText(due)}</p>
+			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-base leading-row text-graphite">{dueRowText(due)}</p>
 			<Link href="/review" aria-describedby={`${id}-teaser ${id}-meta`} className="waiting-row-action lh-tool">Review</Link>
 		</li>
 	);

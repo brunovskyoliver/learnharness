@@ -426,7 +426,7 @@ export function GraphChromeRow({
 			{!isEmpty && (
 				<div
 					data-mobile-graph-search={mobileSearchOpen ? "true" : undefined}
-					className={cn("min-w-0 shrink rounded-[10px] bg-paper px-1 py-[3px] shadow-lift sm:static sm:w-56", mobileSearchOpen ? "fixed inset-x-2 top-2 z-30 w-auto" : "graph-chrome-fade-in w-auto sm:w-56")}
+					className={cn("min-w-0 shrink rounded-lg bg-paper px-1 py-[3px] shadow-lift sm:static sm:w-56", mobileSearchOpen ? "fixed inset-x-2 top-2 z-30 w-auto" : "graph-chrome-fade-in w-auto sm:w-56")}
 					onKeyDown={(event) => {
 						if (event.key === "Escape" && mobileSearchOpen && window.matchMedia("(max-width: 639px)").matches) {
 							event.preventDefault();
@@ -477,7 +477,7 @@ export function GraphChromeRow({
 			{/* The chain table (chains overlay, owner plan 2026-09-29). Own
 			    container (36px band), between the search and Import. */}
 			{!isEmpty && (
-				<div className={cn("graph-chrome-fade-in shrink-0 rounded-[10px] bg-paper px-1 py-[3px] shadow-lift", mobileSearchOpen && "max-sm:hidden")}>
+				<div className={cn("graph-chrome-fade-in shrink-0 rounded-lg bg-paper px-1 py-[3px] shadow-lift", mobileSearchOpen && "max-sm:hidden")}>
 					<Hint label="Every reasoning chain" side="bottom">
 						<button
 							type="button"
@@ -1109,7 +1109,7 @@ export function GraphView({
 					type="button"
 					onClick={section?.onCollapse}
 					data-testid="graph-collapse"
-					className="lh-no-drag lh-closed-toggle lh-tool absolute left-2 top-2 z-20 h-9 rounded-[10px] bg-paper px-3 shadow-lift"
+					className="lh-no-drag lh-closed-toggle lh-tool absolute left-2 top-2 z-20 h-9 rounded-lg bg-paper px-3 shadow-lift"
 				>
 					<XIcon aria-hidden="true" className="size-4" />
 					Close

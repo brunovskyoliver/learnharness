@@ -8,7 +8,8 @@
  * `next dev`; then, for each theme (Study dark/light, Notebook dark/light) and
  * viewport (1440x900, 390x844), captures every surface into
  *   OUT_DIR/<theme>-<width>/<NN-name>.png
- * and writes OUT_DIR/index.md (each shot, its route and steps, and a FAILED
+ * and writes OUT_DIR/index.md (each shot, its route and steps, a Not
+ * applicable section — Home's scroll shots in Notebook combos — and a FAILED
  * section). A failing step is logged and the run moves to the next shot.
  *
  * Steps find things by route, role and visible text first, with test ids only
@@ -361,12 +362,14 @@ const pageEditor = (name) => [byRole("textbox", new RegExp(`^Page ${name}`)), by
 // ─── the shots ──────────────────────────────────────────────────────────────
 
 /** name, route, steps (for index.md), run(page, env) → after it, a viewport shot (plus fullPage when `full`). */
+/** Home's scroll and expand shots have nothing to show in Notebook mode. */
+const HOME_IN_NOTEBOOK = (combo) => combo.startsWith("notebook-") ? "not applicable: in Notebook mode / opens the note (feature 024); Home is covered by the Study combos in the same theme" : null;
 const SHOTS_LIST = [
 	{ name: "home-top", route: "/", steps: "open Home", full: true },
-	{ name: "home-waiting", route: "/", steps: "scroll to Waiting for you", run: async (page) => { await (await pick(page, [byRole("region", /waiting/i), byRole("heading", /waiting/i)], "Waiting for you")).scrollIntoViewIfNeeded(); } },
-	{ name: "home-calibration", route: "/", steps: "scroll to Calibration", run: async (page) => { await (await pick(page, [byRole("region", /calibration/i), byRole("heading", /calibration/i)], "Calibration")).scrollIntoViewIfNeeded(); } },
-	{ name: "home-graph", route: "/", steps: "scroll to Knowledge graph", run: async (page) => { await (await pick(page, [byRole("region", /knowledge graph/i), byRole("heading", /knowledge graph/i)], "Knowledge graph")).scrollIntoViewIfNeeded(); await settle(page, 2500); } },
-	{ name: "home-graph-expanded", route: "/", steps: "Knowledge graph → Expand", run: async (page) => { await click(page, [byRole("button", /^expand/i)], "Expand"); await settle(page, 2500); } },
+	{ name: "home-waiting", route: "/", na: HOME_IN_NOTEBOOK, steps: "scroll to Waiting for you", run: async (page) => { await (await pick(page, [byRole("region", /waiting/i), byRole("heading", /waiting/i)], "Waiting for you")).scrollIntoViewIfNeeded(); } },
+	{ name: "home-calibration", route: "/", na: HOME_IN_NOTEBOOK, steps: "scroll to Calibration", run: async (page) => { await (await pick(page, [byRole("region", /calibration/i), byRole("heading", /calibration/i)], "Calibration")).scrollIntoViewIfNeeded(); } },
+	{ name: "home-graph", route: "/", na: HOME_IN_NOTEBOOK, steps: "scroll to Knowledge graph", run: async (page) => { await (await pick(page, [byRole("region", /knowledge graph/i), byRole("heading", /knowledge graph/i)], "Knowledge graph")).scrollIntoViewIfNeeded(); await settle(page, 2500); } },
+	{ name: "home-graph-expanded", route: "/", na: HOME_IN_NOTEBOOK, steps: "Knowledge graph → Expand", run: async (page) => { await click(page, [byRole("button", /^expand/i)], "Expand"); await settle(page, 2500); } },
 	{ name: "sidebar-open", route: "/chat/review-gradient-descent", steps: "open a lesson; on phones tap Open sidebar", run: async (page, { phone }) => { await openSidebarOnPhone(page, phone); } },
 	{ name: "session-filter", route: "/library", steps: "sidebar → Filter sessions (from /library: / is the note in Notebook mode)", run: async (page, { phone }) => { await openSidebarOnPhone(page, phone); await click(page, [byRole("button", /filter/i)], "Filter sessions"); } },
 	{ name: "new-menu", route: "/library", steps: "sidebar → New (from /library)", run: async (page, { phone }) => { await openSidebarOnPhone(page, phone); await click(page, [byRole("button", "New", { exact: true }), byRole("button", /^new( session)?$/i)], "New"); } },
@@ -428,7 +431,20 @@ const SHOTS_LIST = [
 		await row.click();
 		await settle(page, 800);
 	} },
-	{ name: "math-check-rows", route: "/chat/review-ml-lookups", steps: "scroll to a Wolfram math check row (if any in the seed)", run: async (page) => { await (await pick(page, [byText(/Wolfram ·/)], "a math check row (none in the UI review seed)", 5000)).scrollIntoViewIfNeeded(); } },
+	{ name: "math-check-rows", route: "/chat/review-math-check", steps: "expand the \"Wolfram · not equal\" row (the equal, couldn't decide, check failed and check not finished rows and the \"Checked with Wolfram\" answered card sit around it)", run: async (page) => {
+		const row = await pick(page, [(p) => p.locator("summary", { hasText: /Wolfram · not equal/ })], "the Wolfram · not equal row");
+		await row.scrollIntoViewIfNeeded();
+		await row.click();
+		const first = await pick(page, [(p) => p.locator("summary", { hasText: /Wolfram · equal/ })], "the Wolfram · equal row");
+		await first.evaluate((el) => el.scrollIntoView({ block: "start" }));
+		await settle(page, 800);
+	}, after: async (page, { dir, file }) => {
+		// A second frame: the answered quiz card ending "Checked with Wolfram".
+		const label = await pick(page, [byText(/Checked with Wolfram/)], "Checked with Wolfram");
+		await label.evaluate((el) => el.scrollIntoView({ block: "center" }));
+		await settle(page, 800);
+		await page.screenshot({ path: path.join(dir, file.replace(".png", "-answered.png")), style: HIDE_DEV, animations: "disabled", timeout: 30_000 });
+	} },
 	{ name: "thinking-block", route: "/chat/review-belief-check", steps: "expand the last Agent’s thinking", run: async (page) => {
 		const all = page.getByRole("button", { name: /thinking/i });
 		const n = await all.count();
@@ -618,7 +634,7 @@ async function captureShot(page, row, shot, route, viewport, dir, file, step) {
 		row.landed = new URL(page.url()).pathname + new URL(page.url()).search;
 		await page.screenshot({ path: path.join(dir, file), style: HIDE_DEV, animations: "disabled", timeout: 30_000 });
 		if (shot.full) await page.screenshot({ path: path.join(dir, file.replace(".png", "-full.png")), fullPage: true, style: HIDE_DEV, animations: "disabled", timeout: 30_000 });
-		if (shot.after) await shot.after(page).catch(() => {});
+		if (shot.after) await shot.after(page, { dir, file }).catch((error) => row.notes.push(`after step failed: ${error.message.split("\n")[0]}`));
 		if (!row.error) row.ok = true;
 	}
 }
@@ -676,8 +692,8 @@ function writeIndex(started) {
 		"## Seed", "", ...seedNotes, "",
 	];
 	const combos = [...new Set(results.map((r) => r.combo))];
-	lines.push("## Counts", "", "| combo | ok | failed |", "| --- | --- | --- |");
-	for (const combo of combos) lines.push(`| ${combo} | ${results.filter((r) => r.combo === combo && r.ok).length} | ${results.filter((r) => r.combo === combo && !r.ok).length} |`);
+	lines.push("## Counts", "", "| combo | ok | not applicable | failed |", "| --- | --- | --- | --- |");
+	for (const combo of combos) lines.push(`| ${combo} | ${results.filter((r) => r.combo === combo && r.ok).length} | ${results.filter((r) => r.combo === combo && r.na).length} | ${results.filter((r) => r.combo === combo && !r.ok && !r.na).length} |`);
 	lines.push("", "## Theme check", "", "The painted background at the middle of the screen after the theme was written (a light theme that renders dark shows here).", "", "| combo | Study /library | Notebook note |", "| --- | --- | --- |");
 	for (const combo of combos) {
 		let seen = {};
@@ -690,10 +706,14 @@ function writeIndex(started) {
 		lines.push("", `### ${combo}`, "");
 		for (const r of results.filter((x) => x.combo === combo)) {
 			const where = r.landed && r.landed !== r.route ? ` (landed at \`${r.landed}\`)` : "";
-			lines.push(`- ${r.ok ? `[${r.file}](${combo}/${r.file})` : `~~${r.file}~~ FAILED`}${where}${r.notes.length ? ` — ${r.notes.join("; ")}` : ""}${r.errors.length ? ` — page errors: ${[...new Set(r.errors)].join("; ")}` : ""}`);
+			lines.push(`- ${r.ok ? `[${r.file}](${combo}/${r.file})` : r.na ? `${r.file} — ${r.na}` : `~~${r.file}~~ FAILED`}${where}${r.notes.length ? ` — ${r.notes.join("; ")}` : ""}${r.errors.length ? ` — page errors: ${[...new Set(r.errors)].join("; ")}` : ""}`);
 		}
 	}
-	const failed = results.filter((r) => !r.ok);
+	const na = results.filter((r) => r.na);
+	lines.push("", "## Not applicable", "");
+	if (!na.length) lines.push("None.");
+	for (const r of na) lines.push(`- ${r.combo}/${r.file} — ${r.na}`);
+	const failed = results.filter((r) => !r.ok && !r.na);
 	lines.push("", "## FAILED", "");
 	if (!failed.length) lines.push("None.");
 	for (const r of failed) lines.push(`- ${r.combo}/${r.file} — ${r.error} (route \`${r.route}\`, at \`${r.landed}\`)`);
@@ -731,6 +751,15 @@ async function main() {
 			await themeCheck(combo, viewport);
 			for (const [index, shot] of SHOTS_LIST.entries()) {
 				if (SHOTS && !SHOTS.some((s) => shot.name.includes(s))) continue;
+				const na = shot.na?.(combo);
+				if (na) {
+					const file = `${String(index + 1).padStart(2, "0")}-${shot.name}.png`;
+					for (const stale of [file, path.join("failed", file)]) rmSync(path.join(OUT, combo, stale), { force: true });
+					results.push({ combo, file, name: shot.name, route: shot.route ?? "(see steps)", steps: shot.steps, ok: false, na, landed: null, error: null, errors: [], notes: [] });
+					console.log(`n/a  ${combo}/${file}`);
+					saveCombo(combo);
+					continue;
+				}
 				await shootWithRetry(combo, viewport, index, shot);
 				saveCombo(combo);
 			}
@@ -764,6 +793,7 @@ try {
 	await pause(500);
 	if (process.env.KEEP_DATA) console.log(`kept ${DATA}`);
 	else rmSync(DATA, { recursive: true, force: true });
-	const failed = results.filter((r) => !r.ok).length;
-	if (results.length) console.log(`${results.length - failed}/${results.length} shots ok → ${path.join(OUT, "index.md")}`);
+	const failed = results.filter((r) => !r.ok && !r.na).length;
+	const na = results.filter((r) => r.na).length;
+	if (results.length) console.log(`${results.length - failed - na}/${results.length} shots ok, ${na} not applicable → ${path.join(OUT, "index.md")}`);
 }

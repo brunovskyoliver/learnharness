@@ -471,7 +471,7 @@ export function LibraryView() {
 						<FolderBreadcrumbs trail={trail} />
 					</div>
 					<div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-						<h1 className="tracking-title text-2xl font-medium leading-[1.2] text-ink [overflow-wrap:anywhere]">{trail.at(-1)?.name ?? (view === "all" ? "Library" : VIEW_LABELS[view])}</h1>
+						<h1 className="tracking-title text-2xl font-medium leading-title text-ink [overflow-wrap:anywhere]">{trail.at(-1)?.name ?? (view === "all" ? "Library" : VIEW_LABELS[view])}</h1>
 						<div className="lh-tools -mx-1.5 gap-x-3">
 							<button type="button" className="lh-tool" aria-pressed={selected !== null} onClick={() => setSelected(selected ? null : new Set())} data-testid="library-select-mode">
 								<CheckSquareIcon aria-hidden="true" />

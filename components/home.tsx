@@ -160,7 +160,7 @@ export function Home({
 			<div data-testid="home-scroll" className="min-h-0 flex-1 overflow-y-auto">
 				<div className="mx-auto flex w-full max-w-[52rem] flex-col gap-8 px-4 pb-12 pt-3 sm:gap-10 sm:pt-11">
 					<section aria-labelledby={startId} className="flex flex-col gap-3 sm:gap-4">
-						<h1 id={startId} className="tracking-title text-2xl font-medium leading-[1.2]">What do you want to learn?</h1>
+						<h1 id={startId} className="tracking-title text-2xl font-medium leading-title">What do you want to learn?</h1>
 						<div>
 							{/* The pick bar (owner vision, 2026-10-04): the chain
 							    table's selection is PERSISTENT — picked
@@ -324,7 +324,7 @@ function GraphSection({
 	return (
 		<section aria-labelledby={headingId} data-testid="graph-section" className="flex flex-col gap-2.5 sm:gap-3">
 			<div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:gap-x-2.5">
-				<h2 id={headingId} className="flex-1 whitespace-nowrap text-lg font-[550] leading-[1.35] text-ink sm:flex-none">Knowledge graph</h2>
+				<h2 id={headingId} className="flex-1 whitespace-nowrap text-lg font-[550] leading-heading text-ink sm:flex-none">Knowledge graph</h2>
 				{statsLabel && <span data-testid="graph-stats" className="text-meta text-faint max-sm:hidden">{statsLabel}</span>}
 				<span className="hidden flex-1 sm:block" aria-hidden="true" />
 				<input

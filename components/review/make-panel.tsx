@@ -30,7 +30,7 @@ export function parseMakeParam(value: string | null, stored: () => string | null
 export function MakePreviewBody({ preview, busy, failure, onGenerate, onByHand, onCancel, onSettings }: { preview: MakePreview; busy: boolean; failure: string | null; onGenerate: () => void; onByHand: () => void; onCancel: () => void; onSettings: () => void }) {
 	return (
 		<section aria-label="Make flashcards" data-testid="make-panel" className="lh-card-block flex flex-col gap-3">
-			<h2 className="text-lg font-[550] leading-[1.35] text-ink [overflow-wrap:anywhere]">Make flashcards from {preview.label}</h2>
+			<h2 className="text-lg font-[550] leading-heading text-ink [overflow-wrap:anywhere]">Make flashcards from {preview.label}</h2>
 			{preview.refusal ? (
 				<div role="status" data-testid="make-refusal" className="flex flex-col items-start gap-2 text-graphite">
 					<p>{preview.refusal.error ?? "No model is set up for this."}</p>

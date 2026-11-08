@@ -22,7 +22,7 @@ export default function UpdateBanner() {
 		<div
 			data-testid="update-banner"
 			role="status"
-			className="fixed top-14 right-4 z-50 flex max-w-[calc(100vw-2rem)] flex-wrap items-center gap-x-4 gap-y-2 rounded-[10px] bg-paper px-4 py-3 shadow-lift"
+			className="fixed top-14 right-4 z-50 flex max-w-[calc(100vw-2rem)] flex-wrap items-center gap-x-4 gap-y-2 rounded-lg bg-paper px-4 py-3 shadow-lift"
 		>
 			<p className="min-w-0 text-sm text-graphite">
 				<span className="font-medium text-ink">Brunovský&apos;s study {ready.version ?? "update"} is ready</span>

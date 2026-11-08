@@ -248,7 +248,7 @@ export function MarkdownCode(props: ComponentProps<"code"> & ExtraProps) {
 	// Inline code: no data-block (the pre handler stamps block fences only).
 	if (!("data-block" in props)) {
 		return (
-			<code className={cn("rounded bg-code px-[0.3em] py-[0.1em] font-mono text-[0.88em]", className)} data-streamdown="inline-code" {...rest}>
+			<code className={cn("rounded bg-code px-[0.3em] py-[0.1em] font-mono text-inline-code", className)} data-streamdown="inline-code" {...rest}>
 				{children}
 			</code>
 		);

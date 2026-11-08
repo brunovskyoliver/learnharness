@@ -20,7 +20,7 @@ export function escapeXml(text: string): string {
 /** Paper light as literal colours (app/paper.css: paper, shelf, ink, graphite, faint, rule;
  *  feature 025 T051): a downloaded file can't read the app's tokens, and a file on light
  *  paper reads the same in any viewer. */
-const COLOR = { ground: "#f8f7f4", raised: "#f1f0ec", raised2: "#f8f7f4", ink: "#1d1c1a", ink2: "#5c5953", edge: "#716d67", rule: "#dedbd4" } as const;
+export const COLOR = { ground: "#f8f7f4", raised: "#f1f0ec", raised2: "#f8f7f4", ink: "#1d1c1a", ink2: "#5c5953", edge: "#716d67", rule: "#dedbd4" } as const;
 const FONT_SIZE = 14;
 const LINE = 19;
 const PAD_X = 12;
