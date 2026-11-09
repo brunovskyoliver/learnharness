@@ -14,6 +14,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { switchInterface } from "@/components/interface-switch";
+import { navigateTo } from "@/components/paper/navigate";
 import { OverlaySidebarShell, SidebarBody as PaperSidebarBody, SidebarFooterRow as FooterRow, SidebarHead } from "@/components/paper/overlay-sidebar";
 import { notebookHref, type LibraryFolder, type LibraryItem } from "@/src/core";
 import { createFolder, createNote, flashcardsHref } from "./nb-actions";
@@ -293,7 +294,7 @@ export function OverlaySidebar({ returnFocus }: { returnFocus: RefObject<HTMLBut
 							onLinks: nb.openLinks,
 							onSwitchToStudy: () => {
 								nb.closeSidebar();
-								void switchInterface("study", (href) => router.push(href));
+								void switchInterface("study", (href) => navigateTo(router, href, "mode"));
 							},
 						}}
 						onClose={nb.closeSidebar}

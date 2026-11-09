@@ -15,6 +15,7 @@ import { usePointerBlur } from "@/components/focus-hygiene";
 import { SettingsDialogProvider, useSettingsDialog } from "@/components/settings/settings-dialog.tsx";
 import { Hint } from "@/components/ui/hint";
 import { switchInterface, rememberStudyPath } from "@/components/interface-switch";
+import { navigateTo } from "@/components/paper/navigate";
 import { MenuGlyph, Wordmark } from "@/components/paper/chrome";
 import { EdgeStrip, OverlaySidebarShell, SidebarBody, SidebarFooterRow, SidebarHead, type SidebarState, type SidebarVia } from "@/components/paper/overlay-sidebar";
 import { keyLabel, useIsMac } from "@/components/paper/shared";
@@ -611,7 +612,7 @@ function StudySidebar({ account, hosted }: { account?: React.ReactNode; hosted: 
 					<ul className="nb-side-actions" aria-label="Study">
 						<SidebarFooterRow label="Settings" binding={bindingForAction("open-settings")} mac={mac} testId="settings-entry" onClick={() => afterClose(() => openSettings(undefined, undefined, visibleMenuButton() ?? undefined))} />
 						<SidebarFooterRow label="Command palette" binding={bindingForAction("command-palette")} mac={mac} testId="command-palette-entry" onClick={() => afterClose(() => window.dispatchEvent(new CustomEvent(kbdEventForAction("command-palette"))))} />
-						<SidebarFooterRow label="Switch to Notebook" binding={bindingForAction("toggle-interface")} mac={mac} testId="switch-to-notebook" onClick={() => { close(); void switchInterface("notebook", (href) => router.push(href)); }} />
+						<SidebarFooterRow label="Switch to Notebook" binding={bindingForAction("toggle-interface")} mac={mac} testId="switch-to-notebook" onClick={() => { close(); void switchInterface("notebook", (href) => navigateTo(router, href, "mode")); }} />
 						{hosted && <li><SignOutRow className="nb-side-row nb-side-footer-action" /></li>}
 					</ul>
 				</>

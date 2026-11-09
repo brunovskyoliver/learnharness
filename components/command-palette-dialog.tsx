@@ -6,6 +6,7 @@ import { BookOpenIcon, DumbbellIcon, FileTextIcon, FolderIcon, SearchIcon, ZapIc
 import { DocSnippetText } from "@/components/library/doc-snippet";
 import { useDocumentSearch } from "@/components/library/use-document-search";
 import { switchInterface } from "@/components/interface-switch";
+import { navigateTo } from "@/components/paper/navigate";
 import { createBlankPage, createStudyNotes, SAVE_PASSAGE_EVENT, usePagePane } from "@/components/library/page-pane-api";
 import { useSessionList, useSessionListDemand } from "@/components/session-list";
 import { useSettingsDialog } from "@/components/settings/settings-dialog.tsx";
@@ -213,7 +214,7 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 				skipReturn.current = true;
 				close();
 				sidebar.close();
-				void switchInterface("notebook", (href) => router.push(href));
+				void switchInterface("notebook", (href) => navigateTo(router, href, "mode"));
 				return;
 		}
 	};

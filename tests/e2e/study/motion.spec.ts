@@ -1,8 +1,8 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
-import { ARRIVAL_NAMES, CHATS, arrivalWindow, chord, clearStudyKey, hydrated, recordAnimations, recordedAnimations, seedStudy, studySettings, visible, type RecordedAnimation } from "./helpers";
+import { ARRIVAL_NAMES, CHATS, arrivalWindow, chord, clearStudyKey, hydrated, recordAnimations, recordedAnimations, seedStudy, studySettings, visible, withoutViewTransitions, type RecordedAnimation } from "./helpers";
 
 // Feature 028 (one motion language): the cold-load signature (US1, rows 1-2)
-// Each cold load
+// and the arrival fallback without view transitions (US2 AS2). Each cold load
 // gets a fresh context, so its sessionStorage has not seen the signature.
 
 const ROUTES = [
@@ -176,5 +176,54 @@ test.describe("Motion: the cold-load signature (feature 028, US1)", () => {
 			expect(off, `${path}: elements not in their final state`).toEqual([]);
 			await context.close();
 		}
+	});
+});
+
+test.describe("Motion: arrivals without view transitions (feature 028, US2 AS2, FR-023)", () => {
+	test.beforeAll(async () => { await seedStudy(); });
+	test.beforeEach(async ({ request }) => { await studySettings(request); });
+	test.afterAll(async ({ request }) => {
+		await studySettings(request);
+		await clearStudyKey(request);
+	});
+
+	test("the mode switch and a route change still arrive and end finished, with no console error", async ({ browser }) => {
+		test.setTimeout(240_000);
+		const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+		await withoutViewTransitions(context);
+		await recordAnimations(context);
+		const page = await context.newPage();
+		const errors: string[] = [];
+		page.on("pageerror", (error) => errors.push(error.message));
+		page.on("console", (message) => { if (message.type() === "error") errors.push(message.text()); });
+		await page.goto(`/chat/${CHATS.plain}`);
+		await hydrated(page, '[aria-label="Open sidebar"]');
+		expect(await page.evaluate(() => "startViewTransition" in document)).toBe(false);
+		await page.waitForTimeout(1200);
+
+		// Study → Notebook by the shortcut: the note arrives as a mode switch.
+		await page.keyboard.press("Control+Shift+O");
+		await expect(page).toHaveURL(/\/notebook/, { timeout: 60_000 });
+		await expect(visible(page, '[data-testid="nb-editor"]')).toBeVisible({ timeout: 90_000 });
+		await page.waitForTimeout(800);
+		const mode = (await recordedAnimations(page)).filter((a) => a.kind === "mode" && ARRIVAL_NAMES.has(a.name));
+		expect(mode.map((a) => a.name), "the note unfolds and inks in").toEqual(expect.arrayContaining(["nb-unfold", "nb-ink-in"]));
+		expect(await page.locator("[data-lh-arrive]").count(), "the arrival attribute is gone").toBe(0);
+
+		// Back to Study, then a route change by a link (the arrival CSS alone).
+		await page.keyboard.press("Control+Shift+O");
+		await expect(page).toHaveURL(new RegExp(`/chat/${CHATS.plain}$`), { timeout: 60_000 });
+		await hydrated(page, '[aria-label="Open sidebar"]');
+		await page.waitForTimeout(800);
+		await visible(page, '[data-testid="nb-wordmark"]').click();
+		await expect(page).toHaveURL(/\/$/, { timeout: 60_000 });
+		await page.waitForTimeout(1000);
+		const home = (await recordedAnimations(page)).filter((a) => a.kind !== null && a.name === "nb-ink-in" && a.target.startsWith("h1"));
+		expect(home.length, "Home's heading inks in").toBeGreaterThan(0);
+		expect(await page.locator("[data-lh-arrive]").count(), "the arrival attribute is gone").toBe(0);
+		const unfinished = await page.evaluate(() => document.getAnimations().filter((a) => ["nb-ink-in", "nb-unfold"].includes((a as CSSAnimation).animationName) && a.playState === "running").length);
+		expect(unfinished).toBe(0);
+		expect(errors.filter((e) => !/Download the React DevTools|\[HMR\]|\[Fast Refresh\]/.test(e))).toEqual([]);
+		await context.close();
 	});
 });

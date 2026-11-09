@@ -28,6 +28,7 @@ import { chatUsesNativeTraversal } from "@/components/enter-submits";
 import { useBackdropDismiss } from "@/components/backdrop-dismiss";
 import { usePathname, useRouter } from "next/navigation";
 import { switchInterface } from "@/components/interface-switch";
+import { navigateTo } from "@/components/paper/navigate";
 import {
 	actionForBinding,
 	interfaceOfPath,
@@ -75,7 +76,7 @@ export function KeyboardShortcuts() {
 			if (actionForBinding(eventBinding(e)) === "toggle-interface") {
 				e.preventDefault();
 				const { router: nav, pathname: here } = handlersRef.current;
-				void switchInterface(otherInterface(interfaceOfPath(here)), (href) => nav.push(href));
+				void switchInterface(otherInterface(interfaceOfPath(here)), (href) => navigateTo(nav, href, "mode"));
 				return;
 			}
 			// Notebook owns every other key on its routes: native Tab order,

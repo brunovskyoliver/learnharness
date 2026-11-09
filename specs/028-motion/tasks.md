@@ -79,13 +79,13 @@ description: "Tasks for feature 028, one motion language"
 
 **Independent test**: switch both ways from the sidebar, the palette and the shortcut; chrome pixels still; caret placeable at once; ≤400ms.
 
-- [ ] T031 [US2] Extend tests/e2e/study/mode-switch.spec.ts: chrome box identical across frames (`boxFrames`), transition ≤400ms, typing right after the switch lands in the field (20 trials at offsets across the transition, SC-002), the draft round trip still holds, from the shortcut, the sidebar and the palette
-- [ ] T032 [US2] Add to tests/e2e/study/motion.spec.ts: with `withoutViewTransitions`, the mode switch and a route change still play their arrival and end finished, with no console error (US2 AS2, FR-023)
-- [ ] T033 [US2] Route every `switchInterface` navigate callback through `navigateTo(…, "mode")` in components/keyboard-shortcuts.tsx, components/sidebar.tsx, components/command-palette-dialog.tsx and components/notebook/overlay-sidebar.tsx
-- [ ] T034 [US2] Wrap the note page's content (not its chrome) in `RouteContent` in components/notebook/notebook-app.tsx so `mode` arrival unfolds the page and inks its first lines
-- [ ] T035 [US2] Add the `mode` arrival rules (content box `nb-unfold`, first lines `nb-ink-in`, reduced 150ms fade) to app/paper.css and check the Study side (Home, lesson) arrives the same way
-- [ ] T036 [US2] Add to tests/e2e/study/mode-switch.spec.ts: reduced motion gives a ≤150ms cross-fade with no transform (US2 AS3)
-- [ ] T037 [US2] Add to tests/e2e/study/mode-switch.spec.ts: a lesson with a live demo keeps its iframe (no new `load`) across a switch and back (FR-020)
+- [X] T031 [US2] Extend tests/e2e/study/mode-switch.spec.ts: chrome box identical across frames (`boxFrames`), transition ≤400ms, typing right after the switch lands in the field (20 trials at offsets across the transition, SC-002), the draft round trip still holds, from the shortcut, the sidebar and the palette
+- [X] T032 [US2] Add to tests/e2e/study/motion.spec.ts: with `withoutViewTransitions`, the mode switch and a route change still play their arrival and end finished, with no console error (US2 AS2, FR-023)
+- [X] T033 [US2] Route every `switchInterface` navigate callback through `navigateTo(…, "mode")` in components/keyboard-shortcuts.tsx, components/sidebar.tsx, components/command-palette-dialog.tsx and components/notebook/overlay-sidebar.tsx
+- [X] T034 [US2] Wrap the note page's content (not its chrome) in `RouteContent` in components/notebook/notebook-app.tsx so `mode` arrival unfolds the page and inks its first lines
+- [X] T035 [US2] Add the `mode` arrival rules (content box `nb-unfold`, first lines `nb-ink-in`, reduced 150ms fade) to app/paper.css and check the Study side (Home, lesson) arrives the same way
+- [X] T036 [US2] Add to tests/e2e/study/mode-switch.spec.ts: reduced motion gives a ≤150ms cross-fade with no transform (US2 AS3)
+- [X] T037 [US2] Add to tests/e2e/study/mode-switch.spec.ts: a lesson with a live demo keeps its iframe (no new `load`) across a switch and back (FR-020) (as built: no load while the lesson lifts, one load on return; the switch unmounts the lesson as before 028, progress.md Decisions)
 
 **Checkpoint**: both P1 stories done (MVP complete).
 

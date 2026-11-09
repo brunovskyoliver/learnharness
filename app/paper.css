@@ -908,6 +908,19 @@ html.lh-paper [data-lh-arrive="signature"]:not(:has([data-ink-order])) {
 .lh-paper [data-lh-arrive="history"][data-lh-still] [data-ink-order] {
 	animation: var(--motion-settle) var(--ease-ink) both nb-ink-in;
 }
+/* Row 3: Notebook ⇄ Study. The content box unfolds from its top edge while
+   its first lines ink in (heading, then one step); all done by 340ms, inside
+   the switch's 400ms. A still region (a lesson) only inks its marked parts. */
+.lh-paper [data-lh-arrive="mode"]:not([data-lh-still]) {
+	animation: var(--motion-unfold) var(--ease-unfold) backwards nb-unfold;
+}
+.lh-paper [data-lh-arrive="mode"] [data-ink-order] {
+	animation: var(--motion-route) var(--ease-ink) calc(min(var(--i, 0), 1) * var(--motion-stagger)) both nb-ink-in;
+}
+.lh-paper [data-lh-arrive="mode"]:not([data-lh-still]):not(:has([data-ink-order])) {
+	animation: var(--motion-unfold) var(--ease-unfold) backwards nb-unfold, var(--motion-route) var(--ease-ink) both nb-ink-in;
+}
+
 /* Row 1: the wordmark's mark on the signature. The ring draws as one stroke
    (its mask, components/lh-mark.tsx), the dot lands as a blot at the stroke's
    end, the spiral fades in; all done by 580ms. */
