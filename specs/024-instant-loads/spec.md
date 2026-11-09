@@ -33,6 +33,8 @@ Same production image, throwaway container, headless Chromium, emulated remote l
 - Q: While the math or code renderer is still downloading, what does a message show? → A: Messages containing math or code wait for the renderer before appearing; other messages show at once. The renderer download starts in parallel with the page.
 - Q (after measurement): PDF cold target with versioned chunks measured ~3.1 s; accept, compact copy, or stop? → A: Accept with small tweaks (start the first chunk while the reader code loads); targets set to measured values, no new dependency.
 - Q: How should the reader decide to show its "no selectable text" note? → A: Check pages 1–3 only; if none has text, show the note.
+- Q (after measurement): on-demand math removed server-rendered formulas, slower on cold load in math chats. → A: Math stays eager and server-rendered; only the code highlighter loads on demand (code shows plain until highlighted, as today).
+- Q: Fix the cold-load blank flash of the chat transcript found during plot work? → A: Yes, in this feature.
 - Q: Should plotting code be fetched ahead of time? → A: No. Only when a plot is on screen; repeat views are instant through caching.
 
 ## User Scenarios & Testing *(mandatory)*
