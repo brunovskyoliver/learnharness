@@ -1577,6 +1577,9 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 }
 .lh-lesson-dock {
 	position: relative;
+	/* Above the margin layer (z 5): a thread's line to a paragraph hidden under
+	   the bar passes behind the bar, never over it. */
+	z-index: 6;
 	left: calc(-1 * var(--lh-check-shift, 0px));
 	transition: left 0.34s cubic-bezier(0.22, 1, 0.36, 1);
 }
