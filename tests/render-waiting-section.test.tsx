@@ -60,8 +60,9 @@ describe("WaitingSectionView", () => {
 		const b = html.indexOf("Session b");
 		const a = html.indexOf("Session a");
 		assert.ok(b > 0 && a > b, "newest first");
-		assert.match(html, /text-bulb-ink">Prediction</);
-		assert.match(html, /text-bulb-ink">Problem</);
+		// The label's blot (feature 028, row 14) sits before the word, hidden from assistive tech.
+		assert.match(html, /text-bulb-ink"><span class="lh-kind-dot" aria-hidden="true"[^>]*><svg[^]*?<\/svg><\/span>Prediction</);
+		assert.match(html, /text-bulb-ink"><span class="lh-kind-dot" aria-hidden="true"[^>]*><svg[^]*?<\/svg><\/span>Problem</);
 		assert.match(html, /Find the eigenvalues\./, "markdown is stripped, never raw");
 		assert.doesNotMatch(html, /\*\*/);
 		assert.match(html, />Solve</);
@@ -94,10 +95,11 @@ describe("WaitingSectionView", () => {
 		assert.doesNotMatch(render([item("idle")]), /px-1/);
 	});
 
-	it("says nothing is waiting in one sentence, with no icon", () => {
+	it("says nothing is waiting in one sentence, with only the empty state's blot (feature 028, row 30)", () => {
 		const html = render([item("idle")]);
 		assert.match(html, /Nothing is waiting\. Every check is answered and every problem solved\./);
-		assert.doesNotMatch(html, /<svg/);
+		assert.equal(html.match(/<svg/g)?.length, 1);
+		assert.match(html, /<span class="lh-empty-blot" aria-hidden="true"[^>]*><svg/);
 		assert.doesNotMatch(html, /open<\/span>/);
 	});
 

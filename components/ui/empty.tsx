@@ -1,5 +1,9 @@
+"use client"
+
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
+import { BlotGlyph } from "@/components/paper/blot"
+import { useArrival } from "@/components/paper/motion-arrival"
 
 function Empty({ className, ...props }: React.ComponentProps<"div">) {
   return (
@@ -93,8 +97,23 @@ function EmptyContent({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
+/**
+ * Feature 028, row 30: the one blot glyph beside an empty state's sentence.
+ * It splats the first time that state shows in this page load (`arrival`
+ * names it), and sits still after.
+ */
+function EmptyBlot({ arrival, className }: { arrival: string; className?: string }) {
+  const { arrivalProps } = useArrival(`empty:${arrival}`)
+  return (
+    <span className={cn("lh-empty-blot", className)} aria-hidden="true" {...arrivalProps}>
+      <BlotGlyph className="lh-empty-blot-glyph" size={10} />
+    </span>
+  )
+}
+
 export {
   Empty,
+  EmptyBlot,
   EmptyHeader,
   EmptyTitle,
   EmptyDescription,

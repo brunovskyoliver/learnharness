@@ -20,6 +20,7 @@ import { createPortal } from "react-dom";
 import { ChevronUpIcon } from "lucide-react";
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { InkDot } from "@/components/paper/ink-dot";
+import { notePosedCheck } from "@/components/paper/motion-arrival";
 import { InkText } from "@/components/paper/ink-text";
 import { Tether } from "@/components/paper/tether";
 import { NOTE_LINE, placeStack, RIGHT_TEXT_GAP } from "@/components/paper/thread-geometry";
@@ -200,6 +201,8 @@ function ThreadBody({ id, kind, label, teaser, reveal, open, fresh, variant, lay
 		if (fresh && !inked.has(`${id}:open`)) { inked.add(`${id}:open`); setInkBody(true); }
 	}, [open, fresh, id]);
 	useEffect(() => { if (fresh) inked.add(id); }, [fresh, id]);
+	// Feature 028, row 18: its grade will arrive while he watches (the pencil under a correct one).
+	useEffect(() => { notePosedCheck(id); }, [id]);
 
 	// The lesson grows and shrinks under the thread (earlier chunks mount, a demo resizes).
 	useEffect(() => {

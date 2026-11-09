@@ -28,6 +28,7 @@ import { SvgImage } from "@/components/artifacts/svg-image";
  */
 
 import { chartSize } from "./session-overlay-context";
+import { BlotGlyph } from "@/components/paper/blot";
 export { chartSize, SessionMermaidContext, useSessionMermaid } from "./session-overlay-context";
 
 /** The diagram focus: the chart at natural size inside a pan/zoom viewport
@@ -292,7 +293,7 @@ export function MermaidOverlay({
 					</>
 				) : (
 					<div className="flex h-full items-center justify-center gap-2 text-sm text-faint">
-						<span className="inline-block size-4 animate-spin motion-reduce:animate-none rounded-full border border-current border-b-2" />
+						<span className="nb-ink-wait" aria-hidden="true"><BlotGlyph className="nb-ink-wait-blot" size={13} /></span>
 						Rendering diagram…
 					</div>
 				)}

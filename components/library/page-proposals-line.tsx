@@ -8,6 +8,7 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useServerEvent, useServerResync } from "@/components/server-events";
 import { cn } from "@/lib/utils";
+import { StatusSwap } from "@/components/paper/status-swap";
 import type { LibraryItem, PageProposalRow } from "@/src/core";
 
 const Dialog = dynamic(() => import("./page-proposal-dialog.tsx").then((m) => m.PageProposalDialog), { ssr: false });
@@ -55,7 +56,7 @@ export function PageProposalsLine({ pageId, exceptPageId, className, beforeAccep
 			{failed && shown.length === 0 && <div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink"><p>Proposed changes could not be loaded.</p><button type="button" className="lh-text-action" onClick={() => void refresh()}>Try again</button></div>}
 			{notice && (
 				<div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-graphite" data-testid="page-proposal-notice">
-					<p className="min-w-0 flex-[1_1_12rem]">{notice}</p>
+					<p className="min-w-0 flex-[1_1_12rem]"><StatusSwap swapKey={notice} text={notice} appear>{notice}</StatusSwap></p>
 					<button type="button" className="lh-text-action" onClick={() => setNotice(null)}>Dismiss</button>
 				</div>
 			)}

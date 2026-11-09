@@ -955,8 +955,16 @@ html:active-view-transition-type(lh-route, lh-mode) { view-transition-name: none
 ::view-transition-old(.lh-lift) { animation: var(--motion-lift) var(--ease-out) both lh-lift; }
 /* The leaving page is named for its capture only (React's inline
    view-transition-class); its chrome stays out of the image, so the live
-   chrome underneath never fades (FR-003). */
-html:active-view-transition-type(lh-route, lh-mode) [style*="view-transition-class"] :is(.lh-study-chrome, .nb-header > *) { visibility: hidden; }
+   chrome underneath never fades (FR-003). The chrome is captured apart and
+   that copy is never shown: hiding it instead (visibility) also hid it in
+   the frame the browser presents while it captures, one bare frame of the
+   chrome now and then (the mode-switch flake, phase 7). */
+html:active-view-transition-type(lh-route, lh-mode) [style*="view-transition-class"] :is(.lh-study-chrome, .nb-header > *) {
+	view-transition-name: match-element;
+	view-transition-class: lh-chrome-gone;
+}
+::view-transition-group(.lh-chrome-gone) { animation: none; }
+::view-transition-old(.lh-chrome-gone) { animation: none; opacity: 0; }
 /* Notebook paints its own paper; the leaving note drops it from the image
    (the live page under it has the same paper), so the lift never veils the
    chrome or the arriving page with a sheet of paper. */
@@ -2306,9 +2314,7 @@ html.lh-paper {
 .lh-paper .nb-side-check { width: 12px; height: 12px; color: var(--ink); stroke-width: 2; }
 .lh-paper .nb-side-footer-action[aria-pressed="true"] { color: var(--ink); }
 
-/* 1.1: a theme change cross-fades (Riddled: view transition, 350ms). */
-::view-transition-old(root),
-::view-transition-new(root) { animation-duration: 0.35s; }
+/* 1.1: a theme change soaks in from the chosen card (feature 028, row 23: "Motion: small parts"). */
 
 /* 19: the settings modal, ≈840 × 704, radius 16, lifted paper; the nav ≈216px on the shelf. */
 .lh-paper .nb-settings {
@@ -2690,8 +2696,6 @@ html.lh-paper {
 @media (prefers-reduced-motion: reduce) {
 	.lh-paper .nb-settings { animation: none; }
 	.lh-paper .nb-settings-tab { transition: none; }
-	::view-transition-old(root),
-::view-transition-new(root) { animation: none; }
 }
 
 /* ══ Phase 11: Links panel ══════════════════════════════════════════════════ */
@@ -3447,4 +3451,191 @@ html.lh-paper[data-theme="dark"] .lh-mark-on-dark { display: inline-block; }
 @media (prefers-reduced-motion: reduce) {
 	.lh-paper .lh-ref-chip-name { transition: none; }
 	.lh-paper .lh-back-pill { transition: none; }
+}
+
+/* ── Motion: small parts (feature 028, US5, rows 13-30, contract §3) ──────
+ * Each plays once, where its part arrives; a re-render, a resize or a theme
+ * change replays none of them (FR-009). Rows' hooks live in
+ * components/paper/motion-arrival.ts; this block sits last so the press
+ * transitions win over the parts' own `transition` shorthands. */
+
+/* Rows 13, 15, 16, 28: a row that just appeared (useNewRows) and one that
+   just went (useLeavingRows, inert while it lifts; the gap closes after). */
+.lh-paper [data-lh-row="unfold"] { animation: var(--motion-unfold) var(--ease-unfold) backwards nb-unfold; }
+.lh-paper [data-lh-row="settle"] { animation: var(--motion-settle) ease-out both nb-settle; }
+.lh-paper [data-lh-row="ink"] { animation: var(--motion-arrive) var(--ease-ink) both nb-ink-in; }
+.lh-paper [data-lh-row="leave"] { animation: var(--motion-quick) var(--ease-out) both lh-lift; pointer-events: none; }
+/* Row 16: a folder's children unfold a little quicker (280ms). */
+.lh-paper :is(.nb-side-tree, .nb-side-nav, .nb-side-folder ~ *)[data-lh-row="unfold"],
+.lh-paper :is(.nb-side-tree, .nb-side-nav) [data-lh-row="unfold"] { animation-duration: var(--motion-route); }
+
+/* Rows 13, 15, 29: the data lands after the page arrived (SkeletonLift).
+   The skeleton lifts away out of the flow; the content inks in, its rows in
+   reading order (40ms steps capped at 240ms; the Library's 24/160). */
+.lh-paper .lh-skeleton-swap { position: relative; }
+.lh-paper .lh-skeleton-leaving {
+	position: absolute;
+	inset: 0 0 auto;
+	pointer-events: none;
+	animation: 120ms var(--ease-out) both lh-lift;
+}
+.lh-paper [data-lh-late] [data-row-order] {
+	animation: var(--motion-arrive) var(--ease-ink) min(calc(var(--j, 0) * var(--motion-stagger)), var(--stagger-cap)) both nb-ink-in;
+}
+.lh-paper [data-lh-late]:not(:has([data-row-order])) > :not(.lh-skeleton-leaving) {
+	animation: var(--motion-route) var(--ease-ink) both nb-ink-in;
+}
+
+/* Row 14: the bulb-ink label's blot; row 15: the upload's status dot; row
+   30: the empty state's blot. Each splats where it first shows. */
+.lh-paper :is(.lh-kind-dot, .lh-status-dot, .lh-empty-blot) {
+	display: inline-flex;
+	vertical-align: -1px;
+	color: currentColor;
+}
+.lh-paper .lh-kind-dot { margin-right: 6px; }
+.lh-paper .lh-empty-blot { margin-right: 8px; color: var(--faint); }
+.lh-paper .lh-status-dot { color: var(--graphite); }
+.lh-paper :is(.lh-kind-dot-blot, .lh-status-dot-blot, .lh-empty-blot-glyph) { display: block; overflow: visible; }
+.lh-paper :is(.lh-kind-dot, .lh-empty-blot)[data-arrive],
+.lh-paper [data-lh-row="settle"] .lh-status-dot {
+	transform-origin: center;
+	animation: var(--motion-splat) var(--ease-splat) both nb-blot-splat;
+}
+
+/* Row 17: a turn he just sent settles; the lesson's composer settles as the
+   lesson arrives (the transcript above stays still). */
+.lh-paper .lh-user-turn[data-arrive] { animation: var(--motion-settle) ease-out both nb-settle; }
+html.lh-paper body [data-lh-arrive] [data-ink-order][data-ink-verb="settle"] {
+	animation-name: nb-settle;
+	animation-duration: var(--motion-settle);
+	animation-timing-function: ease-out;
+}
+
+/* Row 18: the pencil under a correct grade (drawn once as the grade arrives;
+   settled history shows it finished). */
+.lh-paper .lh-grade-pencil {
+	position: absolute;
+	left: 2px;
+	right: 2px;
+	bottom: -6px;
+	width: calc(100% - 4px);
+	height: 5px;
+	overflow: visible;
+	pointer-events: none;
+}
+.lh-paper .lh-grade-pencil .nb-pencil-stroke { stroke: var(--text-green); stroke-opacity: 0.7; }
+.lh-paper .lh-grade-pencil .lh-pencil-still { stroke-dashoffset: 0; animation: none; }
+
+/* Row 19: a demo or plot delivered while the lesson is open unfolds its
+   frame once (the sandbox inside is never touched or reloaded). */
+.lh-paper .demo-artifact[data-arrive] { animation: var(--motion-unfold) var(--ease-unfold) backwards nb-unfold; }
+
+/* Row 21: the Back pill pops in as it appears and lifts as it goes. */
+.lh-paper .lh-back-pill-row:not([data-lh-row="leave"]) .lh-back-pill { animation: 0.38s cubic-bezier(0.3, 1.4, 0.5, 1) both nb-sketch-pop-in; }
+.lh-paper .lh-back-pill-row[data-lh-row="leave"] { animation-duration: 120ms; }
+
+/* Row 22: a reference chip's pencil underline draws under its name on hover
+   or focus (the resting underline gives way to it). */
+.lh-paper a.lh-ref-chip .lh-ref-chip-name {
+	background: linear-gradient(var(--ink), var(--ink)) 0 calc(100% - 1px) / 0 1px no-repeat;
+	transition: text-decoration-color 150ms, background-size var(--motion-settle) var(--ease-pencil);
+}
+.lh-paper a.lh-ref-chip:is(:hover, :focus-visible) .lh-ref-chip-name {
+	background-size: 100% 1px;
+	text-decoration-color: transparent;
+}
+
+/* Row 24: a status line's new words settle over the old ones, which lift in
+   the same cell (components/paper/status-swap.tsx); the line never stacks. */
+.lh-paper .lh-status { display: inline-grid; }
+.lh-paper .lh-status > *,
+.lh-paper .lh-status[data-was]::after { grid-area: 1 / 1; }
+.lh-paper .lh-status[data-was]::after {
+	content: attr(data-was) / "";
+	pointer-events: none;
+	animation: 120ms var(--ease-out) both lh-lift;
+}
+.lh-paper .lh-status-now[data-lh-status] { animation: var(--motion-settle) ease-out both nb-settle; }
+
+/* Row 26: pills and toolbar words press to .97 (100ms) and spring back
+   (220ms); the ink pill goes full ink while pressed. A touch press is marked
+   `data-pressed` (MotionArrival), since a touch does not always make :active. */
+.lh-paper .nb-pill { transition: opacity 0.15s, scale 220ms var(--spring-pop); }
+.lh-paper .lh-tool { transition: color 0.15s, background-color 0.15s, scale 220ms var(--spring-pop); }
+.lh-paper .lh-rating { transition: box-shadow 0.15s, scale 220ms var(--spring-pop); }
+.lh-paper [data-slot="button"] { transition: color 0.15s, background-color 0.15s, box-shadow 0.15s, opacity 0.15s, scale 220ms var(--spring-pop); }
+.lh-paper :is(.nb-pill, .lh-tool, .lh-rating, [data-slot="button"]):is(:active, [data-pressed]):not(:disabled, [aria-disabled="true"]) {
+	scale: 0.97;
+	transition-duration: 0.15s, 0.15s, 0.15s, 0.15s, var(--motion-press);
+	transition-timing-function: ease, ease, ease, ease, var(--ease-out);
+}
+.lh-paper :is(.nb-pill, .lh-tool, .lh-rating):is(:active, [data-pressed]):not(:disabled, [aria-disabled="true"]) {
+	transition-duration: 0.15s, 0.15s, var(--motion-press);
+	transition-timing-function: ease, ease, var(--ease-out);
+}
+.lh-paper .nb-pill:is(:active, [data-pressed]):not(:disabled, [aria-disabled="true"]) {
+	opacity: 1;
+	transition-duration: 0.15s, var(--motion-press);
+	transition-timing-function: ease, var(--ease-out);
+}
+
+/* Row 27: one ink ring slides to the chosen card (option-cards.tsx), then the
+   card's own ring is back. */
+.lh-paper .nb-set-grid { position: relative; }
+.lh-paper .lh-choice-ring {
+	position: absolute;
+	border-radius: 10px;
+	box-shadow: 0 0 0 1.5px var(--ink);
+	opacity: 0;
+	pointer-events: none;
+	transform-origin: 0 0;
+}
+.lh-paper [data-ring-sliding] > .lh-choice-ring { opacity: 1; transition: transform 300ms var(--spring-soft); }
+.lh-paper [data-ring-sliding] > .nb-option-card[data-state="checked"] { box-shadow: none; }
+
+/* Row 23: the ink soak. A theme change's new look spreads from the chosen
+   card (--lh-soak-x/y, components/paper/appearance.tsx) as a circle with a
+   24px feathered edge, over the old look, which holds still (450ms). */
+@property --lh-soak-p {
+	syntax: "<length>";
+	inherits: false;
+	initial-value: 0px;
+}
+@keyframes lh-soak {
+	0% { --lh-soak-p: 0px; }
+	to { --lh-soak-p: calc(var(--lh-soak-r, 2400px) + 24px); }
+}
+/* The root keeps its place: no group movement (the browser's own is a no-op here). */
+html:active-view-transition-type(lh-theme)::view-transition-group(root) { animation: none; }
+@media (prefers-reduced-motion: no-preference) {
+	html:active-view-transition-type(lh-theme)::view-transition-old(root) { animation: none; mix-blend-mode: normal; }
+	html:active-view-transition-type(lh-theme)::view-transition-new(root) {
+		mix-blend-mode: normal;
+		mask-image: radial-gradient(circle at var(--lh-soak-x, 50%) var(--lh-soak-y, 50%), black calc(var(--lh-soak-p) - 24px), transparent var(--lh-soak-p));
+		animation: var(--motion-soak) var(--ease-unfold) both lh-soak;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	/* Rows 13-16, 21, 28-29: fades of at most 150ms, no unfold, no stagger. */
+	.lh-paper [data-lh-row]:not([data-lh-row="leave"]),
+	.lh-paper [data-lh-late] [data-row-order],
+	.lh-paper [data-lh-late]:not(:has([data-row-order])) > :not(.lh-skeleton-leaving),
+	.lh-paper .lh-back-pill-row:not([data-lh-row="leave"]) .lh-back-pill,
+	.lh-paper .lh-status-now[data-lh-status] { animation: var(--motion-fade-reduced) linear both lh-fade; }
+	.lh-paper [data-lh-row="leave"],
+	.lh-paper .lh-status[data-was]::after { animation: 120ms linear both lh-lift; }
+	/* Rows 14, 15, 30: the dots and blots sit still. */
+	html.lh-paper :is(.lh-kind-dot, .lh-empty-blot)[data-arrive],
+	.lh-paper [data-lh-row] .lh-status-dot { animation: none !important; }
+	/* Row 17: a sent turn's words just appear. */
+	html.lh-paper .lh-user-turn[data-arrive] { animation: none !important; }
+	/* Row 22: the underline shows at once. Rows 26-27: colour only, the ring jumps. */
+	.lh-paper a.lh-ref-chip .lh-ref-chip-name { transition: none; }
+	.lh-paper :is(.nb-pill, .lh-tool, .lh-rating, [data-slot="button"]):is(:active, [data-pressed]) { scale: none; }
+	.lh-paper .lh-choice-ring { display: none; }
+	/* Row 23: a 150ms cross-fade. */
+	html:active-view-transition-type(lh-theme)::view-transition-old(root) { animation: var(--motion-fade-reduced) linear both lh-lift; }
+	html:active-view-transition-type(lh-theme)::view-transition-new(root) { animation: var(--motion-fade-reduced) linear both lh-fade; }
 }

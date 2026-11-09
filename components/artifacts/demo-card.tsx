@@ -1,6 +1,7 @@
 "use client";
 
 import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useArrival, useArrivedMessage } from "@/components/paper/motion-arrival";
 import { ArrowRightIcon, DownloadIcon, PanelRightOpenIcon, MaximizeIcon, XIcon } from "lucide-react";
 import { createPortal } from "react-dom";
 import { InvertDiscIcon } from "@/components/artifacts/invert-disc";
@@ -195,6 +196,10 @@ export function DemoFrame({
 	const actions = useContext(ChatActionsContext);
 	const panel = useDemoPanel();
 	const iframeRef = useRef<HTMLIFrameElement | null>(null);
+	// Feature 028, row 19: a demo or plot delivered while the lesson is open
+	// unfolds its frame once (our frame only; the sandbox is never touched).
+	const delivered = useArrivedMessage(messageId);
+	const { arrivalProps } = useArrival(`demo:${messageId}`, delivered && variant === "card");
 	const dialogRef = useRef<HTMLDialogElement | null>(null);
 	const focusOrigin = useRef<{ left: number; top: number; width: number; height: number } | null>(null);
 	const focusInvoker = useRef<HTMLElement | null>(null);
@@ -359,7 +364,7 @@ export function DemoFrame({
 	);
 
 	return (
-		<div className="lh-breakout demo-artifact py-4 text-ink" data-testid="demo-card">
+		<div className="lh-breakout demo-artifact py-4 text-ink" data-testid="demo-card" {...arrivalProps}>
 			{/* While the workspace shows this demo, its place in the lesson is one
 			    row (feature 001); focus without the workspace keeps the preview
 			    box so the reading position holds. */}

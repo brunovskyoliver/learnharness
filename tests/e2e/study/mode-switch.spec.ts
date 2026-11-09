@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { ARRIVAL_NAMES, CHATS, chatView, chord, clearRecorded, clearStudyKey, hydrated, interceptModel, openChat, openSidebar, recordAnimations, recordedAnimations, seedStudy, studySettings, token, visible, type RecordedAnimation } from "./helpers";
+import { ARRIVAL_NAMES, CHATS, STILL_LEVELS, chatView, chord, clearRecorded, clearStudyKey, frameDistances, hydrated, interceptModel, openChat, openSidebar, recordAnimations, recordedAnimations, seedStudy, studySettings, token, visible, type RecordedAnimation } from "./helpers";
 
 // Feature 025, T062 (US1): Study → Notebook → Study keeps the theme, the
 // place he was in and an unsent draft; the paper is the same in both.
@@ -106,8 +106,10 @@ test.describe("Study: the mode switch's motion (feature 028, US2)", () => {
 			await arrive(page);
 			await page.waitForTimeout(600);
 			const after = await framesOf(page, clip, 0);
-			const moved = frames.filter((frame) => !frame.equals(before[0]!) && !frame.equals(after[0]!) && !frame.equals(bare));
-			const gap = frames.filter((frame) => frame.equals(bare)).length;
+			// Within STILL_LEVELS of a reference is that reference (rasterisation noise, helpers.ts).
+			const distance = await frameDistances(page, frames, [before[0]!, after[0]!, bare]);
+			const moved = frames.filter((_, i) => distance[i]!.every((d) => d > STILL_LEVELS));
+			const gap = frames.filter((_, i) => distance[i]![2]! <= STILL_LEVELS).length;
 			if (moved.length) for (const [i, frame] of [before[0]!, ...frames, after[0]!].entries()) await test.info().attach(`${label}-${String(i).padStart(3, "0")}${moved.includes(frame) ? "-moved" : ""}.png`, { body: frame, contentType: "image/png" });
 			expect(moved.length, `${label}: chrome frames that differ from both ends (of ${frames.length})`).toBe(0);
 			expect(gap, `${label}: bare frames between the pages (of ${frames.length})`).toBe(0);

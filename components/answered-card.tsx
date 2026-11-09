@@ -3,6 +3,7 @@
 import { useSessionState } from "@/components/session-state";
 
 import { useState } from "react";
+import { useArrival, wasPosedCheck } from "@/components/paper/motion-arrival";
 import { ChevronDownIcon } from "lucide-react";
 import { blurAfterPointerClick } from "@/components/focus-hygiene";
 import { ConfidenceRail } from "@/components/confidence-rail";
@@ -28,7 +29,21 @@ import { answerForPresentation, parseAskInput, parseQuizInput } from "@/src/core
  */
 const NO_REFERENCES: LibraryReference[] = [];
 
-export function AnsweredCard({ answer: savedAnswer, input, checked = false, chipScope = "" }: { answer: QuestionAnswerData; input?: unknown; checked?: boolean; /** Focus keys for its chips (feature 027). */ chipScope?: string }) {
+/**
+ * Feature 028, row 18: a pencil stroke under a correct grade. It draws once,
+ * when the grade arrives for a check posed in this page load (the learner
+ * just answered it); settled history shows it finished.
+ */
+function GradePencil({ toolCallId }: { toolCallId: string }) {
+	const { arriving } = useArrival(`grade:${toolCallId}`, wasPosedCheck(toolCallId));
+	return (
+		<svg className="lh-grade-pencil" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true" data-testid="grade-pencil" data-drawing={arriving ? "" : undefined}>
+			<path d="M1 4 C 28 2.4, 62 5.2, 99 3.2" pathLength={1} vectorEffect="non-scaling-stroke" className={cn("nb-pencil-stroke", !arriving && "lh-pencil-still")} strokeWidth={1.3} />
+		</svg>
+	);
+}
+
+export function AnsweredCard({ answer: savedAnswer, input, checked = false, chipScope = "", toolCallId = "" }: { answer: QuestionAnswerData; input?: unknown; checked?: boolean; /** Focus keys for its chips (feature 027). */ chipScope?: string; /** Its question's call, for the grade's one pencil stroke (feature 028). */ toolCallId?: string }) {
 	const answer = answerForPresentation(savedAnswer, input);
 	const references = (savedAnswer as { references?: LibraryReference[] }).references ?? NO_REFERENCES;
 	const [whyOpen, setWhyOpen] = useSessionState("why", false); // the tucked explanation (predictions, owner 2026-10-03)
@@ -91,7 +106,7 @@ export function AnsweredCard({ answer: savedAnswer, input, checked = false, chip
 					(answer.dontKnow ? (
 						<span className="rounded border border-rule px-1.5 py-0.5">didn't know</span>
 					) : answer.correct ? (
-						<span className="rounded border border-green/50 px-1.5 py-0.5 text-green">correct</span>
+						<span className="relative rounded border border-green/50 px-1.5 py-0.5 text-green">correct<GradePencil toolCallId={toolCallId} /></span>
 					) : (
 						<span className="rounded border border-red/50 px-1.5 py-0.5 text-red">incorrect</span>
 					))}

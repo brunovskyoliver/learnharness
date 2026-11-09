@@ -18,7 +18,7 @@
 import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { writeSettingsKey } from "@/components/interface-switch";
-import { DEFAULT_SHARED_APPEARANCE, resolveSharedAppearance, sharedAppearanceAttributes, type SharedAppearance } from "@/src/core";
+import { DEFAULT_SHARED_APPEARANCE, resolveSharedAppearance, sharedAppearanceAttributes, soakOrigin, type SharedAppearance } from "@/src/core";
 
 export type ResolvedTheme = "light" | "dark" | "system";
 
@@ -29,7 +29,7 @@ export interface PaperAppearance {
 	appearance: SharedAppearance;
 	/** "system" until mounted (CSS follows the OS then), afterwards light or dark, following the OS. */
 	resolvedTheme: ResolvedTheme;
-	/** Shows a change at once (cross-fading a theme change); `alongside` runs in the same update. Writes nothing. */
+	/** Shows a change at once (a theme change soaks in); `alongside` runs in the same update. Writes nothing. */
 	apply: (patch: Partial<SharedAppearance>, alongside?: () => void) => void;
 	/** Shows a change and saves it. False when the save failed (the change stays shown). */
 	update: (patch: Partial<SharedAppearance>) => Promise<boolean>;
@@ -52,11 +52,46 @@ export function usePaperAppearance(): PaperAppearance {
 const DARK = "(prefers-color-scheme: dark)";
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
-/** Riddled cross-fades a theme change (view transition, 350ms in paper.css); not under reduced motion. */
+/** Where the next theme change soaks in from: the chosen card, for a moment. */
+let soakFrom: { rect: { left: number; top: number; width: number; height: number }; at: number } | null = null;
+/** A chosen option card's box (components/paper/option-cards.tsx); a theme change right after spreads from it. */
+export function noteSoakOrigin(rect: { left: number; top: number; width: number; height: number }) {
+	soakFrom = { rect: { left: rect.left, top: rect.top, width: rect.width, height: rect.height }, at: performance.now() };
+}
+/** A card's box this old no longer says where the change came from. */
+const SOAK_ORIGIN_MS = 1000;
+const SOAK_VARS = ["--lh-soak-x", "--lh-soak-y", "--lh-soak-r"] as const;
+
+type ViewTransitionStart = (arg: (() => void) | { update: () => void; types: string[] }) => { finished: Promise<void> };
+
+/**
+ * Row 23 (feature 028, research R9): a theme change soaks in like ink. The
+ * new theme spreads from the chosen card (a feathered circle, app/paper.css
+ * `lh-soak`, 450ms); without a card, from the middle of the window. Reduced
+ * motion: a 150ms cross-fade. The OS changing its theme never comes here
+ * (CSS follows it at once, FR-024). Nothing is remounted, so a demo keeps
+ * its frame and takes the theme through its bridge.
+ */
 function withThemeFade(apply: () => void): void {
-	const start = (document as Document & { startViewTransition?: (update: () => void) => unknown }).startViewTransition;
-	if (typeof start !== "function" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) { apply(); return; }
-	start.call(document, () => flushSync(apply));
+	const doc = document as Document & { startViewTransition?: ViewTransitionStart };
+	const origin = soakFrom && performance.now() - soakFrom.at < SOAK_ORIGIN_MS ? soakFrom.rect : null;
+	soakFrom = null;
+	if (typeof doc.startViewTransition !== "function" || document.visibilityState !== "visible") { apply(); return; }
+	const view = { width: window.innerWidth, height: window.innerHeight };
+	const soak = soakOrigin(origin ?? { left: view.width / 2, top: view.height / 2, width: 0, height: 0 }, view);
+	const root = document.documentElement;
+	root.style.setProperty("--lh-soak-x", `${Math.round(soak.x)}px`);
+	root.style.setProperty("--lh-soak-y", `${Math.round(soak.y)}px`);
+	root.style.setProperty("--lh-soak-r", `${soak.r}px`);
+	const update = () => flushSync(apply);
+	let transition: { finished: Promise<void> };
+	try {
+		transition = doc.startViewTransition.call(doc, { update, types: ["lh-theme"] });
+	} catch {
+		// Without transition types: the callback form and the browser's own cross-fade.
+		transition = doc.startViewTransition.call(doc, update);
+	}
+	transition.finished.catch(() => {}).finally(() => { for (const name of SOAK_VARS) root.style.removeProperty(name); });
 }
 
 /** The stored `notebook` patch for a shared patch. */

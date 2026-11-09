@@ -66,7 +66,7 @@
 import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { FileTextIcon, ListTreeIcon, Loader2Icon, SearchIcon, XIcon } from "lucide-react";
+import { FileTextIcon, ListTreeIcon, SearchIcon, XIcon } from "lucide-react";
 import { loadGraphLayout, propositionSessionHref, type GraphCostSummary, type GraphNode, type GraphSnapshot } from "@/src/core";
 import { planCostLabel } from "@/components/usage-format";
 import type { GraphCanvasRenderer, GraphRenderSettings } from "./graph-canvas.ts";
@@ -82,6 +82,7 @@ import { InOverlayHost } from "@/components/overlay-host";
 import { containModalTab } from "@/components/modal-focus";
 import { Hint } from "@/components/ui/hint";
 import { DEFAULT_RENDER_SETTINGS, sanitizeRenderSettings } from "@/src/core";
+import { BlotGlyph } from "@/components/paper/blot";
 
 /** The uniform node look (no state classes — canvas wants hex, not oklch):
  *  the paper's ink (feature 025), until the state model lands. */
@@ -1246,7 +1247,7 @@ export function GraphView({
 					key={run.id}
 					className="flex items-center gap-2 rounded-full bg-paper px-3 py-1.5 text-sm text-faint shadow-lift"
 				>
-					<Loader2Icon className="size-3.5 shrink-0 animate-spin motion-reduce:animate-none" />
+					<span className="nb-ink-wait shrink-0" aria-hidden="true"><BlotGlyph className="nb-ink-wait-blot" size={12} /></span>
 					<span className="capitalize">{run.phase}</span>
 					<span className="max-w-48 truncate text-ink">{run.title}</span>
 					<span className="tabular-nums">{Math.max(0, Math.round((Date.now() - run.startedAt) / 1000))}s</span>

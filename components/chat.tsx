@@ -78,7 +78,7 @@ import { GraphContextCard, type GraphContextData } from "@/components/graph-cont
 import { FollowupContextCard, type FollowupContextData } from "@/components/followup-context-card";
 import { TopBar } from "@/components/top-bar";
 import { RouteContent } from "@/components/paper/route-content";
-import { inkOrder } from "@/components/paper/motion-arrival";
+import { inkOrder, SettledMessagesContext } from "@/components/paper/motion-arrival";
 import type { ArtifactPartProps, JobRecord, LibraryReference, Phase3, QuestionAnswerData, QuestionFormDraft, TurnUsage, SessionPricing } from "@/src/core";
 import type { LhViewMessage } from "@/src/core";
 import { PhaseChip, PhaseDivider } from "@/components/phase-divider";
@@ -302,6 +302,10 @@ function ChatView({
 	const { messages, nativeMessages, contextTokens, send, continueIfOwed, steer, cancelSteer, steerQueue, submitAnswer, dismissQuestion, dismissProblem, questionDraft, saveQuestionDraft, setMessages, adoptRecord, status, error, stop, clearError, resumeStream, setReattachSettled } =
 		useChatSession({ chatId, initialMessages, initialError, initiallyInFlight });
 
+	// Feature 028 (rows 17-19): what the transcript held when the lesson
+	// mounted is settled history and never animates; a turn he sends, a demo
+	// or plot delivered now arrive (their view and record ids alike).
+	const [settledMessages] = useState<ReadonlySet<string>>(() => new Set([...messages, ...nativeMessages].map((m) => (m as { id?: unknown }).id).filter((id): id is string => typeof id === "string" && id !== "")));
 	const sessionFindScopeRef = useRef<HTMLDivElement | null>(null);
 	const scrollContextRef = useRef<StickToBottomContext | null>(null);
 	const sourceTextParts = useMemo(() => firstSourceTextParts(messages), [messages]);
@@ -1579,6 +1583,7 @@ function ChatView({
 							)}
 
 							{windowFrom > 0 && <TranscriptBackfillSentinel key={windowFrom} contextRef={scrollContextRef} onNear={transcript.extend} />}
+							<SettledMessagesContext.Provider value={settledMessages}>
 							<TranscriptScrollKeeper from={windowFrom} contextRef={scrollContextRef}>
 							{messages.map((m, mi) =>
 								// Deferred prefix (transcript window): mounts in idle chunks.
@@ -1671,6 +1676,7 @@ function ChatView({
 									) : null}
 									{m.role === "user" ? (
 										<UserTurn
+											arrivalId={mi >= messages.length - 2 ? m.id : undefined}
 											text={m.parts.filter((p) => p.type === "text").map((p) => p.text).join("\n")}
 											references={messageReferences(m.parts)}
 											messageId={m.id || `m-${mi}`}
@@ -1755,7 +1761,7 @@ function ChatView({
 														// transcript; answered ones render as graded records.
 														if (part.state === "output-available") {
 															return (
-																<AnsweredCard key={pi} answer={part.output as QuestionAnswerData} input={part.input} checked={part.wolframChecked === true} chipScope={`${m.id || `m-${mi}`}-${part.toolCallId}`} />
+																<AnsweredCard key={pi} answer={part.output as QuestionAnswerData} input={part.input} checked={part.wolframChecked === true} chipScope={`${m.id || `m-${mi}`}-${part.toolCallId}`} toolCallId={part.toolCallId} />
 															);
 														}
 														// The waiting one is its check thread (feature 025, R8).
@@ -1796,6 +1802,7 @@ function ChatView({
 								</SessionPartState>
 							))}
 							</TranscriptScrollKeeper>
+							</SettledMessagesContext.Provider>
 
 							{/* THE placeholder, ACTION-gated (owner, optimistic round
 							    3, 2026-10-02): spinner + shimmered Thinking… from the
@@ -2646,7 +2653,7 @@ function DockFooter({
 					)}
 
 
-					<div ref={shellRef} data-testid="dock-shell" data-compact={!check && !expanded} {...inkOrder(1)}
+					<div ref={shellRef} data-testid="dock-shell" data-compact={!check && !expanded} {...inkOrder(1)} data-ink-verb="settle"
 						onCompositionStartCapture={() => { composingRef.current = true; setExpanded(true); }}
 						onCompositionEndCapture={() => { composingRef.current = false; }}
 						onFocusCapture={(event) => { if ((event.target as HTMLElement).matches("textarea, input, [contenteditable=true]")) setExpanded(true); }}

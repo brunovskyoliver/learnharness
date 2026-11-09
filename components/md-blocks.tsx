@@ -43,6 +43,7 @@ import { chartSize, useSessionMermaid } from "@/components/session-overlay-conte
 import { findDemoByTitle, normalizeDemoTitle, useDemoPanel } from "@/components/artifacts/demo-panel-context";
 import { Hint } from "@/components/ui/hint";
 import { Button } from "@/components/ui/button";
+import { BlotGlyph } from "@/components/paper/blot";
 
 // ─── The one affordance: the hover-reveal corner copy ────────────────────────
 
@@ -191,7 +192,7 @@ function MermaidInline({ chart }: { chart: string }) {
 	if (incomplete || (svg === null && error === null)) {
 		return (
 			<div data-testid="md-mermaid" className="my-4 flex justify-center p-4" aria-busy="true">
-				<span className="inline-block size-4 animate-spin motion-reduce:animate-none rounded-full border border-current border-b-2 text-faint" />
+				<span className="nb-ink-wait text-faint" aria-hidden="true"><BlotGlyph className="nb-ink-wait-blot" size={13} /></span>
 			</div>
 		);
 	}

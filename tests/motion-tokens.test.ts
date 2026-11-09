@@ -186,3 +186,28 @@ describe("layers (feature 028, T049, research R7)", () => {
 		}
 	});
 });
+
+describe("small parts and the ink soak (feature 028, US5)", () => {
+	it("lh-soak moves only its registered radius, which drives the new look's mask (row 23, gate 2)", () => {
+		const body = block(/@keyframes\s+lh-soak\s*\{/);
+		const props = [...body.matchAll(/(--?[a-z-]+)\s*:/g)].map(([, p]) => p!);
+		assert.deepEqual([...new Set(props)], ["--lh-soak-p"]);
+		assert.match(css, /@property\s+--lh-soak-p\s*\{[^}]*syntax:\s*"<length>"/);
+		assert.match(css, /html:active-view-transition-type\(lh-theme\)::view-transition-new\(root\)\s*\{[^}]*mask-image:\s*radial-gradient\([^;]*calc\(var\(--lh-soak-p\)\s*-\s*24px\)[^;]*var\(--lh-soak-p\)\);[^}]*var\(--motion-soak\)\s+var\(--ease-unfold\)\s+both\s+lh-soak/);
+		assert.match(css, /html:active-view-transition-type\(lh-theme\)::view-transition-old\(root\)\s*\{\s*animation:\s*none;/);
+		assert.doesNotMatch(css, /^::view-transition-(old|new)\(root\)/m, "no untyped root cross-fade is left");
+	});
+
+	it("under reduced motion every small part fades within 150ms, sits still or shows at once (rows 13-30)", () => {
+		const reduced = blocks(/@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{/).find((b) => b.includes("[data-lh-late]")) ?? "";
+		assert.ok(reduced, "a reduced-motion block for the small parts");
+		for (const hook of ["[data-lh-row]", "[data-lh-late]", ".lh-back-pill", ".lh-status", ".lh-kind-dot", ".lh-empty-blot", ".lh-status-dot", ".lh-user-turn", ".lh-ref-chip-name", ".lh-choice-ring", "lh-theme"]) {
+			assert.ok(reduced.includes(hook), `reduced motion does not name ${hook}`);
+		}
+		for (const [, value] of reduced.matchAll(/animation:\s*([^;]+);/g)) {
+			if (/^none\b/.test(value!)) continue;
+			assert.match(value!, /^(var\(--motion-fade-reduced\)|1[0-4]\dms|150ms)\s+linear\s+both\s+(lh-fade|lh-lift)$/, value);
+		}
+		assert.match(reduced, /\[data-pressed\]\)\s*\{\s*scale:\s*none;/);
+	});
+});

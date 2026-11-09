@@ -13,8 +13,9 @@ import { navigateTo } from "@/components/paper/navigate";
 import { ArrowLeftIcon } from "lucide-react";
 import { useSessionList } from "@/components/session-list";
 import { returnRoute, type ReturnPoint } from "@/components/reference-return";
+import type { RowMotionProps } from "@/components/paper/motion-arrival";
 
-export function BackPill({ point }: { point: ReturnPoint }) {
+export function BackPill({ point, ...motion }: { point: ReturnPoint } & RowMotionProps) {
 	const router = useRouter();
 	const { chats } = useSessionList();
 	const title = chats?.find((chat) => chat.id === point.chatId)?.title?.trim() || point.title;
@@ -31,7 +32,7 @@ export function BackPill({ point }: { point: ReturnPoint }) {
 		else navigateTo(router, route.href);
 	};
 	return (
-		<div className="lh-back-pill-row">
+		<div className="lh-back-pill-row" {...motion}>
 			<button type="button" className="nb-pill lh-back-pill" onClick={goBack} data-testid="back-pill">
 				<ArrowLeftIcon aria-hidden="true" />
 				<span className="min-w-0 truncate" title={label}>{label}</span>

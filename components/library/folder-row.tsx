@@ -9,7 +9,7 @@ import { RepoStatusText } from "./repo-status-line.tsx";
 
 export const folderHref = (id: string | null) => (id ? `/library?folder=${encodeURIComponent(id)}` : "/library");
 
-export function FolderRow({ folder, count, location, repoLink, actions = [], selection, dropTarget, onDragStartEntry, onRename, onDelete }: {
+export function FolderRow({ folder, count, location, repoLink, actions = [], selection, dropTarget, onDragStartEntry, onRename, onDelete, order }: {
 	folder: LibraryFolder;
 	count: number;
 	/** The folder's path, shown while searching the whole Library. */
@@ -23,6 +23,8 @@ export function FolderRow({ folder, count, location, repoLink, actions = [], sel
 	dropTarget?: { over: boolean; onOver: (over: boolean) => void; onDrop: (event: React.DragEvent) => void };
 	onDragStartEntry?: (key: EntryKey, event: React.DragEvent) => void;
 	onDelete: (folder: LibraryFolder, opener: HTMLElement) => void;
+	/** Its place in the list's own late arrival (rowOrder, feature 028 row 15). */
+	order?: { "data-row-order"?: ""; style?: React.CSSProperties };
 }) {
 	const linked = folder.mirror?.path === "";
 	// Feature 026 (ui-contract.md Menus): a mirror folder changes only with the repo;
@@ -48,6 +50,7 @@ export function FolderRow({ folder, count, location, repoLink, actions = [], sel
 			data-selected={selection?.selected ? "" : undefined}
 			data-drop={drop?.over ? "" : undefined}
 			data-testid="library-folder-row"
+			{...order}
 			draggable={Boolean(onDragStartEntry) && !mirrorFolder}
 			onDragStart={(event) => { if (!mirrorFolder) onDragStartEntry?.(`folder:${folder.id}`, event); }}
 			onDragOver={(event) => {

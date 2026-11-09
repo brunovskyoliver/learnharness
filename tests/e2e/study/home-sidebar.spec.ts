@@ -35,6 +35,8 @@ test.describe("Study: Home and the sidebar", () => {
 
 		// ☰: the 288px shelf over a dimmed page; focus inside; Escape returns focus to ☰.
 		await openSidebar(page);
+		// Measured once the sheet has slid in (feature 028, row 7: its slide is a transform).
+		await sidebar(page).evaluate((el) => Promise.allSettled(el.getAnimations({ subtree: true }).filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished)));
 		expect((await sidebar(page).boundingBox())!.width).toBe(288);
 		await expect(page.getByTestId("nb-sidebar-dim")).toHaveAttribute("data-dim", "");
 		expect(await sidebar(page).evaluate((el) => el.contains(document.activeElement))).toBe(true);
@@ -93,6 +95,8 @@ test.describe("Study: Home and the sidebar", () => {
 		expect((await menu.boundingBox())!.width).toBeGreaterThanOrEqual(44);
 		await menu.tap();
 		await expect(sidebar(page)).toBeVisible();
+		// Measured once the sheet has slid in (feature 028, row 7: its slide is a transform).
+		await sidebar(page).evaluate((el) => Promise.allSettled(el.getAnimations({ subtree: true }).filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished)));
 		expect((await sidebar(page).boundingBox())!.width).toBe(288);
 		// A field's target is its row (a press anywhere on the row focuses it).
 		const small = await sidebar(page).evaluate((root) => [...root.querySelectorAll<HTMLElement>("button, a[href], [role='button'], input")]

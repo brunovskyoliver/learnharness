@@ -8,9 +8,45 @@
  * settings draw (where questions appear, appearance).
  */
 import { RadioGroup } from "radix-ui";
-import { useId, type CSSProperties, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from "react";
 import type { NotebookAppearance, NotebookLayout } from "@/src/core";
+import { noteSoakOrigin } from "./appearance";
 import { useArrowChoice } from "./shared";
+
+/** The slide's longest run (300ms) with margin: past it the card's own ring is back. */
+const SLIDE_MS = 600;
+
+/**
+ * Row 27 (feature 028, research R8): when the choice moves, one ink ring
+ * slides from the old card to the new one (transform only, 300ms
+ * `--spring-soft`), then hands back to the chosen card's own ring, so first
+ * paint and no-JS keep the ring. Reduced motion: the ring jumps.
+ */
+function useSlidingRing(group: React.RefObject<HTMLDivElement | null>, ring: React.RefObject<HTMLSpanElement | null>, field: string, value: string) {
+	const last = useRef<{ left: number; top: number; width: number; height: number } | null>(null);
+	const slides = useRef(0);
+	useLayoutEffect(() => {
+		const host = group.current, mark = ring.current;
+		const card = host?.querySelector<HTMLElement>(`[data-testid="nb-set-${CSS.escape(field)}-${CSS.escape(value)}"]`);
+		if (!host || !mark || !card) return;
+		const to = { left: card.offsetLeft, top: card.offsetTop, width: card.offsetWidth, height: card.offsetHeight };
+		const from = last.current;
+		last.current = to;
+		if (!from || (from.left === to.left && from.top === to.top) || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+		Object.assign(mark.style, { left: `${to.left}px`, top: `${to.top}px`, width: `${to.width}px`, height: `${to.height}px`, transition: "none" });
+		mark.style.transform = `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.width / to.width}, ${from.height / to.height})`;
+		host.setAttribute("data-ring-sliding", "");
+		void mark.getBoundingClientRect();
+		mark.style.transition = "";
+		mark.style.transform = "none";
+		const token = ++slides.current;
+		const rest = () => { if (token === slides.current) host.removeAttribute("data-ring-sliding"); };
+		const timer = window.setTimeout(rest, SLIDE_MS);
+		const ended = (event: TransitionEvent) => { if (event.propertyName === "transform") rest(); };
+		mark.addEventListener("transitionend", ended);
+		return () => { window.clearTimeout(timer); mark.removeEventListener("transitionend", ended); rest(); };
+	}, [group, ring, field, value]);
+}
 
 /** A section: its label and a radio group of option cards (`nb-set-{field}`). */
 export function OptionCardGroup<T extends string>({ field, label, value, columns, onChange, rowId, children }: {
@@ -24,21 +60,32 @@ export function OptionCardGroup<T extends string>({ field, label, value, columns
 	children: ReactNode;
 }) {
 	const id = useId();
-	const arrows = useArrowChoice(value, onChange);
+	const group = useRef<HTMLDivElement>(null);
+	const ring = useRef<HTMLSpanElement>(null);
+	// Row 23: the chosen card is where a theme change soaks in from (pointer or keyboard).
+	const choose = (next: T) => {
+		const card = group.current?.querySelector<HTMLElement>(`[data-testid="nb-set-${CSS.escape(field)}-${CSS.escape(next)}"]`);
+		if (card) noteSoakOrigin(card.getBoundingClientRect());
+		onChange(next);
+	};
+	const arrows = useArrowChoice(value, choose);
+	useSlidingRing(group, ring, field, value);
 	return (
 		<section className="nb-set-section" data-section={field} data-settings-row={rowId}>
 			<h3 id={id} className="nb-set-label">{label}</h3>
 			<RadioGroup.Root
+				ref={group}
 				aria-labelledby={id}
 				className="nb-set-grid"
 				style={{ "--cols": columns } as CSSProperties}
 				value={value}
-				onValueChange={(next) => onChange(next as T)}
+				onValueChange={(next) => choose(next as T)}
 				{...arrows}
 				loop
 				data-testid={`nb-set-${field}`}
 			>
 				{children}
+				<span ref={ring} className="lh-choice-ring" aria-hidden="true" />
 			</RadioGroup.Root>
 		</section>
 	);

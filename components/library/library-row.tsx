@@ -21,7 +21,7 @@ function metaLine(item: LibraryItem): string {
 }
 
 /** One Library item. Every action's accessible name includes the item's name. */
-export function LibraryRow({ item, location, repo, onRenamed, actions = [], grid = false, selection, onDragStartEntry, onDelete }: {
+export function LibraryRow({ item, location, repo, onRenamed, actions = [], grid = false, selection, onDragStartEntry, onDelete, order, settle = false }: {
 	item: LibraryItem;
 	/** A mirrored file's repo, "github.com/oliver/notes" (feature 026). */
 	repo?: string;
@@ -35,6 +35,10 @@ export function LibraryRow({ item, location, repo, onRenamed, actions = [], grid
 	selection?: { selected: boolean; toggle: () => void };
 	onDragStartEntry?: (key: EntryKey, event: React.DragEvent) => void;
 	onDelete: (item: LibraryItem, opener: HTMLElement) => void;
+	/** Its place in the list's own late arrival (rowOrder, feature 028 row 15). */
+	order?: { "data-row-order"?: ""; style?: React.CSSProperties };
+	/** New to the Library since the view mounted (an upload landing): it settles in. */
+	settle?: boolean;
 }) {
 	const [renaming, setRenaming] = useState(false);
 	const [renameError, setRenameError] = useState<string | null>(null);
@@ -115,6 +119,8 @@ export function LibraryRow({ item, location, repo, onRenamed, actions = [], grid
 			className="lh-row"
 			data-selected={selection?.selected ? "" : undefined}
 			data-testid="library-row"
+			data-lh-row={settle ? "settle" : undefined}
+			{...order}
 			draggable={Boolean(onDragStartEntry) && !renaming && !mirrored}
 			onDragStart={(event) => { if (!mirrored) onDragStartEntry?.(`item:${item.id}`, event); }}
 		>

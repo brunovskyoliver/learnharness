@@ -1,5 +1,5 @@
-import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
-import { ARRIVAL_NAMES, CHATS, arrivalWindow, chatView, chord, chromeClip, clearRecorded, clearStudyKey, clipFrames, createPage, hydrated, layoutShiftDuring, openChat, openSidebar, recordAnimations, recordedAnimations, seedStudy, studySettings, visible, withoutViewTransitions, type RecordedAnimation } from "./helpers";
+import { expect, test, type APIRequestContext, type Browser, type BrowserContext, type Page } from "@playwright/test";
+import { ARRIVAL_NAMES, CHATS, STILL_LEVELS, arrivalWindow, chatView, chord, chromeClip, clearRecorded, clearStudyKey, clipFrames, createPage, frameDistances, hydrated, layoutShiftDuring, openChat, openSidebar, recordAnimations, recordedAnimations, seedStudy, studySettings, visible, withoutViewTransitions, type RecordedAnimation, arrived, token } from "./helpers";
 
 // Feature 028 (one motion language): the cold-load signature (US1, rows 1-2)
 // and the arrival fallback without view transitions (US2 AS2). Each cold load
@@ -153,7 +153,8 @@ test.describe("Motion: the cold-load signature (feature 028, US1)", () => {
 			const played = arrivals(await recordedAnimations(page));
 			expect(played.length, `${path}: a fade plays`).toBeGreaterThan(0);
 			for (const a of played) {
-				expect(a.name, `${path}: ${a.target}`).toBe("lh-fade");
+				// A fade in, or a skeleton lifting away as the data lands (row 29): opacity either way.
+				expect(a.name === "lh-fade" || (a.name === "lh-lift" && /lh-skeleton-leaving/.test(a.target)), `${path}: ${a.name} on ${a.target}`).toBe(true);
 				expect(a.duration, `${path}: ${a.target}`).toBeLessThanOrEqual(150);
 				expect(a.delay, `${path}: ${a.target}`).toBe(0);
 				expect(a.properties, `${path}: ${a.target}`).toEqual(["opacity"]);
@@ -281,7 +282,8 @@ test.describe("Motion: routes and tabs (feature 028, US3)", () => {
 			const frames = await framing;
 			await page.waitForTimeout(600);
 			const after = await clipFrames(page, clip, 0);
-			const moved = frames.filter((frame) => !frame.equals(before[0]!) && !frame.equals(after[0]!));
+			const distance = await frameDistances(page, frames, [before[0]!, after[0]!]);
+			const moved = frames.filter((_, i) => distance[i]!.every((d) => d > STILL_LEVELS));
 			if (moved.length) for (const [i, frame] of frames.entries()) await test.info().attach(`${label}-${String(i).padStart(3, "0")}.png`, { body: frame, contentType: "image/png" });
 			expect(moved.length, `${label}: chrome frames that differ from both ends (of ${frames.length})`).toBe(0);
 			const motion = routeMotion(await recordedAnimations(page));
@@ -644,5 +646,411 @@ test.describe("Motion: layers (feature 028, US4)", () => {
 		expect(await rowInks(), "not again").toEqual([]);
 		const sheet = (await recordedAnimations(page)).filter((a) => a.name === "lh-sheet-in");
 		expect(sheet.length, "the sheet still slides in").toBe(1);
+	});
+});
+
+// Feature 028, US5 (rows 13-30): lists, threads, demos and small parts
+// arrive once. A re-render (a refresh with equal data, a resize, a theme
+// flip) starts nothing; a genuinely new row unfolds, a resolved one lifts.
+
+/** One-shot motions (loops and colour transitions excluded). */
+const ONCE = new Set([...ARRIVAL_NAMES, "nb-sketch-pop-in", "nb-pencil-draw", "lh-soak", "lh-dialog-rise", "lh-sheet-in", "nb-menu-in", "nb-chat-in"]);
+const once = (all: RecordedAnimation[]) => all.filter((a) => ONCE.has(a.name) && a.duration > 0);
+
+/** Every card of the queue, suspended or not. */
+async function allCards(request: APIRequestContext): Promise<Array<{ id: string; suspended?: boolean }>> {
+	return ((await (await request.get("/api/cards")).json()) as { cards: Array<{ id: string; suspended?: boolean }> }).cards;
+}
+
+test.describe("Motion: small parts arrive once (feature 028, US5)", () => {
+	let suspended: string[] = [];
+	test.beforeAll(async ({ request }) => {
+		await seedStudy();
+		// Home's Flashcards row comes and goes with due cards: start with none.
+		suspended = (await allCards(request)).filter((card) => !card.suspended).map((card) => card.id);
+		for (const id of suspended) expect((await request.patch(`/api/cards/${id}`, { data: { suspended: true } })).ok()).toBeTruthy();
+	});
+	test.beforeEach(async ({ request, context, page }) => {
+		await studySettings(request);
+		await recordAnimations(context);
+		await page.setViewportSize({ width: 1440, height: 900 });
+	});
+	test.afterAll(async ({ request }) => {
+		for (const id of suspended) await request.patch(`/api/cards/${id}`, { data: { suspended: false } });
+		await studySettings(request);
+		await clearStudyKey(request);
+	});
+
+	/** Ten re-renders: the session list refetches equal data, the window resizes, the theme flips. */
+	const rerenders = async (page: Page) => {
+		for (let i = 0; i < 10; i++) {
+			await page.request.put(`/api/chats/${CHATS.plain}`, { data: { title: "E2E · Plain lesson" } });
+			await page.setViewportSize({ width: i % 2 ? 1280 : 1440, height: 900 });
+			await page.evaluate(() => { const html = document.documentElement; html.setAttribute("data-theme", html.getAttribute("data-theme") === "dark" ? "light" : "dark"); });
+			await page.waitForTimeout(200);
+		}
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await page.evaluate(() => document.documentElement.setAttribute("data-theme", "light"));
+		await page.waitForTimeout(400);
+	};
+	const settled = async (page: Page, path: string, ready: string) => {
+		await page.goto(path);
+		await hydrated(page, '[aria-label="Open sidebar"]');
+		await hydrated(page, ready);
+		await page.waitForTimeout(1200);
+		await arrived(page);
+		await clearRecorded(page);
+	};
+
+	test("Home: re-renders replay nothing; a new row unfolds with its dot, a resolved row lifts and goes (rows 13-14)", async ({ page, request }) => {
+		test.setTimeout(240_000);
+		await settled(page, "/", '[data-testid="waiting-section"]');
+		await expect(page.getByTestId("waiting-cards-row")).toHaveCount(0);
+		await rerenders(page);
+		expect(once(await recordedAnimations(page)), "ten re-renders").toEqual([]);
+
+		const made = await request.post("/api/cards", { data: { front: `Motion front ${Date.now()}`, back: "Motion back" } });
+		expect(made.ok()).toBeTruthy();
+		const card = ((await made.json()) as { card: { id: string } }).card;
+		await expect(page.getByTestId("waiting-cards-row")).toBeVisible({ timeout: 15_000 });
+		await page.waitForTimeout(700);
+		const arrival = once(await recordedAnimations(page));
+		expect(arrival.some((a) => a.name === "nb-unfold" && /waiting-cards-row/.test(a.target)), "the new row unfolds").toBe(true);
+		expect(arrival.some((a) => a.name === "nb-blot-splat" && /lh-kind-dot/.test(a.target)), "its label's dot splats").toBe(true);
+		for (const a of arrival) expect(a.delay + a.duration, `${a.name} on ${a.target}`).toBeLessThanOrEqual(600);
+		await expect(page.getByTestId("waiting-cards-row")).not.toHaveAttribute("data-lh-row", /./);
+
+		await clearRecorded(page);
+		await rerenders(page);
+		expect(once(await recordedAnimations(page)), "ten re-renders after it arrived").toEqual([]);
+
+		expect((await request.delete(`/api/cards/${card.id}`)).ok()).toBeTruthy();
+		await expect(page.locator('[data-testid="waiting-cards-row"][data-lh-row="leave"]')).toHaveCount(1, { timeout: 15_000 });
+		expect(await page.locator('[data-testid="waiting-cards-row"]').getAttribute("aria-hidden"), "a leaving row is hidden from assistive tech").toBe("true");
+		await expect(page.getByTestId("waiting-cards-row")).toHaveCount(0, { timeout: 2000 });
+		const lift = (await recordedAnimations(page)).filter((a) => a.name === "lh-lift" && /waiting-cards-row/.test(a.target));
+		expect(lift.length, "the resolved row lifts").toBe(1);
+		expect(lift[0]!.duration).toBeLessThanOrEqual(160);
+	});
+
+	test("the Library's folders unfold and lift in the sidebar; re-renders replay nothing (row 16)", async ({ page, request }) => {
+		test.setTimeout(180_000);
+		const parent = ((await (await request.post("/api/library/folders", { data: { name: `Motion shelf ${Date.now().toString(36)}`, parentId: null } })).json()) as { folder: { id: string; name: string } }).folder;
+		await request.post("/api/library/folders", { data: { name: "Motion child", parentId: parent.id } });
+		await settled(page, `/chat/${CHATS.plain}`, '[aria-label="Open sidebar"]');
+		await openSidebar(page);
+		await page.waitForTimeout(800);
+		const toggle = page.getByTestId("sidebar-library-toggle");
+		if ((await toggle.getAttribute("aria-expanded")) === "true") { await toggle.click(); await page.waitForTimeout(400); }
+		await clearRecorded(page);
+		await toggle.click();
+		const shelf = page.getByRole("button", { name: `Show folders in ${parent.name}` });
+		await expect(shelf).toBeVisible({ timeout: 10_000 });
+		await page.waitForTimeout(500);
+		await clearRecorded(page);
+		const opened = await layoutShiftDuring(page, async () => { await shelf.click(); await expect(page.getByRole("treeitem", { name: "Motion child" })).toBeVisible(); });
+		expect(opened, "expanding shifts nothing that was not asked for").toBe(0);
+		const unfold = once(await recordedAnimations(page)).filter((a) => a.name === "nb-unfold");
+		expect(unfold.length, "the child unfolds").toBe(1);
+		expect(unfold[0]!.duration).toBe(280);
+		await clearRecorded(page);
+		await page.getByRole("button", { name: `Hide folders in ${parent.name}` }).click();
+		await expect(page.getByRole("treeitem", { name: "Motion child" })).toHaveCount(0, { timeout: 2000 });
+		const lift = (await recordedAnimations(page)).filter((a) => a.name === "lh-lift");
+		expect(lift.length, "the child lifts").toBe(1);
+		expect(lift[0]!.duration).toBeLessThanOrEqual(160);
+		await clearRecorded(page);
+		await rerenders(page);
+		expect(once(await recordedAnimations(page)), "ten re-renders").toEqual([]);
+	});
+
+	test("a demo in settled history never unfolds, and re-renders neither replay it nor reload it (row 19, US5 AS2)", async ({ page }) => {
+		test.setTimeout(180_000);
+		await page.goto("/chat/review-gradient-descent");
+		const frame = visible(page, '[data-chat-id="review-gradient-descent"] iframe[sandbox]');
+		await expect(frame).toBeVisible({ timeout: 60_000 });
+		await page.waitForTimeout(1500);
+		const unfolded = (await recordedAnimations(page)).filter((a) => /demo-card/.test(a.target) && ONCE.has(a.name));
+		expect(unfolded, "history stays still").toEqual([]);
+		await frame.evaluate((el) => { (window as unknown as { __lhLoads: number }).__lhLoads = 0; el.addEventListener("load", () => { (window as unknown as { __lhLoads: number }).__lhLoads++; }); });
+		await clearRecorded(page);
+		await rerenders(page);
+		expect(once(await recordedAnimations(page)), "ten re-renders").toEqual([]);
+		expect(await page.evaluate(() => (window as unknown as { __lhLoads: number }).__lhLoads), "the demo never reloads").toBe(0);
+	});
+
+	test("Review: the back unfolds, the next card inks in, re-renders replay nothing (row 28)", async ({ page, request }) => {
+		test.setTimeout(180_000);
+		const made: string[] = [];
+		for (const front of ["Motion review one", "Motion review two"]) made.push(((await (await request.post("/api/cards", { data: { front: `${front} ${Date.now()}`, back: "Back" } })).json()) as { card: { id: string } }).card.id);
+		await settled(page, "/review", '[data-testid="queue-reveal"]');
+		await rerenders(page);
+		expect(once(await recordedAnimations(page)), "ten re-renders").toEqual([]);
+		await page.getByTestId("queue-reveal").click();
+		await expect(page.getByTestId("queue-back")).toBeVisible();
+		await page.waitForTimeout(500);
+		expect(once(await recordedAnimations(page)).some((a) => a.name === "nb-unfold" && a.duration === 340), "the back unfolds").toBe(true);
+		await clearRecorded(page);
+		await page.getByTestId("queue-ratings").locator("button").first().click();
+		await expect(page.getByTestId("queue-reveal")).toBeVisible();
+		await page.waitForTimeout(500);
+		expect(once(await recordedAnimations(page)).some((a) => a.name === "nb-ink-in" && /queue-card/.test(a.target)), "the next card inks in").toBe(true);
+		await clearRecorded(page);
+		await rerenders(page);
+		expect(once(await recordedAnimations(page)), "ten re-renders after").toEqual([]);
+		for (const id of made) await request.delete(`/api/cards/${id}`);
+	});
+
+	test("a touch tap presses a pill to .97 and it springs back (row 26, FR-016)", async ({ browser }) => {
+		test.setTimeout(120_000);
+		const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+		const page = await context.newPage();
+		await page.goto("/review");
+		const pill = page.getByTestId("queue-empty-new").or(page.getByTestId("queue-reveal"));
+		await hydrated(page, '[data-testid="queue-empty-new"], [data-testid="queue-reveal"]');
+		const box = (await pill.first().boundingBox())!;
+		const cdp = await context.newCDPSession(page);
+		const point = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+		await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [point] });
+		await page.waitForTimeout(200);
+		const pressed = await pill.first().evaluate((el) => getComputedStyle(el).scale);
+		await cdp.send("Input.dispatchTouchEvent", { type: "touchCancel", touchPoints: [] });
+		await page.waitForTimeout(400);
+		const released = await pill.first().evaluate((el) => getComputedStyle(el).scale);
+		expect(pressed, "pressed").toBe("0.97");
+		expect(["none", "1"]).toContain(released);
+		await context.close();
+	});
+});
+
+test.describe("Motion: the ink soak (feature 028, row 23, T067)", () => {
+	test.beforeAll(async () => { await seedStudy(); });
+	test.beforeEach(async ({ request, context, page }) => {
+		await studySettings(request);
+		await recordAnimations(context);
+		await page.setViewportSize({ width: 1440, height: 900 });
+		// The soak's origin as the page set it, before the transition started.
+		await context.addInitScript(() => {
+			const w = window as unknown as { __lhSoak: Array<{ x: string; y: string; r: string; at: number }> };
+			w.__lhSoak = [];
+			new MutationObserver(() => {
+				const style = document.documentElement.style;
+				const x = style.getPropertyValue("--lh-soak-x");
+				if (x) w.__lhSoak.push({ x, y: style.getPropertyValue("--lh-soak-y"), r: style.getPropertyValue("--lh-soak-r"), at: performance.now() });
+			}).observe(document, { attributes: true, subtree: true, attributeFilter: ["style"] });
+		});
+	});
+	test.afterAll(async ({ request }) => {
+		await studySettings(request);
+		await clearStudyKey(request);
+	});
+
+	const customize = async (page: Page) => {
+		await chord(page, "Control", ",");
+		await expect(page.getByTestId("nb-settings")).toBeVisible();
+		await page.getByTestId("nb-settings-nav-customize").click();
+		await expect(page.getByTestId("nb-set-appearance-dark")).toBeVisible();
+		await page.waitForTimeout(400);
+	};
+	const soaks = (page: Page) => page.evaluate(() => (window as unknown as { __lhSoak: Array<{ x: string; y: string; r: string; at: number }> }).__lhSoak);
+	const centre = async (page: Page, testId: string) => {
+		const box = (await page.getByTestId(testId).boundingBox())!;
+		return { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) };
+	};
+
+	test("the new theme soaks in from the chosen card by 450ms (pointer and keyboard), and the demo never reloads", async ({ page }) => {
+		test.setTimeout(240_000);
+		await page.goto("/chat/review-gradient-descent");
+		const frame = visible(page, '[data-chat-id="review-gradient-descent"] iframe[sandbox]');
+		await expect(frame).toBeVisible({ timeout: 60_000 });
+		await hydrated(page, '[aria-label="Open sidebar"]');
+		await page.waitForTimeout(1500);
+		await frame.evaluate((el) => { (window as unknown as { __lhLoads: number }).__lhLoads = 0; el.addEventListener("load", () => { (window as unknown as { __lhLoads: number }).__lhLoads++; }); });
+		await customize(page);
+		await clearRecorded(page);
+
+		const dark = await centre(page, "nb-set-appearance-dark");
+		await page.getByTestId("nb-set-appearance-dark").click();
+		await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+		await page.waitForTimeout(800);
+		const first = (await soaks(page)).at(-1)!;
+		expect(first, "the soak's origin").toBeTruthy();
+		expect(Math.abs(parseFloat(first.x) - dark.x), "x at the card").toBeLessThanOrEqual(1);
+		expect(Math.abs(parseFloat(first.y) - dark.y), "y at the card").toBeLessThanOrEqual(1);
+		const soak = (await recordedAnimations(page)).filter((a) => a.name === "lh-soak");
+		expect(soak.length, "one soak").toBe(1);
+		expect(soak[0]!.pseudo).toBe("::view-transition-new(root)");
+		expect(soak[0]!.delay + soak[0]!.duration, "ends by 450ms").toBeLessThanOrEqual(450);
+		expect(await page.evaluate(() => document.documentElement.style.getPropertyValue("--lh-soak-x")), "the origin is cleared after").toBe("");
+
+		// By keyboard: an arrow chooses the next card, which is where it soaks from.
+		await clearRecorded(page);
+		await page.getByTestId("nb-set-appearance-dark").focus();
+		const system = await centre(page, "nb-set-appearance-system");
+		const light = await centre(page, "nb-set-appearance-light");
+		await page.keyboard.press("ArrowLeft");
+		await page.waitForTimeout(800);
+		const second = (await soaks(page)).at(-1)!;
+		const chosen = await page.locator('[data-testid^="nb-set-appearance-"][data-state="checked"]').getAttribute("data-testid");
+		const expected = chosen === "nb-set-appearance-light" ? light : system;
+		expect(Math.abs(parseFloat(second.x) - expected.x), `x at ${chosen}`).toBeLessThanOrEqual(1);
+		expect(Math.abs(parseFloat(second.y) - expected.y), `y at ${chosen}`).toBeLessThanOrEqual(1);
+		expect((await recordedAnimations(page)).filter((a) => a.name === "lh-soak").length, "a soak by keyboard").toBe(1);
+		expect(await page.evaluate(() => (window as unknown as { __lhLoads: number }).__lhLoads), "the demo never reloads").toBe(0);
+	});
+
+	test("reduced motion: a cross-fade of at most 150ms, no soak", async ({ page }) => {
+		test.setTimeout(120_000);
+		await page.emulateMedia({ reducedMotion: "reduce" });
+		await page.goto("/");
+		await hydrated(page, '[aria-label="Open sidebar"]');
+		await page.waitForTimeout(1200);
+		await customize(page);
+		await clearRecorded(page);
+		await page.getByTestId("nb-set-appearance-dark").click();
+		await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+		await page.waitForTimeout(600);
+		const root = (await recordedAnimations(page)).filter((a) => (a.pseudo ?? "").includes("(root)") && a.duration > 0);
+		expect(root.length, "the root pair fades").toBeGreaterThan(0);
+		for (const a of root) {
+			expect(a.properties, `${a.name} ${a.pseudo}`).toEqual(["opacity"]);
+			expect(a.delay + a.duration, `${a.name} ${a.pseudo}`).toBeLessThanOrEqual(150);
+		}
+		expect(root.some((a) => a.name === "lh-soak"), "no soak").toBe(false);
+	});
+
+	test("the system switching its theme changes at once: no transition (FR-024)", async ({ page, request }) => {
+		test.setTimeout(120_000);
+		await studySettings(request, { appearance: "system" });
+		await page.emulateMedia({ colorScheme: "light" });
+		await page.goto("/");
+		await hydrated(page, '[aria-label="Open sidebar"]');
+		await page.waitForTimeout(1200);
+		const paper = await token(page, "--paper");
+		await page.evaluate(() => {
+			const w = window as unknown as { __lhStarted: number };
+			w.__lhStarted = 0;
+			const start = Document.prototype.startViewTransition;
+			Document.prototype.startViewTransition = function (this: Document, ...args: Parameters<Document["startViewTransition"]>) { w.__lhStarted++; return start.apply(this, args); } as Document["startViewTransition"];
+		});
+		await clearRecorded(page);
+		await page.emulateMedia({ colorScheme: "dark" });
+		await expect.poll(() => token(page, "--paper")).not.toBe(paper);
+		await page.waitForTimeout(500);
+		expect(await page.evaluate(() => (window as unknown as { __lhStarted: number }).__lhStarted), "no view transition").toBe(0);
+		expect((await recordedAnimations(page)).filter((a) => a.pseudo || a.name === "lh-soak"), "nothing soaks").toEqual([]);
+	});
+});
+
+// Feature 028, T075 (SC-005, SC-007): one sweep over the catalogue's
+// triggers with reduced motion on, and one counting layout shifts.
+
+/** Loops keep 024's reduced-motion rules (static at .7, no animation): never a trigger's motion. */
+const LOOPS = new Set(["nb-ink-wait", "nb-reading-breathe", "nb-caret-blink", "nb-whisper-caret", "nb-voice-bar", "pulse", "spin"]);
+const keyframed = (a: RecordedAnimation) => /^(nb|lh)-|^(pulse|spin)$/.test(a.name);
+
+test.describe("Motion: the catalogue under reduced motion and without layout shift (feature 028, T075)", () => {
+	const made: string[] = [];
+	let shelf = "";
+	let others: string[] = [];
+	test.beforeAll(async ({ request }, info) => {
+		info.setTimeout(180_000);
+		await seedStudy();
+		// Only this suite's cards are due, so Review shows one to reveal.
+		others = (await allCards(request)).filter((card) => !card.suspended).map((card) => card.id);
+		for (const id of others) await request.patch(`/api/cards/${id}`, { data: { suspended: true } });
+		for (const front of ["Sweep one", "Sweep two", "Sweep three"]) made.push(((await (await request.post("/api/cards", { data: { front: `${front} ${Date.now()}`, back: "Back" } })).json()) as { card: { id: string } }).card.id);
+		const parent = ((await (await request.post("/api/library/folders", { data: { name: `Sweep shelf ${Date.now().toString(36)}`, parentId: null } })).json()) as { folder: { id: string; name: string } }).folder;
+		await request.post("/api/library/folders", { data: { name: "Sweep child", parentId: parent.id } });
+		shelf = parent.name;
+	});
+	test.beforeEach(async ({ request }) => { await studySettings(request); });
+	test.afterAll(async ({ request }) => {
+		for (const id of made) await request.delete(`/api/cards/${id}`);
+		for (const id of others) await request.patch(`/api/cards/${id}`, { data: { suspended: false } });
+		await studySettings(request);
+		await clearStudyKey(request);
+	});
+
+	/** Every trigger of the catalogue this suite can reach, in one tab. */
+	const triggers = (page: Page): Array<[string, () => Promise<void>]> => [
+		["route to Home", async () => { await visible(page, '[data-testid="nb-wordmark"]').click(); await expect(page.getByTestId("waiting-section")).toBeVisible({ timeout: 30_000 }); }],
+		["palette", async () => { await visible(page, '[data-testid="composer"] textarea').focus(); await page.keyboard.press("Control+k"); await expect(visible(page, '[data-testid="command-palette"]')).toBeVisible({ timeout: 20_000 }); await page.keyboard.press("Escape"); await expect(page.locator('[data-testid="command-palette"]').filter({ visible: true })).toHaveCount(0); }],
+		["route to the Library", async () => { await openSidebar(page); await page.getByTestId("sidebar-library").click(); await expect(visible(page, '[data-testid="library-upload"]')).toBeVisible({ timeout: 30_000 }); }],
+		["sidebar open", () => openSidebar(page)],
+		["folders open", async () => {
+			const toggle = page.getByTestId("sidebar-library-toggle");
+			if ((await toggle.getAttribute("aria-expanded")) !== "true") await toggle.click();
+			await page.getByRole("button", { name: `Show folders in ${shelf}` }).click();
+			await expect(page.getByRole("treeitem", { name: "Sweep child" })).toBeVisible();
+		}],
+		["folders close", async () => { await page.getByRole("button", { name: `Hide folders in ${shelf}` }).click(); await expect(page.getByRole("treeitem", { name: "Sweep child" })).toHaveCount(0); }],
+		["sidebar close", async () => { await page.keyboard.press("Escape"); await expect(page.getByTestId("nb-sidebar")).toBeHidden(); }],
+		["route to Review", async () => { await page.goto("/review"); await hydrated(page, '[data-testid="queue-reveal"]'); }],
+		// Pressed and let go off the pill: the press and the release, no click.
+		["pill press", async () => { const box = (await page.getByTestId("queue-reveal").boundingBox())!; await page.mouse.move(box.x + 10, box.y + 10); await page.mouse.down(); await page.waitForTimeout(150); await page.mouse.move(box.x + 10, box.y + 200); await page.mouse.up(); await page.waitForTimeout(300); }],
+		["reveal", async () => { await page.getByTestId("queue-reveal").click(); await expect(page.getByTestId("queue-back")).toBeVisible(); }],
+		["next card", async () => { await page.getByTestId("queue-ratings").locator("button").first().click(); await expect(page.getByTestId("queue-reveal")).toBeVisible(); }],
+		["theme", async () => {
+			await chord(page, "Control", ",");
+			await page.getByTestId("nb-settings-nav-customize").click();
+			await page.getByTestId("nb-set-appearance-dark").click();
+			await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+			await page.waitForTimeout(400);
+			await page.getByTestId("nb-set-appearance-light").click();
+			await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+			await page.keyboard.press("Escape");
+		}],
+		["mode switch", async () => {
+			await page.goto(`/chat/${CHATS.plain}`);
+			await hydrated(page, '[aria-label="Open sidebar"]');
+			await page.keyboard.press("Control+Shift+O");
+			await expect(visible(page, '[data-testid="nb-editor"]')).toBeVisible({ timeout: 60_000 });
+			await page.keyboard.press("Control+Shift+O");
+			await expect(chatView(page, CHATS.plain)).toBeVisible({ timeout: 60_000 });
+		}],
+	];
+
+	test("reduced motion: every trigger plays opacity only, at most 150ms, no delay and no stroke draw (SC-005)", async ({ browser }) => {
+		test.setTimeout(400_000);
+		const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, reducedMotion: "reduce" });
+		await recordAnimations(context);
+		const page = await context.newPage();
+		await page.goto(`/chat/${CHATS.plain}`);
+		await hydrated(page, '[aria-label="Open sidebar"]');
+		await page.waitForTimeout(1200);
+		for (const [name, run] of triggers(page)) {
+			await clearRecorded(page);
+			await run();
+			await page.waitForTimeout(600);
+			for (const a of await recordedAnimations(page)) {
+				if (!keyframed(a)) {
+					expect(["transform", "scale", "translate", "rotate", "stroke-dashoffset"], `${name}: a ${a.name} transition`).not.toContain(a.name);
+					continue;
+				}
+				if (LOOPS.has(a.name) || a.duration === 0) continue;
+				expect(a.properties.filter((p) => p !== "opacity"), `${name}: ${a.name} on ${a.pseudo ?? a.target}`).toEqual([]);
+				expect(a.delay, `${name}: ${a.name} on ${a.pseudo ?? a.target}`).toBe(0);
+				expect(a.duration, `${name}: ${a.name} on ${a.pseudo ?? a.target}`).toBeLessThanOrEqual(150);
+			}
+		}
+		await context.close();
+	});
+
+	test("no trigger shifts the layout it did not ask for (SC-007)", async ({ browser }) => {
+		test.setTimeout(400_000);
+		const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+		const page = await context.newPage();
+		await page.goto(`/chat/${CHATS.plain}`);
+		await hydrated(page, '[aria-label="Open sidebar"]');
+		await page.waitForTimeout(1200);
+		for (const [name, run] of triggers(page)) {
+			// Route loads settle their own content (data, not motion; T038): only
+			// in-page triggers are counted here.
+			// The same for the card's back and the next card, which load from the server first.
+			if (name.startsWith("route") || ["mode switch", "reveal", "next card"].includes(name)) { await run(); await page.waitForTimeout(800); continue; }
+			expect(await layoutShiftDuring(page, run, 700), name).toBe(0);
+		}
+		await context.close();
 	});
 });

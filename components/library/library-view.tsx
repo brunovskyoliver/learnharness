@@ -8,7 +8,8 @@ import { CheckSquareIcon, FilePlusIcon, FolderGit2Icon, FolderPlusIcon, GitBranc
 import { TopBar } from "@/components/top-bar";
 import { LibraryContextSlot } from "@/components/workspace/context-slot";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, SkeletonLift } from "@/components/ui/skeleton";
+import { EmptyBlot } from "@/components/ui/empty";
 import { useServerEvent, useServerResync } from "@/components/server-events";
 import { useWorkspace } from "@/components/workspace/workspace-context";
 import { folderPathLabel, folderSubtree, folderTrail, inMirror, KIND_LABEL, liveFolderId, MAX_FILE_BYTES, parseLibraryHref, parseRepoAddress, type LibraryFolder, type LibraryItem, type LibraryKind, type LibraryMarks, type LibraryTrashEntry, type PendingLinkView, type RepoLinkView, type SyncFailure } from "@/src/core";
@@ -38,7 +39,8 @@ const LibraryFullView = dynamic(() => import("./library-full-view.tsx").then((m)
 /** Only loads once "Full text" is chosen: the search field itself stays small. */
 import { DiagramProposalsLine } from "@/components/diagram/diagram-proposals-line.tsx";
 import { RouteContent } from "@/components/paper/route-content";
-import { inkOrder } from "@/components/paper/motion-arrival";
+import { inkOrder, rowOrder, useLeavingRows, useNewRows } from "@/components/paper/motion-arrival";
+import { STAGGER, staggerCount } from "@/src/core";
 /** Page edits waiting for him (feature 023): loads after the list, so /library's first load stays as it was. */
 // Loads only when a chip left a return point; the column's padding is set before it arrives.
 const BackPill = dynamic(() => import("./back-pill.tsx").then((m) => m.BackPill), { ssr: false });
@@ -129,21 +131,26 @@ const EMPTY: Record<LibraryViewName, string> = {
  *  distinct, and a failed refresh keeps the list. */
 export function LibraryBody({ items, folders = [], folderId = null, view = "all", tag = null, kind = null, sort = "name", descending = false, recentIds = [], layout = "list", selected = null, onToggle = noop, itemActions, folderActions, onDragStartEntry, onDropOnFolder, onRenameFolder = noop, onDeleteFolder = noop, loadFailed, refreshFailed, query, onRetry, onChanged, onDelete, links = [], pending = [], linkFailures = [], onDismissLinkFailure = noop }: LibraryBodyProps) {
 	const [overFolder, setOverFolder] = useState<string | null>(null);
+	// Row 15 (feature 028): an item new to the Library since this view mounted
+	// (an upload landing, a page made) settles in; filters and sorts move nothing.
+	const fresh = useNewRows(items === null ? null : items.map((item) => item.id));
 	const failedLine = (
 		<div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-md text-ink">
 			<p>{LOAD_FAILED}</p>
 			<button type="button" onClick={onRetry} className="lh-text-action">Try again</button>
 		</div>
 	);
-	if (items === null) {
-		return loadFailed ? failedLine : (
-			<div role="status" aria-label="Loading your Library" className="flex flex-col gap-1">
-				<Skeleton className="h-[60px] w-full rounded-lg" />
-				<Skeleton className="h-[60px] w-full rounded-lg" />
-				<Skeleton className="h-[60px] w-full rounded-lg" />
-			</div>
-		);
-	}
+	if (items === null && loadFailed) return failedLine;
+	const skeleton = (
+		<div role="status" aria-label="Loading your Library" className="flex flex-col gap-1">
+			<Skeleton className="h-[60px] w-full rounded-lg" />
+			<Skeleton className="h-[60px] w-full rounded-lg" />
+			<Skeleton className="h-[60px] w-full rounded-lg" />
+		</div>
+	);
+	// The list's place in the page's reading order (4); it inks in on its own when the data lands later.
+	// The same tree shape as the loaded list, so the swap is one SkeletonLift that sees its data land.
+	if (items === null) return <>{false}<SkeletonLift ready={false} skeleton={skeleton} {...inkOrder(4)}>{null}</SkeletonLift></>;
 	const shown = selectEntries(items, folders, { view, folderId, search: query, tag, kind, sort, descending, recentIds });
 	const filtering = Boolean(query.trim() || tag || kind);
 	const wide = filtering || view === "favorites" || view === "recent";
@@ -156,15 +163,18 @@ export function LibraryBody({ items, folders = [], folderId = null, view = "all"
 	const failuresHere = linkFailures.filter((f) => here(f.parentId));
 	const repoOf = (item: LibraryItem) => (item.mirror ? links.find((l) => l.id === item.mirror!.linkId)?.display : undefined);
 	const nothing = shown.items.length === 0 && shown.folders.length === 0 && pendingHere.length === 0 && failuresHere.length === 0;
+	const order = staggerCount(STAGGER.library);
+	const failures = failuresHere.length + pendingHere.length;
 	return (
 		<>
 			{refreshFailed && failedLine}
+			<SkeletonLift ready skeleton={skeleton} {...inkOrder(4)}>
 			{filtering && nothing ? (
-				<p role="status" className="text-md text-faint" {...inkOrder(4)}>Nothing matched</p>
+				<p role="status" className="text-md text-faint"><EmptyBlot arrival="library-matched" />Nothing matched</p>
 			) : nothing ? (
-				<p className="text-md text-faint" {...inkOrder(4)}>{folderId ? "This folder is empty." : EMPTY[view]}</p>
+				<p className="text-md text-faint"><EmptyBlot arrival={`library:${folderId ?? view}`} />{folderId ? "This folder is empty." : EMPTY[view]}</p>
 			) : (
-				<ul className={layout === "grid" ? "lh-grid grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col"} data-testid="library-list" {...inkOrder(4)}>
+				<ul className={layout === "grid" ? "lh-grid grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col"} data-testid="library-list">
 					{failuresHere.map((failure) => (
 						<li key={failure.id} role="alert" className="lh-line-card justify-between gap-3 py-1.5 pr-1.5" data-testid="library-link-failure">
 							<p className="min-w-0 text-sm [overflow-wrap:anywhere]">
@@ -175,7 +185,7 @@ export function LibraryBody({ items, folders = [], folderId = null, view = "all"
 						</li>
 					))}
 					{pendingHere.map((p) => <PendingLinkRow key={p.requestId} pending={p} />)}
-					{shown.folders.map((folder) => (
+					{shown.folders.map((folder, i) => (
 						<FolderRow
 							key={folder.id}
 							folder={folder}
@@ -188,9 +198,10 @@ export function LibraryBody({ items, folders = [], folderId = null, view = "all"
 							dropTarget={onDropOnFolder ? { over: overFolder === folder.id, onOver: (over) => setOverFolder(over ? folder.id : null), onDrop: (event) => onDropOnFolder(folder.id, event) } : undefined}
 							onRename={onRenameFolder}
 							onDelete={onDeleteFolder}
+							order={rowOrder(failures + i, order)}
 						/>
 					))}
-					{shown.items.map((item) => (
+					{shown.items.map((item, i) => (
 						<LibraryRow
 							key={item.id}
 							item={item}
@@ -202,10 +213,13 @@ export function LibraryBody({ items, folders = [], folderId = null, view = "all"
 							onDragStartEntry={onDragStartEntry}
 							onRenamed={onChanged}
 							onDelete={onDelete}
+							order={rowOrder(failures + shown.folders.length + i, order)}
+							settle={fresh.has(item.id)}
 						/>
 					))}
 				</ul>
 			)}
+			</SkeletonLift>
 		</>
 	);
 }
@@ -640,6 +654,8 @@ export function LibraryView() {
 	// A chip pushed this entry: mark it, so the Back pill knows the lesson is right behind it.
 	useLayoutEffect(() => { stampPendingMark(); }, [search]);
 	const returnPoint = useReturnPoint();
+	// Row 21 (feature 028): the Back pill pops in as it appears and lifts as it goes.
+	const [backPill] = useLeavingRows(returnPoint ? [<BackPill key="back" point={returnPoint} />] : []);
 	const hasFiles = (event: DragEvent) => event.dataTransfer.types.includes("Files");
 
 	return (
@@ -664,7 +680,7 @@ export function LibraryView() {
 			}}
 		>
 			<TopBar tabs />
-			{returnPoint && <BackPill point={returnPoint} />}
+			{backPill}
 			{address ? (
 				<RouteContent data-testid="library-scroll" className="mx-auto flex min-h-0 w-full max-w-[52rem] flex-1 flex-col pt-3 sm:pt-6">
 					<LibraryFullView key={search} address={address} items={items} loadFailed={loadFailed} onRetry={retry} onChanged={() => void refresh()} />
@@ -809,8 +825,12 @@ export function LibraryView() {
 						</div>
 					)}
 					{inFlight && (
-						<div className="flex items-center justify-between gap-3 px-1 py-2" data-testid="library-upload-row">
-							<span className="min-w-0 text-md text-ink [overflow-wrap:anywhere]">{inFlight.name}</span>
+						<div className="flex items-center justify-between gap-3 px-1 py-2" data-testid="library-upload-row" data-lh-row="settle">
+							{/* Row 15 (feature 028): the row settles in and its status dot splats. */}
+							<span className="flex min-w-0 items-center gap-2">
+								<span className="lh-status-dot" aria-hidden="true"><BlotGlyph className="lh-status-dot-blot" size={9} /></span>
+								<span className="min-w-0 text-md text-ink [overflow-wrap:anywhere]">{inFlight.name}</span>
+							</span>
 							<span
 								role="progressbar"
 								aria-label={`Uploading ${inFlight.name}`}

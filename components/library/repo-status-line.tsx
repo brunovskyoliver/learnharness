@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { syncStatusText, type RepoLinkView, type SkippedReason } from "@/src/core";
 import { BlotGlyph } from "@/components/paper/blot";
+import { StatusSwap } from "@/components/paper/status-swap";
 
 /** A clock that moves once a minute, enough for "Synced {n} min ago". */
 function useMinuteClock(): Date {
@@ -34,7 +35,7 @@ export function RepoStatusText({ link }: { link: RepoLinkView }) {
 	return (
 		<span className="inline-flex items-center gap-1.5" data-testid="repo-status-text">
 			{busy(link) && <Blot />}
-			{syncStatusText(link.sync, now)}
+			<StatusSwap swapKey={link.sync.state} text={syncStatusText(link.sync, now)}>{syncStatusText(link.sync, now)}</StatusSwap>
 		</span>
 	);
 }
@@ -60,11 +61,14 @@ export function RepoStatusLine({ link, onSyncNow }: { link: RepoLinkView; onSync
 			<p className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 [overflow-wrap:anywhere]">
 				<span role="status" aria-live="polite" className="inline-flex flex-wrap items-center gap-1.5" data-testid="repo-status">
 					{busy(link) && <Blot />}
-					{failed ? (
-						<span>Sync failed<span className="text-red"> · {sync.failure?.message ?? "The repo couldn't be pulled."}</span></span>
-					) : timed ? (
-						<span>{timed.head}<span aria-live="off">{timed.tail}</span></span>
-					) : text}
+					{/* Row 24 (feature 028): a change of state settles in over the old words. */}
+					<StatusSwap swapKey={failed ? `failed:${sync.failure?.message ?? ""}` : timed ? "synced" : text} text={failed ? `Sync failed · ${sync.failure?.message ?? "The repo couldn't be pulled."}` : text}>
+						{failed ? (
+							<span>Sync failed<span className="text-red"> · {sync.failure?.message ?? "The repo couldn't be pulled."}</span></span>
+						) : timed ? (
+							<span>{timed.head}<span aria-live="off">{timed.tail}</span></span>
+						) : text}
+					</StatusSwap>
 				</span>
 				{!failed && skippedCount > 0 && (
 					<>

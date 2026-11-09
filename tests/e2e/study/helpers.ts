@@ -419,6 +419,38 @@ export async function clipFrames(page: Page, clip: { x: number; y: number; width
 	return frames;
 }
 
+/**
+ * The largest channel difference (0-255) of each frame from each reference,
+ * decoded in the page (frames[i][j] = frame i against reference j). Chromium
+ * rasterises text a level apart now and then while a view transition is
+ * active (a layer change, no geometry), so a still frame is one within
+ * STILL_LEVELS of a reference; a moved glyph or a fade step of 2% or more
+ * differs by far more.
+ */
+export async function frameDistances(page: Page, frames: Buffer[], references: Buffer[]): Promise<number[][]> {
+	const unique = [...new Set([...frames, ...references].map((b) => b.toString("base64")))];
+	const index = new Map(unique.map((b, i) => [b, i]));
+	const table = await page.evaluate(async ({ images, refs }) => {
+		const pixels = await Promise.all(images.map(async (b64) => {
+			const bitmap = await createImageBitmap(await (await fetch(`data:image/png;base64,${b64}`)).blob());
+			const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+			const ctx = canvas.getContext("2d")!;
+			ctx.drawImage(bitmap, 0, 0);
+			return ctx.getImageData(0, 0, bitmap.width, bitmap.height).data;
+		}));
+		return pixels.map((a) => refs.map((r) => {
+			const b = pixels[r]!;
+			if (a.length !== b.length) return 255;
+			let max = 0;
+			for (let i = 0; i < a.length; i++) max = Math.max(max, Math.abs(a[i]! - b[i]!));
+			return max;
+		}));
+	}, { images: unique, refs: references.map((b) => index.get(b.toString("base64"))!) });
+	return frames.map((f) => table[index.get(f.toString("base64"))!]!);
+}
+/** A frame this close to a reference shows the same pixels (see frameDistances). */
+export const STILL_LEVELS = 2;
+
 /** The clip of the top-left chrome (☰ + wordmark), whole pixels. */
 export async function chromeClip(page: Page) {
 	const box = (await visible(page, ".lh-study-chrome").boundingBox())!;

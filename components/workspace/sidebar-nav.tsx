@@ -5,6 +5,7 @@ import { routeLink } from "@/components/paper/navigate";
 import { useSearchParams } from "next/navigation";
 import { BookOpenIcon, ChevronRightIcon, DumbbellIcon, FolderIcon, LibraryIcon, RepeatIcon } from "lucide-react";
 import { Suspense, useMemo } from "react";
+import { useLeavingRows, useNewRows } from "@/components/paper/motion-arrival";
 import { Skeleton } from "@/components/ui/skeleton";
 import { folderTreeRows, type FolderTreeRow, type LibraryFolder } from "@/src/core";
 import { useLibrarySnapshot } from "./library-snapshot";
@@ -16,10 +17,10 @@ const folderHref = (id: string) => `/library?folder=${encodeURIComponent(id)}`;
  *  first; arrows follow the WAI-ARIA tree pattern. */
 export function FolderTreeView({ rows, currentId, onToggle, onNavigate }: { rows: readonly FolderTreeRow[]; currentId: string | null; onToggle: (id: string, open?: boolean) => void; onNavigate?: () => void }) {
 	const stop = rows.some((row) => row.folder.id === currentId) ? currentId : rows[0]?.folder.id;
-	return (
-		<ul role="tree" aria-label="Library folders" data-testid="sidebar-folder-tree" className="nb-side-list nb-side-tree">
-			{rows.map((row) => (
-				<li key={row.folder.id} role="none" className="flex items-stretch" style={{ paddingInlineStart: `${(row.depth - 1) * 14}px` }}>
+	// Row 16 (feature 028): a folder's children unfold as it opens and lift as it closes.
+	const fresh = useNewRows(rows.map((row) => row.folder.id));
+	const shown = useLeavingRows(rows.map((row) => (
+				<li key={row.folder.id} role="none" className="flex items-stretch" data-lh-row={fresh.has(row.folder.id) ? "unfold" : undefined} style={{ paddingInlineStart: `${(row.depth - 1) * 14}px` }}>
 					{row.hasChildren ? (
 						<button
 							type="button"
@@ -50,7 +51,10 @@ export function FolderTreeView({ rows, currentId, onToggle, onNavigate }: { rows
 						<span className="nb-side-title">{row.folder.name}</span>
 					</Link>
 				</li>
-			))}
+			)));
+	return (
+		<ul role="tree" aria-label="Library folders" data-testid="sidebar-folder-tree" className="nb-side-list nb-side-tree">
+			{shown}
 		</ul>
 	);
 }
@@ -155,6 +159,15 @@ export function SidebarNav({ pathname, kindFilter, onKindFilter, lessonCount, pr
 	const workspace = useWorkspace();
 	const toggle = (kind: "teach" | "practice") => onKindFilter(kindFilter === kind ? "all" : kind);
 	const libraryOpen = workspace?.libraryOpen ?? false;
+	// Row 16: the Library's folders unfold under it as it opens and lift as it closes.
+	const treeOpened = useNewRows(libraryOpen ? ["tree"] : []);
+	const [libraryTree] = useLeavingRows(libraryOpen ? [
+		<div key="tree" data-lh-row={treeOpened.has("tree") ? "unfold" : undefined}>
+			<Suspense fallback={null}>
+				<CurrentFolder>{(currentId) => <LibraryFolders currentId={pathname === "/library" ? currentId : null} onNavigate={onNavigate} />}</CurrentFolder>
+			</Suspense>
+		</div>,
+	] : []);
 	return (
 		<nav aria-label="Workspace" data-testid="sidebar-nav" data-sidebar-nav="" className="nb-side-list nb-side-nav" onKeyDownCapture={(event) => onNavKeyDown(event, workspace?.toggleFolder ?? (() => {}), { open: libraryOpen, toggle: workspace?.toggleLibrary ?? (() => {}) })}>
 			<button type="button" data-nav-entry="" data-testid="sidebar-lessons" aria-pressed={kindFilter === "teach"} onClick={() => toggle("teach")} className="nb-side-row">
@@ -191,11 +204,7 @@ export function SidebarNav({ pathname, kindFilter, onKindFilter, lessonCount, pr
 					<ChevronRightIcon className="nb-side-icon nb-side-chevron" data-open={libraryOpen || undefined} aria-hidden="true" />
 				</button>
 			</div>
-			{libraryOpen && (
-				<Suspense fallback={null}>
-					<CurrentFolder>{(currentId) => <LibraryFolders currentId={pathname === "/library" ? currentId : null} onNavigate={onNavigate} />}</CurrentFolder>
-				</Suspense>
-			)}
+			{libraryTree}
 			<Link href="/review" data-nav-entry="" data-testid="sidebar-review" aria-current={pathname === "/review" ? "page" : undefined} onClick={onNavigate} {...routeLink()} className="nb-side-row">
 				<RepeatIcon className="nb-side-icon" aria-hidden="true" />
 				Review

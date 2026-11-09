@@ -13,6 +13,8 @@ import { ChevronRightIcon, FileTextIcon, FolderIcon, FolderPlusIcon, PlusIcon, S
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useLeavingRows, useNewRows } from "@/components/paper/motion-arrival";
+import { StatusSwap } from "@/components/paper/status-swap";
 import { switchInterface } from "@/components/interface-switch";
 import { navigateTo } from "@/components/paper/navigate";
 import { OverlaySidebarShell, SidebarBody as PaperSidebarBody, SidebarFooterRow as FooterRow, SidebarHead } from "@/components/paper/overlay-sidebar";
@@ -112,6 +114,15 @@ function FolderRow({ folder, folders, pages, currentId, openThreads, onOpen }: {
 	const [open, setOpen] = useState(() => holds(folder.id));
 	const children = folders.filter((f) => f.parentId === folder.id && !f.archivedAt);
 	const notes = pages.filter((p) => p.folderId === folder.id);
+	const shown = open && (children.length > 0 || notes.length > 0);
+	// Row 16 (feature 028): the folder's contents unfold as it opens and lift as it closes.
+	const opened = useNewRows(shown ? ["list"] : []);
+	const [list] = useLeavingRows(shown ? [
+		<ul key="list" className="nb-side-list nb-side-nested" aria-label={folder.name} data-lh-row={opened.has("list") ? "unfold" : undefined}>
+			{children.map((child) => <FolderRow key={child.id} folder={child} folders={folders} pages={pages} currentId={currentId} openThreads={openThreads} onOpen={onOpen} />)}
+			{notes.map((item) => <NoteRow key={item.id} item={item} current={item.id === currentId} open={openThreads[item.id] ?? 0} onOpen={onOpen} />)}
+		</ul>,
+	] : []);
 	return (
 		<li>
 			<button type="button" className="nb-side-row nb-side-folder" aria-expanded={open} data-testid="nb-side-folder" onClick={() => setOpen((o) => !o)}>
@@ -119,12 +130,7 @@ function FolderRow({ folder, folders, pages, currentId, openThreads, onOpen }: {
 				<FolderIcon className="nb-side-icon" aria-hidden="true" />
 				<span className="nb-side-name">{folder.name}</span>
 			</button>
-			{open && (children.length > 0 || notes.length > 0) && (
-				<ul className="nb-side-list nb-side-nested" aria-label={folder.name}>
-					{children.map((child) => <FolderRow key={child.id} folder={child} folders={folders} pages={pages} currentId={currentId} openThreads={openThreads} onOpen={onOpen} />)}
-					{notes.map((item) => <NoteRow key={item.id} item={item} current={item.id === currentId} open={openThreads[item.id] ?? 0} onOpen={onOpen} />)}
-				</ul>
-			)}
+			{list}
 		</li>
 	);
 }
@@ -171,7 +177,7 @@ export function SidebarBody({ items, folders, failed, currentId, query, mac, acc
 			footer={
 				<>
 					{account && <p className="nb-side-account" data-testid="nb-side-account">{account}</p>}
-					<p className="nb-side-saved" role="status" aria-live="polite" data-testid="nb-save-state">{saveLine}</p>
+					<p className="nb-side-saved" role="status" aria-live="polite" data-testid="nb-save-state"><StatusSwap swapKey={saveLine} text={saveLine}>{saveLine}</StatusSwap></p>
 					<ul className="nb-side-actions" aria-label="Notebook">
 						<FooterRow label="Copy this note" binding="mod+shift+c" mac={mac} testId="nb-side-copy" onClick={actions.onCopy} />
 						<FooterRow label="Export this note" binding="mod+shift+e" mac={mac} testId="nb-side-export" onClick={actions.onExport} />

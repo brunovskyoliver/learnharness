@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, SkeletonLift } from "@/components/ui/skeleton";
+import { EmptyBlot } from "@/components/ui/empty";
+import { useNewRows } from "@/components/paper/motion-arrival";
 import { useServerEvent } from "@/components/server-events";
 import { CARD_RATING_LABEL, CARD_RATINGS, intervalText, type CardFocus, type CardRating, type CardReveal, type ReviewQueue } from "@/src/core";
 import { cardFetch, failed, queueQuery } from "./card-api.ts";
@@ -24,7 +26,7 @@ export function QueueEmpty({ queue, focus, now, onNew, onShowAll }: { queue: Rev
 	if (queue.total === 0) {
 		return (
 			<div data-testid="queue-empty" className="flex flex-col items-start gap-3">
-				<p className="text-md text-faint">No flashcards yet. Write one, or make some from a note, a PDF passage or a lesson.</p>
+				<p className="text-md text-faint"><EmptyBlot arrival="review-none" />No flashcards yet. Write one, or make some from a note, a PDF passage or a lesson.</p>
 				<button type="button" className="nb-pill" onClick={onNew} data-testid="queue-empty-new">New card</button>
 			</div>
 		);
@@ -32,7 +34,7 @@ export function QueueEmpty({ queue, focus, now, onNew, onShowAll }: { queue: Rev
 	if (focus === "weak-only" && queue.due > 0) {
 		return (
 			<div data-testid="queue-no-weak" className="flex flex-col items-start gap-3">
-				<p className="text-md text-faint">None of the {queue.due} due {queue.due === 1 ? "card links" : "cards link"} to a weak idea.</p>
+				<p className="text-md text-faint"><EmptyBlot arrival="review-no-weak" />None of the {queue.due} due {queue.due === 1 ? "card links" : "cards link"} to a weak idea.</p>
 				<button type="button" className="lh-text-action" onClick={onShowAll}>Show all due</button>
 			</div>
 		);
@@ -40,7 +42,7 @@ export function QueueEmpty({ queue, focus, now, onNew, onShowAll }: { queue: Rev
 	const next = queue.nextDueAt ? intervalText(now.toISOString(), queue.nextDueAt) : null;
 	return (
 		<div data-testid="queue-done" className="flex flex-col gap-1">
-			<p className="text-base text-ink">All done for now.</p>
+			<p className="text-base text-ink"><EmptyBlot arrival="review-done" />All done for now.</p>
 			{queue.laterToday > 0 && <p className="text-graphite">{queue.laterToday === 1 ? "1 card comes" : `${queue.laterToday} cards come`} back later today{next ? `, the next in ${next}` : ""}.</p>}
 			{queue.laterToday === 0 && next && <p className="text-graphite">The next card is due in {next}.</p>}
 		</div>
@@ -138,6 +140,8 @@ export function QueuePanel({ refreshKey, busyLayer, onDrafts, onEdit, onHistory,
 	};
 
 	const card = queue?.card ?? null;
+	// Row 28 (feature 028): the next card inks in after a rating (not the first one shown).
+	const nextCard = useNewRows(card ? [card.id] : queue ? [] : null);
 	const cardId = card?.id;
 	// A new card or a shown answer takes focus, so keyboard review never loses its place.
 	useEffect(() => { if (cardId && !reveal) showAnswer.current?.focus({ preventScroll: true }); }, [cardId, reveal]);
@@ -246,14 +250,14 @@ export function QueuePanel({ refreshKey, busyLayer, onDrafts, onEdit, onHistory,
 		</div>
 	);
 
-	if (queue === null) {
-		return loadFailed
-			? <div role="status" data-testid="queue-failed" className="flex flex-wrap items-center gap-2 text-graphite"><p>Your flashcards could not be loaded.</p><button type="button" className="lh-text-action" onClick={() => void load(focus)}>Try again</button></div>
-			: <div role="status" aria-label="Loading your flashcards" data-testid="queue-loading" className="flex flex-col gap-2"><Skeleton className="h-40 w-full rounded-lg" /></div>;
+	if (queue === null && loadFailed) {
+		return <div role="status" data-testid="queue-failed" className="flex flex-wrap items-center gap-2 text-graphite"><p>Your flashcards could not be loaded.</p><button type="button" className="lh-text-action" onClick={() => void load(focus)}>Try again</button></div>;
 	}
 
+	// Row 29 (feature 028): the skeleton lifts as the queue lands.
 	return (
-		<section aria-label="Review queue" className="flex flex-col gap-3">
+		<SkeletonLift ready={queue !== null} skeleton={<div role="status" aria-label="Loading your flashcards" data-testid="queue-loading" className="flex flex-col gap-2"><Skeleton className="h-40 w-full rounded-lg" /></div>}>
+		{queue !== null && <section aria-label="Review queue" className="flex flex-col gap-3">
 			<div className="flex flex-wrap items-center justify-between gap-2">
 				<p data-testid="queue-count" className="text-meta text-faint">{dueLine(queue)}{queue.weakDue > 0 ? ` · ${queue.weakDue} on weak ideas` : ""}</p>
 				{queue.total > 0 && (
@@ -268,14 +272,15 @@ export function QueuePanel({ refreshKey, busyLayer, onDrafts, onEdit, onHistory,
 			{loadFailed && <div role="status" className="flex flex-wrap items-center gap-2 text-sm text-graphite"><p>Your flashcards could not be refreshed.</p><button type="button" className="lh-text-action" onClick={() => void load(focus)}>Try again</button></div>}
 
 			{card ? (
-				<article data-testid="queue-card" data-card-id={card.id} className="lh-card-block flex flex-col gap-4">
+				<article key={card.id} data-testid="queue-card" data-card-id={card.id} data-lh-row={nextCard.has(card.id) ? "ink" : undefined} className="lh-card-block flex flex-col gap-4">
 					<div data-testid="queue-front"><CardText text={card.front} /></div>
 					{reveal ? (
-						<>
+						/* Row 28 (feature 028): the back unfolds under the front. */
+						<div className="flex flex-col gap-4" data-lh-row="unfold">
 							<div ref={answerRegion} tabIndex={-1} role="region" aria-label="Answer" data-testid="queue-back" className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"><CardText text={reveal.back} className="text-graphite" /></div>
 							<RevealMeta reveal={reveal} />
 							<RatingButtons reveal={reveal} disabled={busy} onRate={(rating) => void rate(rating)} />
-						</>
+						</div>
 					) : (
 						<button ref={showAnswer} type="button" data-testid="queue-reveal" className="nb-pill self-start" disabled={busy} aria-keyshortcuts="Space" onClick={() => void doReveal()}>
 							{busy ? "Loading…" : "Show answer"}
@@ -303,6 +308,7 @@ export function QueuePanel({ refreshKey, busyLayer, onDrafts, onEdit, onHistory,
 						: queue.undo && <button type="button" className="lh-text-action" data-testid="queue-undo" disabled={busy} aria-keyshortcuts="U" onClick={() => void undo()}>Undo last rating</button>}
 				</div>
 			)}
-		</section>
+		</section>}
+		</SkeletonLift>
 	);
 }
