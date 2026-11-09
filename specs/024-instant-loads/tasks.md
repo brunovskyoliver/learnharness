@@ -30,14 +30,14 @@ Format: `- [ ] Txxx [P] [USn] description (path)`.
 
 **Goal**: one download per library per version, from the app page's cache; no remounts. **Independent test**: 4-plot chat warm/return with zero `/demo-kit` bytes, one `demo-ready` per plot.
 
-- [ ] T010 [US2] `next.config.ts`: compute `LH_DEMO_KIT_VERSION` (short hash of `public/demo-kit/*`, empty when missing) into `env`; `headers()` for `/demo-kit/:path*` with `has` query `v` → `public, max-age=31536000, immutable` (read the Next docs for `headers` in this version first)
-- [ ] T011 [P] [US2] Tests for `demo-lib-cache`: allow-list, one fetch per file across concurrent callers, versioned URL, rejected promise is dropped so a retry refetches (`tests/demo-lib-cache.test.ts`)
-- [ ] T012 [US2] `components/artifacts/demo-lib-cache.ts`: `getDemoLib(file): Promise<string>` with the allow-list from `contracts/demo-lib-bridge.md`
-- [ ] T013 [P] [US2] Tests: srcdoc inlining replaces each `/demo-kit/` script/link with inline code, escapes `</script`, leaves other tags and non-kit URLs untouched, keeps the bridge script last (`tests/render-demo-srcdoc.test.ts`)
-- [ ] T014 [US2] Demo card: build the srcdoc asynchronously with inlined kit files (existing loading state until ready; fetch failure → existing demo error state); answer `demo-lib-request` from this card's frame only, per the contract (`components/artifacts/demo-card.tsx`)
-- [ ] T015 [US2] Kit runtime `load()`: bridge request with parent, `<script src>` fallback when there is no parent; inject via textContent; keep the existing error message (`src/demo-kit/runtime.ts`)
-- [ ] T016 [US2] Find the cold-load remount cause (R4) with the perf driver's `demo-ready` count; fix it; add a test that pins the stable srcdoc/key across the re-render that caused it (`components/artifacts/*`, test file named after the cause)
-- [ ] T017 [US2] Run `scripts/smoke-demo-workspace.mjs` and the plot/headless tests (`TMPDIR` under `$HOME`); downloaded demo (`downloadableDemo`) still opens standalone
+- [X] T010 [US2] `next.config.ts`: compute `LH_DEMO_KIT_VERSION` (short hash of `public/demo-kit/*`, empty when missing) into `env`; `headers()` for `/demo-kit/:path*` with `has` query `v` → `public, max-age=31536000, immutable` (read the Next docs for `headers` in this version first)
+- [X] T011 [P] [US2] Tests for `demo-lib-cache`: allow-list, one fetch per file across concurrent callers, versioned URL, rejected promise is dropped so a retry refetches (`tests/demo-lib-cache.test.ts`)
+- [X] T012 [US2] `components/artifacts/demo-lib-cache.ts`: `getDemoLib(file): Promise<string>` with the allow-list from `contracts/demo-lib-bridge.md`
+- [X] T013 [P] [US2] Tests: srcdoc inlining replaces each `/demo-kit/` script/link with inline code, escapes `</script`, leaves other tags and non-kit URLs untouched, keeps the bridge script last (`tests/render-demo-srcdoc.test.ts`)
+- [X] T014 [US2] Demo card: build the srcdoc asynchronously with inlined kit files (existing loading state until ready; fetch failure → existing demo error state); answer `demo-lib-request` from this card's frame only, per the contract (`components/artifacts/demo-card.tsx`)
+- [X] T015 [US2] Kit runtime `load()`: bridge request with parent, `<script src>` fallback when there is no parent; inject via textContent; keep the existing error message (`src/demo-kit/runtime.ts`)
+- [X] T016 [US2] Find the cold-load remount cause (R4) with the perf driver's `demo-ready` count; fix it; add a test that pins the stable srcdoc/key across the re-render that caused it (`components/artifacts/*`, test file named after the cause)
+- [X] T017 [US2] Run `scripts/smoke-demo-workspace.mjs` and the plot/headless tests (`TMPDIR` under `$HOME`); downloaded demo (`downloadableDemo`) still opens standalone
 
 ## Phase 4: User Story 3 — 3D plots start without freezing (P2)
 

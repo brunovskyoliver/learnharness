@@ -84,7 +84,10 @@ afterEach(async () => {
 describe("version and contextual copy", () => {
 	it("build metadata comes from package.json and exposes only public version/homepage values", () => {
 		const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
-		assert.deepEqual(nextConfig.env, { LH_VERSION: pkg.version, LH_HOMEPAGE: pkg.homepage });
+		const { LH_DEMO_KIT_VERSION, ...rest } = nextConfig.env ?? {};
+		assert.deepEqual(rest, { LH_VERSION: pkg.version, LH_HOMEPAGE: pkg.homepage });
+		// The demo kit's public content hash (feature 024), empty when the kit is not built.
+		assert.match(String(LH_DEMO_KIT_VERSION), /^(?:[0-9a-f]{12})?$/);
 	});
 
 	it("never claims live/latest information and keeps updater errors generic", () => {

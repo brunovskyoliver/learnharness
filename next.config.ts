@@ -1,7 +1,26 @@
-import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { readdirSync, readFileSync } from "node:fs";
 import type { NextConfig } from "next";
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as { version: string; homepage: string };
+
+/** Content version of the built demo kit (public/demo-kit, written by
+ *  scripts/build-demo-kit.mjs before dev, build and the Docker build). The
+ *  app page fetches kit files at /demo-kit/<file>?v=<this>, which the
+ *  headers below make immutable; any change to a kit file changes it.
+ *  Empty when the kit is not built, so nothing is cached as immutable. */
+function demoKitVersion(): string {
+	try {
+		const dir = new URL("./public/demo-kit/", import.meta.url);
+		const files = readdirSync(dir).sort();
+		if (files.length === 0) return "";
+		const hash = createHash("sha256");
+		for (const file of files) hash.update(file).update("\0").update(readFileSync(new URL(file, dir))).update("\0");
+		return hash.digest("hex").slice(0, 12);
+	} catch {
+		return "";
+	}
+}
 
 const nextConfig: NextConfig = {
 	// Resolve the public barrels to used exports, retaining the same validators/UI.
@@ -16,7 +35,7 @@ const nextConfig: NextConfig = {
 	// Keep the development badge from covering the sidebar's Settings control.
 	devIndicators: false,
 	// Public build metadata only; no new runtime Electron version API.
-	env: { LH_VERSION: pkg.version, LH_HOMEPAGE: pkg.homepage },
+	env: { LH_VERSION: pkg.version, LH_HOMEPAGE: pkg.homepage, LH_DEMO_KIT_VERSION: demoKitVersion() },
 	// Desktop target (Electron wrapper, 2026-09-17): standalone output = a
 	// self-contained .next/standalone/server.js the Electron shell spawns
 	// on 127.0.0.1. Harmless for plain web deploys (extra build output).
@@ -126,8 +145,15 @@ const nextConfig: NextConfig = {
 	],
 	// Demos run in sandboxed iframes with an opaque origin, so loading the
 	// app's reading font from them is a cross-origin font request.
+	// Kit files fetched by the app page with the content version (`?v=`,
+	// components/artifacts/demo-lib-cache.ts) never change under that URL.
+	// Without `v` (downloaded demos, the headless check, old links) the
+	// default revalidating headers stay.
 	async headers() {
-		return [{ source: "/fonts/:file*", headers: [{ key: "Access-Control-Allow-Origin", value: "*" }] }];
+		return [
+			{ source: "/fonts/:file*", headers: [{ key: "Access-Control-Allow-Origin", value: "*" }] },
+			{ source: "/demo-kit/:path*", has: [{ type: "query", key: "v" }], headers: [{ key: "Cache-Control", value: "public, max-age=31536000, immutable" }] },
+		];
 	},
 };
 

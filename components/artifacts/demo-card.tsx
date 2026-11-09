@@ -11,6 +11,7 @@ import { kitSpecOf, injectDemoTheme, DEMO_APPEARANCE_PROPERTIES, demoAppearanceV
 import { useAppearance } from "@/components/settings/appearance";
 import { useDemoPresentation } from "@/components/artifacts/demo-presentation";
 import { useDemoPanel } from "@/components/artifacts/demo-panel-context";
+import { getDemoLib, isDemoLibFile, type DemoLibFile } from "@/components/artifacts/demo-lib-cache";
 
 /**
  * Demo artifact card (W6): while the part is input-available, a job activity
@@ -68,11 +69,62 @@ export function buildDemoSrcDoc(html: string): string {
 	return `${themed}${DEMO_BRIDGE_SCRIPT}`;
 }
 
+// One alternation, so a kit URL inside a script body, a style block or a
+// comment is never touched: only a whole `<script src="/demo-kit/F"></script>`
+// element or a `<link rel="stylesheet" href="/demo-kit/F">` tag is replaced.
+const KIT_TAGS = /<script\b([^>]*)>([\s\S]*?)<\/script\s*>|<style\b[^>]*>[\s\S]*?<\/style\s*>|<!--[\s\S]*?-->|<link\b([^>]*)>/gi;
+const KIT_SRC = /\ssrc\s*=\s*(["'])\/demo-kit\/([^"'?#]+)(?:[?#][^"']*)?\1/i;
+const KIT_HREF = /\shref\s*=\s*(["'])\/demo-kit\/([^"'?#]+)(?:[?#][^"']*)?\1/i;
+const STYLESHEET = /\srel\s*=\s*(["']?)stylesheet\1(?=[\s/>]|$)/i;
+
+function kitReference(scriptAttrs: string | undefined, scriptBody: string | undefined, linkAttrs: string | undefined): { file: DemoLibFile; inline: (code: string) => string } | null {
+	if (scriptAttrs !== undefined) {
+		const src = KIT_SRC.exec(scriptAttrs);
+		const file = src?.[2];
+		if (!src || !isDemoLibFile(file) || !file.endsWith(".js") || scriptBody?.trim()) return null;
+		const attrs = scriptAttrs.replace(src[0], "");
+		return { file, inline: (code) => `<script${attrs}>${code.replace(/<\/(script)/gi, "<\\/$1")}</script>` };
+	}
+	if (linkAttrs !== undefined) {
+		const file = KIT_HREF.exec(linkAttrs)?.[2];
+		if (!isDemoLibFile(file) || !file.endsWith(".css") || !STYLESHEET.test(linkAttrs)) return null;
+		return { file, inline: (css) => `<style>${css.replace(/<\/(style)/gi, "<\\/$1")}</style>` };
+	}
+	return null;
+}
+
+/** Inline every kit file a demo references by tag (`/demo-kit/…` scripts and
+ *  the flow stylesheet) with code the app page fetched, so the opaque-origin
+ *  frame, whose own requests are never cached, requests none of them. Other
+ *  tags and non-kit URLs stay as written. */
+export async function inlineDemoKit(srcDoc: string, getLib: (file: DemoLibFile) => Promise<string> = getDemoLib): Promise<string> {
+	const files = new Set<DemoLibFile>();
+	for (const m of srcDoc.matchAll(KIT_TAGS)) {
+		const ref = kitReference(m[1], m[2], m[3]);
+		if (ref) files.add(ref.file);
+	}
+	if (files.size === 0) return srcDoc;
+	const code = new Map(await Promise.all([...files].map(async (file) => [file, await getLib(file)] as const)));
+	return srcDoc.replace(KIT_TAGS, (match: string, scriptAttrs?: string, scriptBody?: string, linkAttrs?: string) => {
+		const ref = kitReference(scriptAttrs, scriptBody, linkAttrs);
+		return ref ? ref.inline(code.get(ref.file)!) : match;
+	});
+}
+
+/** What a demo frame is given: theme and bridge (buildDemoSrcDoc), then the
+ *  kit files inlined in place, so the bridge stays the last script. */
+export function buildInlinedDemoSrcDoc(html: string, getLib: (file: DemoLibFile) => Promise<string> = getDemoLib): Promise<string> {
+	return inlineDemoKit(buildDemoSrcDoc(html), getLib);
+}
+
 /** The demo as a file that opens on its own: theme included, and kit
  *  scripts and the font loaded from this app's address. */
 export function downloadableDemo(html: string, origin = typeof window === "undefined" ? "" : window.location.origin): string {
 	return injectDemoTheme(html, true).replace(/(src="|href="|url\(")\/(demo-kit|fonts)\//g, (_m, lead: string, dir: string) => `${lead}${origin}/${dir}/`);
 }
+
+/** Parent → frame answer to `demo-lib-request` (contracts/demo-lib-bridge.md). */
+export type DemoLibReply = { type: "lh-demo-lib"; file: DemoLibFile; code: string } | { type: "lh-demo-lib"; file: DemoLibFile; error: string };
 
 export interface DemoBridgeState {
 	tokenize?: DemoTokenizeRequest;
@@ -237,7 +289,20 @@ export function DemoFrame({
 			body: JSON.stringify({ input: { messageId, inverted: next } }),
 		}).catch(() => {});
 	};
-	const srcDoc = useMemo(() => buildDemoSrcDoc(html), [html]);
+	// The frame's document starts here, after the card has committed in its
+	// final place, never from server HTML: a streamed transcript is parsed
+	// into a hidden segment and moved into place on reveal (and a boundary
+	// hydrated late is replaced), and every move of an iframe reloads its
+	// document, so each plot used to start two or three times.
+	const [srcDoc, setSrcDoc] = useState<string | null>(null);
+	useEffect(() => {
+		let current = true;
+		buildInlinedDemoSrcDoc(html).then(
+			(doc) => { if (current) setSrcDoc(doc); },
+			(error: unknown) => { if (current) setState((prev) => reduceDemoBridgeState(prev, { type: "demo-error", message: error instanceof Error ? error.message : String(error) })); },
+		);
+		return () => { current = false; };
+	}, [html]);
 	const hasMlPanels = useMemo(() => kitSpecOf(html)?.panels?.some(panel => ["tokens", "next_token", "heatmap", "network", "scatter", "shapes"].includes(panel.type)) ?? false, [html]);
 
 	useEffect(() => {
@@ -245,6 +310,20 @@ export function DemoFrame({
 			// Only messages from THIS demo's iframe (the sandbox gives it an
 			// opaque origin; the window reference still matches).
 			if (!iframeRef.current || event.source !== iframeRef.current.contentWindow) return;
+			if (event.data?.type === "demo-lib-request") {
+				// Kit code for the runtime's on-demand load(): an allow-listed file,
+				// sent only to this frame's current window (contracts/demo-lib-bridge.md).
+				const frame = iframeRef.current;
+				const source = frame.contentWindow;
+				const file: unknown = event.data.file;
+				if (!isDemoLibFile(file)) return;
+				const reply = (message: DemoLibReply) => { if (iframeRef.current === frame && frame.contentWindow === source) source?.postMessage(message, "*"); };
+				getDemoLib(file).then(
+					(code) => reply({ type: "lh-demo-lib", file, code }),
+					(error: unknown) => reply({ type: "lh-demo-lib", file, error: error instanceof Error ? error.message : `could not load ${file}` }),
+				);
+				return;
+			}
 			if (event.data?.type === "demo-tokenize") {
 				const frame = iframeRef.current;
 				const source = frame.contentWindow;
@@ -314,7 +393,7 @@ export function DemoFrame({
 				// allow-scripts ONLY — no allow-same-origin: the demo can run code
 				// but never touch the app's storage, cookies, or DOM.
 				sandbox="allow-scripts"
-				srcDoc={srcDoc}
+				srcDoc={srcDoc ?? undefined}
 				// scrolling OFF (owner, 2026-10-07): the bridge auto-sizes the
 				// iframe to its content, so an internal scrollbar can only appear
 				// before the first resize lands — and a scrollable iframe TRAPS

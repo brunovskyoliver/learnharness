@@ -355,11 +355,15 @@ describe("steer card rendering (the delivered artifact)", () => {
 		const html = renderToStaticMarkup(<SubagentSteerCard message={projectNative([steer])[0] as never} />);
 		assert.match(html, /sandbox="allow-scripts"/);
 		assert.ok(!html.includes("allow-same-origin"), "never allow-same-origin");
-		assert.match(html, /demo-resize/);
-		assert.match(html, /demo-error/);
+		// The document is set after mount (feature 024: a server srcdoc started
+		// the frame in the hidden streamed segment and reloaded it on reveal).
+		assert.doesNotMatch(html, /srcdoc/i);
+		const srcDoc = buildDemoSrcDoc(DEMO_HTML);
+		assert.match(srcDoc, /demo-resize/);
+		assert.match(srcDoc, /demo-error/);
 		assert.match(html, /Damped oscillator/);
 		assert.ok(!/interactive demo/i.test(html), "the title alone heads the card");
-		assert.match(html, /data-lh-theme/, "the app theme rides in the srcdoc");
+		assert.match(srcDoc, /data-lh-theme/, "the app theme rides in the srcdoc");
 		// the model-facing protocol text never renders for the learner
 		assert.ok(!html.includes("do NOT wait"), "no protocol glue in the bubble");
 	});

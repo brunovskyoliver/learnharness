@@ -40,9 +40,40 @@ interface KitApi {
 const script = document.currentScript as HTMLScriptElement | null;
 const BASE = script?.src ? script.src.replace(/runtime\.js(?:\?.*)?$/, "") : "/demo-kit/";
 
+// In a lesson the demo is a sandboxed frame with an opaque origin, whose own
+// requests the browser never caches: the app page fetches kit files (cached,
+// shared by every plot) and answers `demo-lib-request` with the code
+// (specs/024-instant-loads/contracts/demo-lib-bridge.md). A downloaded demo
+// or the headless check has no parent and loads the files by URL.
+const IN_FRAME = window.parent !== window;
+
+function fromParent(file: string): Promise<void> {
+	return new Promise<void>((resolve, reject) => {
+		const onMessage = (event: MessageEvent) => {
+			const data = event.data as { type?: unknown; file?: unknown; code?: unknown } | null;
+			if (event.source !== window.parent || !data || data.type !== "lh-demo-lib" || data.file !== file) return;
+			window.removeEventListener("message", onMessage);
+			if (typeof data.code !== "string") {
+				reject(new Error(`could not load ${file}`));
+				return;
+			}
+			const el = document.createElement(file.endsWith(".css") ? "style" : "script");
+			el.textContent = data.code;
+			document.head.appendChild(el);
+			resolve();
+		};
+		window.addEventListener("message", onMessage);
+		window.parent.postMessage({ type: "demo-lib-request", file }, "*");
+	});
+}
+
 const loaded = new Map<string, Promise<void>>();
 function load(file: string): Promise<void> {
 	let p = loaded.get(file);
+	if (!p && IN_FRAME) {
+		p = fromParent(file);
+		loaded.set(file, p);
+	}
 	if (!p) {
 		p = new Promise<void>((resolve, reject) => {
 			const css = file.endsWith(".css");
