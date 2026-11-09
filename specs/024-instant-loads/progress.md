@@ -17,6 +17,8 @@ Updated: 2026-11-09
 - Renderers (owner, 2026-11-09, after phase 5 measurement): math eager (KaTeX server-rendered as today), only the code highlighter on demand. Agent decision: code messages don't wait — streamdown already shows plain code until the highlighter answers, as today; so no waiting look is needed and T026 is moot.
 - Blank-flash fix (owner, 2026-11-09): subscriptions — the six shell providers hand down stable values and consumers subscribe (useSyncExternalStore); no visible change, mobile menu stays fast.
 
+- Final (owner, 2026-11-09, after deploy of 5c334859): SC-002 (warm 3D chat 1.19–1.24 s) and SC-004 longest task (0.43–0.44 s) accepted as is; duplicate 024 numbering left as is; post-merge cold transcript timing (~300 ms) not pursued.
+
 ## Log
 - 2026-11-09 measure: baseline profiled on a throwaway copy of learnharness:amd64 (numbers in spec.md Baseline).
 - 2026-11-09 specify: spec.md written; checklist passes except the open clarifications.
