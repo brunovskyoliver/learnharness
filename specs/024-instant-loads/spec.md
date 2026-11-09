@@ -31,6 +31,8 @@ Same production image, throwaway container, headless Chromium, emulated remote l
 - Q: How should the browser keep a PDF it already downloaded? → A: Kept privately in this browser; every open revalidates with the server ("still the same file?") and reuses the copy if so (private, always revalidated, version-tag validator).
 - Q: What should the lighter 3D plotting build cover? → A: Light build with the 3D trace types plus contour, heatmap and scatter; a plot using any other trace type loads the full build for that plot only. The custom build may use the plotly.js source package as a build-time dependency only (owner approval, 2026-11-09).
 - Q: While the math or code renderer is still downloading, what does a message show? → A: Messages containing math or code wait for the renderer before appearing; other messages show at once. The renderer download starts in parallel with the page.
+- Q (after measurement): PDF cold target with versioned chunks measured ~3.1 s; accept, compact copy, or stop? → A: Accept with small tweaks (start the first chunk while the reader code loads); targets set to measured values, no new dependency.
+- Q: How should the reader decide to show its "no selectable text" note? → A: Check pages 1–3 only; if none has text, show the note.
 - Q: Should plotting code be fetched ahead of time? → A: No. Only when a plot is on screen; repeat views are instant through caching.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -45,8 +47,8 @@ He opens a large PDF from the Library. The first page appears within about a sec
 
 **Acceptance Scenarios**:
 
-1. **Given** a 17 MB PDF in the Library, **When** he opens it on a remote link, **Then** page 1 is drawn within 1.5 s and far less than the whole file has been downloaded by then.
-2. **Given** he opened that PDF before, **When** he reopens it or reloads with it open, **Then** page 1 is drawn within 0.6 s and the file's bytes are not downloaded again.
+1. **Given** a 17 MB PDF in the Library, **When** he opens it on a remote link, **Then** page 1 is drawn within 2.5 s and far less than the whole file has been downloaded by then.
+2. **Given** he opened that PDF before, **When** he reopens it or reloads with it open, **Then** page 1 is drawn within 0.8 s and the file's bytes are not downloaded again.
 3. **Given** he jumps to page 60, **When** that page has not been fetched yet, **Then** it is fetched and drawn without waiting for pages in between.
 4. **Given** the file was replaced or deleted since it was cached, **When** he opens it, **Then** he sees the current file or the existing "no longer in your Library" state, never the stale one.
 5. **Given** "Download", **When** he clicks it, **Then** the whole file downloads as today.
@@ -138,7 +140,7 @@ Home and chats without math or code blocks don't download the math and code-high
 
 Measured with the baseline's driver on the same remote profile, reported next to the baseline table.
 
-- **SC-001**: Opening the 17 MB PDF shows page 1 within 1.5 s cold (from 9.0 s) and within 0.6 s on reopen or reload (from 7.2 s).
+- **SC-001**: Opening the 17 MB PDF shows page 1 within 2.5 s cold (from 9.0 s; owner accepted the measured target, 2026-11-09) and within 0.8 s on reopen or reload (from 7.2 s), with no full-file download before page 1.
 - **SC-002**: On a warm visit or sidebar return, a chat with two charts and two 3D plots shows all of them within 0.8 s (from 2.6–2.8 s), with zero plotting-library bytes downloaded.
 - **SC-003**: On a cold load, each plotting library is downloaded once per page regardless of plot count, and each plot reports ready exactly once.
 - **SC-004**: Cold 3D plotting download at most half of today's (≤ 730 KB transferred, from 1.46 MB) and the longest start-up task at most 0.4 s (from 0.75 s).

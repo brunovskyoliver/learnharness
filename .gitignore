@@ -25,3 +25,6 @@ xai-credentials.json*
 
 # Demo kit runtime, built by scripts/build-demo-kit.mjs
 /public/demo-kit/
+
+# Agent worktrees
+/.claude/worktrees/

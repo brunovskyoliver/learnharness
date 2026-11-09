@@ -22,6 +22,8 @@ Format: `- [ ] Txxx [P] [USn] description (path)`.
 - [X] T009a [P] [US1] Tests for versioned chunk requests per the contract's revision section: exact bytes, immutable headers, 412 on stale `v`, 400/416 on invalid chunk/size, tenant scoping (`tests/library-content-ranges.test.ts`)
 - [X] T009b [US1] Implement the versioned-chunk branch of the content route (`src/server/library.ts`)
 - [X] T009c [US1] Reader: a `PDFDataRangeTransport` (`components/library/pdf-transport.ts`) that reads ETag + size first, fetches chunks in parallel at versioned URLs, reports progress, and on 412 reloads; `pdf-reader.tsx` passes it to `getDocument`; pure parts unit-tested
+- [ ] T009d [US1] Start the first-chunk request in parallel with loading pdf.js and its worker (`components/library/pdf-reader.tsx`, `pdf-transport.ts`)
+- [ ] T009e [US1] Scanned-PDF note: check text on pages 1–3 only (owner, 2026-11-09); update its test
 - [ ] T009 [US1] Verify in headless Chromium against a local build: page 1 renders, jump to a far page fetches only its ranges, reload shows 304s, Download still returns the whole file; note the result in progress.md
 
 ## Phase 3: User Story 2 — Plots appear at once after the first view (P1)
