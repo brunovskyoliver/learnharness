@@ -67,9 +67,9 @@ Format: `- [ ] Txxx [P] [USn] description (path)`.
 
 ## Phase 6: Polish & verification
 
-- [ ] T029 `npm test`, `npm run lint`, `npm run typecheck`, `npm run build`; pre-existing failures recorded separately
-- [ ] T030 Re-run the perf driver on a throwaway container of the new image (same data copy, remote profile); add an "After" column to spec.md Baseline; check SC-001…SC-005; constitution VIII comparison with T002
-- [ ] T031 Update docs that describe demo-kit loading or the PDF route (`src/core/demo-kit.ts` header comment, `scripts/build-demo-kit.mjs` header, any `docs/` mention) and `specs/ROADMAP.md`
+- [X] T029 `npm test`, `npm run lint`, `npm run typecheck`, `npm run build`; pre-existing failures recorded separately
+- [X] T030 Re-run the perf driver on a throwaway container of the new image (same data copy, remote profile); add an "After" column to spec.md Baseline; check SC-001…SC-005; constitution VIII comparison with T002
+- [X] T031 Update docs that describe demo-kit loading or the PDF route (`src/core/demo-kit.ts` header comment, `scripts/build-demo-kit.mjs` header, any `docs/` mention) and `specs/ROADMAP.md`
 
 ## Dependencies
 

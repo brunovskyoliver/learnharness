@@ -12,17 +12,19 @@
 
 Same production image, throwaway container, headless Chromium, emulated remote link (60 ms round trip, 20 Mbps down). Driver and raw data: `~/agent-runs/2026-11-09-instant-loads/perf/`.
 
-| Scenario | Remote cold | Remote warm |
-|---|---|---|
-| Library PDF (17.3 MB, 75 scanned pages): click → page 1 drawn | 9.0 s (whole file downloaded first) | 7.2 s (downloaded again) |
-| Chat with 2 vega charts: charts shown | 1.6 s | 0.9 s |
-| Chat with 2 3D plots: plots shown | 3.9 s | 2.6 s (2.9 MB re-downloaded) |
-| Real 1-plot chat: plot shown | 2.6 s | 1.4 s |
-| Return to a plot chat from the sidebar | 2.8 s | — |
-| Home: usable | 0.48 s | 0.12 s |
-| Chat page: text visible | 0.26 s | 0.21 s |
-| Chat first-load JS | 673 KB transferred / 2.16 MB decoded | from cache |
-| Plot library start-up on the main thread | 0.75 s task + ~0.2 s per 3D plot | same |
+| Scenario | Remote cold | Remote warm | After cold | After warm |
+|---|---|---|---|---|
+| Library PDF (17.3 MB, 75 scanned pages): click → page 1 drawn | 9.0 s (whole file downloaded first) | 7.2 s (downloaded again) | 2.54–2.63 s HTTP/1.1, 1.88–1.89 s HTTP/2; 1.57 MB received before page 1 | reload 0.57–0.64 s (1 × 304, 290 B on the network; 166 chunks from cache); new-tab reopen 0.84–1.01 s |
+| Chat with 2 vega charts: charts shown | 1.6 s | 0.9 s | 1.10–1.11 s | 0.30–1.00 s, 0 library bytes |
+| Chat with 2 3D plots: plots shown | 3.9 s | 2.6 s (2.9 MB re-downloaded) | 2.08–2.15 s | 1.19–1.24 s, 0 library bytes (disk cache) |
+| Real 1-plot chat: plot shown | 2.6 s | 1.4 s | 1.73–1.76 s | 0.73–0.76 s, 0 library bytes |
+| Return to a plot chat from the sidebar | 2.8 s | — | 1.10–1.15 s, no plot-library request | — |
+| Home: usable | 0.48 s | 0.12 s | 0.39–0.41 s | 0.11 s |
+| Chat page: text visible | 0.26 s | 0.21 s | 0.19 s | 0.14–0.15 s |
+| Chat first-load JS | 673 KB transferred / 2.16 MB decoded | from cache | 567 KB / 1.83 MB | from cache |
+| Plot library start-up on the main thread | 0.75 s task + ~0.2 s per 3D plot | same | 0.43–0.44 s task + ~0.2–0.25 s per 3D plot | 3 tasks of 0.20–0.25 s (3D first render) |
+
+After: throwaway container of `learnharness:perf-024` (HEAD 93d85329), same data copy and driver, 2026-11-09; 2 runs per scenario (Home 6, PDF 3 + 2 driver + 3 through a local HTTP/2 TLS proxy standing in for Caddy, cold only there since Chromium skips its cache under the test certificate). Raw logs: `~/agent-runs/2026-11-09-instant-loads/p6/`.
 
 ## Clarifications
 

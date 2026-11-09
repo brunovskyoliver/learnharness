@@ -17,6 +17,7 @@ Owner goal, 2026-10-31: evolve the app into one workspace connecting learning, d
 | 021 | Flashcards and FSRS review queue, separate from graph evidence | 017, 020 | Implemented on `feat/021-spaced-repetition`, not merged or deployed |
 | 022 | Diagrams: editable maps and whiteboards, proposed AI changes | 016 | Implemented on `feat/022-diagrams`, not merged or deployed |
 | 023 | Integration polish: held AI edits, PDF keyboard path, Electron and hosted verification across the slices | all | Implemented on `feat/023-integration-polish`, not merged or deployed |
+| 024 | Instant loads: PDF by versioned chunks, plot libraries fetched once by the page, light plotly build, code highlighter on demand, cold-load transcript kept | none | Implemented on `main`, not merged or deployed |
 
 ## Dependency decisions to make with the owner
 
@@ -29,6 +30,7 @@ The constitution requires owner approval and a measured startup cost for each ne
 | ts-fsrs | 021 | Decided, adopted: 6.0.0 exact-pinned, server only, behind a core port |
 | Excalidraw | 022 | Decided, not adopted: 2.54 MB gzipped against React Flow's 59 KB, measured in specs/022-diagrams/spec.md |
 | Playwright | 023 | Decided, not adopted: puppeteer-core and plain CDP covered everything 023 needed |
+| plotly.js | 024 | Decided, adopted: 4.1.2 devDependency, build-time only, for `public/demo-kit/plotly-light.js` (583 KB gzip against the full build's 1456 KB) |
 
 ## Standing rules for the remaining features
 

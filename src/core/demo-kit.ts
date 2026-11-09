@@ -4,6 +4,16 @@
  *  React Flow. The stored demo stays ordinary HTML (kitDemoHtml), so the
  *  lesson iframe, side panel, inversion and download work unchanged.
  *
+ *  Loading (feature 024): the frame is sandboxed with an opaque origin, so
+ *  it never fetches kit files itself. The app page fetches each file once
+ *  at a versioned, immutable URL (components/artifacts/demo-lib-cache.ts),
+ *  inlines the `/demo-kit/` tags of the stored HTML into the srcdoc, and
+ *  answers the runtime's `load()` (vega, plotly-light or full plotly, flow)
+ *  over the `demo-lib-request` bridge. 3D panels whose traces the light
+ *  plotly build covers use it; any other trace type loads the full build
+ *  for that plot. A downloaded demo or the headless check, with no parent,
+ *  loads the same files by `<script src>`.
+ *
  *  Expressions and `step` are JavaScript, evaluated inside the demo's
  *  sandboxed iframe with: p (params), s (state), d (derived), t (step
  *  count), range(start, stop, step) and Math's functions. */

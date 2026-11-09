@@ -3,6 +3,10 @@
  *  plotly-light.js + plotly.js (each loaded only when a panel needs it).
  *  Classic IIFE scripts: they load from a sandboxed iframe and from file://
  *  in the headless check, where module scripts would need CORS.
+ *  In the app the page, not the frame, fetches them, once per kit version:
+ *  next.config.ts hashes this folder into LH_DEMO_KIT_VERSION and serves
+ *  /demo-kit/<file>?v=<version> as immutable; demo-lib-cache.ts inlines or
+ *  bridges the code into each frame (feature 024).
  *  node scripts/build-demo-kit.mjs */
 import { build } from "esbuild";
 import { copyFile, mkdir, readFile, rm } from "node:fs/promises";
