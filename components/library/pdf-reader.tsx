@@ -14,11 +14,12 @@ import { ChatActionsContext } from "@/components/chat-actions-context.ts";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ANCHOR_UNANCHORED_TEXT, anchorContext, CARD_PASSAGE_KEY, ANNOTATION_QUOTE_MAX, locateQuote, type AnchorRect, type DocumentAnnotation, type TextAnchor } from "@/src/core";
-import { pdfLoadOptions, PDF_WORKER_SRC } from "./pdf-options.ts";
+import { pdfLoadOptions, textCheckPages } from "./pdf-options.ts";
+import { loadPdfJs, takePdfSource } from "./pdf-preload.ts";
 import type { PaneItem } from "./page-pane-context.tsx";
 import { DOCUMENT_TUTOR_ACTIONS, documentTutorMessage, TUTOR_ACTION_LABEL, TUTOR_BLOCKED_TEXT, type DocumentTutorAction } from "./page-tutor-actions.ts";
 import { firstPdfCursor, movePdfCursor, pdfCursorMoveFor, type PdfCursor } from "./pdf-keyboard-selection.ts";
-import { makeChunkTransport, openPdfSource, PDF_CHUNK_SIZE } from "./pdf-transport.ts";
+import { makeChunkTransport, PDF_CHUNK_SIZE } from "./pdf-transport.ts";
 import { SavePassageDialog, type DocumentPassage } from "./save-passage-dialog.tsx";
 
 type PdfJs = typeof import("pdfjs-dist/legacy/build/pdf.mjs");
@@ -32,15 +33,6 @@ const TEXT_BUTTON = "inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 te
 const MAX_DPR = 2;
 const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3];
 const NEAR_MARGIN = "800px 0px";
-
-let pdfjsPromise: Promise<PdfJs> | null = null;
-function loadPdfJs(): Promise<PdfJs> {
-	pdfjsPromise ??= import("pdfjs-dist/legacy/build/pdf.mjs").then((pdfjs) => {
-		pdfjs.GlobalWorkerOptions.workerSrc = PDF_WORKER_SRC;
-		return pdfjs;
-	});
-	return pdfjsPromise;
-}
 
 /** The layer's text in DOM order, and where each text node starts in it. */
 function layerText(layer: HTMLElement): { text: string; nodes: { node: Text; start: number }[] } {
@@ -309,7 +301,8 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 		setDoc(null);
 		void (async () => {
 			try {
-				const [library, source] = await Promise.all([loadPdfJs(), openPdfSource(contentUrl(item.id), PDF_CHUNK_SIZE, fetch, opening.signal)]);
+				// The pane started both at the click (pdf-preload.ts); this takes them.
+				const [library, source] = await Promise.all([loadPdfJs(), takePdfSource(item.id, opening.signal)]);
 				if (cancelled) return;
 				setPdfjs(library);
 				const options = pdfLoadOptions(contentUrl(item.id));
@@ -340,8 +333,10 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 				setRatio(unit.height / unit.width);
 				setDoc(loaded);
 				// Scanned PDFs: the pages still show, and the reader says why nothing selects.
+				// Pages 1-3 decide it (owner, 2026-11-09).
 				let found = false;
-				for (let n = 1; n <= loaded.numPages && !cancelled && !found; n++) {
+				for (const n of textCheckPages(loaded.numPages)) {
+					if (cancelled || found) break;
 					const content = await (await loaded.getPage(n)).getTextContent();
 					found = content.items.some((entry) => "str" in entry && entry.str.trim() !== "");
 				}

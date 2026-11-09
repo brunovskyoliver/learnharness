@@ -30,3 +30,10 @@ export function pdfLoadOptions(url: string) {
 		verbosity: 0,
 	} as const;
 }
+
+/** Pages the reader reads text from to decide its "no text" note: the first
+ *  three (owner, 2026-11-09), so a scan doesn't pull the whole file for it. */
+export const TEXT_CHECK_PAGES = 3;
+export function textCheckPages(numPages: number): number[] {
+	return Array.from({ length: Math.max(0, Math.min(TEXT_CHECK_PAGES, numPages)) }, (_, i) => i + 1);
+}

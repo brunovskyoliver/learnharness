@@ -1,11 +1,12 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from "react";
 import { SessionAccountContext } from "@/components/session-state";
 import { SessionStateStore } from "@/components/session-state-store";
 import type { LibraryKind } from "@/src/core";
 import { PagePaneContext, usePagePane, type PaneItem } from "./page-pane-api.ts";
+import { preloadPdf } from "./pdf-preload.ts";
 
 export { createBlankPage, usePagePane } from "./page-pane-api.ts";
 export type { PagePaneApi, PaneItem } from "./page-pane-api.ts";
@@ -40,6 +41,11 @@ export function PagePaneProvider({ children }: { children: ReactNode }) {
 		void fetch(`/api/library/items/${next.id}/opened`, { method: "POST" }).catch(() => {});
 	}, [remember]);
 	const close = useCallback(() => remember(null), [remember]);
+	// A PDF's first chunk, pdf.js and its worker start as it opens, beside the pane's
+	// and the reader's own code (feature 024). A layout effect, so it runs before the
+	// reader's passive effect takes them, even when that code is already here.
+	const pdfId = item?.kind === "pdf" ? item.id : null;
+	useLayoutEffect(() => { if (pdfId) preloadPdf(pdfId); }, [pdfId]);
 	const value = useMemo(() => ({ item, restored, openCount, open, close, update: remember }), [item, restored, openCount, open, close, remember]);
 	return <PagePaneContext.Provider value={value}>{children}</PagePaneContext.Provider>;
 }

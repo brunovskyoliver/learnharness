@@ -22,8 +22,8 @@ Format: `- [ ] Txxx [P] [USn] description (path)`.
 - [X] T009a [P] [US1] Tests for versioned chunk requests per the contract's revision section: exact bytes, immutable headers, 412 on stale `v`, 400/416 on invalid chunk/size, tenant scoping (`tests/library-content-ranges.test.ts`)
 - [X] T009b [US1] Implement the versioned-chunk branch of the content route (`src/server/library.ts`)
 - [X] T009c [US1] Reader: a `PDFDataRangeTransport` (`components/library/pdf-transport.ts`) that reads ETag + size first, fetches chunks in parallel at versioned URLs, reports progress, and on 412 reloads; `pdf-reader.tsx` passes it to `getDocument`; pure parts unit-tested
-- [ ] T009d [US1] Start the first-chunk request in parallel with loading pdf.js and its worker (`components/library/pdf-reader.tsx`, `pdf-transport.ts`)
-- [ ] T009e [US1] Scanned-PDF note: check text on pages 1–3 only (owner, 2026-11-09); update its test
+- [X] T009d [US1] Start the first-chunk request in parallel with loading pdf.js and its worker (`components/library/pdf-reader.tsx`, `pdf-transport.ts`)
+- [X] T009e [US1] Scanned-PDF note: check text on pages 1–3 only (owner, 2026-11-09); update its test
 - [ ] T009 [US1] Verify in headless Chromium against a local build: page 1 renders, jump to a far page fetches only its ranges, reload shows 304s, Download still returns the whole file; note the result in progress.md
 
 ## Phase 3: User Story 2 — Plots appear at once after the first view (P1)
@@ -59,6 +59,11 @@ Format: `- [ ] Txxx [P] [USn] description (path)`.
 - [ ] T026 [US4] Check whether `latex-glyph.tsx`, `page-math-view.ts`, `src/core/content-reader.ts` put katex in Home's or the chat's first-load graph; lazy-load where they do
 - [ ] T027 [US4] Render tests: a math message never renders raw `$…$` text; a plain message renders immediately (`tests/render-message-plugins.test.tsx`)
 - [ ] T028 [US4] UI check of the transcript at 320, 390, 1440 px with `impeccable` and `web-design-guidelines`
+
+## Phase 5b: Cold-load blank flash (owner-added 2026-11-09)
+
+- [ ] T032 Find which update makes React discard the streamed chat transcript on a cold load (main empty ~150–360 ms; suspects: mount-time state in SidebarProvider / PagePaneProvider above `<Suspense>{children}</Suspense>` in `app/(app)/layout.tsx`); prove it with a trace
+- [ ] T033 Fix it so the server-rendered transcript is kept through hydration; regression test or browser check that main is never empty after first paint on a cold load
 
 ## Phase 6: Polish & verification
 

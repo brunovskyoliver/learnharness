@@ -13,8 +13,8 @@
  * own PDFDataRangeTransport class, since pdf.js loads only with the first PDF.
  */
 
-/** Measured on the 17 MB scanned baseline PDF (progress.md, 2026-11-09). */
-export const PDF_CHUNK_SIZE = 32_768;
+/** Measured on the 17 MB scanned baseline PDF (progress.md, 2026-11-09): fewest bytes before page 1. */
+export const PDF_CHUNK_SIZE = 16_384;
 /** Parallel chunk requests per document. */
 export const PDF_CHUNK_CONCURRENCY = 10;
 
