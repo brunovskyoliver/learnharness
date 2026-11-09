@@ -366,17 +366,18 @@ export const runningAnimations = (page: Page) => page.evaluate((): RunningAnimat
 	};
 }));
 
-/** Sum of layout shifts without recent input while `action` runs (CLS contribution, SC-007). */
-export async function layoutShiftDuring(page: Page, action: () => Promise<void>, settleMs = 600): Promise<number> {
-	await page.evaluate(() => {
+/** Sum of layout shifts without recent input while `action` runs (CLS contribution, SC-007).
+ *  `withInput`: count shifts right after input too (a click that navigates is input, and CLS would forgive what follows it). */
+export async function layoutShiftDuring(page: Page, action: () => Promise<void>, settleMs = 600, withInput = false): Promise<number> {
+	await page.evaluate((all) => {
 		const w = window as unknown as { __lhShift: number; __lhShiftObserver?: PerformanceObserver };
 		w.__lhShift = 0;
 		w.__lhShiftObserver?.disconnect();
 		w.__lhShiftObserver = new PerformanceObserver((list) => {
-			for (const entry of list.getEntries() as Array<PerformanceEntry & { value: number; hadRecentInput: boolean }>) if (!entry.hadRecentInput) w.__lhShift += entry.value;
+			for (const entry of list.getEntries() as Array<PerformanceEntry & { value: number; hadRecentInput: boolean }>) if (all || !entry.hadRecentInput) w.__lhShift += entry.value;
 		});
 		w.__lhShiftObserver.observe({ type: "layout-shift", buffered: false });
-	});
+	}, withInput);
 	await action();
 	await page.waitForTimeout(settleMs);
 	return page.evaluate(() => {
@@ -405,6 +406,23 @@ export async function boxFrames(page: Page, selector: string, ms: number): Promi
 		await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
 	}
 	return frames;
+}
+
+/** Screenshots of one fixed clip on every animation frame for `ms` (at least one). */
+export async function clipFrames(page: Page, clip: { x: number; y: number; width: number; height: number }, ms: number): Promise<Buffer[]> {
+	const frames: Buffer[] = [];
+	const end = Date.now() + ms;
+	do {
+		frames.push(await page.screenshot({ clip, animations: "allow" }));
+		await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+	} while (Date.now() < end);
+	return frames;
+}
+
+/** The clip of the top-left chrome (☰ + wordmark), whole pixels. */
+export async function chromeClip(page: Page) {
+	const box = (await visible(page, ".lh-study-chrome").boundingBox())!;
+	return { x: Math.floor(box.x), y: Math.floor(box.y), width: Math.ceil(box.width), height: Math.ceil(box.height) };
 }
 
 /** One animation the recorder saw: what played, where, and when (document timeline ms). */

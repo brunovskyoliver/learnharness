@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { Home } from "@/components/home";
+import { RouteExit } from "@/components/paper/route-content";
 import { graphView, readSettingsRecord, withTenantPage, studySlotsConfigured } from "@/src/server";
 import { resolveSettings, type GraphSnapshot } from "@/src/core";
 
@@ -30,7 +31,7 @@ async function HomePage({ searchParams }: { searchParams: Promise<Record<string,
 		try { initialGraph = graphView(); } catch { /* client retries */ }
 	}
 	return (
-		<Home initialConfigured={studySlotsConfigured(record?.models)} rendering={rendering} initialGraph={initialGraph} />
+		<RouteExit><Home initialConfigured={studySlotsConfigured(record?.models)} rendering={rendering} initialGraph={initialGraph} /></RouteExit>
 	);
 }
 

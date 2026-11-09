@@ -872,8 +872,7 @@ html.lh-paper {
  *   [data-lh-stagger]                a region whose rows keep their stagger on a
  *                                    route arrival (Home, Library; gate 2 item 6)
  *   [data-lh-still]                  a region whose box never moves, only its
- *                                    marked parts (a lesson: chrome inside)
- * The tab kind gets its rules with its story (T042). */
+ *                                    marked parts (a lesson: chrome inside) */
 
 /* The Library's own reading-order step and cap (FR-011), phones included. */
 .lh-paper [data-lh-stagger="library"] { --motion-stagger: 24ms; --stagger-cap: 160ms; }
@@ -901,11 +900,13 @@ html.lh-paper[data-lh-arrival="signature"] [data-lh-arrive="cold"]:not(:has([dat
 html.lh-paper [data-lh-arrive="signature"]:not(:has([data-ink-order])) {
 	animation: var(--motion-arrive) var(--ease-ink) both nb-ink-in;
 }
-/* Row 5: browser back/forward, a plain ink-in with no stagger. */
-.lh-paper [data-lh-arrive="history"]:not([data-lh-still]) {
+/* Row 5: browser back/forward, and row 6: a workspace tab's page; a plain
+   ink-in with no stagger (200ms). A still region (a lesson) inks only its
+   marked parts. */
+.lh-paper :is([data-lh-arrive="history"], [data-lh-arrive="tab"]):not([data-lh-still]) {
 	animation: var(--motion-settle) var(--ease-ink) both nb-ink-in;
 }
-.lh-paper [data-lh-arrive="history"][data-lh-still] [data-ink-order] {
+.lh-paper :is([data-lh-arrive="history"], [data-lh-arrive="tab"])[data-lh-still] [data-ink-order] {
 	animation: var(--motion-settle) var(--ease-ink) both nb-ink-in;
 }
 /* Row 3: Notebook ⇄ Study. The content box unfolds from its top edge while
@@ -952,6 +953,15 @@ html.lh-paper[data-lh-arrival="signature"] :is(.lh-study-chrome, .nb-header) :is
 ::view-transition { pointer-events: none; }
 html:active-view-transition-type(lh-route, lh-mode) { view-transition-name: none; }
 ::view-transition-old(.lh-lift) { animation: var(--motion-lift) var(--ease-out) both lh-lift; }
+/* The leaving page is named for its capture only (React's inline
+   view-transition-class); its chrome stays out of the image, so the live
+   chrome underneath never fades (FR-003). */
+html:active-view-transition-type(lh-route, lh-mode) [style*="view-transition-class"] :is(.lh-study-chrome, .nb-header > *) { visibility: hidden; }
+/* Notebook paints its own paper; the leaving note drops it from the image
+   (the live page under it has the same paper), so the lift never veils the
+   chrome or the arriving page with a sheet of paper. */
+html:active-view-transition-type(lh-route, lh-mode) [style*="view-transition-class"]:is(.nb-root) { background: transparent; }
+html:active-view-transition-type(lh-route, lh-mode) [style*="view-transition-class"]:is(.nb-root) > .nb-paper { visibility: hidden; }
 
 /* ── Motion: reduced motion (FR-013, contract §6, research R10) ───────────
  * The ceiling: opacity only, at most --motion-fade-reduced, no delay, no
@@ -2781,6 +2791,32 @@ html.lh-paper {
 	pointer-events: none;
 }
 @media (pointer: coarse) { .lh-paper .lh-tab[data-selected] > [role="tab"]::after { bottom: 6px; } }
+/* Row 6 (feature 028, R8): when the selection moves, one ink marker slides
+   from the old tab's underline to the new one (transform only, from measured
+   offsets) while the underlines step aside; at rest the underline above is
+   the selected tab's own, so a page without script shows it too. */
+.lh-paper .lh-tab-marker {
+	position: absolute;
+	bottom: 3px;
+	left: 0;
+	width: 1px;
+	height: 1.5px;
+	border-radius: 1px;
+	background: var(--ink);
+	opacity: 0;
+	transform-origin: 0 0;
+	pointer-events: none;
+}
+@media (pointer: coarse) { .lh-paper .lh-tab-marker { bottom: 7px; } }
+.lh-paper [data-tab-sliding] > .lh-tab-marker {
+	opacity: 1;
+	transition: transform var(--motion-route) var(--spring-soft);
+}
+.lh-paper [data-tab-sliding] .lh-tab[data-selected] > [role="tab"]::after { opacity: 0; }
+@media (prefers-reduced-motion: reduce) {
+	.lh-paper [data-tab-sliding] > .lh-tab-marker { opacity: 0; transition: none; }
+	.lh-paper [data-tab-sliding] .lh-tab[data-selected] > [role="tab"]::after { opacity: 1; }
+}
 
 /* Menu shell menus take the menu look; each site keeps its width (T022). */
 .lh-paper [data-lh-menu].nb-menu { min-width: 0; max-height: none; }

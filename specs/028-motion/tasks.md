@@ -97,13 +97,13 @@ description: "Tasks for feature 028, one motion language"
 
 **Independent test**: click through all routes and tabs ten times rapidly: ≤300ms each, no lost click, no flash, transcript/scroll/drafts unchanged.
 
-- [ ] T038 [US3] Add to tests/e2e/study/motion.spec.ts: route transitions ≤300ms (SC-003); the ☰/wordmark box is pixel-identical across frames during a route change (`boxFrames`, FR-003); ten rapid clicks end on the last route with at most one running transition (FR-007); a click 50ms into a route transition lands (20 trials at offsets across the transition, SC-002); back/forward has no lift and no stagger; layout shift 0 per route change (SC-007)
-- [ ] T039 [US3] Tag in-app route links with `transitionTypes={["lh-route"]}` in components/workspace/sidebar-nav.tsx, components/session-list.tsx, components/home.tsx, components/waiting-section.tsx and components/paper/chrome.tsx (wordmark)
-- [ ] T040 [US3] Send programmatic route pushes through `navigateTo` in components/command-palette-dialog.tsx, components/workspace/workspace-context.tsx (`WorkspaceApi.push`) and components/library/back-pill.tsx
-- [ ] T041 [US3] Add the tab marker to components/workspace/tab-strip.tsx (one `.lh-tab-marker`, transform from measured offsets, `--spring-soft` 280ms, jumps under reduced motion) and its CSS in app/paper.css
-- [ ] T042 [US3] Add the `tab` arrival kind (pane ink-in 200ms, no stagger) to src/core/motion.ts, components/paper/navigate.ts and app/paper.css; tab selection in components/workspace/tab-strip.tsx uses it
-- [ ] T043 [US3] Add to tests/e2e/study/motion.spec.ts: tab switch slides the marker and inks the pane once without stagger (US3 AS2)
-- [ ] T044 [US3] Add to tests/e2e/study/motion.spec.ts: after Home → lesson → Library → Back → Back the lesson's scroll position, transcript and draft are unchanged (FR-014, constitution III)
+- [X] T038 [US3] Add to tests/e2e/study/motion.spec.ts: route transitions ≤300ms (SC-003); the ☰/wordmark box is pixel-identical across frames during a route change (`boxFrames`, FR-003); ten rapid clicks end on the last route with at most one running transition (FR-007); a click 50ms into a route transition lands (20 trials at offsets across the transition, SC-002); back/forward has no lift and no stagger; layout shift 0 per route change (SC-007)
+- [X] T039 [US3] Tag in-app route links with `transitionTypes={["lh-route"]}` in components/workspace/sidebar-nav.tsx, components/session-list.tsx, components/home.tsx, components/waiting-section.tsx and components/paper/chrome.tsx (wordmark)
+- [X] T040 [US3] Send programmatic route pushes through `navigateTo` in components/command-palette-dialog.tsx, components/workspace/workspace-context.tsx (`WorkspaceApi.push`) and components/library/back-pill.tsx
+- [X] T041 [US3] Add the tab marker to components/workspace/tab-strip.tsx (one `.lh-tab-marker`, transform from measured offsets, `--spring-soft` 280ms, jumps under reduced motion) and its CSS in app/paper.css
+- [X] T042 [US3] Add the `tab` arrival kind (pane ink-in 200ms, no stagger) to src/core/motion.ts, components/paper/navigate.ts and app/paper.css; tab selection in components/workspace/tab-strip.tsx uses it
+- [X] T043 [US3] Add to tests/e2e/study/motion.spec.ts: tab switch slides the marker and inks the pane once without stagger (US3 AS2)
+- [X] T044 [US3] Add to tests/e2e/study/motion.spec.ts: after Home → lesson → Library → Back → Back the lesson's scroll position, transcript and draft are unchanged (FR-014, constitution III)
 
 ---
 

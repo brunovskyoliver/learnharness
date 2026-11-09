@@ -7,6 +7,7 @@
 import "../notebook.css";
 import { notFound, redirect } from "next/navigation";
 import { NotebookApp } from "@/components/notebook/notebook-app";
+import { RouteExit } from "@/components/paper/route-content";
 import { effectiveSettings, hostedMode, resolveNotebookNote, signedInEmail, withTenantPage } from "@/src/server";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +21,7 @@ async function NotebookPage({ params }: { params: Promise<{ id?: string[] }> }) 
 	const { notebook } = effectiveSettings();
 	const hosted = hostedMode();
 	return (
+		<RouteExit>
 		<NotebookApp
 			note={resolved.note}
 			preferences={{ startMode: notebook.startMode, pointerInk: notebook.pointerInk, appearance: notebook.appearance, textSize: notebook.textSize, lettering: notebook.lettering, ink: notebook.ink, pace: notebook.pace, layout: notebook.layout }}
@@ -28,6 +30,7 @@ async function NotebookPage({ params }: { params: Promise<{ id?: string[] }> }) 
 			account={hosted ? await signedInEmail() : null}
 			hosted={hosted}
 		/>
+		</RouteExit>
 	);
 }
 

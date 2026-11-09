@@ -62,7 +62,7 @@ async function framesOf(page: Page, clip: { x: number; y: number; width: number;
 }
 
 /** The switch's own motion: the arrival of the new page and the lift of the old one. */
-const switchMotion = (all: RecordedAnimation[]) => all.filter((a) => (a.kind === "mode" && ARRIVAL_NAMES.has(a.name)) || (a.pseudo ?? "").startsWith("::view-transition"));
+const switchMotion = (all: RecordedAnimation[]) => all.filter((a) => a.duration > 0 && ((a.kind === "mode" && ARRIVAL_NAMES.has(a.name)) || (a.pseudo ?? "").startsWith("::view-transition")));
 const toNotebook = async (page: Page) => {
 	await expect(page).toHaveURL(/\/notebook/, { timeout: 60_000 });
 	await expect(visible(page, '[data-testid="nb-editor"]')).toBeVisible({ timeout: 90_000 });

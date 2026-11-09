@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { routeLink } from "@/components/paper/navigate";
 import { useSearchParams } from "next/navigation";
 import { BookOpenIcon, ChevronRightIcon, DumbbellIcon, FolderIcon, LibraryIcon, RepeatIcon } from "lucide-react";
 import { Suspense, useMemo } from "react";
@@ -42,6 +43,7 @@ export function FolderTreeView({ rows, currentId, onToggle, onNavigate }: { rows
 						data-folder-id={row.folder.id}
 						data-testid="sidebar-folder"
 						onClick={onNavigate}
+						{...routeLink()}
 						className="nb-side-row nb-side-folder-link"
 					>
 						<FolderIcon className="nb-side-icon" aria-hidden="true" />
@@ -172,6 +174,7 @@ export function SidebarNav({ pathname, kindFilter, onKindFilter, lessonCount, pr
 					data-testid="sidebar-library"
 					aria-current={pathname === "/library" ? "page" : undefined}
 					onClick={onNavigate}
+					{...routeLink()}
 					className="nb-side-row min-w-0 flex-1"
 				>
 					<LibraryIcon className="nb-side-icon" aria-hidden="true" />
@@ -193,7 +196,7 @@ export function SidebarNav({ pathname, kindFilter, onKindFilter, lessonCount, pr
 					<CurrentFolder>{(currentId) => <LibraryFolders currentId={pathname === "/library" ? currentId : null} onNavigate={onNavigate} />}</CurrentFolder>
 				</Suspense>
 			)}
-			<Link href="/review" data-nav-entry="" data-testid="sidebar-review" aria-current={pathname === "/review" ? "page" : undefined} onClick={onNavigate} className="nb-side-row">
+			<Link href="/review" data-nav-entry="" data-testid="sidebar-review" aria-current={pathname === "/review" ? "page" : undefined} onClick={onNavigate} {...routeLink()} className="nb-side-row">
 				<RepeatIcon className="nb-side-icon" aria-hidden="true" />
 				Review
 			</Link>

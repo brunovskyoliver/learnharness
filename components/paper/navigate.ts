@@ -40,3 +40,13 @@ export function navigateTo(router: PushRouter, href: string, kind: PushKind = "r
 export function markLinkArrival(kind: PushKind = "route") {
 	setPendingArrival(kind);
 }
+
+/**
+ * Props for an in-app `<Link>` (row 4): its navigation carries the kind's
+ * transition types and marks the arrival. A modifier click (new tab) never
+ * calls `onNavigate`, so it marks nothing. `then` runs first (the link's own
+ * handler).
+ */
+export function routeLink(kind: PushKind = "route", then?: () => void): { transitionTypes: string[]; onNavigate: () => void } {
+	return { transitionTypes: transitionTypesFor(kind), onNavigate: () => { then?.(); markLinkArrival(kind); } };
+}

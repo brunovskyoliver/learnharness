@@ -436,7 +436,7 @@ function StudySidebar({ account, hosted }: { account?: React.ReactNode; hosted: 
 	const openSession = useCallback((id: string) => {
 		setKbdIndex(null);
 		close();
-		router.push(`/chat/${id}`);
+		navigateTo(router, `/chat/${id}`);
 	}, [router, close]);
 	const searchRef = useRef<HTMLInputElement>(null);
 	const listRef = useRef<HTMLDivElement>(null);

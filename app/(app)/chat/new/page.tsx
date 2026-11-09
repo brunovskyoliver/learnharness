@@ -1,4 +1,5 @@
 import { NewSession } from "@/components/new-session";
+import { RouteExit } from "@/components/paper/route-content";
 import { readSettingsRecord, withTenantPage, studySlotsConfigured } from "@/src/server";
 
 export const dynamic = "force-dynamic";
@@ -21,12 +22,14 @@ async function NewSessionPage({
 }) {
 	const { mode, send, draft } = await searchParams;
 	return (
+		<RouteExit>
 		<NewSession
 			initialConfigured={studySlotsConfigured(readSettingsRecord()?.models)}
 			mode={mode === "practice" ? "practice" : "teach"}
 			initialSend={typeof send === "string" ? send : undefined}
 			initialDraft={typeof draft === "string" ? draft : undefined}
 		/>
+		</RouteExit>
 	);
 }
 

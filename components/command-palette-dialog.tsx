@@ -141,7 +141,7 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 	}, [open, active?.id]);
 
 	const close = () => onOpenChange(false);
-	const go = (href: string) => { skipReturn.current = true; close(); router.push(href); };
+	const go = (href: string) => { skipReturn.current = true; close(); navigateTo(router, href); };
 
 	const runAction = async (action: PaletteActionId) => {
 		const href = ROUTES[action];

@@ -2,6 +2,7 @@
 
 import { useCallback, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { navigateTo } from "@/components/paper/navigate";
 import { BookOpenIcon, DumbbellIcon, Maximize2Icon, UploadIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -134,7 +135,7 @@ export function Home({
 			// No settings PUT on create (per-session models, owner
 			// 2026-09-28): the SERVER stamps the newborn from the strong
 			// slot — the same default this surface's model control edits.
-			router.push(`/chat/${id}?prompt=${encodeURIComponent(t)}`);
+			navigateTo(router, `/chat/${id}?prompt=${encodeURIComponent(t)}`);
 		} catch {
 			setBusy(false);
 		}

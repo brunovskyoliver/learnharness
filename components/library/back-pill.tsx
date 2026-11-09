@@ -9,6 +9,7 @@
  */
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { navigateTo } from "@/components/paper/navigate";
 import { ArrowLeftIcon } from "lucide-react";
 import { useSessionList } from "@/components/session-list";
 import { returnRoute, type ReturnPoint } from "@/components/reference-return";
@@ -27,7 +28,7 @@ export function BackPill({ point }: { point: ReturnPoint }) {
 	const goBack = () => {
 		const route = returnRoute(point, window.history.state);
 		if (route.type === "back") router.back();
-		else router.push(route.href);
+		else navigateTo(router, route.href);
 	};
 	return (
 		<div className="lh-back-pill-row">

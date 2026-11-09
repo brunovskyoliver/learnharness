@@ -2,11 +2,12 @@
 
 /**
  * Feature 028: a page's content region (contract §4, research R1-R2,
- * data-model "Arrival kind"). On a typed navigation React captures the
- * leaving content and lifts it (`lh-lift`); the arriving content is never
- * captured, so it is live from its first frame and arrives through the
- * arrival CSS keyed on `data-lh-arrive` (app/paper.css). Put it in each
- * page's content, never in a layout (layouts persist, so exit never fires).
+ * data-model "Arrival kind") and the page's exit. On a typed navigation
+ * React captures the leaving page and lifts it (`lh-lift`, `RouteExit`); the
+ * arriving content is never captured, so it is live from its first frame
+ * and arrives through the arrival CSS keyed on `data-lh-arrive`
+ * (app/paper.css). The chrome stays out of the captured image
+ * (app/paper.css), so it holds still.
  *
  * The kind is read once per mount and removed when the arrival ends, so a
  * re-render or a re-show of a cached route never replays it (FR-009).
@@ -44,6 +45,19 @@ export interface RouteContentProps extends ComponentProps<"div"> {
 	still?: boolean;
 }
 
+const EXIT = { "lh-route": "lh-lift", "lh-mode": "lh-lift", default: "none" };
+
+/**
+ * The page's exit: wrap a page's whole output in it (app/(app)/…/page.tsx).
+ * React fires an exit only for a <ViewTransition> with no DOM element above
+ * it inside the removed tree, so it must sit at the top of the page, not
+ * around a region deeper down (where it never fired, found in phase 5).
+ * Never in a layout: layouts persist, so exit never fires there.
+ */
+export function RouteExit({ children }: { children: ReactNode }) {
+	return <ViewTransition exit={EXIT} enter="none" update="none" share="none" default="none">{children}</ViewTransition>;
+}
+
 export function RouteContent({ children, onAnimationEnd, stagger, still, ...rest }: RouteContentProps) {
 	const hydrating = useHydrating();
 	const [kind, setKind] = useState<ArrivalKind | null>(() => (hydrating ? "cold" : arrivalKind(pendingArrival(), signaturePlaying())));
@@ -58,10 +72,8 @@ export function RouteContent({ children, onAnimationEnd, stagger, still, ...rest
 		if (!running) setKind(null);
 	};
 	return (
-		<ViewTransition exit={{ "lh-route": "lh-lift", "lh-mode": "lh-lift", default: "none" }} enter="none" update="none" share="none" default="none">
-			<div {...rest} data-lh-arrive={kind ?? undefined} data-lh-stagger={stagger} data-lh-still={still ? "" : undefined} onAnimationEnd={kind ? ended : onAnimationEnd}>
-				{children}
-			</div>
-		</ViewTransition>
+		<div {...rest} data-lh-arrive={kind ?? undefined} data-lh-stagger={stagger} data-lh-still={still ? "" : undefined} onAnimationEnd={kind ? ended : onAnimationEnd}>
+			{children}
+		</div>
 	);
 }

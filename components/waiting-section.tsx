@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { routeLink } from "@/components/paper/navigate";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { dueRowText, type ChatListItem, type LessonProgress, type ReviewQueue, type WaitingItem } from "@/src/core";
 import { useServerEvent } from "@/components/server-events";
@@ -149,6 +150,7 @@ function WaitingRow({ chat, order }: { chat: Waiting; order: number }) {
 			{chat.progress && <span className="waiting-row-progress min-w-0 text-sm text-faint">{progressLine(chat.progress, chat.course)}</span>}
 			<Link
 				href={answerHref(chat)}
+				{...routeLink()}
 				aria-describedby={`${id}-teaser ${id}-meta`}
 				className="waiting-row-action lh-tool"
 			>
@@ -171,6 +173,7 @@ function LessonRow({ chat, order }: { chat: Unfinished; order: number }) {
 			</p>
 			<Link
 				href={continueHref(chat)}
+				{...routeLink()}
 				aria-describedby={`${id}-teaser ${id}-meta`}
 				className="waiting-row-action lh-tool"
 			>
@@ -188,7 +191,7 @@ function CardsRow({ due, weakDue, order }: { due: number; weakDue: number; order
 			<span className="waiting-row-kind text-sm font-medium text-bulb-ink">Flashcards</span>
 			<span id={`${id}-meta`} className="waiting-row-meta min-w-0 truncate text-meta text-faint">{weakDue > 0 ? `${weakDue} on weak ideas` : "Today"}</span>
 			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-base leading-row text-graphite">{dueRowText(due)}</p>
-			<Link href="/review" aria-describedby={`${id}-teaser ${id}-meta`} className="waiting-row-action lh-tool">Review</Link>
+			<Link href="/review" {...routeLink()} aria-describedby={`${id}-teaser ${id}-meta`} className="waiting-row-action lh-tool">Review</Link>
 		</li>
 	);
 }

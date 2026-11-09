@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { Chat } from "@/components/chat";
+import { RouteExit } from "@/components/paper/route-content";
 import { continueDraft, lessonProgressOf } from "@/src/core";
 import { clientMessages, compactionInFlight, getChat, isTurnRunning, sessionCost, readSettingsRecord, turnFailure, withTenantPage, studySlotsConfigured } from "@/src/server";
 
@@ -23,6 +24,7 @@ async function ChatPage({
 	// now, so a stale list never drafts a finished topic.
 	const progress = resume === "1" && chat.kind !== "practice" ? lessonProgressOf(chat.tree, chat.messages) : null;
 	return (
+		<RouteExit>
 		<Chat
 			key={chat.id}
 			chatId={chat.id}
@@ -46,6 +48,7 @@ async function ChatPage({
 			initiallyInFlight={isTurnRunning(chat.id)}
 			initiallyCompacting={compactionInFlight(chat.id)}
 		/>
+		</RouteExit>
 	);
 }
 

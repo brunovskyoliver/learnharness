@@ -2,6 +2,7 @@
 
 /** The top-left chrome both modes share (feature 024 visual-reference §4, feature 025 R5): the menu glyph, the ✕ and our wordmark. */
 import Link from "next/link";
+import { routeLink } from "@/components/paper/navigate";
 import { LhMark } from "@/components/lh-mark";
 
 /** Riddled's two-bar menu glyph (visual-reference §4), drawn in `--graphite`. */
@@ -16,7 +17,7 @@ export function MenuGlyph() {
 /** Our mark and name (not Riddled's). Notebook links it to the open note, Study to Home. */
 export function Wordmark({ href, className }: { href: string; className?: string }) {
 	return (
-		<Link href={href} className={className ? `nb-wordmark ${className}` : "nb-wordmark"} data-testid="nb-wordmark">
+		<Link href={href} {...routeLink()} className={className ? `nb-wordmark ${className}` : "nb-wordmark"} data-testid="nb-wordmark">
 			<LhMark className="nb-wordmark-mark" signature />
 			<span translate="no">Brunovský’s study</span>
 		</Link>
