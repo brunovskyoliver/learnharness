@@ -10,6 +10,7 @@ Updated: 2026-11-09
 - Gate 2 (owner "go", 2026-11-09): implement everything; medium findings fixed in spec (mid-read file replace = known limit; hand-written demos keep full plotly).
 - Commits: one per phase on main, only feature files (app/globals.css waiting-row fix stays uncommitted, not part of 024). No push/deploy.
 - Phase 2 (agent, technical): content route sends `Cache-Control: private, no-cache, no-transform`; `no-transform` is what keeps Next's built-in gzip (router-server `compression`) off text/bmp items, so the contract's "never content-encoded" holds. ETag = first 32 base64url chars of sha256(id, size, mtimeMs), quoted (strong). `openDocumentStream(file, pick)` opens one handle and lets `pick` choose range/all/none from that handle's own size+mtime (same inode as the lstat check), so tag and bytes always agree.
+- PDF revision (owner, 2026-11-09, after T009 showed 8.6 s): "Versioned chunks" — custom pdf.js range transport, chunk URLs carrying the version tag, immutable private caching, parallel fetches. Chunk size by measurement.
 
 ## Log
 - 2026-11-09 measure: baseline profiled on a throwaway copy of learnharness:amd64 (numbers in spec.md Baseline).

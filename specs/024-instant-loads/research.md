@@ -7,6 +7,12 @@
 - **Rationale**: pdf.js reads the trailer/xref from the tail and the objects for page 1 via ranges, so non-linearized files also benefit. `private, no-cache` + ETag = owner's Clarification Q1: the browser keeps the bytes and revalidates on each request (304, no body).
 - **Alternatives**: linearizing uploads (rewrites learner files — violates III); `max-age` (owner rejected, stale risk).
 
+### R1a Revision (owner, 2026-11-09, after T009 measurement)
+
+- Plain ranges measured 8.6 s: pdf.js reads every top-level page dict on open (`checkLastPage` walks the flat Kids array), and this file stores each dict after its ~220 KB image; Chromium also serializes cacheable range requests to one URL (cache entry lock).
+- **Decision (owner: "Versioned chunks")**: the reader supplies its own `PDFDataRangeTransport`. It first learns the current version tag and size (a small revalidated request), then fetches fixed-size chunks at distinct URLs `content?v=<etag>&chunk=<n>` (or equivalent), answered with `private, max-age=31536000, immutable` — safe because the version is in the URL and the server refuses (409/412) a chunk request whose `v` no longer matches. Requests run in parallel; reopening reuses every chunk without a request. Chunk size chosen by measurement (start 64 KB; the smaller the chunk, the fewer wasted bytes on page-dict reads), logged in progress.md.
+- The plain-range route behaviour from R1 stays (Download, images, other clients).
+
 ## R2 pdf.js worker compression
 
 - **Decision**: `pdfjsAssetResponse` gzips text assets (`.mjs`, `.js`, `.bcmap` excluded — already compressed binary) when `Accept-Encoding` includes gzip, memoized per file in memory; `Vary: Accept-Encoding`. 1.32 MB → 392 KB.

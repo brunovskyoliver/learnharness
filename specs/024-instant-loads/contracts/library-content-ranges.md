@@ -13,3 +13,13 @@ Unchanged: tenant scoping, 404 body, `Content-Type`, `Content-Disposition`, `X-C
 | `?download=1` | as above, plus `Content-Disposition: attachment` |
 
 ETag is strong, opaque, and changes whenever the stored file's size or modification time changes. The body is never content-encoded.
+
+## Versioned chunks (revision 2026-11-09)
+
+| Request | Response |
+|---|---|
+| `?v=<etag>&chunk=<n>&size=<chunkSize>` with `v` equal to the current ETag, chunk in range | 200, exactly bytes `[n·size, min((n+1)·size, fileSize))`, `Cache-Control: private, max-age=31536000, immutable`, `ETag`, no content encoding |
+| `v` not the current ETag | 412, `Cache-Control: no-store`; the reader reloads the document from its metadata |
+| chunk/size invalid (non-integer, size outside the allowed set, n past the end) | 400 / 416 |
+
+Metadata: the reader learns ETag and size from a `HEAD` (or `Range: bytes=0-0`) request with `private, no-cache` — one revalidated round trip per open.
