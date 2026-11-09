@@ -22,7 +22,7 @@ Expected: every token in contract §1 with its value; spring fallbacks present; 
 npx playwright test tests/e2e/study/motion.spec.ts tests/e2e/study/mode-switch.spec.ts tests/e2e/notebook/smoke.spec.ts
 ```
 
-Expected (research R14): signature plays in a fresh context and not after reload; reduced motion shows only opacity animations ≤150ms; Mod+K at 50ms opens the palette; a click 50ms into a route transition lands; typing during a mode switch lands; Escape twice closes two layers; CLS 0 per trigger; with `startViewTransition` removed every transition ends finished with no console error; chrome pixels still during route and mode changes; ten rapid route clicks end on the last route; the demo iframe never reloads.
+Expected (research R14): with JavaScript off the page is in its final state; signature plays in a fresh context and not after reload; reduced motion shows only opacity animations ≤150ms; Mod+K at 50ms opens the palette; a click 50ms into a route transition lands; typing during a mode switch lands; Escape twice closes two layers; layer exits are opacity-only and ≤160ms; CLS 0 per trigger; with `startViewTransition` removed every transition ends finished with no console error; chrome pixels still during route and mode changes; ten rapid route clicks end on the last route; the demo iframe never reloads.
 
 ## 3. Manual walk (1440, 390, 320 px; light, dark; reduced motion on and off)
 

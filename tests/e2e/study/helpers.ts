@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { expect, type APIRequestContext, type Page, type Request } from "@playwright/test";
+import { expect, type APIRequestContext, type BrowserContext, type Page, type Request } from "@playwright/test";
 import { seedReviewChats } from "../../../scripts/seed-review.mjs";
 import type { GitRemote } from "../../fixtures/git-remote";
 
@@ -342,4 +342,67 @@ export async function seedReferenceLesson(request: APIRequestContext, options: {
 	referenceLesson = { chatId: REFERENCE_CHAT, items, trashEntryId, mirrored, messages, pdfPages };
 	writeFileSync(saved, JSON.stringify(referenceLesson));
 	return referenceLesson;
+}
+
+// ─── feature 028: motion (T004, research R14) ───────────────────────────────
+
+export interface RunningAnimation { name: string; target: string; properties: string[]; duration: number; delay: number; playState: string }
+
+/** Every animation on the document now (CSS animations, transitions, view-transition pseudos): what it animates and for how long. */
+export const runningAnimations = (page: Page) => page.evaluate((): RunningAnimation[] => document.getAnimations().map((animation) => {
+	const effect = animation.effect as KeyframeEffect | null;
+	const timing = effect?.getComputedTiming();
+	const properties = new Set<string>();
+	for (const frame of effect?.getKeyframes() ?? []) for (const key of Object.keys(frame)) if (!["offset", "computedOffset", "easing", "composite"].includes(key)) properties.add(key);
+	const target = effect?.target as Element | null;
+	const name = (animation as CSSAnimation).animationName ?? (animation as CSSTransition).transitionProperty ?? animation.id;
+	return {
+		name,
+		target: target ? `${target.tagName.toLowerCase()}${effect?.pseudoElement ?? ""}${target.id ? `#${target.id}` : ""}` : "",
+		properties: [...properties],
+		duration: Number(timing?.duration ?? 0),
+		delay: Number(timing?.delay ?? 0),
+		playState: animation.playState,
+	};
+}));
+
+/** Sum of layout shifts without recent input while `action` runs (CLS contribution, SC-007). */
+export async function layoutShiftDuring(page: Page, action: () => Promise<void>, settleMs = 600): Promise<number> {
+	await page.evaluate(() => {
+		const w = window as unknown as { __lhShift: number; __lhShiftObserver?: PerformanceObserver };
+		w.__lhShift = 0;
+		w.__lhShiftObserver?.disconnect();
+		w.__lhShiftObserver = new PerformanceObserver((list) => {
+			for (const entry of list.getEntries() as Array<PerformanceEntry & { value: number; hadRecentInput: boolean }>) if (!entry.hadRecentInput) w.__lhShift += entry.value;
+		});
+		w.__lhShiftObserver.observe({ type: "layout-shift", buffered: false });
+	});
+	await action();
+	await page.waitForTimeout(settleMs);
+	return page.evaluate(() => {
+		const w = window as unknown as { __lhShift: number; __lhShiftObserver?: PerformanceObserver };
+		w.__lhShiftObserver?.disconnect();
+		return w.__lhShift;
+	});
+}
+
+/** A browser without view transitions: every page of `context` loses `document.startViewTransition` (R3 fallback). */
+export async function withoutViewTransitions(context: BrowserContext) {
+	await context.addInitScript(() => {
+		delete (Document.prototype as Partial<Document>).startViewTransition;
+	});
+}
+
+/** Screenshots of one box on every animation frame for `ms` (chrome stillness, FR-003). Returns the PNG buffers. */
+export async function boxFrames(page: Page, selector: string, ms: number): Promise<Buffer[]> {
+	const box = await page.locator(selector).filter({ visible: true }).first().boundingBox();
+	if (!box) throw new Error(`boxFrames: ${selector} has no box`);
+	const clip = { x: Math.floor(box.x), y: Math.floor(box.y), width: Math.ceil(box.width), height: Math.ceil(box.height) };
+	const frames: Buffer[] = [];
+	const end = Date.now() + ms;
+	while (Date.now() < end) {
+		frames.push(await page.screenshot({ clip, animations: "allow" }));
+		await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+	}
+	return frames;
 }

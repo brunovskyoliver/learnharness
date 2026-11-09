@@ -1,0 +1,50 @@
+"use client";
+
+/**
+ * Feature 028: a page's content region (contract §4, research R1-R2,
+ * data-model "Arrival kind"). On a typed navigation React captures the
+ * leaving content and lifts it (`lh-lift`); the arriving content is never
+ * captured, so it is live from its first frame and arrives through the
+ * arrival CSS keyed on `data-lh-arrive` (app/paper.css). Put it in each
+ * page's content, never in a layout (layouts persist, so exit never fires).
+ *
+ * The kind is read once per mount and removed when the arrival ends, so a
+ * re-render or a re-show of a cached route never replays it (FR-009).
+ * During hydration it is the server's "cold": the html signature attribute
+ * turns that into the signature in CSS, from first paint.
+ */
+
+import { ViewTransition, useEffect, useState, useSyncExternalStore, type AnimationEvent, type HTMLAttributes } from "react";
+import { pendingArrival, signaturePlaying } from "@/components/paper/motion-arrival";
+import { arrivalKind, type ArrivalKind } from "@/src/core";
+
+/** The keyframes an arrival plays (app/paper.css); other animations inside (loops, carets) never hold it. */
+const ARRIVAL_ANIMATIONS = new Set(["nb-ink-in", "nb-unfold", "lh-fade"]);
+/** The longest arrival (signature ink + cap) with margin; past it the attribute goes regardless. */
+const ARRIVAL_MAX_MS = 1000;
+
+const noSubscribe = () => () => {};
+/** True on the server and while hydrating; false for a mount made on the client. */
+const useHydrating = () => useSyncExternalStore(noSubscribe, () => false, () => true);
+
+export function RouteContent({ children, onAnimationEnd, ...rest }: HTMLAttributes<HTMLDivElement>) {
+	const hydrating = useHydrating();
+	const [kind, setKind] = useState<ArrivalKind | null>(() => (hydrating ? "cold" : arrivalKind(pendingArrival(), signaturePlaying())));
+	useEffect(() => {
+		if (!kind) return;
+		const timer = window.setTimeout(() => setKind(null), ARRIVAL_MAX_MS);
+		return () => window.clearTimeout(timer);
+	}, [kind]);
+	const ended = (event: AnimationEvent<HTMLDivElement>) => {
+		onAnimationEnd?.(event);
+		const running = event.currentTarget.getAnimations({ subtree: true }).some((a) => ARRIVAL_ANIMATIONS.has((a as CSSAnimation).animationName) && a.playState !== "finished");
+		if (!running) setKind(null);
+	};
+	return (
+		<ViewTransition exit={{ "lh-route": "lh-lift", "lh-mode": "lh-lift", default: "none" }} enter="none" update="none" share="none" default="none">
+			<div {...rest} data-lh-arrive={kind ?? undefined} onAnimationEnd={kind ? ended : onAnimationEnd}>
+				{children}
+			</div>
+		</ViewTransition>
+	);
+}

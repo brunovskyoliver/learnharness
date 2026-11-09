@@ -20,7 +20,8 @@
     "resolveJsonModule": true,
     "incremental": true,
     "types": [
-      "node"
+      "node",
+      "react/canary"
     ],
     "paths": {
       "@/*": [

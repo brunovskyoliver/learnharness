@@ -10,7 +10,7 @@ description: "Tasks for feature 028, one motion language"
 
 **UI tasks** (T021-T028, T034-T035, T039-T043, T046-T054, T057-T074) are built with the `shadcn` skill (constitution VI) and checked in T079-T080.
 
-**Gate 2**: tasks marked **(gate 2)** implement the version the owner approves under "Owner review at gate 2" in plan.md; do not start them before the answer.
+**Gate 2**: answered `go` 2026-11-09. Tasks marked **(gate 2)** implement the approved versions in plan.md "Owner review at gate 2". Tasks marked **(O1)** or **(O2)** wait for the items in plan.md "Open after gate 2".
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -21,27 +21,27 @@ description: "Tasks for feature 028, one motion language"
 
 ## Phase 1: Setup
 
-- [ ] T001 Read `node_modules/next/dist/docs/01-app/02-guides/view-transitions.md`, `.../02-components/link.md` (`transitionTypes`) and `.../04-functions/use-router.md`; add `"react/canary"` to `compilerOptions.types` in tsconfig.json so `ViewTransition` type-checks; log any finding that changes R1-R2 under Decisions in specs/028-motion/progress.md
-- [ ] T002 Measure the startup baseline at HEAD `b0cdb1e` (`npm run build`, `next start`, fresh `LH_DATA_DIR`) with `~/agent-runs/2026-11-07-unified-redesign/startup-js/startup-js.mjs` for `/`, `/chat/new`, `/library`, plus a 390×844 copy of the script in `~/agent-runs/2026-11-09-motion/`; save `startup-base.json` and `startup-base-390.json` there
-- [ ] T003 Spike outside the repo (`~/agent-runs/2026-11-09-motion/spike/`, nothing committed): confirm on Chromium 157 and Electron 44 that (a) with `html:active-view-transition-type(lh-route) { view-transition-name: none }` and only the old content named, the ☰ and the new content take a click 50ms into the transition, (b) an Activity-cached route re-shown by navigation fires the wrapper's exit for the old route and does not replay arrival CSS that was already cleared, (c) `router.push(href, { transitionTypes })` from a keydown handler keeps its type; record results and any change to R2 under Decisions in specs/028-motion/progress.md
-- [ ] T004 [P] Add motion helpers to tests/e2e/study/helpers.ts: `runningAnimations(page)` (property names, durations, delays from `document.getAnimations()`), `layoutShiftDuring(page, action)` (sum without recent input), `withoutViewTransitions(context)` (init script deleting `Document.prototype.startViewTransition`), `boxFrames(page, selector, ms)` (screenshots of a box every frame)
+- [X] T001 Read `node_modules/next/dist/docs/01-app/02-guides/view-transitions.md`, `.../02-components/link.md` (`transitionTypes`) and `.../04-functions/use-router.md`; add `"react/canary"` to `compilerOptions.types` in tsconfig.json so `ViewTransition` type-checks; log any finding that changes R1-R2 under Decisions in specs/028-motion/progress.md
+- [X] T002 Measure the startup baseline at HEAD `b0cdb1e` (`npm run build`, `next start`, fresh `LH_DATA_DIR`) with `~/agent-runs/2026-11-07-unified-redesign/startup-js/startup-js.mjs` for `/`, `/chat/new`, `/library`, plus a 390×844 copy of the script in `~/agent-runs/2026-11-09-motion/`; save `startup-base.json` and `startup-base-390.json` there
+- [X] T003 Spike outside the repo (`~/agent-runs/2026-11-09-motion/spike/`, nothing committed): confirm on Chromium 157 and Electron 44 that (a) with `html:active-view-transition-type(lh-route) { view-transition-name: none }` and only the old content named, the ☰ and the new content take a click 50ms into the transition, (b) an Activity-cached route re-shown by navigation fires the wrapper's exit for the old route and does not replay arrival CSS that was already cleared, (c) `router.push(href, { transitionTypes })` from a keydown handler keeps its type; record results and any change to R2 under Decisions in specs/028-motion/progress.md
+- [X] T004 [P] Add motion helpers to tests/e2e/study/helpers.ts: `runningAnimations(page)` (property names, durations, delays from `document.getAnimations()`), `layoutShiftDuring(page, action)` (sum without recent input), `withoutViewTransitions(context)` (init script deleting `Document.prototype.startViewTransition`), `boxFrames(page, selector, ms)` (screenshots of a box every frame)
 
 ---
 
 ## Phase 2: Foundational (blocks every story)
 
-- [ ] T005 Add every token of contracts/motion-contract.md §1 to `html.lh-paper` in app/paper.css, with the spring fallbacks behind `@supports (animation-timing-function: linear(0, 1))`
-- [ ] T006 Rewrite literal timings that equal a token to the token in app/paper.css and app/(app)/notebook/notebook.css (R11); leave literals that equal no token; no computed value changes (diff the computed `animation` of each 024 class before/after in the T003 spike page)
-- [ ] T007 Add keyframes `lh-lift`, `lh-fade`, `lh-dialog-rise`, `lh-sheet-in`, `lh-mark-draw` to the keyframes block of app/paper.css (contract §1)
-- [ ] T008 [P] Create src/core/motion.ts (pure): `signatureDecision({ visible, stored })`, `SIGNATURE_SCRIPT` (the inline string), `arrivalKind(pending, signature)`, `staggerDelay(index, { step, cap })`, `soakOrigin(rect, viewport)` → `{ x, y, r }`; export from src/core/index.ts
-- [ ] T009 [P] Create tests/motion-guards.test.ts: every function in src/core/motion.ts, including that evaluating `SIGNATURE_SCRIPT` against a fake `sessionStorage`/`document` matches `signatureDecision` for all four inputs and that the flag is written even when the signature is skipped
-- [ ] T010 [P] Create tests/motion-tokens.test.ts: app/paper.css defines every §1 token with its value; spring fallbacks present; the new keyframes animate only transform, opacity, clip-path, mask and stroke-dashoffset; the reduced-motion block names every arrival selector of contract §3
-- [ ] T011 Add the reduced-motion block (contract §6, R10) and the print/`data-lh-printing` rule (contract §7) to app/paper.css; rewrite the existing reduced-motion `animation: none` rules for arrival classes to `lh-fade` ≤150ms where the catalogue says fade
-- [ ] T012 Add the view-transition rules of contract §4 to app/paper.css (pointer-events, unnamed root for `lh-route`/`lh-mode`, `.lh-lift` old snapshot, reduced-motion 150ms pair)
-- [ ] T013 Create components/paper/motion-arrival.ts: per-page-load registry, `useArrival(key)` (sets `data-arrive`, clears on `animationend`), `useNewRows(listKey, ids)`, and the `MotionArrival` client component that clears `html[data-lh-arrival]` at the first navigation or 900ms
-- [ ] T014 Create components/paper/navigate.ts: `navigateTo(router, href, kind)` pushing with `transitionTypes` `["lh-route"]`, `["lh-mode"]` or `["lh-route"]` + tab, setting the pending arrival kind; a `popstate` listener that sets `history`
-- [ ] T015 Create components/paper/route-content.tsx: the `<ViewTransition>` wrapper of contract §4 that renders `data-lh-arrive` from `arrivalKind` once per mount and removes it on `animationend`
-- [ ] T016 Add arrival rules to app/paper.css for each `data-lh-arrive` kind and `[data-ink-order]` with `--i` (desktop step/cap; phone step/cap below 640px **(gate 2)**, first-N rows only, R6)
+- [X] T005 Add every token of contracts/motion-contract.md §1 to `html.lh-paper` in app/paper.css, with the spring fallbacks behind `@supports (animation-timing-function: linear(0, 1))`
+- [X] T006 Rewrite literal timings that equal a token to the token in app/paper.css and app/(app)/notebook/notebook.css (R11); leave literals that equal no token; no computed value changes (diff the computed `animation` of each 024 class before/after in the T003 spike page)
+- [X] T007 Add keyframes `lh-lift`, `lh-fade`, `lh-dialog-rise`, `lh-sheet-in`, `lh-mark-draw` to the keyframes block of app/paper.css (contract §1)
+- [X] T008 [P] Create src/core/motion.ts (pure): `signatureDecision({ visible, stored })`, `SIGNATURE_SCRIPT` (the inline string), `arrivalKind(pending, signature)`, `staggerDelay(index, { step, cap })`, `soakOrigin(rect, viewport)` → `{ x, y, r }`; export from src/core/index.ts
+- [X] T009 [P] Create tests/motion-guards.test.ts: every function in src/core/motion.ts, including that evaluating `SIGNATURE_SCRIPT` against a fake `sessionStorage`/`document` matches `signatureDecision` for all four inputs and that the flag is written even when the signature is skipped
+- [X] T010 [P] Create tests/motion-tokens.test.ts: app/paper.css defines every §1 token with its value; spring fallbacks present; the new keyframes animate only transform, opacity, clip-path, mask and stroke-dashoffset; the reduced-motion block names every arrival selector of contract §3
+- [X] T011 Add the reduced-motion block (contract §6, R10) and the print/`data-lh-printing` rule (contract §7) to app/paper.css; rewrite the existing reduced-motion `animation: none` rules for arrival classes to `lh-fade` ≤150ms where the catalogue says fade
+- [X] T012 Add the view-transition rules of contract §4 to app/paper.css (pointer-events, unnamed root for `lh-route`/`lh-mode`, `.lh-lift` old snapshot, reduced-motion 150ms pair)
+- [X] T013 Create components/paper/motion-arrival.ts: per-page-load registry, `useArrival(key)` (sets `data-arrive`, clears on `animationend`), `useNewRows(listKey, ids)`, and the `MotionArrival` client component that clears `html[data-lh-arrival]` at the first navigation or 900ms
+- [X] T014 Create components/paper/navigate.ts: `navigateTo(router, href, kind)` pushing with `transitionTypes` `["lh-route"]`, `["lh-mode"]` or `["lh-route"]` + tab, setting the pending arrival kind; a `popstate` listener that sets `history`
+- [X] T015 Create components/paper/route-content.tsx: the `<ViewTransition>` wrapper of contract §4 that renders `data-lh-arrive` from `arrivalKind` once per mount and removes it on `animationend`
+- [X] T016 Add arrival rules to app/paper.css for each `data-lh-arrive` kind and `[data-ink-order]` with `--i` (desktop 40ms step / 240ms cap; below 640px 24ms / 160ms **(gate 2)**; arrival ink `--motion-arrive` 360ms; first-N rows only, R6)
 
 **Checkpoint**: tokens, guards, wrapper and rules exist; nothing visible changes until a surface opts in.
 
@@ -55,12 +55,13 @@ description: "Tasks for feature 028, one motion language"
 
 - [ ] T017 [US1] Add to tests/e2e/study/motion.spec.ts: "plays once" (fresh context: `html[data-lh-arrival=signature]` and a running `lh-mark-draw`; reload: neither; a new context: plays again); "hidden tab skips it"
 - [ ] T018 [US1] Add to tests/e2e/study/motion.spec.ts: every text animation in the first viewport ends by 600ms after first paint on `/`, `/chat/{id}`, `/library`, `/review`, `/settings` at 1440 and 390 (SC-001); a lesson's transcript turns have no animation (US1 AS4)
-- [ ] T019 [US1] Add to tests/e2e/study/motion.spec.ts: Mod+K at 50ms opens the palette and a row click at 50ms navigates (US1 AS2, SC-002); reduced motion: the signature is a ≤150ms fade with no stroke or splat (US1 AS3)
+- [ ] T019 [US1] Add to tests/e2e/study/motion.spec.ts: Mod+K at 50ms opens the palette and a row click at 50ms navigates, 20 trials each at offsets spread over the signature (US1 AS2, SC-002); reduced motion: the signature is a ≤150ms fade with no stroke or splat (US1 AS3)
+- [ ] T085 [US1] Add to tests/e2e/study/motion.spec.ts: with JavaScript disabled (`javaScriptEnabled: false`) a cold load of `/` and `/library` shows every first-viewport element at opacity 1 with no transform (FR-008)
 - [ ] T020 [US1] Put `SIGNATURE_SCRIPT` first in `<body>` of app/(app)/layout.tsx and app/(auth)/layout.tsx, add `suppressHydrationWarning` to `<html>`, mount `<MotionArrival />` in app/(app)/layout.tsx
 - [ ] T021 [P] [US1] Add the signature mask mode to components/lh-mark.tsx: a `useId()` mask with a stroked circle on the ring's centre line (`pathLength="1"`), clockwise from the spiral's open end **(gate 2, items 1 and 4)**; static and complete without the attribute
-- [ ] T022 [US1] Add the signature rules for `.nb-wordmark-mark` (ring `lh-mark-draw`, dot `nb-blot-splat`, spiral `nb-fade-in`) and the band settle to app/paper.css, with the timings approved at gate 2, and pass the signature mode from `Wordmark` in components/paper/chrome.tsx
-- [ ] T023 [US1] Wrap Home's content in `RouteContent` and mark heading, sections and rows with `data-ink-order`/`--i` in components/home.tsx and components/waiting-section.tsx
-- [ ] T024 [P] [US1] Same for the Library view in components/library/library-view.tsx
+- [ ] T022 [US1] Add the signature rules for `.nb-wordmark-mark` (ring `lh-mark-draw` `--motion-mark` 400ms, dot `nb-blot-splat` `--motion-mark-dot` 300ms from 280ms, spiral `nb-fade-in`) and the band settle to app/paper.css **(gate 2, item 1)**, and pass the signature mode from `Wordmark` in components/paper/chrome.tsx
+- [ ] T023 [US1] **(O1)** Wrap Home's content in `RouteContent` and mark heading, sections and rows with `data-ink-order`/`--i` in components/home.tsx and components/waiting-section.tsx; a route arrival includes the row stagger in its one ink-in and rows do not replay row 13 **(gate 2, item 6)**
+- [ ] T024 [P] [US1] **(O1)** Same for the Library view in components/library/library-view.tsx (24ms step, 160ms cap; gate 2 item 6 as T023)
 - [ ] T025 [P] [US1] Same for Review in components/review/review-view.tsx
 - [ ] T026 [P] [US1] Same for the Settings route in app/(app)/settings/page.tsx
 - [ ] T027 [US1] Lessons: wrap the band title and the composer only (transcript untouched) in components/chat.tsx and components/new-session.tsx **(gate 2, item 5)**
@@ -78,7 +79,7 @@ description: "Tasks for feature 028, one motion language"
 
 **Independent test**: switch both ways from the sidebar, the palette and the shortcut; chrome pixels still; caret placeable at once; ≤400ms.
 
-- [ ] T031 [US2] Extend tests/e2e/study/mode-switch.spec.ts: chrome box identical across frames (`boxFrames`), transition ≤400ms, typing right after the switch lands in the field, the draft round trip still holds, from the shortcut, the sidebar and the palette
+- [ ] T031 [US2] Extend tests/e2e/study/mode-switch.spec.ts: chrome box identical across frames (`boxFrames`), transition ≤400ms, typing right after the switch lands in the field (20 trials at offsets across the transition, SC-002), the draft round trip still holds, from the shortcut, the sidebar and the palette
 - [ ] T032 [US2] Add to tests/e2e/study/motion.spec.ts: with `withoutViewTransitions`, the mode switch and a route change still play their arrival and end finished, with no console error (US2 AS2, FR-023)
 - [ ] T033 [US2] Route every `switchInterface` navigate callback through `navigateTo(…, "mode")` in components/keyboard-shortcuts.tsx, components/sidebar.tsx, components/command-palette-dialog.tsx and components/notebook/overlay-sidebar.tsx
 - [ ] T034 [US2] Wrap the note page's content (not its chrome) in `RouteContent` in components/notebook/notebook-app.tsx so `mode` arrival unfolds the page and inks its first lines
@@ -96,7 +97,7 @@ description: "Tasks for feature 028, one motion language"
 
 **Independent test**: click through all routes and tabs ten times rapidly: ≤300ms each, no lost click, no flash, transcript/scroll/drafts unchanged.
 
-- [ ] T038 [US3] Add to tests/e2e/study/motion.spec.ts: route transitions ≤300ms (SC-003); ten rapid clicks end on the last route with at most one running transition (FR-007); a click 50ms into a route transition lands; back/forward has no lift and no stagger; layout shift 0 per route change (SC-007)
+- [ ] T038 [US3] Add to tests/e2e/study/motion.spec.ts: route transitions ≤300ms (SC-003); the ☰/wordmark box is pixel-identical across frames during a route change (`boxFrames`, FR-003); ten rapid clicks end on the last route with at most one running transition (FR-007); a click 50ms into a route transition lands (20 trials at offsets across the transition, SC-002); back/forward has no lift and no stagger; layout shift 0 per route change (SC-007)
 - [ ] T039 [US3] Tag in-app route links with `transitionTypes={["lh-route"]}` in components/workspace/sidebar-nav.tsx, components/session-list.tsx, components/home.tsx, components/waiting-section.tsx and components/paper/chrome.tsx (wordmark)
 - [ ] T040 [US3] Send programmatic route pushes through `navigateTo` in components/command-palette-dialog.tsx, components/workspace/workspace-context.tsx (`WorkspaceApi.push`) and components/library/back-pill.tsx
 - [ ] T041 [US3] Add the tab marker to components/workspace/tab-strip.tsx (one `.lh-tab-marker`, transform from measured offsets, `--spring-soft` 280ms, jumps under reduced motion) and its CSS in app/paper.css
@@ -112,7 +113,8 @@ description: "Tasks for feature 028, one motion language"
 
 **Independent test**: open and close every layer by pointer and keyboard; focus moves on open; Escape closes the innermost at once; focus returns to the opener at once.
 
-- [ ] T045 [US4] Add to tests/e2e/study/motion.spec.ts: for the sidebar, palette, a menu, a popover, a tooltip, settings, export and link-repo: focus inside on open in the same frame, Escape-Escape within 50ms closes two stacked layers, focus back on the opener in the same frame (US4 AS1-2, FR-005); sidebar rows ink only on the first open per load
+- [ ] T045 [US4] Add to tests/e2e/study/motion.spec.ts: for the sidebar, palette, a menu, a popover, a tooltip, settings, export and link-repo: focus inside on open in the same frame, Escape-Escape within 50ms closes two stacked layers, focus back on the opener in the same frame (US4 AS1-2, FR-005), 20 open/close trials per layer (SC-002); sidebar rows ink only on the first open per load
+- [ ] T086 [US4] Add to tests/e2e/study/motion.spec.ts: closing each layer of T045 runs only opacity animations of ≤160ms (dialogs ≤120ms, menus ≤100ms) (FR-004)
 - [ ] T046 [US4] components/ui/dialog.tsx: remove the inert `animate-*`/`fade-*`/`zoom-*`/`duration-200` classes; scrim `nb-fade-in`, content `lh-dialog-rise` (220ms `--spring-soft`), close `lh-lift` 120ms with `pointer-events: none`; record the opener and focus it with `onOpenChange(false)`, preventing `onCloseAutoFocus` (R7)
 - [ ] T047 [P] [US4] components/ui/popover.tsx: replace the inert classes with `nb-menu-in` open and `lh-lift` 100ms close
 - [ ] T048 [P] [US4] components/ui/tooltip.tsx: same as T047
@@ -134,19 +136,19 @@ description: "Tasks for feature 028, one motion language"
 
 - [ ] T056 [US5] Add to tests/e2e/study/motion.spec.ts: for Home rows, a Library folder, a demo frame and a Review card, ten re-renders (refresh with equal data, resize, theme change) start 0 animations; a genuinely new Home row unfolds and a resolved one lifts
 - [ ] T057 [US5] Home rows 13-14: `useNewRows` for added and resolved rows, bulb-ink label dot splat on first appearance, in components/waiting-section.tsx and components/home.tsx
-- [ ] T058 [P] [US5] Library rows 15: rows ink (24ms step, 160ms cap), upload row settles and its status dot splats, in components/library/library-row.tsx and components/library/page-row.tsx
+- [ ] T058 [P] [US5] Library rows 15: rows ink (`--motion-arrive` 360ms, 24ms step, 160ms cap), upload row settles and its status dot splats, in components/library/library-row.tsx and components/library/page-row.tsx
 - [ ] T059 [P] [US5] Library folders 16: children unfold on expand and lift on collapse in components/library/folder-row.tsx
-- [ ] T060 [P] [US5] Transcript 17: a sent learner turn and the composer settle on arrival (history untouched) in components/user-turn-text.tsx and components/composer.tsx
-- [ ] T061 [P] [US5] Check threads 18: "Your turn" dot splat and the pencil underline under a correct grade, once, in components/study/check-thread.tsx
-- [ ] T062 [P] [US5] Demos and plots 19: `useArrival("demo:{id}")` frame unfold, our own axes pencil-draw and data ink, never inside the sandbox, in components/artifacts/demo-card.tsx and components/artifacts/plot-card.tsx
+- [ ] T060 [P] [US5] **(O2)** Transcript 17: a sent learner turn and the composer settle on arrival (history untouched) in components/user-turn-text.tsx and components/composer.tsx
+- [ ] T061 [P] [US5] **(O2)** Check threads 18: "Your turn" dot splat and the pencil underline under a correct grade, once, in components/study/check-thread.tsx
+- [ ] T062 [P] [US5] Demos and plots 19: `useArrival("demo:{id}")` frame unfold, our own axes pencil-draw (600ms) and data ink (`--motion-arrive` 360ms from 240ms, done by 600ms; gate 2 item 1), never inside the sandbox, in components/artifacts/demo-card.tsx and components/artifacts/plot-card.tsx
 - [ ] T063 [P] [US5] Back pill 21: `nb-sketch-pop-in` on appear, `lh-lift` 120ms on leave, in components/library/back-pill.tsx
 - [ ] T064 [P] [US5] Reference chips 22: pencil underline on hover/focus (200ms `--ease-pencil`, shown under reduced motion) in components/reference-chip.tsx and app/paper.css
-- [ ] T065 [US5] Theme ink soak 23: `withThemeFade(apply, origin)` with `startViewTransition({ update, types: ["lh-theme"] })` (callback fallback), soak variables from `soakOrigin`, `lh-soak` keyframe and the §4 rules, OS-driven changes instant, in components/paper/appearance.tsx and app/paper.css **(gate 2, item 2)**
+- [ ] T065 [US5] Theme ink soak 23: `withThemeFade(apply, origin)` with `startViewTransition({ update, types: ["lh-theme"] })` (callback fallback), soak variables from `soakOrigin`, `lh-soak` keyframe (feathered 24px mask edge) and the §4 rules, OS-driven changes instant, in components/paper/appearance.tsx and app/paper.css **(gate 2, item 2)**
 - [ ] T066 [US5] Pass the chosen card's rect as the soak origin (pointer and keyboard) from components/paper/option-cards.tsx and components/notebook/settings-modal.tsx
 - [ ] T067 [US5] Add to tests/e2e/study/motion.spec.ts: the soak starts at the chosen card, ends by 450ms, a demo's iframe gets no new `load`, reduced motion is a ≤150ms fade, an emulated OS theme change is instant (FR-024)
 - [ ] T068 [P] [US5] Status lines 24: old and new text stacked in one grid cell (settle 200ms, lift 120ms, no resize) in components/library/repo-status-line.tsx and components/library/page-proposals-line.tsx
 - [ ] T069 [P] [US5] Waiting 25: replace remaining non-tool-row spinners with the `nb-ink-wait` blot (find with `grep -rn "animate-spin" components`) in components/loading-modal.tsx and the files found
-- [ ] T070 [P] [US5] Pills 26: press scale .97 (`--motion-press`), release `--spring-pop` 220ms, colour only under reduced motion, on touch too, in components/ui/button.tsx and the `.nb-pill` rules of app/paper.css
+- [ ] T070 [P] [US5] Pills 26: press scale .97 (`--motion-press`), release `--spring-pop` 220ms, colour only under reduced motion, on touch too (a Playwright `hasTouch` tap shows the press scale, FR-016), in components/ui/button.tsx and the `.nb-pill` rules of app/paper.css
 - [ ] T071 [US5] Segmented controls 27: one sliding ink pill (300ms `--spring-soft`, jumps under reduced motion) in components/paper/option-cards.tsx (after T066)
 - [ ] T072 [P] [US5] Review cards 28: back unfolds, next card inks in, in components/review/queue-panel.tsx
 - [ ] T073 [P] [US5] Skeleton → content 29: skeleton lifts 120ms, content inks 280ms, in components/ui/skeleton.tsx
@@ -174,7 +176,7 @@ description: "Tasks for feature 028, one motion language"
 - Phase 1 → Phase 2 → stories. T003's results may adjust T012-T015 before they start.
 - US1 (Phase 3) needs T005-T016. US2 needs T014-T015 and T012; it does not need US1 but shares components/notebook/notebook-app.tsx with T028 (do T028 first).
 - US3 needs T014-T016; T039-T040 reuse `navigateTo`. US4 needs T005-T007, T011. US5 needs T013 (registry) and T005-T007; T065-T067 need T012.
-- Gate 2 blocks T016 (phone values), T021-T022, T027, T065.
+- Gate 2 answered (T016, T021-T022, T027, T065 use the approved values). O1 blocks T023-T024; O2 blocks T060-T061.
 - Phase 8 after the stories in scope.
 
 ## Parallel examples

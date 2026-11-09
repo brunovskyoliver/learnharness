@@ -380,6 +380,56 @@ html.lh-paper,
 	border-radius: 2px;
 }
 
+/* ── Motion tokens (feature 028, contracts/motion-contract.md §1) ──────────
+ * One motion language: the 024 vocabulary (draw, ink in, unfold, blot,
+ * lift) as named durations and curves. Values are 024's literals; the
+ * signature's own values are the owner's (gate 2, 2026-11-09). The springs
+ * are linear() curves, with a cubic fallback where linear() is missing. */
+
+html.lh-paper {
+	--ease-ink: cubic-bezier(0.2, 0.7, 0.2, 1);
+	--ease-word: cubic-bezier(0.25, 0.6, 0.3, 1);
+	--ease-unfold: cubic-bezier(0.22, 1, 0.36, 1);
+	--ease-draw: cubic-bezier(0.3, 0.7, 0.3, 1);
+	--ease-pencil: cubic-bezier(0.4, 0.1, 0.5, 1);
+	--ease-splat: cubic-bezier(0.2, 0.9, 0.25, 1.12);
+	--ease-menu: cubic-bezier(0.2, 0.8, 0.2, 1);
+	--ease-out: cubic-bezier(0.4, 0, 0.2, 1);
+	--spring-soft: var(--ease-menu);
+	--spring-pop: var(--ease-splat);
+	--motion-press: 100ms;
+	--motion-lift: 140ms;
+	--motion-quick: 160ms;
+	--motion-settle: 200ms;
+	--motion-route: 280ms;
+	--motion-unfold: 340ms;
+	--motion-sheet: 340ms;
+	--motion-arrive: 360ms;
+	--motion-mark: 400ms;
+	--motion-mark-dot: 300ms;
+	--motion-mark-dot-delay: 280ms;
+	--motion-soak: 450ms;
+	--motion-splat: 460ms;
+	--motion-ink: 520ms;
+	--motion-draw: 560ms;
+	--motion-pencil: 800ms;
+	--motion-stagger: 40ms;
+	--stagger-cap: 240ms;
+	--motion-fade-reduced: 150ms;
+}
+/* FR-025, gate 2: phones get shorter reading-order steps. */
+@media (max-width: 639px) {
+	html.lh-paper { --motion-stagger: 24ms; --stagger-cap: 160ms; }
+}
+@supports (animation-timing-function: linear(0, 1)) {
+	html.lh-paper {
+		/* damped spring ζ≈0.8, 1.5% overshoot: sheets, dialogs, sliding markers */
+		--spring-soft: linear(0, 0.053, 0.175, 0.324, 0.473, 0.609, 0.723, 0.814, 0.883, 0.934, 0.968, 0.991, 1.005, 1.012, 1.015, 1.015, 1);
+		/* ζ≈0.6, 9% overshoot: pill release, small pops */
+		--spring-pop: linear(0, 0.094, 0.302, 0.539, 0.751, 0.913, 1.019, 1.076, 1.094, 1.089, 1.07, 1.048, 1.027, 1.011, 1, 0.994, 1);
+	}
+}
+
 /* ── Keyframes (every one in the reference, prefixed nb-) ───────────────── */
 
 /* 12 AI text */
@@ -489,14 +539,35 @@ html.lh-paper,
 	0% { opacity: 0; scale: 0.2; }
 	to { opacity: 1; scale: 1; }
 }
+/* feature 028: lift (every exit), fade (reduced motion), dialog rise, sheet, the mark's ring */
+@keyframes lh-lift {
+	0% { opacity: 1; }
+	to { opacity: 0; }
+}
+@keyframes lh-fade {
+	0% { opacity: 0; }
+	to { opacity: 1; }
+}
+@keyframes lh-dialog-rise {
+	0% { opacity: 0; transform: translateY(6px) scale(0.98); }
+	to { opacity: 1; transform: none; }
+}
+@keyframes lh-sheet-in {
+	0% { opacity: 0; transform: translateX(-16px); }
+	to { opacity: 1; transform: none; }
+}
+@keyframes lh-mark-draw {
+	0% { stroke-dashoffset: 1px; }
+	to { stroke-dashoffset: 0; }
+}
 
 /* ── 12 AI text classes ─────────────────────────────────────────────────── */
 
-.lh-paper .nb-ink-in { animation: 0.52s cubic-bezier(0.2, 0.7, 0.2, 1) both nb-ink-in; }
-.lh-paper .nb-ink-word { animation: 0.64s cubic-bezier(0.25, 0.6, 0.3, 1) both nb-ink-word; }
+.lh-paper .nb-ink-in { animation: var(--motion-ink) var(--ease-ink) both nb-ink-in; }
+.lh-paper .nb-ink-word { animation: 0.64s var(--ease-word) both nb-ink-word; }
 .lh-paper .nb-code-in { animation: 0.42s ease-out both nb-code-in; }
-.lh-paper .nb-unfold { animation: 0.34s cubic-bezier(0.22, 1, 0.36, 1) backwards nb-unfold; }
-.lh-paper .nb-settle { animation: 0.2s ease-out both nb-settle; }
+.lh-paper .nb-unfold { animation: var(--motion-unfold) var(--ease-unfold) backwards nb-unfold; }
+.lh-paper .nb-settle { animation: var(--motion-settle) ease-out both nb-settle; }
 
 /* ── 9.1 Pencil underline ───────────────────────────────────────────────── */
 
@@ -507,7 +578,7 @@ html.lh-paper,
 	stroke-opacity: 0.5;
 	stroke-dasharray: 1;
 	stroke-dashoffset: 1px;
-	animation: nb-pencil-draw var(--draw, 0.8s) var(--delay, 0s) cubic-bezier(0.4, 0.1, 0.5, 1) forwards;
+	animation: nb-pencil-draw var(--draw, var(--motion-pencil)) var(--delay, 0s) var(--ease-pencil) forwards;
 }
 .lh-paper .nb-pencil-grain { stroke-opacity: 0.28; }
 
@@ -531,7 +602,7 @@ html.lh-paper,
 .lh-paper .nb-ink-dot.nb-faint { opacity: 0.18; }
 .lh-paper .nb-ink-dot.nb-fresh { animation: 3.4s ease-in both nb-ink-dry; }
 .lh-paper .nb-ink-dot.nb-fresh .nb-ink-dot-blot {
-	animation: 0.46s cubic-bezier(0.2, 0.9, 0.25, 1.12) backwards nb-blot-splat;
+	animation: var(--motion-splat) var(--ease-splat) backwards nb-blot-splat;
 }
 .lh-paper .nb-ink-sheen {
 	position: absolute;
@@ -593,7 +664,7 @@ html.lh-paper,
 }
 .lh-paper .nb-ink-blot.nb-splashed {
 	opacity: 0.85;
-	animation: 0.46s cubic-bezier(0.2, 0.9, 0.25, 1.12) backwards nb-blot-splat;
+	animation: var(--motion-splat) var(--ease-splat) backwards nb-blot-splat;
 }
 .lh-paper .nb-ink-blot.nb-soaked {
 	opacity: 0.14;
@@ -624,8 +695,8 @@ html.lh-paper,
 	stroke-dasharray: 1;
 	stroke-dashoffset: 1px;
 }
-.lh-paper .nb-tether-reveal-tie { animation: 0.56s cubic-bezier(0.3, 0.7, 0.3, 1) 0.14s forwards nb-tether-draw; }
-.lh-paper .nb-tether-reveal-spine { animation: 0.7s cubic-bezier(0.3, 0.7, 0.3, 1) 0.64s forwards nb-tether-draw; }
+.lh-paper .nb-tether-reveal-tie { animation: var(--motion-draw) var(--ease-draw) 0.14s forwards nb-tether-draw; }
+.lh-paper .nb-tether-reveal-spine { animation: 0.7s var(--ease-draw) 0.64s forwards nb-tether-draw; }
 .lh-paper .nb-tether-faint .nb-tether-tie { stroke-opacity: 0.26; stroke-width: 1.5px; }
 .lh-paper .nb-tether-faint .nb-tether-reveal-tie { animation-duration: 0.32s; animation-delay: 60ms; }
 /* Where a Study check's line lands: a small mark just past the passage's last word, once the line reaches it. */
@@ -660,7 +731,7 @@ html.lh-paper,
 	transform: scaleX(0);
 	transform-origin: 0;
 	pointer-events: none;
-	transition: transform 0.46s cubic-bezier(0.2, 0.7, 0.2, 1), opacity 0.18s ease-out;
+	transition: transform 0.46s var(--ease-ink), opacity 0.18s ease-out;
 }
 .lh-paper .nb-reply-line:focus-within::after {
 	opacity: 1;
@@ -669,7 +740,7 @@ html.lh-paper,
 
 /* ── 16 Sketches ────────────────────────────────────────────────────────── */
 
-.lh-paper .nb-drawing [data-step] { transition: opacity 0.45s cubic-bezier(0.22, 1, 0.36, 1); }
+.lh-paper .nb-drawing [data-step] { transition: opacity 0.45s var(--ease-unfold); }
 .lh-paper .nb-sketch-bar {
 	transform-origin: 0;
 	opacity: 0.85;
@@ -789,6 +860,79 @@ html.lh-paper,
 	.lh-paper .nb-type-caret { animation: none; }
 }
 
+/* ── Motion: arrivals (feature 028, contract §3, research R2, R6) ──────────
+ * Arrival CSS plays once on the live DOM. Without its attribute nothing
+ * animates, so the default state is the finished state (FR-008).
+ *   html[data-lh-arrival=signature]  cold-load signature, once per tab (R5)
+ *   [data-lh-arrive=kind]            a content region's arrival, read at mount
+ *                                    (components/paper/route-content.tsx)
+ *   [data-ink-order] + --i           reading order inside it; pages mark only
+ *                                    the leading rows (staggerCount, R6)
+ *   [data-arrive]                    one element's first arrival (useArrival)
+ * The mode and tab kinds get their rules with their stories (T035, T042). */
+
+/* Rows 4 and cold: the heading, then the body one step later. */
+.lh-paper :is([data-lh-arrive="route"], [data-lh-arrive="cold"]) [data-ink-order] {
+	animation: var(--motion-route) var(--ease-ink) calc(min(var(--i, 0), 1) * var(--motion-stagger)) both nb-ink-in;
+}
+.lh-paper :is([data-lh-arrive="route"], [data-lh-arrive="cold"]):not(:has([data-ink-order])) {
+	animation: var(--motion-route) var(--ease-ink) both nb-ink-in;
+}
+/* Rows 1-2: the signature. The server renders "cold"; the html attribute
+   (set before first paint) turns that first arrival into the signature. */
+html.lh-paper[data-lh-arrival="signature"] [data-lh-arrive="cold"] [data-ink-order],
+html.lh-paper [data-lh-arrive="signature"] [data-ink-order] {
+	animation: var(--motion-arrive) var(--ease-ink) min(calc(var(--i, 0) * var(--motion-stagger)), var(--stagger-cap)) both nb-ink-in;
+}
+html.lh-paper[data-lh-arrival="signature"] [data-lh-arrive="cold"]:not(:has([data-ink-order])),
+html.lh-paper [data-lh-arrive="signature"]:not(:has([data-ink-order])) {
+	animation: var(--motion-arrive) var(--ease-ink) both nb-ink-in;
+}
+/* Row 5: browser back/forward, a plain ink-in with no stagger. */
+.lh-paper [data-lh-arrive="history"] {
+	animation: var(--motion-settle) var(--ease-ink) both nb-ink-in;
+}
+
+/* ── Motion: view transitions (contract §4, research R1-R2) ───────────────
+ * Only the leaving content is captured: React names it on exit
+ * (<ViewTransition exit="lh-lift">) and it lifts over the live page, which
+ * arrives through the CSS above. The root is unnamed during route and mode
+ * transitions, so chrome and the new page stay live and still (FR-003,
+ * FR-005, FR-023); the overlay never takes pointer events. */
+::view-transition { pointer-events: none; }
+html:active-view-transition-type(lh-route, lh-mode) { view-transition-name: none; }
+::view-transition-old(.lh-lift) { animation: var(--motion-lift) var(--ease-out) both lh-lift; }
+
+/* ── Motion: reduced motion (FR-013, contract §6, research R10) ───────────
+ * The ceiling: opacity only, at most --motion-fade-reduced, no delay, no
+ * stagger; strokes finished, splats still. !important because it is a
+ * ceiling over every surface's own arrival rule. Loops keep 024's rules. */
+@media (prefers-reduced-motion: reduce) {
+	html.lh-paper :is([data-lh-arrive], [data-arrive]),
+	html.lh-paper[data-lh-arrival="signature"] .nb-wordmark-mark {
+		animation: var(--motion-fade-reduced) linear both lh-fade !important;
+	}
+	html.lh-paper :is([data-lh-arrive], [data-arrive]) :is([data-ink-order], [data-arrive]),
+	html.lh-paper[data-lh-arrival="signature"] :is([data-ink-order], .nb-wordmark-mark *) {
+		animation: none !important;
+	}
+	html.lh-paper[data-lh-arrival="signature"] .nb-wordmark-mark * { stroke-dashoffset: 0 !important; }
+	::view-transition-old(.lh-lift) { animation: var(--motion-fade-reduced) linear both lh-lift; }
+}
+
+/* ── Motion: print (FR-021, contract §7) ─────────────────────────────────
+ * Every animation and transition jumps to its end, so print shows final
+ * states only. */
+@media print {
+	html.lh-paper *,
+	html.lh-paper *::before,
+	html.lh-paper *::after {
+		animation-duration: 0s !important;
+		animation-delay: 0s !important;
+		transition: none !important;
+	}
+}
+
 /* ══ Phase 3 (US1): the note page ═══════════════════════════════════════════
  * Positions are matched to frames/margin-notes.jpg and
  * inline-sketch-and-selection.jpg at 1:1 (visual-reference §3.4-§7, §18).
@@ -853,7 +997,7 @@ html.lh-paper {
 	font-size: var(--text-ui);
 	line-height: 1.35;
 	transform-origin: var(--radix-dropdown-menu-content-transform-origin);
-	animation: 0.16s cubic-bezier(0.2, 0.8, 0.2, 1) both nb-menu-in;
+	animation: var(--motion-quick) var(--ease-menu) both nb-menu-in;
 }
 .lh-paper .nb-menu-wide { width: 300px; }
 @keyframes nb-menu-in {
@@ -937,7 +1081,7 @@ html.lh-paper {
 	height: 32px;
 	border-radius: 8px;
 	color: var(--graphite);
-	transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+	transition: background-color 0.15s var(--ease-out), color 0.15s var(--ease-out);
 }
 .lh-paper .nb-menu-button:hover { background: var(--shelf); color: var(--ink); }
 .lh-paper .nb-menu-glyph { display: block; }
@@ -1052,7 +1196,7 @@ html.lh-paper {
 	font-size: var(--text-ui);
 	line-height: 1.3;
 	text-align: left;
-	transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+	transition: background-color 0.15s var(--ease-out), color 0.15s var(--ease-out);
 }
 .lh-paper a.nb-side-row { text-decoration: none; }
 .lh-paper :is(button, a).nb-side-row:hover { background: var(--shelf); color: var(--ink); }
@@ -1094,7 +1238,7 @@ html.lh-paper {
 .lh-paper .nb-side-nested { margin-top: 3px; padding-left: 14px; }
 .lh-paper .nb-side-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lh-paper .nb-side-note[aria-current="page"] { background: var(--shelf); color: var(--ink); }
-.lh-paper .nb-side-chevron { width: 11px; height: 11px; margin-right: -4px; transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1); }
+.lh-paper .nb-side-chevron { width: 11px; height: 11px; margin-right: -4px; transition: transform 0.15s var(--ease-out); }
 .lh-paper .nb-side-folder[aria-expanded="true"] .nb-side-chevron { transform: rotate(90deg); }
 .lh-paper .nb-side-faint,
 .lh-paper .nb-side-faint .nb-side-icon { color: var(--faint); font-size: var(--text-sm); }
@@ -1221,7 +1365,7 @@ html.lh-paper {
 .lh-paper .nb-reading-blot {
 	display: block;
 	overflow: visible;
-	animation: 0.46s cubic-bezier(0.2, 0.9, 0.25, 1.12) backwards nb-blot-splat;
+	animation: var(--motion-splat) var(--ease-splat) backwards nb-blot-splat;
 }
 .lh-paper .nb-inline {
 	position: absolute;
@@ -1520,7 +1664,7 @@ html.lh-paper {
 .lh-paper .nb-mark:hover,
 .lh-paper .nb-mark[aria-expanded="true"],
 .lh-paper .nb-anchor[data-active="true"] + .nb-mark { transform: scale(1.15); opacity: 0.8; }
-.lh-paper .nb-mark-fresh { animation: 0.46s cubic-bezier(0.2, 0.9, 0.25, 1.12) backwards nb-blot-splat; }
+.lh-paper .nb-mark-fresh { animation: var(--motion-splat) var(--ease-splat) backwards nb-blot-splat; }
 
 @media (pointer: coarse) {
 	.lh-paper :is(.nb-thread-button, .nb-thread-more, .nb-send) { min-height: 44px; min-width: 44px; }
@@ -1560,7 +1704,7 @@ html.lh-paper {
 .lh-paper .nb-drawing-picture text { paint-order: stroke; stroke: var(--paper) !important; stroke-width: 4px !important; stroke-linejoin: round; }
 /* A step not yet shown is clear; one already drawn stays drawn; a step that comes in inks in. */
 .lh-paper .nb-drawing-picture [data-step]:not([data-live]) * { animation: none; stroke-dashoffset: 0; }
-.lh-paper .nb-sketch-note { margin: 17px 0 0; color: var(--ink); font-size: var(--text-xl); line-height: 1.3; letter-spacing: 0; animation: 0.52s cubic-bezier(0.2, 0.7, 0.2, 1) both nb-ink-in; }
+.lh-paper .nb-sketch-note { margin: 17px 0 0; color: var(--ink); font-size: var(--text-xl); line-height: 1.3; letter-spacing: 0; animation: var(--motion-ink) var(--ease-ink) both nb-ink-in; }
 .lh-paper .nb-sketch-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; min-height: 3em; margin-top: 14px; }
 .lh-paper .nb-sketch-caption { margin: 0; color: var(--graphite); font-size: var(--text-reply); line-height: 1.45; letter-spacing: 0; }
 .lh-paper .nb-stepper { display: flex; flex-shrink: 0; align-items: center; gap: 2px; }
@@ -1762,7 +1906,7 @@ html.lh-paper {
 	outline: none;
 	isolation: isolate;
 	box-shadow: -1px 0 0 var(--rule);
-	animation: 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both nb-chat-in;
+	animation: 0.28s var(--ease-menu) both nb-chat-in;
 }
 .lh-paper .nb-chat::before,
 .lh-paper .nb-chat::after {
@@ -1915,7 +2059,7 @@ html.lh-paper {
 	box-shadow: var(--lift);
 	color: var(--ink);
 	font-family: var(--nb-sans);
-	animation: 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both nb-menu-in;
+	animation: 0.2s var(--ease-menu) both nb-menu-in;
 }
 .lh-paper .nb-export:focus { outline: none; }
 .lh-paper .nb-export-title { margin: 0 0 22px; color: var(--ink); font-size: var(--text-reply); font-weight: 500; line-height: 20px; }
@@ -2052,7 +2196,7 @@ html.lh-paper {
 	color: var(--ink);
 	font-family: var(--nb-sans);
 	isolation: isolate;
-	animation: 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both nb-menu-in;
+	animation: 0.2s var(--ease-menu) both nb-menu-in;
 }
 .lh-paper .nb-settings::before,
 .lh-paper .nb-settings::after {
@@ -2498,7 +2642,7 @@ html.lh-paper {
 	margin-right: -4px;
 	border-radius: 6px;
 	color: var(--faint);
-	transition: background-color 0.15s cubic-bezier(0.4, 0, 0.2, 1), color 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+	transition: background-color 0.15s var(--ease-out), color 0.15s var(--ease-out);
 }
 .lh-paper .nb-side-filter:hover { color: var(--ink); }
 .lh-paper .nb-side-filter[data-active] { color: var(--ink); }
@@ -2648,7 +2792,7 @@ html.lh-paper {
 	box-shadow: var(--lift), 0 0 0 1px var(--rule);
 	color: var(--ink);
 	font-family: var(--nb-sans);
-	animation: 0.2s ease-out both nb-settle;
+	animation: var(--motion-settle) ease-out both nb-settle;
 }
 .lh-paper .nb-sel-row { display: flex; align-items: center; }
 /* Row tops from frame inline-sketch-and-selection: Text 212, B 266, the inks 300, actions 341, 377, 412. */
@@ -2965,7 +3109,7 @@ html.lh-paper {
 	color: var(--ink);
 	font-family: var(--nb-sans);
 	text-align: left;
-	animation: 0.2s cubic-bezier(0.2, 0.8, 0.2, 1) both nb-menu-in;
+	animation: 0.2s var(--ease-menu) both nb-menu-in;
 }
 .lh-paper .lh-dialog:focus { outline: none; }
 /* A dialog that takes the focus itself (a sheet with nothing to press, like the

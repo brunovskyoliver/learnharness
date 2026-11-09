@@ -34,7 +34,7 @@ Extend feature 024's ink vocabulary (draw, ink in, unfold, blot, lift) to the wh
 
 | Principle | Status | Notes |
 |---|---|---|
-| I Owner decides | Pass | Gate 1 (Q1-Q6 + phones) recorded in spec Clarifications. Value choices still open are listed under "Owner review at gate 2" and not implemented until answered; technical choices are research R1-R14 (progress.md Decisions). |
+| I Owner decides | Pass | Gate 1 (Q1-Q6 + phones) recorded in spec Clarifications. Gate 2 answered `go` 2026-11-09 (items 1-7 below, spec Clarifications); items still open after gate 2 are listed under "Open after gate 2" and their tasks wait; technical choices are research R1-R14 (progress.md Decisions). |
 | II Teaching theory first | Pass | No change to lessons, checks, grading, graph or practice. Motion never reveals an answer early (the pencil under a correct grade plays after the grade arrives). |
 | III Learner data is never lost | Pass | No stored format. Transitions never remount the transcript, drafts or reading positions (the wrapper animates arrival only; the mode-switch e2e already checks the draft round trip; scroll restoration covered by T044). |
 | IV Honest states | Pass | Loading, empty, running and failed stay distinct; skeleton → content and status lines keep their words and only change how they arrive; the waiting blot stays a waiting signal. |
@@ -47,13 +47,24 @@ Post-design re-check: unchanged, all pass. No Complexity Tracking entries.
 
 ## Owner review at gate 2
 
-Each item has a recommendation; tasks marked **(gate 2)** implement the approved version.
+Answered `go` on 2026-11-09: every recommendation below is approved, plus items 6 and 7. Tasks marked **(gate 2)** implement these versions.
 
 1. **Signature timing vs FR-006** (contract §2). As specified, the dot ends at 840ms and the last rows at 760ms, but FR-006/SC-001 require everything finished by 600ms. Recommended: keep order and curves, shorten to ring 400ms, dot 300ms from 280ms, ink 360ms with the 40ms/240ms stagger (all done by 600ms). Alternative: keep the values and relax FR-006 to "text legible by 600ms, mark finished by 900ms".
 2. **Ink soak edge**: (A, recommended) a feathered radial mask (24px soft edge) growing from the card's centre, reading as ink spreading; (B) a crisp `clip-path: circle()`; both 450ms `--ease-unfold`.
 3. **Phone staggers** (FR-025): below 640px, step 24ms and cap 160ms (desktop 40ms / 240ms; sidebar and Library keep their own caps).
 4. **Ring stroke start**: clockwise from the spiral's open end, finishing beside the dot.
 5. **Lesson route arrival**: only the band title and the composer ink in; the transcript is still (FR-010 applied to row 4).
+6. **Route arrival at Home and the Library** (analysis M4): one route ink-in that includes the row stagger; the rows do not animate a second time (rows 13 and 15 play only on the signature, a cold load and when data lands later).
+7. **Test gaps and wording** (analysis M5-M7, L1-L3): folded into tasks (T017a no-JS final state, T045a exits ≤160ms opacity-only, T038 chrome stillness on route change, 20 trials per surface for SC-002, touch press in T070); the "skip the signature if not interactive in time" clause is dropped; the Overview now says the shadcn classes are inert.
+
+Approved timings: ring 400ms (`--motion-mark`), dot 300ms from 280ms (`--motion-mark-dot`), arrival ink 360ms (`--motion-arrive`) with 40ms steps capped at 240ms (phones 24ms / 160ms), plot data from 240ms. 024's own tokens (`--motion-ink` 520ms, `--motion-draw` 560ms) keep their values for the Notebook motions that already use them.
+
+## Open after gate 2
+
+These came out of applying gate 2 and need the owner before the tasks named here start; Phase 1-2 do not depend on them.
+
+- **O1. Route stagger vs the 300ms route budget** (blocks T023, T024): item 6 puts the row stagger inside the route ink-in, so a Home or Library arrival ends at 280ms + 240ms cap = 520ms (phones 280 + 160 = 440ms). That meets FR-006 (600ms) but not SC-003 / US3 AS1 ("routes within 300ms"), and row 4's own "one 40ms step" already ends at 320ms. Options: (A, recommended) SC-003 counts the lift and the heading (both ≤300ms) and FR-006 bounds the rows; (B) compress the route stagger to fit 300ms (for example ink 200ms, 20ms steps, cap 100ms).
+- **O2. 024 strokes vs "every row ends by 600ms"** (blocks T060-T061): rows 17 and 18 reuse 024 motions longer than 600ms (`nb-ink-word` .64s per streaming word, the pencil underline 800ms under a correct grade). They draw over text that is already readable. Options: (A, recommended) keep 024 timings, since FR-006 measures readability; (B) shorten the new pencil under a grade to 600ms.
 
 ## Project Structure
 

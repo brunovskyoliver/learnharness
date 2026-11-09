@@ -4,13 +4,13 @@
 
 **Created**: 2026-11-09
 
-**Status**: Clarified (gate 1 answered 2026-11-09)
+**Status**: Approved (gate 1 answered 2026-11-09; gate 2 `go` 2026-11-09)
 
 **Input**: User description (owner, verbatim): "lets animate the website cooly somehow, as the reference lines are being drawn, lets have some cool load animations when loading the page / switching the notebook / non notebook mode/ switching between pages or tabs / opening sidebar or whatever else you suggest and think is appropriate to animate.. use the same styles and spring animation motions... be creative"
 
 ## Overview
 
-Feature 024 gave Notebook a motion vocabulary taken from Riddled: words ink in wet and dry, threads unfold downward and settle, tethers draw themselves as a tie then a spine, pencil underlines stroke across a passage, and the blot splats with a small overshoot. Feature 025 made Notebook's paper the only look, but most of the app still arrives with no motion at all, or with generic shadcn fades and zooms (dialogs, popovers, tooltips). This feature extends the 024 vocabulary to the whole app, so that a page load, a mode switch, a route change, a tab, the sidebar, a dialog, a list and a demo all move the way ink and paper move, and nothing else does.
+Feature 024 gave Notebook a motion vocabulary taken from Riddled: words ink in wet and dry, threads unfold downward and settle, tethers draw themselves as a tie then a spine, pencil underlines stroke across a passage, and the blot splats with a small overshoot. Feature 025 made Notebook's paper the only look, but most of the app still arrives with no motion at all; dialogs, popovers and tooltips carry shadcn fade and zoom classes that do nothing, because `tw-animate-css` is not installed. This feature extends the 024 vocabulary to the whole app, so that a page load, a mode switch, a route change, a tab, the sidebar, a dialog, a list and a demo all move the way ink and paper move, and nothing else does.
 
 **Motion thesis.** Everything that arrives is *written* onto the paper. Lines are **drawn** (stroke from start to end, like the tether and the pencil underline), text and rows **ink in** (wet to dry, 2px rise, in reading order), containers **unfold** downward from their top edge like a thread opening (clip reveal), and the one moment that marks a new thing as alive is a **blot** landing with a small spring overshoot. Chrome (☰, wordmark, corner hint) is the desk; it never moves when the page under it changes. Exits are quick and quiet: ink does not un-write itself, it lifts (short fade).
 
@@ -29,6 +29,18 @@ Owner gate 1, answered 2026-11-09 (every recommended option):
 - Q: What does reduced motion keep? → A: A, opacity fades of at most 150ms and colour changes; no movement, no strokes drawing, no splats. DESIGN.md's reduced-motion rule is updated to say so (owner-approved change).
 - Q: How does a theme change look? → A: A, an "ink soak": the new theme spreads from the toggle's position like ink into paper (about 450ms, a view transition with a clip-path or mask), replacing the .35s cross-fade; under reduced motion a fade of at most 150ms.
 - Recorded default (owner, with gate 1): phones get the same motion, with shorter staggers.
+
+### Session 2026-11-09 (gate 2)
+
+Owner replied `go` to plan.md "Owner review at gate 2" and the analysis items, 2026-11-09:
+
+- Signature retimed to finish by 600ms: the ring draws in 400ms; the dot splats from 280ms over 300ms; content inks in over 360ms with a 40ms stagger capped at 240ms; plot data starts at 240ms. Every row's arrival, rows 13, 15 and 19 included, ends by 600ms.
+- Ink soak edge: a feathered mask edge (A).
+- Phones (below 640px): stagger steps of 24ms, cap 160ms.
+- The ring stroke starts at the spiral's open end (clockwise, finishing beside the dot).
+- A lesson route inks in only its title and composer; the transcript stays still.
+- Navigating to Home or the Library plays one route ink-in that includes the row stagger; the rows do not animate a second time.
+- The "skip the signature if the page is not interactive in time" clause is dropped (no mechanism in the CSS-only design; input is never blocked anyway, FR-005).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -118,7 +130,7 @@ Home rows, Library folders, a check thread, a demo or graph, the Back pill, refe
 - Background refresh replacing data with equal data: no animation. A genuinely new row unfolds; a removed row lifts.
 - Tab hidden / window in background: nothing animates off-screen; on return the page is in its final state.
 - Hosted auth screens and the Electron shell: same language; the Electron window's first paint uses the same signature.
-- Slow devices / long main-thread tasks: animations may drop frames but must never delay input or content; if the page is not interactive in time the signature is skipped.
+- Slow devices / long main-thread tasks: animations may drop frames but must never delay input or content.
 - Print and export: no motion state ever leaks into print (everything finished).
 - Platform without view transitions or `linear()` easing: falls back to on-arrival keyframes and the nearest cubic-bezier; behaviour identical.
 - Theme change while an animation runs: colours update in place; nothing restarts.
@@ -129,40 +141,40 @@ Tokens in the Duration/easing column are defined in "Motion tokens" below. "Once
 
 | # | Surface | Trigger | What moves | Duration / easing | Reduced motion |
 |---|---|---|---|---|---|
-| 1 | Wordmark (signature) | Cold page load (once per tab session, see Assumptions) | Mark ring draws as one stroke; dot lands as blot splat at the stroke's end; harness spiral fades in | `--motion-draw` 560ms `--ease-draw`; dot `--motion-splat` 460ms `--ease-splat` from 380ms | Mark shown finished; fades in ≤150ms |
-| 2 | Page content (signature) | Cold page load | Top bar settles; heading inks in, then sections and rows in reading order (first viewport only) | `--motion-ink` 520ms `--ease-ink`; stagger `--motion-stagger` 40ms, cap 240ms; all legible ≤600ms | Fades in ≤150ms, no rise, no stagger |
+| 1 | Wordmark (signature) | Cold page load (once per tab session, see Assumptions) | Mark ring draws as one stroke; dot lands as blot splat at the stroke's end; harness spiral fades in | `--motion-mark` 400ms `--ease-draw` from the spiral's open end; dot `--motion-mark-dot` 300ms `--ease-splat` from 280ms; done by 580ms | Mark shown finished; fades in ≤150ms |
+| 2 | Page content (signature) | Cold page load | Top bar settles; heading inks in, then sections and rows in reading order (first viewport only) | `--motion-arrive` 360ms `--ease-ink`; stagger `--motion-stagger` 40ms, cap 240ms (phones 24ms, cap 160ms); all done ≤600ms | Fades in ≤150ms, no rise, no stagger |
 | 3 | Notebook ⇄ Study | Mode switch (sidebar, palette, Mod+Shift+O) | Chrome stays still; old page lifts; new page unfolds from its top edge, first lines ink in | lift `--motion-lift` 140ms `--ease-out`; unfold `--motion-unfold` 340ms `--ease-unfold`; ≤400ms total | Cross-fade ≤150ms, no unfold |
-| 4 | Routes: Home, lesson, Library, Review, Settings | In-app navigation | Chrome still; content lifts, new content inks in (heading then body, one 40ms step) | lift 140ms; ink-in `--motion-route` 280ms `--ease-ink` | Fade ≤150ms |
+| 4 | Routes: Home, lesson, Library, Review, Settings | In-app navigation | Chrome still; content lifts, new content inks in (heading then body, one 40ms step). Home and Library: this one ink-in includes the row stagger; the rows do not play row 13/15 again. A lesson inks in only its band title and composer; the transcript stays still | lift 140ms; ink-in `--motion-route` 280ms `--ease-ink` | Fade ≤150ms |
 | 5 | Routes | Browser back/forward | New content plain ink-in, no stagger | 200ms `--ease-ink` | Fade ≤150ms |
 | 6 | Workspace tabs | Tab select | Selected-tab marker slides to the new tab; pane content inks in once | marker 280ms `--spring-soft`; pane 200ms `--ease-ink` | Marker jumps; pane fades ≤150ms |
-| 7 | Overlay sidebar | Open | Sheet slides in 16px and fades; page wash fades (Notebook page moves aside as today); rows ink in on first open per load | `--motion-sheet` 340ms `--spring-soft`; rows 24ms stagger cap 200ms | Sheet and wash fade ≤120ms, no slide; rows shown at once |
+| 7 | Overlay sidebar | Open | Sheet slides in 16px and fades; page wash fades (Notebook page moves aside as today); rows ink in on first open per load | `--motion-sheet` 340ms `--spring-soft`; rows `--motion-arrive` 360ms, 24ms stagger cap 200ms | Sheet and wash fade ≤120ms, no slide; rows shown at once |
 | 8 | Overlay sidebar | Close | Sheet lifts | 160ms `--ease-out` | Fades ≤120ms |
 | 9 | ☰ ⇄ ✕ | Sidebar open/close | Glyph's lines redraw into the other glyph | 200ms `--ease-draw` | Glyphs cross-fade ≤150ms |
 | 10 | Menus, popovers, palette, tooltips | Open / close | Existing `nb-menu-in` (3px drop, .98 scale) replaces shadcn zoom; palette results settle without stagger | 160ms `--ease-menu`; close 100ms fade | Fade ≤150ms, no drop or scale |
 | 11 | Dialogs, settings modal, export, link-repo | Open / close | Scrim fades; sheet rises 6px onto the desk, scale .98→1 | 220ms `--spring-soft`; close 120ms `--ease-out` | Scrim and sheet fade ≤150ms, no rise or scale |
 | 12 | Right pane (outline, context, note chat) | Open / collapse | Existing `nb-chat-in` (24px from right) on open; collapse lifts | 280ms `--ease-menu`; 160ms | Fade ≤150ms, no slide |
-| 13 | Home sections and rows | Arrival; refresh adds/removes a row | Section heading inks in, rows ink in staggered (first viewport); new row unfolds; resolved row lifts and the gap closes | ink 520ms, stagger 40ms cap 240ms; new 340ms `--ease-unfold`; remove 160ms | Fade in/out ≤150ms; no unfold, no stagger |
+| 13 | Home sections and rows | Arrival; refresh adds/removes a row | Section heading inks in, rows ink in staggered (first viewport); new row unfolds; resolved row lifts and the gap closes | ink `--motion-arrive` 360ms, stagger 40ms cap 240ms (phones 24/160); new 340ms `--ease-unfold`; remove 160ms | Fade in/out ≤150ms; no unfold, no stagger |
 | 14 | Home "Your turn" kind / Flashcards due | Row first appears | Bulb-ink label gets one small blot dot splat beside it | 460ms `--ease-splat` | Dot static |
-| 15 | Library rows, grid cards | Arrival; upload lands | Rows ink in (first viewport); new upload row settles with its status dot splatting | 520ms stagger 24ms cap 160ms; settle 200ms | Fade ≤150ms; dot static |
+| 15 | Library rows, grid cards | Arrival; upload lands | Rows ink in (first viewport); new upload row settles with its status dot splatting | `--motion-arrive` 360ms, stagger 24ms cap 160ms; settle 200ms | Fade ≤150ms; dot static |
 | 16 | Library folders | Expand / collapse | Chevron turns (as today); children unfold downward / lift | 280ms `--ease-unfold`; 160ms | Children fade ≤150ms |
 | 17 | Lesson transcript | Opening a lesson; new turn | Settled history never animates; streaming words ink word by word (as today); a sent learner turn settles; the composer settles on arrival | as 024 (`nb-ink-word` .64s); settle 200ms | No animation, words appear |
 | 18 | Check threads | First pose; open; graded | Teaser settles, body unfolds, tether draws tie then spine (as 024); "Your turn" dot splats; a correct grade draws a pencil underline under the result | 024 timings; pencil `--motion-pencil` 800ms `--ease-pencil` | Finished strokes, no splat |
-| 19 | Demos, graphs, plots, ML panels | Ready after load | Frame unfolds once; plot axes draw as pencil strokes then data inks in (our own panels only, not inside the sandbox) | unfold 340ms; axes 600ms `--ease-pencil`; data 520ms | Frame fades ≤150ms, axes finished; never reloads |
+| 19 | Demos, graphs, plots, ML panels | Ready after load | Frame unfolds once; plot axes draw as pencil strokes then data inks in (our own panels only, not inside the sandbox) | unfold 340ms; axes 600ms `--ease-pencil`; data `--motion-arrive` 360ms from 240ms (done by 600ms) | Frame fades ≤150ms, axes finished; never reloads |
 | 20 | Expand demo / graph focus | Expand | Existing expand (≤160ms) unchanged | as today | as today |
 | 21 | Back pill | Appears / leaves | Pops in with the sketch pop (5px rise, .92→1); leaves with a lift | `nb-sketch-pop-in` 380ms; 120ms | Fade ≤150ms |
 | 22 | Reference chips | In a streaming reply; hover | Ink in as one word unit (as 027); on hover/focus a pencil underline draws under the label | ink-word; underline 200ms `--ease-pencil` | Underline shown, no draw |
-| 23 | Theme change | Customize → Appearance (the chosen option card) | Ink soak: the new theme spreads from the control's position like ink into paper (view transition, clip-path or mask on the new snapshot), replacing the .35s cross-fade | `--motion-soak` 450ms `--ease-unfold` | Fade ≤150ms |
+| 23 | Theme change | Customize → Appearance (the chosen option card) | Ink soak: the new theme spreads from the control's position like ink into paper (view transition, clip-path or mask on the new snapshot), replacing the .35s cross-fade | `--motion-soak` 450ms `--ease-unfold`, feathered mask edge (24px) | Fade ≤150ms |
 | 24 | Status lines (Saved, All notes saved, Syncing…, Linking…, errors) | Text changes | New text settles; old text lifts; no layout shift | settle 200ms; lift 120ms | Text cross-fades ≤150ms |
 | 25 | Waiting / thinking | Pending work | Breathing blot (as 024) everywhere a spinner remains outside tool rows | `nb-ink-wait` | Static at .7 |
 | 26 | Pills and toolbar words | Hover / press / release | Hover: shelf fill (as today); press: scale .97; release: springs back; ink pill press darkens | hover 150ms; press `--motion-press` 100ms `--ease-out`; release 220ms `--spring-pop` | Colour only, no scale |
 | 27 | Segmented controls, radio pills (Customize, filters) | Selection | Ink pill slides under the chosen option (landing's sliding pill) | 300ms `--spring-soft` | Jumps |
-| 28 | Review cards | Reveal back; rate | Back unfolds under the front; next card inks in; rating pills press | 340ms `--ease-unfold`; 520ms | Fade ≤150ms |
+| 28 | Review cards | Reveal back; rate | Back unfolds under the front; next card inks in; rating pills press | 340ms `--ease-unfold`; `--motion-arrive` 360ms | Fade ≤150ms |
 | 29 | Skeleton → content | Data arrives | Skeleton lifts, content inks in (no stagger past first viewport) | 120ms; 280ms | Fade ≤150ms, skeletons static |
 | 30 | Empty states | First shown | One blot glyph splat beside the sentence | 460ms `--ease-splat` | Static |
 
 ## Motion tokens
 
-New custom properties on `html.lh-paper` in app/paper.css, named after the 024 motions they come from. Existing keyframes keep their names; existing literal timings are rewritten to these tokens with identical values. Values are starting points for the owner's review in the plan.
+New custom properties on `html.lh-paper` in app/paper.css, named after the 024 motions they come from. Existing keyframes keep their names; existing literal timings are rewritten to these tokens with identical values. Values approved at gate 2.
 
 | Token | Value | Origin |
 |---|---|---|
@@ -185,10 +197,13 @@ New custom properties on `html.lh-paper` in app/paper.css, named after the 024 m
 | `--motion-sheet` | 340ms | sidebar |
 | `--motion-splat` | 460ms | blot |
 | `--motion-ink` | 520ms | `nb-ink-in` |
+| `--motion-arrive` | 360ms | arrival ink-in for the signature, lists, cards and plot data (gate 2) |
 | `--motion-draw` | 560ms | tether tie |
+| `--motion-mark` | 400ms | signature ring stroke (gate 2) |
+| `--motion-mark-dot` | 300ms (delay 280ms) | signature dot splat (gate 2) |
 | `--motion-pencil` | 800ms | pencil underline |
 | `--motion-soak` | 450ms | theme ink soak (gate 1 Q6) |
-| `--motion-stagger` | 40ms (cap 240ms); shorter on phones (FR-025) | reading-order steps |
+| `--motion-stagger` | 40ms (cap 240ms); phones below 640px 24ms (cap 160ms) (FR-025, gate 2) | reading-order steps |
 
 ## Requirements *(mandatory)*
 
@@ -212,7 +227,7 @@ New custom properties on `html.lh-paper` in app/paper.css, named after the 024 m
 
 - **FR-009**: Each animation MUST play once per arrival of its content in a page load. Re-renders, refreshes with unchanged data, resize, theme changes, scroll-back and remounts of already-seen content MUST NOT replay it.
 - **FR-010**: Settled history (transcript turns, answered checks, saved notes and threads) MUST never animate; only new content does (as DESIGN.md "Ink-in runs only on new text").
-- **FR-011**: Staggers MUST apply only to items in the first viewport and MUST be capped (total delay ≤240ms; ≤200ms in the sidebar; ≤160ms in the Library).
+- **FR-011**: Staggers MUST apply only to items in the first viewport and MUST be capped (total delay ≤240ms; ≤200ms in the sidebar; ≤160ms in the Library and on phones).
 - **FR-012**: The cold-load signature (rows 1-2) MUST play at most once per tab session, remembered in the tab's session storage; a reload, a new route and every later in-app navigation in that tab use the route motion (row 4). A new tab or window plays it again.
 
 **Accessibility**
@@ -234,8 +249,8 @@ New custom properties on `html.lh-paper` in app/paper.css, named after the 024 m
 **Platform transitions**
 
 - **FR-023**: Route changes (rows 4-5) and the Notebook ⇄ Study switch (row 3) MUST use the platform's view transitions where available, tagged by navigation kind (in-app route, mode switch; browser back/forward carries none), with the same motion delivered by on-arrival keyframes where view transitions are missing. The transition layer MUST NOT take pointer events: clicks, typing and shortcuts reach the live page while it runs.
-- **FR-024**: A theme change MUST play the ink soak (row 23) from the centre of the control that made it; a change with no control (the OS switching while the theme follows the system) changes at once as today. It MUST NOT restart other animations, reload demos or move content.
-- **FR-025**: Phones (narrow viewports) MUST get the same catalogue, with shorter stagger steps and caps than desktop; nothing is removed for phones.
+- **FR-024**: A theme change MUST play the ink soak (row 23), a growing circle with a feathered 24px edge, from the centre of the control that made it; a change with no control (the OS switching while the theme follows the system) changes at once as today. It MUST NOT restart other animations, reload demos or move content.
+- **FR-025**: Phones (viewports below 640px) MUST get the same catalogue, with stagger steps of 24ms and a cap of 160ms (desktop 40ms / 240ms; the sidebar and Library keep their own caps when lower); nothing is removed for phones.
 
 ### Key Entities
 
@@ -265,7 +280,7 @@ New custom properties on `html.lh-paper` in app/paper.css, named after the 024 m
 - The signature plays once per tab session, kept in session storage; not on every reload and not once ever. (Gate 1 Q4, decided.)
 - Reduced motion keeps opacity fades ≤150ms and colour changes, and drops movement, strokes and splats; DESIGN.md changes accordingly. (Gate 1 Q5, decided.)
 - Theme change is the ink soak from the control (about 450ms); reduced motion fades ≤150ms. (Gate 1 Q6, decided.)
-- Phones get the same language; staggers are shorter there because fewer rows fit the first viewport, and nothing is removed for phones. (Recorded default with gate 1.)
+- Phones get the same language; staggers are shorter there (24ms steps, 160ms cap) because fewer rows fit the first viewport, and nothing is removed for phones. (Recorded default with gate 1; values gate 2.)
 - Toasts as such do not exist in the app; "status lines" (save, sync, link, error lines) are the toast-like surface.
 - Inside the sandboxed demo iframe, motion stays the demo kit's own; this feature animates only the frame and our own panels.
 - The 024 Notebook note page's motions are already approved and stay as they are; this feature only re-expresses their literal values as tokens.
