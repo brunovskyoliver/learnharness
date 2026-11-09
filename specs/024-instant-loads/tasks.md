@@ -24,7 +24,7 @@ Format: `- [ ] Txxx [P] [USn] description (path)`.
 - [X] T009c [US1] Reader: a `PDFDataRangeTransport` (`components/library/pdf-transport.ts`) that reads ETag + size first, fetches chunks in parallel at versioned URLs, reports progress, and on 412 reloads; `pdf-reader.tsx` passes it to `getDocument`; pure parts unit-tested
 - [X] T009d [US1] Start the first-chunk request in parallel with loading pdf.js and its worker (`components/library/pdf-reader.tsx`, `pdf-transport.ts`)
 - [X] T009e [US1] Scanned-PDF note: check text on pages 1–3 only (owner, 2026-11-09); update its test
-- [ ] T009 [US1] Verify in headless Chromium against a local build: page 1 renders, jump to a far page fetches only its ranges, reload shows 304s, Download still returns the whole file; note the result in progress.md
+- [X] T009 [US1] Verify in headless Chromium against a local build: page 1 renders, jump to a far page fetches only its ranges, reload shows 304s, Download still returns the whole file; note the result in progress.md
 
 ## Phase 3: User Story 2 — Plots appear at once after the first view (P1)
 
