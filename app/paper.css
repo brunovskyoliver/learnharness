@@ -963,6 +963,68 @@ html:active-view-transition-type(lh-route, lh-mode) [style*="view-transition-cla
 html:active-view-transition-type(lh-route, lh-mode) [style*="view-transition-class"]:is(.nb-root) { background: transparent; }
 html:active-view-transition-type(lh-route, lh-mode) [style*="view-transition-class"]:is(.nb-root) > .nb-paper { visibility: hidden; }
 
+/* ── Motion: layers (rows 7-12, contract §3, research R7) ────────────────
+ * Layers open like paper and lift away. Radix keeps a closing layer until
+ * its exit animation ends, so every exit is opacity only, short, and takes
+ * no clicks; focus has already gone back to the opener (components/ui/
+ * dialog.tsx, the sidebar dialog, MotionArrival for menus and popovers). A
+ * layer that closes over another one closes at once, so a second Escape
+ * reaches the layer beneath (T055). */
+
+/* Row 11: dialogs (components/ui/dialog.tsx, the export dialog, Settings). */
+.lh-paper .lh-layer-scrim[data-state="open"] { animation: var(--motion-quick) ease-out both nb-fade-in; }
+.lh-paper :is(.lh-layer-dialog, .nb-export)[data-state="open"],
+.lh-paper .nb-settings { animation: 220ms var(--spring-soft) both lh-dialog-rise; }
+.lh-paper :is(.lh-layer-scrim, .lh-layer-dialog, .nb-export)[data-state="closed"] {
+	animation: 120ms var(--ease-out) both lh-lift;
+	pointer-events: none;
+}
+/* Row 10: popovers and tooltips (components/ui), Radix menus (.nb-menu). */
+.lh-paper .lh-layer-pop:is([data-state="open"], [data-state="delayed-open"], [data-state="instant-open"]) {
+	animation: var(--motion-quick) var(--ease-menu) both nb-menu-in;
+}
+.lh-paper :is(.lh-layer-pop, .nb-menu)[data-state="closed"] {
+	animation: 100ms var(--ease-out) both lh-lift;
+	pointer-events: none;
+}
+/* Rows 7-8: the overlay sidebar slides in as a sheet over its wash, and lifts. */
+.lh-paper .nb-sidebar[data-state="open"] { animation: var(--motion-sheet) var(--spring-soft) both lh-sheet-in; }
+.lh-paper .nb-side-dim[data-dim][data-state="open"] { animation: var(--motion-quick) ease-out both nb-fade-in; }
+.lh-paper :is(.nb-sidebar, .nb-side-dim[data-dim])[data-state="closed"] {
+	animation: var(--motion-quick) var(--ease-out) both lh-lift;
+	pointer-events: none;
+}
+/* Its rows ink in on the first open of a page load only (24ms steps, 200ms cap). */
+.lh-paper .nb-sidebar[data-rows-arrive] [data-ink-order] {
+	animation: var(--motion-arrive) var(--ease-ink) min(calc(var(--i, 0) * 24ms), 200ms) both nb-ink-in;
+}
+/* Row 9: ☰ ⇄ ✕. The ✕ draws its strokes as the sidebar opens; the ☰ redraws
+   as it closes (html[data-lh-menu-redraw], set for one beat by the sidebar). */
+.lh-paper .nb-sidebar[data-state="open"] .nb-side-head .nb-menu-glyph path,
+html.lh-paper[data-lh-menu-redraw] :is(.lh-study-chrome, .nb-header) .nb-menu-glyph path {
+	stroke-dasharray: 1;
+	animation: var(--motion-settle) var(--ease-draw) both lh-mark-draw;
+}
+/* Row 12: the right pane slides in from the edge and lifts on collapse. */
+.lh-paper [data-workspace-pane][data-pane-arrive] { animation: var(--motion-route) var(--ease-menu) both nb-chat-in; }
+.lh-paper [data-workspace-pane][data-pane-leaving] { animation: var(--motion-quick) var(--ease-out) both lh-lift; pointer-events: none; }
+/* T055: a layer that closes over another one closes at once. */
+body:has(:is([role="dialog"], [role="menu"])[data-state="open"]) :is(.lh-layer-scrim, .lh-layer-dialog, .lh-layer-pop, .nb-menu, .nb-sidebar, .nb-side-dim, .nb-dialog-backdrop)[data-state="closed"] { animation: none; }
+@media (prefers-reduced-motion: reduce) {
+	.lh-paper .lh-layer-scrim[data-state="open"],
+	.lh-paper :is(.lh-layer-dialog, .nb-export)[data-state="open"],
+	.lh-paper .nb-settings,
+	.lh-paper .lh-layer-pop:is([data-state="open"], [data-state="delayed-open"], [data-state="instant-open"]),
+	.lh-paper .nb-sidebar[data-state="open"],
+	.lh-paper .nb-side-dim[data-dim][data-state="open"],
+	.lh-paper [data-workspace-pane][data-pane-arrive] { animation: 120ms linear both lh-fade; }
+	.lh-paper :is(.nb-sidebar, .nb-side-dim[data-dim], [data-workspace-pane][data-pane-leaving])[data-state="closed"],
+	.lh-paper [data-workspace-pane][data-pane-leaving] { animation-duration: 120ms; }
+	.lh-paper .nb-sidebar[data-rows-arrive] [data-ink-order] { animation: none; }
+	.lh-paper .nb-sidebar[data-state="open"] .nb-side-head .nb-menu-glyph path,
+	html.lh-paper[data-lh-menu-redraw] :is(.lh-study-chrome, .nb-header) .nb-menu-glyph path { stroke-dashoffset: 0; animation: 120ms linear both lh-fade; }
+}
+
 /* ── Motion: reduced motion (FR-013, contract §6, research R10) ───────────
  * The ceiling: opacity only, at most --motion-fade-reduced, no delay, no
  * stagger; strokes finished, splats still. !important because it is a
@@ -1207,7 +1269,6 @@ html.lh-paper {
 	font-family: var(--nb-sans);
 	outline: none;
 	isolation: isolate;
-	animation: 0.18s ease-out both nb-side-in;
 }
 .lh-paper .nb-sidebar::before,
 .lh-paper .nb-sidebar::after {
@@ -2120,7 +2181,6 @@ html.lh-paper {
 	box-shadow: var(--lift);
 	color: var(--ink);
 	font-family: var(--nb-sans);
-	animation: 0.2s var(--ease-menu) both nb-menu-in;
 }
 .lh-paper .nb-export:focus { outline: none; }
 .lh-paper .nb-export-title { margin: 0 0 22px; color: var(--ink); font-size: var(--text-reply); font-weight: 500; line-height: 20px; }
@@ -2257,7 +2317,6 @@ html.lh-paper {
 	color: var(--ink);
 	font-family: var(--nb-sans);
 	isolation: isolate;
-	animation: 0.2s var(--ease-menu) both nb-menu-in;
 }
 .lh-paper .nb-settings::before,
 .lh-paper .nb-settings::after {
@@ -2690,7 +2749,6 @@ html.lh-paper {
 /* Study's page does not move aside: a paper wash stands in for Notebook's 50% fade. */
 .lh-paper .nb-side-dim[data-dim] {
 	background: color-mix(in srgb, var(--paper) 50%, transparent);
-	animation: 0.18s ease-out both nb-side-in;
 }
 .lh-paper :is(.nb-side-nav, .nb-side-sessions) .nb-side-row:is([aria-current="page"], [aria-pressed="true"]) { background: var(--shelf); color: var(--ink); }
 .lh-paper .nb-side-row[data-kbd] { background: var(--shelf); color: var(--ink); outline: 2px solid var(--nb-focus); outline-offset: -2px; }

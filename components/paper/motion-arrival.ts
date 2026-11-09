@@ -125,16 +125,45 @@ function onPopState() {
 	setPendingArrival("history");
 }
 
+/** Radix menus and popovers (row 10), whose triggers name them by `aria-controls`. */
+const RETURNING = '[role="menu"], [data-slot="popover-content"]';
+
+/**
+ * Feature 028 (R7, FR-005): a Radix menu or popover lifts away for 100ms and
+ * Radix gives focus back to its trigger only when it unmounts, after the
+ * lift. This gives it back as the layer closes, when focus is still inside
+ * it (so a choice that moved focus elsewhere keeps it there).
+ */
+function returnFocusOnClose(): () => void {
+	const observer = new MutationObserver((records) => {
+		const closed = records.filter((record) => record.oldValue !== "closed" && (record.target as Element).getAttribute("data-state") === "closed").map((record) => record.target as HTMLElement);
+		for (const layer of closed) {
+			if (!layer.matches(RETURNING) || !layer.contains(document.activeElement)) continue;
+			// A menu names its trigger (aria-labelledby); a popover's trigger
+			// closed in the same commit (its aria-controls may already be gone).
+			const named = layer.getAttribute("aria-labelledby");
+			const trigger = (named ? document.getElementById(named) : null)
+				?? (layer.id ? document.querySelector<HTMLElement>(`[aria-controls="${CSS.escape(layer.id)}"]`) : null)
+				?? closed.find((other) => other !== layer && other.hasAttribute("aria-haspopup"));
+			trigger?.focus();
+		}
+	});
+	observer.observe(document.body, { attributes: true, attributeFilter: ["data-state"], attributeOldValue: true, subtree: true });
+	return () => observer.disconnect();
+}
+
 /**
  * Ends the cold-load signature at the first navigation or 900ms after
- * mount, whichever is first, and marks browser back/forward as `history`.
+ * mount, whichever is first, marks browser back/forward as `history`, and
+ * gives focus back as a menu or popover closes.
  */
 export function MotionArrival(): null {
 	const pathname = usePathname();
 	const [firstPath] = useState(pathname);
 	useEffect(() => {
 		window.addEventListener("popstate", onPopState);
-		return () => window.removeEventListener("popstate", onPopState);
+		const stop = returnFocusOnClose();
+		return () => { window.removeEventListener("popstate", onPopState); stop(); };
 	}, []);
 	useEffect(() => {
 		if (pathname !== firstPath) {

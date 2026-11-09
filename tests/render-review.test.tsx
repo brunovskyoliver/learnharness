@@ -53,7 +53,8 @@ describe("the answer side", () => {
 describe("the route's first response", () => {
 	it("holds no card data: the page only mounts the client view", () => {
 		const page = fs.readFileSync("app/(app)/review/page.tsx", "utf8");
-		assert.match(page, /return <ReviewView \/>;/);
+		// Only the client view, inside the page's exit wrapper (feature 028), which carries no data.
+		assert.match(page, /return <RouteExit><ReviewView \/><\/RouteExit>;/);
 		assert.match(page, /^export default withTenantPage\(/m);
 	});
 	it("keeps the FSRS library out of everything a browser loads", () => {

@@ -113,18 +113,18 @@ description: "Tasks for feature 028, one motion language"
 
 **Independent test**: open and close every layer by pointer and keyboard; focus moves on open; Escape closes the innermost at once; focus returns to the opener at once.
 
-- [ ] T045 [US4] Add to tests/e2e/study/motion.spec.ts: for the sidebar, palette, a menu, a popover, a tooltip, settings, export and link-repo: focus inside on open in the same frame, Escape-Escape within 50ms closes two stacked layers, focus back on the opener in the same frame (US4 AS1-2, FR-005), 20 open/close trials per layer (SC-002); sidebar rows ink only on the first open per load
-- [ ] T086 [US4] Add to tests/e2e/study/motion.spec.ts: closing each layer of T045 runs only opacity animations of ≤160ms (dialogs ≤120ms, menus ≤100ms) (FR-004)
-- [ ] T046 [US4] components/ui/dialog.tsx: remove the inert `animate-*`/`fade-*`/`zoom-*`/`duration-200` classes; scrim `nb-fade-in`, content `lh-dialog-rise` (220ms `--spring-soft`), close `lh-lift` 120ms with `pointer-events: none`; record the opener and focus it with `onOpenChange(false)`, preventing `onCloseAutoFocus` (R7)
-- [ ] T047 [P] [US4] components/ui/popover.tsx: replace the inert classes with `nb-menu-in` open and `lh-lift` 100ms close
-- [ ] T048 [P] [US4] components/ui/tooltip.tsx: same as T047
-- [ ] T049 [US4] Add to tests/motion-tokens.test.ts: no `animate-in`, `animate-out`, `zoom-`, `slide-in-from-` or `fade-in-0` class remains under components/ui
-- [ ] T050 [US4] Overlay sidebar: `lh-sheet-in` (340ms `--spring-soft`), wash `nb-fade-in`, close `lh-lift` 160ms, rows `useArrival("sidebar-rows")` with 24ms step and 200ms cap, in components/paper/overlay-sidebar-dialog.tsx, components/paper/overlay-sidebar.tsx and app/paper.css
-- [ ] T051 [P] [US4] ☰ ⇄ ✕ redraw (stroke-dashoffset, 200ms `--ease-draw`, cross-fade under reduced motion) in components/paper/chrome.tsx and app/paper.css
-- [ ] T052 [P] [US4] Menus and palette: `.nb-menu` on tokens, close `lh-lift`, palette results without stagger, in components/menu-shell.tsx and components/command-palette-dialog.tsx
-- [ ] T053 [P] [US4] Settings modal, export and link-repo dialogs on the dialog motion in components/paper/settings-shell.tsx, components/paper/export-dialog.tsx and components/library/repo-link-dialog.tsx
-- [ ] T054 [P] [US4] Right pane: `nb-chat-in` on open, `lh-lift` 160ms on collapse, in components/workspace-pane.tsx
-- [ ] T055 [US4] If T045's double Escape fails with exit animations (R7), close a layer that has a layer beneath it without exit animation in components/ui/dialog.tsx and components/paper/overlay-sidebar-dialog.tsx; log the outcome in specs/028-motion/progress.md
+- [X] T045 [US4] Add to tests/e2e/study/motion.spec.ts: for the sidebar, palette, a menu, a popover, a tooltip, settings, export and link-repo: focus inside on open in the same frame, Escape-Escape within 50ms closes two stacked layers, focus back on the opener in the same frame (US4 AS1-2, FR-005), 20 open/close trials per layer (SC-002); sidebar rows ink only on the first open per load
+- [X] T086 [US4] Add to tests/e2e/study/motion.spec.ts: closing each layer of T045 runs only opacity animations of ≤160ms (dialogs ≤120ms, menus ≤100ms) (FR-004)
+- [X] T046 [US4] components/ui/dialog.tsx: remove the inert `animate-*`/`fade-*`/`zoom-*`/`duration-200` classes; scrim `nb-fade-in`, content `lh-dialog-rise` (220ms `--spring-soft`), close `lh-lift` 120ms with `pointer-events: none`; record the opener and focus it with `onOpenChange(false)`, preventing `onCloseAutoFocus` (R7)
+- [X] T047 [P] [US4] components/ui/popover.tsx: replace the inert classes with `nb-menu-in` open and `lh-lift` 100ms close
+- [X] T048 [P] [US4] components/ui/tooltip.tsx: same as T047
+- [X] T049 [US4] Add to tests/motion-tokens.test.ts: no `animate-in`, `animate-out`, `zoom-`, `slide-in-from-` or `fade-in-0` class remains under components/ui
+- [X] T050 [US4] Overlay sidebar: `lh-sheet-in` (340ms `--spring-soft`), wash `nb-fade-in`, close `lh-lift` 160ms, rows `useArrival("sidebar-rows")` with 24ms step and 200ms cap, in components/paper/overlay-sidebar-dialog.tsx, components/paper/overlay-sidebar.tsx and app/paper.css
+- [X] T051 [P] [US4] ☰ ⇄ ✕ redraw (stroke-dashoffset, 200ms `--ease-draw`, cross-fade under reduced motion) in components/paper/chrome.tsx and app/paper.css
+- [X] T052 [P] [US4] Menus and palette: `.nb-menu` on tokens, close `lh-lift`, palette results without stagger, in components/menu-shell.tsx and components/command-palette-dialog.tsx
+- [X] T053 [P] [US4] Settings modal, export and link-repo dialogs on the dialog motion in components/paper/settings-shell.tsx, components/paper/export-dialog.tsx and components/library/repo-link-dialog.tsx
+- [X] T054 [P] [US4] Right pane: `nb-chat-in` on open, `lh-lift` 160ms on collapse, in components/workspace-pane.tsx
+- [X] T055 [US4] If T045's double Escape fails with exit animations (R7), close a layer that has a layer beneath it without exit animation in components/ui/dialog.tsx and components/paper/overlay-sidebar-dialog.tsx; log the outcome in specs/028-motion/progress.md
 
 ---
 

@@ -212,8 +212,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 			return;
 		}
 		setLast(tab.id);
-		if (tab.id !== routeTabId) navigate(`/chat/${encodeURIComponent(tabRef(tab))}`, tab.id, "tab");
-	}, [openItem, navigate, routeTabId]);
+		// The shown route's tab is a no-op, unless another tab's navigation is
+		// still on its way: then this click is the last one and wins (FR-007).
+		if (tab.id !== routeTabId || (pendingId !== null && pendingId !== tab.id)) navigate(`/chat/${encodeURIComponent(tabRef(tab))}`, tab.id, "tab");
+	}, [openItem, navigate, routeTabId, pendingId]);
 
 	const close = useCallback((id: string) => {
 		const { tabs: next, neighbour } = closeTab(tabs, id);

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type Ref } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type AnimationEvent, type ReactNode, type Ref } from "react";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/components/workspace/workspace-context";
 
@@ -10,6 +10,10 @@ const MIN_WIDTH = 320;
 /** The transcript keeps at least this much of the session area. */
 const MIN_TRANSCRIPT = 420;
 const STEP = 16;
+/** The collapse's lift (row 12, `--motion-quick`), then the pane folds away. */
+const LIFT_MS = 160;
+
+const noSubscribe = () => () => {};
 
 function clampWidth(width: number, area: number): number {
 	const max = Math.max(MIN_WIDTH, area - MIN_TRANSCRIPT);
@@ -42,6 +46,31 @@ export function WorkspacePane({ label, resizeLabel, testId, className, rootRef, 
 	// Collapse keeps everything mounted: a page's editor, a demo's live iframe.
 	const collapsed = !full && Boolean(workspace?.paneCollapsed) && testId !== "context-pane";
 	const own = useRef<HTMLElement | null>(null);
+	// Row 12 (feature 028): the pane slides in when it opens on the client
+	// (not when a page load renders it open) or comes back from collapse,
+	// and lifts away before it folds.
+	const hydrating = useSyncExternalStore(noSubscribe, () => false, () => true);
+	const [arriving, setArriving] = useState(() => !hydrating && !collapsed);
+	const [leaving, setLeaving] = useState(false);
+	const was = useRef(collapsed);
+	useLayoutEffect(() => {
+		if (was.current === collapsed) return;
+		was.current = collapsed;
+		if (!collapsed) { setLeaving(false); setArriving(true); return; }
+		setArriving(false);
+		setLeaving(true);
+		const timer = window.setTimeout(() => setLeaving(false), LIFT_MS);
+		return () => window.clearTimeout(timer);
+	}, [collapsed]);
+	useEffect(() => {
+		if (!arriving) return;
+		const timer = window.setTimeout(() => setArriving(false), 600);
+		return () => window.clearTimeout(timer);
+	}, [arriving]);
+	const settled = (event: AnimationEvent<HTMLElement>) => {
+		if (event.target !== event.currentTarget) return;
+		if (event.animationName === "nb-chat-in" || event.animationName === "lh-fade") setArriving(false);
+	};
 	const [width, setWidth] = useState(DEFAULT_WIDTH);
 	const [dragging, setDragging] = useState(false);
 
@@ -122,7 +151,10 @@ export function WorkspacePane({ label, resizeLabel, testId, className, rootRef, 
 			aria-label={label}
 			data-testid={testId}
 			data-workspace-pane=""
-			data-pane-collapsed={collapsed || undefined}
+			data-pane-collapsed={(collapsed && !leaving) || undefined}
+			data-pane-leaving={leaving || undefined}
+			data-pane-arrive={arriving || undefined}
+			onAnimationEnd={settled}
 			onKeyDownCapture={onKeyDownCapture}
 			onKeyDown={onKeyDown}
 			style={{ "--lh-demo-w": `${clampWidth(width, typeof window === "undefined" ? 1440 : area())}px` } as React.CSSProperties}

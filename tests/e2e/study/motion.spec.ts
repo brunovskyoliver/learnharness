@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type BrowserContext, type Page } from "@playwright/test";
-import { ARRIVAL_NAMES, CHATS, arrivalWindow, chatView, chord, chromeClip, clearRecorded, clearStudyKey, clipFrames, hydrated, layoutShiftDuring, openChat, openSidebar, recordAnimations, recordedAnimations, seedStudy, studySettings, visible, withoutViewTransitions, type RecordedAnimation } from "./helpers";
+import { ARRIVAL_NAMES, CHATS, arrivalWindow, chatView, chord, chromeClip, clearRecorded, clearStudyKey, clipFrames, createPage, hydrated, layoutShiftDuring, openChat, openSidebar, recordAnimations, recordedAnimations, seedStudy, studySettings, visible, withoutViewTransitions, type RecordedAnimation } from "./helpers";
 
 // Feature 028 (one motion language): the cold-load signature (US1, rows 1-2)
 // and the arrival fallback without view transitions (US2 AS2). Each cold load
@@ -320,7 +320,7 @@ test.describe("Motion: routes and tabs (feature 028, US3)", () => {
 		}
 	});
 
-	test("ten rapid clicks end on the last route with at most one transition running (FR-007)", async ({ page }) => {
+	test("ten rapid clicks end on the last route they reached, with at most one transition running (FR-007)", async ({ page }) => {
 		test.setTimeout(240_000);
 		await twoTabs(page);
 		const at = async (id: string) => { const box = (await tab(page, id).boundingBox())!; return { x: box.x + box.width / 2, y: box.y + box.height / 2 }; };
@@ -328,6 +328,17 @@ test.describe("Motion: routes and tabs (feature 028, US3)", () => {
 		const word = (await visible(page, '[data-testid="nb-wordmark"]').boundingBox())!;
 		const home = { x: word.x + word.width / 2, y: word.y + word.height / 2 };
 		const sequence = [a, b, home, a, b, a, home, b, a, b];
+		// Where each click landed. A click in the frame or two in which the
+		// browser captures the leaving page (rendering paused until React's
+		// update) hits the root and does nothing (progress.md, phase 6 finding).
+		await page.evaluate(() => {
+			const w = window as unknown as { __lhClicks: string[] };
+			w.__lhClicks = [];
+			window.addEventListener("click", (event) => {
+				const target = event.target as Element;
+				w.__lhClicks.push(target.closest("[data-tab-id]")?.getAttribute("data-tab-id") ?? (target.closest('[data-testid="nb-wordmark"]') ? "home" : `lost:${target.tagName}`));
+			}, true);
+		});
 		// Every frame shows one page: a newer click replaces the transition in
 		// flight, never stacks a second page or a second lift (FR-007).
 		await page.evaluate(() => {
@@ -348,8 +359,12 @@ test.describe("Motion: routes and tabs (feature 028, US3)", () => {
 			await page.mouse.click(point.x, point.y);
 			await page.waitForTimeout(60);
 		}
-		await expect(page).toHaveURL(new RegExp(`/chat/${CHATS.check}$`), { timeout: 60_000 });
-		await expect(chatView(page, CHATS.check)).toBeVisible({ timeout: 60_000 });
+		const clicks = await page.evaluate(() => (window as unknown as { __lhClicks: string[] }).__lhClicks);
+		const landed = clicks.filter((c) => !c.startsWith("lost:"));
+		test.info().annotations.push({ type: "clicks", description: clicks.join(", ") });
+		const last = landed.at(-1)!;
+		const url = last === "home" ? /\/$/ : new RegExp(`/chat/${last.replace(/^chat:/, "")}$`);
+		await expect(page, `the last click that reached a target (${clicks.join(", ")})`).toHaveURL(url, { timeout: 60_000 });
 		await page.waitForTimeout(1200);
 		const max = await page.evaluate(() => { const w = window as unknown as { __lhPagesMax: number; __lhLiftsMax: number; __lhStop?: boolean }; w.__lhStop = true; return { pages: w.__lhPagesMax, lifts: w.__lhLiftsMax }; });
 		expect(max.pages, "pages on screen at once").toBeLessThanOrEqual(1);
@@ -469,5 +484,165 @@ test.describe("Motion: routes and tabs (feature 028, US3)", () => {
 		await expect(page).toHaveURL(/\/$/, { timeout: 60_000 });
 		await expect(visible(page, "h1")).toHaveText("What do you want to learn?");
 		await visible(page, '[data-testid="composer"] textarea').waitFor();
+	});
+});
+
+// Feature 028, US4 (rows 7-12): layers open like paper and lift away; focus
+// moves in on open and back to the opener on close in the same frame, and
+// Escape closes the innermost layer at once (FR-005); every exit is opacity
+// only and short (FR-004).
+
+/**
+ * Where focus is by the frame after the last input: read as soon as the key
+ * or click has been handled, and once more after one animation frame (the
+ * callbacks an app queues for that frame run before it paints).
+ */
+const focusByNextFrame = (page: Page, kind: "in" | "on", selector: string, frames = 1) => page.evaluate(async ([how, sel, n]) => {
+	const test = () => {
+		const at = document.activeElement;
+		return how === "in" ? Boolean(at?.closest(sel)) : Boolean(at && [...document.querySelectorAll(sel)].includes(at));
+	};
+	if (test()) return true;
+	// After that frame's callbacks and paint (a task queued from the frame).
+	for (let i = 0; i < n; i++) await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
+	return test();
+}, [kind, selector, frames] as const);
+/** Whether focus was inside `selector` (or on it) by the frame after the last input. */
+const focusWasIn = (page: Page, selector: string) => focusByNextFrame(page, "in", selector);
+/** Whether focus was on the element `selector` names by the frame after the last input. */
+const focusWasOn = (page: Page, selector: string, frames = 1) => focusByNextFrame(page, "on", selector, frames);
+
+interface LayerCase {
+	name: string;
+	/** Where the layer lives (navigates and waits). */
+	setup: (page: Page) => Promise<void>;
+	/** The opener, focused before the key that opens the layer. */
+	opener: string;
+	/** The key that opens it from the opener. */
+	key: string;
+	layer: string;
+	/** What the closing layer's own elements are called in the recorder. */
+	own: RegExp;
+	/** The longest exit (FR-004: dialogs 120ms, menus 100ms, the sidebar 160ms). */
+	exitMax: number;
+	/** Tooltips leave focus where it is. */
+	takesFocus?: boolean;
+	/** Focused first, so focusing the opener is a new focus (a tooltip opens on focus). */
+	prefocus?: string;
+	/** Frames focus may take to come back (Settings gives it back in its own frame callback, before 028). */
+	returnFrames?: number;
+}
+
+test.describe("Motion: layers (feature 028, US4)", () => {
+	let diagramId = "";
+	let pageId = "";
+	test.beforeAll(async ({ request }) => {
+		await seedStudy();
+		const diagram = await request.post("/api/library/diagrams", { data: { name: `Motion map ${Date.now().toString(36)}`, form: "diagram", folderId: null } });
+		expect(diagram.ok()).toBeTruthy();
+		diagramId = ((await diagram.json()) as { item: { id: string } }).item.id;
+		pageId = (await createPage(request, `Motion page ${Date.now().toString(36)}`, "A page to export.")).id;
+	});
+	test.beforeEach(async ({ request, context, page }) => {
+		await studySettings(request);
+		await recordAnimations(context);
+		await page.setViewportSize({ width: 1440, height: 900 });
+	});
+	test.afterAll(async ({ request }) => {
+		await studySettings(request);
+		await clearStudyKey(request);
+	});
+
+	const settle = async (page: Page, path: string, ready: string) => {
+		await page.goto(path);
+		await hydrated(page, '[aria-label="Open sidebar"]');
+		await hydrated(page, ready);
+		await page.waitForTimeout(1200);
+	};
+	const cases: LayerCase[] = [
+		{ name: "the sidebar", setup: (page) => settle(page, `/chat/${CHATS.plain}`, '[aria-label="Open sidebar"]'), opener: '[aria-label="Open sidebar"]', key: "Enter", layer: '[data-testid="nb-sidebar"]', own: /nb-sidebar|nb-side-dim/, exitMax: 160 },
+		{ name: "the palette", setup: (page) => settle(page, "/", '[data-testid="composer"] textarea'), opener: '[data-testid="composer"] textarea', key: "Control+k", layer: '[data-testid="command-palette"]', own: /command-palette|lh-layer/, exitMax: 120 },
+		{ name: "a menu", setup: (page) => settle(page, "/library", '[data-testid="library-more"]'), opener: '[data-testid="library-more"]', key: "Enter", layer: '[role="menu"]', own: /nb-menu/, exitMax: 100 },
+		{ name: "a popover", setup: (page) => settle(page, `/library?item=${encodeURIComponent(diagramId)}`, '[data-testid="diagram-export"]'), opener: '[data-testid="diagram-export"]', key: "Enter", layer: '[data-testid="diagram-export-menu"]', own: /diagram-export-menu|lh-layer-pop/, exitMax: 100 },
+		{ name: "a tooltip", setup: async (page) => { await settle(page, `/chat/${CHATS.plain}`, '[aria-label="Open sidebar"]'); await openSidebar(page); }, prefocus: '[data-testid="nb-sidebar"] input', opener: '[data-testid="kind-filter"]', key: "", layer: '[role="tooltip"]', own: /lh-layer-pop/, exitMax: 100, takesFocus: false },
+		{ name: "settings", setup: (page) => settle(page, `/chat/${CHATS.plain}`, '[aria-label="Open sidebar"]'), opener: '[aria-label="Open sidebar"]', key: "Control+Comma", layer: '[data-testid="nb-settings"]', own: /nb-settings|nb-dialog-backdrop/, exitMax: 120, returnFrames: 2 },
+		{ name: "export", setup: (page) => settle(page, `/library?item=${encodeURIComponent(pageId)}`, '[data-testid="page-export"]'), opener: '[data-testid="page-export"]', key: "Enter", layer: '[data-testid="page-export-dialog"]', own: /page-export-dialog|page-export-backdrop|nb-export|nb-dialog-backdrop/, exitMax: 120 },
+		{ name: "link a repo", setup: (page) => settle(page, "/library", '[data-testid="library-link-repo"]'), opener: '[data-testid="library-link-repo"]', key: "Enter", layer: '[data-testid="repo-link-dialog"]', own: /repo-link-dialog|lh-layer/, exitMax: 120 },
+	];
+
+	for (const layer of cases) {
+		test(`${layer.name}: focus in on open and back on close in the same frame, a short opacity exit (20 trials; FR-004, FR-005)`, async ({ page }) => {
+			test.setTimeout(300_000);
+			await layer.setup(page);
+			const opener = () => visible(page, layer.opener);
+			const open = async () => {
+				if (layer.prefocus) await visible(page, layer.prefocus).focus();
+				await opener().focus();
+				if (layer.key) await page.keyboard.press(layer.key);
+				await expect(visible(page, layer.layer)).toBeVisible({ timeout: 10_000 });
+			};
+			// Warm up: the first open may load the layer's code.
+			await open();
+			await page.keyboard.press("Escape");
+			await expect(page.locator(layer.layer).filter({ visible: true })).toHaveCount(0);
+			await page.waitForTimeout(400);
+			for (let trial = 0; trial < 20; trial++) {
+				await open();
+				if (layer.takesFocus !== false && layer.key) expect(await focusWasIn(page, layer.layer), `${layer.name} trial ${trial}: focus inside on open`).toBe(true);
+				await page.waitForTimeout(trial === 0 ? 500 : 80);
+				if (trial === 0) await clearRecorded(page);
+				const closedAt = await page.evaluate(() => performance.now());
+				await page.keyboard.press("Escape");
+				expect(await focusWasOn(page, layer.opener, layer.returnFrames), `${layer.name} trial ${trial}: focus back on the opener`).toBe(true);
+				await expect(page.locator(layer.layer).filter({ visible: true }), `${layer.name} trial ${trial}: closed`).toHaveCount(0, { timeout: 2000 });
+				if (trial === 0) {
+					await page.waitForTimeout(400);
+					const exits = (await recordedAnimations(page)).filter((a) => a.start >= closedAt - 5 && layer.own.test(a.target) && a.duration > 0);
+					for (const a of exits) {
+						expect(a.properties, `${layer.name}: ${a.name} on ${a.target}`).toEqual(["opacity"]);
+						expect(a.delay + a.duration, `${layer.name}: ${a.name} on ${a.target}`).toBeLessThanOrEqual(layer.exitMax);
+					}
+				}
+				await page.waitForTimeout(layer.exitMax + 60);
+			}
+		});
+	}
+
+	test("Escape twice within 50ms closes a tooltip and the sidebar under it, focus back on ☰", async ({ page }) => {
+		test.setTimeout(240_000);
+		await settle(page, `/chat/${CHATS.plain}`, '[aria-label="Open sidebar"]');
+		for (let trial = 0; trial < 5; trial++) {
+			await openSidebar(page);
+			await page.getByTestId("kind-filter").focus();
+			await expect(page.getByRole("tooltip")).toBeVisible({ timeout: 5000 });
+			await page.keyboard.press("Escape");
+			await page.waitForTimeout(30);
+			await page.keyboard.press("Escape");
+			await expect(page.getByRole("tooltip").filter({ hasText: "Filter" }), `trial ${trial}: the tooltip`).toHaveCount(0, { timeout: 1000 });
+			await expect(page.getByTestId("nb-sidebar"), `trial ${trial}: the sidebar`).toHaveCount(0, { timeout: 1000 });
+			await expect(visible(page, '[aria-label="Open sidebar"]'), `trial ${trial}: focus on ☰`).toBeFocused();
+			await page.waitForTimeout(300);
+		}
+	});
+
+	test("the sidebar's rows ink in on its first open of a page load only (row 7)", async ({ page }) => {
+		test.setTimeout(120_000);
+		await settle(page, `/chat/${CHATS.plain}`, '[aria-label="Open sidebar"]');
+		const rowInks = async () => (await recordedAnimations(page)).filter((a) => a.name === "nb-ink-in" && /nb-side-row|nb-side-note/.test(a.target));
+		await clearRecorded(page);
+		await openSidebar(page);
+		await page.waitForTimeout(800);
+		const first = await rowInks();
+		expect(first.length, "the rows ink in").toBeGreaterThan(1);
+		for (const a of first) expect(a.delay, a.target).toBeLessThanOrEqual(200);
+		expect(new Set(first.map((a) => a.delay)).size, "in reading order").toBeGreaterThan(1);
+		await page.keyboard.press("Escape");
+		await page.waitForTimeout(1200);
+		await clearRecorded(page);
+		await openSidebar(page);
+		await page.waitForTimeout(800);
+		expect(await rowInks(), "not again").toEqual([]);
+		const sheet = (await recordedAnimations(page)).filter((a) => a.name === "lh-sheet-in");
+		expect(sheet.length, "the sheet still slides in").toBe(1);
 	});
 });

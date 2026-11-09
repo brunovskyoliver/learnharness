@@ -164,3 +164,25 @@ describe("print (FR-021, contract §7)", () => {
 		assert.match(motion!, /transition:\s*none\s*!important/);
 	});
 });
+
+describe("layers (feature 028, T049, research R7)", () => {
+	it("no inert tw-animate-css class is left under components/ui", async () => {
+		const { readdirSync } = await import("node:fs");
+		const dir = `${ROOT}components/ui`;
+		for (const name of readdirSync(dir).filter((f) => /\.tsx?$/.test(f))) {
+			const source = readFileSync(`${dir}/${name}`, "utf8");
+			for (const inert of [/\banimate-in\b/, /\banimate-out\b/, /\bzoom-(in|out)-/, /\bslide-in-from-/, /\bfade-in-0\b/, /\bfade-out-0\b/]) {
+				assert.doesNotMatch(source, inert, `${name}: ${inert.source}`);
+			}
+		}
+	});
+
+	it("every layer exit is a short lift that takes no clicks (FR-004)", () => {
+		const exits = blocks(/\[data-state="closed"\][^{]*\{/).filter((b) => /animation:/.test(b) && !/animation:\s*none/.test(b));
+		assert.ok(exits.length >= 3, "dialog, menu and sidebar exits");
+		for (const body of exits) {
+			assert.match(body, /lh-lift/);
+			assert.match(body, /pointer-events:\s*none/);
+		}
+	});
+});

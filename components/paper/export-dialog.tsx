@@ -11,7 +11,7 @@
  * details one click away.
  */
 import { Dialog, RadioGroup, Switch } from "radix-ui";
-import { useEffect, useId, useRef, useState, type ReactNode, type RefObject } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { EXPORT_FORMAT_NAME, EXPORT_FORMATS, type ExportFormat } from "@/src/core";
 import { exportNote, readExportChoice, writeExportChoice } from "./export";
 import { useArrowChoice } from "./shared";
@@ -108,17 +108,35 @@ export function PaperExportDialog({ open, onOpenChange, pageId, shownName, befor
 
 	const formatName = EXPORT_FORMAT_NAME[format];
 
+	// Feature 028 (R7, FR-005): the dialog lifts away for 120ms; focus goes
+	// back in the closing commit, not when Radix unmounts it after the lift.
+	const wasOpen = useRef(false);
+	const returned = useRef(false);
+	// A passive effect: the focus trap lets go in its own effect cleanup, which
+	// runs first (a discrete close flushes both before the next frame).
+	useEffect(() => {
+		if (open) { wasOpen.current = true; returned.current = false; return; }
+		if (!wasOpen.current) return;
+		wasOpen.current = false;
+		returned.current = true;
+		const back = before.current;
+		if (back instanceof HTMLElement && back.isConnected && back !== document.body) back.focus();
+		else returnFocus.current?.focus();
+	}, [open, returnFocus]);
+
 	return (
 		<Dialog.Root open={open} onOpenChange={onOpenChange}>
 			<Dialog.Portal container={container}>
-				<Dialog.Overlay className="nb-dialog-backdrop" data-testid={id("backdrop")}>
+				<Dialog.Overlay className="nb-dialog-backdrop lh-layer-scrim" data-testid={id("backdrop")}>
 					<Dialog.Content
 						className="nb-export"
 						data-testid={id("dialog")}
 						aria-describedby={undefined}
 						onOpenAutoFocus={() => { before.current = document.activeElement; }}
+						// Focus went back as it closed (above); else (unmounted outright) here.
 						onCloseAutoFocus={(event) => {
 							event.preventDefault();
+							if (returned.current) return;
 							const back = before.current;
 							if (back instanceof HTMLElement && back.isConnected && back !== document.body) back.focus();
 							else returnFocus.current?.focus();

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ComponentType } from "react";
+import { flushSync } from "react-dom";
 import { kbdEventForAction } from "@/src/core";
 import type { CommandPaletteProps } from "./command-palette-dialog";
 
@@ -19,8 +20,11 @@ export function CommandPaletteHost() {
 	useEffect(() => {
 		const onOpen = () => {
 			opener.current = document.activeElement as HTMLElement | null;
-			setLoadFailed(false);
-			setOpen(true);
+			// The shortcut arrives as a custom event, which React would render at
+			// default priority (a frame late): open in this task, so focus is in
+			// the field in the frame the key went down (feature 028, FR-005).
+			if (loaded.current) flushSync(() => { setLoadFailed(false); setOpen(true); });
+			else { setLoadFailed(false); setOpen(true); }
 			if (loaded.current || loading.current) return;
 			loading.current = true;
 			import("./command-palette-dialog").then(
