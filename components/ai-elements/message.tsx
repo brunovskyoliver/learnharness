@@ -22,12 +22,14 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useId,
   useMemo,
   useLayoutEffect,
   useRef,
   useState,
 } from "react";
-import { Streamdown } from "streamdown";
+import { defaultRehypePlugins, Streamdown } from "streamdown";
+import { inkWordsState, rehypeInkWords } from "@/components/paper/rehype-ink-words";
 import { mdComponents } from "@/components/md-blocks";
 import { completedMarkdownPrefix, repairMathForDisplay, transformMathDelimiters } from "@/src/core";
 import { useStreamdownPlugins } from "./markdown-plugins";
@@ -57,8 +59,8 @@ export const MessageContent = ({
   <div
     className={cn(
       "is-user:dark flex w-fit min-w-0 max-w-full flex-col gap-2 overflow-hidden text-sm",
-      "group-[.is-user]:ml-auto group-[.is-user]:rounded-lg group-[.is-user]:bg-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-foreground",
-      "group-[.is-assistant]:overflow-visible group-[.is-assistant]:text-foreground",
+      "group-[.is-user]:ml-auto group-[.is-user]:rounded-lg group-[.is-user]:bg-shelf group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-ink",
+      "group-[.is-assistant]:overflow-visible group-[.is-assistant]:text-ink",
       className
     )}
     {...props}
@@ -311,7 +313,7 @@ export const MessageBranchPage = ({
   return (
     <ButtonGroupText
       className={cn(
-        "border-none bg-transparent text-muted-foreground shadow-none",
+        "border-none bg-transparent text-faint shadow-none",
         className
       )}
       {...props}
@@ -321,7 +323,15 @@ export const MessageBranchPage = ({
   );
 };
 
-export type MessageResponseProps = ComponentProps<typeof Streamdown> & { streaming?: boolean };
+export type MessageResponseProps = ComponentProps<typeof Streamdown> & {
+  streaming?: boolean;
+  /** Tutor prose (feature 025, research R9): while it streams, the last
+   *  block's new words ink in (components/paper/rehype-ink-words.ts). */
+  inkIn?: boolean;
+  /** Runs on the Markdown about to render, after the streaming cut (feature
+   *  027: a tutor reply's `@name`s become Library links, components/tutor-chips.tsx). */
+  prepare?: (markdown: string) => string;
+};
 
 // Standard dollar authoring (owner, 2026-10-12): $...$ inline, $$ fenced
 // on separate lines for display. transformMathDelimiters stays as the
@@ -335,9 +345,13 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown> & { streami
 // `code` override intercepts mermaid fences and renders via
 // components/mermaid-render.ts — streamdown's internal mermaid machinery
 // (the plugin entry + the `mermaid` prop) is retired with it.
+//
+// SHIKI (feature 025, T056): one paper theme for light and dark
+// (components/ai-elements/paper-code-theme.ts), registered by
+// markdown-plugins.ts when the on-demand highlighter arrives (feature 024).
 
 export const MessageResponse = memo(
-  ({ className, children, streaming = false, mode = "static", ...props }: MessageResponseProps) => {
+  ({ className, children, streaming = false, inkIn = false, prepare, mode = "static", ...props }: MessageResponseProps) => {
     // Legacy backslash delimiters are converted in a single linear scan;
     // native dollar math passes through to Streamdown unchanged. Incomplete
     // legacy spans are left for a later render when their closer arrives.
@@ -345,10 +359,22 @@ export const MessageResponse = memo(
       typeof children === "string"
         ? transformMathDelimiters(children)
         : children;
-    const content = streaming && typeof normalized === "string" ? completedMarkdownPrefix(normalized) : normalized;
+    const shown = streaming && typeof normalized === "string" ? completedMarkdownPrefix(normalized) : normalized;
+    const content = prepare && typeof shown === "string" ? prepare(shown) : shown;
     // The code highlighter loads on demand (feature 024, markdown-plugins.ts):
     // code shows plain at once and is highlighted when it arrives.
     const plugins = useStreamdownPlugins(typeof content === "string" ? content : "");
+
+    // One ink memory per reply, kept across its streaming renders; a settled
+    // reply passes no plugin, so Streamdown runs its defaults unchanged.
+    const inkId = useId();
+    const inkState = useRef<ReturnType<typeof inkWordsState> | null>(null);
+    const inking = streaming && inkIn;
+    if (inking) inkState.current ??= inkWordsState(inkId);
+    const rehypePlugins = useMemo(
+      () => (inking ? [...Object.values(defaultRehypePlugins), [rehypeInkWords, inkState.current!]] as ComponentProps<typeof Streamdown>["rehypePlugins"] : undefined),
+      [inking],
+    );
 
     // Wide display math shrinks to fit the column, down to 70% (ui-v2);
     // past that it scrolls. ponytail: runs per render, not on resize.
@@ -365,15 +391,19 @@ export const MessageResponse = memo(
       <div ref={ref} className="contents">
       <Streamdown
         className={cn(
-          // Source Sans 3 + emphasis-color tokens on every markdown surface
-          // (labels stay JetBrains Mono). Unlayered plain CSS wins over text-sm.
+          // Paper prose rules on every markdown surface (the tutor's voice in
+          // lessons). Unlayered plain CSS wins over text-sm.
           "lh-prose size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+          // Streamdown's memo ignores rehypePlugins: the class change makes the
+          // settle render drop the ink spans even when the text is unchanged.
+          inking && "lh-inking",
           className
         )}
         components={mdComponents}
         plugins={plugins}
         mode={streaming ? "static" : mode}
         parseIncompleteMarkdown={false}
+        {...(rehypePlugins ? { rehypePlugins } : {})}
         {...props}
         linkSafety={{ enabled: false }}
       >

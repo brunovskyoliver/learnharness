@@ -3,6 +3,7 @@
  * uploads per kind, the size limits and the name rules. Pure, so the store,
  * the server and the browser agree. data-model.md is the source for all of it.
  */
+import type { RepoLink } from "./repo-link.ts";
 
 export const MAX_FILE_BYTES = 52_428_800;
 export const REFERENCE_INLINE_MAX_BYTES = 32 * 1024;
@@ -26,7 +27,24 @@ export type LibraryOrigin =
 	| { type: "upload" }
 	| { type: "existing" }
 	| { type: "learner" }
-	| { type: "agent"; chatId?: string };
+	| { type: "agent"; chatId?: string }
+	/** A file mirrored from a linked repo (feature 026). */
+	| { type: "repo"; linkId: string };
+
+/** Where a mirrored entry comes from (feature 026, data-model.md). `(repoKey, path)`
+ *  is its identity across pulls, unlinks and relinks; `linkId` is the link that
+ *  holds it now. */
+export interface MirrorRef {
+	linkId: string;
+	/** "<host>/<path>#<branch>" (research R7). */
+	repoKey: string;
+	/** Repo-relative, "/"-separated; "" marks the linked folder itself. */
+	path: string;
+	/** Items: the blob oid at the last pull. */
+	oid?: string;
+	/** Items: the snapshot directory that holds the bytes now. */
+	snapshot?: string;
+}
 
 export interface LibraryItem {
 	id: string;
@@ -47,6 +65,8 @@ export interface LibraryItem {
 	favorite?: boolean;
 	pinned?: boolean;
 	archivedAt?: string;
+	/** A file mirrored from a linked repo (feature 026): bytes under files/.mirrors. */
+	mirror?: MirrorRef;
 }
 
 /** A Library folder (feature 011). Catalog only: bytes stay flat in files/. */
@@ -59,6 +79,8 @@ export interface LibraryFolder {
 	favorite?: boolean;
 	pinned?: boolean;
 	archivedAt?: string;
+	/** Feature 026: `path: ""` is a linked folder, any other path a mirror folder. */
+	mirror?: MirrorRef;
 }
 
 /** What one "move to trash" took (feature 012). Kept outside `items`, so an
@@ -115,6 +137,19 @@ export interface LibraryTombstone {
 	name: string;
 	kind: LibraryKind;
 	deletedAt: string;
+	/** Feature 026: a removed mirrored entry, kept so a returning path reattaches. */
+	mirror?: MirrorRef;
+	removedBecause?: "repo" | "unlinked";
+	/** Feature 026: what a removed mirrored item had, so it comes back the same when its path returns. */
+	kept?: Pick<LibraryItem, "createdAt" | "previousNames" | "tags" | "favorite" | "pinned" | "archivedAt">;
+}
+
+/** A mirror folder whose directory left the repo (feature 026, R3): kept with
+ *  its id and marks, out of `folders`, so the same directory returning reattaches. */
+export interface RemovedMirrorFolder extends LibraryFolder {
+	mirror: MirrorRef;
+	removedAt: string;
+	removedBecause: "repo" | "unlinked";
 }
 
 export const CATALOG_VERSION = 1;
@@ -128,7 +163,29 @@ export interface LibraryCatalog {
 	 *  because an older app tombstones any item with no file behind it. The store
 	 *  merges them into `items` on read and splits them out again on write. */
 	diagrams?: (LibraryItem | LibraryTombstone)[];
+	/** Feature 026, on disk only like `diagrams`: the repo links… */
+	repoLinks?: RepoLink[];
+	/** …and every mirror folder and mirrored item, live or removed. Outside
+	 *  `items`/`folders` so an older app neither lists nor tombstones them; the
+	 *  store merges them in on read and splits them out on write by `mirror`. */
+	mirrored?: { folders: LibraryFolder[]; items: (LibraryItem | LibraryTombstone)[]; removedFolders?: RemovedMirrorFolder[] };
+	/** In memory only: `mirrored.removedFolders` while the catalog is read. */
+	removedMirrorFolders?: RemovedMirrorFolder[];
 }
+
+export const isMirrored = (entry: { mirror?: MirrorRef }): boolean => entry.mirror !== undefined;
+/** The folder a repo is linked to (its `mirror.path` is ""). */
+export const isLinkedFolder = (folder: Pick<LibraryFolder, "mirror">): boolean => folder.mirror !== undefined && folder.mirror.path === "";
+/** Whether a folder id is the linked folder or a folder under it: nothing may be added there. */
+export function inMirror(folderId: string | null | undefined, folders: readonly Pick<LibraryFolder, "id" | "mirror">[]): boolean {
+	if (!folderId) return false;
+	return folders.find((f) => f.id === folderId)?.mirror !== undefined;
+}
+
+/** A mirrored item's @ name (R13, analyze M2): every folder above it, the
+ *  linked folder and its repo path, "/"-joined: "Physics/Lecture notes/week1/notes.md". */
+export const libraryPathName = (item: Pick<LibraryItem, "name" | "folderId">, folders: readonly LibraryFolder[]): string =>
+	[...folderTrail(item.folderId, folders).map((f) => f.name), item.name].join("/");
 
 export const isTombstone = (item: LibraryItem | LibraryTombstone): item is LibraryTombstone => "deletedAt" in item;
 
@@ -279,7 +336,9 @@ export interface PageStale { stale: true; head: PageHead; draft: PageDraftView |
 export type PageWriteResult<T> = T | PageStale | "missing" | "too-large";
 export const isPageStale = (value: unknown): value is PageStale => typeof value === "object" && value !== null && "stale" in value;
 
-export type LibraryRefusalCode = "invalid_name" | "empty" | "length_mismatch" | "too_large" | "unsupported_type" | "content_mismatch" | "name_taken" | "folder_missing" | "folder_cycle" | "folder_not_empty";
+export type LibraryRefusalCode = "invalid_name" | "empty" | "length_mismatch" | "too_large" | "unsupported_type" | "content_mismatch" | "name_taken" | "folder_missing" | "folder_cycle" | "folder_not_empty"
+	// Feature 026 (contracts/api.md)
+	| "repo_file" | "repo_folder" | "repo_linked" | "holds_linked" | "not_https" | "credential_in_address" | "invalid_address" | "invalid_branch" | "already_linked" | "limit_links" | "address_blocked" | "sync_failed";
 export interface LibraryRefusal {
 	refused: LibraryRefusalCode;
 	message: string;
@@ -299,7 +358,23 @@ export const LIBRARY_REFUSALS = {
 	folderMissing: { refused: "folder_missing", message: "That folder is no longer in your Library." },
 	folderCycle: { refused: "folder_cycle", message: "A folder can't move into itself or a folder inside it." },
 	folderNotEmpty: { refused: "folder_not_empty", message: "This folder isn't empty. Move or delete what's in it first." },
+	// Feature 026, strings from contracts/ui-contract.md (owner approved 2026-11-08).
+	notHttps: { refused: "not_https", message: "Only HTTPS addresses are supported." },
+	credentialInAddress: { refused: "credential_in_address", message: "Take the name or token out of the address and put the token in its own field." },
+	invalidAddress: { refused: "invalid_address", message: "That isn't a repo address." },
+	invalidBranch: { refused: "invalid_branch", message: "That isn't a branch name." },
+	limitLinks: { refused: "limit_links", message: "You have 10 linked repos, the most allowed. Unlink one to add another." },
+	addressBlocked: { refused: "address_blocked", message: "This address can't be reached from the hosted app." },
 } as const satisfies Record<string, LibraryRefusal>;
+
+/** The feature-026 refusals that name something. */
+export const REPO_REFUSALS = {
+	repoFile: (name: string): LibraryRefusal => ({ refused: "repo_file", message: `${name} comes from the repo. Change it there.`, name }),
+	repoFolder: (folder: string): LibraryRefusal => ({ refused: "repo_folder", message: `${folder} mirrors a repo. Add files in the repo instead.`, name: folder }),
+	repoLinked: (name: string): LibraryRefusal => ({ refused: "repo_linked", message: `${name} is linked to a repo. Unlink it to remove it.`, name }),
+	holdsLinked: (folder: string, linked: string): LibraryRefusal => ({ refused: "holds_linked", message: `${folder} holds the linked folder ${linked}. Move it out or unlink it first.`, name: folder }),
+	alreadyLinked: (display: string, branch: string, folder: string): LibraryRefusal => ({ refused: "already_linked", message: `${display} (${branch}) is already linked as ${folder}.`, name: folder }),
+} as const;
 
 // ── Folders (feature 011) ──
 

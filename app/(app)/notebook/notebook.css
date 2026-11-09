@@ -1,0 +1,449 @@
+/*
+ * Notebook's note page (feature 024): the .nb-root wrapper, the top-left
+ * menu and wordmark, the sheet and column, the toolbar row, the title, the
+ * editor body, the instruction line, the selection menu, the pointer's ink
+ * and Just my words. Everything shared (tokens, fonts, menus, sidebar,
+ * dialogs, threads, sketches, settings, export, motion) lives in
+ * app/paper.css (feature 025, R1), loaded before this file. Imported only
+ * by the Notebook route. Values from
+ * specs/024-notebook-mode/contracts/visual-reference.md (sections cited
+ * inline).
+ *
+ * .nb-root mirrors the html attributes as data-nb-theme (resolved),
+ * data-nb-ink, data-nb-text-size and data-nb-lettering.
+ */
+
+
+
+.nb-root {
+	position: relative;
+	/* The (app) body lays out its children in a row; Notebook takes all of it. */
+	flex: 1 1 auto;
+	width: 100%;
+	min-width: 0;
+	min-height: 100dvh;
+	background: var(--paper);
+	color: var(--ink);
+	font-family: var(--nb-sans);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	overscroll-behavior: none;
+}
+/* The document behind Notebook: no rubber band on a trackpad. */
+@media (pointer: fine) {
+	html:has(.nb-root) { overscroll-behavior: none; }
+}
+.nb-root {
+	text-rendering: optimizeLegibility;
+}
+.nb-root :is(button, input, textarea) { font: inherit; color: inherit; }
+.nb-root button { background: none; border: 0; padding: 0; }
+
+/* ── 4 Top-left menu and wordmark ───────────────────────────────────────── */
+
+.nb-root .nb-header {
+	position: fixed;
+	top: var(--lh-chrome-top);
+	left: var(--lh-chrome-left);
+	z-index: 20;
+	display: flex;
+	align-items: center;
+}
+/* The menu button, wordmark and edge strip are shared: app/paper.css (feature 025). */
+
+/* ── 3.4 Page sheet and column ──────────────────────────────────────────── */
+
+.nb-root .nb-sheet {
+	position: relative;
+	z-index: 10;
+	transition: opacity 0.2s var(--ease-out), transform 0.28s var(--ease-menu);
+}
+/* 18: the page moves aside and fades while the sidebar is open. */
+.nb-root .nb-sheet[data-aside] {
+	opacity: 0.5;
+	transform: translateX(min(288px, 78vw));
+}
+.nb-root .nb-page {
+	overflow-anchor: none;
+	padding: 103px 24px 0;
+}
+/* 660px: Riddled's `max-w-[660px]`, and the frames' column edges at 660
+   centred. Linux Chromium sets the same font files ≈3% wider than the macOS
+   frames, so some lines break earlier than the frame's (progress.md, width
+   investigation). */
+.nb-root .nb-column {
+	position: relative;
+	max-width: 660px;
+	margin: 0 auto;
+}
+/* The frames' column sits 5.5px left of centre (a scrollbar gutter reserved on the
+   recording machine; visual-reference §3.4). Ours keeps scrollbars hidden and moves the
+   column, and everything in it (toolbar row, instruction, title, notes, sketch), instead. */
+@media (min-width: 768px) {
+	.nb-root .nb-column { left: -5.5px; }
+}
+
+/* ── 5 Toolbar row ──────────────────────────────────────────────────────── */
+
+.nb-root .nb-toolbar {
+	position: sticky;
+	top: 26px;
+	z-index: 15;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 21px;
+	min-height: 20px;
+	color: var(--faint);
+	font-family: var(--nb-sans);
+	font-size: var(--text-sm);
+	line-height: 20px;
+}
+/* Text scrolls under the pinned row; a band of the same paper keeps it legible. */
+.nb-root .nb-toolbar::before,
+.nb-root .nb-toolbar::after {
+	content: "";
+	position: absolute;
+	inset: -10px -12px;
+	z-index: -1;
+	pointer-events: none;
+}
+.nb-root .nb-toolbar::before { background-color: var(--paper); }
+.nb-root .nb-toolbar::after {
+	opacity: var(--grain-opacity);
+	mix-blend-mode: var(--texture-blend);
+	background-image: var(--nb-grain);
+	background-size: 180px 180px;
+	background-attachment: fixed;
+}
+.nb-root .nb-toolbar { isolation: isolate; }
+.nb-root .nb-tool {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	height: 20px;
+	border-radius: 4px;
+	color: var(--faint);
+	white-space: nowrap;
+	transition: color 0.15s var(--ease-out);
+}
+.nb-root .nb-tool:hover,
+.nb-root .nb-tool[data-state="open"] { color: var(--graphite); }
+.nb-root .nb-tool-mode[data-mode="ask"] { color: var(--graphite); }
+.nb-root .nb-tool-mode[data-mode="ask"]:hover,
+.nb-root .nb-tool-mode[data-mode="ask"][data-state="open"] { color: var(--ink); }
+.nb-root .nb-tool-icon { width: 13px; height: 13px; flex: none; stroke-width: 1.6; }
+.nb-root .nb-chevron { width: 12px; height: 12px; flex: none; stroke-width: 1.7; margin-left: -1px; }
+.nb-root .nb-reviewer-dot { flex: none; color: var(--ink); }
+.nb-root .nb-tool-reviewer { gap: 10px; }
+.nb-root .nb-tool-chat { margin-left: auto; width: 20px; justify-content: center; }
+/* 5: the lit bulb. */
+.nb-root .nb-bulb-lit {
+	color: var(--bulb);
+	fill: color-mix(in srgb, var(--bulb) 30%, transparent);
+	filter: drop-shadow(0 0 3px color-mix(in srgb, var(--bulb) 55%, transparent));
+}
+
+/* ── 3.2 Title ──────────────────────────────────────────────────────────── */
+
+.nb-root .nb-title {
+	display: block;
+	width: 100%;
+	/* Riddled's .7em under the title, 3px tighter: frames margin-notes, inline-sketch and note-chat-panel
+	   all set the first line of the page ≈3px nearer the title than the CSS alone gives. */
+	margin: 17.5px 0 calc(0.7em - 3px);
+	padding: 0;
+	border: 0;
+	overflow: hidden;
+	resize: none;
+	background: transparent;
+	color: var(--ink);
+	caret-color: var(--ink);
+	font-family: var(--nb-sans);
+	font-size: calc(var(--note-size) * 2.45);
+	font-weight: 500;
+	line-height: 1.12;
+	letter-spacing: -0.032em;
+	outline: none;
+	overflow-wrap: anywhere;
+}
+.nb-root .nb-title::placeholder { color: var(--faint); opacity: 1; }
+.nb-root .nb-title-error,
+.nb-root .nb-status-line {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 4px 12px;
+	margin: -0.4em 0 1.2em;
+	color: var(--graphite);
+	font-size: var(--text-sm);
+	line-height: 1.4;
+}
+.nb-root .nb-title-error { color: var(--text-red); }
+
+/* ── 3.2 Body (the page editor in Notebook type) ────────────────────────── */
+
+.nb-root .nb-body { position: relative; }
+.nb-root .nb-editor-host { position: relative; }
+.nb-root .nb-body-loading { min-height: 40vh; }
+.nb-root .nb-prose {
+	min-height: 40vh;
+	padding: 0 0 30vh;
+	border-radius: 0;
+	outline: none;
+	color: var(--ink);
+	caret-color: var(--ink);
+	font-family: var(--nb-sans);
+	font-size: var(--note-size);
+	line-height: 1.8;
+	letter-spacing: -0.004em;
+	font-kerning: normal;
+	text-rendering: optimizeLegibility;
+}
+.nb-root .nb-prose:focus-visible { outline: none; }
+.nb-root .nb-prose > * + * { margin-top: 1.05em; }
+.nb-root .nb-prose > :first-child { margin-top: 0; }
+.nb-root .nb-prose :is(li, blockquote) > * + * { margin-top: 0.25em; }
+/* Below `> * + *` in weight, so a paragraph after a list or heading keeps the 1.05em gap (§3.2). */
+.nb-root :where(.nb-prose p) { margin: 0; }
+.nb-root .nb-prose :is(ul, ol) { padding-left: 1.3em; }
+.nb-root .nb-prose ul { list-style: disc outside; }
+.nb-root .nb-prose ol { list-style: decimal outside; }
+.nb-root .nb-prose li::marker { color: var(--ink); }
+.nb-root .nb-prose li + li { margin-top: 0.25em; }
+.nb-root .nb-prose h1 { margin-top: 2.1em; font-size: 1.65em; font-weight: 550; line-height: 1.25; letter-spacing: -0.022em; }
+.nb-root .nb-prose h2 { margin-top: 2em; font-size: 1.3em; font-weight: 550; line-height: 1.35; letter-spacing: -0.015em; }
+.nb-root .nb-prose h3 { margin-top: 1.7em; font-size: 1.05em; font-weight: 600; }
+.nb-root .nb-prose :is(h4, h5, h6) { margin-top: 1.5em; font-size: 1em; font-weight: 600; color: var(--graphite); }
+.nb-root .nb-prose > :is(h1, h2, h3, h4, h5, h6):first-child { margin-top: 0; }
+.nb-root .nb-prose blockquote {
+	padding-left: 1.1em;
+	border-left: 2px solid var(--ink);
+	color: var(--graphite);
+}
+.nb-root .nb-prose :is(strong, b) { font-weight: 620; }
+.nb-root .nb-prose :is(em, i) { font-style: italic; }
+.nb-root .nb-prose s { text-decoration-color: var(--graphite); }
+.nb-root .nb-prose a {
+	color: inherit;
+	text-decoration: underline;
+	text-decoration-color: var(--riddle-line);
+	text-underline-offset: 3px;
+}
+.nb-root .nb-prose hr { margin: 2em 0; border: 0; border-top: 1px solid var(--rule); }
+.nb-root .nb-prose code {
+	padding: 0.1em 0.32em;
+	border-radius: 4px;
+	background: color-mix(in srgb, var(--ink) 6%, transparent);
+	font-family: var(--nb-mono);
+	font-size: 0.88em;
+}
+.nb-root .nb-prose pre {
+	margin: 0.5em 0;
+	padding: 0.85em 1em;
+	overflow-x: auto;
+	border-radius: 8px;
+	background: color-mix(in srgb, var(--ink) 5%, transparent);
+	color: var(--ink);
+	font-family: var(--nb-mono);
+	font-size: 0.86em;
+	line-height: 1.55;
+	tab-size: 2;
+	white-space: pre;
+}
+.nb-root .nb-prose > pre { margin-top: calc(1.05em / 0.86); }
+.nb-root .nb-prose pre code { padding: 0; border-radius: 0; background: none; font-size: inherit; }
+.nb-root .nb-prose img,
+.nb-root .nb-prose .lh-page-image {
+	max-width: 100%;
+	margin: 1.6em 0;
+	border-radius: 6px;
+	box-shadow: 0 0 0 1px var(--rule), var(--nb-image-shadow);
+}
+/* Tables, checklists, maths, callouts, sections, wiki links: Study's
+ * structure, Notebook's type and tokens. */
+.nb-root .nb-prose .tableWrapper { overflow-x: auto; }
+.nb-root .nb-prose table { border-collapse: collapse; font-size: 0.94em; line-height: 1.55; }
+.nb-root .nb-prose :is(th, td) { min-width: 5em; padding: 0.35em 0.65em; border: 1px solid var(--rule); vertical-align: top; text-align: left; }
+.nb-root .nb-prose th { font-weight: 600; }
+.nb-root .nb-prose .selectedCell { background: var(--riddle-wash); }
+.nb-root .nb-prose ul[data-type="taskList"] { padding-left: 0.1em; list-style: none; }
+.nb-root .nb-prose ul[data-type="taskList"] li > label { margin-top: calc((1.8em - 0.95em) / 2); }
+.nb-root .nb-prose ul[data-type="taskList"] input[type="checkbox"] { width: 0.95em; height: 0.95em; accent-color: var(--ink); }
+.nb-root .nb-prose ul[data-type="taskList"] li[data-checked="true"] > div { color: var(--graphite); text-decoration: line-through; text-decoration-color: var(--faint); }
+.nb-root .nb-prose .katex { font-size: 1.08em; color: var(--ink); }
+.nb-root .nb-prose .tiptap-mathematics-render--editable:hover,
+.nb-root .nb-prose .ProseMirror-selectednode.tiptap-mathematics-render { background: var(--riddle-wash); }
+.nb-root .nb-prose .ProseMirror-selectednode { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
+.nb-root .nb-prose .lh-math-source { background: var(--shelf); outline: 1px solid var(--rule); font-family: var(--nb-mono); }
+.nb-root .nb-prose .lh-callout { gap: 0.2em; padding: 0.75em 1em 0.85em; border-radius: 10px; background: var(--shelf); }
+.nb-root .nb-prose .lh-callout-kind { height: 1.8em; color: var(--graphite); font-size: 0.8125em; font-weight: 550; letter-spacing: 0.02em; }
+.nb-root .nb-prose .lh-callout-title { height: 1.8em; color: var(--ink); font-size: 0.95em; font-weight: 550; }
+.nb-root .nb-prose .lh-callout-body > * + *,
+.nb-root .nb-prose .lh-collapsible-content > * + * { margin-top: 1.05em; }
+.nb-root .nb-prose .lh-collapsible-summary { font-weight: 550; line-height: 1.8; min-height: 0; }
+.nb-root .nb-prose .lh-collapsible-toggle { width: 1.8em; height: 1.8em; color: var(--graphite); }
+.nb-root .nb-prose .lh-wiki-link {
+	border-radius: 3px;
+	color: var(--ink);
+	text-decoration: underline;
+	text-decoration-color: var(--riddle-line);
+	text-underline-offset: 3px;
+}
+.nb-root .nb-prose .lh-wiki-link:hover { background: var(--riddle-wash); }
+.nb-root .nb-prose .lh-wiki-link:is([data-state="missing"], [data-state="deleted"]) { color: var(--graphite); text-decoration-style: dotted; }
+.nb-root .nb-prose .lh-page-raw,
+.nb-root .nb-prose .lh-page-raw-inline { color: var(--graphite); font-family: var(--nb-mono); font-size: 0.86em; }
+/* 3.2 placeholder: two lines, faint. */
+.nb-root .nb-prose .nb-placeholder::before {
+	content: attr(data-placeholder);
+	float: left;
+	height: 0;
+	color: var(--faint);
+	font-weight: inherit;
+	white-space: pre-line;
+	pointer-events: none;
+}
+@media (max-width: 639px) {
+	.nb-root .nb-header { position: absolute; }
+	.nb-root .nb-page { padding: 76px 16px 0; }
+	.nb-root .nb-toolbar { top: 0; gap: 4px 16px; padding: 6px 0; }
+	.nb-root .nb-toolbar::before,
+	.nb-root .nb-toolbar::after { inset: 0 -16px; }
+	.nb-root .nb-title { margin-top: 10px; }
+	/* Only the idle shortcut line goes: a run's cost and Stop stay (constitution V). */
+}
+
+@media (pointer: coarse) {
+	.nb-root .nb-tool { min-height: 44px; }
+	.nb-root .nb-tool-chat { min-width: 44px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.nb-root :is(.nb-sheet, .nb-tool, .nb-side-row, .nb-side-chevron) { transition: none; }
+}
+
+/* ── 13 Inline replies ──────────────────────────────────────────────────── */
+
+.nb-root .nb-prose > .nb-spacer {
+	margin-top: 0;
+	pointer-events: none;
+	user-select: none;
+}
+
+/* ══ Phase 6 (US4): the selection menu and sketches ═════════════════════════
+ * Selection menu: frame inline-sketch-and-selection.jpg and sheet-07 tile 1
+ * (visual-reference §15, all measured ≈): card ≈236px in the right margin
+ * 91px past the column, 7px above the selection's line; rows at 28/28/28px,
+ * rules under the style row and the inks, actions 35px apart.
+ * Sketches: §16 (CSS l.5315-5345) and the same frame.
+ */
+
+.nb-root .nb-prose u { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 0.18em; }
+.nb-root .nb-prose .lh-ink[data-color="gray"] { color: var(--text-gray); }
+.nb-root .nb-prose .lh-ink[data-color="brown"] { color: var(--text-brown); }
+.nb-root .nb-prose .lh-ink[data-color="red"] { color: var(--text-red); }
+.nb-root .nb-prose .lh-ink[data-color="orange"] { color: var(--text-orange); }
+.nb-root .nb-prose .lh-ink[data-color="green"] { color: var(--text-green); }
+.nb-root .nb-prose .lh-ink[data-color="blue"] { color: var(--text-blue); }
+.nb-root .nb-prose .lh-ink[data-color="purple"] { color: var(--text-purple); }
+
+/* Ask about this, before it is sent: the field and its hint. */
+.nb-root .nb-thread-hint {
+	margin: 8px 0 0;
+	color: var(--faint);
+	font-family: var(--nb-sans);
+	font-size: var(--text-kbd);
+	line-height: 14px;
+	letter-spacing: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.nb-root :is(.nb-sketch-note, .nb-sketch-backdrop, .nb-sketch-card, .nb-sketching-blot) { animation: none; }
+}
+
+/* ══ Phase 7 (US5): instructions and reviewers ══════════════════════════════ */
+
+/* 6: the instruction line, between the toolbar row and the title. The label
+   sits on the text's first baseline; long instructions wrap under themselves. */
+.nb-root .nb-instruction {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 2px 12px;
+	/* Frame margin-notes: the instruction's text 2px nearer the toolbar row than 19px gave. */
+	margin-top: 17px;
+}
+.nb-root .nb-instruction-label {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	gap: 6px;
+	color: var(--faint);
+	font-family: var(--nb-sans);
+	font-size: var(--text-sm);
+	line-height: 20px;
+	cursor: text;
+}
+.nb-root .nb-instruction-text {
+	display: block;
+	min-width: min(260px, 100%);
+	flex: 1 1 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	overflow: hidden;
+	resize: none;
+	background: transparent;
+	color: var(--graphite);
+	caret-color: var(--ink);
+	font-size: var(--text-instruction);
+	line-height: 1.6;
+	outline: none;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+.nb-root .nb-instruction-text::placeholder { color: var(--faint); opacity: 1; }
+.nb-root .nb-instruction-text:focus-visible { outline: none; }
+.nb-root .nb-instruction:focus-within .nb-instruction-label { color: var(--graphite); }
+/* The line takes the title's place under the row: the title moves up to it. */
+.nb-root .nb-instruction + .nb-title { margin-top: 20px; }
+
+/* ══ Phase 8 (US6): note chat ═══════════════════════════════════════════════ */
+
+/* 17: the page slides 210px left and fades to half while the chat is open. */
+.nb-root .nb-page {
+	transition: opacity 0.2s var(--ease-out), transform 0.28s var(--ease-menu);
+}
+@media (min-width: 768px) {
+	.nb-root .nb-page[data-chat] { opacity: 0.5; transform: translateX(-210px); }
+}
+/* Nothing scrolls under the row while a panel is open, and a moved page would misplace the band's fixed grain. */
+.nb-root :is(.nb-page[data-chat], .nb-sheet[data-aside]) .nb-toolbar::before,
+.nb-root :is(.nb-page[data-chat], .nb-sheet[data-aside]) .nb-toolbar::after { display: none; }
+@media (prefers-reduced-motion: reduce) {
+	.nb-root .nb-page { transition: none; }
+}
+
+/* ══ Phase 9 (US7): Just my words and export ════════════════════════════════ */
+
+/* 22.1: `[data-plain]` hides every AI layer. thinking.tsx also stops drawing them
+ * (no margin, tethers, blots, inline replies, sketches; no underline, wash, "?"
+ * or spacer in the text); these rules hold if anything is left over. */
+.nb-root[data-plain] :is(.nb-thinking, .nb-margin, .nb-tether, .nb-reading, .nb-reading-blot, .nb-inline, .nb-sketch, .nb-sketching, .nb-mark, .nb-ink-dot) { display: none !important; }
+.nb-root[data-plain] :is(.nb-anchor, .nb-asking) { background: none !important; box-shadow: none !important; text-decoration: none !important; border: 0 !important; }
+/* The selection menu keeps formatting; Think, Ask and Visualize wait until the notes are back. */
+.nb-root[data-plain] .nb-sel-actions { display: none; }
+
+/* 21: the pointer's ink, under the page's words (Riddled z-[5]). */
+.nb-root .nb-pointer-ink {
+	position: fixed;
+	inset: 0;
+	z-index: 5;
+	width: 100vw;
+	height: 100dvh;
+	pointer-events: none;
+}
+@media (pointer: coarse) {
+	.nb-root :is(.nb-menu-item, .nb-side-row, .nb-rev-row, .nb-rev-item) { min-height: 44px; }
+}

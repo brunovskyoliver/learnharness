@@ -15,7 +15,7 @@ const mainRequire = createRequire(mainFile);
 /** Decline the single-instance lock so normal boot never spawns a server.
  * Then call the REAL createWindow with a stub Electron API and inspect its
  * constructor options. No rewritten copy of the production logic. */
-function windowOptions(platform: string, env: Record<string, string> = {}) {
+function windowOptions(platform: string, env: Record<string, string> = {}, dark?: boolean) {
 	class FakeWindow {
 		constructor(readonly options: unknown) {}
 		webContents = { on() {}, setWindowOpenHandler() {} };
@@ -25,6 +25,7 @@ function windowOptions(platform: string, env: Record<string, string> = {}) {
 	const electron = {
 		app: { setName() {}, getPath: () => "/fixture/LearnHarness", setPath() {}, requestSingleInstanceLock: () => false, quit() {} },
 		BrowserWindow: FakeWindow,
+		...(dark === undefined ? {} : { nativeTheme: { shouldUseDarkColors: dark } }),
 		session: { defaultSession: { setPermissionRequestHandler() {}, setPermissionCheckHandler() {} } },
 	};
 	const context = {
@@ -42,7 +43,7 @@ describe("desktop window chrome", () => {
 	it("macOS keeps the proven traffic lights and does not enable WCO", () => {
 		const options = windowOptions("darwin");
 		assert.equal(options.titleBarStyle, "hiddenInset");
-		assert.deepEqual(options.trafficLightPosition, { x: 16, y: 22.5 });
+		assert.deepEqual(options.trafficLightPosition, { x: 16, y: 29.25 });
 		assert.equal(options.titleBarOverlay, undefined);
 		assert.equal(options.autoHideMenuBar, undefined);
 	});
@@ -51,7 +52,12 @@ describe("desktop window chrome", () => {
 		it(`${platform} uses native-height right-side controls with an Alt-accessible menu`, () => {
 			const options = windowOptions(platform);
 			assert.equal(options.titleBarStyle, "hidden");
-			assert.deepEqual(options.titleBarOverlay, { color: "#141414", symbolColor: "#e5e5e5" });
+			// The paper (feature 025): light paper and ink unless the OS is dark.
+			assert.deepEqual(options.titleBarOverlay, { color: "#f8f7f4", symbolColor: "#1d1c1a" });
+			assert.equal(options.backgroundColor, "#f8f7f4");
+			const dark = windowOptions(platform, {}, true);
+			assert.deepEqual(dark.titleBarOverlay, { color: "#1a1a19", symbolColor: "#e9e7e2" });
+			assert.equal(dark.backgroundColor, "#1a1a19");
 			assert.equal(Object.hasOwn(options.titleBarOverlay, "height"), false, "omit height so the OS selects its native default");
 			assert.equal(options.trafficLightPosition, undefined);
 			assert.equal(options.autoHideMenuBar, true);
@@ -96,9 +102,29 @@ describe("desktop window chrome", () => {
 		runInNewContext(readFileSync(new URL("../electron/preload.cjs", import.meta.url), "utf8"), context);
 		assert.equal(bridge.platform, "win32");
 		assert.deepEqual(Object.keys(bridge).sort(), [
-			"chatgpt", "checkForUpdates", "expandWindow", "getUpdateState", "getZoom", "installUpdate", "onOpenSettings", "onUpdateStatus", "onZoom", "platform", "subscriptions",
+			"chatgpt", "checkForUpdates", "expandWindow", "getUpdateState", "getZoom", "installUpdate", "onOpenSettings", "onUpdateStatus", "onZoom", "platform", "setChrome", "subscriptions",
 		]);
 		assert.deepEqual(Object.keys(bridge.subscriptions as object).sort(), ["cancel", "consent", "disconnect", "login", "onChange", "open", "respond", "retry", "status"]);
+	});
+
+	it("setChrome sends only the two colours on lh:set-chrome; main accepts #rrggbb only", () => {
+		let bridge!: { setChrome(colors: unknown): void };
+		const sent: unknown[][] = [];
+		runInNewContext(readFileSync(new URL("../electron/preload.cjs", import.meta.url), "utf8"), {
+			process: { platform: "linux", argv: [] },
+			require: () => ({ contextBridge: { exposeInMainWorld: (_: string, value: typeof bridge) => { bridge = value; } }, ipcRenderer: { on() {}, send: (...args: unknown[]) => { sent.push(args); } } }),
+		});
+		bridge.setChrome({ background: "#f8f7f4", symbol: "#1d1c1a", extra: "x" });
+		assert.deepEqual(JSON.parse(JSON.stringify(sent)), [["lh:set-chrome", { background: "#f8f7f4", symbol: "#1d1c1a" }]]);
+		const context: Record<string, unknown> = {
+			require: (id: string) => id === "electron" ? { app: { setName() {}, getPath: () => "/fixture", setPath() {}, requestSingleInstanceLock: () => false, quit() {} } } : mainRequire(id),
+			process: { platform: "linux", argv: [], env: {}, on() {} },
+			__dirname: dirname(mainFile),
+		};
+		runInNewContext(mainSource, context, { filename: mainFile });
+		const valid = (colors: unknown) => JSON.parse(JSON.stringify(runInNewContext("validChrome(c)", Object.assign(context, { c: colors })) ?? null));
+		assert.deepEqual(valid({ background: "#1a1a19", symbol: "#E9E7E2" }), { background: "#1a1a19", symbol: "#E9E7E2" });
+		for (const bad of [null, "x", {}, { background: "#fff", symbol: "#000000" }, { background: "red", symbol: "#000000" }, { background: "#000000", symbol: "url(x)" }]) assert.equal(valid(bad), null, JSON.stringify(bad));
 	});
 });
 

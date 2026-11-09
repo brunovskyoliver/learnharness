@@ -195,9 +195,10 @@ async function checkWidth(width) {
 		await page.keyboard.press("Enter");
 		await page.waitForSelector(`[data-testid="${testId}-option"]`);
 		const panel = await page.$eval("[data-lh-menu]", (el) => { const s = getComputedStyle(el); return { background: s.backgroundColor, radius: s.borderRadius, border: s.borderTopWidth, shadow: s.boxShadow, accent: getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() }; });
-		assert.equal(panel.radius, "10px", "a menu's radius");
+		// Feature 025: Notebook's menu, a lifted paper card (radius 12, the lift, no border).
+		assert.equal(panel.radius, "12px", "a menu's radius");
 		assert.equal(panel.border, "0px", "a menu has no border");
-		assert.equal(panel.shadow, "none", "a menu has no shadow");
+		assert.notEqual(panel.shadow, "none", "a menu carries the lift");
 		await page.evaluate((id, text) => [...document.querySelectorAll(`[data-testid="${id}-option"]`)].find((el) => el.textContent.trim().endsWith(text)).click(), testId, label);
 		await page.waitForFunction(() => !document.querySelector("[data-lh-menu]"));
 		await page.waitForFunction((id) => document.activeElement?.getAttribute("data-testid") === id, {}, testId);
@@ -384,7 +385,9 @@ async function checkWidth(width) {
 		const rect = document.querySelector('[data-pdf-page="3"]').getBoundingClientRect();
 		return rect.top < window.innerHeight && rect.bottom > 0;
 	});
-	assert.equal(new URL(page.url()).search, "", "the address steps out, so a reload doesn't jump again");
+	// Feature 027 (FR-021, owner gate 2): the address is the Library's full view and stays.
+	assert.equal(new URL(page.url()).search, new URL(`${base}${href}`).search, "the full view keeps the address");
+	assert.ok(await page.$('[data-testid="library-full-view"]'), "the citation opens in the full view");
 	await shot(page, `documents-citation-${width}.png`);
 
 	// A quote not on that page says so, and still shows the page.
@@ -404,8 +407,8 @@ async function checkWidth(width) {
 	const cited = await createPage(`${p} cited`, `[PDF: sample, p. 2](/library?item=${pdf.id}&page=2&quote=${encodeURIComponent("force equals mass")})`);
 	await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
 	await page.waitForFunction(() => document.querySelector('[data-testid="library-search-mode-text"]'));
-	await page.waitForSelector('[data-testid="page-pane"]');
-	await closePane(page, mobile);
+	// Feature 027: the addresses above opened the full view, not the side pane, so a pane may not be open.
+	if (!(await page.$('[data-testid="library-full-view"]')) && await page.$('[data-testid="page-pane"]')) await closePane(page, mobile);
 	await page.click('[data-testid="library-search-mode-names"]');
 	await page.waitForSelector(`[aria-label="Open ${p} cited"]`);
 	await page.click(`[aria-label="Open ${p} cited"]`);
@@ -430,7 +433,8 @@ async function checkWidth(width) {
 	const savedText = (await api(`/api/library/pages/${saved.id}`)).body.head.content;
 	assert.ok(savedText.startsWith("> acceleration"), savedText);
 	assert.ok(savedText.includes(`/library?item=${pdf.id}&page=2&quote=acceleration`), savedText);
-	await closePane(page, mobile);
+	// Feature 027: that address is the full view; only a side pane needs closing.
+	if (!(await page.$('[data-testid="library-full-view"]')) && await page.$('[data-testid="page-pane"]')) await closePane(page, mobile);
 	assert.deepEqual(posts, [], "nothing was sent to a model so far");
 
 	// In a session: a citation in the transcript opens the viewer beside it, and a
@@ -440,10 +444,30 @@ async function checkWidth(width) {
 	await page.goto(`${base}/chat/${chatId}`, { waitUntil: "domcontentloaded" });
 	await page.waitForSelector(`[role="log"] a[href*="${pdf.id}"]`);
 	await pause(1500);
-	await page.click(`[role="log"] a[href*="${pdf.id}"]`);
-	await page.waitForSelector('[data-pdf-page="2"] [data-testid="pdf-cite-mark"]');
-	assert.ok(new URL(page.url()).pathname.startsWith("/chat/"), "the lesson stays underneath");
+	// Feature 027 (US3): the citation is a chip; it opens the Library's full view
+	// at the page with the quote marked, and the Back pill returns to the lesson.
+	await page.waitForSelector(`[role="log"] a[data-testid="ref-chip"][href*="${pdf.id}"]`);
+	await page.click(`[role="log"] a[data-testid="ref-chip"][href*="${pdf.id}"]`);
+	await page.waitForSelector('[data-testid="library-full-view"] [data-pdf-page="2"] [data-testid="pdf-cite-mark"]');
+	assert.ok(new URL(page.url()).pathname === "/library", "the citation opens the full view");
 	assert.deepEqual(posts, [], "opening a citation sends nothing");
+	await page.waitForSelector('[data-testid="back-pill"]');
+	await page.click('[data-testid="back-pill"]');
+	await page.waitForFunction((id) => location.pathname === `/chat/${id}`, {}, chatId);
+	await page.waitForSelector(`[role="log"] a[href*="${pdf.id}"]`);
+	assert.deepEqual(posts, [], "coming back sends nothing");
+	// Beside the lesson: the palette's passage result opens the PDF in the pane at that page.
+	await pause(500);
+	await page.keyboard.down("Control");
+	await page.keyboard.press("k");
+	await page.keyboard.up("Control");
+	await page.waitForSelector('[data-testid="command-palette-input"]');
+	await page.type('[data-testid="command-palette-input"]', "force equals mass");
+	await page.waitForFunction(() => [...document.querySelectorAll('[data-testid="command-palette-option"]')].some((el) => el.dataset.entryId.startsWith("passage:")));
+	await page.evaluate(() => [...document.querySelectorAll('[data-testid="command-palette-option"]')].find((el) => el.dataset.entryId.startsWith("passage:")).click());
+	await page.waitForSelector('[data-pdf-page="2"][data-text-ready]');
+	assert.ok(new URL(page.url()).pathname.startsWith("/chat/"), "the lesson stays underneath");
+	assert.deepEqual(posts, [], "opening the passage sends nothing");
 	await selectWord(page, 2, "force equals mass");
 	assert.deepEqual(posts, [], "selecting sends nothing");
 	assert.ok((await textOf(page, '[data-testid="pdf-bubble"]')).includes("Sends this passage, from page 2"));
@@ -499,7 +523,7 @@ try {
 		if (!ready) await pause(250);
 	}
 	assert.ok(ready, "isolated server starts");
-	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true });
+	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true, args: ["--no-sandbox"] });
 	for (const width of (process.env.LH_UI_WIDTHS ?? "1440,390,320").split(",").map(Number)) await checkWidth(width);
 	console.log("Documents browser checks passed.");
 } catch (error) {

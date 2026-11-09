@@ -62,9 +62,9 @@ import { DemoOutputCard } from "../components/artifacts/demo-card.tsx";
 it("uses ink toolbar focus only for demos containing ML panels", () => {
 	for (const type of ["tokens", "next_token", "heatmap", "network", "scatter", "shapes"]) {
 		const markup = renderToStaticMarkup(<DemoOutputCard output={{ title: "ML", html: kitDemoHtml({ panels: [{ type } as never] }) }} />);
-		assert.match(markup, /--ring:var\(--foreground\)/);
+		assert.match(markup, /--nb-focus:var\(--ink\)/);
 	}
 	const existing = renderToStaticMarkup(<DemoOutputCard output={{ title: "Plot", html }} />);
-	assert.doesNotMatch(existing, /--ring:var\(--foreground\)/);
-	assert.doesNotMatch(renderToStaticMarkup(<DemoOutputCard output={{ title: "HTML", html: "<p>plain</p>" }} />), /--ring:var\(--foreground\)/);
+	assert.doesNotMatch(existing, /--nb-focus:var\(--ink\)/);
+	assert.doesNotMatch(renderToStaticMarkup(<DemoOutputCard output={{ title: "HTML", html: "<p>plain</p>" }} />), /--nb-focus:var\(--ink\)/);
 });

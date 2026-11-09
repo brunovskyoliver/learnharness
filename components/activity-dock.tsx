@@ -2,47 +2,38 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createLiveContext } from "@/components/live-context";
-import { ActivityIcon, BotIcon, FileTextIcon, ImageIcon, PenToolIcon, PlayIcon, SearchIcon, SquareIcon, WaypointsIcon } from "lucide-react";
+import { BotIcon, FileTextIcon, ImageIcon, PenToolIcon, PlayIcon, SearchIcon, WaypointsIcon } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Item, ItemGroup } from "@/components/ui/item";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { CornerHint, costLabel } from "@/components/paper/corner-hint";
+import { keyLabel, useIsMac } from "@/components/paper/shared";
 import type { CallUsage, JobKind, JobRecord } from "@/src/core";
-import { isModelsRefusal, isProviderKeyRefusal, subscriptionLabel, subscriptionLabels } from "@/src/core";
+import { bindingForAction, isModelsRefusal, isProviderKeyRefusal } from "@/src/core";
 import { formatTokens, planCostLabel } from "@/components/usage-format";
 import { activityText, formatElapsed } from "@/components/activity-text";
 import { useServerEvent, useServerResync } from "@/components/server-events";
 
 /**
- * THE BACKGROUND-AGENTS SECTION (owner, sidebar round — the successor of
- * the retired bottom-right floating dock): the bottom strip of the LEFT
- * SIDEBAR, one blob per running BACKGROUND process — session sub-agents
- * (research/demo/visual) and global extraction runs. Teaching turns are
- * deliberately NOT here: the section exists to give background processes
- * the observability the learner can't otherwise see; an in-flight teaching
- * turn is fully visible where it happens (user decision, 2026-09).
+ * BACKGROUND AGENTS (feature 025, R13: the shared corner hint carries them,
+ * as it carries Notebook's runs): one row per running BACKGROUND process —
+ * session sub-agents (research/demo/visual/pdf/image), extraction runs,
+ * flashcard runs and Notebook runs. Teaching turns are deliberately NOT
+ * here: an in-flight teaching turn is fully visible where it happens (user
+ * decision, 2026-09).
  *
  * Data: ONE feed of GET /api/activity (jobs across ALL chats, title-joined,
  * oldest-first + extraction runs), fetched when truth moves (events
  * channel, S5) and folded client-side with core/prices.ts.
  * Cost is INFERRED server-side through Pi; the context line is the LAST model call's
- * input+output against the model's limit (JobUsage.lastStep — pending
- * contract) — never a cumulative sum, which would be the wrong number.
- * Absent data renders "—", never zero (the doctrine).
+ * input+output against the model's limit (JobUsage.lastStep) — never a
+ * cumulative sum, which would be the wrong number. Absent data renders
+ * "—", never zero (the doctrine).
  *
- * Quiet/ambient by design: no entry animations, stable keys, updates land
- * in place — refreshes never flicker. ALWAYS present (owner, sidebar round):
- * empty means EMPTY — the header sits alone, nothing hides; it populates and
- * GROWS when processes run (max-h + internal scroll so a pile never crowds
- * the session list). The sidebar's closed state means the learner opted
- * out — no ambient signal while closed (user decision: invisibility until
- * a clearer observability story wants building). Per blob: kind icon,
- * elapsed, cost, activity line, an explicit END button (POST
- * /api/activity/abort — the wave-4 backend is live): 404/409 mean the
- * process is already gone (refresh, no error); real failures degrade to
- * an inline "Abort failed", never a dead control. Detail (context, model,
- * steps, session link) EXPANDS INLINE — the section scrolls, so a
- * floating popover would clip at its bounds.
+ * Quiet by design: no entry animations, stable keys, updates land in
+ * place. Idle, the hint names the palette's shortcut; running, it says
+ * what runs, its cost and Stop; its popover lists every run with kind,
+ * elapsed, activity line, an explicit Stop (POST /api/activity/abort:
+ * 404/409 mean the process is already gone, real failures say so on the
+ * row) and the detail (session link, model, context, calls, cost) inline.
  */
 
 // ─── Wire shapes (client-safe mirrors of server/observability.ts) ────────────
@@ -77,6 +68,8 @@ export interface ActivityFeed {
 	extractions: FeedExtraction[];
 	/** Flashcards being made (feature 021). */
 	cardRuns?: { id: string; title: string; startedAt: number; costUsd: number | null; model?: string; steps?: number }[];
+	/** Notebook runs (feature 024): reads, replies, drawings and chat. */
+	notebookRuns?: { id: string; pageId: string; pageName: string; kind: string; auto: boolean; startedAt: number; costUsd: number | null; model?: string; steps?: number }[];
 }
 
 const EMPTY_FEED: ActivityFeed = { jobs: [], extractions: [] };
@@ -118,7 +111,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
 				if (res.ok) {
 					const data = (await res.json()) as Partial<ActivityFeed>;
 					if (alive)
-						setFeed({ jobs: data.jobs ?? [], extractions: data.extractions ?? [], cardRuns: data.cardRuns ?? [] });
+						setFeed({ jobs: data.jobs ?? [], extractions: data.extractions ?? [], cardRuns: data.cardRuns ?? [], notebookRuns: data.notebookRuns ?? [] });
 				}
 			} catch {
 				// transport blip: keep the last feed, announce again next event
@@ -179,7 +172,11 @@ export interface ActivityBlob {
 	/** job.id, or the extraction job's row id (source id, or "src#i" for
 	 *  chunk jobs — unique per row, per-chunk jobs owner 2026-09-28). */
 	id: string;
-	process: "job" | "extraction" | "cards";
+	process: "job" | "extraction" | "cards" | "notebook";
+	/** A Notebook run's kind word ("Reading", "Replying", …). */
+	notebookKind?: string;
+	/** Where the row's link goes, when it isn't a session. */
+	href?: string;
 	/** Sub-agent kind for jobs (extraction blobs have none). */
 	jobKind?: JobKind;
 	/** Extraction phase (extracting/auditing/merging/embedding); jobs carry none. */
@@ -199,6 +196,9 @@ export interface ActivityBlob {
 	/** Model calls made so far, when usage is reported. */
 	steps?: number;
 }
+
+/** A Notebook run's kind as its row names it (ui-contract.md activity popover). */
+const NOTEBOOK_KIND_WORD: Record<string, string> = { read: "Reading", think: "Thinking", ask: "Thinking", reply: "Replying", visualize: "Drawing", chat: "Chat" };
 
 /** Merge the feed into one oldest-first blob list (the stable blob order). */
 export function toBlobs(feed: ActivityFeed): ActivityBlob[] {
@@ -265,15 +265,18 @@ export function toBlobs(feed: ActivityFeed): ActivityBlob[] {
 	for (const run of feed.cardRuns ?? []) {
 		blobs.push({ id: run.id, process: "cards", title: run.title, chatId: "", startedAt: run.startedAt, cost: run.costUsd, context: null, activity: "", model: run.model, steps: run.steps });
 	}
+	for (const run of feed.notebookRuns ?? []) {
+		blobs.push({ id: run.id, process: "notebook", notebookKind: NOTEBOOK_KIND_WORD[run.kind] ?? run.kind, href: `/notebook/${encodeURIComponent(run.pageId)}`, title: run.pageName, chatId: "", startedAt: run.startedAt, cost: run.costUsd, context: null, activity: "", model: run.model, steps: run.steps });
+	}
 	blobs.sort((a, b) => a.startedAt - b.startedAt);
 	return blobs;
 }
 
 export { formatElapsed } from "@/components/activity-text";
 
-// ─── The section (the sidebar's bottom strip) ─────────────────────────────────
+// ─── The list and the corner hint (feature 025, R13) ──────────────────────────
 
-/** A 1s heartbeat while the section is populated — elapsed lines tick. */
+/** A 1s heartbeat while the list is populated — elapsed lines tick. */
 function useNow(active: boolean): number {
 	const [now, setNow] = useState(() => Date.now());
 	useEffect(() => {
@@ -295,26 +298,34 @@ const KIND_ICON: Record<JobKind, typeof SearchIcon> = {
 /** Abort states per blob id: pending (fired) / failed (backend absent). */
 type AbortState = "pending" | "failed";
 
-export function ActivitySection({ feed: feedProp }: { feed?: ActivityFeed }) {
-	const ctx = ActivityContext.useValue();
-	const feed = feedProp ?? ctx.feed;
-	const refresh = ctx.refresh;
-	const blobs = useMemo(() => toBlobs(feed), [feed]);
-	const [openBlob, setOpenBlob] = useState<string | null>(null); // detail, inline-expanded
+/** What a blob's row (and the corner hint) calls it. */
+export function blobLabel(blob: ActivityBlob): string {
+	if (blob.process === "cards") return "Making flashcards";
+	if (blob.process === "notebook") return `Notebook · ${blob.notebookKind ?? "Running"}`;
+	if (blob.process === "extraction") return `Extraction — ${blob.phase ?? "running"}`;
+	switch (blob.jobKind) {
+		case "research": return "Researcher";
+		case "demo": return "Demo builder";
+		case "visual": return "Figure maker";
+		case "pdf": return "PDF reader";
+		case "image": return "Image reader";
+		default: return "Sub-agent";
+	}
+}
+
+/** The priced total of the running blobs, or null when none is priced. */
+export function blobsCost(blobs: readonly ActivityBlob[]): number | null {
+	const priced = blobs.map((b) => b.cost).filter((c): c is number => c !== null);
+	return priced.length === 0 ? null : priced.reduce((a, c) => a + c, 0);
+}
+
+/** POST /api/activity/abort per blob: 404/409 mean it is already gone (refresh, no error); a real failure says so on the row. */
+function useActivityAbort(refresh: () => void) {
 	const [abortStates, setAbortStates] = useState<Record<string, AbortState>>({});
-	const now = useNow(blobs.length > 0);
-	// Refs for stable abort handlers (no re-created closures per tick).
-	const abortRef = useRef({ blobs, refresh, setAbortStates });
-	abortRef.current = { blobs, refresh, setAbortStates };
-
-	const totalCost = useMemo(() => {
-		const priced = blobs.map((b) => b.cost).filter((c): c is number => c !== null);
-		return priced.length === 0 ? null : priced.reduce((a, c) => a + c, 0);
-	}, [blobs]);
-
+	const refreshRef = useRef(refresh);
+	refreshRef.current = refresh;
 	const abort = useCallback(async (blob: ActivityBlob) => {
-		const { setAbortStates: set } = abortRef.current;
-		set((s) => ({ ...s, [blob.id]: "pending" }));
+		setAbortStates((s) => ({ ...s, [blob.id]: "pending" }));
 		try {
 			const res = await fetch("/api/activity/abort", {
 				method: "POST",
@@ -330,8 +341,8 @@ export function ActivitySection({ feed: feedProp }: { feed?: ActivityFeed }) {
 				// 404 not_found / 409 not_running: the process is already gone —
 				// the desired end state. Refresh and clear; nothing to report.
 				if (res.status === 404 || res.status === 409) {
-					abortRef.current.refresh();
-					set((s) => {
+					refreshRef.current();
+					setAbortStates((s) => {
 						const { [blob.id]: _drop, ...rest } = s;
 						return rest;
 					});
@@ -339,32 +350,48 @@ export function ActivitySection({ feed: feedProp }: { feed?: ActivityFeed }) {
 				}
 				throw new Error(String(res.status));
 			}
-			abortRef.current.refresh();
+			refreshRef.current();
 		} catch {
-			set((s) => ({ ...s, [blob.id]: "failed" }));
+			setAbortStates((s) => ({ ...s, [blob.id]: "failed" }));
 		}
 	}, []);
+	return { abortStates, abort };
+}
 
-	// Sidebar-native skin (owner, sidebar round): part of the sidebar's
-	// surface, not a floating card — the border-t separator matches the
-	// sidebar's own edge line, the header matches the "Sessions" label, the
-	// rows match the session rows' hover. Empty means empty: the header sits
-	// alone (the cost span is population, not decoration).
+/**
+ * Every running background process (session sub-agents, extraction runs,
+ * flashcard runs, Notebook runs), oldest first, in the corner hint's
+ * popover: kind, elapsed, activity, an explicit Stop, and the detail
+ * (session link, model, context, calls, cost) inline. The header carries
+ * the priced total. Teaching turns are not here: they are visible where
+ * they happen.
+ */
+export function ActivitySection({ feed: feedProp, abortStates: abortProp, onAbort }: { feed?: ActivityFeed; abortStates?: Record<string, AbortState>; onAbort?: (blob: ActivityBlob) => void }) {
+	const ctx = ActivityContext.useValue();
+	const feed = feedProp ?? ctx.feed;
+	const blobs = useMemo(() => toBlobs(feed), [feed]);
+	const [openBlob, setOpenBlob] = useState<string | null>(null); // detail, inline-expanded
+	const own = useActivityAbort(ctx.refresh);
+	const abortStates = abortProp ?? own.abortStates;
+	const abort = onAbort ?? ((blob: ActivityBlob) => void own.abort(blob));
+	const now = useNow(blobs.length > 0);
+	const totalCost = useMemo(() => blobsCost(blobs), [blobs]);
+
 	return (
-		<section data-testid="activity-section" className="px-2 pb-2">
-			<div className="flex h-8 items-center gap-2 px-2.5 text-sm font-medium text-muted-foreground">
-				<ActivityIcon className="size-3.5 shrink-0" />
+		<section data-testid="activity-section" aria-label="Background agents" className="flex flex-col gap-1.5">
+			<div className="flex items-baseline gap-2 text-faint">
 				<span className="truncate whitespace-nowrap">Background agents</span>
-				<span className="h-px min-w-2 flex-1 bg-border" aria-hidden="true" />
 				{/* Dollars only: plan-covered runs have no cost worth a label here. */}
 				{totalCost !== null && (
-					<span className="shrink-0 tabular-nums" data-testid="activity-total-cost" title="Total running cost (inferred)">
+					<span className="ml-auto shrink-0 tabular-nums" data-testid="activity-total-cost" title="Total running cost (inferred)">
 						{planCostLabel(totalCost, [])}
 					</span>
 				)}
 			</div>
-			{blobs.length > 0 && (
-				<ItemGroup className="max-h-[40dvh] gap-1 overflow-y-auto">
+			{blobs.length === 0 ? (
+				<p className="nb-activity-empty" data-testid="nb-activity-empty">Nothing running.</p>
+			) : (
+				<ul className="nb-activity-list max-h-[40dvh] overflow-y-auto">
 					{blobs.map((blob) => (
 						<ActivityBlobRow
 							key={blob.id}
@@ -373,16 +400,16 @@ export function ActivitySection({ feed: feedProp }: { feed?: ActivityFeed }) {
 							detailOpen={openBlob === blob.id}
 							onToggleDetail={() => setOpenBlob((id) => (id === blob.id ? null : blob.id))}
 							abortState={abortStates[blob.id]}
-							onAbort={() => void abort(blob)}
+							onAbort={() => abort(blob)}
 						/>
 					))}
-				</ItemGroup>
+				</ul>
 			)}
 		</section>
 	);
 }
 
-/** Compact activity row with inline details and a separate stop action. */
+/** One run: what it is, elapsed and its line; Stop beside it; the detail opens inline. */
 function ActivityBlobRow({
 	blob,
 	now,
@@ -399,116 +426,113 @@ function ActivityBlobRow({
 	onAbort: () => void;
 }) {
 	const Icon = blob.process === "extraction" ? WaypointsIcon : (blob.jobKind && KIND_ICON[blob.jobKind]) || BotIcon;
-	const label =
-		blob.process === "cards"
-			? "Making flashcards"
-		: blob.process === "extraction"
-			? `Extraction — ${blob.phase ?? "running"}`
-			: blob.jobKind === "research"
-				? "Researcher"
-				: blob.jobKind === "demo"
-					? "Demo builder"
-					: blob.jobKind === "visual"
-						? "Figure maker"
-						: blob.jobKind === "pdf"
-							? "PDF reader"
-							: blob.jobKind === "image"
-								? "Image reader"
-							: "Sub-agent";
+	const label = blobLabel(blob);
 	const activity = activityText(blob.activity);
 	const elapsed = formatElapsed(now - blob.startedAt);
 	const model = blob.model ? blob.model.replace(/^[^:]+:/, "") : null;
 	return (
 		<Collapsible open={detailOpen} onOpenChange={onToggleDetail} asChild>
-			<Item
-				role="listitem"
-				data-testid={`activity-blob-${blob.process}`}
-				size="sm"
-				className="flex-col items-stretch gap-0 p-0 text-sm transition-colors hover:bg-accent"
-			>
-				<div className="flex items-start gap-1">
+			<li data-testid={`activity-blob-${blob.process}`} className="nb-activity-row">
+				<div className="flex items-start gap-2">
 					<CollapsibleTrigger asChild>
+						<button type="button" aria-expanded={detailOpen} title={blob.title} className="flex min-w-0 flex-1 items-start gap-2 rounded-md text-left">
+							<Icon className="mt-[3px] size-3.5 shrink-0 text-faint" aria-hidden="true" />
+							<span className="min-w-0 flex-1">
+								<span className="flex items-baseline gap-2">
+									<span className="min-w-0 flex-1 truncate text-ink">{label}</span>
+									<span className="shrink-0 tabular-nums text-faint" data-testid="activity-blob-elapsed">{elapsed}</span>
+								</span>
+								<span className="block truncate text-faint" data-testid="activity-blob-activity">{activity || blob.title}</span>
+							</span>
+						</button>
+					</CollapsibleTrigger>
+					{/* The explicit Stop beside the run (it stays put when the detail
+					    opens). A failed stop locks the button and says why; a
+					    successful one makes the row vanish. */}
 					<button
 						type="button"
-						aria-expanded={detailOpen}
-						title={blob.title}
-						className="flex min-w-0 flex-1 items-start gap-2 py-1.5 pl-2 text-left"
-					>
-						<Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-						<span className="min-w-0 flex-1">
-							<span className="flex items-baseline gap-2">
-								<span className="min-w-0 flex-1 truncate font-medium text-card-foreground">{label}</span>
-								<span className="shrink-0 tabular-nums text-muted-foreground" data-testid="activity-blob-elapsed">
-									{elapsed}
-								</span>
-							</span>
-							<span className="block truncate text-muted-foreground" data-testid="activity-blob-activity">
-								{activity || blob.title}
-							</span>
-						</span>
-					</button>
-					</CollapsibleTrigger>
-					{/* The explicit END on the blob's face, aligned with the first line
-					    (it stays put when the detail opens). A failed abort locks the
-					    button and says why; a successful one makes the blob vanish. */}
-					<Button
-						type="button"
-						variant="ghost"
-						size="icon-sm"
 						data-testid="activity-abort"
+						className="nb-hint-button shrink-0 disabled:text-faint disabled:no-underline"
 						onClick={onAbort}
 						disabled={abortState !== undefined}
 						title={abortState === "failed" ? "Stopping failed, try again" : "Stop"}
 						aria-label={`Stop ${label} in ${blob.title}`}
-						className="mr-1 mt-1 shrink-0"
 					>
-						<SquareIcon />
-					</Button>
+						Stop
+					</button>
 				</div>
 
 				<CollapsibleContent>
-					<dl
-						data-testid="activity-blob-detail"
-						className="mx-2 mb-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1 rounded-md bg-accent/40 p-2 text-muted-foreground"
-					>
-						<dt>Session</dt>
+					<dl data-testid="activity-blob-detail" className="mt-1 mb-1 ml-5.5 grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-0.5 rounded-lg bg-shelf px-2.5 py-2 text-faint">
+						<dt>{blob.process === "notebook" ? "Note" : "Session"}</dt>
 						<dd className="min-w-0 text-right">
-							<a href={blob.process === "cards" ? "/review?view=drafts" : `/chat/${blob.chatId}`} className="block truncate text-card-foreground hover:underline" title={blob.title}>
+							<a href={blob.href ?? (blob.process === "cards" ? "/review?view=drafts" : `/chat/${blob.chatId}`)} className="block truncate text-ink underline decoration-(--riddle-line) underline-offset-2" title={blob.title}>
 								{blob.title}
 							</a>
 						</dd>
 						{model && (
 							<>
 								<dt>Model</dt>
-								<dd className="truncate text-right text-card-foreground">{model}</dd>
+								<dd className="truncate text-right text-ink">{model}</dd>
 							</>
 						)}
 						<dt>Context</dt>
-						<dd className="text-right tabular-nums text-card-foreground" data-testid="activity-blob-context">
+						<dd className="text-right tabular-nums text-ink" data-testid="activity-blob-context">
 							{blob.context === null ? "—" : `${formatTokens(blob.context.used)} / ${formatTokens(blob.context.limit)}`}
 						</dd>
 						{blob.steps !== undefined && (
 							<>
 								<dt>Model calls</dt>
-								<dd className="text-right tabular-nums text-card-foreground">{blob.steps}</dd>
+								<dd className="text-right tabular-nums text-ink">{blob.steps}</dd>
 							</>
 						)}
 						{blob.cost !== null && (
 							<>
 								<dt>Cost</dt>
-								<dd className="text-right tabular-nums text-card-foreground" data-testid="activity-blob-cost">
+								<dd className="text-right tabular-nums text-ink" data-testid="activity-blob-cost">
 									{planCostLabel(blob.cost, [])}
 								</dd>
 							</>
 						)}
 						{abortState && (
-							<dd className="col-span-2 text-muted-foreground">
+							<dd className="col-span-2 text-faint">
 								{abortState === "failed" ? "Stopping failed, try again" : "Stopping…"}
 							</dd>
 						)}
 					</dl>
 				</CollapsibleContent>
-			</Item>
+			</li>
 		</Collapsible>
+	);
+}
+
+/**
+ * Study's corner hint (feature 025, R13): the same component as Notebook's,
+ * fed by every background process. One run: its name · cost · Stop; several:
+ * "N running" · total, each with its own Stop in the list. Idle it names the
+ * palette's shortcut.
+ */
+export function ActivityCornerHint() {
+	const { feed, refresh } = useActivity();
+	const mac = useIsMac();
+	const blobs = useMemo(() => toBlobs(feed), [feed]);
+	const { abortStates, abort } = useActivityAbort(refresh);
+	const total = blobsCost(blobs);
+	const cost = total === null ? costLabel(null) : planCostLabel(total, []);
+	const only = blobs.length === 1 ? blobs[0]! : null;
+	const running = blobs.length === 0 ? null : only
+		? { word: blobLabel(only), cost, onStop: abortStates[only.id] ? undefined : () => void abort(only), stopLabel: `Stop ${blobLabel(only)} in ${only.title}` }
+		: { word: `${blobs.length} running`, cost };
+	return (
+		<>
+			<CornerHint
+				running={running}
+				state={running ? "running" : "idle"}
+				idle={`${keyLabel(bindingForAction("command-palette"), mac)} searches everything`}
+				list={<ActivitySection feed={feed} abortStates={abortStates} onAbort={(blob) => void abort(blob)} />}
+			/>
+			{/* Screen readers hear a run start (the hint's own word, not its ticking cost). */}
+			<p className="sr-only" aria-live="polite" data-testid="corner-hint-live">{running?.word ?? ""}</p>
+		</>
 	);
 }

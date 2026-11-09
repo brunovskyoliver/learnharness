@@ -196,6 +196,9 @@ for (const hosted of [false, true]) {
 				assert.equal((await libraryDeleteResponse(made.item.id)).status, 404);
 				assert.equal((await libraryContentResponse(new Request("http://localhost/x"), made.item.id)).status, 404);
 				assert.ok(!(await list()).items.some((i) => i.name === "delete.md"));
+				// Feature 027 (M1): the composer still draws its name, faint, from `gone`.
+				const { gone: names } = await (await libraryListResponse()).json() as { gone: { id: string; name: string; kind: string }[] };
+				assert.deepEqual(names.find((g) => g.id === made.item.id), { id: made.item.id, name: "delete.md", kind: "markdown" });
 			});
 		});
 

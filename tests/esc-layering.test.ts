@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { escAbortTarget } from "../components/chat.tsx";
+import { checkPendingLine, escAbortTarget } from "../components/chat.tsx";
 
 /**
  * THE LAYERED ESC (owner report, 2026-10-04): Esc over an open overlay —
@@ -48,5 +48,14 @@ describe("escAbortTarget (the layered-Esc ruling)", () => {
 
 	it("stacking order among overlays: mermaid paints above plan (later in DOM)", () => {
 		assert.equal(escAbortTarget({ ...none, mermaidFocus: true, planOpen: true, pending: true }), "mermaid");
+	});
+});
+
+describe("the bar's pending-check line (feature 025)", () => {
+	it("says beside the lesson in the margin, above when the thread is inline", () => {
+		assert.equal(checkPendingLine("question", false), "Answer the check beside the lesson");
+		assert.equal(checkPendingLine("problem", false), "Solve the problem beside the lesson");
+		assert.equal(checkPendingLine("question", true), "Answer the check above");
+		assert.equal(checkPendingLine("problem", true), "Solve the problem above");
 	});
 });

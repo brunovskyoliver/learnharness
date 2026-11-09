@@ -1,7 +1,8 @@
 "use client";
 
-/** Export (feature 010, US5): copy the stored Markdown, download it, or print
- *  the rendered page alone. Print uses the browser's dialog; no PDF library. */
+/** Export (feature 010, US5): copy the stored Markdown or print the rendered page
+ *  alone; files come from the shared export dialog (feature 025 T049). Print uses
+ *  the browser's dialog; no PDF library. */
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { MessageResponse } from "@/components/ai-elements/message";
@@ -10,17 +11,6 @@ import { MessageResponse } from "@/components/ai-elements/message";
 export function markdownFileName(name: string): string {
 	const safe = name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "-").trim() || "Page";
 	return `${safe}.md`;
-}
-
-export function downloadMarkdown(name: string, text: string) {
-	const url = URL.createObjectURL(new Blob([text], { type: "text/markdown;charset=utf-8" }));
-	const link = document.createElement("a");
-	link.href = url;
-	link.download = markdownFileName(name);
-	document.body.append(link);
-	link.click();
-	link.remove();
-	window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 /** Renders the page for print only, under its name as the document title,

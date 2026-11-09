@@ -13,12 +13,13 @@ process.env.LH_HOSTED = "0";
 const { chatStore } = await import("../src/store/chats.ts");
 const { activeProblemOf, danglingQuestionOf } = await import("../src/core/native-messages.ts");
 const { phaseAt3Lh } = await import("../src/core/phases.ts");
+const { projectView } = await import("../src/core/view.ts");
 after(() => rm(data, { recursive: true, force: true }));
 
 test("review seeds load through the production store with active lesson and practice states", async () => {
 	const results = await seedReviewChats(data);
-	assert.equal(results.filter(result => result.status === "created").length, 7);
-	assert.equal(chatStore.listChats().length, 7);
+	assert.equal(results.filter(result => result.status === "created").length, 8);
+	assert.equal(chatStore.listChats().length, 8);
 	const lesson = chatStore.getChat("review-gradient-descent");
 	assert.ok(lesson);
 	assert.equal(phaseAt3Lh(lesson.messages), "teach");
@@ -30,6 +31,26 @@ test("review seeds load through the production store with active lesson and prac
 	assert.equal(practice?.kind, "practice");
 	assert.ok(activeProblemOf(practice!.messages));
 	assert.equal(activeProblemOf(chatStore.getChat("review-practice-history")!.messages), null);
+});
+
+test("the math check review chat has a row in each Wolfram state and a checked answered card", () => {
+	const chat = chatStore.getChat("review-math-check");
+	assert.ok(chat);
+	assert.equal(chat.title, "UI review · Math check");
+	const parts = projectView(chat.messages).flatMap(message => message.parts as Array<Record<string, unknown>>);
+	const checks = parts.filter(part => part.type === "tool-math_check");
+	const state = (id: string) => checks.find(part => part.toolCallId === id);
+	assert.equal((state("review_math_equal")?.output as { outcome?: string })?.outcome, "agreed");
+	assert.equal((state("review_math_not_equal")?.output as { outcome?: string })?.outcome, "disagreed");
+	assert.equal((state("review_math_undecided")?.output as { outcome?: string })?.outcome, "undecided");
+	assert.equal(state("review_math_failed")?.state, "output-error");
+	assert.match(String(state("review_math_failed")?.errorText), /unavailable/);
+	assert.equal(state("review_math_unfinished")?.state, "input-available", "a call with no result: check not finished");
+	for (const part of checks) assert.deepEqual(part.mathCheck, { hidden: false, expressionsHidden: false }, String(part.toolCallId));
+	const quiz = parts.find(part => part.type === "tool-quiz" && part.toolCallId === "review_math_quiz");
+	assert.equal(quiz?.state, "output-available");
+	assert.equal(quiz?.wolframChecked, true, "the answered card ends with Checked with Wolfram");
+	assert.equal(danglingQuestionOf(chat.messages), null);
 });
 
 test("reseeding preserves learner edits, unrelated chats and settings", async () => {

@@ -2,6 +2,7 @@
 
 import { useCallback, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { navigateTo } from "@/components/paper/navigate";
 import { BookOpenIcon, DumbbellIcon, Maximize2Icon, UploadIcon } from "lucide-react";
 import dynamic from "next/dynamic";
 
@@ -22,6 +23,8 @@ import { CalibrationSection } from "@/components/calibration-section";
 import { OverlayHostContext } from "@/components/overlay-host";
 import { NotesImportErrors, useNotesImport } from "@/components/notes-import.tsx";
 import { useActivity } from "@/components/activity-dock";
+import { RouteContent } from "@/components/paper/route-content";
+import { inkOrder } from "@/components/paper/motion-arrival";
 import type { GraphSnapshot } from "@/src/core";
 
 /**
@@ -132,7 +135,7 @@ export function Home({
 			// No settings PUT on create (per-session models, owner
 			// 2026-09-28): the SERVER stamps the newborn from the strong
 			// slot — the same default this surface's model control edits.
-			router.push(`/chat/${id}?prompt=${encodeURIComponent(t)}`);
+			navigateTo(router, `/chat/${id}?prompt=${encodeURIComponent(t)}`);
 		} catch {
 			setBusy(false);
 		}
@@ -149,19 +152,20 @@ export function Home({
 			    mask resolves by DOM order — a no-drag element subtracts only drag
 			    regions that came EARLIER in the tree — so every carved control
 			    (the toggle, the graph chrome) comes later and subtracts. */}
-			<div className="lh-drag absolute inset-x-0 top-0 h-13" aria-hidden="true" />
+			<div className="lh-drag absolute inset-x-0 top-0 h-(--lh-band)" aria-hidden="true" />
 
-			<header className="relative z-30 flex h-13 shrink-0 items-center gap-3 px-3 max-sm:group-has-[[data-mobile-graph-search=true]]/home:invisible">
+			<header className="relative z-30 flex h-(--lh-band) shrink-0 items-center gap-3 pl-(--lh-chrome-left) pr-3 max-sm:group-has-[[data-mobile-graph-search=true]]/home:invisible">
 				<SidebarToggle />
 			</header>
 			<WorkspaceTabStrip />
 
 			{/* One page, one scroll (hidden tracks, globals.css). */}
 			<div data-testid="home-scroll" className="min-h-0 flex-1 overflow-y-auto">
-				<div className="mx-auto flex w-full max-w-[52rem] flex-col gap-8 px-4 pb-12 pt-3 sm:gap-10 sm:pt-11">
+				{/* The content arrives (feature 028): the heading, the composer, then the waiting rows in reading order. */}
+				<RouteContent stagger="rows" className="mx-auto flex w-full max-w-[52rem] flex-col gap-8 px-4 pb-12 pt-3 sm:gap-10 sm:pt-11">
 					<section aria-labelledby={startId} className="flex flex-col gap-3 sm:gap-4">
-						<h1 id={startId} className="font-title text-2xl font-medium leading-[1.2] tracking-[-0.3px]">What do you want to learn?</h1>
-						<div>
+						<h1 id={startId} className="tracking-title text-2xl font-medium leading-title" {...inkOrder(0)}>What do you want to learn?</h1>
+						<div {...inkOrder(1)}>
 							{/* The pick bar (owner vision, 2026-10-04): the chain
 							    table's selection is PERSISTENT — picked
 							    propositions show here as a count + Clear in EITHER
@@ -203,7 +207,7 @@ export function Home({
 												<SetupModelsButton onOpen={() => setSetupOpen(true)} />
 											) : undefined}
 											leadingSlot={
-												<div className="flex h-9 items-center gap-0.5 rounded-[8px] bg-background p-[3px]" data-testid="home-mode-switch">
+												<div className="flex h-9 items-center gap-0.5 rounded-md bg-paper p-[3px] pointer-coarse:h-auto" data-testid="home-mode-switch">
 													{(["teach", "practice"] as const).map((m) => (
 														<button
 															key={m}
@@ -212,10 +216,10 @@ export function Home({
 															onClick={() => setMode(m)}
 															aria-pressed={mode === m}
 															className={
-																"flex h-[30px] items-center gap-1.5 rounded-sm px-2 text-sm font-medium transition-colors sm:px-3 " +
+																"flex h-[30px] items-center gap-1.5 rounded-md px-2 text-sm font-medium transition-colors sm:px-3 pointer-coarse:h-11 pointer-coarse:min-w-11 pointer-coarse:justify-center " +
 																(mode === m
-																	? "bg-accent text-foreground"
-																	: "text-ink-2 hover:text-foreground")
+																	? "bg-shelf text-ink"
+																	: "text-graphite hover:text-ink")
 															}
 														>
 															{/* Narrow screens: icons only (the sidebar's session
@@ -246,7 +250,7 @@ export function Home({
 						onPracticeSelectionChange={setPracticeProps}
 						onChainSelectClose={() => setChainSelectOpen(false)}
 					/>
-				</div>
+				</RouteContent>
 			</div>
 
 			{/* First-run setup (unconfigured): the CTA's target and the send
@@ -322,10 +326,10 @@ function GraphSection({
 	const { importing, onImportFiles } = notesImport;
 
 	return (
-		<section aria-labelledby={headingId} data-testid="graph-section" className="flex flex-col gap-2.5 sm:gap-3">
-			<div className="flex flex-wrap items-center gap-x-1 gap-y-1 sm:gap-x-2.5">
-				<h2 id={headingId} className="flex-1 whitespace-nowrap text-xl font-semibold leading-[1.3] sm:flex-none">Knowledge graph</h2>
-				{statsLabel && <span data-testid="graph-stats" className="text-sm font-medium text-muted-foreground max-sm:hidden">{statsLabel}</span>}
+		<section aria-labelledby={headingId} data-testid="graph-section" className="flex flex-col gap-2.5 sm:gap-3" {...inkOrder(6)}>
+			<div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:gap-x-2.5">
+				<h2 id={headingId} className="flex-1 whitespace-nowrap text-lg font-[550] leading-heading text-ink sm:flex-none">Knowledge graph</h2>
+				{statsLabel && <span data-testid="graph-stats" className="text-meta text-faint max-sm:hidden">{statsLabel}</span>}
 				<span className="hidden flex-1 sm:block" aria-hidden="true" />
 				<input
 					ref={fileInputRef}
@@ -343,9 +347,9 @@ function GraphSection({
 					disabled={importing}
 					onClick={() => fileInputRef.current?.click()}
 					data-testid="import-notes"
-					className="prompt-secondary ml-auto gap-2 disabled:cursor-default max-sm:px-2.5! sm:ml-0"
+					className="lh-tool ml-auto sm:ml-0"
 				>
-					<UploadIcon aria-hidden="true" className="size-4" />
+					<UploadIcon aria-hidden="true" />
 					{importing ? "Importing…" : "Import notes"}
 				</button>
 				{rendering && statsLabel && (
@@ -354,9 +358,9 @@ function GraphSection({
 						type="button"
 						onClick={() => setExpanded(true)}
 						data-testid="graph-expand"
-						className="prompt-secondary gap-2 max-sm:min-w-11 max-sm:justify-center max-sm:px-0!"
+						className="lh-tool"
 					>
-						<Maximize2Icon aria-hidden="true" className="size-4" />
+						<Maximize2Icon aria-hidden="true" />
 						<span className="max-sm:sr-only">Expand</span>
 					</button>
 				)}

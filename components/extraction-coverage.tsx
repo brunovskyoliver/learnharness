@@ -187,18 +187,18 @@ export function CoverageMenuBody({
 	return (
 		<div data-testid="ctx-coverage" className="flex flex-col gap-1 px-2.5 pt-1 pb-2">
 			{busy ? (
-				<span className="flex items-center gap-1.5 text-muted-foreground" data-testid="ctx-coverage-running">
-					<span className="size-1.5 animate-pulse rounded-full bg-foreground/70" aria-hidden />
+				<span className="flex items-center gap-1.5 text-faint" data-testid="ctx-coverage-running">
+					<span className="size-1.5 animate-pulse rounded-full bg-ink/70" aria-hidden />
 					extracting…
 				</span>
 			) : complete ? (
-				<span className="text-muted-foreground">fully extracted</span>
+				<span className="text-faint">fully extracted</span>
 			) : (
 				<span className="flex flex-col">
-					<span className="tabular-nums text-foreground">
+					<span className="tabular-nums text-ink">
 						{formatTokens(coverage.uncoveredTokens)} tok uncovered
 					</span>
-					<span className="tabular-nums text-muted-foreground">
+					<span className="tabular-nums text-faint">
 						{coverage.uncoveredCount} message{coverage.uncoveredCount === 1 ? "" : "s"} unextracted
 					</span>
 				</span>
@@ -208,7 +208,7 @@ export function CoverageMenuBody({
 				data-testid="ctx-extract"
 				onClick={onExtract}
 				disabled={busy || complete}
-				className="flex items-center justify-center rounded-lg border px-2 py-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground disabled:opacity-40 disabled:hover:bg-transparent"
+				className="flex items-center justify-center rounded-lg border px-2 py-1 text-faint transition-colors hover:bg-shelf hover:text-ink disabled:opacity-40 disabled:hover:bg-transparent"
 			>
 				{busy ? "Running" : "Extract"}
 			</button>
@@ -309,7 +309,7 @@ export function CoverageRing({ chatId, refreshKey = 0 }: { chatId: string; refre
 					onClick={() => setOpen((o) => !o)}
 					aria-expanded={open}
 					aria-label="How much of this session isn't mapped yet"
-					className="relative flex size-7 cursor-pointer items-center justify-center rounded-md p-1.5 transition-colors hover:bg-white/[0.06] pointer-coarse:size-11"
+					className="relative flex size-7 cursor-pointer items-center justify-center rounded-md p-1.5 transition-colors hover:bg-shelf pointer-coarse:size-11"
 				>
 					{/* The donut: track + fill. The whole ring pulses while a run
 					    is in flight (motion = the working-state signal). */}
@@ -319,7 +319,7 @@ export function CoverageRing({ chatId, refreshKey = 0 }: { chatId: string; refre
 			{open && (
 				<div
 					data-testid="coverage-ring-popover"
-					className="absolute top-full right-0 z-40 mt-1.5 w-64 rounded-xl border bg-card p-3 text-sm "
+					className="absolute top-full right-0 z-40 mt-1.5 w-64 rounded-lg border bg-shelf p-3 text-sm "
 				>
 					<CoverageRingDetail coverage={coverage} chunkTokens={graph.chunkTokens} />
 				</div>
@@ -339,14 +339,14 @@ export function CoverageRingGlyph({ fill, running }: { fill: number; running: bo
 			className={running ? "size-full animate-pulse" : "size-full"}
 			aria-hidden="true"
 		>
-			<circle cx="8" cy="8" r="6" fill="none" strokeWidth="2.5" className="stroke-border" />
+			<circle cx="8" cy="8" r="6" fill="none" strokeWidth="2.5" className="stroke-rule" />
 			<circle
 				cx="8"
 				cy="8"
 				r="6"
 				fill="none"
 				strokeWidth="2.5"
-				className="stroke-foreground/70"
+				className="stroke-ink/70"
 				strokeDasharray={`${fill * C} ${C}`}
 				strokeLinecap="round"
 				transform="rotate(-90 8 8)"
@@ -361,44 +361,44 @@ export function CoverageRingGlyph({ fill, running }: { fill: number; running: bo
 export function CoverageRingDetail({ coverage, chunkTokens }: { coverage: SessionCoverage; chunkTokens: number }) {
 	return (
 		<>
-			<div className="mb-2 text-sm font-medium text-muted-foreground">
+			<div className="mb-2 text-sm font-medium text-faint">
 				Extraction coverage
 			</div>
-			<div className="flex flex-col gap-1 text-muted-foreground">
+			<div className="flex flex-col gap-1 text-faint">
 				<div className="flex justify-between gap-2">
 					<span>Uncovered</span>
-					<span className="tabular-nums text-card-foreground">
+					<span className="tabular-nums text-ink">
 						{formatTokens(coverage.uncoveredTokens)} tokens
 					</span>
 				</div>
 				<div className="flex justify-between gap-2">
 					<span>Covered</span>
-					<span className="tabular-nums text-card-foreground">
+					<span className="tabular-nums text-ink">
 						{formatTokens(coverage.coveredTokens)} tokens
 					</span>
 				</div>
 				<div className="flex justify-between gap-2">
 					<span>Messages</span>
-					<span className="tabular-nums text-card-foreground">
+					<span className="tabular-nums text-ink">
 						{coverage.coveredCount} / {coverage.totalMessages}
 					</span>
 				</div>
 				<div className="flex justify-between gap-2">
 					<span>Chunk threshold</span>
-					<span className="tabular-nums text-card-foreground">
+					<span className="tabular-nums text-ink">
 						{formatTokens(chunkTokens)} tokens
 					</span>
 				</div>
 				<div className="flex justify-between gap-2">
 					<span>Last extraction</span>
-					<span className="tabular-nums text-card-foreground">
+					<span className="tabular-nums text-ink">
 						{coverage.lastFoldedAt ? timeAgo(coverage.lastFoldedAt) : "—"}
 					</span>
 				</div>
 				{coverage.running && (
 					<div className="flex justify-between gap-2" data-testid="coverage-ring-running">
 						<span>Status</span>
-						<span className="text-card-foreground">extracting…</span>
+						<span className="text-ink">extracting…</span>
 					</div>
 				)}
 			</div>

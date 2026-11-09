@@ -35,18 +35,18 @@ export function QueuedSteersBody({ steers, onRemove }: { steers: QueuedSteerLine
 						key={s.id}
 						title={s.text}
 						data-testid="queued-steer"
-						className="flex max-w-[85%] items-center gap-2 rounded-sm bg-card py-0.5 pl-2.5 pr-0.5 text-sm text-ink-2"
+						className="flex max-w-[85%] items-center gap-2 rounded-lg bg-shelf py-0.5 pl-3 pr-0.5 text-ui text-graphite"
 					>
-						<span className="shrink-0 text-muted-foreground">Queued</span>
+						<span className="shrink-0 text-meta text-faint">Queued</span>
 						<span className="min-w-0 truncate py-1">{s.text}</span>
-						{s.note && <span role="status" className={sent ? "shrink-0 pr-2 text-muted-foreground" : "shrink-0 text-destructive"}>{s.note}</span>}
+						{s.note && <span role="status" className={sent ? "shrink-0 pr-2 text-faint" : "shrink-0 text-red"}>{s.note}</span>}
 						{onRemove && !sent && (
 							<button
 								type="button"
 								onClick={() => onRemove(s.id)}
 								aria-label={`Remove queued message: ${s.text}`}
 								data-testid="queued-steer-remove"
-								className="flex size-7 shrink-0 items-center justify-center rounded-sm text-ink-2 transition-colors hover:bg-accent hover:text-foreground pointer-coarse:size-11"
+								className="flex size-7 shrink-0 items-center justify-center rounded-full text-faint transition-colors hover:text-ink pointer-coarse:size-11"
 							>
 								<XIcon aria-hidden="true" className="size-3.5" />
 							</button>

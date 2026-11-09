@@ -40,13 +40,15 @@ describe("plan block layout (pure)", () => {
 		assert.deepEqual(order.map((n) => n.id), ["a", "b", "c"]);
 		assert.equal(depth.get("c"), 2);
 		const layout = blockLayout(CHAIN.nodes, CHAIN.edges);
-		// Text-first sizing (owner, plan-hug round 2026-10-07): these short
-		// titles hug to the minimum — no more fixed 160px slabs.
+		// Text-first sizing (owner, plan-hug round 2026-10-07): boxes hug
+		// their titles — no more fixed 160px slabs. At 13px Instrument Sans
+		// (feature 025) "Beta node" still floors; the other two hug.
 		const W = nodeWidth(wrapTitle("Alpha node"));
-		assert.equal(W, NODE_W_MIN); // est ≈ 50 → floored at the min
-		// All three short titles floor — the extent is the floor itself.
-		assert.equal(nodeWidth(wrapTitle("Gamma node")), NODE_W_MIN); // est ≈ 59.9
-		assert.equal(layout.width, NODE_W_MIN);
+		assert.equal(W, 97); // est ≈ 64.6 + 2×16
+		assert.equal(nodeWidth(wrapTitle("Beta node")), NODE_W_MIN); // est ≈ 57.6 → floored at the min
+		assert.equal(nodeWidth(wrapTitle("Gamma node")), 107); // est ≈ 74.5 + 2×16
+		// The chain's extent is its widest box.
+		assert.equal(layout.width, 107);
 		assert.equal(layout.height, 3 * NODE_H + 2 * 48);
 		assert.equal(layout.nodeW.get("a"), W);
 	});
@@ -129,12 +131,12 @@ describe("plan block layout (pure)", () => {
 		// Short titles floor at the min; wide ones size to the widest line.
 		// Per-char-CLASS estimate (owner follow-up: the flat px/char rate
 		// overshot the rendered width — invisible slack beside the text).
-		assert.equal(nodeWidth(["supercalifragilistic"]), 117); // est ≈ 85 + 2×16
-		assert.equal(nodeWidth(wrapTitle("Symmetry and orthogonal complements")), 149);
+		assert.equal(nodeWidth(["supercalifragilistic"]), 143); // est ≈ 111 + 2×16
+		assert.equal(nodeWidth(wrapTitle("Symmetry and orthogonal complements")), 181);
 		// The hug is symmetric padding — 16 a side, the SAME as the vertical
 		// (44−12)/2 — and never below the floor.
 		assert.ok(nodeWidth(["a"]) === NODE_W_MIN);
-		assert.ok(Math.abs(estimateLineWidth("The normal-form ladder") - 106.3) < 0.5);
+		assert.ok(Math.abs(estimateLineWidth("The normal-form ladder") - 135.3) < 0.5);
 	});
 });
 
@@ -160,13 +162,13 @@ describe("plan block render", () => {
 		// snap 16.5→16 landed in typography round 4).
 		assert.match(html, /<svg[^>]*class="block h-auto w-full mx-auto"/);
 		// The reading font, not the mono UI font (owner, 2026-09-26) — via the
-		// runtime var (the font-prose utility would bake the @theme literal
+		// runtime var (the font-sans utility would bake the @theme literal
 		// and ignore the Appearance reading-font override).
-		assert.match(html, /<svg[^>]*font-family:var\(--font-prose\)/);
+		assert.match(html, /<svg[^>]*font-family:var\(--font-sans\)/);
 		// Lines + outlines at the app's standard 1px border weight (owner,
 		// 2026-09-26; was 1.5).
 		assert.match(html, /<rect[^>]*stroke-width="1"/);
-		assert.match(html, /max-width:143\.36px/); // (96+16) × 1.28 — boxes hug now
+		assert.match(html, /max-width:139\.08px/); // (97+16) × 16/13 — boxes hug now
 		// Centered text (owner, plan-hug round 2026-10-07): every title line
 		// anchors to its box's midline — the old x=12 left inset is gone.
 		assert.match(html, /<text[^>]*x="48"[^>]*text-anchor="middle"/); // 96/2
@@ -174,11 +176,11 @@ describe("plan block render", () => {
 		// The in-chat block speaks the dock language (owner, 2026-10-07):
 		// lighter-background boxes like the composer shells — with WHITE
 		// outlines (owner follow-up: gray fill good, box edges stay white).
-		assert.match(html, /<rect[^>]*class="fill-card stroke-white"/);
+		assert.match(html, /<rect[^>]*class="fill-shelf stroke-ink"/);
 		// Two stacked nodes: 2*NODE_H + GAP_Y = 136 extent + GRAPH_PAD on
 		// every side (strokes/glow never clip at the edges). The width
-		// rides the hug now: 96-min boxes, not the old 160 slabs.
-		assert.match(html, /viewBox="-8 -8 112 152"/);
+		// rides the hug now: "Alpha node" hugs to 97, not the old 160 slabs.
+		assert.match(html, /viewBox="-8 -8 113 152"/);
 		// Snapshot statuses render as carried.
 		assert.match(html, /data-testid="plan-node-a" data-status="visited"/);
 		assert.match(html, /data-testid="plan-node-b" data-status="upcoming"/);
@@ -229,7 +231,7 @@ describe("plan popup (live derivation)", () => {
 		assert.match(html, /data-testid="plan-node-c" data-status="upcoming"/);
 		// The current node is the glow target: a faint yellow fill, blurred
 		// so it bleeds over the edges — static, no pulse (owner, round 6).
-		assert.match(html, /fill-warning\/25/);
+		assert.match(html, /fill-bulb\/25/);
 		assert.match(html, /feGaussianBlur/);
 		assert.doesNotMatch(html, /animate-pulse/);
 		// Arrows into not-yet-visited nodes are grayed out (owner, round 6).
@@ -275,8 +277,8 @@ describe("plan popup (live derivation)", () => {
 		const whiteHeads = (html.match(/marker-end="url\(#(?:R\d+|[a-z0-9-]+)\)"/g) ?? []).length;
 		assert.equal(dimHeads, 1, "the gray-origin edge dims");
 		assert.equal(whiteHeads, 1, "the both-white edge stays white");
-		assert.match(html, /<path[^>]*class="fill-none stroke-border"/);
-		assert.match(html, /<path[^>]*class="fill-none stroke-white"/);
+		assert.match(html, /<path[^>]*class="fill-none stroke-rule"/);
+		assert.match(html, /<path[^>]*class="fill-none stroke-ink"/);
 	});
 
 	it("renders the empty state when the session has no plan", () => {

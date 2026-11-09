@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { ChevronDownIcon } from "lucide-react";
-import { BrailleSpinner } from "@/components/braille-spinner";
+import { InkWait } from "@/components/paper/blot";
 import type { ComponentProps, ReactNode } from "react";
 import {
   createContext,
@@ -134,7 +134,7 @@ export type ReasoningTriggerProps = ComponentProps<
    language; motion (spinner + shimmer) stays the working signal. */
 const defaultGetThinkingMessage = (isStreaming: boolean) => {
   if (isStreaming) {
-    return <Shimmer duration={1}>Thinking...</Shimmer>;
+    return <Shimmer duration={1} className="text-meta">Thinking...</Shimmer>;
   }
   return <p>Agent’s thinking</p>;
 };
@@ -154,7 +154,9 @@ export const ReasoningTrigger = memo(
           /* The heading register (owner round 4, 2026-10-05): the small
              mono caps of the card eyebrows — matching YOUR THINKING, whose
              rail offsets it by exactly the one-character difference. */
-          "flex w-full items-center gap-2 text-muted-foreground text-sm font-medium transition-colors hover:text-foreground",
+          /* Feature 025 (R10): the quiet row register — 12.5px faint, a
+             14px chevron, the graphite hover of the other quiet rows. */
+          "flex w-full items-center gap-[7px] text-faint text-meta transition-colors hover:text-graphite pointer-coarse:min-h-11",
           className
         )}
         {...props}
@@ -173,11 +175,13 @@ export const ReasoningTrigger = memo(
                 the component default (h-3) — IDENTICAL to the placeholder
                 spinner (owner, 2026-10-02): the handoff between the two
                 states must be visually seamless, one size everywhere. */}
-            {isStreaming && <BrailleSpinner label="Thinking" />}
+            {/* Feature 025: Notebook's breathing blot, the same glyph as the
+                thinking placeholder, so the handoff stays seamless. */}
+            {isStreaming && <InkWait label="Thinking" />}
             {getThinkingMessage(isStreaming)}
             <ChevronDownIcon
               className={cn(
-                "size-4 transition-transform",
+                "size-3.5 opacity-60 transition-transform motion-reduce:transition-none",
                 isOpen ? "rotate-180" : "rotate-0"
               )}
             />
@@ -207,8 +211,8 @@ export const ReasoningContent = memo(
     return (
       <CollapsibleContent
         className={cn(
-          "mt-4 text-sm",
-          "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-muted-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
+          "lh-quiet-panel text-sm",
+          "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-graphite outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
           className
         )}
         {...props}

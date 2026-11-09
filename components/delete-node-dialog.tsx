@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useBackdropDismiss } from "@/components/backdrop-dismiss";
+import { useModalFocus } from "@/components/modal-focus";
 
 /** The 409 extraction_running line (owner phrasing, node interlude):
  *  the server's error names the extraction; the ACTIVITY DOCK is the
@@ -52,77 +53,46 @@ export function DeleteNodeBody({
 			aria-label="Delete idea"
 			data-testid="delete-node-dialog"
 			onClick={(e) => e.stopPropagation()}
-			className="w-[32rem] max-w-[calc(100vw-2rem)] rounded-xl border bg-card p-5 "
+			className="lh-dialog"
 		>
-			<h2 className="text-sm font-semibold text-destructive">
+			<h2 className="lh-dialog-title">
 				{nodes.length === 1 ? "Delete idea?" : `Delete ${nodes.length} ideas?`}
 			</h2>
-			{/* The node name(s) below the title in JetBrains Mono (owner,
-			    2026-09-24): the name is the payload — mono suits it, and
-			    NO code-block chrome (the font already says code). Owner,
-			    2026-10-13 polish: title loses the serif display look for the
-			    abort-turn look (text-sm font-semibold mono, red kept), and
-			    the names drop the sized-up text-lg for normal text-sm —
-			    still white, still mono. Same shape as the session dialog.
-			    A multi-selection lists its names (capped at 8 + "and K
-			    more" — the count in the title carries the full number). */}
+			{/* The node name(s) below the title in mono (owner, 2026-09-24):
+			    the name is the payload, and no code-block chrome (the font
+			    already says code). A multi-selection lists its names (capped
+			    at 8 + "and K more"; the count in the title carries the rest). */}
 			<div className="mt-1.5">
 				{nodes.length === 1 ? (
-					<code data-testid="node-name-code" className="font-mono text-sm text-foreground">
+					<code data-testid="node-name-code" className="font-mono text-sm text-ink [overflow-wrap:anywhere]">
 						{nodes[0]?.name}
 					</code>
 				) : (
-					<code data-testid="node-names-code" className="font-mono text-sm text-foreground">
+					<code data-testid="node-names-code" className="font-mono text-sm text-ink [overflow-wrap:anywhere]">
 						{nodes.slice(0, 8).map((n) => n.name).join(", ")}
 						{nodes.length > 8 ? `, and ${nodes.length - 8} more` : ""}
 					</code>
 				)}
 			</div>
-			<p className="mt-2 text-sm text-muted-foreground" data-testid="node-permanence-line">
+			<p className="lh-dialog-text" data-testid="node-permanence-line">
 				{nodes.length === 1
 					? "This permanently deletes the idea. This cannot be undone."
 					: `This permanently deletes all ${nodes.length} ideas. This cannot be undone.`}
 			</p>
 			{failure && (
-				<div
-					role="alert"
-					data-testid="node-delete-failure"
-					className="mt-3 rounded-sm border border-border/60 px-3 py-2 text-sm"
-				>
-					<span className="text-foreground">
-						{failure.code === "extraction_running" ? EXTRACTION_RETRY_LINE : failure.error}
-					</span>
-					<button
-						type="button"
-						data-testid="node-delete-retry"
-						onClick={onRun}
-						disabled={busy}
-						className="ml-3 text-sm text-foreground underline-offset-2 hover:underline disabled:opacity-40"
-					>
+				<div role="alert" data-testid="node-delete-failure" className="lh-dialog-problem">
+					<span>{failure.code === "extraction_running" ? EXTRACTION_RETRY_LINE : failure.error}</span>
+					<button type="button" data-testid="node-delete-retry" onClick={onRun} disabled={busy} className="lh-text-action">
 						Try again
 					</button>
 				</div>
 			)}
-			<div className="mt-4 flex justify-end gap-2">
-				<button
-					type="button"
-					data-testid="node-delete-cancel"
-					onClick={onClose}
-					disabled={busy}
-					className="rounded-sm px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
-				>
+			<div className="lh-dialog-actions">
+				<button type="button" data-testid="node-delete-cancel" onClick={onClose} disabled={busy} className="lh-text-action">
 					Cancel
 				</button>
-				<button
-					type="button"
-					data-testid="node-delete-confirm"
-					onClick={onRun}
-					disabled={busy}
-					// Destructive red (owner, polish round) — the
-					// app's established destructive pair (chat's
-					// refusal banner): border + text, fill on hover.
-					className="rounded-sm border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-sm text-destructive transition-colors hover:bg-destructive/20 disabled:opacity-40"
-				>
+				{/* A destructive confirm: the ink pill in red. */}
+				<button type="button" data-testid="node-delete-confirm" onClick={onRun} disabled={busy} className="nb-pill lh-pill-danger">
 					{busy ? "Deleting…" : "Delete"}
 				</button>
 			</div>
@@ -151,6 +121,9 @@ export function DeleteNodeDialog({
 		if (!busy) onClose();
 	});
 	const [failure, setFailure] = useState<{ code: string; error: string } | null>(null);
+	const modal = useRef<HTMLDivElement>(null);
+	// Cancel takes the focus (the cautious default), Tab stays inside, the opener gets it back.
+	useModalFocus(modal, !!nodes && nodes.length > 0, '[data-testid="node-delete-cancel"]');
 
 	// Fresh state per dialog: closing resets.
 	useEffect(() => {
@@ -216,10 +189,7 @@ export function DeleteNodeDialog({
 	if (!nodes || nodes.length === 0) return null;
 
 	return createPortal(
-		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-background"
-			{...backdropDismiss}
-		>
+		<div ref={modal} className="nb-dialog-backdrop" {...backdropDismiss}>
 			<DeleteNodeBody
 				nodes={nodes}
 				busy={busy}

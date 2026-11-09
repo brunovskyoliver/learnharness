@@ -24,7 +24,7 @@ describe("graph section", () => {
 	it("sits in a fixed-height raised box", () => {
 		const html = render(false);
 		assert.match(html, /data-testid="graph-section-view"/);
-		assert.match(html, /h-\[260px\][^"]*rounded-\[10px\][^"]*bg-card[^"]*sm:h-\[420px\]/);
+		assert.match(html, /h-\[260px\][^"]*rounded-lg[^"]*bg-shelf[^"]*sm:h-\[420px\]/);
 		assert.doesNotMatch(html, /role="dialog"/);
 		assert.doesNotMatch(html, /data-testid="graph-collapse"/);
 	});
@@ -43,6 +43,9 @@ describe("graph section", () => {
 		assert.match(html, /aria-label="Knowledge graph"/);
 		assert.match(html, /fixed inset-0 z-50/);
 		assert.match(html, /data-testid="graph-collapse"[^>]*>.*Close<\/button>/);
+		// Feature 025: the expanded graph is on paper; Close floats as a lifted toolbar word.
+		assert.match(html, /fixed inset-0 z-50 h-dvh bg-paper/);
+		assert.match(html, /class="[^"]*lh-tool[^"]*bg-paper[^"]*shadow-lift"[^>]*data-testid="graph-collapse"|data-testid="graph-collapse"[^>]*class="[^"]*lh-tool[^"]*bg-paper[^"]*shadow-lift"/);
 	});
 
 	it("never renders Import notes inside the graph", () => {

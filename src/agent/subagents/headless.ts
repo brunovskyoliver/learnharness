@@ -279,7 +279,11 @@ async function withBrowserPage<T>(fn: (page: import("puppeteer-core").Page) => P
 		return next;
 	}
 
-	// Chrome fallback: per-job launch, close on the way out (old semantics).
+	return withChromePage(fn);
+}
+
+/** System Chrome, launched for one job and closed on the way out (the hosted sandbox rules in chromeArgs). */
+async function withChromePage<T>(fn: (page: import("puppeteer-core").Page) => Promise<T>): Promise<T> {
 	const puppeteer = (await import("puppeteer-core")).default;
 	const executablePath = resolveChromeExecutablePath();
 	const browser = await puppeteer.launch({
@@ -335,6 +339,11 @@ async function runDemo(html: string, opts: RunDemoOptions = {}): Promise<DemoRun
 
 		try {
 			await page.setViewport({ width: 900, height: 700 });
+			// The theme's defaults follow the page's colour scheme (paper light
+			// or dark, feature 025). The check asks whether the demo hard-codes a
+			// light page, so it runs on the dark defaults: a demo on the
+			// variables passes in either theme.
+			await page.emulateMediaFeatures([{ name: "prefers-color-scheme", value: "dark" }]);
 			await page.goto(pathToFileURL(file).href, { waitUntil: "load", timeout: 30_000 });
 			await new Promise((resolve) => setTimeout(resolve, settleMs));
 			// Kit demos: step the process and sweep every control, so errors in
@@ -577,6 +586,56 @@ async function renderPdfPages(
 		return out;
 	} finally {
 		await loadingTask.destroy().catch(() => {});
+	}
+}
+
+// ─── HTML to PDF (Notebook export) ─────────────────────────────────────
+
+const PDF_TIMEOUT_MS = 30_000;
+
+/** Test seam for renderPdf — undefined in production. */
+export const pdfOverride: { current?: (html: string) => Promise<Buffer> } = {};
+
+/** Why a PDF can't be printed here, or null when a browser is resolvable. */
+export function pdfUnavailableReason(): string | null {
+	if (pdfOverride.current) return null;
+	return browserServiceBinary() === null && resolveChromeExecutablePath() === null
+		? "No browser to print with: install Google Chrome or Chromium, or set CHROME_PATH."
+		: null;
+}
+
+/** Prints HTML we wrote ourselves (feature 024 export) to a PDF. JavaScript
+ *  is off and every request other than the page's own data: URLs is
+ *  refused, so nothing in a note can run or reach out. The page's CSS sets
+ *  the paper (A4, margins). The app's browser helper is tried first, as for
+ *  demos; if it cannot print (Electron's CDP may not), system Chrome does. */
+export async function renderPdf(html: string): Promise<Buffer> {
+	if (pdfOverride.current) return pdfOverride.current(html);
+	const print = async (page: import("puppeteer-core").Page): Promise<Buffer> => {
+		await page.setJavaScriptEnabled(false);
+		await page.setRequestInterception(true);
+		const onRequest = (request: import("puppeteer-core").HTTPRequest) => {
+			if (request.url().startsWith("data:")) void request.continue();
+			else void request.abort();
+		};
+		page.on("request", onRequest);
+		try {
+			await page.setContent(html, { waitUntil: "load", timeout: PDF_TIMEOUT_MS });
+			await page.evaluateHandle("document.fonts.ready").catch(() => null);
+			const pdf = await page.pdf({ printBackground: true, preferCSSPageSize: true, timeout: PDF_TIMEOUT_MS });
+			return Buffer.from(pdf);
+		} finally {
+			page.off("request", onRequest);
+			await page.setRequestInterception(false).catch(() => {});
+			// The helper's one page serves the next job: give it its JavaScript back.
+			await page.setJavaScriptEnabled(true).catch(() => {});
+		}
+	};
+	try {
+		return await withBrowserPage(print);
+	} catch (err) {
+		if (!resolveChromeExecutablePath()) throw err;
+		return withChromePage(print);
 	}
 }
 

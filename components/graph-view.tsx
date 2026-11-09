@@ -66,7 +66,7 @@
 import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { FileTextIcon, ListTreeIcon, Loader2Icon, SearchIcon, XIcon } from "lucide-react";
+import { FileTextIcon, ListTreeIcon, SearchIcon, XIcon } from "lucide-react";
 import { loadGraphLayout, propositionSessionHref, type GraphCostSummary, type GraphNode, type GraphSnapshot } from "@/src/core";
 import { planCostLabel } from "@/components/usage-format";
 import type { GraphCanvasRenderer, GraphRenderSettings } from "./graph-canvas.ts";
@@ -82,10 +82,11 @@ import { InOverlayHost } from "@/components/overlay-host";
 import { containModalTab } from "@/components/modal-focus";
 import { Hint } from "@/components/ui/hint";
 import { DEFAULT_RENDER_SETTINGS, sanitizeRenderSettings } from "@/src/core";
+import { BlotGlyph } from "@/components/paper/blot";
 
 /** The uniform node look (no state classes — canvas wants hex, not oklch):
- *  the accent color, until the state model lands. */
-const NODE_COLOR_TOKEN = "--primary";
+ *  the paper's ink (feature 025), until the state model lands. */
+const NODE_COLOR_TOKEN = "--ink";
 
 /** Per-device graph camera persistence (zoom+pan view state). v1 in the
  *  key: the stored shape is the renderer's d3 transform {k, x, y}. */
@@ -188,6 +189,11 @@ function tokenHex(cssVar: string): string {
 	return value ? cssColorToHex(value) : "#888888";
 }
 
+/** The resolved paper theme (light or dark) from the computed colour scheme on <html>. */
+function paperIsDark(): boolean {
+	return (getComputedStyle(document.documentElement).colorScheme ?? "").trim().startsWith("dark");
+}
+
 // ---- Component ------------------------------------------------------------
 
 interface Selection {
@@ -281,8 +287,8 @@ export function GraphCostControl({ costs }: { costs: GraphCostSummary }) {
 				type="button"
 				aria-expanded={open}
 				onClick={() => setOpen((o) => !o)}
-				className={`rounded-lg px-2 py-1 text-sm tabular-nums transition-colors hover:bg-accent ${
-					open ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+				className={`rounded-lg px-2 py-1 text-sm tabular-nums transition-colors hover:bg-shelf ${
+					open ? "text-ink" : "text-faint hover:text-ink"
 				}`}
 			>
 				Graph · {graphUsageLabel(costs)}
@@ -316,28 +322,28 @@ function GraphCostPanel({ costs }: { costs: GraphCostSummary }) {
 	// the pill and this panel must agree).
 	const { unpricedRuns } = displayCostTotals(costs);
 	return (
-		<div className="w-80 max-w-[calc(100vw-1.5rem)] rounded-xl border bg-card p-3 text-sm ">
+		<div className="w-80 max-w-[calc(100vw-1.5rem)] rounded-xl bg-paper p-3 text-sm shadow-lift">
 			<div className="mb-2 flex items-baseline justify-between">
-				<span className="text-sm font-medium text-muted-foreground">
+				<span className="text-sm font-medium text-faint">
 					Graph pipeline costs
 				</span>
-				<span className="text-foreground tabular-nums">
+				<span className="text-ink tabular-nums">
 					{graphUsageLabel(costs)}
 					{unpricedRuns > 0 && (
-						<span className="text-muted-foreground"> · {unpricedRuns} unpriced</span>
+						<span className="text-faint"> · {unpricedRuns} unpriced</span>
 					)}
 				</span>
 			</div>
 			<div className="flex flex-col gap-1">
 				{stageRows.map(([label, stage]) => (
 					<div key={label} className="flex items-baseline justify-between gap-2 text-sm">
-						<span className="shrink-0 text-muted-foreground">{label}</span>
+						<span className="shrink-0 text-faint">{label}</span>
 						<span className="min-w-0 text-right tabular-nums">
 							{fmtRunCost(stage.runs - stage.unpricedRuns - (stage.subscriptionRuns ?? 0) <= 0 ? null : stage.dollars, graphProviders(stage))}
 							{stage.unpricedRuns > 0 && (stage.runs - stage.unpricedRuns - (stage.subscriptionRuns ?? 0) > 0 || (stage.subscriptionRuns ?? 0) > 0) && (
-								<span className="text-muted-foreground"> +{stage.unpricedRuns} unpriced</span>
+								<span className="text-faint"> +{stage.unpricedRuns} unpriced</span>
 							)}
-							<span className="text-muted-foreground">
+							<span className="text-faint">
 								{" "}
 								· {fmtTokens(stage.tokens.inputTokens)} in / {fmtTokens(stage.tokens.outputTokens)} out
 							</span>
@@ -348,11 +354,11 @@ function GraphCostPanel({ costs }: { costs: GraphCostSummary }) {
 			<div className="mt-2 flex flex-col gap-0.5 pt-2">
 				{costs.runs.map((run) => (
 						<div key={run.startedAt} className="flex items-baseline justify-between gap-2 text-sm">
-							<span className="min-w-0 flex-1 truncate text-muted-foreground">
-								<span className="text-ink-2">{timeAgo(run.startedAt)}</span>{" "}
+							<span className="min-w-0 flex-1 truncate text-faint">
+								<span className="text-graphite">{timeAgo(run.startedAt)}</span>{" "}
 								{run.title}
 								{run.merged && (
-									<span className="text-muted-foreground">
+									<span className="text-faint">
 										{" "}
 										+{run.merged.nodes}n
 									</span>
@@ -421,7 +427,7 @@ export function GraphChromeRow({
 			{!isEmpty && (
 				<div
 					data-mobile-graph-search={mobileSearchOpen ? "true" : undefined}
-					className={cn("min-w-0 shrink rounded-xl border bg-card px-1 py-[3px] sm:static sm:w-56", mobileSearchOpen ? "fixed inset-x-2 top-2 z-30 w-auto" : "graph-chrome-fade-in w-auto sm:w-56")}
+					className={cn("min-w-0 shrink rounded-lg bg-paper px-1 py-[3px] shadow-lift sm:static sm:w-56", mobileSearchOpen ? "fixed inset-x-2 top-2 z-30 w-auto" : "graph-chrome-fade-in w-auto sm:w-56")}
 					onKeyDown={(event) => {
 						if (event.key === "Escape" && mobileSearchOpen && window.matchMedia("(max-width: 639px)").matches) {
 							event.preventDefault();
@@ -437,7 +443,7 @@ export function GraphChromeRow({
 						aria-expanded={mobileSearchOpen}
 						onClick={() => setMobileSearchOpen(true)}
 						data-testid="graph-search-toggle"
-						className={cn("size-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent sm:hidden", mobileSearchOpen ? "hidden" : "flex")}
+						className={cn("size-11 items-center justify-center rounded-lg text-faint hover:bg-shelf sm:hidden", mobileSearchOpen ? "hidden" : "flex")}
 					><SearchIcon className="size-4" aria-hidden /></button>
 					<Hint
 						// ⌘F focuses node search (surface-scoped registry action).
@@ -446,7 +452,7 @@ export function GraphChromeRow({
 						side="bottom"
 					>
 					<div className={cn("relative items-center gap-1 sm:flex", mobileSearchOpen ? "flex" : "hidden")}>
-						<SearchIcon className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+						<SearchIcon className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-faint" />
 						<input
 							ref={searchInputRef}
 							value={query}
@@ -454,31 +460,31 @@ export function GraphChromeRow({
 							placeholder="Search ideas…"
 							aria-label="Search ideas"
 							spellCheck={false}
-							className="h-7 min-w-0 w-full rounded-lg border bg-background pl-8 text-sm outline-none placeholder:text-muted-foreground focus:border-ring"
+							className="h-7 min-w-0 w-full rounded-md bg-transparent pl-8 text-sm text-ink caret-ink outline-none placeholder:text-faint"
 						/>
 						<button
 							type="button"
 							aria-label="Close search"
 							onClick={closeMobileSearch}
-							className="flex size-11 shrink-0 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent sm:hidden"
+							className="flex size-11 shrink-0 items-center justify-center rounded-lg text-faint hover:bg-shelf sm:hidden"
 						><XIcon className="size-4" aria-hidden /></button>
 					</div>
 					</Hint>
 					{noMatch && (
-						<div className={cn("px-1.5 pt-1 text-sm text-muted-foreground", !mobileSearchOpen && "max-sm:hidden")}>No matching ideas.</div>
+						<div className={cn("px-1.5 pt-1 text-sm text-faint", !mobileSearchOpen && "max-sm:hidden")}>No matching ideas.</div>
 					)}
 				</div>
 			)}
 			{/* The chain table (chains overlay, owner plan 2026-09-29). Own
 			    container (36px band), between the search and Import. */}
 			{!isEmpty && (
-				<div className={cn("graph-chrome-fade-in shrink-0 rounded-xl border bg-card px-1 py-[3px] ", mobileSearchOpen && "max-sm:hidden")}>
+				<div className={cn("graph-chrome-fade-in shrink-0 rounded-lg bg-paper px-1 py-[3px] shadow-lift", mobileSearchOpen && "max-sm:hidden")}>
 					<Hint label="Every reasoning chain" side="bottom">
 						<button
 							type="button"
 							onClick={onOpenChains}
 							data-testid="open-chain-table"
-							className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent"
+							className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-sm text-faint transition-colors hover:text-ink"
 						>
 							<ListTreeIcon className="size-4" />
 							<span className="max-sm:sr-only">Chains</span>
@@ -990,22 +996,28 @@ export function GraphView({
 			clusters: snapshot.clusters.map((c) => ({ id: c.id, label: c.label, members: c.members })),
 			colors: {
 				node: tokenHex(NODE_COLOR_TOKEN),
-				edge: tokenHex("--ring"),
-				label: tokenHex("--muted-foreground"),
-				hoverText: tokenHex("--foreground"),
+				edge: tokenHex("--nb-focus"),
+				label: tokenHex("--faint"),
+				hoverText: tokenHex("--ink"),
+				dark: paperIsDark(),
 			},
 			// Match the app typography (Geist via the body's stack).
 			fontFamily: getComputedStyle(document.body).fontFamily,
 		});
 		// Update paint and typography without resetting the live simulation.
-		const observer = new MutationObserver(() => renderer.setTheme({
+		const retheme = () => renderer.setTheme({
 			node: tokenHex(NODE_COLOR_TOKEN),
-			edge: tokenHex("--ring"),
-			label: tokenHex("--muted-foreground"),
-			hoverText: tokenHex("--foreground"),
-		}, getComputedStyle(document.body).fontFamily));
-		observer.observe(document.documentElement, { attributes: true, attributeFilter: ["style", "class"] });
-		return () => observer.disconnect();
+			edge: tokenHex("--nb-focus"),
+			label: tokenHex("--faint"),
+			hoverText: tokenHex("--ink"),
+			dark: paperIsDark(),
+		}, getComputedStyle(document.body).fontFamily);
+		// The paper theme and ink live on <html> (feature 025); "system" follows the OS.
+		const observer = new MutationObserver(retheme);
+		observer.observe(document.documentElement, { attributes: true, attributeFilter: ["style", "class", "data-theme", "data-ink"] });
+		const scheme = typeof window.matchMedia === "function" ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+		scheme?.addEventListener("change", retheme);
+		return () => { observer.disconnect(); scheme?.removeEventListener("change", retheme); };
 	}, [snapshot, isEmpty, layoutSnapshot, rendererEpoch]);
 
 	// Feed #2 — settings: just marks the frame dirty. No rebuild, no
@@ -1088,7 +1100,7 @@ export function GraphView({
 			onKeyDown={expanded ? (event) => containModalTab(event, event.currentTarget) : undefined}
 			className={cn(
 				"relative w-full",
-				!section ? "h-full" : expanded ? "fixed inset-0 z-50 h-dvh bg-background outline-none" : "h-[260px] overflow-hidden rounded-[10px] bg-card sm:h-[420px]",
+				!section ? "h-full" : expanded ? "fixed inset-0 z-50 h-dvh bg-paper outline-none" : "h-[260px] overflow-hidden rounded-lg bg-shelf sm:h-[420px]",
 			)}
 			data-graph-ready={snapshot !== null && (isEmpty || (readySnapshot === snapshot && !engineFailed)) ? "true" : undefined}
 		>
@@ -1098,30 +1110,30 @@ export function GraphView({
 					type="button"
 					onClick={section?.onCollapse}
 					data-testid="graph-collapse"
-					className="lh-no-drag lh-closed-toggle prompt-secondary absolute left-2 top-2 z-20 gap-2 bg-card"
+					className="lh-no-drag lh-closed-toggle lh-tool absolute left-2 top-2 z-20 h-9 rounded-lg bg-paper px-3 shadow-lift"
 				>
 					<XIcon aria-hidden="true" className="size-4" />
 					Close
 				</button>
 			)}
 			{!isEmpty && engineFailed && <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center px-5">
-				<div role="alert" className="pointer-events-auto flex max-h-[50dvh] max-w-md flex-col items-center gap-3 overflow-y-auto rounded-xl bg-card p-5 text-center text-sm">
+				<div role="alert" className="pointer-events-auto flex max-h-[50dvh] max-w-md flex-col items-center gap-3 overflow-y-auto rounded-xl bg-paper p-5 text-center text-sm shadow-lift">
 				<p>The knowledge graph could not load. Reload to retry. Your draft will be saved before reloading.</p>
-				<button type="button" onClick={graphRecovery.reload} className="min-h-11 rounded-md border px-4">Reload to retry</button>
+				<button type="button" onClick={graphRecovery.reload} className="lh-text-action min-h-11">Reload to retry</button>
 				{graphRecovery.error && <p>{graphRecovery.error}</p>}
 				</div>
 			</div>}
 			{isEmpty ? (
 				// The empty graph keeps the first action clear without zero-valued statistics.
 				<div className="flex h-full w-full items-center justify-center px-4">
-					<p data-testid="graph-empty" className="text-center text-ink-2">Start a session or import notes to build your graph.</p>
+					<p data-testid="graph-empty" className="text-center text-graphite">Start a session or import notes to build your graph.</p>
 				</div>
 			) : (
 				<div ref={containerRef} className="relative h-full w-full">
 					{/* THE single canvas: every layer (hulls, edges, nodes, both
 					    label systems, hover) draws into it, once per frame. */}
 					<canvas ref={canvasRef} className="block h-full w-full touch-none" />
-					{readySnapshot !== snapshot && !engineFailed && <div role="status" aria-label="Loading knowledge graph" className="pointer-events-none absolute inset-0 flex items-center justify-center px-4 text-sm text-muted-foreground">Loading knowledge graph…</div>}
+					{readySnapshot !== snapshot && !engineFailed && <div role="status" aria-label="Loading knowledge graph" className="pointer-events-none absolute inset-0 flex items-center justify-center px-4 text-sm text-faint">Loading knowledge graph…</div>}
 					{/* The context menu's anchor: a zero-size point at the
 					    right-click position (canvas-relative == container-relative,
 					    the canvas fills this div). */}
@@ -1143,7 +1155,7 @@ export function GraphView({
 					anchorRef={ctxAnchorRef}
 					testid="node-context-menu"
 					preferredSide="down"
-					menuClass="flex w-fit flex-col gap-0.5 rounded-xl border bg-card p-2 text-sm "
+					menuClass="flex w-fit flex-col gap-0.5 text-sm"
 				>
 					<button
 						type="button"
@@ -1152,7 +1164,7 @@ export function GraphView({
 							setDeletingNode({ id: ctxNode.id, name: ctxNode.name });
 							setCtxNode(null);
 						}}
-						className="flex items-center rounded-lg px-2.5 py-1.5 text-left text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+						className="flex items-center rounded-lg px-2.5 py-1.5 text-left text-faint transition-colors hover:bg-shelf hover:text-ink"
 					>
 						Delete
 					</button>
@@ -1233,11 +1245,11 @@ export function GraphView({
 			{pipelineRuns.map((run) => (
 				<div
 					key={run.id}
-					className="flex items-center gap-2 rounded-full border bg-card px-3 py-1.5 text-sm text-muted-foreground "
+					className="flex items-center gap-2 rounded-full bg-paper px-3 py-1.5 text-sm text-faint shadow-lift"
 				>
-					<Loader2Icon className="size-3.5 shrink-0 animate-spin" />
+					<span className="nb-ink-wait shrink-0" aria-hidden="true"><BlotGlyph className="nb-ink-wait-blot" size={12} /></span>
 					<span className="capitalize">{run.phase}</span>
-					<span className="max-w-48 truncate text-foreground">{run.title}</span>
+					<span className="max-w-48 truncate text-ink">{run.title}</span>
 					<span className="tabular-nums">{Math.max(0, Math.round((Date.now() - run.startedAt) / 1000))}s</span>
 				</div>
 			))}
@@ -1252,21 +1264,21 @@ export function GraphView({
 					// lh-no-drag: the card is placed anywhere on the canvas —
 					// when it lands in the top strip it must stay interactive
 					// over home.tsx's drag surface (2026-09-17).
-					className="lh-no-drag absolute z-10 w-80 max-w-[calc(100%-1rem)] rounded-xl border bg-card p-4 text-left "
+					className="lh-no-drag absolute z-10 w-80 max-w-[calc(100%-1rem)] rounded-xl bg-paper p-4 text-left shadow-lift"
 				>
 					<div className="text-sm font-medium leading-snug">{selected.node.name}</div>
-					<div className="mt-1 text-sm leading-relaxed text-muted-foreground">{selected.node.statement}</div>
+					<div className="mt-1 text-sm leading-relaxed text-faint">{selected.node.statement}</div>
 					{selected.sourceIds.length > 0 ? (
 						<div className="mt-3 flex flex-col gap-1">
-							<div className="text-sm text-muted-foreground">Sessions</div>
+							<div className="text-sm text-faint">Sessions</div>
 							{selected.sourceIds.map((sourceId) => {
 								// An imported-notes file: a STATIC entry — the path,
 								// plain text, never a link (no session to open).
 								if (snapshot?.fileSources?.[sourceId] !== undefined) {
 									return (
 										<div key={sourceId} className="flex items-center gap-1.5">
-											<FileTextIcon className="size-3.5 shrink-0 text-muted-foreground" />
-											<span className="min-w-0 flex-1 truncate px-2 py-1.5 text-sm text-muted-foreground">
+											<FileTextIcon className="size-3.5 shrink-0 text-faint" />
+											<span className="min-w-0 flex-1 truncate px-2 py-1.5 text-sm text-faint">
 												{snapshot.fileSources[sourceId]}
 											</span>
 										</div>
@@ -1278,7 +1290,7 @@ export function GraphView({
 										<Link
 											href={propositionSessionHref(selected.node, sourceId)}
 											scroll={false}
-											className="min-w-0 flex-1 truncate rounded-md px-2 py-1.5 text-sm text-foreground transition-colors hover:bg-accent"
+											className="min-w-0 flex-1 truncate rounded-md px-2 py-1.5 text-sm text-ink transition-colors hover:bg-shelf"
 										>
 											{snapshot?.sessions[sourceId] ?? sourceId}
 										</Link>
@@ -1287,7 +1299,7 @@ export function GraphView({
 							})}
 						</div>
 					) : (
-						<div className="mt-3 text-sm text-muted-foreground">No sessions recorded.</div>
+						<div className="mt-3 text-sm text-faint">No sessions recorded.</div>
 					)}
 				</div>
 			)}

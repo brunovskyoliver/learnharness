@@ -46,6 +46,7 @@ export const BACKGROUND_MODEL_ROLES = [
 	"visualMaker",
 	"extractor",
 	"auditor",
+	"notebook", // Notebook mode's reads, replies, sketches and chat (feature 024)
 ] as const;
 
 export type BackgroundModelRole = (typeof BACKGROUND_MODEL_ROLES)[number];
@@ -226,6 +227,7 @@ export const ROLE_SLOT: Readonly<Record<ModelRole, ModelSlotName>> = {
 	auditor: "cheap",
 	visualMaker: "vision",
 	pdfReader: "vision",
+	notebook: "strong", // feature 024: margin questions and note chat need the strong tier
 };
 
 /** General settings — app-level behavior. Version DISPLAY and plans login
@@ -233,6 +235,136 @@ export const ROLE_SLOT: Readonly<Record<ModelRole, ModelSlotName>> = {
 export interface GeneralSettings {
 	/** Automatic startup/24h update checks (default ON). Manual checks bypass this. */
 	autoUpdate?: boolean;
+	/** Which interface the app opens in (feature 024): Study (default) or
+	 *  Notebook. A mode switch changes only this key. */
+	interface?: InterfaceMode;
+}
+
+// ─── Notebook (feature 024) ──────────────────────────────────────────────────
+
+export const INTERFACE_MODES = ["study", "notebook"] as const;
+export type InterfaceMode = (typeof INTERFACE_MODES)[number];
+
+export const NOTEBOOK_START_MODES = ["thinks", "ask"] as const;
+export const NOTEBOOK_PACES = ["regular", "slow"] as const;
+export const NOTEBOOK_LAYOUTS = ["both", "right", "marks"] as const;
+export const NOTEBOOK_APPEARANCES = ["system", "light", "dark"] as const;
+export const NOTEBOOK_TEXT_SIZES = ["small", "default", "large"] as const;
+export const NOTEBOOK_LETTERINGS = ["serif", "plain"] as const;
+export const NOTEBOOK_INKS = ["ink", "blue", "green", "red", "purple", "brown", "orange"] as const;
+
+export type NotebookStartMode = (typeof NOTEBOOK_START_MODES)[number];
+export type NotebookPace = (typeof NOTEBOOK_PACES)[number];
+export type NotebookLayout = (typeof NOTEBOOK_LAYOUTS)[number];
+export type NotebookAppearance = (typeof NOTEBOOK_APPEARANCES)[number];
+export type NotebookTextSize = (typeof NOTEBOOK_TEXT_SIZES)[number];
+export type NotebookLettering = (typeof NOTEBOOK_LETTERINGS)[number];
+export type NotebookInk = (typeof NOTEBOOK_INKS)[number];
+
+/** Reviewer name length bounds (data-model.md: 1..60). */
+export const NOTEBOOK_REVIEWER_NAME_MAX = 60;
+/** Reviewer instructions length bound (data-model.md: 0..2000). */
+export const NOTEBOOK_REVIEWER_INSTRUCTIONS_MAX = 2000;
+/** Reviewer ids: the seeded words or a client nanoid. */
+export const NOTEBOOK_REVIEWER_ID = /^[A-Za-z0-9_-]{1,64}$/;
+
+/** A reviewer: whose eyes the Notebook reads the note with. */
+export interface NotebookReviewer {
+	id: string;
+	/** 1..60 characters, not blank. */
+	name: string;
+	/** 0..2000 characters; empty = read plainly. */
+	instructions: string;
+	/** Present on the five reviewers the app ships with. */
+	seeded?: true;
+}
+
+/** The default reviewer (absent or unknown reviewerId resolves here). */
+export const DEFAULT_REVIEWER_ID = "plain";
+
+/** The reviewers the app ships with (ui-contract.md "Reviewers page").
+ *  They are the FACTORY value of `notebook.reviewers`: a record without
+ *  the key reads these, and the first reviewers write stores the whole
+ *  list, so deleting a seeded one sticks. */
+export const SEEDED_REVIEWERS: readonly Readonly<NotebookReviewer>[] = Object.freeze([
+	Object.freeze({ id: "plain", name: "Plain reader", instructions: "", seeded: true as const }),
+	Object.freeze({
+		id: "examiner",
+		name: "Examiner",
+		instructions: "Reads like the person grading this. Asks what you’d be asked, never gives the answer.",
+		seeded: true as const,
+	}),
+	Object.freeze({
+		id: "editor",
+		name: "Editor",
+		instructions: "Cares about clarity and structure. Points at the sentence that loses the reader.",
+		seeded: true as const,
+	}),
+	Object.freeze({
+		id: "sceptic",
+		name: "Sceptic",
+		instructions: "Disagrees with your premise and makes you defend it.",
+		seeded: true as const,
+	}),
+	Object.freeze({
+		id: "professor",
+		name: "Professor",
+		instructions: "Checks the reasoning step by step and asks for the missing one.",
+		seeded: true as const,
+	}),
+]);
+
+/** Notebook settings (data-model.md). Every field optional (delta). */
+export interface NotebookSettings {
+	startMode?: NotebookStartMode;
+	pointerInk?: boolean;
+	pace?: NotebookPace;
+	layout?: NotebookLayout;
+	appearance?: NotebookAppearance;
+	textSize?: NotebookTextSize;
+	lettering?: NotebookLettering;
+	ink?: NotebookInk;
+	/** Absent = the seeded list; present (even empty) = exactly this list. */
+	reviewers?: NotebookReviewer[];
+	/** The note Notebook reopens. */
+	lastNoteId?: string;
+}
+
+/** Pure: what is wrong with a reviewer, or null when it is well formed.
+ *  Shared by the lenient sanitizer (drop) and the strict PUT parser (400). */
+export function reviewerProblem(raw: unknown): string | null {
+	if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return "must be an object";
+	const r = raw as Record<string, unknown>;
+	if (typeof r.id !== "string" || !NOTEBOOK_REVIEWER_ID.test(r.id)) return "id must be 1-64 letters, digits, _ or -";
+	if (typeof r.name !== "string" || !r.name.trim() || r.name.length > NOTEBOOK_REVIEWER_NAME_MAX) {
+		return `name must be 1-${NOTEBOOK_REVIEWER_NAME_MAX} characters`;
+	}
+	if (typeof r.instructions !== "string" || r.instructions.length > NOTEBOOK_REVIEWER_INSTRUCTIONS_MAX) {
+		return `instructions must be a string of at most ${NOTEBOOK_REVIEWER_INSTRUCTIONS_MAX} characters`;
+	}
+	if (r.seeded !== undefined && r.seeded !== true) return "seeded must be true when present";
+	return null;
+}
+
+function toReviewer(r: Record<string, unknown>): NotebookReviewer {
+	const out: NotebookReviewer = { id: r.id as string, name: r.name as string, instructions: r.instructions as string };
+	if (r.seeded === true) out.seeded = true;
+	return out;
+}
+
+/** Pure: the reviewer a note uses — its reviewerId when it still exists,
+ *  else Plain reader (or the first reviewer when Plain reader was deleted;
+ *  null only when the list is empty). */
+export function resolveReviewer(
+	reviewers: readonly NotebookReviewer[],
+	reviewerId: string | undefined,
+): NotebookReviewer | null {
+	return (
+		reviewers.find((r) => r.id === reviewerId) ??
+		reviewers.find((r) => r.id === DEFAULT_REVIEWER_ID) ??
+		reviewers[0] ??
+		null
+	);
 }
 
 /** Agent settings — everything about the non-conversation machinery. */
@@ -282,8 +414,8 @@ export interface AppearanceSettings {
 	/** The one user-chosen color; everything else derives per-mode in code.
 	 *  null = the mode's default background. */
 	background?: string | null;
-	/** The main reading font (everything that is Source Sans 3 today), by
-	 *  name — user-chosen from installed fonts. null = Source Sans 3. */
+	/** Legacy reading font by name (pre-025). Kept on disk and validated;
+	 *  no longer styles the app (owner, 2026-11-07, feature 025). */
 	fontFamily?: string | null;
 	/** Reading font size in px (12–24, default 17). Headings render as
 	 *  multiples of this, so one knob scales the document coherently. */
@@ -367,6 +499,8 @@ export interface UserSettings {
 	appearance?: AppearanceSettings;
 	graph?: GraphSettings;
 	compaction?: CompactionSettings;
+	/** Notebook mode (feature 024). */
+	notebook?: NotebookSettings;
 	[key: string]: unknown;
 }
 
@@ -392,21 +526,35 @@ export interface FactorySettings {
 	};
 	graph: Required<GraphSettings>;
 	compaction: Required<CompactionSettings>;
+	notebook: Required<Omit<NotebookSettings, "lastNoteId" | "reviewers">> & {
+		reviewers: readonly Readonly<NotebookReviewer>[];
+	};
 }
 
 export const FACTORY_SETTINGS: FactorySettings = {
 	version: CURRENT_SETTINGS_VERSION,
-	general: { autoUpdate: true },
+	general: { autoUpdate: true, interface: "study" },
 	appearance: {
 		mode: "dark",
 		background: null, // the default black canvas lives in globals.css
-		fontFamily: null, // Source Sans 3
+		fontFamily: null, // legacy, unused for styling since 025
 		proseFontSize: 17,
 		sessionNameSerif: false,
 		mdRendering: { headingWeight: 700, boldColor: null, italicColor: null },
 	},
 	graph: { enabled: true, rendering: true, extractionChunkTokens: 4096 },
 	compaction: { thresholdTokens: 150_000 },
+	notebook: {
+		startMode: "thinks",
+		pointerInk: false,
+		pace: "regular",
+		layout: "both",
+		appearance: "system",
+		textSize: "default",
+		lettering: "serif",
+		ink: "ink",
+		reviewers: SEEDED_REVIEWERS,
+	},
 };
 
 /** The chunk budget's validated floor (GraphSettings.extractionChunkTokens
@@ -441,6 +589,50 @@ function sanitizeGeneral(raw: Record<string, unknown>): GeneralSettings {
 	const out: GeneralSettings = {};
 	const autoUpdate = boolOrDrop(raw.autoUpdate);
 	if (autoUpdate !== undefined) out.autoUpdate = autoUpdate;
+	const mode = oneOf(raw.interface, INTERFACE_MODES);
+	if (mode !== undefined) out.interface = mode;
+	return out;
+}
+
+/** The value when it is one of `options`, else undefined (drop). */
+function oneOf<T extends string>(value: unknown, options: readonly T[]): T | undefined {
+	return typeof value === "string" && (options as readonly string[]).includes(value) ? (value as T) : undefined;
+}
+
+/** Lenient read side (feature 024): each bad field drops to its factory
+ *  default; a bad reviewer drops alone (and a repeated id keeps the
+ *  first); a non-array reviewers key drops, so the seeded list returns. */
+function sanitizeNotebook(raw: Record<string, unknown>): NotebookSettings {
+	const out: NotebookSettings = {};
+	const startMode = oneOf(raw.startMode, NOTEBOOK_START_MODES);
+	if (startMode) out.startMode = startMode;
+	const pointerInk = boolOrDrop(raw.pointerInk);
+	if (pointerInk !== undefined) out.pointerInk = pointerInk;
+	const pace = oneOf(raw.pace, NOTEBOOK_PACES);
+	if (pace) out.pace = pace;
+	const layout = oneOf(raw.layout, NOTEBOOK_LAYOUTS);
+	if (layout) out.layout = layout;
+	const appearance = oneOf(raw.appearance, NOTEBOOK_APPEARANCES);
+	if (appearance) out.appearance = appearance;
+	const textSize = oneOf(raw.textSize, NOTEBOOK_TEXT_SIZES);
+	if (textSize) out.textSize = textSize;
+	const lettering = oneOf(raw.lettering, NOTEBOOK_LETTERINGS);
+	if (lettering) out.lettering = lettering;
+	const ink = oneOf(raw.ink, NOTEBOOK_INKS);
+	if (ink) out.ink = ink;
+	if (Array.isArray(raw.reviewers)) {
+		const seen = new Set<string>();
+		const reviewers: NotebookReviewer[] = [];
+		for (const entry of raw.reviewers) {
+			if (reviewerProblem(entry) !== null) continue;
+			const reviewer = toReviewer(entry as Record<string, unknown>);
+			if (seen.has(reviewer.id)) continue;
+			seen.add(reviewer.id);
+			reviewers.push(reviewer);
+		}
+		out.reviewers = reviewers;
+	}
+	if (typeof raw.lastNoteId === "string" && raw.lastNoteId) out.lastNoteId = raw.lastNoteId;
 	return out;
 }
 
@@ -624,6 +816,9 @@ export function sanitizeUserSettings(raw: unknown): UserSettings | null {
 	if (r.models !== null && typeof r.models === "object" && !Array.isArray(r.models)) {
 		const models = sanitizeModels(r.models as Record<string, unknown>);
 		if (Object.keys(models).length) out.models = models;
+	}
+	if (r.notebook !== null && typeof r.notebook === "object" && !Array.isArray(r.notebook)) {
+		out.notebook = sanitizeNotebook(r.notebook as Record<string, unknown>);
 	}
 	if (r.graph !== null && typeof r.graph === "object" && !Array.isArray(r.graph)) {
 		out.graph = sanitizeGraph(r.graph as Record<string, unknown>);

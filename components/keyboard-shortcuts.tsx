@@ -22,12 +22,18 @@
  * event first and can claim it with stopPropagation.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useModalFocus } from "@/components/modal-focus";
 import { chatUsesNativeTraversal } from "@/components/enter-submits";
 import { useBackdropDismiss } from "@/components/backdrop-dismiss";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { switchInterface } from "@/components/interface-switch";
+import { navigateTo } from "@/components/paper/navigate";
 import {
 	actionForBinding,
+	interfaceOfPath,
+	isNotebookPath,
+	otherInterface,
 	bindingForAction,
 	commandPaletteDefers,
 	eventBinding,
@@ -46,23 +52,36 @@ export { kbdEventForAction };
 
 export function KeyboardShortcuts() {
 	const router = useRouter();
+	const pathname = usePathname();
 	const [cheatOpen, setCheatOpen] = useState(false);
 	const { open: openSettings } = useSettingsDialog();
 	const sidebar = useSidebar();
-	const openSettingsFromKeyboard = () => { if (sidebar.overlay) sidebar.close(); openSettings(); };
+	// The sidebar gives its focus back before the settings open over the page.
+	const openSettingsFromKeyboard = () => { if (!sidebar.open) { openSettings(); return; } sidebar.close(); requestAnimationFrame(() => openSettings()); };
 
 	// Router + cheat + settings state inside a ref so the keydown listener
 	// (attached once) never goes stale.
 	const handlersRef = useRef<{
 		router: ReturnType<typeof useRouter>;
+		pathname: string;
 		setCheatOpen: (v: boolean) => void;
 		openSettings: () => void;
-	}>({ router, setCheatOpen, openSettings: openSettingsFromKeyboard });
-	handlersRef.current = { router, setCheatOpen, openSettings: openSettingsFromKeyboard };
+	}>({ router, pathname, setCheatOpen, openSettings: openSettingsFromKeyboard });
+	handlersRef.current = { router, pathname, setCheatOpen, openSettings: openSettingsFromKeyboard };
 
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
 			if (e.defaultPrevented) return;
+			// The mode toggle works everywhere, Notebook included (feature 024).
+			if (actionForBinding(eventBinding(e)) === "toggle-interface") {
+				e.preventDefault();
+				const { router: nav, pathname: here } = handlersRef.current;
+				void switchInterface(otherInterface(interfaceOfPath(here)), (href) => navigateTo(nav, href, "mode"));
+				return;
+			}
+			// Notebook owns every other key on its routes: native Tab order,
+			// its own Escape layers and shortcuts. Study's map stays out.
+			if (isNotebookPath(handlersRef.current.pathname)) return;
 			// ML-result chats retain native Tab/Shift+Tab (owner, feature 008).
 			if (e.key === "Tab" && chatUsesNativeTraversal(document)) return;
 			// Dialogs own native traversal, including their portaled child menus.
@@ -174,6 +193,9 @@ export function KeyboardShortcuts() {
  *  stay discoverable. */
 function CheatSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
 	const backdropDismiss = useBackdropDismiss(onClose);
+	const sheet = useRef<HTMLDivElement>(null);
+	// The sheet takes the focus (it scrolls by keyboard), Tab stays in it, the focus goes back on close.
+	useModalFocus(sheet, open, '[role="dialog"]');
 	if (!open) return null;
 	const scopes = ["global", "chat", "graph"] as const;
 	const scopeLabels: Record<(typeof scopes)[number], string> = {
@@ -183,31 +205,37 @@ function CheatSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
 	};
 	return (
 		<div
+			ref={sheet}
 			data-testid="cheat-sheet"
-			className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+			className="nb-dialog-backdrop"
 			{...backdropDismiss}
 		>
 			<div
-				className="max-h-[80vh] w-full max-w-[36rem] overflow-y-auto rounded-xl border bg-card p-5 "
+				role="dialog"
+				aria-modal="true"
+				aria-labelledby="cheat-sheet-title"
+				tabIndex={-1}
+				className="lh-dialog"
+				style={{ "--lh-dialog-width": "36rem", maxHeight: "min(80vh, calc(100dvh - 32px))" } as CSSProperties}
 				onClick={(e) => e.stopPropagation()}
 			>
-				<div className="mb-4 flex items-baseline justify-between">
-					<span className="text-sm font-medium text-card-foreground">Keyboard shortcuts</span>
-					<span className="text-sm text-muted-foreground">Esc to close</span>
+				<div className="mb-5 flex items-baseline justify-between gap-4">
+					<h2 id="cheat-sheet-title" className="lh-dialog-title">Keyboard shortcuts</h2>
+					<span className="lh-dialog-meta shrink-0">Esc to close</span>
 				</div>
 				{scopes.map((scope) => {
 					const actions = KEYBOARD_ACTIONS.filter((a) => a.scope === scope);
 					if (actions.length === 0) return null;
 					return (
 						<div key={scope} className="mb-4">
-							<div className="mb-1.5 text-sm text-muted-foreground">
+							<div className="mb-1.5 text-xs font-medium text-faint">
 								{scopeLabels[scope]}
 							</div>
 							<div className="flex flex-col gap-1">
 								{actions.map((a) => (
-									<div key={a.id} className="flex items-center justify-between gap-4 text-sm">
-										<span className="text-muted-foreground">{a.label}</span>
-										<kbd className="rounded-md border border-border bg-background px-1.5 py-0.5 font-mono text-xs text-card-foreground">
+									<div key={a.id} className="flex items-center justify-between gap-4 text-ui">
+										<span className="text-graphite">{a.label}</span>
+										<kbd className="rounded-md px-1.5 py-0.5 font-mono text-xs text-ink ring-1 ring-inset ring-rule">
 											{formatBinding(bindingForAction(a.id))}
 										</kbd>
 									</div>

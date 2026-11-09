@@ -54,28 +54,28 @@ export function KnowledgeSummary({
 			    part with one empty line; the notes COUNT (never the file
 			    list) rides after the same parting. */}
 			<div className="flex flex-col gap-1">
-				<p className="font-ui text-sm text-muted-foreground">
+				<p className="font-sans text-sm text-faint">
 					{propositions} {propositions === 1 ? "proposition" : "propositions"}
 				</p>
-				<p className="font-ui text-sm text-muted-foreground">
+				<p className="font-sans text-sm text-faint">
 					{chains} {chains === 1 ? "chain" : "chains"}
 				</p>
 			</div>
 			<div className="h-4" aria-hidden="true" />
 			<div className="flex flex-col gap-1">
-				<p className="font-ui text-sm text-muted-foreground">
+				<p className="font-sans text-sm text-faint">
 					{teachSessions} {teachSessions === 1 ? "teaching session" : "teaching sessions"}
 				</p>
-				<p className="font-ui text-sm text-muted-foreground">
+				<p className="font-sans text-sm text-faint">
 					{practiceSessions} {practiceSessions === 1 ? "practice session" : "practice sessions"}
 				</p>
 			</div>
 			<div className="h-4" aria-hidden="true" />
-			<p className="font-ui text-sm text-muted-foreground">
+			<p className="font-sans text-sm text-faint">
 				{importedNotes} {importedNotes === 1 ? "imported note" : "imported notes"}
 			</p>
 			{empty && (
-				<p className="pt-2 font-ui text-sm text-muted-foreground">
+				<p className="pt-2 font-sans text-sm text-faint">
 					Nothing here yet — import notes to begin building the graph.
 				</p>
 			)}
@@ -100,7 +100,7 @@ export function KnowledgeSummaryStatus({ loading, error, hasData, onRetry }: {
 	);
 	if (!error) return null;
 	if (hasData) return (
-		<div role="status" className="flex flex-wrap items-center justify-center gap-2 text-sm text-muted-foreground">
+		<div role="status" className="flex flex-wrap items-center justify-center gap-2 text-sm text-faint">
 			<span>Could not refresh. Showing the last summary.</span>
 			<Button variant="ghost" size="sm" onClick={onRetry}>Retry</Button>
 		</div>
@@ -195,7 +195,7 @@ export function MinimalHome({
 	const practiceSessions = chats.filter((c) => c.kind === "practice").length;
 
 	return (
-		<div data-testid="graph-section-minimal" className="relative h-[260px] overflow-hidden rounded-[10px] bg-card sm:h-[420px]">
+		<div data-testid="graph-section-minimal" className="relative h-[260px] overflow-hidden rounded-lg bg-shelf sm:h-[420px]">
 			{/* The quiet summary — centered in Home's graph section. */}
 			<div className="flex h-full items-center justify-center px-6">
 				<div className="flex flex-col items-center gap-4">
@@ -219,13 +219,13 @@ export function MinimalHome({
 			    and stay gone. */}
 			<div className="lh-no-drag absolute right-2 top-2 z-10 flex max-w-[calc(100%-1rem)] flex-col items-end gap-2">
 				<div className="flex min-w-0 items-start gap-2">
-					<div className="graph-chrome-fade-in shrink-0 rounded-xl border bg-card px-1 py-[3px] ">
+					<div className="graph-chrome-fade-in shrink-0 rounded-lg bg-paper px-1 py-[3px] shadow-lift">
 						<Hint label="Every reasoning chain" side="bottom">
 							<button
 								type="button"
 								onClick={() => setChainsOpen(true)}
 								data-testid="open-chain-table"
-								className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent"
+								className="flex h-7 items-center gap-1.5 rounded-lg px-2.5 text-sm text-faint transition-colors hover:text-ink"
 							>
 								<ListTreeIcon className="size-4" />
 								Chains

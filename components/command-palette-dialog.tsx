@@ -5,6 +5,8 @@ import { useEffect, useId, useMemo, useRef, useState, type RefObject } from "rea
 import { BookOpenIcon, DumbbellIcon, FileTextIcon, FolderIcon, SearchIcon, ZapIcon } from "lucide-react";
 import { DocSnippetText } from "@/components/library/doc-snippet";
 import { useDocumentSearch } from "@/components/library/use-document-search";
+import { switchInterface } from "@/components/interface-switch";
+import { navigateTo } from "@/components/paper/navigate";
 import { createBlankPage, createStudyNotes, SAVE_PASSAGE_EVENT, usePagePane } from "@/components/library/page-pane-api";
 import { useSessionList, useSessionListDemand } from "@/components/session-list";
 import { useSettingsDialog } from "@/components/settings/settings-dialog.tsx";
@@ -36,7 +38,7 @@ const ROUTES: Partial<Record<PaletteActionId, string>> = {
 };
 
 function EntryIcon({ entry }: { entry: PaletteEntry }) {
-	const className = "ui-icon shrink-0 text-muted-foreground";
+	const className = "ui-icon shrink-0 text-faint";
 	if (entry.kind === "session") return entry.practice ? <DumbbellIcon className={className} aria-hidden="true" /> : <BookOpenIcon className={className} aria-hidden="true" />;
 	if (entry.kind === "item" || entry.kind === "passage") return <FileTextIcon className={className} aria-hidden="true" />;
 	if (entry.kind === "folder") return <FolderIcon className={className} aria-hidden="true" />;
@@ -44,19 +46,21 @@ function EntryIcon({ entry }: { entry: PaletteEntry }) {
 }
 
 /** The list, pure for render tests. */
-export function PaletteList({ groups, activeId, listId, optionId, onHover, onPick }: {
+export function PaletteList({ groups, activeId, keyboardActive = false, listId, optionId, onHover, onPick }: {
 	groups: readonly PaletteGroup[];
 	activeId: string | null;
+	/** The active row came from the arrows: it shows the focus ring too. */
+	keyboardActive?: boolean;
 	listId: string;
 	optionId: (entry: PaletteEntry) => string;
 	onHover: (id: string) => void;
 	onPick: (entry: PaletteEntry) => void;
 }) {
 	return (
-		<div id={listId} role="listbox" aria-label="Commands" data-testid="command-palette-list" className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain px-1 pb-1">
+		<div id={listId} role="listbox" aria-label="Commands" data-testid="command-palette-list" className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain px-1.5 pb-1.5">
 			{groups.map((group) => (
 				<div key={group.label} role="group" aria-label={group.label} className="flex flex-col">
-					<div className="px-2.5 pb-0.5 pt-1.5 text-sm text-muted-foreground" aria-hidden="true">{group.label}</div>
+					<div className="px-2.5 pb-1 pt-2 text-xs text-faint" aria-hidden="true">{group.label}</div>
 					{group.entries.map((entry) => (
 						<div
 							key={entry.id}
@@ -69,14 +73,15 @@ export function PaletteList({ groups, activeId, listId, optionId, onHover, onPic
 							// Keep focus in the field; the pick closes the dialog.
 							onMouseDown={(event) => event.preventDefault()}
 							onClick={() => onPick(entry)}
-							className={cn("flex min-h-9 cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1 text-base text-foreground pointer-coarse:min-h-11", entry.id === activeId && "bg-card")}
+							data-keyboard={(entry.id === activeId && keyboardActive) || undefined}
+							className={cn("flex min-h-9 cursor-pointer items-center gap-2.5 rounded-md px-2.5 py-1 text-ui text-ink pointer-coarse:min-h-11", entry.id === activeId && "bg-shelf", entry.id === activeId && keyboardActive && "outline-2 -outline-offset-2 outline-focus")}
 						>
 							<EntryIcon entry={entry} />
 							<span className="flex min-w-0 flex-1 flex-col [overflow-wrap:anywhere]">
 							{entry.label}
-							{entry.kind === "passage" && entry.hit.snippet && <DocSnippetText snippet={entry.hit.snippet} className="text-sm text-ink-2" />}
+							{entry.kind === "passage" && entry.hit.snippet && <DocSnippetText snippet={entry.hit.snippet} className="text-meta text-graphite" />}
 						</span>
-							{entry.meta && <span className="min-w-0 shrink-[2] truncate text-sm text-muted-foreground">{entry.meta}</span>}
+							{entry.meta && <span className="min-w-0 shrink-[2] truncate text-meta text-faint">{entry.meta}</span>}
 						</div>
 					))}
 				</div>
@@ -99,6 +104,8 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 	const library = useLibrarySnapshot(open);
 	const [query, setQuery] = useState("");
 	const [activeId, setActiveId] = useState<string | null>(null);
+	// The arrows moved the active row (its focus ring shows); a pointer move clears it.
+	const [byKeys, setByKeys] = useState(false);
 	const [failure, setFailure] = useState<string | null>(null);
 	const listId = useId();
 	const baseId = useId();
@@ -134,7 +141,7 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 	}, [open, active?.id]);
 
 	const close = () => onOpenChange(false);
-	const go = (href: string) => { skipReturn.current = true; close(); router.push(href); };
+	const go = (href: string) => { skipReturn.current = true; close(); navigateTo(router, href); };
 
 	const runAction = async (action: PaletteActionId) => {
 		const href = ROUTES[action];
@@ -164,12 +171,13 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 			case "open-settings":
 				skipReturn.current = true;
 				close();
-				if (sidebar.overlay) sidebar.close();
+				sidebar.close();
 				openSettings(undefined, undefined, opener.current ?? undefined);
 				return;
 			case "toggle-sidebar":
 				close();
-				sidebar.toggle();
+				// After the palette has given its focus back, so the sidebar keeps it.
+				requestAnimationFrame(() => sidebar.toggle("click"));
 				return;
 			case "toggle-right-pane":
 				close();
@@ -202,6 +210,12 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 				close();
 				window.dispatchEvent(new CustomEvent(kbdEventForAction("cheat-sheet")));
 				return;
+			case "switch-to-notebook":
+				skipReturn.current = true;
+				close();
+				sidebar.close();
+				void switchInterface("notebook", (href) => navigateTo(router, href, "mode"));
+				return;
 		}
 	};
 
@@ -211,7 +225,7 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 		if (entry.kind === "folder") { go(`/library?folder=${encodeURIComponent(entry.folderId)}`); return; }
 		skipReturn.current = true;
 		close();
-		if (sidebar.overlay) sidebar.close();
+		sidebar.close();
 		if (entry.kind === "passage") {
 			workspace?.openItem({ id: entry.hit.itemId, name: entry.hit.name, kind: entry.hit.kind, size: entry.hit.size }, entry.hit.jump ?? undefined);
 			return;
@@ -233,6 +247,7 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 			if (n === 0) return;
 			const at = active ? flat.indexOf(active) : -1;
 			setActiveId(flat[(at + (event.key === "ArrowDown" ? 1 : -1) + n) % n]!.id);
+			setByKeys(true);
 		} else if (event.key === "Enter") {
 			event.preventDefault();
 			if (active) pick(active);
@@ -246,7 +261,7 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 				showCloseButton={false}
 				aria-describedby={undefined}
 				data-testid="command-palette"
-				className="top-[10dvh] flex max-h-[min(70dvh,32rem)] translate-y-0 flex-col gap-0 overflow-hidden rounded-[10px] border-0 bg-popover p-0 sm:max-w-xl"
+				className="top-[10dvh] flex max-h-[min(70dvh,32rem)] translate-y-0 flex-col gap-0 overflow-hidden rounded-xl border-0 bg-paper shadow-lift p-0 sm:max-w-[560px]"
 				onOpenAutoFocus={(event) => { event.preventDefault(); input.current?.focus(); }}
 				onCloseAutoFocus={(event) => {
 					event.preventDefault();
@@ -254,7 +269,7 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 				}}
 			>
 				<DialogTitle className="sr-only">Command palette</DialogTitle>
-				<label className="flex h-11 shrink-0 items-center gap-2 rounded-t-[10px] px-3 text-muted-foreground focus-within:bg-card">
+				<label className="mx-3 mb-1.5 mt-2 flex h-11 shrink-0 items-center gap-2.5 border-b border-edge px-1 text-faint transition-colors focus-within:border-ink">
 					<SearchIcon className="ui-icon shrink-0" aria-hidden="true" />
 					<input
 						ref={input}
@@ -271,31 +286,31 @@ export default function CommandPaletteDialog({ open, onOpenChange, opener }: Com
 						onChange={(event) => { setQuery(event.target.value); setActiveId(null); setFailure(null); }}
 						onKeyDown={onKeyDown}
 						placeholder="Search or run an action…"
-						className="min-w-0 flex-1 bg-transparent text-base text-foreground outline-none placeholder:text-muted-foreground"
+						className="min-w-0 flex-1 bg-transparent text-reply text-ink outline-none placeholder:text-faint"
 					/>
 				</label>
-				{failure && <p role="alert" data-testid="command-palette-failure" className="px-3 pb-1 text-sm text-destructive">{failure}</p>}
-				<PaletteList groups={groups} activeId={active?.id ?? null} listId={listId} optionId={optionId} onHover={setActiveId} onPick={pick} />
-				{flat.length === 0 && query.trim() !== "" && documents.phase !== "searching" && <p role="status" data-testid="command-palette-empty" className="px-3 pb-3 text-sm text-ink-2">Nothing matched</p>}
-				{documents.phase === "searching" && <p role="status" className="px-3 pb-2 text-sm text-muted-foreground">Searching inside your documents…</p>}
+				{failure && <p role="alert" data-testid="command-palette-failure" className="px-3 pb-1 text-sm text-red">{failure}</p>}
+				<PaletteList groups={groups} activeId={active?.id ?? null} keyboardActive={byKeys} listId={listId} optionId={optionId} onHover={(id) => { setActiveId(id); setByKeys(false); }} onPick={pick} />
+				{flat.length === 0 && query.trim() !== "" && documents.phase !== "searching" && <p role="status" data-testid="command-palette-empty" className="px-3 pb-3 text-sm text-graphite">Nothing matched</p>}
+				{documents.phase === "searching" && <p role="status" className="px-3 pb-2 text-sm text-faint">Searching inside your documents…</p>}
 				{documents.phase === "failed" && (
-					<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-ink-2">
+					<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-graphite">
 						<p>Your documents could not be searched.</p>
 						<button type="button" className="prompt-secondary" onClick={documents.retry}>Try again</button>
 					</div>
 				)}
 				{documents.response && documents.phase === "done" && <p role="status" aria-live="polite" className="sr-only" data-testid="command-palette-doc-count">{docCountText(documents.response.results.length, documents.response.total)} inside your documents</p>}
 				{/* Each source reports for itself: the others stay usable. */}
-				{librarySettling && library.items === null && !library.failed && <p role="status" className="px-3 pb-2 text-sm text-muted-foreground">Loading your Library…</p>}
+				{librarySettling && library.items === null && !library.failed && <p role="status" className="px-3 pb-2 text-sm text-faint">Loading your Library…</p>}
 				{library.failed && (
-					<div role="status" data-testid="command-palette-library-failed" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-ink-2">
+					<div role="status" data-testid="command-palette-library-failed" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-graphite">
 						<p>Your Library could not be loaded.</p>
 						<button type="button" className="prompt-secondary" onClick={library.retry}>Try again</button>
 					</div>
 				)}
 				{chats === null && (loadError
-					? <div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-ink-2"><p>Could not load sessions.</p><button type="button" className="prompt-secondary" onClick={() => void refresh()}>Try again</button></div>
-					: <p role="status" className="px-3 pb-2 text-sm text-muted-foreground">Loading sessions…</p>)}
+					? <div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-graphite"><p>Could not load sessions.</p><button type="button" className="prompt-secondary" onClick={() => void refresh()}>Try again</button></div>
+					: <p role="status" className="px-3 pb-2 text-sm text-faint">Loading sessions…</p>)}
 			</DialogContent>
 		</Dialog>
 	);

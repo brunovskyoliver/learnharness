@@ -2,9 +2,12 @@
 
 import { useEffect, useRef, type RefObject } from "react";
 import { formatBytes, KIND_LABEL, type LibraryItem } from "@/src/core";
-import { cn } from "@/lib/utils";
 import { createBlankPage, usePagePane } from "./page-pane-api.ts";
 import type { MentionStatus } from "./use-library-mention.ts";
+
+/** A row of the list. A mirrored item (feature 026) inserts `mention`, its
+ *  Library path, and shows `place`, its folder path, as its meta. */
+export type MentionItem = LibraryItem & { mention?: string; place?: string };
 
 /** Creates a blank page and opens it in the pane; sends nothing. */
 export type CreateMentionPage = () => ReturnType<typeof createBlankPage>;
@@ -14,17 +17,16 @@ export interface MentionMenuProps {
 	status: MentionStatus;
 	/** The Library holds something, so an empty list means no match. */
 	hasItems: boolean;
-	options: LibraryItem[];
+	options: MentionItem[];
 	activeIndex: number;
-	onPick: (item: LibraryItem) => void;
+	onPick: (item: MentionItem) => void;
 	onNewPage: () => void;
 	/** The hook's way to create a page: it can't import the pane into the startup graph. */
 	createPageRef?: RefObject<CreateMentionPage | null>;
 }
 
-const STATUS_ROW = "px-3 py-2 text-base text-ink-2";
-const OPTION_ROW = "flex min-h-11 cursor-pointer flex-col justify-center rounded-[10px] px-3 py-1.5 outline-offset-[-1px]";
-const ACTIVE_ROW = "bg-background outline-1 outline-ring outline-solid";
+const STATUS_ROW = "nb-menu-label";
+const OPTION_ROW = "nb-menu-item lh-at-row min-h-11";
 
 /** The status a list with no rows shows, or null when it has rows. */
 export function mentionStatusText({ status, hasItems, options }: Pick<MentionMenuProps, "status" | "hasItems" | "options">): string | null {
@@ -59,7 +61,7 @@ export function MentionMenu({ listId, status, hasItems, options, activeIndex, on
 			aria-label="Your Library"
 			data-testid="mention-menu"
 			onClick={(event) => event.stopPropagation()}
-			className="mx-2 mt-2 max-h-[min(16.5rem,40dvh)] select-none overflow-y-auto overscroll-contain rounded-[10px] bg-accent"
+			className="nb-menu lh-at-menu mx-2 mt-2 select-none overscroll-contain"
 		>
 			{message && <div role="status" className={STATUS_ROW}>{message}</div>}
 			{options.map((item, index) => (
@@ -72,10 +74,12 @@ export function MentionMenu({ listId, status, hasItems, options, activeIndex, on
 					// Keeps focus and the caret in the field.
 					onMouseDown={(event) => event.preventDefault()}
 					onClick={() => onPick(item)}
-					className={cn(OPTION_ROW, index === activeIndex && ACTIVE_ROW)}
+					className={OPTION_ROW}
 				>
-					<span className="text-base text-foreground [overflow-wrap:anywhere]">{item.name}</span>
-					<span className="text-sm text-muted-foreground">{KIND_LABEL[item.kind]} · {formatBytes(item.size)}</span>
+					<span className="nb-menu-text">
+						<span className="nb-menu-name [overflow-wrap:anywhere]">{item.name}</span>
+						<span className="nb-menu-description [overflow-wrap:anywhere]">{item.place !== undefined ? item.place : `${KIND_LABEL[item.kind]} · ${formatBytes(item.size)}`}</span>
+					</span>
 				</div>
 			))}
 			<div
@@ -85,9 +89,9 @@ export function MentionMenu({ listId, status, hasItems, options, activeIndex, on
 				data-testid="mention-new-page"
 				onMouseDown={(event) => event.preventDefault()}
 				onClick={onNewPage}
-				className={cn(OPTION_ROW, activeIndex === options.length && ACTIVE_ROW)}
+				className={OPTION_ROW}
 			>
-				<span className="text-base text-foreground">New page</span>
+				<span className="nb-menu-name">New page</span>
 			</div>
 		</div>
 	);

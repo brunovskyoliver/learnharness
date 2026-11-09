@@ -13,7 +13,7 @@
  * a fuzzy search that auto-expands matching clusters.
  *
  * ROUND 2 (owner refinements, 2026-09-29 late): the top bar is THE
- * shared TopBar (h-13, lh-drag + select-none, sidebar reopen, standard
+ * shared TopBar (the --lh-band height, lh-drag + select-none, sidebar reopen, standard
  * title size); PROMINENT indentation carries the hierarchy — the ONLY
  * lines left are the separators between cluster groups (vertical column
  * hairlines and per-row lines are gone); statement rows are PLAIN (no
@@ -125,11 +125,11 @@ describe("ChainTableBody — clusters (the outermost layer)", () => {
 });
 
 describe("ChainTableBody — THE shared TopBar + the lines law (owner, round 2)", () => {
-	it("the body renders the standardized top bar: h-13, lh-drag, select-none, NO title (serif = session name, always), close X", () => {
+	it("the body renders the standardized top bar: the band height (--lh-band), lh-drag, select-none, NO title (serif = session name, always), close X", () => {
 		const html = render();
 		assert.ok(html.includes("lh-drag"), "the window-drag band");
 		assert.ok(html.includes("select-none"), "dragging never highlights the bar");
-		assert.ok(html.includes("h-13"), "the standard height");
+		assert.ok(html.includes("h-(--lh-band)"), "the standard band height (on the ☰'s centre line, feature 025 phase 11)");
 		assert.ok(!html.includes(">Chains<"), "NO title (owner round 11): the serif register always names a session");
 		assert.ok(html.includes("chain"), "the counts remain");
 		assert.ok(html.includes('data-testid="chain-table-close"'), "the close X");
@@ -138,10 +138,10 @@ describe("ChainTableBody — THE shared TopBar + the lines law (owner, round 2)"
 
 	it("headers, groups and rows use spacing without structural separator rules", () => {
 		const html = render({ expandedClusters: new Set(["chat1"]) });
-		assert.ok(!html.includes("border-b border-border/60"), "no header or group separator rules");
+		assert.ok(!html.includes("border-b border-rule/60"), "no header or group separator rules");
 		// chain rows themselves carry NO border — their entire class list is
 		// the staircase law (pl-12 = aligned with the cluster's FOLDER icon);
-		// the chip outlines' border-border/70 is an outline, not a row line
+		// the chip outlines' border-rule/70 is an outline, not a row line
 		assert.ok(html.includes('class="flex items-center gap-1 py-1 pl-12 pr-3"'), "the chain row: staircase indent, no border");
 	});
 
@@ -174,7 +174,7 @@ describe("ChainTableBody — chain rows (chips + connectors)", () => {
 		assert.ok(html.includes('data-testid="chain-and-c1-1"'), "the land between premises");
 		assert.ok(html.includes('data-testid="chain-implies-c1"'), "the implication before the conclusion");
 		const and = html.match(/data-testid="chain-and-c1-1"[^>]*>/)?.[0] ?? "";
-		assert.match(and, /text-foreground/, "prominent — the theme's white, not dim gray");
+		assert.match(and, /text-ink/, "prominent — the theme's white, not dim gray");
 		assert.ok(html.includes("katex"), "a REAL KaTeX render, not a unicode arrow");
 		// the old arrow is dead as a VISIBLE connector — it survives only in
 		// the row's aria-label (formatChainLine, the plain-text form)
@@ -274,7 +274,7 @@ describe("ChainTableBody — the floating selection bar (never shifts layout)", 
 		// riding the same confirm dialog as the canvas delete.
 		assert.ok(html.includes('data-testid="chain-danger-divider"'));
 		const del = html.match(/<button[^>]*data-testid="chain-delete"[^>]*>/)?.[0] ?? "";
-		assert.match(del, /border-destructive\/50/); // the destructive pair
+		assert.match(del, /border-red\/50/); // the destructive pair
 		assert.match(del, /aria-label="Delete 3 selected ideas"/);
 		assert.ok(html.includes("lucide-trash-2"), "the trash icon");
 		// the fence is before Delete in the DOM (right end of the bar)

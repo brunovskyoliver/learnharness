@@ -140,3 +140,50 @@ describe("Library folders (feature 011)", () => {
 		assert.ok(body({ items: [], folders: [folder("fld_c", "Empty")], folderId: "fld_c" }).includes("This folder is empty."));
 	});
 });
+
+describe("feature 026: rows inside a mirror (T036, ui-contract.md Menus)", () => {
+	const mirror = (path: string) => ({ linkId: "rpl_a", repoKey: "github.com/o/n#main", path });
+	const linked = { id: "fld_l", name: "Lecture notes", parentId: null, createdAt: "", updatedAt: "", mirror: mirror("") };
+	const week1 = { id: "fld_w", name: "week1", parentId: "fld_l", createdAt: "", updatedAt: "", mirror: mirror("week1") };
+	const synced = item({ id: "lib_m", name: "README.md", folderId: "fld_l", origin: { type: "repo", linkId: "rpl_a" }, mirror: { ...mirror("README.md"), oid: "o", snapshot: "s" } });
+	const marks = [{ label: "Add to favorites", onSelect: noop }];
+	it("a synced file and a mirror folder have no Rename or Delete buttons and can't be dragged", () => {
+		const html = body({ items: [synced], folders: [linked, week1], folderId: "fld_l", itemActions: () => marks, folderActions: () => marks, onDragStartEntry: noop, onDropOnFolder: noop });
+		assert.ok(html.includes("Open README.md") && html.includes("Open folder week1"));
+		assert.ok(!html.includes("Rename README.md") && !html.includes("Delete README.md"));
+		assert.ok(!html.includes("Rename folder week1") && !html.includes("Delete folder week1"));
+		assert.ok(!html.includes('draggable="true"'), "nothing in a mirror is draggable");
+	});
+	it("the linked folder keeps its Rename and Delete buttons and stays draggable", () => {
+		const html = body({ items: [synced], folders: [linked, week1], folderActions: () => marks, onDragStartEntry: noop });
+		assert.ok(html.includes("Rename folder Lecture notes") && html.includes("Delete folder Lecture notes"));
+		assert.ok(html.includes('draggable="true"'));
+	});
+});
+
+describe("feature 026: Repo details and the unlink confirm (T046, T047)", async () => {
+	const { RepoDetailsBody, UnlinkBody } = await import("../components/library/repo-details-dialog.tsx");
+	const link = {
+		id: "rpl_a", folderId: "fld_l", display: "github.com/oliver/notes", url: "https://github.com/oliver/notes", branch: "main", branchGiven: false, tokenMask: "…a1b2",
+		sync: { state: "synced" as const, lastSuccessAt: "2026-11-08T10:00:00.000Z", lastAttemptAt: "2026-11-08T10:00:00.000Z", commit: "0123456789abcdef0123456789abcdef01234567" },
+	};
+	const details = (over = {}) => textOf(renderToStaticMarkup(<Dialog open><RepoDetailsBody link={{ ...link, ...over }} folderName="Lecture notes" now={new Date("2026-11-08T10:05:00.000Z")} onSyncNow={noop} onToken={async () => ({ ok: true, link })} onUnlink={noop} onClose={noop} /></Dialog>));
+	it("names the folder, the address without credentials, the branch, the last sync, the commit and only the token's mask", () => {
+		const text = details();
+		for (const part of ["Lecture notes", "Addressgithub.com/oliver/notes", "Branchmain (default)", "Last syncSynced 5 min ago", "Commit0123456", "Token…a1b2", "Replace token", "Remove token", "Sync now", "Unlink…", "Close"]) assert.ok(text.includes(part), part);
+		assert.ok(!text.includes("Add token"));
+	});
+	it("a named branch and no token", () => {
+		const text = details({ branchGiven: true, branch: "dev", tokenMask: null });
+		assert.ok(text.includes("Branchdev") && !text.includes("(default)"));
+		assert.ok(text.includes("No token") && text.includes("Add token") && !text.includes("Remove token"));
+	});
+	it("the unlink confirm says what goes and what stays, with Cancel before the red Unlink", () => {
+		const html = renderToStaticMarkup(<Dialog open><UnlinkBody folderName="Lecture notes" files={4} busy={false} failure={null} onCancel={noop} onConfirm={noop} /></Dialog>);
+		const text = textOf(html).replace(/&#x27;/g, "'");
+		assert.ok(text.includes("Unlink Lecture notes?"));
+		assert.ok(text.includes("The folder and its 4 files leave your Library. Your highlights, notes and flashcards stay, and come back if you link this repo again. The repo isn't changed."));
+		assert.ok(html.indexOf("repo-unlink-cancel") < html.indexOf("repo-unlink-confirm"));
+		assert.ok(html.includes("lh-pill-danger"));
+	});
+});

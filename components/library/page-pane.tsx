@@ -10,11 +10,9 @@ import { parseCitationHref, type LibraryKind } from "@/src/core";
 import type { WikiResolution } from "@/src/core";
 import { jumpToSource, openCitation, useNoteLinks } from "./use-note-links.ts";
 import { ChatActionsContext } from "@/components/chat-actions-context.ts";
-import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
-import { WorkspacePane } from "@/components/workspace-pane";
+import { usePaneFull, WorkspacePane } from "@/components/workspace-pane";
 import { isUnsent, SAVE_STATE_LABEL, type PageDraftState } from "./page-draft.ts";
 import type { PageEditorHandle } from "./page-editor.tsx";
 import { PageHistory } from "./page-history.tsx";
@@ -25,7 +23,8 @@ import { TUTOR_BLOCKED_TEXT, tutorMessage, type TutorAction } from "./page-tutor
 import { revertTutorChanges } from "./page-blocks.ts";
 import { changeBarText, highlightsOf, skippedText, UNDO_FAILED_TEXT, useTutorChanges } from "./page-changes.ts";
 import type { PageHeading, PageStats } from "./page-editor-extras.ts";
-import { downloadMarkdown, PrintRoot } from "./page-export.tsx";
+import { PrintRoot } from "./page-export.tsx";
+import { PaperExportDialog } from "@/components/paper/export-dialog";
 import { pageImageAlt, pageImageSrc, uploadPageImage } from "./upload.ts";
 import { usePageDraft } from "./use-page-draft.ts";
 
@@ -55,7 +54,7 @@ const AGENT_UPDATE_MS = 4000;
 
 export function EditorLoading() {
 	return (
-		<div role="status" aria-label="Loading the page" className="flex flex-col gap-2 px-3 py-2">
+		<div role="status" aria-label="Loading the page" className="flex flex-col gap-2 px-4 py-2">
 			<Skeleton className="h-5 w-2/3 rounded-md" />
 			<Skeleton className="h-5 w-full rounded-md" />
 			<Skeleton className="h-5 w-5/6 rounded-md" />
@@ -115,10 +114,10 @@ export const wordsText = (n: number) => `${n} ${n === 1 ? "word" : "words"}`;
 
 export function SaveState({ state, onRetry, canRetry = true, words, failedLabel }: { state: Pick<PageDraftState, "status">; onRetry: () => void; canRetry?: boolean; words?: number; failedLabel?: string }) {
 	return (
-		<span className="flex min-w-0 flex-wrap items-center gap-x-2 text-sm text-muted-foreground" data-testid="page-save-state">
+		<span className="flex min-w-0 flex-wrap items-center gap-x-2 text-meta text-faint" data-testid="page-save-state">
 			{state.status === "failed" && failedLabel ? failedLabel : SAVE_STATE_LABEL[state.status]}
 			{words !== undefined && <span data-testid="page-word-count">· {wordsText(words)}</span>}
-			{state.status === "failed" && canRetry && <button type="button" className="prompt-secondary" onClick={onRetry} data-testid="page-retry">Try again</button>}
+			{state.status === "failed" && canRetry && <button type="button" className="lh-text-action" onClick={onRetry} data-testid="page-retry">Try again</button>}
 		</span>
 	);
 }
@@ -126,22 +125,22 @@ export function SaveState({ state, onRetry, canRetry = true, words, failedLabel 
 /** The tutor's changes: count, step through, undo, done (contracts/ui-contract.md). */
 export function ChangeBar({ text, onPrevious, onNext, onUndo, onDone, busy }: { text: string; onPrevious: () => void; onNext: () => void; onUndo: () => void; onDone: () => void; busy: boolean }) {
 	return (
-		<div role="region" aria-label="The tutor's changes" className="mx-3 mb-2 flex flex-wrap items-center gap-2 rounded-[10px] bg-card px-3 py-2 text-sm" data-testid="page-change-bar">
-			<p role="status" className="min-w-0 flex-[1_1_14rem] text-foreground">{text}</p>
-			<button type="button" className="prompt-secondary" onClick={onPrevious}>Previous</button>
-			<button type="button" className="prompt-secondary" onClick={onNext}>Next</button>
-			<button type="button" className="prompt-secondary" disabled={busy} onClick={onUndo} data-testid="page-undo-tutor">Undo the tutor&apos;s edit</button>
-			<button type="button" className="prompt-primary" onClick={onDone} data-testid="page-changes-done">Done</button>
+		<div role="region" aria-label="The tutor's changes" className="lh-line-card mx-4 mb-2" data-testid="page-change-bar">
+			<p role="status" className="min-w-0 flex-[1_1_14rem] text-ink">{text}</p>
+			<button type="button" className="lh-text-action" onClick={onPrevious}>Previous</button>
+			<button type="button" className="lh-text-action" onClick={onNext}>Next</button>
+			<button type="button" className="lh-text-action" disabled={busy} onClick={onUndo} data-testid="page-undo-tutor">Undo the tutor&apos;s edit</button>
+			<button type="button" className="nb-pill" onClick={onDone} data-testid="page-changes-done">Done</button>
 		</div>
 	);
 }
 
 export function ConflictLine({ onKeepMine, onUseLatest }: { onKeepMine: () => void; onUseLatest: () => void }) {
 	return (
-		<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-ink-2" data-testid="page-conflict">
-			<p>This page changed elsewhere. Your text is safe here.</p>
-			<button type="button" className="prompt-secondary" onClick={onKeepMine} data-testid="page-keep-mine">Keep mine</button>
-			<button type="button" className="prompt-secondary" onClick={onUseLatest} data-testid="page-use-latest">Use latest</button>
+		<div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 pb-2 text-sm text-graphite" data-testid="page-conflict">
+			<p className="mr-auto">This page changed elsewhere. Your text is safe here.</p>
+			<button type="button" className="lh-text-action" onClick={onKeepMine} data-testid="page-keep-mine">Keep mine</button>
+			<button type="button" className="lh-text-action" onClick={onUseLatest} data-testid="page-use-latest">Use latest</button>
 		</div>
 	);
 }
@@ -150,12 +149,12 @@ export function ConflictLine({ onKeepMine, onUseLatest }: { onKeepMine: () => vo
 export function DeletedLine({ name, text }: { name: string; text: string | null }) {
 	const [copied, setCopied] = useState(false);
 	return (
-		<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-ink-2" data-testid="page-deleted">
+		<div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 pb-2 text-sm text-graphite" data-testid="page-deleted">
 			<p>{name} was deleted.</p>
 			{text !== null && (
 				<button
 					type="button"
-					className="prompt-secondary"
+					className="lh-text-action"
 					data-testid="page-copy-text"
 					onClick={() => void navigator.clipboard.writeText(text).then(() => setCopied(true), () => {})}
 				>{copied ? "Copied" : "Copy text"}</button>
@@ -167,42 +166,73 @@ export function DeletedLine({ name, text }: { name: string; text: string | null 
 /** h1–h3, indented by level; choosing one moves the caret there. */
 export function PageOutline({ headings, onPick, className }: { headings: PageHeading[]; onPick: (pos: number) => void; className?: string }) {
 	return (
-		<nav aria-label="Outline" data-testid="page-outline" className={cn("flex flex-col gap-0.5 text-sm", className)}>
-			<span className="px-2 pb-1 text-sm font-medium text-muted-foreground">On this page</span>
-			{headings.length === 0 && <span className="px-2 text-sm text-ink-2">Headings appear here.</span>}
+		<nav aria-label="Outline" data-testid="page-outline" className={cn("flex flex-col gap-0.5", className)}>
+			<span className="px-2 pb-1 text-xs font-medium text-faint">On this page</span>
+			{headings.length === 0 && <span className="px-2 text-sm text-graphite">Headings appear here.</span>}
 			{headings.map((heading) => (
 				<button
 					key={heading.pos}
 					type="button"
 					onClick={() => onPick(heading.pos)}
 					style={{ paddingInlineStart: `${0.5 + (heading.level - 1) * 0.75}rem` }}
-					className="min-h-8 truncate rounded-[6px] pe-2 text-left text-ink-2 hover:bg-accent hover:text-foreground pointer-coarse:min-h-11"
+					className="lh-outline-row truncate"
 				>{heading.text || "Untitled heading"}</button>
 			))}
 		</nav>
 	);
 }
 
-function ExportMenu({ name, text, container, onPrint, labelClass }: { name: string; text: () => string; container: HTMLElement | null; onPrint: () => void; labelClass: string }) {
+/** Whether the page has a Notebook companion with notes, for the export's "Include the notes". */
+async function pageHasNotes(pageId: string): Promise<boolean> {
+	try {
+		const response = await fetch(`/api/notebook/${encodeURIComponent(pageId)}`);
+		if (!response.ok) return false;
+		const body = (await response.json()) as { companion?: { threads?: unknown[] } };
+		return (body.companion?.threads?.length ?? 0) > 0;
+	} catch {
+		return false;
+	}
+}
+
+/** Export (feature 010 US5, feature 025 T049): the paper export dialog for PDF, Word and
+ *  Markdown, with Copy as Markdown and Print kept as the dialog's own actions. */
+function PageExport({ item, text, beforeExport, onPrint, labelClass, onExported }: { item: PaneItem; text: () => string; beforeExport: () => Promise<void>; onPrint: () => void; labelClass: string; onExported: (filename: string) => void }) {
 	const [open, setOpen] = useState(false);
 	const [copied, setCopied] = useState(false);
-	const item = "flex min-h-9 w-full items-center rounded-[6px] px-2 text-left text-sm text-foreground hover:bg-card pointer-coarse:min-h-11";
+	const [notes, setNotes] = useState(false);
+	const opener = useRef<HTMLButtonElement>(null);
+	useEffect(() => {
+		if (!open) { setCopied(false); return; }
+		let live = true;
+		void pageHasNotes(item.id).then((has) => { if (live) setNotes(has); });
+		return () => { live = false; };
+	}, [open, item.id]);
 	return (
-		<Popover open={open} onOpenChange={(next) => { setOpen(next); if (!next) setCopied(false); }}>
-			<PopoverTrigger asChild>
-				<Button type="button" variant="ghost" className="shrink-0 pointer-coarse:h-11 pointer-coarse:min-w-11" data-testid="page-export">
-					<DownloadIcon className="ui-icon" aria-hidden="true" />
-					<span className={labelClass}>Export</span>
-				</Button>
-			</PopoverTrigger>
-			<PopoverContent container={container} align="end" className="flex w-56 flex-col gap-0.5 rounded-[10px] border-0 p-1" data-testid="page-export-menu">
-				<button type="button" className={item} data-testid="page-export-copy" onClick={() => {
-					void navigator.clipboard.writeText(text()).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 2000); }, () => {});
-				}}>{copied ? "Copied" : "Copy as Markdown"}</button>
-				<button type="button" className={item} data-testid="page-export-download" onClick={() => { downloadMarkdown(name, text()); setOpen(false); }}>Download .md</button>
-				<button type="button" className={item} data-testid="page-export-print" onClick={() => { setOpen(false); onPrint(); }}>Print</button>
-			</PopoverContent>
-		</Popover>
+		<>
+			<button ref={opener} type="button" className="lh-tool" aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)} data-testid="page-export">
+				<DownloadIcon aria-hidden="true" />
+				<span className={labelClass}>Export</span>
+			</button>
+			<PaperExportDialog
+				open={open}
+				onOpenChange={setOpen}
+				pageId={item.id}
+				shownName={item.name}
+				beforeExport={beforeExport}
+				returnFocus={opener}
+				notes={notes}
+				onExported={onExported}
+				testIdPrefix="page-export"
+				extraActions={(
+					<>
+						<button type="button" className="nb-export-cancel" data-testid="page-export-copy" onClick={() => {
+							void navigator.clipboard.writeText(text()).then(() => { setCopied(true); window.setTimeout(() => setCopied(false), 2000); }, () => {});
+						}}>{copied ? "Copied" : "Copy as Markdown"}</button>
+						<button type="button" className="nb-export-cancel" data-testid="page-export-print" onClick={() => { setOpen(false); onPrint(); }}>Print</button>
+					</>
+				)}
+			/>
+		</>
 	);
 }
 
@@ -227,10 +257,10 @@ export function PageName({ item, pane }: { item: PaneItem; pane: PagePaneApi }) 
 		}
 	};
 	if (!renaming) {
-		return <button type="button" aria-label={`Rename ${item.name}`} data-testid="page-name" className="min-w-0 truncate rounded-md text-left text-base font-medium hover:bg-accent pointer-coarse:min-h-11" onClick={() => setRenaming(true)}>{item.name}</button>;
+		return <button type="button" aria-label={`Rename ${item.name}`} data-testid="page-name" className="min-w-0 truncate rounded-md text-left text-md font-medium text-ink hover:text-graphite pointer-coarse:min-h-11" onClick={() => setRenaming(true)}>{item.name}</button>;
 	}
 	return (
-		<span className="flex min-w-0 flex-col">
+		<span className="nb-reply-line flex min-w-0 flex-col">
 			<input
 				autoFocus
 				defaultValue={item.name}
@@ -245,31 +275,48 @@ export function PageName({ item, pane }: { item: PaneItem; pane: PagePaneApi }) 
 					if (event.key === "Enter") { event.preventDefault(); void commit(event.currentTarget.value); }
 					if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setRenaming(false); setError(null); }
 				}}
-				className="h-8 w-full min-w-0 rounded-md border border-input bg-transparent px-2 text-base text-foreground pointer-coarse:h-11"
+				className="lh-line-field font-medium"
 			/>
-			{error && <span role="alert" className="text-sm text-destructive">{error}</span>}
+			{error && <span role="alert" className="text-sm text-red">{error}</span>}
 		</span>
 	);
 }
 
 /** The header, pure for render tests. */
 export function PaneHeader({ phone, name, status, actions, onClose, closeLabel }: { phone: boolean; name: ReactNode; status?: ReactNode; actions?: ReactNode; onClose: () => void; closeLabel: string }) {
+	// The Library's full view (feature 027): ✕ becomes the toolbar word "← Library".
+	const full = usePaneFull();
+	if (full) {
+		return (
+			<div className="flex min-h-13 shrink-0 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-1">
+				<div className="flex min-w-0 flex-[1_1_7rem] flex-col">
+					{name}
+					{status}
+				</div>
+				{actions && <div className="lh-tools gap-x-1">{actions}</div>}
+				<button type="button" aria-label="Back to Library" onClick={onClose} data-testid="full-view-library" className="lh-tool -mr-1.5">
+					<ArrowLeftIcon aria-hidden="true" />
+					Library
+				</button>
+			</div>
+		);
+	}
 	return (
-		<div className="flex min-h-13 shrink-0 flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1">
+		<div className="flex min-h-13 shrink-0 flex-wrap items-center gap-x-3 gap-y-1 px-4 py-1">
 			{phone && (
-				<Button type="button" variant="ghost" className="-ml-2 shrink-0 pointer-coarse:h-11" onClick={onClose} data-testid="page-back">
-					<ArrowLeftIcon className="ui-icon" aria-hidden="true" />
+				<button type="button" className="lh-tool -ml-1.5" onClick={onClose} data-testid="page-back">
+					<ArrowLeftIcon aria-hidden="true" />
 					Back to chat
-				</Button>
+				</button>
 			)}
 			<div className="flex min-w-0 flex-[1_1_7rem] flex-col">
 				{name}
 				{status}
 			</div>
-			{actions}
+			{actions && <div className="lh-tools gap-x-1">{actions}</div>}
 			{!phone && (
-				<button type="button" aria-label={closeLabel} onClick={onClose} data-testid="page-close" className="ui-icon-button text-muted-foreground hover:bg-accent hover:text-foreground">
-					<XIcon className="ui-icon" />
+				<button type="button" aria-label={closeLabel} onClick={onClose} data-testid="page-close" className="lh-tool -mr-1.5">
+					<XIcon aria-hidden="true" />
 				</button>
 			)}
 		</div>
@@ -299,6 +346,13 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 	const [stats, setStats] = useState<PageStats | null>(null);
 	const [outline, setOutline] = useState(false);
 	const [printing, setPrinting] = useState(false);
+	// "Exported “{file}”.", for a few seconds after a file arrives (Notebook's words).
+	const [exported, setExported] = useState<string | null>(null);
+	useEffect(() => {
+		if (!exported) return;
+		const timer = window.setTimeout(() => setExported(null), AGENT_UPDATE_MS);
+		return () => window.clearTimeout(timer);
+	}, [exported]);
 	const [wide, setWide] = useState(false);
 	useEffect(() => {
 		const el = root.current;
@@ -447,12 +501,14 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 			onOpenPage={(id, name, kind) => openItem({ id, name, kind: kind ?? "page", size: 0 })}
 			onFollowLink={(row) => followLink(row.target, row.resolution)}
 			onSource={followSource}
-			className={wide ? "w-64 shrink-0 overflow-y-auto pr-3 pb-6" : "mx-3 mb-2 max-h-[40dvh] shrink-0 overflow-y-auto rounded-[10px] bg-popover p-2"}
+			className={wide ? "w-64 shrink-0 overflow-y-auto pr-4 pb-6" : "mx-4 mb-2 max-h-[40dvh] shrink-0 overflow-y-auto rounded-lg bg-shelf p-2"}
 		/>
 	) : null;
 
 	// A search hit lands on its block (feature 019), once the editor is there.
 	const [jumpMissed, setJumpMissed] = useState(false);
+	// The miss line is said where a chip lands: the Library's full view (feature 027, FR-014).
+	const full = usePaneFull();
 	const jumpTarget = item.jump;
 	const jumpNonce = jumpTarget?.nonce;
 	useEffect(() => {
@@ -509,47 +565,49 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 						status={state.loaded && !state.deleted ? <SaveState state={state} canRetry={!state.conflict} onRetry={() => void controller.retry()} words={stats?.words} /> : undefined}
 						actions={state.deleted ? undefined : (
 							<>
-							<Button type="button" variant="ghost" aria-pressed={outline} className="shrink-0 aria-pressed:bg-accent aria-pressed:text-foreground pointer-coarse:h-11 pointer-coarse:min-w-11" onClick={() => setOutline((open) => !open)} data-testid="page-outline-toggle">
-								<ListTreeIcon className="ui-icon" aria-hidden="true" />
+							<button type="button" aria-pressed={outline} className="lh-tool" onClick={() => setOutline((open) => !open)} data-testid="page-outline-toggle">
+								<ListTreeIcon aria-hidden="true" />
 								<span className={paneLabel}>Outline</span>
-							</Button>
-							<Button type="button" variant="ghost" aria-pressed={links} className="shrink-0 aria-pressed:bg-accent aria-pressed:text-foreground pointer-coarse:h-11 pointer-coarse:min-w-11" onClick={() => setLinks((open) => !open)} data-testid="page-links-toggle">
-									<Link2Icon className="ui-icon" aria-hidden="true" />
-									<span className={paneLabel}>Links</span>
-								</Button>
-								<ExportMenu name={item.name} text={currentText} container={root.current} onPrint={() => setPrinting(true)} labelClass={paneLabel} />
-							<Button type="button" variant="ghost" aria-pressed={history} className="shrink-0 aria-pressed:bg-accent aria-pressed:text-foreground pointer-coarse:h-11 pointer-coarse:min-w-11" onClick={() => setHistory((open) => !open)} data-testid="page-history-toggle">
-								<HistoryIcon className="ui-icon" aria-hidden="true" />
+							</button>
+							<button type="button" aria-pressed={links} className="lh-tool" onClick={() => setLinks((open) => !open)} data-testid="page-links-toggle">
+								<Link2Icon aria-hidden="true" />
+								<span className={paneLabel}>Links</span>
+							</button>
+								<PageExport item={item} text={currentText} beforeExport={async () => { editor.current?.flush(); await controller.savedForReview(); }} onPrint={() => setPrinting(true)} labelClass={paneLabel} onExported={(filename) => setExported(filename)} />
+							<button type="button" aria-pressed={history} className="lh-tool" onClick={() => setHistory((open) => !open)} data-testid="page-history-toggle">
+								<HistoryIcon aria-hidden="true" />
 								<span className={paneLabel}>History</span>
-							</Button>
+							</button>
 							</>
 						)}
 					/>
 					{dangling && (
-						<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-2 text-sm text-ink-2" data-testid="page-wiki-dangling">
+						<div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 pb-2 text-sm text-graphite" data-testid="page-wiki-dangling">
 							<p className="min-w-0 flex-[1_1_12rem] [overflow-wrap:anywhere]">{dangling.state === "deleted" ? `${dangling.target} was deleted from your Library. The link is kept.` : dangling.state === "unknown" ? "Your Library could not be checked for that link." : `Nothing in your Library is called ${dangling.target} yet.`}</p>
-							{dangling.state === "missing" && <button type="button" className="prompt-secondary" data-testid="page-wiki-create" onClick={() => void createLinked(dangling.target)}>Create page</button>}
-							<button type="button" className="prompt-secondary" onClick={() => setDangling(null)}>Dismiss</button>
-							{creating && <p role="alert" className="w-full text-sm text-destructive">{creating}</p>}
+							{dangling.state === "missing" && <button type="button" className="lh-text-action" data-testid="page-wiki-create" onClick={() => void createLinked(dangling.target)}>Create page</button>}
+							<button type="button" className="lh-text-action" onClick={() => setDangling(null)}>Dismiss</button>
+							{creating && <p role="alert" className="w-full text-sm text-red">{creating}</p>}
 						</div>
 					)}
 					{state.deleted && <DeletedLine name={item.name} text={isUnsent(state) ? state.text : null} />}
 					{changes && !state.conflict && !history && (
 						<ChangeBar text={changeBarText(changes)} busy={undoing} onPrevious={() => step(-1)} onNext={() => step(1)} onUndo={() => void undoTutor()} onDone={() => void done()} />
 					)}
-					{changeLine && <p role="status" className="px-3 pb-2 text-sm text-ink-2" data-testid="page-change-line">{changeLine}</p>}
+					{changeLine && <p role="status" className="px-4 pb-2 text-sm text-graphite" data-testid="page-change-line">{changeLine}</p>}
+					{jumpMissed && full && <p role="status" className="px-4 pb-2 text-sm text-graphite" data-testid="page-jump-missed">That passage is no longer in this page. Showing it from the top.</p>}
 					{!state.deleted && state.loaded && (
 						<PageProposalsLine
 							pageId={item.id}
-							className="mx-3 mb-2"
+							className="mx-4 mb-2"
 							beforeAccept={async () => { editor.current?.flush(); return controller.savedForReview(); }}
 							whileAccepting={(run, accepted) => controller.whileAccepting(run, accepted)}
 						/>
 					)}
 					{state.conflict && <ConflictLine onKeepMine={() => void controller.keepMine()} onUseLatest={() => void controller.useLatest()} />}
-					<p role="status" aria-live="polite" className="px-3 text-sm text-ink-2 empty:hidden" data-testid="page-agent-update">
+					<p role="status" aria-live="polite" className="px-4 pb-1 text-sm text-graphite empty:hidden" data-testid="page-agent-update">
 						{state.agentUpdate !== null && !changes ? `Updated by the agent · version ${state.agentUpdate}` : ""}
 					</p>
+					<p role="status" aria-live="polite" className="px-4 pb-1 text-sm text-graphite empty:hidden" data-testid="page-exported">{exported ? `Exported “${exported}”.` : ""}</p>
 					<input
 						ref={imageInput}
 						type="file"
@@ -563,18 +621,18 @@ function PageSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi;
 							if (files.length) void addImages(files, imageAt.current);
 						}}
 					/>
-					{uploading && <p role="status" className="px-3 pb-2 text-sm text-ink-2" data-testid="page-image-uploading">Uploading {uploading.name} · {uploading.percent}%</p>}
-					{imageRefusal && <p role="alert" className="px-3 pb-2 text-sm text-destructive" data-testid="page-image-refused">{imageRefusal}</p>}
+					{uploading && <p role="status" className="px-4 pb-2 text-sm text-graphite" data-testid="page-image-uploading">Uploading {uploading.name} · {uploading.percent}%</p>}
+					{imageRefusal && <p role="alert" className="px-4 pb-2 text-sm text-red" data-testid="page-image-refused">{imageRefusal}</p>}
 					{printing && <PrintRoot name={item.name} text={controller.state.text} onDone={() => setPrinting(false)} />}
-					{outline && !wide && stats && !history && <PageOutline headings={stats.headings} onPick={jump} className="mx-3 mb-2 max-h-[40dvh] overflow-y-auto rounded-[10px] bg-popover p-1" />}
+					{outline && !wide && stats && !history && <PageOutline headings={stats.headings} onPick={jump} className="mx-4 mb-2 max-h-[40dvh] overflow-y-auto rounded-lg bg-shelf p-1" />}
 					{!wide && connections}
 						<div className={`flex min-h-0 flex-1 ${(outline || links) && wide && !history ? "flex-row gap-4" : "flex-col"} ${dragging ? "pointer-events-none" : ""}`}>
-						{outline && wide && stats && !history && <PageOutline headings={stats.headings} onPick={jump} className="w-44 shrink-0 overflow-y-auto pl-3" />}
+						{outline && wide && stats && !history && <PageOutline headings={stats.headings} onPick={jump} className="w-44 shrink-0 overflow-y-auto pl-4" />}
 						<div className="flex min-h-0 min-w-0 flex-1 flex-col">
 						{loadFailed ? (
-							<div role="status" className="flex flex-wrap items-center gap-2 px-3 text-sm text-ink-2">
+							<div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 text-sm text-ink">
 								<p>{item.name} could not be loaded.</p>
-								<button type="button" className="prompt-secondary" onClick={retryLoad}>Try again</button>
+								<button type="button" className="lh-text-action" onClick={retryLoad}>Try again</button>
 							</div>
 						) : !state.loaded ? (
 							<EditorLoading />
@@ -628,7 +686,7 @@ function ReadOnlySurface({ item, pane, phone }: { item: PaneItem; pane: PagePane
 		>
 			{() => (
 				<>
-					<PaneHeader phone={phone} closeLabel={`Close ${item.name}`} onClose={pane.close} name={<span className="min-w-0 truncate text-base font-medium">{item.name}</span>} />
+					<PaneHeader phone={phone} closeLabel={`Close ${item.name}`} onClose={pane.close} name={<span className="min-w-0 truncate text-md font-medium text-ink">{item.name}</span>} />
 					<ReadOnlyView item={item} />
 				</>
 			)}
@@ -643,7 +701,7 @@ const contentUrl = (id: string, download = false) => `/api/library/items/${encod
 function PdfSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi; phone: boolean }) {
 	const root = useRef<HTMLElement | null>(null);
 	usePhoneLayer(phone, root);
-	const link = "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md px-2 text-sm text-foreground hover:bg-accent focus-visible:outline-1 focus-visible:outline-ring pointer-coarse:h-11 pointer-coarse:min-w-11 pointer-coarse:justify-center";
+	const link = "lh-tool";
 	return (
 		<WorkspacePane
 			label={item.name}
@@ -664,15 +722,15 @@ function PdfSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi; 
 						phone={phone}
 						closeLabel={`Close ${item.name}`}
 						onClose={pane.close}
-						name={<span className="min-w-0 truncate text-base font-medium">{item.name}</span>}
+						name={<span className="min-w-0 truncate text-md font-medium text-ink">{item.name}</span>}
 						actions={(
 							<>
 								<a href={contentUrl(item.id)} target="_blank" rel="noreferrer" className={link} data-testid="pdf-open-new-tab" aria-label={`Open ${item.name} in a new tab`}>
-									<ExternalLinkIcon className="ui-icon" aria-hidden="true" />
+									<ExternalLinkIcon aria-hidden="true" />
 									<span className="sr-only">Open in a new tab</span>
 								</a>
 								<a href={contentUrl(item.id, true)} className={link} data-testid="pdf-download" aria-label={`Download ${item.name}`}>
-									<DownloadIcon className="ui-icon" aria-hidden="true" />
+									<DownloadIcon aria-hidden="true" />
 									<span className="sr-only">Download</span>
 								</a>
 							</>
@@ -688,8 +746,9 @@ function PdfSurface({ item, pane, phone }: { item: PaneItem; pane: PagePaneApi; 
 }
 
 /** A page, a PDF or a read-only original, beside the chat or the Library list. */
-export function PagePane({ item, pane }: { item: PaneItem; pane: PagePaneApi }) {
-	const phone = usePhone();
+export function PagePane({ item, pane, full = false }: { item: PaneItem; pane: PagePaneApi; full?: boolean }) {
+	// The Library's full view (feature 027) is never the phone layer.
+	const phone = usePhone() && !full;
 	if (item.kind === "page") return <PageSurface item={item} pane={pane} phone={phone} />;
 	if (item.kind === "pdf") return <PdfSurface item={item} pane={pane} phone={phone} />;
 	if (item.kind === "diagram") return <DiagramSurface item={item} pane={pane} phone={phone} />;

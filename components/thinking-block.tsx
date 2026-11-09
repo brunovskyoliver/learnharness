@@ -73,9 +73,12 @@ export function ThinkingBlock({
 	dataCommit,
 	defaultOpen = false,
 	inCard = false,
+	body,
 }: {
 	label?: string;
 	text: string;
+	/** Drawn in place of `text` (feature 027: his references as chips). */
+	body?: React.ReactNode;
 	testId?: string;
 	/** The practice marker's register flag (commit vs nudge). */
 	dataCommit?: boolean;
@@ -112,7 +115,8 @@ export function ThinkingBlock({
 				// NO band — the accent lift read too light; rail only.
 				// Feature 001: no side rail. Outside cards the row sits on the
 				// lesson's reading edge, distinguished by ink, not a border.
-				"lh-card-enter my-2 w-full py-1 font-ui text-sm",
+				// Feature 025 (R10): the trigger in the quiet row register.
+				"lh-card-enter my-2 w-full py-1 font-sans text-meta",
 				inCard ? "" : "lh-reading",
 			)}
 		>
@@ -124,13 +128,13 @@ export function ThinkingBlock({
 					blurAfterPointerClick(e);
 				}}
 				aria-expanded={open}
-				className="flex w-full items-center gap-2 font-medium text-muted-foreground transition-colors hover:text-foreground"
+				className="flex w-full items-center gap-[7px] text-faint transition-colors hover:text-graphite"
 			>
 				{label}
-				<ChevronDownIcon className={cn("size-4 shrink-0 transition-transform", open ? "rotate-180" : "rotate-0")} />
+				<ChevronDownIcon className={cn("size-3.5 shrink-0 opacity-60 transition-transform motion-reduce:transition-none", open ? "rotate-180" : "rotate-0")} />
 			</button>
 			{open && (
-				<span className="lh-prose mt-1.5 block whitespace-pre-wrap pl-4 italic text-ink-2">{text}</span>
+				<span className="lh-prose mt-1.5 block whitespace-pre-wrap pl-4 italic text-graphite">{body ?? text}</span>
 			)}
 		</div>
 	);

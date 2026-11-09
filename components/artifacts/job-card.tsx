@@ -44,7 +44,7 @@ export function PdfBriefCard({ output }: { output: unknown }) {
 	const result = output as PdfResult | undefined;
 	if (!result || typeof result.brief !== "string") {
 		return (
-			<div className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
+			<div className="rounded-lg bg-shelf p-4 text-sm text-faint">
 				PDF reading completed, but the result could not be displayed.
 			</div>
 		);
@@ -56,21 +56,21 @@ export function PdfBriefCard({ output }: { output: unknown }) {
 	const readList = result.pagesRead ?? result.pagesConsulted ?? [];
 	const consultedList = result.pagesConsulted ?? [];
 	return (
-		<div className="rounded-xl border bg-card p-4 text-card-foreground" data-testid="pdf-brief-card">
-			<div className="mb-1 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+		<div className="rounded-lg bg-shelf p-4 text-ink" data-testid="pdf-brief-card">
+			<div className="mb-1 flex items-center gap-2 text-sm font-medium text-faint">
 				PDF brief
-				{failed && <span className="rounded bg-destructive/15 px-1.5 py-0.5 text-destructive">failed</span>}
+				{failed && <span className="text-red">failed</span>}
 			</div>
 			<div className="text-sm [&_p:first-child]:mt-0 [&_p:last-child]:mb-0">
 				<MessageResponse>{result.brief}</MessageResponse>
 			</div>
 			{!failed && readList.length > 0 && (
-				<div className="mt-3 border-t pt-2 text-sm text-muted-foreground">
+				<div className="mt-3 text-sm text-faint">
 					Pages read: {readList.join(", ")}
 				</div>
 			)}
 			{!failed && consultedList.length > readList.length && (
-				<div className="mt-3 border-t pt-2 text-sm text-muted-foreground">
+				<div className="mt-3 text-sm text-faint">
 					Pages consulted: {consultedList.join(", ")}
 				</div>
 			)}
@@ -86,7 +86,7 @@ export function ResearchBriefCard({ output }: { output: unknown }) {
 	const result = output as ResearchResult | undefined;
 	if (!result || typeof result.brief !== "string") {
 		return (
-			<div className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
+			<div className="rounded-lg bg-shelf p-4 text-sm text-faint">
 				Research completed, but the result could not be displayed.
 			</div>
 		);
@@ -96,17 +96,17 @@ export function ResearchBriefCard({ output }: { output: unknown }) {
 	const reason = failed ? result.brief.replace(/^Research failed:?\s*/, "") : result.brief;
 	const body = failed && reason ? reason[0]!.toUpperCase() + reason.slice(1) : result.brief;
 	return (
-		<div className="rounded-xl border bg-card p-4 text-card-foreground" data-testid="research-brief-card">
-			<div className="mb-1 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+		<div className="rounded-lg bg-shelf p-4 text-ink" data-testid="research-brief-card">
+			<div className="mb-1 flex items-center gap-2 text-sm font-medium text-faint">
 				{failed ? "Research" : "Research brief"}
-				{failed && <span className="rounded bg-destructive/15 px-1.5 py-0.5 text-destructive">failed</span>}
+				{failed && <span className="text-red">failed</span>}
 			</div>
 			<div className="text-sm [&_p:first-child]:mt-0 [&_p:last-child]:mb-0">
 				<MessageResponse>{body}</MessageResponse>
 			</div>
 			{result.sources.length > 0 && (
-				<div className="mt-3 border-t pt-2">
-					<div className="mb-1 text-sm font-medium text-muted-foreground">Sources</div>
+				<div className="mt-3">
+					<div className="mb-1 text-sm font-medium text-faint">Sources</div>
 					<ul className="flex flex-col gap-0.5 text-sm">
 						{result.sources.map((s) => (
 							<li key={s.url} className="truncate">
@@ -114,7 +114,7 @@ export function ResearchBriefCard({ output }: { output: unknown }) {
 									href={s.url}
 									target="_blank"
 									rel="noopener noreferrer"
-									className="text-primary underline-offset-2 hover:underline"
+									className="text-ink underline-offset-2 hover:underline"
 								>
 									{s.title}
 								</a>

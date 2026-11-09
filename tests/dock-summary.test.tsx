@@ -4,6 +4,7 @@ import { afterEach, it } from "node:test";
 import type { Root } from "react-dom/client";
 import { parseHTML } from "linkedom";
 import { QuestionDock } from "../components/question-dock.tsx";
+import { CheckThread } from "../components/study/check-thread.tsx";
 import { Composer } from "../components/composer.tsx";
 import { PracticeDock } from "../components/practice-dock.tsx";
 import { SessionAccountProvider, SessionStateProvider, useSessionState } from "../components/session-state.tsx";
@@ -28,10 +29,11 @@ async function harness() {
 	return { host, render: async (node: React.ReactNode) => { await act(async () => root.render(node)); } };
 }
 const quiz = { question: "Which planet?", options: [{ label: "Mercury" }, { label: "Venus" }], correctAnswer: "Mercury", explanation: "Closest to the sun." };
-it("folding a live question preserves the input node, selected answer, confidence, and one submit owner", async () => {
+const thread = { kind: "question" as const, label: "Lesson check", teaser: "Which planet?", reveal: false, fresh: false, variant: "inline" as const, layer: null, lessonWidth: 390, shift: 0, anchorId: null, onOpen: () => {}, onClose: () => {} };
+it("closing a check thread preserves the input node, selected answer, confidence, and one submit owner", async () => {
 	const { host, render } = await harness();
 	let submitted: QuestionAnswerData | undefined;
-	const view = (expanded: boolean) => <QuestionDock toolName="quiz" toolCallId="summary-q" input={quiz} expanded={expanded} onExpand={() => {}} onSubmit={answer => { submitted = answer; }} initialDraft={{ selection: { selected: new Set([0]), otherSelected: false, dontKnow: false }, thinking: "My reasoning", other: "", text: "", confidenceIndex: 2 }} />;
+	const view = (expanded: boolean) => <CheckThread {...thread} id="summary-q" open={expanded}><QuestionDock toolName="quiz" toolCallId="summary-q" input={quiz} active={expanded} onSubmit={answer => { submitted = answer; }} initialDraft={{ selection: { selected: new Set([0]), otherSelected: false, dontKnow: false }, thinking: "My reasoning", other: "", text: "", confidenceIndex: 2 }} /></CheckThread>;
 	await render(view(true));
 	const input = host.querySelector("textarea");
 	const choice = host.querySelector('[data-kbdrow="0"]');
@@ -40,11 +42,12 @@ it("folding a live question preserves the input node, selected answer, confidenc
 	assert.equal(host.querySelector("textarea"), input);
 	assert.equal(input.value, "My reasoning");
 	assert.equal(host.querySelectorAll("form").length, 1);
-	assert.equal(host.querySelector('[data-testid="lesson-question"]')?.hasAttribute("hidden"), true);
+	assert.equal(host.querySelector(".lh-check-body")?.hasAttribute("hidden"), true);
+	assert.ok(host.querySelector('[data-testid="question-dock-bar"]'), "closed: the collapsed line");
 	assert.equal(choice.getAttribute("aria-checked"), "true");
 	await render(view(true));
 	assert.equal(host.querySelector("textarea"), input);
-	assert.equal(host.querySelector('[data-testid="lesson-question"]')?.hasAttribute("hidden"), false);
+	assert.equal(host.querySelector(".lh-check-body")?.hasAttribute("hidden"), false);
 	await act(async () => { host.querySelector("form")!.dispatchEvent(new window.Event("submit", { bubbles: true, cancelable: true })); });
 	assert.ok(submitted);
 	assert.equal(submitted.thinking, "My reasoning");
@@ -55,10 +58,10 @@ function SeedPracticeDraft() {
 	const [, setDraft] = useSessionState("problem/summary-p/thinking", "");
 	return <button data-seed="" onClick={() => setDraft("A persistent practice trace")}>Seed draft</button>;
 }
-it("practice summary keeps its live trace mounted and submits it after re-expansion", async () => {
+it("a closed problem thread keeps its live trace mounted and submits it after reopening", async () => {
 	const { host, render } = await harness();
 	let submitted = "";
-	const view = (expanded: boolean) => <SessionAccountProvider account={null}><SessionStateProvider chatId="dock-test"><SeedPracticeDraft /><PracticeDock problemCallId="summary-p" statement="Solve this public problem statement." expanded={expanded} onExpand={() => {}} onSubmit={text => { submitted = text; }} /></SessionStateProvider></SessionAccountProvider>;
+	const view = (expanded: boolean) => <SessionAccountProvider account={null}><SessionStateProvider chatId="dock-test"><SeedPracticeDraft /><CheckThread {...thread} id="summary-p" kind="problem" label="Problem" teaser="Solve this public problem statement." open={expanded}><PracticeDock problemCallId="summary-p" statement="Solve this public problem statement." active={expanded} onSubmit={text => { submitted = text; }} /></CheckThread></SessionStateProvider></SessionAccountProvider>;
 	await render(view(true));
 	await act(async () => { host.querySelector<HTMLButtonElement>("[data-seed]")!.click(); });
 	const input = host.querySelector("textarea")!;
@@ -66,7 +69,7 @@ it("practice summary keeps its live trace mounted and submits it after re-expans
 	await render(view(false));
 	assert.equal(host.querySelector("textarea"), input);
 	assert.match(host.querySelector('[data-testid="practice-dock-bar"]')!.textContent!, /public problem statement/);
-	assert.equal(host.querySelector('[data-testid="practice-problem-content"]')?.hasAttribute("hidden"), true);
+	assert.equal(host.querySelector(".lh-check-body")?.hasAttribute("hidden"), true);
 	await render(view(true));
 	await act(async () => { host.querySelector<HTMLButtonElement>('[data-testid="practice-send"]')!.click(); });
 	assert.equal(submitted, "A persistent practice trace");

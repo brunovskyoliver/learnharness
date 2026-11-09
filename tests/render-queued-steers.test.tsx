@@ -23,7 +23,7 @@ describe("QueuedSteersBody (the quiet queue above the composer)", () => {
 		assert.equal(html.match(/>Queued</g)?.length, 2, "one labelled row per steer");
 		assert.match(html, /truncate/, "single-line truncation with ellipsis");
 		assert.match(html, /items-end/, "right-aligned stack");
-		assert.match(html, /bg-card/, "a raised row");
+		assert.match(html, /bg-shelf/, "a raised row");
 		assert.doesNotMatch(html, /muted-foreground\/\d/, "no opacity text greys");
 		assert.match(html, /also cover Venus/, "the text rides the row");
 	});
@@ -32,7 +32,7 @@ describe("QueuedSteersBody (the quiet queue above the composer)", () => {
 		const html = renderToStaticMarkup(<QueuedSteersBody steers={[{ id: "steer_a", text: "Can you show it on a plot?" }]} onRemove={() => {}} />);
 		assert.match(html, /<button type="button" aria-label="Remove queued message: Can you show it on a plot\?" data-testid="queued-steer-remove"/);
 		assert.match(html, /pointer-coarse:size-11/);
-		assert.match(html, /text-ink-2 transition-colors hover:bg-accent hover:text-foreground/);
+		assert.match(html, /text-faint transition-colors hover:text-ink/);
 	});
 
 	it("Already sent: no remove control, the row waits for its card; Could not remove: the × retries", () => {

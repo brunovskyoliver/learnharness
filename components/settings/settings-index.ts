@@ -5,7 +5,7 @@
  */
 import { AUTH_KEYS, KEYBOARD_ACTIONS, NATIVE_SUBSCRIPTIONS, fuzzyScore } from "@/src/core";
 
-export type SettingsIndexSection = "keys" | "agent" | "appearance" | "graph" | "keyboard" | "general";
+export type SettingsIndexSection = "customize" | "reviewers" | "keys" | "agent" | "graph" | "keyboard" | "general";
 
 export interface SettingsIndexEntry {
 	section: SettingsIndexSection;
@@ -45,6 +45,17 @@ export function displayRowId(label: string): string {
 }
 
 export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
+	// Customize (feature 025): the shared Appearance, then Notebook's own options.
+	{ section: "customize", row: "theme", label: "Appearance", hint: "Theme: system, light or dark" },
+	{ section: "customize", row: "text-size", label: "Text size", hint: "Small, default or large" },
+	{ section: "customize", row: "lettering", label: "Lettering", hint: "The tutor's hand: serif or plain" },
+	{ section: "customize", row: "ink", label: "Ink colour", hint: "The colour the AI writes in" },
+	{ section: "customize", row: "start-mode", label: "New notes start in", hint: "In Notebook: thinks with you, or when you ask" },
+	{ section: "customize", row: "pointer-ink", label: "Ink from the pointer", hint: "In Notebook" },
+	{ section: "customize", row: "pace", label: "Reading pace", hint: "In Notebook: regular or slow" },
+	{ section: "customize", row: "layout", label: "Where questions appear", hint: "In Notebook: both margins, right margin or marks only" },
+	{ section: "reviewers", row: "reviewers", label: "Reviewers", hint: "Whose eyes a note is read with" },
+	{ section: "reviewers", row: "new-reviewer", label: "New reviewer" },
 	...AUTH_KEYS.map((key) => ({ section: "keys" as const, row: key.id, label: `${key.label} key`, hint: "Search" })),
 	{ section: "keys", row: "add-provider", label: "Add provider key", hint: "Model API keys" },
 	{ section: "keys", row: "chatgpt", label: "ChatGPT", hint: "Subscriptions" },
@@ -58,12 +69,6 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 	{ section: "agent", row: "search-engine", label: "Search engine" },
 	{ section: "agent", row: "compaction-threshold", label: "Compaction threshold" },
 	{ section: "agent", row: "system-prompts", label: "System prompts" },
-	{ section: "appearance", row: "background", label: "Background" },
-	{ section: "appearance", row: "font", label: "Reading font" },
-	{ section: "appearance", row: "prose-size", label: "Reading font size" },
-	{ section: "appearance", row: "heading-weight", label: "Heading weight" },
-	{ section: "appearance", row: "bold-color", label: "Bold color" },
-	{ section: "appearance", row: "italic-color", label: "Italic color" },
 	{ section: "graph", row: "extraction", label: "Extraction", hint: "Off = the graph stops growing" },
 	{ section: "graph", row: "rendering", label: "Graph rendering", hint: "Off = home shows the chains view" },
 	{ section: "graph", row: "chunk-budget", label: "Extraction chunk budget" },

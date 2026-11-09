@@ -7,10 +7,72 @@ import { Dialog as DialogPrimitive } from "radix-ui"
 
 import { Button } from "@/components/ui/button"
 
+/** The open state, for the content's focus return (feature 028, R7). */
+const DialogOpenContext = React.createContext<boolean | undefined>(undefined)
+
 function Dialog({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />
+  return (
+    <DialogOpenContext.Provider value={props.open}>
+      <DialogPrimitive.Root data-slot="dialog" {...props} />
+    </DialogOpenContext.Provider>
+  )
+}
+
+/**
+ * Feature 028 (R7, FR-005): the dialog lifts away for 120ms, but focus goes
+ * back at once. Radix returns focus when the content unmounts, after its exit
+ * animation; this returns it as the dialog closes, through the caller's
+ * `onCloseAutoFocus` when it has one, else to the element that had focus as
+ * it opened. A passive effect: the focus trap lets go in its own effect
+ * cleanup, which runs first (a discrete close flushes both before the next
+ * frame). The unmount's own return is then skipped; a dialog its owner
+ * unmounts outright (no close first) keeps Radix's return.
+ */
+function useCloseFocusNow(
+  open: boolean | undefined,
+  onCloseAutoFocus: ((event: Event) => void) | undefined
+) {
+  const opener = React.useRef<Element | null>(null)
+  const content = React.useRef<HTMLDivElement | null>(null)
+  const wasOpen = React.useRef(false)
+  const returned = React.useRef(false)
+  const handler = React.useRef(onCloseAutoFocus)
+  handler.current = onCloseAutoFocus
+  React.useLayoutEffect(() => {
+    if (open && !wasOpen.current) opener.current = document.activeElement
+  }, [open])
+  React.useEffect(() => {
+    if (open === undefined) return
+    if (open) {
+      wasOpen.current = true
+      returned.current = false
+      return
+    }
+    if (!wasOpen.current) return
+    wasOpen.current = false
+    returned.current = true
+    // A layer that opened as this one closed keeps the focus it took.
+    const now = document.activeElement
+    if (now && now !== document.body && !content.current?.contains(now)) return
+    const event = new Event("lh.closeAutoFocus", { cancelable: true })
+    handler.current?.(event)
+    const back = opener.current
+    if (!event.defaultPrevented && back instanceof HTMLElement && back.isConnected && back !== document.body) back.focus()
+  }, [open])
+  // Uncontrolled dialogs keep Radix's own return.
+  const onClose = open === undefined
+    ? onCloseAutoFocus
+    : (event: Event) => {
+        const lost = document.activeElement === null || document.activeElement === document.body
+        if (!returned.current) return handler.current?.(event)
+        event.preventDefault()
+        // Back already, unless focus went into the closing dialog since (it is gone now).
+        const back = opener.current
+        if (lost && back instanceof HTMLElement && back.isConnected) back.focus()
+      }
+  return { content, onCloseAutoFocus: onClose }
 }
 
 function DialogTrigger({
@@ -39,7 +101,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+        "lh-layer-scrim fixed inset-0 z-50 bg-backdrop",
         className
       )}
       {...props}
@@ -51,26 +113,36 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
 }) {
+  const open = React.useContext(DialogOpenContext)
+  const { content, onCloseAutoFocus: closeAutoFocus } = useCloseFocusNow(open, onCloseAutoFocus)
+  const { ref: givenRef, ...contentProps } = props as typeof props & { ref?: React.Ref<HTMLDivElement> }
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border bg-background p-6 duration-200 outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg",
+          "lh-dialog-grain lh-layer-dialog fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-xl bg-paper p-6 text-ink shadow-lift outline-none sm:max-w-lg",
           className
         )}
-        {...props}
+        {...contentProps}
+        ref={(node: HTMLDivElement | null) => {
+          content.current = node
+          if (typeof givenRef === "function") givenRef(node)
+          else if (givenRef) (givenRef as React.RefObject<HTMLDivElement | null>).current = node
+        }}
+        onCloseAutoFocus={closeAutoFocus}
       >
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="absolute top-4 right-4 rounded-xs opacity-70 pointer-coarse:top-1.5 pointer-coarse:right-1.5 pointer-coarse:flex pointer-coarse:size-11 pointer-coarse:items-center pointer-coarse:justify-center ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            className="absolute top-3.5 right-3.5 grid size-8 place-items-center rounded-full text-faint transition-colors hover:bg-shelf hover:text-ink pointer-coarse:top-1.5 pointer-coarse:right-1.5 pointer-coarse:size-11 disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
           >
             <XIcon />
             <span className="sr-only">Close</span>
@@ -125,7 +197,7 @@ function DialogTitle({
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("text-lg leading-none font-semibold", className)}
+      className={cn("text-xl font-medium tracking-title text-ink", className)}
       {...props}
     />
   )
@@ -138,7 +210,7 @@ function DialogDescription({
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn("text-md text-graphite", className)}
       {...props}
     />
   )

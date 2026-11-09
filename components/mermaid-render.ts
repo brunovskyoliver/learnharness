@@ -26,7 +26,7 @@ export async function renderMermaid(chart: string): Promise<string> {
 		fontSize: MERMAID_FONT_SIZE,
 		// Pele measures text on a canvas, so it needs the resolved family
 		// list, not a var() reference.
-		fontFamily: getComputedStyle(document.documentElement).getPropertyValue("--font-ui").trim() || "sans-serif",
+		fontFamily: getComputedStyle(document.documentElement).getPropertyValue("--font-sans").trim() || "sans-serif",
 		idPrefix: `lh-chart-${(seq++).toString(36)}-`,
 	});
 	return svg;

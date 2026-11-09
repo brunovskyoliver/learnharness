@@ -28,6 +28,7 @@ import { SvgImage } from "@/components/artifacts/svg-image";
  */
 
 import { chartSize } from "./session-overlay-context";
+import { BlotGlyph } from "@/components/paper/blot";
 export { chartSize, SessionMermaidContext, useSessionMermaid } from "./session-overlay-context";
 
 /** The diagram focus: the chart at natural size inside a pan/zoom viewport
@@ -181,14 +182,14 @@ export function MermaidOverlay({
 			// page's session-area div — below the drag bar, right of the
 			// sidebar. 80% + blur: the transcript ghosts through (owner
 			// decision, 2026-09-19).
-			className="absolute inset-0 z-40 flex flex-col bg-background p-4 "
+			className="absolute inset-0 z-40 flex flex-col bg-paper p-4 "
 			role="dialog"
 			aria-modal="true"
 			aria-label="Diagram focus"
 		>
 			<div className="mb-2 flex items-center gap-2">
 				<span className="text-sm font-medium">Diagram</span>
-				<span className="text-sm text-muted-foreground">from this lesson</span>
+				<span className="text-sm text-faint">from this lesson</span>
 				<Hint label="Close" binding="escape" side="left">
 <button
 					type="button"
@@ -204,7 +205,7 @@ export function MermaidOverlay({
 			<div
 				ref={viewportRef}
 				className={cn(
-					"relative min-h-0 flex-1 touch-none overflow-hidden rounded-xl bg-background select-none",
+					"relative min-h-0 flex-1 touch-none overflow-hidden rounded-lg bg-paper select-none",
 					atFloor ? "cursor-default" : "cursor-grab",
 				)}
 				onPointerDown={startDrag}
@@ -262,7 +263,7 @@ export function MermaidOverlay({
 									type="button"
 									aria-label="Zoom out"
 									onClick={() => stepZoom(1 / 1.25)}
-									className="ui-icon-button pointer-events-auto bg-card"
+									className="ui-icon-button pointer-events-auto bg-shelf"
 								>
 									<MinusIcon className="size-3.5" />
 								</button>
@@ -272,7 +273,7 @@ export function MermaidOverlay({
 									type="button"
 									aria-label="Fit diagram to view"
 									onClick={fitView}
-									className="ui-icon-button pointer-events-auto bg-card"
+									className="ui-icon-button pointer-events-auto bg-shelf"
 								>
 									<MaximizeIcon className="size-3.5" />
 								</button>
@@ -282,7 +283,7 @@ export function MermaidOverlay({
 									type="button"
 									aria-label="Zoom in"
 									onClick={() => stepZoom(1.25)}
-									className="ui-icon-button pointer-events-auto bg-card"
+									className="ui-icon-button pointer-events-auto bg-shelf"
 								>
 									<PlusIcon className="size-3.5" />
 								</button>
@@ -291,8 +292,8 @@ export function MermaidOverlay({
 						</div>
 					</>
 				) : (
-					<div className="flex h-full items-center justify-center gap-2 text-sm text-muted-foreground">
-						<span className="inline-block size-4 animate-spin rounded-full border border-current border-b-2" />
+					<div className="flex h-full items-center justify-center gap-2 text-sm text-faint">
+						<span className="nb-ink-wait" aria-hidden="true"><BlotGlyph className="nb-ink-wait-blot" size={13} /></span>
 						Rendering diagram…
 					</div>
 				)}

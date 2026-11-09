@@ -34,21 +34,23 @@
 }
 
 .session-turn-marker > span {
-	height: 2px;
+	height: 1.5px;
 	width: 0.75rem;
 	border-radius: 1px;
-	background: var(--muted-foreground);
-	opacity: 0.4;
-	transition: width 160ms ease-out, opacity 160ms ease-out;
+	background: var(--faint);
+	opacity: 0.5;
+	/* The hover tick doubles by transform (compositor only), from its left end. */
+	transform-origin: left center;
+	transition: transform 160ms ease-out, opacity 160ms ease-out;
 }
 
 .session-turn-marker:hover > span {
-	width: 1.5rem;
+	transform: scaleX(2);
 }
 
 .session-turn-marker:is(:hover, :focus-visible, [aria-current="step"]) > span {
-	background: var(--foreground);
-	opacity: 0.85;
+	background: var(--riddle);
+	opacity: 1;
 }
 
 .session-turn-preview {
@@ -58,10 +60,12 @@
 	width: 20rem;
 	flex-direction: column;
 	gap: 0.375rem;
-	border-radius: var(--radius-lg);
-	background: var(--popover);
+	/* Feature 025: a lifted paper card in the menu register (radius 12, lift, 13.5px). */
+	border-radius: 12px;
+	background: var(--paper);
+	box-shadow: var(--lift);
 	padding: 0.875rem 1rem;
-	font-size: 0.875rem;
+	font-size: var(--text-ui);
 	line-height: 1.5;
 	text-align: left;
 	text-wrap: wrap;
@@ -71,7 +75,18 @@
 	.session-turn-marker > span { transition: none; }
 }
 
-@custom-variant dark (&:is(.dark *));
+/* Study's `.dark` class is gone (feature 025): `dark:` follows the paper
+   theme on <html>, the OS only when the theme is "system". */
+@custom-variant dark {
+	&:where([data-theme="dark"], [data-theme="dark"] *) {
+		@slot;
+	}
+	@media (prefers-color-scheme: dark) {
+		&:where([data-theme="system"], [data-theme="system"] *) {
+			@slot;
+		}
+	}
+}
 
 /*
  * THE SKIN — wave 5. Design tokens, the single place to restyle the app.
@@ -81,13 +96,13 @@
  *     padding/margin/gap in the app uses whole units of a 4px base.
  *   - The type scale below is a declared modular ladder (each --text-* token
  *     carries its own line-height); components never invent pixel sizes.
- *   - Radii ladder is 4 / 8 / 12 / 16px multiples of the 4px base.
- *   - Emphasis colors live in tokens (--lh-ink-strong / --lh-ink-italic) so a
- *     future settings UI reassigns them (configurable per the owner).
+ *   - Radii (feature 025): 8 controls / 10 cards / 12 menus / 16 the
+ *     settings modal.
+ *   - Emphasis colors are the paper ink (feature 025).
  */
 
 /* Keyboard-only ring (polish pass 2026-10-26, superseding the 2026-10-01
-   no-ring law): controls reached by keyboard get a 1px --ring outline.
+   no-ring law): controls reached by keyboard get a 1px --nb-focus outline.
    The old law's bug (a CLICKED sidebar session lit up when the quiz's
    ←/→ were pressed, because :focus-visible re-evaluates on key input) is
    fixed at its root instead: usePointerBlur (focus-hygiene.ts) drops
@@ -103,7 +118,7 @@
 		outline: none;
 	}
 	:where(button, a[href], input, textarea, select, [contenteditable="true"], summary, [role="button"], [role="tab"], [role="option"], [role="radio"], [role="checkbox"], [role="menuitem"], [role="switch"], [tabindex]:not([tabindex="-1"])):focus-visible {
-		outline: 1px solid var(--ring);
+		outline: 1px solid var(--nb-focus);
 		outline-offset: 2px;
 	}
 }
@@ -121,11 +136,11 @@
    strip, prompt body, answer well, toolbar). The shell never takes the
    focus ring; the answer well does. */
 .prompt-shell {
-	--prompt-surface: var(--card);
-	--prompt-muted: var(--muted-foreground);
-	--prompt-action: var(--primary);
-	--prompt-action-hover: color-mix(in srgb, var(--primary) 88%, var(--foreground));
-	--prompt-action-foreground: var(--primary-foreground);
+	--prompt-surface: var(--shelf);
+	--prompt-muted: var(--faint);
+	--prompt-action: var(--ink);
+	--prompt-action-hover: color-mix(in srgb, var(--ink) 88%, var(--paper));
+	--prompt-action-foreground: var(--paper);
 	border-radius: var(--radius-lg);
 	background: var(--prompt-surface);
 }
@@ -134,43 +149,16 @@
 	overflow-x: hidden;
 	overflow-y: auto;
 	white-space: pre-wrap;
-	color: var(--foreground);
-	caret-color: var(--foreground);
+	color: var(--ink);
+	caret-color: var(--ink);
 }
 
 .prompt-input::placeholder {
-	color: var(--prompt-muted, var(--muted-foreground));
+	color: var(--prompt-muted, var(--faint));
 	opacity: 1;
 	/* The caret sits at the text start; the gap keeps it off the
 	   placeholder's first letter (owner, 2026-10-28). */
 	padding-left: 2px;
-}
-
-/* Zone 1: whose turn it is, and what kind. */
-.turn-strip {
-	display: flex;
-	min-height: 48px;
-	align-items: center;
-	gap: 10px;
-	padding: 0 8px 0 16px;
-}
-
-.turn-label {
-	flex-shrink: 0;
-	border-radius: var(--radius-sm);
-	background: color-mix(in srgb, var(--primary) 14%, transparent);
-	padding: 2px 8px;
-	color: var(--primary);
-	font-size: var(--text-sm);
-	font-weight: 600;
-	line-height: 1.4;
-}
-
-.turn-kind {
-	flex-shrink: 0;
-	color: var(--ink-2);
-	font-size: 14px;
-	font-weight: 500;
 }
 
 /* Zone 3: the answer field sits directly on the shell (owner, 2026-10-28:
@@ -183,6 +171,22 @@
 /* Compact chat (reading history): the field and the send share one row. */
 [data-compact="true"] [data-testid="composer"] .answer-well {
 	flex: 1;
+}
+
+/* At 360px and below, when the compact row also shows the model/usage
+   controls (no models set up), they move below the field so the
+   placeholder gets the full width (owner, 2026-11-08). */
+@media (max-width: 360px) {
+	[data-compact="true"] [data-testid="composer"] [data-slot="input-group"]:has(.prompt-setup) {
+		flex-wrap: wrap;
+	}
+	[data-compact="true"] [data-testid="composer"] [data-slot="input-group"]:has(.prompt-setup) .answer-well {
+		flex-basis: 100%;
+	}
+	[data-compact="true"] [data-testid="composer"] [data-slot="input-group"]:has(.prompt-setup) .prompt-toolbar {
+		width: 100%;
+		padding-top: 0;
+	}
 }
 
 /* Controls and the primary action share one centered row. */
@@ -210,19 +214,19 @@
 	align-items: center;
 	justify-content: center;
 	border-radius: 50%;
-	background: var(--prompt-action, var(--primary));
-	color: var(--prompt-action-foreground, var(--primary-foreground));
+	background: var(--prompt-action, var(--ink));
+	color: var(--prompt-action-foreground, var(--paper));
 	cursor: pointer;
 	transition: background-color 160ms ease, color 160ms ease;
 }
 
 .prompt-submit:hover:not(:disabled) {
-	background: var(--prompt-action-hover, var(--primary));
+	background: var(--prompt-action-hover, var(--ink));
 }
 
 .prompt-submit:disabled {
-	background: var(--accent);
-	color: var(--muted-foreground);
+	background: var(--shelf);
+	color: var(--faint);
 	cursor: default;
 }
 
@@ -234,34 +238,35 @@
 	align-items: center;
 	justify-content: center;
 	gap: 8px;
-	border-radius: var(--radius-sm);
-	background: var(--prompt-action, var(--primary));
+	/* Pills, like Submit answer and every other primary (ui-contract: "Stop as ink pill"). */
+	border-radius: 999px;
+	background: var(--prompt-action, var(--ink));
 	padding: 0 16px;
-	color: var(--prompt-action-foreground, var(--primary-foreground));
-	font-size: var(--text-base);
+	color: var(--prompt-action-foreground, var(--paper));
+	font-size: var(--text-md);
 	font-weight: 600;
 	cursor: pointer;
 	transition: background-color 160ms ease, color 160ms ease;
 }
 
 .prompt-primary:hover:not(:disabled) {
-	background: var(--prompt-action-hover, var(--primary));
+	background: var(--prompt-action-hover, var(--ink));
 }
 
 .prompt-primary:disabled {
-	background: var(--accent);
-	color: var(--muted-foreground);
+	background: var(--shelf);
+	color: var(--faint);
 	cursor: default;
 }
 
 .prompt-primary[data-quiet] {
-	background: var(--accent);
-	color: var(--foreground);
+	background: var(--shelf);
+	color: var(--ink);
 	font-weight: 500;
 }
 
 .prompt-primary[data-quiet]:hover:not(:disabled) {
-	background: color-mix(in srgb, var(--accent) 80%, var(--foreground));
+	background: color-mix(in srgb, var(--shelf) 80%, var(--ink));
 }
 
 .prompt-secondary {
@@ -271,16 +276,16 @@
 	align-items: center;
 	border-radius: var(--radius-sm);
 	padding: 0 14px;
-	color: var(--ink-2);
-	font-size: var(--text-base);
+	color: var(--graphite);
+	font-size: var(--text-md);
 	font-weight: 500;
 	cursor: pointer;
 	transition: background-color 160ms ease, color 160ms ease;
 }
 
 .prompt-secondary:hover:not(:disabled) {
-	background: var(--accent);
-	color: var(--foreground);
+	background: var(--shelf);
+	color: var(--ink);
 }
 
 /* Home's waiting rows (feature 002). Phones stack kind, a two-line teaser,
@@ -293,20 +298,21 @@
 	align-items: center;
 	column-gap: 12px;
 	row-gap: 2px;
+	/* Quiet rows on the paper (feature 025): no fill until the pointer is on
+	   one; the text keeps the section's left edge (the row bleeds 12px). */
+	margin-inline: -12px;
 	border-radius: var(--radius-lg);
-	background: var(--card);
-	padding: 12px 12px 12px 16px;
-	position: relative;
-	transition: background-color 160ms ease;
+	padding: 10px 12px;
+	transition: background-color 0.12s;
 }
-/* The whole card opens the row: the action link's hit area stretches over it. */
-.waiting-row-action::after {
-	content: "";
-	position: absolute;
-	inset: 0;
-	border-radius: var(--radius-lg);
-}
-.waiting-row:has(.waiting-row-action:hover) { background: var(--accent); }
+.waiting-row:hover { background: var(--shelf); }
+/* The whole row opens it: the row's link stretches over the row (one link, one tab stop). */
+.waiting-row { position: relative; cursor: pointer; }
+.waiting-row-action::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.waiting-row-action:focus-visible { outline: none; }
+.waiting-row:has(.waiting-row-action:focus-visible) { box-shadow: inset 0 0 0 2px var(--nb-focus); }
+.waiting-row:hover .waiting-row-action:not(:disabled) { color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { .waiting-row { transition: none; } }
 .waiting-row-kind { grid-area: kind; }
 .waiting-row-meta { grid-area: meta; margin-top: 6px; }
 .waiting-row-teaser {
@@ -336,23 +342,25 @@
 	.waiting-row-action { margin: 0 0 0 8px; }
 }
 
-/* Setup in the toolbar (no key, no models), in place of the model controls. */
+/* Setup in the toolbar (no key, no models), in place of the model controls:
+   the one thing to do, so Notebook's primary, the ink pill (feature 025). */
 .prompt-setup {
 	display: inline-flex;
-	min-height: 36px;
+	min-height: 32px;
 	align-items: center;
-	border-radius: var(--radius-sm);
-	background: var(--accent);
-	padding: 0 12px;
-	color: var(--foreground);
-	font-size: 14px;
+	border-radius: 999px;
+	background: var(--ink);
+	padding: 0 14px;
+	color: var(--paper);
+	font-size: var(--text-meta);
 	font-weight: 500;
+	white-space: nowrap;
 	cursor: pointer;
-	transition: background-color 160ms ease;
+	transition: opacity 160ms ease;
 }
 
 .prompt-setup:hover {
-	background: color-mix(in srgb, var(--accent) 80%, var(--foreground));
+	opacity: 0.85;
 }
 
 @media (pointer: coarse) {
@@ -361,7 +369,7 @@
 
 .prompt-hint {
 	padding: 0 6px;
-	color: var(--muted-foreground);
+	color: var(--faint);
 	font-size: var(--text-sm);
 	white-space: nowrap;
 }
@@ -383,8 +391,8 @@
 	gap: 6px;
 	border-radius: var(--radius-sm);
 	padding: 0 10px;
-	color: var(--ink-2);
-	font-size: 14px;
+	color: var(--graphite);
+	font-size: var(--text-md);
 	font-weight: 500;
 	cursor: pointer;
 	transition: background-color 160ms ease, color 160ms ease;
@@ -392,8 +400,8 @@
 
 .prompt-model-trigger:hover,
 .prompt-model-trigger[aria-expanded="true"] {
-	background: var(--accent);
-	color: var(--foreground);
+	background: var(--shelf);
+	color: var(--ink);
 }
 
 .prompt-model-trigger:disabled {
@@ -403,18 +411,18 @@
 
 .model-picker-panel,
 .reasoning-picker-panel {
-	--picker-surface: var(--popover);
-	--picker-border: var(--border);
-	--picker-muted: var(--muted-foreground);
-	--picker-selection: var(--accent);
-	--picker-focus: var(--ring);
+	--picker-surface: var(--paper);
+	--picker-border: var(--rule);
+	--picker-muted: var(--faint);
+	--picker-selection: var(--shelf);
+	--picker-focus: var(--nb-focus);
 	display: flex;
 	flex-direction: column;
 	border-radius: var(--radius-lg);
 	background: var(--picker-surface);
 	padding: 8px;
-	color: var(--foreground);
-	font-family: var(--font-ui);
+	color: var(--ink);
+	font-family: var(--font-sans);
 }
 
 .model-menu-content {
@@ -430,17 +438,17 @@
 	align-items: center;
 	gap: 10px;
 	margin: 0 4px 8px;
-	border-bottom: 1px solid var(--picker-border, var(--border));
+	border-bottom: 1px solid var(--nb-control-edge);
 	padding: 4px 4px 8px;
-	color: var(--picker-muted, var(--muted-foreground));
+	color: var(--picker-muted, var(--faint));
 }
 
 .model-menu-search:focus-within {
-	border-bottom-color: var(--picker-focus, var(--ring));
+	border-bottom-color: var(--picker-focus, var(--nb-focus));
 }
 
 .model-menu-search input::placeholder {
-	color: var(--picker-muted, var(--muted-foreground));
+	color: var(--picker-muted, var(--faint));
 	opacity: 1;
 }
 
@@ -473,11 +481,11 @@
 .model-menu-option[data-active],
 .reasoning-menu-option:hover,
 .reasoning-menu-option[aria-checked="true"] {
-	background: var(--picker-selection, var(--accent));
+	background: var(--picker-selection, var(--shelf));
 }
 
 .model-menu-option[data-active] {
-	outline: 1px solid var(--picker-focus, var(--ring));
+	outline: 1px solid var(--picker-focus, var(--nb-focus));
 	outline-offset: -1px;
 }
 
@@ -487,7 +495,7 @@
 	align-items: baseline;
 	gap: 8px;
 	margin-top: 3px;
-	color: var(--picker-muted, var(--muted-foreground));
+	color: var(--picker-muted, var(--faint));
 	font-size: var(--text-sm);
 }
 
@@ -495,20 +503,20 @@
 	flex-shrink: 0;
 	margin: 8px 4px 0;
 	padding: 10px 8px 4px;
-	color: var(--picker-muted, var(--muted-foreground));
+	color: var(--picker-muted, var(--faint));
 	font-size: var(--text-xs);
 }
 
 .model-menu-empty {
 	padding: 24px 12px;
-	color: var(--picker-muted, var(--muted-foreground));
-	font-size: var(--text-base);
+	color: var(--picker-muted, var(--faint));
+	font-size: var(--text-md);
 	text-align: center;
 }
 
 .reasoning-menu-heading {
 	padding: 6px 10px 10px;
-	color: var(--picker-muted, var(--muted-foreground));
+	color: var(--picker-muted, var(--faint));
 	font-size: var(--text-sm);
 }
 
@@ -519,10 +527,10 @@
 	align-items: center;
 	justify-content: space-between;
 	gap: 16px;
-	border-radius: 6px;
+	border-radius: var(--radius-md);
 	padding: 8px 10px;
-	color: var(--foreground);
-	font-size: var(--text-base);
+	color: var(--ink);
+	font-size: var(--text-md);
 	text-align: left;
 	cursor: pointer;
 	transition: background-color 120ms ease;
@@ -544,119 +552,142 @@
 	.model-menu-option, .reasoning-menu-option { transition: none; }
 }
 
-/* Study ink (feature 001, owner decision 2026-10-27): a warm near-black
-   ground with two raised steps, three inks and one amber accent reserved
-   for the learner's turn, the primary action and focus. Saved background
-   overrides remain inline (appearance-vars.ts). */
-:root, .dark {
-	color-scheme: dark;
-	--radius: 6px;
-	--background: #0b0b0a;
-	--foreground: #edece8;
-	--ink-2: #b4b2ab;
-	--surface-raised: #151513;
-	--surface-raised-2: #1d1d1a;
-	--card: var(--surface-raised);
-	--card-foreground: var(--foreground);
-	--popover: var(--surface-raised-2);
-	--popover-foreground: var(--foreground);
-	--primary: #e3a957;
-	--primary-foreground: #0b0b0a;
-	--secondary: var(--surface-raised);
-	--secondary-foreground: var(--foreground);
-	--muted: var(--surface-raised);
-	--muted-foreground: #8a8881;
-	--accent: var(--surface-raised-2);
-	--accent-foreground: var(--foreground);
-	--message-surface: var(--surface-raised);
-	--destructive: #f08a7e;
-	--success: #86c2a0;
-	--warning: #e3a957;
-	--border: rgb(255 252 240 / 7%);
-	--input: rgb(255 252 240 / 14%);
-	--ring: var(--primary);
-	--lh-ink-strong: var(--foreground);
-	--lh-ink-italic: var(--foreground);
-	--lh-prose-size: 17px;
+/* The colours are the paper system's (app/paper.css, feature 025): tokens
+   on html.lh-paper, with the shadcn names as aliases for components/ui and
+   third-party CSS. Reading prose follows the note size (--note-size). */
+:root {
 	--lh-prose-leading: calc(27 / 17);
-	--lh-heading-weight: 700;
 }
 
 @theme inline {
-	/* Fonts: interface and prose = Source Sans 3, code = JetBrains Mono,
-	   titles = Newsreader (--font-title, non-inline @theme below). The
-	   variables attach in app/fonts.ts.
-	   (owner, typography round) The Tailwind defaults are ALIASED to the app
-	   fonts: `font-mono`/`font-sans` utilities would otherwise fall to the
-	   SYSTEM stacks — a fourth font the app never chose — and streamdown's
-	   code-block chrome + mermaid-error + demo-card all use them. */
-	--font-ui: var(--font-sans3), ui-sans-serif, system-ui, sans-serif;
-	--font-prose: var(--font-sans3), ui-sans-serif, system-ui, sans-serif;
-	--font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, monospace;
-	--font-sans: var(--font-sans3), ui-sans-serif, system-ui, sans-serif;
-	/* Each size carries its own line-height; components pull from this
-	   ladder. --font-title, --text-xs and --text-sm live in the NON-inline
-	   @theme below so runtime overrides (appearance, .lh-session-scale)
-	   reach the utilities. */
-	/* Study ink ladder: 12 (mono metadata only) / 13 / 15 / 17 / 22 / 30 / 40. */
-	--text-base: 15px;
-	--text-base--line-height: 1.47;
-	--text-lg: 17px;
-	--text-lg--line-height: 1.59;
-	--text-xl: 22px;
-	--text-xl--line-height: 1.3;
-	--text-2xl: 30px;
-	--text-2xl--line-height: 1.2;
-	--text-3xl: 40px;
-	--text-3xl--line-height: 1.1;
-	/* Three radii: 6 for controls, 10 for cards and the composer, full for
-	   the round send and status dots. */
-	--radius-xs: 6px;
-	--radius-sm: 6px;
-	--radius-md: 6px;
+	/* Faces (app/fonts.ts, research R3): Instrument Sans for the interface and
+	   the learner, Newsreader for the AI's voice, the system mono for code.
+	   Faces are var() chains to app/fonts.ts and paper.css's --nb-mono. */
+	--font-sans: var(--nb-sans);
+	--font-voice: var(--nb-font-voice), Georgia, serif;
+	--font-mono: var(--nb-mono);
+	/* Titles: the sans at 500 with Notebook's tracking. */
+	--tracking-title: -0.032em;
+	/* Leading for the steps that do not take their size's own line height:
+	   page titles 1.2, section headings 1.35, list-row teasers 1.6 (as the
+	   learner's turn), the review card's front and back 1.7 (DESIGN.md
+	   Queue). */
+	--leading-title: 1.2;
+	--leading-heading: 1.35;
+	--leading-row: 1.6;
+	--leading-card: 1.7;
+	/* Radii: 8 controls, 10 cards and panels, 12 menus and the export
+	   dialog, 16 the settings modal; full only for dots and send. */
+	--radius-xs: 4px;
+	--radius-sm: 8px;
+	--radius-md: 8px;
 	--radius-lg: 10px;
-	--radius-xl: 10px;
-	--radius-2xl: 10px;
-	--radius: 6px;
-	--color-background: var(--background);
-	--color-foreground: var(--foreground);
-	--color-card: var(--card);
-	--color-card-foreground: var(--card-foreground);
-	--color-popover: var(--popover);
-	--color-popover-foreground: var(--popover-foreground);
-	--color-primary: var(--primary);
-	--color-primary-foreground: var(--primary-foreground);
-	--color-secondary: var(--secondary);
-	--color-secondary-foreground: var(--secondary-foreground);
-	--color-muted: var(--muted);
-	--color-muted-foreground: var(--muted-foreground);
-	--color-accent: var(--accent);
-	--color-accent-foreground: var(--accent-foreground);
-	--color-destructive: var(--destructive);
-	--color-success: var(--success);
-	--color-warning: var(--warning);
-	--color-border: var(--border);
-	--color-input: var(--input);
-	--color-ring: var(--ring);
-	--color-ink-2: var(--ink-2);
+	--radius-xl: 12px;
+	--radius-2xl: 16px;
+	--radius: 8px;
 }
 
-* {
-	border-color: var(--color-border);
+/* The paper type scale (research R4), from the sizes Notebook uses. Static:
+   every step is emitted as a variable, so app/paper.css and
+   app/(app)/notebook/notebook.css (not compiled with this file) can read
+   var(--text-…). Inline: the utilities write the value itself, so
+   text-base follows a local --note-size. */
+@theme inline static {
+	--text-2xs: 11px;
+	--text-2xs--line-height: 1.4;
+	--text-xs: 12px;
+	--text-xs--line-height: 1.4;
+	--text-meta: 12.5px;
+	--text-meta--line-height: 1.4;
+	--text-sm: 13px;
+	--text-sm--line-height: 1.4;
+	--text-ui: 13.5px;
+	--text-ui--line-height: 1.35;
+	--text-md: 14px;
+	--text-md--line-height: 1.4;
+	--text-reply: 14.5px;
+	--text-reply--line-height: 1.55;
+	--text-base: var(--note-size);
+	--text-base--line-height: 1.8;
+	--text-lg: 17px;
+	--text-lg--line-height: 1.5;
+	--text-xl: 19px;
+	--text-xl--line-height: 1.35;
+	--text-2xl: calc(var(--note-size) * 1.65);
+	--text-2xl--line-height: 1.25;
+	--text-title: calc(var(--note-size) * 2.45);
+	--text-title--line-height: 1.12;
+	/* Inline code inside a line of text: relative to that line (the page
+	   editor's and the notebook's inline code use the same 0.88em). */
+	--text-inline-code: 0.88em;
+}
+
+@theme inline {
+	/* Lift: floating surfaces only. */
+	--shadow-lift: var(--lift);
+	/* Paper colours (app/paper.css). */
+	--color-paper: var(--paper);
+	--color-shelf: var(--shelf);
+	--color-code: var(--code);
+	--color-ink: var(--ink);
+	--color-graphite: var(--graphite);
+	--color-faint: var(--faint);
+	--color-rule: var(--rule);
+	--color-edge: var(--nb-control-edge);
+	--color-riddle: var(--riddle);
+	--color-bulb: var(--bulb);
+	--color-bulb-ink: var(--bulb-ink);
+	--color-focus: var(--nb-focus);
+	--color-backdrop: var(--nb-backdrop);
+	--color-gray: var(--text-gray);
+	--color-brown: var(--text-brown);
+	--color-red: var(--text-red);
+	--color-orange: var(--text-orange);
+	--color-green: var(--text-green);
+	--color-blue: var(--text-blue);
+	--color-purple: var(--text-purple);
+	/* The shadcn names, through paper.css's aliases, until phase 2. */
+	--color-background: var(--paper);
+	--color-foreground: var(--ink);
+	--color-card: var(--shelf);
+	--color-card-foreground: var(--ink);
+	--color-popover: var(--paper);
+	--color-popover-foreground: var(--ink);
+	--color-primary: var(--ink);
+	--color-primary-foreground: var(--paper);
+	--color-secondary: var(--shelf);
+	--color-secondary-foreground: var(--ink);
+	--color-muted: var(--shelf);
+	--color-muted-foreground: var(--faint);
+	--color-accent: var(--shelf);
+	--color-accent-foreground: var(--ink);
+	--color-destructive: var(--text-red);
+	--color-success: var(--text-green);
+	--color-warning: var(--bulb);
+	--color-border: var(--rule);
+	--color-input: var(--nb-control-edge);
+	--color-ring: var(--nb-focus);
+}
+
+/* The default border colour sits in the base layer, so a utility's colour
+   (border-edge, border-ink, border-red …) wins over it (T069). */
+@layer base {
+	* {
+		border-color: var(--rule);
+	}
 }
 
 body {
-	background: var(--color-background);
-	color: var(--color-foreground);
-	font-family: var(--font-ui);
+	background: var(--paper);
+	color: var(--ink);
+	font-family: var(--font-sans);
 }
 
-/* Cards and composer share a 52rem shell. Assistant prose uses a 76ch
-   reading column inside it; demos and visuals can use the full shell. */
+/* The lesson column (feature 025, T033): Notebook's 660px measure at
+   every width it fits; cards, demos and visuals share it (the breakout
+   lets wide visuals use more of the session). */
 :root {
-	/* Adjacent panes share the canvas; raised and hover roles stay distinct. */
-	--lh-sidebar: var(--background);
-	--lh-measure: 52rem;
+	--lh-measure: 660px;
 	--lh-wide: 52rem;
 }
 .lh-breakout {
@@ -664,30 +695,23 @@ body {
 	margin-inline: min(0px, calc((100% - var(--lh-breakout-w)) / 2));
 }
 
-/* Teaching prose (the markdown renderer's container gets .lh-prose):
-   Source Sans 3 with the size/leading tokens; emphasis color bound to
-   the settings-ready tokens. */
+/* Markdown prose (the renderer's container gets .lh-prose): the sans at the
+   note size. Tutor replies add .nb-voice .lh-voice (below). */
 .lh-prose {
 	min-width: 0;
 	overflow-wrap: anywhere;
-	font-family: var(--font-prose);
-	font-size: var(--lh-prose-size);
+	font-family: var(--font-sans);
+	font-size: var(--note-size);
 	line-height: var(--lh-prose-leading);
 }
 
-/* Titles: the display serif at a reading weight, never black. */
-.font-title {
-	font-family: var(--font-title);
-	font-weight: 500;
-}
-
 .lh-prose :where(strong, b) {
-	color: var(--lh-ink-strong);
-	font-weight: 700;
+	color: var(--ink);
+	font-weight: 620;
 }
 
 .lh-prose :where(em, i) {
-	color: var(--lh-ink-italic);
+	color: var(--ink);
 }
 
 /* Markdown lists indent from the prose edge (owner ask, 2026-09-24):
@@ -700,34 +724,71 @@ body {
 	padding-left: 1.5rem;
 }
 
-/* Markdown headings follow the appearance preference, defaulting to 700.
-   Lesson-level headings take the title face, capped at 600 so the serif
-   never goes black. */
+/* Headings: Notebook's ems and weights (DESIGN.md Notebook, Type): H1 1.65em
+   and H2 1.3em at 550, H3/H4 600 at the body size. */
 .lh-prose :where(h1, h2, h3, h4, h5, h6) {
-	font-weight: var(--lh-heading-weight, 700);
+	font-weight: 600;
 }
 .lh-prose :where(h1, h2) {
-	font-family: var(--font-title);
-	font-weight: min(var(--lh-heading-weight, 700), 600);
-	letter-spacing: -0.01em;
+	font-weight: 550;
+	letter-spacing: -0.012em;
+	line-height: 1.3;
 }
-/* Heading sizes are relative to the reading size: DESIGN.md's 30 and 22 at the 17px default,
-   so headings stay above body text when the reading size grows. h3 keeps the reading size. */
-.lh-prose :where(h1) { font-size: 1.7647em; }
-.lh-prose :where(h2) { font-size: 1.2941em; }
+.lh-prose :where(h1) { font-size: 1.65em; }
+.lh-prose :where(h2) { font-size: 1.3em; }
 .lh-prose :where(h3) { font-size: 1em; }
 .lh-prose :where(h4, h5, h6) { font-size: 1em; }
 
-/* Keep the measure in the body font so larger headings share its edge. */
+/* Links: ink with a 40% underline (DESIGN.md lookup rows; feature 025 T026). */
+.lh-prose :where(a[data-streamdown="link"]) {
+	color: var(--ink);
+	text-decoration-color: color-mix(in srgb, currentColor 40%, transparent);
+	text-underline-offset: 3px;
+}
+.lh-prose :where(a[data-streamdown="link"]):hover {
+	text-decoration-color: currentColor;
+}
+
+/* The tutor's voice (feature 025, research R9): Notebook's .nb-voice
+   (Newsreader 420, opsz 14, --riddle; "Plain" lettering → the sans) at the
+   inline-reply size, 1.06× the note size on 1.6. Words keep the voice's
+   colour in bold and italic; links stay ink. Code, math and tables keep
+   their own faces in paper tokens. */
+.lh-paper .lh-prose.lh-voice {
+	white-space: normal;
+	font-size: calc(var(--note-size) * 1.06);
+	line-height: 1.6;
+}
+.lh-paper .lh-voice :where(strong, b, em, i) { color: inherit; }
+.lh-paper .lh-voice :where(a[data-streamdown="link"]) { font-weight: inherit; }
+.lh-paper .lh-voice :where(h1, h2, h3, h4, h5, h6) {
+	font-family: inherit;
+	font-variation-settings: inherit;
+	color: inherit;
+}
+.lh-paper .lh-voice :where(.md-code-panel, [data-streamdown="table"], .lh-table-actions, [data-streamdown="inline-code"]) {
+	color: var(--ink);
+	font-variation-settings: normal;
+	letter-spacing: normal;
+	font-weight: 400;
+}
+.lh-paper .lh-voice :where([data-streamdown="table"], .lh-table-actions) {
+	font-family: var(--nb-sans);
+}
+
+/* One reading edge: every transcript block starts on the column's left edge. */
 .lh-reading {
 	width: 100%;
-	max-width: 76ch;
+	max-width: var(--lh-measure);
 	margin-inline: auto;
-	font-family: var(--font-prose);
-	font-size: var(--lh-prose-size);
+	font-family: var(--font-sans);
+	font-size: var(--note-size);
 }
 .lh-reading .lh-prose > :where(p, ul, ol, blockquote) {
 	margin-block: 0 1rem;
+}
+.lh-reading .lh-prose.lh-voice > :where(p, ul, ol, blockquote) {
+	margin-block: 0 0.9em;
 }
 .lh-reading .lh-prose > :where(h1, h2, h3, h4, h5, h6) {
 	margin-block: 2rem 0.75rem;
@@ -735,12 +796,65 @@ body {
 .lh-reading .lh-prose > :first-child { margin-top: 0; }
 .lh-reading .lh-prose > :last-child { margin-bottom: 0; }
 
+/* The learner's turn (feature 025, R9): no raised block. Instrument Sans at
+   the note size in graphite, the "You" label a faint 12px meta line. */
+.lh-user-turn { color: var(--graphite); }
+.lh-user-turn .lh-prose { color: var(--graphite); line-height: 1.6; }
+
+/* Quiet rows in the components layer, so a row's own utilities (text-red, text-graphite) still win. */
+@layer components {
+	/* Quiet rows (feature 025, research R10): tool calls, math checks, lookups,
+	   page rows and live rows share one register — 12.5px faint sans, 14px
+	   icons, a chevron disclosure, the expanded panel on the shelf at radius 10. */
+	.lh-quiet-summary {
+		display: flex;
+		align-items: center;
+		gap: 7px;
+		min-width: 0;
+		cursor: pointer;
+		user-select: none;
+		list-style: none;
+		color: var(--faint);
+		font-family: var(--nb-sans);
+		font-size: var(--text-meta);
+		line-height: 1.5;
+		transition: color 160ms;
+	}
+	.lh-quiet-summary::-webkit-details-marker { display: none; }
+	.lh-quiet-summary:hover { color: var(--graphite); }
+	.lh-quiet-summary svg:not([data-testid="braille-spinner"]) { width: 14px; height: 14px; flex-shrink: 0; }
+	.lh-quiet-chevron { opacity: 0.6; transition: transform 160ms; }
+	details[open] > .lh-quiet-summary .lh-quiet-chevron { transform: rotate(90deg); }
+	.lh-quiet-line {
+		display: flex;
+		align-items: center;
+		gap: 7px;
+		color: var(--faint);
+		font-family: var(--nb-sans);
+		font-size: var(--text-meta);
+		line-height: 1.5;
+	}
+	.lh-quiet-line svg:not([data-testid="braille-spinner"]) { width: 14px; height: 14px; flex-shrink: 0; }
+	.lh-quiet-panel {
+		margin-top: 8px;
+		padding: 12px 14px;
+		border-radius: 10px;
+		background: var(--shelf);
+		color: var(--ink);
+		font-size: var(--text-sm);
+		line-height: 1.5;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.lh-quiet-summary, .lh-quiet-chevron { transition: none; }
+	}
+}
+
 /* Inputs share the prose font and size, with tighter leading for the caret. */
 .lh-input {
 	min-width: 0;
 	overflow-wrap: anywhere;
-	font-family: var(--font-prose);
-	font-size: var(--lh-prose-size);
+	font-family: var(--font-sans);
+	font-size: var(--note-size);
 	line-height: 1.25;
 }
 
@@ -758,13 +872,13 @@ body {
 
 /* Wide tables: fade the edge that hides more columns (md-blocks sets data-clip). */
 .lh-table-scroll[data-clip="end"] {
-	mask-image: linear-gradient(to right, #000 calc(100% - 48px), transparent);
+	mask-image: linear-gradient(to right, black calc(100% - 48px), transparent);
 }
 .lh-table-scroll[data-clip="start"] {
-	mask-image: linear-gradient(to left, #000 calc(100% - 48px), transparent);
+	mask-image: linear-gradient(to left, black calc(100% - 48px), transparent);
 }
 .lh-table-scroll[data-clip="both"] {
-	mask-image: linear-gradient(to right, transparent, #000 48px, #000 calc(100% - 48px), transparent);
+	mask-image: linear-gradient(to right, transparent, black 48px, black calc(100% - 48px), transparent);
 }
 .lh-table-scroll:focus-visible {
 	/* The overflow fade must not hide the keyboard focus boundary. */
@@ -795,17 +909,8 @@ body {
 	animation: dock-variant-in 240ms cubic-bezier(0.33, 1, 0.68, 1);
 }
 
-@keyframes dock-outgoing {
-	from { opacity: 1; }
-	to { opacity: 0; }
-}
-
-.dock-outgoing {
-	animation: dock-outgoing 240ms cubic-bezier(0.33, 1, 0.68, 1);
-}
-
 @media (prefers-reduced-motion: reduce) {
-	.dock-variant, .dock-outgoing {
+	.dock-variant {
 		animation: none;
 	}
 }
@@ -824,7 +929,7 @@ body {
 /* Token the streamdown utilities reference (code-block/mermaid chrome uses
  * bg-sidebar / border-sidebar): map it onto the app's card surface. */
 @theme inline {
-	--color-sidebar: var(--card);
+	--color-sidebar: var(--shelf);
 }
 
 /* Diagrams: keep wide charts inside the content column. The svg carries
@@ -837,14 +942,14 @@ body {
 /* Pele diagram theme (ui-v2): the app's own tokens, applied live. */
 .pele {
 	--pele-bg: transparent;
-	--pele-fg: var(--foreground);
-	--pele-muted: var(--muted-foreground);
-	--pele-line: color-mix(in oklab, var(--foreground) 55%, transparent);
-	--pele-surface: var(--card);
-	--pele-surface-alt: var(--accent);
-	--pele-border: var(--border);
-	--pele-accent: var(--foreground);
-	--pele-error: var(--destructive);
+	--pele-fg: var(--ink);
+	--pele-muted: var(--faint);
+	--pele-line: color-mix(in oklab, var(--ink) 55%, transparent);
+	--pele-surface: var(--shelf);
+	--pele-surface-alt: var(--shelf);
+	--pele-border: var(--rule);
+	--pele-accent: var(--ink);
+	--pele-error: var(--text-red);
 	--pele-radius: 6px;
 }
 
@@ -869,9 +974,9 @@ body {
 .md-code-panel {
 	margin-block: 0.65rem;
 	overflow: hidden;
-	border: 1px solid var(--border);
+	border: 1px solid var(--rule);
 	border-radius: var(--radius-sm);
-	background: var(--card);
+	background: var(--shelf);
 }
 .md-code-toolbar {
 	display: flex;
@@ -907,7 +1012,7 @@ body {
 	display: block;
 }
 [data-streamdown="code-block-body"] code > span::before {
-	color: color-mix(in oklab, var(--foreground) 35%, transparent);
+	color: color-mix(in oklab, var(--ink) 35%, transparent);
 	font-size: 0.86em;
 }
 
@@ -917,7 +1022,7 @@ body {
    edges). border-collapse merges the outer border with the row rules, so
    no edge doubles. (md-blocks supplies the wrapper + the copy corner.) */
 [data-streamdown="table"] {
-	border: 1px solid var(--border);
+	border: 1px solid var(--rule);
 	/* Tables HUG their contents (owner, callout round 2026-10-07): no more
 	   full-width stretch with dead space. max-content sizes to the cells
 	   (width:auto would still stretch — the classic table trap). No
@@ -928,7 +1033,7 @@ body {
 	   visibly lagged the 16px chat text at streamdown's 12.5px text-sm).
 	   Unlayered CSS beats the cells' own utility-layer text-sm, and the
 	   :where keeps specificity zero — the override wins on layering alone. */
-	font-size: var(--lh-prose-size);
+	font-size: var(--note-size);
 }
 [data-streamdown="table"] :where(th, td) {
 	font-size: inherit;
@@ -954,14 +1059,14 @@ body {
    its row (owner ask, 2026-09-19) — border-collapse merges it with the row
    rules and the outer border, no doubled lines anywhere. */
 [data-streamdown="table"] :where(th, td):not(:first-child) {
-	border-left: 1px solid var(--border);
+	border-left: 1px solid var(--rule);
 }
 [data-streamdown="table-header"] {
 	background: transparent;
-	border-bottom: 1px solid var(--border);
+	border-bottom: 1px solid var(--rule);
 }
 [data-streamdown="table-body"] [data-streamdown="table-row"] {
-	border-bottom: 1px solid var(--border);
+	border-bottom: 1px solid var(--rule);
 }
 
 /* The mermaid focus overlay's chart wrapper: the svg fills the wrapper
@@ -1014,30 +1119,6 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
 	.braille-frame {
-		animation: none;
-	}
-}
-
-/* Settings dialog pop (settings-app wave, 2026-09-20): a short fade +
-   2% settle-scale — understated by design, the app's motion taste
-   (200ms sidebar, 150ms here); honors reduced-motion by appearing. */
-@keyframes settings-pop {
-	from {
-		opacity: 0;
-		scale: 0.98;
-	}
-	to {
-		opacity: 1;
-		scale: 1;
-	}
-}
-
-.settings-dialog-pop {
-	animation: settings-pop 150ms ease-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.settings-dialog-pop {
 		animation: none;
 	}
 }
@@ -1138,25 +1219,6 @@ body {
 	max-width: max(0px, calc(100% - 5.5rem - var(--lh-wco-right, 0px)));
 }
 
-/* --font-title deliberately NOT @theme inline (see comment above): the
-   session-name-serif toggle overrides this var at runtime, so the
-   .font-title utility must read it through var(), not carry a baked copy. */
-@theme {
-	--font-title: var(--font-newsreader), Georgia, serif;
-	--text-xs: 12px;
-	--text-xs--line-height: 1.5;
-	--text-sm: 13px;
-	--text-sm--line-height: 1.38;
-}
-
-/* Labels inside a session follow the reading size: unchanged at the 17px
-   default, capped at 15/16px so chrome never competes with the lesson.
-   Sidebar, settings and the graph keep the fixed ladder. */
-.lh-session-scale {
-	--text-xs: clamp(12px, calc(var(--lh-prose-size) * 0.7), 15px);
-	--text-sm: clamp(13px, calc(var(--lh-prose-size) * 0.765), 16px);
-}
-
 /* Card enter (owner round, 2026-10-05): the transcript cards' one-shot
    mount — a subtle fade + 4px rise, the app's motion register (150ms,
    dock-variant/settings-pop taste). Nothing on update, nothing on
@@ -1188,8 +1250,8 @@ body {
 	scroll-margin-top: 1rem;
 }
 .lh-source-highlight {
-	background-color: var(--accent);
-	outline: 1px solid var(--border);
+	background-color: var(--shelf);
+	outline: 1px solid var(--rule);
 	border-radius: 0.25rem;
 }
 
@@ -1214,15 +1276,15 @@ body {
 }
 
 /* One live demo document, presented without moving or recreating its iframe. */
-.demo-live { margin: 0; padding: 0; border: 0; max-width: none; max-height: none; color: var(--foreground); background: var(--background); }
+.demo-live { margin: 0; padding: 0; border: 0; max-width: none; max-height: none; color: var(--ink); background: var(--paper); }
 .demo-live[open] { display: flex; flex-direction: column; }
 .demo-live-inline { position: static; width: 100%; overflow: visible; }
 .demo-live-workspace { position: fixed; z-index: 35; overflow: hidden; }
 .demo-live-focus { position: fixed; inset: 0; width: 100dvw; height: 100dvh; padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom)); overflow: hidden; }
-.demo-live-focus::backdrop { background: var(--background); }
-.demo-inline-preview { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 16px; background: var(--card); border-radius: var(--radius-lg); }
-.demo-inline-row { display: flex; width: 100%; min-height: 56px; align-items: center; gap: 12px; padding: 10px 14px; border-radius: var(--radius-lg); background: var(--card); color: var(--foreground); cursor: pointer; transition: background-color 160ms ease; }
-.demo-inline-row:hover { background: var(--accent); }
+.demo-live-focus::backdrop { background: var(--paper); }
+.demo-inline-preview { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 16px; background: var(--shelf); border-radius: var(--radius-lg); }
+.demo-inline-row { display: flex; width: 100%; min-height: 56px; align-items: center; gap: 12px; padding: 10px 14px; border-radius: var(--radius-lg); background: var(--shelf); color: var(--ink); cursor: pointer; transition: color 160ms ease; }
+.demo-inline-row:hover .ui-icon { color: var(--ink); }
 .demo-workspace { height: min(340px, 35dvh); }
 @media (min-width: 768px) { .demo-workspace { height: 100%; } }
 
@@ -1236,6 +1298,8 @@ body {
    sized to the visual viewport so the keyboard never covers the caret. */
 .page-workspace { position: fixed; inset: 0 auto auto 0; z-index: 40; width: 100%; height: var(--lh-page-vh, 100dvh); padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); overscroll-behavior: contain; }
 @media (min-width: 768px) { .page-workspace { position: relative; inset: auto; z-index: auto; width: var(--lh-demo-w); height: 100%; padding: 0; } }
+/* The Library's full view (feature 027): the same surfaces across the content column, never a layer. */
+.page-workspace.lh-pane-full { position: relative; inset: auto; z-index: auto; width: 100%; height: auto; padding: 0; overscroll-behavior: auto; }
 /* Collapse keeps the pane mounted (feature 014): no width, no focus, nothing for
    assistive tech. The inner column keeps its width, so a live demo keeps its size
    off screen instead of relaying out. Phones use the layer and ignore this. */
@@ -1243,109 +1307,149 @@ body {
 	[data-pane-collapsed] { width: 0 !important; overflow: hidden; visibility: hidden; }
 	[data-pane-collapsed] > .lh-pane-inner { width: var(--lh-demo-w); flex: none; height: 100%; }
 }
-.lh-page-editor { min-height: 100%; padding: 0.5rem 0.75rem 3rem; white-space: pre-wrap; overflow-wrap: anywhere; outline: none; border-radius: 6px; }
+.lh-page-editor { min-height: 100%; padding: 0.5rem 0.75rem 3rem; white-space: pre-wrap; overflow-wrap: anywhere; outline: none; border-radius: var(--radius-md); }
 .lh-page-editor > * + *, .lh-page-editor li > * + *, .lh-page-editor blockquote > * + * { margin-top: 0.75em; }
 .lh-page-editor ul { list-style: disc; padding-left: 1.5em; }
 .lh-page-editor ol { list-style: decimal; padding-left: 1.5em; }
 .lh-page-editor li > p { margin: 0; }
-.lh-page-editor blockquote { color: var(--ink-2); padding-left: 1em; }
-.lh-page-editor a { text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--foreground) 40%, transparent); text-underline-offset: 3px; }
+.lh-page-editor blockquote { color: var(--graphite); padding-left: 1em; }
+.lh-page-editor a { text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--ink) 40%, transparent); text-underline-offset: 3px; }
+/* Study's page body in Notebook's note type (feature 025 T046): Instrument Sans at
+   the note size on 1.8, Notebook's block rhythm, headings, quotes, code, tables and
+   callouts. Notebook's own editor carries .nb-prose instead of .lh-prose. */
+.lh-prose.lh-page-editor { padding: 18px 16px 30vh; color: var(--ink); caret-color: var(--ink); font-size: var(--note-size); line-height: 1.8; letter-spacing: -0.004em; font-kerning: normal; }
+.lh-prose.lh-page-editor > * + * { margin-top: 1.05em; }
+.lh-prose.lh-page-editor > :first-child { margin-top: 0; }
+.lh-prose.lh-page-editor :is(li, blockquote) > * + * { margin-top: 0.25em; }
+.lh-prose.lh-page-editor :is(ul, ol) { padding-left: 1.3em; }
+.lh-prose.lh-page-editor li + li { margin-top: 0.25em; }
+.lh-prose.lh-page-editor li::marker { color: var(--ink); }
+.lh-prose.lh-page-editor h1 { margin-top: 2.1em; line-height: 1.25; letter-spacing: -0.022em; }
+.lh-prose.lh-page-editor h2 { margin-top: 2em; line-height: 1.35; letter-spacing: -0.015em; }
+.lh-prose.lh-page-editor h3 { margin-top: 1.7em; font-size: 1.05em; }
+.lh-prose.lh-page-editor :is(h4, h5, h6) { margin-top: 1.5em; color: var(--graphite); }
+.lh-prose.lh-page-editor > :is(h1, h2, h3, h4, h5, h6):first-child { margin-top: 0; }
+.lh-prose.lh-page-editor blockquote { padding-left: 1.1em; border-left: 2px solid var(--ink); color: var(--graphite); }
+.lh-prose.lh-page-editor a { color: inherit; text-decoration-color: var(--riddle-line); }
+.lh-prose.lh-page-editor hr { margin: 2em 0; border: 0; border-top: 1px solid var(--rule); }
+.lh-prose.lh-page-editor :not(pre) > code { padding: 0.1em 0.32em; border-radius: 4px; background: color-mix(in srgb, var(--ink) 6%, transparent); font-family: var(--font-mono); font-size: 0.88em; }
+.lh-prose.lh-page-editor pre { padding: 0.85em 1em; border-radius: 8px; background: color-mix(in srgb, var(--ink) 5%, transparent); color: var(--ink); font-size: 0.86em; line-height: 1.55; }
+.lh-prose.lh-page-editor table { font-size: 0.94em; line-height: 1.55; }
+.lh-prose.lh-page-editor :is(th, td) { padding: 0.35em 0.65em; text-align: left; }
+.lh-prose.lh-page-editor th { font-weight: 600; }
+.lh-prose.lh-page-editor .selectedCell { background: var(--riddle-wash); }
+.lh-prose.lh-page-editor ul[data-type="taskList"] li > label { margin-top: calc((1.8em - 0.95em) / 2); }
+.lh-prose.lh-page-editor ul[data-type="taskList"] input[type="checkbox"] { width: 0.95em; height: 0.95em; }
+.lh-prose.lh-page-editor ul[data-type="taskList"] li[data-checked="true"] > div { color: var(--graphite); text-decoration: line-through; text-decoration-color: var(--faint); }
+.lh-prose.lh-page-editor .katex { font-size: 1.08em; color: var(--ink); }
+.lh-prose.lh-page-editor .tiptap-mathematics-render--editable:hover,
+.lh-prose.lh-page-editor .ProseMirror-selectednode.tiptap-mathematics-render { background: var(--riddle-wash); }
+.lh-prose.lh-page-editor .ProseMirror-selectednode { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
+.lh-prose.lh-page-editor .lh-callout { gap: 0.2em; padding: 0.75em 1em 0.85em; }
+.lh-prose.lh-page-editor .lh-callout-kind { height: 1.8em; font-weight: 550; letter-spacing: 0.02em; }
+.lh-prose.lh-page-editor .lh-callout-title { height: 1.8em; font-weight: 550; }
+.lh-prose.lh-page-editor :is(.lh-callout-body, .lh-collapsible-content) > * + * { margin-top: 1.05em; }
+.lh-prose.lh-page-editor .lh-collapsible-summary { font-weight: 550; line-height: 1.8; min-height: 0; }
+.lh-prose.lh-page-editor .lh-collapsible-toggle { width: 1.8em; height: 1.8em; }
+.lh-prose.lh-page-editor .lh-wiki-link { border-radius: 3px; text-decoration-color: var(--riddle-line); }
+.lh-prose.lh-page-editor .lh-wiki-link:hover { background: var(--riddle-wash); }
+.lh-prose.lh-page-editor .lh-page-image { margin: 0.6em 0; border-radius: 6px; box-shadow: 0 0 0 1px var(--rule); }
+@media (pointer: coarse) {
+	.lh-prose.lh-page-editor :is(.lh-callout-kind, .lh-callout-title) { height: 2.75rem; }
+	.lh-prose.lh-page-editor .lh-collapsible-toggle { width: 2.75rem; height: 2.75rem; }
+	.lh-prose.lh-page-editor .lh-collapsible-summary { min-height: 2.75rem; line-height: 2.75rem; }
+}
 .lh-page-editor-host > div { display: flex; min-height: 100%; flex-direction: column; }
 .lh-page-editor-host > div > .lh-page-editor { flex: 1; }
-.lh-page-editor .tiptap-mathematics-render--editable { cursor: pointer; border-radius: 6px; }
-.lh-page-editor .tiptap-mathematics-render--editable:hover, .lh-page-editor .ProseMirror-selectednode.tiptap-mathematics-render { background: var(--accent); }
-.lh-page-editor .ProseMirror-selectednode { outline: 1px solid var(--ring); outline-offset: 1px; }
-.lh-page-editor .lh-math-source { border-radius: 6px; background: var(--card); font-family: var(--font-mono, monospace); font-size: 0.8125rem; line-height: 1.5; outline: 1px solid var(--ring); }
+.lh-page-editor .tiptap-mathematics-render--editable { cursor: pointer; border-radius: var(--radius-md); }
+.lh-page-editor .tiptap-mathematics-render--editable:hover, .lh-page-editor .ProseMirror-selectednode.tiptap-mathematics-render { background: var(--shelf); }
+.lh-page-editor .ProseMirror-selectednode { outline: 1px solid var(--nb-focus); outline-offset: 1px; }
+.lh-page-editor .lh-math-source { border-radius: var(--radius-md); background: var(--shelf); font-family: var(--font-mono, monospace); font-size: var(--text-sm); line-height: 1.5; outline: 1px solid var(--nb-focus); }
 .lh-page-editor div.lh-math-source { display: flex; flex-direction: column; padding: 0.5rem 0.75rem; }
 .lh-page-editor span.lh-math-source { display: inline-flex; max-width: 100%; padding: 0 0.25rem; vertical-align: baseline; }
-.lh-math-delimiter { color: var(--muted-foreground); user-select: none; }
-.lh-math-input { field-sizing: content; min-width: 2ch; max-width: 100%; resize: none; overflow: hidden; border: 0; background: transparent; color: var(--foreground); font: inherit; outline: none; }
+.lh-math-delimiter { color: var(--faint); user-select: none; }
+.lh-math-input { field-sizing: content; min-width: 2ch; max-width: 100%; resize: none; overflow: hidden; border: 0; background: transparent; color: var(--ink); font: inherit; outline: none; }
 div.lh-math-source > .lh-math-input { width: 100%; }
-@media (pointer: coarse) { .lh-page-editor .lh-math-source { font-size: 1rem; } }
+@media (pointer: coarse) { .lh-page-editor .lh-math-source { font-size: var(--text-base); } }
 
 /* Page editor tools (feature 010): placeholder, toolbar, menus. Unavailable
    controls use muted ink, never opacity. */
-.lh-page-editor .lh-page-placeholder::before { content: attr(data-placeholder); float: left; height: 0; color: var(--muted-foreground); pointer-events: none; }
-[data-testid="page-toolbar"] .ui-icon-button:disabled { opacity: 1; color: var(--muted-foreground); }
+.lh-page-editor .lh-page-placeholder::before { content: attr(data-placeholder); float: left; height: 0; color: var(--faint); pointer-events: none; }
+[data-testid="page-toolbar"] .ui-icon-button:disabled { opacity: 1; color: var(--faint); }
 [data-testid="page-toolbar"] :is(button, select):focus-visible,
-[data-testid="page-table-controls"] button:focus-visible { outline: 1px solid var(--ring); outline-offset: -1px; }
+[data-testid="page-table-controls"] button:focus-visible { outline: 1px solid var(--nb-focus); outline-offset: -1px; }
 [data-testid="page-slash-menu"], [data-testid="page-link-popover"] { scrollbar-width: none; }
 /* The tutor's changes: a raised step behind what it wrote, removed text struck
    through in muted ink. Decorations only; never stored. */
-.lh-page-editor .lh-tutor-added { border-radius: 6px; background: var(--accent); box-decoration-break: clone; }
-/* Print (feature 010): only the page, in Study ink's paper theme. */
+.lh-page-editor .lh-tutor-added { border-radius: var(--radius-md); background: var(--shelf); box-decoration-break: clone; }
+/* Print (feature 010): only the page, on light paper. */
 #lh-print-root { display: none; }
 @media print {
 	html[data-lh-printing] body > :not(#lh-print-root) { display: none !important; }
-	html[data-lh-printing], html[data-lh-printing] body { background: #fff; }
+	html[data-lh-printing], html[data-lh-printing] body { background: var(--print-sheet); }
+	/* The light paper tokens for the printed page: app/paper.css, section 1.4. */
 	html[data-lh-printing] #lh-print-root {
-		--background: #faf9f6; --foreground: #1a1917; --ink-2: #4a4843; --muted-foreground: #64625c; --card: #f2f0eb; --accent: #e8e5de; --border: rgba(26, 25, 23, 0.08); --input: rgba(26, 25, 23, 0.18);
-		display: block; padding: 0; background: #fff; color: #1a1917;
+		display: block; padding: 0; background: var(--print-sheet); color: var(--ink);
 	}
 }
-.lh-page-editor .lh-tutor-removed { white-space: pre-wrap; color: var(--muted-foreground); text-decoration: line-through; user-select: none; }
+.lh-page-editor .lh-tutor-removed { white-space: pre-wrap; color: var(--faint); text-decoration: line-through; user-select: none; }
 @media (pointer: coarse) {
 	[data-testid="page-toolbar"] select, [data-testid="page-table-controls"] button { min-height: 44px; }
 }
-.lh-page-editor .inline-math-error, .lh-page-editor .block-math-error { color: var(--destructive); font-family: var(--font-mono, monospace); }
+.lh-page-editor .inline-math-error, .lh-page-editor .block-math-error { color: var(--text-red); font-family: var(--font-mono, monospace); }
 .lh-page-editor [data-type="block-math"] { overflow-x: auto; padding: 0.25rem 0; }
 .lh-page-editor table { border-collapse: collapse; }
-.lh-page-editor th, .lh-page-editor td { min-width: 5em; border: 1px solid var(--input); padding: 0.25rem 0.5rem; vertical-align: top; }
-.lh-page-editor .selectedCell { background: var(--accent); }
+.lh-page-editor th, .lh-page-editor td { min-width: 5em; border: 1px solid var(--rule); padding: 0.25rem 0.5rem; vertical-align: top; }
+.lh-page-editor .selectedCell { background: var(--shelf); }
 .lh-page-editor th p, .lh-page-editor td p { margin: 0; }
 .lh-page-editor .tableWrapper { overflow-x: auto; }
-.lh-page-editor pre { overflow-x: auto; border-radius: 6px; background: var(--card); padding: 0.5rem 0.75rem; font-family: var(--font-mono, monospace); font-size: 13px; }
+.lh-page-editor pre { overflow-x: auto; border-radius: var(--radius-md); background: var(--shelf); padding: 0.5rem 0.75rem; font-family: var(--font-mono, monospace); font-size: var(--text-sm); }
 .lh-page-editor ul[data-type="taskList"] { list-style: none; padding-left: 0; }
 .lh-page-editor ul[data-type="taskList"] li { display: flex; align-items: flex-start; gap: 0.5rem; }
 .lh-page-editor ul[data-type="taskList"] li > * + * { margin-top: 0; }
 .lh-page-editor ul[data-type="taskList"] li > label { flex-shrink: 0; margin-top: calc((var(--lh-prose-leading) * 1em - 1rem) / 2); }
 .lh-page-editor ul[data-type="taskList"] li > div { flex: 1; min-width: 0; }
-.lh-page-editor ul[data-type="taskList"] input[type="checkbox"] { width: 1rem; height: 1rem; accent-color: var(--primary); }
-.lh-page-raw, .lh-page-raw-inline { color: var(--ink-2); font-size: 13px; }
-.lh-page-image { display: inline-block; max-width: 100%; border-radius: 6px; }
-.lh-page-image-missing { display: inline-block; border-radius: 6px; background: var(--card); padding: 0.25rem 0.5rem; color: var(--ink-2); font-size: 0.875em; }
-.lh-page-editor .ProseMirror-selectednode .lh-page-image, .lh-page-editor .lh-page-image-host.ProseMirror-selectednode { outline: 1px solid var(--ring); outline-offset: 2px; }
-.demo-live button:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+.lh-page-editor ul[data-type="taskList"] input[type="checkbox"] { width: 1rem; height: 1rem; accent-color: var(--ink); }
+.lh-page-raw, .lh-page-raw-inline { color: var(--graphite); font-size: var(--text-sm); }
+.lh-page-image { display: inline-block; max-width: 100%; border-radius: var(--radius-md); }
+.lh-page-image-missing { display: inline-block; border-radius: var(--radius-md); background: var(--shelf); padding: 0.25rem 0.5rem; color: var(--graphite); font-size: 0.875em; }
+.lh-page-editor .ProseMirror-selectednode .lh-page-image, .lh-page-editor .lh-page-image-host.ProseMirror-selectednode { outline: 1px solid var(--nb-focus); outline-offset: 2px; }
+.demo-live button:focus-visible { outline: 2px solid var(--nb-focus); outline-offset: 3px; }
+/* The demo head in the toolbar register (feature 025, T032): faint 15px icons
+   that turn ink on hover, no fill; a plot's title sits in the voice. */
+.demo-live .ui-icon-button:hover:not(:disabled), .demo-live .ui-icon-button[aria-expanded="true"], .demo-live .ui-icon-button[aria-pressed="true"] { background: transparent; color: var(--ink); }
+.demo-live .ui-icon { width: 15px; height: 15px; }
+.demo-sketch-head .nb-sketch-title { padding-top: 2px; }
 
 /* Small chrome actions share geometry; data/chart icons keep their own sizes. */
 .ui-icon { width: 1rem; height: 1rem; flex-shrink: 0; stroke-width: 1.75; }
-.ui-icon-button { display: inline-flex; width: 2rem; height: 2rem; flex-shrink: 0; align-items: center; justify-content: center; border-radius: var(--radius); color: var(--muted-foreground); }
-.ui-icon-button:hover:not(:disabled), .ui-icon-button[aria-expanded="true"] { color: var(--foreground); background: var(--accent); }
+.ui-icon-button { display: inline-flex; width: 2rem; height: 2rem; flex-shrink: 0; align-items: center; justify-content: center; border-radius: var(--radius); color: var(--faint); }
+.ui-icon-button:hover:not(:disabled), .ui-icon-button[aria-expanded="true"] { color: var(--ink); background: var(--shelf); }
 .ui-icon-button:disabled { opacity: .5; cursor: default; }
-::selection { background: color-mix(in srgb, var(--foreground) 24%, var(--background)); color: var(--foreground); }
-:where(input, textarea, [contenteditable="true"]) { caret-color: var(--foreground); }
+::selection { background: color-mix(in srgb, var(--ink) 24%, var(--paper)); color: var(--ink); }
+:where(input, textarea, [contenteditable="true"]) { caret-color: var(--ink); }
 @media (pointer: coarse) {
 	.ui-icon-button, .prompt-submit { min-width: 44px; min-height: 44px; }
 }
 
 /* Settings: unavailable controls use the muted ink token, never opacity
-   (owner, 2026-10-30). The row jump's highlight is a raised-2 step. */
-[data-settings-surface] [data-slot="button"]:disabled { opacity: 1; color: var(--muted-foreground); }
-[data-settings-jump] { background: var(--accent); }
-[data-testid="settings-search-results"] button:focus-visible,
-[data-testid="settings-nav"] button:focus-visible { outline-offset: -1px; }
+   (owner, 2026-10-30). The row jump's highlight lives with the modal (paper.css). */
+[data-settings-surface] [data-slot="button"]:disabled { opacity: 1; color: var(--faint); }
 
 /* Secondary view controls keep their touch targets while visual grouping uses space. */
 @media (pointer: coarse) {
 	[data-testid="settings-dialog"] :is(input:not([type="checkbox"]):not([type="range"]), select, button:not([role="switch"])) { min-height: 44px; }
 	[data-testid="chain-table"] button { min-height: 44px; }
-	[data-testid="activity-section"] button { min-width: 44px; min-height: 44px; }
 	[data-testid="mermaid-overlay"] button { min-width: 44px; min-height: 44px; }
 	.graph-chrome-fade-in :is(button, input) { min-height: 44px; }
 	.graph-chrome-fade-in button { min-width: 44px; }
 	[data-testid="demos-chip"], [data-testid="plan-chip"],
 	[data-testid="kind-filter"], [data-testid="new-session-practice"],
-	[data-testid="new-session"], [data-testid="settings-entry"],
-	[data-testid="import-notes"], [aria-label="Close sidebar"],
-	.sidebar-toggle-slot button { min-width: 44px; min-height: 44px; }
-	.sidebar-toggle-slot { height: 44px; }
-	.sidebar-toggle-slot.lh-closed-toggle { width: 44px; }
+	[data-testid="import-notes"] { min-width: 44px; min-height: 44px; }
 	[data-testid="lesson-question"] [data-kbdrow],
-	[data-testid="setup-cta"], [data-testid="setup-cta-keys"],
-	[data-testid="session-row"], [data-testid="session-row-kbd"] { min-height: 44px; }
+	[data-testid="setup-cta"], [data-testid="setup-cta-keys"] { min-height: 44px; }
 
 }
-[data-testid="activity-section"] > div > span[aria-hidden="true"] { background: transparent; }
 
 @keyframes lh-text-shimmer {
   from { background-position: 100% center; }
@@ -1356,10 +1460,6 @@ div.lh-math-source > .lh-math-input { width: 100%; }
   .lh-text-shimmer { animation: none; }
 }
 
-/* Server-rendered desktop navigation stays useful before its client code arrives. */
-@media (max-width: 927px) {
-  [data-sidebar-bootstrap] { width: 0 !important; visibility: hidden; }
-}
 
 /* Feature 008: ink focus stays local to its rows and settings controls. */
 [data-testid="lookup-row"],
@@ -1367,21 +1467,21 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 [data-testid="toggle-tool-ml-visuals"],
 [data-testid="toggle-tool-model-hub"],
 [data-testid="toggle-tool-papers"] {
-	--ring: var(--foreground);
+	--nb-focus: var(--ink);
 }
 
 /* Owner-approved page citations keep the existing underline and visible focus. */
 .lh-reading .lh-prose a[href*="#page="] {
-	color: var(--foreground);
-	--ring: var(--foreground);
+	color: var(--ink);
+	--nb-focus: var(--ink);
 }
 
 /* The divider between a sidebar and the content, with its grip (owner, 2026-10-31). */
-.lh-pane-divider::before { content: ""; position: absolute; inset-block: 0; inset-inline-start: var(--lh-divider-at, 50%); width: 1px; background: var(--input); transition: background-color 160ms; }
-.lh-pane-divider::after { content: ""; position: absolute; top: 50%; inset-inline-start: var(--lh-divider-at, 50%); width: 9px; height: 16px; transform: translate(-4px, -50%); background: var(--background) repeating-linear-gradient(to bottom, var(--muted-foreground) 0 1px, transparent 1px 5px) center / 7px 16px no-repeat; transition: background-color 160ms; }
-.lh-pane-divider:hover::before, .lh-pane-divider[data-dragging]::before { background: var(--muted-foreground); }
-.lh-pane-divider:focus-visible::before { background: var(--ring); width: 2px; }
-@media (prefers-reduced-motion: reduce) { .lh-pane-divider::before, .lh-pane-divider::after { transition: none; } }
+/* The right pane's edge (feature 025, R11): the rule hairline, graphite on hover or drag, the focus colour from the keyboard. */
+.lh-pane-divider::before { content: ""; position: absolute; inset-block: 0; inset-inline-start: var(--lh-divider-at, 50%); width: 1px; background: var(--rule); transition: background-color 160ms; }
+.lh-pane-divider:hover::before, .lh-pane-divider[data-dragging]::before { background: var(--graphite); }
+.lh-pane-divider:focus-visible::before { background: var(--nb-focus); width: 2px; }
+@media (prefers-reduced-motion: reduce) { .lh-pane-divider::before { transition: none; } }
 
 /* Long sessions (transcript-scroll-jank): the browser skips rendering rows and
    answer parts away from the viewport; they stay in the DOM for find and anchors.
@@ -1402,34 +1502,41 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 [data-transcript-measured]:has(.demo-live-workspace) {
 	content-visibility: visible;
 }
+/* Demos and wide figures break out past the 660px column (.lh-breakout, up to
+   --lh-wide; twice that to the left beside a margin thread): the row's paint
+   containment would cut them at the column's edges, so its clip margin covers
+   the breakout (feature 025: found on the ML panels at 1440). */
+[data-transcript-measured]:has(.lh-breakout) {
+	overflow-clip-margin: 180px; /* --lh-wide (832px) − --lh-measure (660px) + 8px; Chrome takes no calc() here */
+}
 
 /* Note links, callouts and collapsible sections (feature 016). No side rules and
    no amber: raised steps and ink. A dangling link says so in words as well. */
-.lh-page-editor .lh-wiki-link { cursor: pointer; border-radius: 6px; color: var(--foreground); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--foreground) 40%, transparent); text-underline-offset: 3px; }
-.lh-page-editor .lh-wiki-link:hover { background: var(--accent); }
-.lh-page-editor .lh-wiki-link[data-state="missing"], .lh-page-editor .lh-wiki-link[data-state="deleted"] { color: var(--muted-foreground); text-decoration-style: dotted; text-decoration-color: currentColor; }
+.lh-page-editor .lh-wiki-link { cursor: pointer; border-radius: var(--radius-md); color: var(--ink); text-decoration: underline; text-decoration-color: color-mix(in srgb, var(--ink) 40%, transparent); text-underline-offset: 3px; }
+.lh-page-editor .lh-wiki-link:hover { background: var(--shelf); }
+.lh-page-editor .lh-wiki-link[data-state="missing"], .lh-page-editor .lh-wiki-link[data-state="deleted"] { color: var(--faint); text-decoration-style: dotted; text-decoration-color: currentColor; }
 .lh-page-editor .lh-wiki-link[data-state="deleted"] { text-decoration-line: line-through; }
 .lh-page-editor .lh-source-link { cursor: pointer; }
-.lh-page-editor .lh-source-gone { color: var(--muted-foreground); cursor: default; }
-.lh-page-editor .lh-source-gone-note { color: var(--muted-foreground); font-size: 0.8125rem; }
-.lh-page-editor .lh-callout { display: flex; flex-direction: column; gap: 0.25rem; border-radius: 10px; background: var(--card); padding: 0.5rem 0.75rem 0.75rem; }
+.lh-page-editor .lh-source-gone { color: var(--faint); cursor: default; }
+.lh-page-editor .lh-source-gone-note { color: var(--faint); font-size: var(--text-sm); }
+.lh-page-editor .lh-callout { display: flex; flex-direction: column; gap: 0.25rem; border-radius: 10px; background: var(--shelf); padding: 0.5rem 0.75rem 0.75rem; }
 .lh-page-editor .lh-callout-head { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
-.lh-page-editor .lh-callout-kind { height: 2rem; border-radius: 6px; background: transparent; padding-inline: 0.25rem; color: var(--ink-2); font-size: 0.8125rem; font-weight: 500; }
-.lh-page-editor .lh-callout-kind option { background: var(--popover); color: var(--foreground); }
-.lh-page-editor .lh-callout-title { height: 2rem; min-width: 6rem; flex: 1 1 8rem; border-radius: 6px; background: transparent; padding-inline: 0.25rem; color: var(--foreground); font-size: 0.9375rem; font-weight: 500; }
-.lh-page-editor .lh-callout-title::placeholder { color: var(--muted-foreground); font-weight: 400; }
+.lh-page-editor .lh-callout-kind { height: 2rem; border-radius: var(--radius-md); background: transparent; padding-inline: 0.25rem; color: var(--graphite); font-size: var(--text-sm); font-weight: 500; }
+.lh-page-editor .lh-callout-kind option { background: var(--paper); color: var(--ink); }
+.lh-page-editor .lh-callout-title { height: 2rem; min-width: 6rem; flex: 1 1 8rem; border-radius: var(--radius-md); background: transparent; padding-inline: 0.25rem; color: var(--ink); font-size: 0.95em; font-weight: 500; }
+.lh-page-editor .lh-callout-title::placeholder { color: var(--faint); font-weight: 400; }
 .lh-page-editor .lh-callout-body > * + * { margin-top: 0.75em; }
 .lh-page-editor .lh-collapsible { display: flex; align-items: flex-start; gap: 0.25rem; }
-.lh-page-editor .lh-collapsible-toggle { display: inline-flex; width: 2rem; height: 2rem; flex: none; align-items: center; justify-content: center; border-radius: 6px; color: var(--ink-2); }
-.lh-page-editor .lh-collapsible-toggle:hover { background: var(--accent); color: var(--foreground); }
+.lh-page-editor .lh-collapsible-toggle { display: inline-flex; width: 2rem; height: 2rem; flex: none; align-items: center; justify-content: center; border-radius: var(--radius-md); color: var(--graphite); }
+.lh-page-editor .lh-collapsible-toggle:hover { background: var(--shelf); color: var(--ink); }
 .lh-page-editor .lh-collapsible-toggle::before { content: ""; width: 0.5rem; height: 0.5rem; border-right: 1.75px solid currentColor; border-bottom: 1.75px solid currentColor; transform: rotate(-45deg); transition: transform 160ms; }
 .lh-page-editor .lh-collapsible[data-open="true"] > .lh-collapsible-toggle::before { transform: rotate(45deg); }
 .lh-page-editor .lh-collapsible-content { min-width: 0; flex: 1; }
 .lh-page-editor .lh-collapsible-content > * + * { margin-top: 0.75em; }
 .lh-page-editor .lh-collapsible[data-open="false"] > .lh-collapsible-content > :not(.lh-collapsible-summary) { display: none; }
 .lh-page-editor .lh-collapsible-summary { min-height: 2rem; line-height: 2rem; font-weight: 500; }
-.lh-page-editor .lh-collapsible-summary:has(> br:only-child)::before { content: "Section title"; float: left; height: 0; color: var(--muted-foreground); font-weight: 400; pointer-events: none; }
-.lh-page-editor :is(.lh-callout-kind, .lh-callout-title, .lh-collapsible-toggle):focus-visible { outline: 1px solid var(--ring); outline-offset: -1px; }
+.lh-page-editor .lh-collapsible-summary:has(> br:only-child)::before { content: "Section title"; float: left; height: 0; color: var(--faint); font-weight: 400; pointer-events: none; }
+.lh-page-editor :is(.lh-callout-kind, .lh-callout-title, .lh-collapsible-toggle):focus-visible { outline: 1px solid var(--nb-focus); outline-offset: -1px; }
 @media (pointer: coarse) {
 	.lh-page-editor :is(.lh-callout-kind, .lh-callout-title) { height: 2.75rem; }
 	.lh-page-editor .lh-collapsible-toggle { width: 2.75rem; height: 2.75rem; }
@@ -1438,15 +1545,15 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 @media (prefers-reduced-motion: reduce) { .lh-page-editor .lh-collapsible-toggle::before { transition: none; } }
 [data-testid="page-wiki-menu"], [data-testid="note-connections"] { scrollbar-width: none; }
 [data-testid="page-wiki-menu"]::-webkit-scrollbar, [data-testid="note-connections"]::-webkit-scrollbar { display: none; }
-[data-testid="note-connections"] button:focus-visible { outline: 1px solid var(--ring); outline-offset: -1px; }
+[data-testid="note-connections"] button:focus-visible { outline: 1px solid var(--nb-focus); outline-offset: -1px; }
 /* Features 019-020: a search match, a landed line and block. Ink, never the accent. */
-.lh-doc-mark { background: var(--accent); color: var(--foreground); border-radius: 2px; text-decoration: underline; text-underline-offset: 2px; }
-.lh-doc-line { display: inline; background: var(--accent); color: var(--foreground); border-radius: 2px; }
-.lh-jump-flash { background: var(--accent); border-radius: 6px; transition: background-color 240ms; }
+.lh-doc-mark { background: var(--riddle-wash); color: var(--ink); border-radius: 2px; text-decoration: underline; text-decoration-color: var(--riddle-line); text-underline-offset: 2px; }
+.lh-doc-line { display: inline; background: var(--shelf); color: var(--ink); border-radius: 2px; }
+.lh-jump-flash { background: var(--shelf); border-radius: var(--radius-md); transition: background-color 240ms; }
 @media (prefers-reduced-motion: reduce) { .lh-jump-flash { transition: none; } }
-.lh-passage-trigger { position: fixed; z-index: 40; display: inline-flex; height: 2rem; align-items: center; gap: 0.375rem; border-radius: 6px; background: var(--popover); padding-inline: 0.5rem; color: var(--foreground); font-size: 0.8125rem; }
-.lh-passage-trigger:hover { background: var(--card); }
-.lh-passage-trigger:focus-visible { outline: 1px solid var(--ring); outline-offset: 1px; }
+.lh-passage-trigger { position: fixed; z-index: 40; display: inline-flex; height: 2rem; align-items: center; gap: 0.375rem; border-radius: var(--radius-md); background: var(--paper); padding-inline: 0.5rem; color: var(--ink); font-size: 0.8125rem; }
+.lh-passage-trigger:hover { background: var(--shelf); }
+.lh-passage-trigger:focus-visible { outline: 1px solid var(--nb-focus); outline-offset: 1px; }
 @media (pointer: coarse) { .lh-passage-trigger { height: 2.75rem; padding-inline: 0.75rem; } }
 
 /* A diagram's full screen is the same element, so nothing remounts (feature 022). */
@@ -1455,4 +1562,274 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 /* Reduced motion keeps the state change without the transition (DESIGN.md), everywhere. */
 @media (prefers-reduced-motion: reduce) {
 	*, *::before, *::after { transition: none !important; }
+}
+
+/* ── Check threads (feature 025, research R8) ───────────────────────────────
+   A waiting check or practice problem is Notebook's thread beside the tutor
+   paragraph it follows (.nb-note / .nb-inline, app/paper.css), holding the
+   answer form: choices as option cards, confidence as a pill row, "I don't
+   know" as a text button, the reply-line field and the ink pill. The column
+   moves left (--lh-check-shift, set by ChatView) when that makes room. */
+.lh-lesson-column {
+	margin-left: max(0px, calc((100% - var(--lh-measure) - 3rem) / 2 - var(--lh-check-shift, 0px)));
+	margin-right: auto;
+	transition: margin-left 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.lh-lesson-dock {
+	position: relative;
+	/* Above the margin layer (z 5): a thread's line to a paragraph hidden under
+	   the bar passes behind the bar, never over it. */
+	z-index: 6;
+	left: calc(-1 * var(--lh-check-shift, 0px));
+	transition: left 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+/* With a margin thread open, the bottom bar keeps to the text column (same
+   edges as the text), so it never runs under the thread, its line or its dot. */
+.lh-paper:has([data-check-margin]) .lh-lesson-dock {
+	left: 0;
+	max-width: calc(var(--lh-measure) + 3rem);
+	margin-left: max(0px, calc((100% - var(--lh-measure) - 3rem) / 2 - var(--lh-check-shift, 0px)));
+	margin-right: auto;
+	padding-inline: 24px;
+	transition: margin-left 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.lh-check-margin {
+	position: absolute;
+	inset: 0;
+	z-index: 5;
+	pointer-events: none;
+}
+.lh-check-tether {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	pointer-events: none;
+}
+.lh-paper .nb-note.lh-check-note { pointer-events: auto; z-index: 1; }
+.lh-paper .nb-note.lh-check-note[data-state="open"] { padding-bottom: 14px; }
+/* Inline: in the transcript's flow under its paragraph (Notebook's is drawn over a spacer). */
+.lh-paper .nb-inline.lh-check-inline {
+	position: relative;
+	left: auto;
+	right: auto;
+	z-index: auto;
+}
+.lh-check-thread { text-align: left; }
+.lh-check-meta {
+	display: block;
+	color: var(--faint);
+	font-family: var(--nb-sans);
+	font-size: var(--text-xs);
+	line-height: 16px;
+	letter-spacing: 0;
+}
+/* "Your turn": the bulb, as Home and the sidebar's waiting dot (owner Q4), in its 4.5:1 ink. */
+.lh-check-turn { color: var(--bulb-ink); font-weight: 600; }
+.lh-paper .lh-check-open { cursor: pointer; }
+.lh-paper .lh-check-open > .lh-check-meta { margin-bottom: 4px; }
+.lh-check-teaser {
+	display: -webkit-box;
+	overflow: hidden;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 4;
+	white-space: normal;
+}
+/* "Draft kept": a closed thread that holds his draft says so, faint, after the teaser. */
+.lh-paper .lh-check-open > .lh-check-draft {
+	display: block;
+	margin-top: 6px;
+	color: var(--faint);
+	font-family: var(--nb-sans);
+	font-size: var(--text-xs);
+	line-height: 16px;
+}
+.lh-paper .lh-check-open > .lh-check-action {
+	display: inline-block;
+	margin-top: 8px;
+	color: var(--ink);
+	font-family: var(--nb-sans);
+	font-size: var(--text-meta);
+	font-weight: 500;
+	line-height: 16px;
+	text-decoration: underline;
+	text-decoration-color: var(--riddle-line);
+	text-underline-offset: 3px;
+}
+.lh-paper .lh-check-open:hover > .lh-check-action { text-decoration-color: currentColor; }
+.lh-check-head {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	min-height: 24px;
+}
+.lh-check-head > .lh-check-meta { flex: 1; min-width: 0; }
+.lh-paper .lh-check-collapse {
+	display: inline-grid;
+	place-items: center;
+	width: 24px;
+	height: 24px;
+}
+.lh-paper .lh-check-collapse svg { width: 15px; height: 15px; }
+.lh-paper .lh-check-using { margin-top: 6px; }
+.lh-check-body { margin-top: 10px; }
+.lh-check-form { display: flex; flex-direction: column; gap: 14px; }
+/* A long question scrolls inside its own area, at most half the screen. */
+.lh-check-question {
+	max-height: 50dvh;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	scrollbar-width: none;
+	/* Room for the option cards' rings and focus outlines inside the scroll box. */
+	margin: -4px;
+	padding: 4px;
+}
+.lh-check-question::-webkit-scrollbar { display: none; }
+.lh-check-prompt {
+	color: var(--riddle);
+	font-size: calc(var(--note-size) * 1.06);
+	line-height: 1.55;
+	white-space: normal;
+}
+.lh-check-prompt .lh-prose { color: inherit; font-family: inherit; font-size: inherit; line-height: inherit; }
+.lh-check-hint,
+.lh-check-details { color: var(--graphite); font-family: var(--nb-sans); font-size: var(--text-md); line-height: 1.5; }
+.lh-check-hint { margin-bottom: 6px; font-size: var(--text-sm); font-weight: 500; }
+.lh-check-details { margin-top: 10px; --note-size: var(--text-md); }
+.lh-check-options { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; --note-size: var(--text-md); }
+.lh-paper .nb-option-card.lh-check-option {
+	min-height: 44px;
+	flex-direction: row;
+	align-items: flex-start;
+	gap: 10px;
+	padding: 10px 14px;
+	color: var(--ink);
+	font-family: var(--nb-sans);
+	font-size: var(--text-md);
+	line-height: 22px;
+	cursor: pointer;
+}
+.lh-paper .nb-option-card.lh-check-option:hover { box-shadow: 0 0 0 1px var(--faint); }
+.lh-paper .nb-option-card.lh-check-option[data-state="checked"] { box-shadow: 0 0 0 1.5px var(--ink); }
+.lh-paper .nb-option-card.lh-check-option[data-walked]:not([data-state="checked"]) { background: var(--shelf); }
+.lh-paper .nb-option-card.lh-check-option:focus-visible { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
+.lh-check-option-description { color: var(--faint); font-size: var(--text-sm); }
+.lh-check-mark {
+	display: inline-flex;
+	flex: none;
+	align-items: center;
+	justify-content: center;
+	width: 14px;
+	height: 14px;
+	margin-top: 4px;
+	border: 1.5px solid var(--faint);
+	color: var(--paper);
+	font-size: var(--text-2xs);
+	line-height: 1;
+}
+.lh-check-mark[data-checked] { border-color: var(--ink); background: var(--ink); box-shadow: inset 0 0 0 2px var(--paper); }
+.lh-check-mark.rounded-xs[data-checked] { box-shadow: none; }
+.lh-check-confidence {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px 12px;
+	font-family: var(--nb-sans);
+}
+.lh-check-confidence-label { color: var(--graphite); font-size: var(--text-sm); font-weight: 500; }
+.lh-check-confidence-label[data-off] { color: var(--faint); }
+.lh-check-confidence-stops { display: flex; flex-wrap: wrap; gap: 6px; }
+.lh-check-confidence-stops[data-off] { pointer-events: none; opacity: 0.4; }
+.lh-check-stop {
+	min-height: 28px;
+	padding: 0 11px;
+	border-radius: 999px;
+	box-shadow: 0 0 0 1px var(--nb-control-edge);
+	color: var(--graphite);
+	font-size: var(--text-meta);
+	font-weight: 500;
+	transition: box-shadow 0.15s, color 0.15s;
+}
+.lh-check-stop:hover:not(:disabled) { color: var(--ink); box-shadow: 0 0 0 1px var(--faint); }
+.lh-check-stop[aria-checked="true"] { color: var(--ink); box-shadow: 0 0 0 1.5px var(--ink); }
+.lh-check-stop:focus-visible { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
+.lh-check-dont-know {
+	min-height: 28px;
+	padding: 0 2px;
+	border-radius: 3px;
+	color: var(--graphite);
+	font-size: var(--text-meta);
+	font-weight: 500;
+	text-decoration: underline;
+	text-decoration-color: var(--rule);
+	text-underline-offset: 3px;
+	transition: color 0.15s;
+}
+.lh-check-dont-know:hover,
+.lh-check-dont-know[data-walked] { color: var(--ink); }
+.lh-check-dont-know[aria-pressed="true"] { color: var(--ink); text-decoration-color: currentColor; }
+.lh-check-dont-know:focus-visible { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
+.lh-check-answer { display: flex; flex-direction: column; gap: 12px; }
+.lh-paper .lh-check-field { border-bottom: 1px solid var(--nb-control-edge); cursor: text; }
+/* Phones: the reply line is a 44px target (feature 025, T061). */
+@media (pointer: coarse) { .lh-paper .lh-check-field textarea { min-height: 43px; } }
+.lh-check-input {
+	display: block;
+	width: 100%;
+	max-height: 40vh;
+	min-height: 28px;
+	margin: 0;
+	padding: 2px 0 6px;
+	border: 0;
+	background: none;
+	color: var(--ink);
+	caret-color: var(--ink);
+	font-family: var(--nb-sans);
+	font-size: var(--text-md);
+	line-height: 22px;
+	resize: none;
+	user-select: text;
+	overflow-y: auto;
+	outline: none;
+	scrollbar-width: none;
+}
+.lh-check-input::-webkit-scrollbar { display: none; }
+.lh-check-input::placeholder { color: var(--faint); opacity: 1; }
+.lh-check-actions { display: flex; align-items: center; justify-content: flex-end; gap: 18px; user-select: none; }
+.lh-paper .lh-check-skip { font-size: var(--text-meta); }
+/* Disabled, the submit is the shared pill's unavailable state (.nb-pill:disabled, app/paper.css): no one-off fade. */
+.lh-paper .nb-pill.lh-check-submit:focus-visible { outline: 2px solid var(--nb-focus); outline-offset: 2px; }
+/* The question inks in once, on its first opening (block by block; R9's word ink is for streamed prose). */
+.lh-check-inking .lh-check-prompt > * > * { animation: 0.52s cubic-bezier(0.2, 0.7, 0.2, 1) both nb-ink-in; }
+.lh-check-inking .lh-check-prompt > * > :nth-child(2) { animation-delay: 0.12s; }
+.lh-check-inking .lh-check-prompt > * > :nth-child(3) { animation-delay: 0.24s; }
+.lh-check-inking .lh-check-prompt > * > :nth-child(n + 4) { animation-delay: 0.36s; }
+.lh-check-inking .lh-check-options > * { animation: 0.52s cubic-bezier(0.2, 0.7, 0.2, 1) 0.3s both nb-ink-in; }
+/* While a margin thread is shown, wide visuals and tables keep to the text column
+   (the thread and its line sit just past the column's right edge), so they stay
+   centred on the messages: edges line up with the text (owner, 2026-11-09). */
+[data-check-margin] .lh-breakout { margin-inline: 0; }
+[data-check-margin].lh-lesson-column .lh-bleed .lh-prose > .lh-table-bleed,
+[data-check-margin] .lh-bleed .lh-prose > .lh-table-bleed { margin-inline: 0; }
+/* A table in a check stays inside the thread (transcript tables bleed past the column). */
+.lh-bleed .lh-check-thread .lh-prose > .lh-table-bleed { margin-inline: 0; }
+/* The bottom bar's line in the composer's place. */
+.lh-check-pending-line {
+	min-height: 40px;
+	margin: 0;
+	padding: 12px 16px 2px;
+	color: var(--graphite);
+	font-size: var(--text-md);
+	line-height: 1.4;
+}
+@media (pointer: coarse) {
+	.lh-paper .lh-check-collapse,
+	.lh-check-stop,
+	.lh-check-dont-know { min-height: 44px; min-width: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.lh-lesson-column,
+	.lh-lesson-dock, .lh-paper:has([data-check-margin]) .lh-lesson-dock { transition: none; }
+	.lh-check-inking :is(.lh-check-prompt > * > *, .lh-check-options > *) { animation: none; }
+	.lh-check-stop,
+	.lh-check-dont-know { transition: none; }
 }

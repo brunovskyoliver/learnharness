@@ -59,46 +59,46 @@ export function DocumentSearchPanel({ query, kind, tag, folders, narrowed = null
 		<section aria-label="Search results" className="flex flex-col gap-3" data-testid="doc-search">
 			<div className="flex flex-wrap items-center gap-2">
 				<LibraryChoice label="Folder" name="Filter by folder" testId="doc-search-folder" value={folderId || "anywhere"} onChange={(next) => setFolderId(next === "anywhere" ? "" : next)} options={[{ value: "anywhere", label: "Anywhere" }, ...folders.map((folder) => ({ value: folder.id, label: [folderPathLabel(folder.parentId, folders), folder.name].filter(Boolean).join(" / ") }))]} />
-				<label className="flex min-h-9 items-center gap-1.5 text-sm text-ink-2 pointer-coarse:min-h-11">
-					<input type="checkbox" className="size-4 accent-foreground pointer-coarse:size-6" checked={hideArchived} onChange={(event) => setHideArchived(event.target.checked)} data-testid="doc-search-hide-archived" />
+				<label className="flex min-h-9 items-center gap-1.5 text-sm text-graphite pointer-coarse:min-h-11">
+					<input type="checkbox" className="size-4 accent-ink pointer-coarse:size-6" checked={hideArchived} onChange={(event) => setHideArchived(event.target.checked)} data-testid="doc-search-hide-archived" />
 					Hide archived
 				</label>
 			</div>
-			{narrowed && <p className="text-sm text-muted-foreground">Searching the whole Library, not only {narrowed}.</p>}
-			<p role="status" aria-live="polite" className="text-sm text-ink-2 empty:hidden" data-testid="doc-search-count">{live}</p>
-			{phase === "failed" && <button type="button" className="prompt-secondary self-start" onClick={search.retry}>Try again</button>}
+			{narrowed && <p className="text-sm text-faint">Searching the whole Library, not only {narrowed}.</p>}
+			<p role="status" aria-live="polite" className="text-sm text-graphite empty:hidden" data-testid="doc-search-count">{live}</p>
+			{phase === "failed" && <button type="button" className="lh-text-action self-start" onClick={search.retry}>Try again</button>}
 			{phase === "searching" && !response && (
 				<div role="status" aria-label="Searching your Library" className="flex flex-col gap-1">
-					<Skeleton className="h-[72px] w-full rounded-[10px]" />
-					<Skeleton className="h-[72px] w-full rounded-[10px]" />
+					<Skeleton className="h-[72px] w-full rounded-lg" />
+					<Skeleton className="h-[72px] w-full rounded-lg" />
 				</div>
 			)}
-			{!query.trim() && <p className="text-ink-2">Search inside your pages, text files and PDFs.</p>}
+			{!query.trim() && <p className="text-md text-faint">Search inside your pages, text files and PDFs.</p>}
 			{response && response.results.length > 0 && (
-				<ul className="flex flex-col gap-1" data-testid="doc-search-results">
+				<ul className="flex flex-col" data-testid="doc-search-results">
 					{response.results.map((hit) => (
-						<li key={hit.id} className="rounded-[10px] bg-card" data-testid="doc-search-result">
-							<button type="button" aria-label={`Open ${hit.name}${docHitPlace(hit.jump) ? `, ${docHitPlace(hit.jump)}` : ""}`} onClick={() => open(hit)} className="flex w-full min-w-0 flex-col gap-0.5 rounded-[10px] px-3 py-2.5 text-left transition-colors hover:bg-accent pointer-coarse:min-h-11">
-								<span className="text-base font-medium text-foreground [overflow-wrap:anywhere]">{hit.name}</span>
-								{hit.snippet && <DocSnippetText snippet={hit.snippet} className="text-sm text-ink-2 [overflow-wrap:anywhere]" />}
-								<span className="text-sm text-muted-foreground [overflow-wrap:anywhere]" data-testid="doc-search-meta">{hitMeta(hit)}</span>
+						<li key={hit.id} className="lh-row" data-testid="doc-search-result">
+							<button type="button" aria-label={`Open ${hit.name}${docHitPlace(hit.jump) ? `, ${docHitPlace(hit.jump)}` : ""}`} onClick={() => open(hit)} className="lh-row-open w-full">
+								<span className="lh-row-name">{hit.name}</span>
+								{hit.snippet && <DocSnippetText snippet={hit.snippet} className="text-sm text-graphite [overflow-wrap:anywhere]" />}
+								<span className="lh-row-meta [overflow-wrap:anywhere]" data-testid="doc-search-meta">{hitMeta(hit)}</span>
 							</button>
 						</li>
 					))}
 				</ul>
 			)}
 			{status && (
-				<div className="flex flex-col gap-1 text-sm text-muted-foreground" data-testid="doc-search-status">
-					<div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+				<div className="flex flex-col gap-1 text-meta text-faint" data-testid="doc-search-status">
+					<div className="flex flex-wrap items-center gap-x-4 gap-y-1">
 						<p className="min-w-0 [overflow-wrap:anywhere]">{docStatusText(status.counts)}</p>
 						{status.building && <p data-testid="doc-search-building">Reading {status.building.done} of {status.building.total}…</p>}
-						{notSearched.length > 0 && <button type="button" className="prompt-secondary" aria-expanded={showWhich} onClick={() => setShowWhich((on) => !on)} data-testid="doc-search-which">{showWhich ? "Hide which" : "Show which"}</button>}
-						<button type="button" className="prompt-secondary" disabled={Boolean(status.building)} onClick={() => void reindex()} data-testid="doc-search-reindex">Reindex</button>
+						{notSearched.length > 0 && <button type="button" className="lh-text-action" aria-expanded={showWhich} onClick={() => setShowWhich((on) => !on)} data-testid="doc-search-which">{showWhich ? "Hide which" : "Show which"}</button>}
+						<button type="button" className="lh-text-action" disabled={Boolean(status.building)} onClick={() => void reindex()} data-testid="doc-search-reindex">Reindex</button>
 					</div>
-					{reindexFailed && <p role="alert" className="text-destructive">The reindex could not be started. Your search still works.</p>}
+					{reindexFailed && <p role="alert" className="text-red">The reindex could not be started. Your search still works.</p>}
 					{showWhich && (
 						<ul className="flex flex-col gap-0.5" data-testid="doc-search-not-searched">
-							{notSearched.map((row) => <li key={row.id} className="[overflow-wrap:anywhere]"><span className="text-ink-2">{row.name}</span> · {row.reason ?? DOC_STATE_LABEL[row.state]}</li>)}
+							{notSearched.map((row) => <li key={row.id} className="[overflow-wrap:anywhere]"><span className="text-graphite">{row.name}</span> · {row.reason ?? DOC_STATE_LABEL[row.state]}</li>)}
 						</ul>
 					)}
 				</div>

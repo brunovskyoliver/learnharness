@@ -18,10 +18,12 @@
 export * from "./contracts.ts";
 export * from "./ports.ts";
 export * from "./library.ts";
+export * from "./repo-link.ts";
 export * from "./diagram.ts";
 export * from "./page-proposals.ts";
 export * from "./diagram-svg.ts";
 export * from "./library-refs.ts";
+export * from "./reference-chips.ts";
 export * from "./note-links.ts";
 export * from "./note-sources.ts";
 export * from "./document-search.ts";
@@ -90,6 +92,8 @@ export * from "./settings.ts";
 // shape its success line describes, hence this type-only re-export.
 export type { ChatDeleteMode, ChatDeletionStats } from "./graph-deletion.ts";
 export * from "./settings-resolution.ts";
+// appearance.ts (feature 025): the shared Appearance resolution (pure).
+export * from "./appearance.ts";
 export * from "./search.ts"; // search port (search wave, 2026-09-20)
 export * from "./session-find.ts";
 export { messageAnchorId, messageIdFromHash, propositionSessionHref } from "./message-links.ts";
@@ -100,6 +104,14 @@ export { sessionTurnEntries, textPartMessageId, firstSourceTextParts, type Sessi
 export * from "./auth-keys.ts";
 // keyboard.ts: the shortcut registry + binding normalization (pure, browser-safe).
 export * from "./keyboard.ts";
+// Notebook mode (feature 024): pure; the mode helpers are tiny, the rest
+// tree-shakes out of Study (tests/startup-module-graph.test.ts).
+export * from "./interface-mode.ts";
+export * from "./notebook.ts";
+export * from "./notebook-sketch.ts";
+export * from "./notebook-export.ts";
+// motion.ts (feature 028): the motion language's pure decisions.
+export * from "./motion.ts";
 // coverage.ts stays server-side: its fingerprints use node:crypto, which
 // pulled ~330 KB of crypto-browserify into every page (2026-10-27).
 export type { CoverageEntry, CoverageSlot } from "./coverage.ts";

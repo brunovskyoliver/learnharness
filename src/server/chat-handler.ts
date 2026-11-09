@@ -36,9 +36,8 @@ import { providerKeyPresent } from "./keys.ts";
 import {
 	extractionEnabled,
 	graphToolsEnabled,
-	resolveConversationSpec,
-	resolveRoleSpec,
 } from "../core/settings-resolution.ts";
+import { codexVerifyProblem, studyConversationSpec, studyRoleSpec } from "./codex-verify.ts";
 import { modelsNotConfigured, providerKeyMissing as providerKeyMissingEnvelope, type ProviderKeyMissing } from "../core/settings.ts";
 import { beginTurn, endTurn } from "./turn-liveness.ts";
 import { applyParkedDismissal } from "./dismissal-park.ts";
@@ -147,7 +146,7 @@ setTurnRunner(async (chatId, input) => {
  *  flows through to the per-need refusal gates (runner/extraction), read
  *  FRESH so a settings PUT between dispatch and spawn lands. */
 function resolveEngine(role: ModelRole): PiEngine | undefined {
-	const spec = resolveRoleSpec(role, stores.settingsStore.readSettings());
+	const spec = studyRoleSpec(role, stores.settingsStore.readSettings());
 	return spec ? piEngineForSpec(spec) : undefined;
 }
 
@@ -202,7 +201,11 @@ export async function handleChatInput(
 	// write-ahead persist (nothing durable changes), and every downstream
 	// resolution (jobs/extraction gate per-need on their own tiers).
 	const effective = effectiveSettings();
-	const conversation = resolveConversationSpec(record.settings, effective.models.strong);
+	const conversation = studyConversationSpec(record.settings, effective.models.strong);
+	// Verification only (025 R14): a missing or expired codex token is a
+	// plain refusal, as in Notebook.
+	const verifyProblem = codexVerifyProblem();
+	if (verifyProblem) return Response.json({ error: verifyProblem }, { status: 503 });
 	if (!conversation) {
 		const envelope = modelsNotConfigured(["strong"]);
 		console.info(`[chat ${chatId}] turn refused — ${JSON.stringify(envelope)}`);
@@ -636,7 +639,7 @@ export async function handleChatInput(
 				if (process.env.NODE_ENV !== "test" && (!requestCycle || requestCycle.dispatched))
 					kickCompaction(() => {
 						const fresh = effectiveSettings();
-						const spec = resolveConversationSpec(stores.chatStore.getChat(chatId)?.settings, fresh.models.strong);
+						const spec = studyConversationSpec(stores.chatStore.getChat(chatId)?.settings, fresh.models.strong);
 						if (!spec || !connectionBackgroundAllowed(spec.provider)) return null;
 						let kickEngine: PiEngine;
 						try { kickEngine = piEngineForSpec(spec, true); } catch { return null; }

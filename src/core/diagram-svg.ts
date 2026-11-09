@@ -17,8 +17,10 @@ export function escapeXml(text: string): string {
 		.replace(/'/g, "&#39;");
 }
 
-/** Study ink as literal colours: a downloaded file can't read the app's tokens. */
-const COLOR = { ground: "#0b0b0a", raised: "#151513", raised2: "#1d1d1a", ink: "#edece8", ink2: "#b4b2ab", edge: "#8a8881" } as const;
+/** Paper light as literal colours (app/paper.css: paper, shelf, ink, graphite, faint, rule;
+ *  feature 025 T051): a downloaded file can't read the app's tokens, and a file on light
+ *  paper reads the same in any viewer. */
+export const COLOR = { ground: "#f8f7f4", raised: "#f1f0ec", raised2: "#f8f7f4", ink: "#1d1c1a", ink2: "#5c5953", edge: "#716d67", rule: "#dedbd4" } as const;
 const FONT_SIZE = 14;
 const LINE = 19;
 const PAD_X = 12;
@@ -82,7 +84,7 @@ export function diagramToSvg(doc: DiagramDoc, title?: string): string {
 	const width = Math.max(1, Math.ceil(maxX - minX));
 	const height = Math.max(1, Math.ceil(maxY - minY));
 	const parts: string[] = [
-		`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${n(minX)} ${n(minY)} ${width} ${height}" role="img" font-family="'Source Sans 3', 'Helvetica Neue', Arial, sans-serif" font-size="${FONT_SIZE}">`,
+		`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="${n(minX)} ${n(minY)} ${width} ${height}" role="img" font-family="'Instrument Sans', 'Helvetica Neue', Arial, sans-serif" font-size="${FONT_SIZE}">`,
 		...(title ? [`<title>${escapeXml(title)}</title>`] : []),
 		`<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="${COLOR.edge}"/></marker></defs>`,
 		`<rect x="${n(minX)}" y="${n(minY)}" width="${width}" height="${height}" fill="${COLOR.ground}"/>`,
@@ -108,7 +110,7 @@ export function diagramToSvg(doc: DiagramDoc, title?: string): string {
 			parts.push(`<path d="${path}" fill="none" stroke="${COLOR.ink}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>`);
 			continue;
 		}
-		parts.push(`<rect x="${n(box.x)}" y="${n(box.y)}" width="${box.width}" height="${box.height}" rx="${node.type === "sticky" ? 10 : 6}" fill="${node.type === "sticky" ? COLOR.raised2 : COLOR.raised}" stroke="${COLOR.edge}" stroke-width="1"/>`);
+		parts.push(`<rect x="${n(box.x)}" y="${n(box.y)}" width="${box.width}" height="${box.height}" rx="${node.type === "sticky" ? 10 : 6}" fill="${node.type === "sticky" ? COLOR.raised2 : COLOR.raised}" stroke="${COLOR.rule}" stroke-width="1"/>`);
 		const textTop = box.y + box.height / 2 - ((box.lines.length - 1) * LINE) / 2 + 5;
 		box.lines.forEach((line, i) => parts.push(`<text x="${n(box.x + box.width / 2)}" y="${n(textTop + i * LINE)}" text-anchor="middle" fill="${COLOR.ink}">${escapeXml(line)}</text>`));
 	}

@@ -6,9 +6,9 @@ import { Button } from "@/components/ui/button";
 
 export function ConnectionRow({ label, action, disabled, onAction, children, testid, actionTestid }: { label: string; action: string; disabled: boolean; onAction: () => void; children?: React.ReactNode; testid?: string; actionTestid?: string }) {
 	return <div className="flex min-h-14 flex-wrap items-center gap-3 py-3" data-testid={testid}>
-		<span className="text-sm text-foreground">{label}</span>
+		<span className="nb-set-row-label">{label}</span>
 		{children}
-		<Button type="button" size="xs" variant={action === "Connect" ? "outline" : "ghost"} className={`ml-auto cursor-pointer disabled:cursor-not-allowed pointer-coarse:min-h-11 ${action === "Connect" ? "" : "text-muted-foreground hover:text-foreground"}`} data-testid={actionTestid} disabled={disabled} onClick={onAction}>{action}</Button>
+		<Button type="button" size="xs" variant={action === "Connect" ? "outline" : "ghost"} className={`ml-auto cursor-pointer disabled:cursor-not-allowed pointer-coarse:min-h-11 ${action === "Connect" ? "" : "text-faint hover:text-ink"}`} data-testid={actionTestid} disabled={disabled} onClick={onAction}>{action}</Button>
 	</div>;
 }
 
@@ -47,11 +47,11 @@ export function ConnectionDialog(props: ComponentProps<DialogComponent>) {
  if (Dialog) return <Dialog {...props} />;
  return <LoadingModal label={props.label} onClose={props.onClose} busy={props.busy} onOpen={(trigger) => { opener.current = trigger; }} testid={`${props.testid}-loading`} hideTitle={failed}>
   {failed ? <>
-   <p role="status" className="mb-3 text-sm text-muted-foreground">The standard dialog could not load. Account controls remain available below.</p>
+   <p role="status" className="lh-dialog-text mb-3 text-ink">The standard dialog could not load. Account controls remain available below.</p>
    {props.children}
   </> : <>
-   <p role="status" className="text-sm text-muted-foreground">Loading connection…</p>
-   <div className="mt-4 flex justify-end"><Button variant="outline" disabled={props.busy} onClick={props.onClose}>Close</Button></div>
+   <p role="status" className="lh-dialog-text text-faint">Loading connection…</p>
+   <div className="lh-dialog-actions"><button type="button" className="lh-text-action" disabled={props.busy} onClick={props.onClose}>Close</button></div>
   </>}
  </LoadingModal>;
 }

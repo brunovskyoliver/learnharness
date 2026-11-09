@@ -30,7 +30,8 @@ import type {
 import type { UserSettings } from "./settings.ts";
 import type { DiagramDoc, DiagramProposal, DiagramProposalStatus, DiagramRefusalCode } from "./diagram.ts";
 import type { PageProposal, PageProposalStatus } from "./page-proposals.ts";
-import type { LibraryFolder, LibraryItem, LibraryMarks, LibraryTrashEntry, LibraryRefusal, LibraryTextState, LibraryTombstone, PageAuthor, PageHead, PageState, PageVersion, PageVersionCause, PageWriteResult } from "./library.ts";
+import type { RepoLink, RepoSyncState } from "./repo-link.ts";
+import type { LibraryFolder, LibraryItem, LibraryKind, LibraryMarks, LibraryTrashEntry, LibraryRefusal, LibraryTextState, LibraryTombstone, PageAuthor, PageHead, PageState, PageVersion, PageVersionCause, PageWriteResult } from "./library.ts";
 
 // ─── ChatStore — the session record's home (data/chats) ─────────────────────
 
@@ -195,12 +196,12 @@ export interface LibraryStore {
 	markItem(id: string, marks: LibraryMarks): Promise<LibraryItem | null>;
 	markFolder(id: string, marks: Omit<LibraryMarks, "tags">): Promise<LibraryFolder | null>;
 	/** Recoverable: bytes and versions are kept, and references read as deleted. */
-	trashItem(id: string): Promise<LibraryTrashEntry | null>;
+	trashItem(id: string): Promise<LibraryTrashEntry | LibraryRefusal | null>;
 	/** A folder and everything under it, as one entry. */
-	trashFolder(id: string): Promise<LibraryTrashEntry | null>;
+	trashFolder(id: string): Promise<LibraryTrashEntry | LibraryRefusal | null>;
 	listTrash(): Promise<LibraryTrashEntry[]>;
 	/** Puts everything back; a name now taken steps to a free one. Null when unknown. */
-	restoreTrash(entryId: string): Promise<{ items: LibraryItem[]; folders: LibraryFolder[] } | null>;
+	restoreTrash(entryId: string): Promise<{ items: LibraryItem[]; folders: LibraryFolder[] } | LibraryRefusal | null>;
 	/** Deletes for good, leaving tombstones. False when unknown. */
 	purgeTrash(entryId: string): Promise<boolean>;
 	/** Newest first, live items only. */
@@ -212,12 +213,33 @@ export interface LibraryStore {
 	/** Rename, moving the file too. Null for an unknown id. */
 	rename(id: string, name: string): Promise<LibraryItem | LibraryRefusal | null>;
 	/** Delete the bytes and leave a tombstone. False for an unknown id. */
-	remove(id: string): Promise<boolean>;
+	remove(id: string): Promise<boolean | LibraryRefusal>;
 	setTextState(id: string, state: LibraryTextState): Promise<void>;
 	/** Cached text info: rebuildable, null when absent or damaged. */
 	readDerived(id: string): Promise<unknown>;
 	writeDerived(id: string, value: unknown): Promise<void>;
-	documentPath(item: Pick<LibraryItem, "name">): string;
+	documentPath(item: Pick<LibraryItem, "name" | "mirror">): string;
+	/** Every repo link in the catalog (feature 026). */
+	repoLinks(): Promise<RepoLink[]>;
+	/** A new snapshot directory under files/.mirrors/<linkId>/ to write one pull's blobs into (R4 step 1). */
+	stageSnapshot(linkId: string): Promise<SnapshotStage>;
+	/** Removes a snapshot directory that no catalog write took (a failed or refused pull). */
+	discardSnapshot(linkId: string, snapshot: string): Promise<void>;
+	/** Puts a staged snapshot in the catalog in one write (R4 step 2). `first` creates the
+	 *  link and its linked folder (the first pull); refusals change nothing. */
+	applyMirror(linkId: string, snapshot: MirrorSnapshot, first?: FirstLink): Promise<{ link: RepoLink; folder: LibraryFolder; changed?: LibraryItem[] } | LibraryRefusal>;
+	/** Writes one link's sync state (a pull starting, failing, or finding the tip unchanged). Null: no such link. */
+	setLinkSync(linkId: string, next: (sync: RepoSyncState) => RepoSyncState): Promise<RepoLink | null>;
+	/** Whether every live item of the link has its bytes on disk. */
+	mirrorWhole(linkId: string): Promise<boolean>;
+	/** Removes snapshot dirs no catalog entry names and stale git-work dirs (R4 step 4). */
+	sweepMirrors(): Promise<void>;
+	/** Unlink: the link goes; its folders and items become removed entries ("unlinked") that a relink revives. Null: no such link. */
+	unlinkMirror(linkId: string): Promise<{ folder: LibraryFolder; files: number } | null>;
+	/** Deletes files/.mirrors/<linkId> (after an unlink, once no pull of it runs). */
+	dropMirrorFiles(linkId: string): Promise<void>;
+	/** Records whether a link has a token. Null: no such link. */
+	setLinkToken(linkId: string, hasToken: boolean): Promise<RepoLink | null>;
 	/** A new page with its first version. */
 	createPage(name: string, content: string, options: PageCreateOptions): Promise<{ item: LibraryItem; head: PageHead } | LibraryRefusal>;
 	/** Head and draft, or null for an unknown id, a document or a tombstone. */
@@ -385,6 +407,78 @@ export interface PromptOverrideStore {
 	/** Remove the override file, if present (switches are untouched — an
 	 *  on-switch with no file composes the source default, inert). */
 	deleteOverride(segmentPath: string): void;
+}
+
+/** One supported file of a staged snapshot (feature 026). */
+export interface MirrorFile { path: string; oid: string; size: number; kind: LibraryKind }
+/** What a pull hands the store: the staged snapshot, its files and the link's new sync state. */
+export interface MirrorSnapshot {
+	snapshot: string;
+	files: MirrorFile[];
+	sync: RepoSyncState;
+}
+/** The first pull's link record and where its folder goes. */
+export interface FirstLink {
+	link: Omit<RepoLink, "folderId" | "sync">;
+	folderName: string;
+	parentId: string | null;
+}
+/** Writes one pull's blobs; a blob already in the current snapshot is hard-linked from it. */
+export interface SnapshotStage {
+	snapshot: string;
+	put(path: string, oid: string, bytes: Uint8Array): Promise<void>;
+}
+
+// ─── Repo tokens (feature 026, research R8) ────────────────────────────────
+
+/** Personal access tokens for repo links: { [linkId]: token } in a 0600 file
+ *  beside auth.json, never in it, so a token is never reflected into
+ *  process.env nor listed on the keys page. Per tenant in hosted mode. */
+export interface RepoTokenStore {
+	get(linkId: string): string | null;
+	set(linkId: string, token: string): void;
+	/** Absent = silent success. */
+	delete(linkId: string): void;
+	/** `maskKey` of the token, or null when none is stored. The only form the client sees. */
+	mask(linkId: string): string | null;
+}
+
+/** Library git sync's transport (feature 026, research R5): the branch tip
+ *  without a fetch, and a shallow read of one commit's tree. Failures throw
+ *  `RepoRemoteError` (core/repo-link.ts) carrying a `SyncFailure`. */
+export interface RepoRemoteRequest {
+	url: string;
+	/** Sent as Basic `x-access-token:<token>`; never logged or echoed. */
+	token?: string;
+	/** Omitted: the remote's default branch (its HEAD). */
+	branch?: string;
+}
+export interface RepoTip { branch: string; commit: string }
+export interface RepoTreeEntry {
+	/** Repo-relative, "/"-separated. */
+	path: string;
+	/** git mode: "100644", "100755", "120000", "160000". */
+	mode: string;
+	oid: string;
+	type: "blob" | "commit";
+	/** The blob's bytes (blobs only), read from the local shallow clone. */
+	read(): Promise<Uint8Array>;
+}
+export interface RepoSnapshotRequest extends RepoRemoteRequest {
+	branch: string;
+	/** Names the temp gitdir under library/git-work/. */
+	linkId: string;
+	/** Directories not walked (counted by the caller). */
+	skipDirectory?(path: string, name: string): boolean;
+	/** Download cap; default REPO_MAX_BYTES. Tests lower it. */
+	maxDownloadBytes?: number;
+}
+export interface RepoRemote {
+	tip(request: RepoRemoteRequest): Promise<RepoTip>;
+	/** Depth-1, single-branch clone into a temp gitdir, every non-directory entry
+	 *  of the tip's tree handed to `visit` while the clone exists, then the gitdir
+	 *  is deleted. Resolves with the commit read. */
+	snapshot(request: RepoSnapshotRequest, visit: (entry: RepoTreeEntry) => Promise<void> | void): Promise<RepoTip>;
 }
 
 // ─── AuthStore — BYOK provider keys (auth-keys wave, 2026-09-19) ────────────

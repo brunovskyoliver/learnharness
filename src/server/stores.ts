@@ -13,6 +13,7 @@ import { jobStore } from "../store/jobs.ts";
 import { diagramStore } from "../store/diagrams.ts";
 import { pageProposalStore } from "../store/page-proposals.ts";
 import { libraryStore } from "../store/library.ts";
+import { notebookStore } from "../store/notebook.ts";
 import { settingsStore } from "../store/settings.ts";
 import { resolveSettings, type EffectiveSettings } from "../core/settings-resolution.ts";
 /** The wired adapters. Satisfies core/graph.ts's GraphDeps structurally. */
@@ -22,6 +23,7 @@ export const stores = {
 	graphStore,
 	jobStore,
 	libraryStore,
+	notebookStore,
 	diagramStore,
 	pageProposalStore,
 	settingsStore,

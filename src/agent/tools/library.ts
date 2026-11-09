@@ -110,9 +110,14 @@ export function libraryTools(ctx: LibraryToolContext): Record<string, AgentTool<
 					const items = (await ctx.store.list()).filter((item) => nameKey(item.name).includes(key));
 					if (items.length === 0) return key ? `Nothing in the Library matches "${query}".` : "The Library is empty.";
 					const folders = await ctx.store.folders();
-					return JSON.stringify(items.slice(0, LIST_LIMIT).map(({ id, name, kind, size, updatedAt, headVersion, textState, folderId }) => ({
-						id, name, kind, size: formatBytes(size), updatedAt, ...(folderPathLabel(folderId, folders) ? { folder: folderPathLabel(folderId, folders) } : {}), ...(headVersion !== undefined ? { headVersion } : {}), ...(textState ? { textState } : {}),
-					})));
+					return JSON.stringify(items.slice(0, LIST_LIMIT).map((item) => {
+						const { id, name, kind, size, updatedAt, headVersion, textState, folderId } = item;
+						return {
+							id, name, kind, size: formatBytes(size), updatedAt, ...(folderPathLabel(folderId, folders) ? { folder: folderPathLabel(folderId, folders) } : {}), ...(headVersion !== undefined ? { headVersion } : {}), ...(textState ? { textState } : {}),
+							// A file synced from a linked repo (feature 026): read-only, and readable by read/grep at this path.
+							...(item.mirror ? { fromRepo: true, file: ctx.store.documentPath(item) } : {}),
+						};
+					}));
 				} catch (err) {
 					return `The Library could not be read: ${err instanceof Error ? err.message : String(err)}`;
 				}

@@ -72,7 +72,7 @@ describe("recent", () => {
 		await libraryStore.markOpened(b.id);
 		await libraryStore.markOpened(a.id);
 		assert.deepEqual((await libraryStore.recent()).map((i) => i.id), [a.id, b.id]);
-		await libraryStore.trashItem(a.id);
+		(await libraryStore.trashItem(a.id) as TrashEntry | null);
 		assert.deepEqual((await libraryStore.recent()).map((i) => i.id), [b.id]);
 		assert.equal(await libraryStore.markOpened("lib_gone"), false);
 	});
@@ -89,12 +89,12 @@ describe("recent", () => {
 describe("trash", () => {
 	it("a document leaves files/, frees its name and comes back whole", async () => {
 		const a = await upload("a.md", "# keep");
-		const entry = await libraryStore.trashItem(a.id);
+		const entry = (await libraryStore.trashItem(a.id) as TrashEntry | null);
 		assert.ok(entry);
 		assert.equal(onDisk("a.md"), false, "agent file tools can't reach it");
 		assert.equal(await libraryStore.get(a.id), null);
 		assert.deepEqual(await libraryStore.list(), [], "reconcile doesn't tombstone or re-add it");
-		const restored = await libraryStore.restoreTrash(entry.id);
+		const restored = await libraryStore.restoreTrash(entry.id) as Restored | null;
 		assert.equal(restored?.items[0]?.id, a.id);
 		assert.equal(fs.readFileSync(path.join(dir, "files", "a.md"), "utf8"), "# keep");
 		assert.deepEqual(await libraryStore.listTrash(), []);
@@ -102,7 +102,7 @@ describe("trash", () => {
 
 	it("references read as deleted while trashed, and as live after", async () => {
 		const a = await upload("a.md");
-		const entry = await libraryStore.trashItem(a.id);
+		const entry = (await libraryStore.trashItem(a.id) as TrashEntry | null);
 		assert.ok(isTombstone(resolveCatalogEntries(await libraryStore.catalog(), a.id)!));
 		await libraryStore.restoreTrash(entry!.id);
 		assert.ok(!isTombstone(resolveCatalogEntries(await libraryStore.catalog(), a.id)!));
@@ -112,7 +112,7 @@ describe("trash", () => {
 		const p = await page("p");
 		await libraryStore.commitPageVersion(p.id, { base: 1, rev: 0, content: "two" });
 		await libraryStore.savePageDraft(p.id, { base: 2, rev: 0, content: "three" });
-		const entry = await libraryStore.trashItem(p.id);
+		const entry = (await libraryStore.trashItem(p.id) as TrashEntry | null);
 		assert.equal(await libraryStore.readPage(p.id), null);
 		await libraryStore.restoreTrash(entry!.id);
 		const state = await libraryStore.readPage(p.id);
@@ -123,9 +123,9 @@ describe("trash", () => {
 
 	it("a restored name that is taken steps, and never overwrites", async () => {
 		const a = await upload("a.md", "# old");
-		const entry = await libraryStore.trashItem(a.id);
+		const entry = (await libraryStore.trashItem(a.id) as TrashEntry | null);
 		await upload("a.md", "# new");
-		const restored = await libraryStore.restoreTrash(entry!.id);
+		const restored = await libraryStore.restoreTrash(entry!.id) as Restored | null;
 		assert.equal(restored?.items[0]?.name, "a (2).md");
 		assert.equal(fs.readFileSync(path.join(dir, "files", "a.md"), "utf8"), "# new");
 		assert.equal(fs.readFileSync(path.join(dir, "files", "a (2).md"), "utf8"), "# old");
@@ -139,7 +139,7 @@ describe("trash", () => {
 		const inner = await upload("in.md");
 		await libraryStore.moveItem(inner.id, low.id);
 		const p = await page("p", mid.id);
-		const entry = await libraryStore.trashFolder(mid.id);
+		const entry = (await libraryStore.trashFolder(mid.id) as TrashEntry | null);
 		assert.deepEqual((await libraryStore.folders()).map((f) => f.id), [top.id]);
 		assert.deepEqual(await libraryStore.list(), []);
 		assert.equal(entry?.items.length, 2);
@@ -154,15 +154,15 @@ describe("trash", () => {
 	it("restoring when the old parent is gone lands at the top level", async () => {
 		const top = await folder("top");
 		const p = await page("p", top.id);
-		const entry = await libraryStore.trashItem(p.id);
-		await libraryStore.trashFolder(top.id);
+		const entry = (await libraryStore.trashItem(p.id) as TrashEntry | null);
+		(await libraryStore.trashFolder(top.id) as TrashEntry | null);
 		await libraryStore.restoreTrash(entry!.id);
 		assert.equal((await libraryStore.get(p.id))?.folderId, undefined);
 	});
 
 	it("purge deletes for good and leaves a tombstone", async () => {
 		const p = await page("p");
-		const entry = await libraryStore.trashItem(p.id);
+		const entry = (await libraryStore.trashItem(p.id) as TrashEntry | null);
 		assert.equal(await libraryStore.purgeTrash(entry!.id), true);
 		assert.equal(fs.existsSync(path.join(dir, "library", "pages", p.id)), false);
 		assert.ok(isTombstone(resolveCatalogEntries(await libraryStore.catalog(), p.id)!));
@@ -171,7 +171,7 @@ describe("trash", () => {
 
 	it("an older app's rewrite keeps the trash", async () => {
 		const a = await upload("a.md");
-		await libraryStore.trashItem(a.id);
+		(await libraryStore.trashItem(a.id) as TrashEntry | null);
 		const file = path.join(dir, "library", "catalog.json");
 		const parsed = JSON.parse(fs.readFileSync(file, "utf8"));
 		assert.equal(parsed.version, 1);
@@ -181,7 +181,7 @@ describe("trash", () => {
 
 	it("the API maps outcomes, and tenants can't reach each other's trash", async () => {
 		const a = await runAsTenant("user_a", () => upload("a.md"));
-		const entry = await runAsTenant("user_a", () => libraryStore.trashItem(a.id));
+		const entry = await runAsTenant("user_a", () => libraryStore.trashItem(a.id) as Promise<TrashEntry | null>);
 		assert.equal(await runAsTenant("user_b", () => libraryStore.restoreTrash(entry!.id)), null);
 		assert.equal(await runAsTenant("user_b", () => libraryStore.purgeTrash(entry!.id)), false);
 		assert.deepEqual(await runAsTenant("user_b", () => libraryStore.listTrash()), []);
@@ -191,3 +191,7 @@ describe("trash", () => {
 		assert.equal((await libraryPurgeResponse("trs_gone")).status, 404);
 	});
 });
+
+/** Feature 026: trash and restore can also answer a refusal; these tests never meet one. */
+type TrashEntry = import("../src/core/library.ts").LibraryTrashEntry;
+type Restored = { items: import("../src/core/library.ts").LibraryItem[]; folders: import("../src/core/library.ts").LibraryFolder[] };

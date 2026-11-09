@@ -421,7 +421,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 					align="left"
 					menuClass="model-picker-panel w-96"
 				>
-					{error && <div className="mb-1.5 text-destructive">{error}</div>}
+					{error && <div className="mb-1.5 text-red">{error}</div>}
 					<ModelMenuList
 						models={catalog?.models}
 						effectiveId={effectiveId}
@@ -452,7 +452,7 @@ export function ModelControl({ chatId, onModelChange }: { chatId?: string; onMod
 						onPick={(level) => apply(effectiveProvider ?? "", effectiveId ?? "", level as ThinkingLevel)}
 						empty={catalog ? (effectiveId ? `${prettyModel(effectiveId)} has no thinking levels.` : "Pick a model first.") : "Loading…"}
 					/>
-					{error && <div className="mt-1 text-destructive">{error}</div>}
+					{error && <div className="mt-1 text-red">{error}</div>}
 				</MenuShell>
 			)}
 		</div>

@@ -12,7 +12,7 @@ function teXOf(element: Element): string | null {
 	return element.querySelector('annotation[encoding="application/x-tex"]')?.textContent ?? null;
 }
 
-function walk(node: Node, out: PassageSegment[]) {
+export function walk(node: Node, out: PassageSegment[]) {
 	if (node.nodeType === 3) {
 		if (node.textContent) out.push({ text: node.textContent });
 		return;
@@ -21,6 +21,8 @@ function walk(node: Node, out: PassageSegment[]) {
 	const element = node as Element;
 	if (node.nodeType === 1) {
 		if (element.matches("button, [role=button], svg, script, style")) return;
+		// A reference chip (feature 027) saves the text it stands for, as before it was drawn.
+		if (element instanceof HTMLElement && element.dataset.source !== undefined) { out.push({ text: element.dataset.source }); return; }
 		if (element.matches(".katex-display, .katex")) {
 			const tex = teXOf(element);
 			if (tex !== null) { out.push({ tex, display: element.matches(".katex-display") }); return; }

@@ -60,31 +60,32 @@ export { latestTree, type PopupMessage } from "@/components/plan-tree";
 
 /** Symmetric horizontal padding — EQUALS the vertical padding the
  * single-line text gets in NODE_H (owner: "the horizontal padding
- * should be the same as the vertical one"): (44 − 11) / 2 ≈ 16 (the
- * prose font renders text-xs at 11px). */
+ * should be the same as the vertical one"): (44 − 13) / 2 ≈ 16 (node
+ * titles render text-sm, 13px, since feature 025). */
 export const PAD_X = 16;
 export const NODE_W_MIN = 96;
 export const NODE_H = 44;
 
-// Width classes for the PROSE font (Source Sans 3 as shipped, text-xs
-// rendering at 11px): narrow stems and punctuation, wide m/w, caps +
-// digits, everything else. Rates least-squares-fitted against
-// getComputedTextLength() measurements of the live plan titles
-// (2026-10-07 smoke) — residuals land within ±4px per LINE, so
-// per-side padding reads as PAD_X ±2. A different reading font
-// (Appearance override) drifts the estimate slightly; accepted.
+// Width classes for the app's sans (Instrument Sans since feature 025,
+// node titles at text-sm, 13px): narrow stems and punctuation, wide m/w,
+// caps + digits, everything else. Rates least-squares-fitted against
+// canvas measureText of 45 plan titles (golden fixtures plus a real-model
+// lesson's plan, 2026-11-08); residuals within ±10px per LINE, so each
+// side keeps at least 11 of its 16px. The pre-025 rates (3.1/9.2/6.0/5.4
+// at 11px) ran 29% short in Instrument Sans and let titles spill out of
+// their boxes.
 const NARROW_CHARS = new Set(" ijltfr.,:;'!|()[]-\\");
 const WIDE_CHARS = new Set("mwMW@");
 const CAP_DIGIT = /[A-Z0-9]/;
 
-/** Estimated rendered width (px) of one line at text-xs. Pure. */
+/** Estimated rendered width (px) of one line at text-sm. Pure. */
 export function estimateLineWidth(line: string): number {
 	let w = 0;
 	for (const ch of line) {
-		if (NARROW_CHARS.has(ch)) w += 3.1;
-		else if (WIDE_CHARS.has(ch)) w += 9.2;
-		else if (CAP_DIGIT.test(ch)) w += 6.0;
-		else w += 5.4;
+		if (NARROW_CHARS.has(ch)) w += 4.1;
+		else if (WIDE_CHARS.has(ch)) w += 10.5;
+		else if (CAP_DIGIT.test(ch)) w += 7.4;
+		else w += 7.0;
 	}
 	return w;
 }
@@ -303,11 +304,11 @@ export const GRAPH_PAD = 8;
 export const GLOW_MARGIN = 8;
 export const GLOW_BLUR = 5;
 export const GLOW_REACH = GLOW_MARGIN + 3 * GLOW_BLUR;
-/** Node titles render at text-xs (12.5px) in svg units. The in-chat block
- *  scales up to fill the column but NEVER past the chat prose size
- *  (--lh-prose-size, 16px — the ladder's reading rung) — the width cap
- *  that makes that hold. */
-export const TEXT_CAP_SCALE = 16 / 12.5;
+/** Node titles render at text-sm (13px since feature 025) in svg units.
+ *  The in-chat block scales up to fill the column but NEVER past the chat
+ *  prose size (--note-size, 16px — the ladder's reading rung) — the width
+ *  cap that makes that hold. */
+export const TEXT_CAP_SCALE = 16 / 13;
 
 // ─── The owner's arrowhead (plan-graph round 5) ──────────────────────────────
 
@@ -451,29 +452,29 @@ const BOX: Record<PlanNodeStatus, string> = {
 	// 50%-opacity app background instead of true transparency: a routed
 	// edge passing behind the box composites UNDER the fill — dimmed to
 	// half, not shown straight through (owner, round 9).
-	visited: "fill-background/50 stroke-white",
-	current: "fill-background/50 stroke-white",
+	visited: "fill-paper/50 stroke-ink",
+	current: "fill-paper/50 stroke-ink",
 	// The grayed-out not-yet-visited look stays as-is (owner).
-	upcoming: "fill-card stroke-border",
+	upcoming: "fill-shelf stroke-rule",
 };
 const TEXT: Record<PlanNodeStatus, string> = {
-	visited: "fill-white text-sm",
-	current: "fill-white text-sm font-medium",
-	upcoming: "fill-muted-foreground/80 text-sm",
+	visited: "fill-ink text-sm",
+	current: "fill-ink text-sm font-medium",
+	upcoming: "fill-faint/80 text-sm",
 };
 // The in-chat block speaks the dock language now (owner, plan-hug
 // round 2026-10-07): boxes in the lighter background variant like
 // the composer/dock shells — but the outlines STAY white (owner
 // follow-up: the gray fill is good, white box edges).
-const MONO_BOX = "fill-card stroke-white";
-const MONO_TEXT = "fill-foreground text-sm";
+const MONO_BOX = "fill-shelf stroke-ink";
+const MONO_TEXT = "fill-ink text-sm";
 
 /** The diagram itself: positioned nodes + bezier edges. Pure-ish render —
  *  every input is data, so SSR render tests pin the whole thing. The root
- *  sets font-family var(--font-prose): node titles render in the READING
+ *  sets font-family var(--font-sans): node titles render in the READING
  *  font, not the mono UI font (owner, 2026-09-26) — and the runtime var
  *  rides the Appearance reading-font override (the utility can't: @theme
- *  inline bakes literals — the --font-title trap). */
+ *  inline bakes literals — the --font-sans trap). */
 export function PlanDiagram({
 	nodes,
 	edges,
@@ -531,12 +532,9 @@ export function PlanDiagram({
 			viewBox={viewBoxOverride ?? `${ox - pad} ${oy - pad} ${vbW} ${vbH}`}
 			className={`block ${fill ? "h-full w-full" : `h-auto${naturalSize ? "" : " w-full"}`}${textCapScale ? " mx-auto" : ""}`}
 			style={{
-				// The READING font (owner, 2026-09-26) — via the runtime var, NOT
-				// the font-prose utility: @theme inline bakes the literal into
-				// utilities (the --font-title trap), which would freeze the
-				// graph at Source Sans 3 and ignore the Appearance reading-font
-				// override. var(--font-prose) rides it.
-				fontFamily: "var(--font-prose)",
+				// The UI face (Instrument Sans) through the runtime var, so the
+				// graph follows the shared font token.
+				fontFamily: "var(--font-sans)",
 				...(textCapScale
 					? { maxWidth: `${Math.round(vbW * textCapScale * 100) / 100}px` }
 					: naturalSize
@@ -559,7 +557,7 @@ export function PlanDiagram({
 				>
 					{/* The owner's arrowhead. The mouth (x 27.2) sits at refX so the
 					    line ends AT the notch — the tip beyond it is solid fill. */}
-					<path d={ARROW_HEAD} className="fill-white" />
+					<path d={ARROW_HEAD} className="fill-ink" />
 				</marker>
 				{/* Same head, grayed — arrows into not-yet-visited nodes are
 				    grayed out like the nodes themselves (owner, round 6). */}
@@ -573,7 +571,7 @@ export function PlanDiagram({
 					markerUnits="userSpaceOnUse"
 					orient="auto"
 				>
-					<path d={ARROW_HEAD} className="fill-border" />
+					<path d={ARROW_HEAD} className="fill-rule" />
 				</marker>
 				{/* The current node's highlight: a faint yellow fill BLURRED so it
 				    bleeds out over the node's edges (owner). Generous filter region
@@ -608,7 +606,7 @@ export function PlanDiagram({
 					<path
 						key={`${e.from}->${e.to}`}
 						d={edgePathD(pts, target)}
-						className={dim ? "fill-none stroke-border" : "fill-none stroke-white"}
+						className={dim ? "fill-none stroke-rule" : "fill-none stroke-ink"}
 						strokeWidth={STROKE_W}
 						markerEnd={`url(#${markerId}${dim ? "-dim" : ""})`}
 					/>
@@ -648,7 +646,7 @@ export function PlanDiagram({
 								y={-GLOW_MARGIN}
 								width={w + 2 * GLOW_MARGIN}
 								height={h + 2 * GLOW_MARGIN}
-								className="fill-warning/25"
+								className="fill-bulb/25"
 								filter={`url(#${markerId}-glow)`}
 							/>
 						)}
@@ -872,7 +870,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 			// SESSION-SCOPED (absolute, not fixed): the chat page mounts this
 			// INSIDE the session-area div — below the drag bar, right of the
 			// sidebar. 80% + blur: the transcript ghosts through.
-			className={cn("absolute inset-0 z-40 flex flex-col bg-background p-4", hasCourse && "overflow-y-auto")}
+			className={cn("absolute inset-0 z-40 flex flex-col bg-paper p-4", hasCourse && "overflow-y-auto")}
 			role="dialog"
 			aria-modal="true"
 			aria-label="The full plan"
@@ -888,7 +886,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 					onClick={onClose}
 					aria-label="Close"
 					data-testid="plan-popup-close"
-					className="ml-auto rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+					className="ml-auto rounded-full p-1.5 text-faint transition-colors hover:text-ink"
 				>
 					<XIcon className="size-4" />
 				</button>
@@ -900,7 +898,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 			<div
 				ref={viewportRef}
 				className={cn(
-					"relative touch-none overflow-hidden rounded-xl border bg-background select-none",
+					"relative touch-none overflow-hidden rounded-lg bg-shelf select-none",
 					hasCourse ? "h-[60vh] min-h-[280px] shrink-0" : "min-h-0 flex-1",
 					atFloor ? "cursor-default" : "cursor-grab",
 				)}
@@ -945,7 +943,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 									type="button"
 									aria-label="Zoom out"
 									onClick={() => stepZoom(1 / 1.25)}
-									className="pointer-events-auto flex size-7 items-center justify-center rounded-md border border-border/70 bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+									className="pointer-events-auto flex size-7 items-center justify-center rounded-md bg-paper text-faint shadow-lift transition-colors hover:text-ink pointer-coarse:size-11"
 								>
 									<MinusIcon className="size-3.5" />
 								</button>
@@ -956,7 +954,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 									aria-label="Fit plan to screen"
 									onClick={fitView}
 									data-testid="plan-popup-fit"
-									className="pointer-events-auto flex size-7 items-center justify-center rounded-md border border-border/70 bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+									className="pointer-events-auto flex size-7 items-center justify-center rounded-md bg-paper text-faint shadow-lift transition-colors hover:text-ink pointer-coarse:size-11"
 								>
 									<MaximizeIcon className="size-3.5" />
 								</button>
@@ -966,7 +964,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 									type="button"
 									aria-label="Zoom in"
 									onClick={() => stepZoom(1.25)}
-									className="pointer-events-auto flex size-7 items-center justify-center rounded-md border border-border/70 bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+									className="pointer-events-auto flex size-7 items-center justify-center rounded-md bg-paper text-faint shadow-lift transition-colors hover:text-ink pointer-coarse:size-11"
 								>
 									<PlusIcon className="size-3.5" />
 								</button>
@@ -975,7 +973,7 @@ export function PlanPopup({ messages, onClose }: { messages: readonly PopupMessa
 						</div>
 					</>
 				) : (
-					<div className="flex h-full items-center justify-center text-sm text-muted-foreground">
+					<div className="flex h-full items-center justify-center text-sm text-faint">
 						No plan in this session yet.
 					</div>
 				)}

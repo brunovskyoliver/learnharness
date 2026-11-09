@@ -24,12 +24,13 @@
  * leaked server holds its port against the next run (learned the hard
  * way, same day).
  */
-import { spawn } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { probeEnv, verifyDemoRuntime } from "./smoke-demo-runtime.mjs";
 import { verifyProviderRuntime } from "./smoke-provider-runtime.mjs";
 import { createRequire } from "node:module";
 import * as fs from "node:fs";
 import * as http from "node:http";
+import * as https from "node:https";
 import * as net from "node:net";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -77,6 +78,64 @@ function get(url) {
 	});
 }
 
+
+/** One JSON request; resolves { status, body }. */
+function requestJson(url, method, body) {
+	return new Promise((resolve) => {
+		const data = body === undefined ? undefined : JSON.stringify(body);
+		const req = http.request(url, { method, headers: data ? { "Content-Type": "application/json", "Content-Length": Buffer.byteLength(data) } : {} }, (res) => {
+			const chunks = [];
+			res.on("data", (c) => chunks.push(c));
+			res.on("end", () => resolve({ status: res.statusCode ?? 0, body: Buffer.concat(chunks).toString("utf8") }));
+		});
+		req.on("error", (err) => resolve({ status: 0, body: String(err) }));
+		req.setTimeout(60_000, () => req.destroy(new Error("timeout")));
+		if (data) req.write(data);
+		req.end();
+	});
+}
+
+/**
+ * Feature 026 (T052): a real git remote for one sync through the standalone
+ * server, proving the trace carries isomorphic-git. The test fixture serves
+ * smart HTTP on 127.0.0.1; production refuses plain http, so an https proxy
+ * with a throwaway self-signed certificate for 127.0.0.1 sits in front, and
+ * the server trusts it through NODE_EXTRA_CA_CERTS. Null when git or
+ * git-http-backend is missing here (the step is skipped, said so).
+ */
+async function startGitFixture(home) {
+	const fixture = await import(path.join(ROOT, "tests", "fixtures", "git-remote.ts"));
+	const skip = fixture.skipReason();
+	if (skip) {
+		console.log(`[smoke-server] repo sync skipped: ${skip}`);
+		return null;
+	}
+	const remote = await fixture.GitRemote.start();
+	const token = "ghp_smokeSENTINEL0000";
+	remote.createRepo("notes", { "README.md": "# smoke\n", "week1/notes.md": "# week 1\n" }, { token });
+	const key = path.join(home, "fixture-key.pem");
+	const cert = path.join(home, "fixture-cert.pem");
+	execFileSync("openssl", ["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-keyout", key, "-out", cert, "-days", "1", "-subj", "/CN=127.0.0.1", "-addext", "subjectAltName=IP:127.0.0.1"], { stdio: "ignore" });
+	const upstream = new URL(remote.url("notes")).port;
+	const proxy = https.createServer({ key: fs.readFileSync(key), cert: fs.readFileSync(cert) }, (req, res) => {
+		const forward = http.request({ host: "127.0.0.1", port: upstream, path: req.url, method: req.method, headers: req.headers }, (answer) => {
+			res.writeHead(answer.statusCode ?? 502, answer.headers);
+			answer.pipe(res);
+		});
+		forward.on("error", () => { res.writeHead(502); res.end(); });
+		req.pipe(forward);
+	});
+	await new Promise((resolve) => proxy.listen(0, "127.0.0.1", resolve));
+	const url = `https://127.0.0.1:${proxy.address().port}/notes.git`;
+	return {
+		url, token, cert,
+		close: async () => {
+			await new Promise((resolve) => proxy.close(() => resolve()));
+			await remote.close();
+		},
+	};
+}
+
 async function main() {
 	// HTTP boot alone never imports the dynamically loaded demo engine.
 	// Fail before packaging if its standalone dependency graph is incomplete.
@@ -89,6 +148,7 @@ async function main() {
 	const dataDir = path.join(home, "data");
 	const authFile = path.join(home, "auth.json");
 	fs.writeFileSync(authFile, "{}\n", "utf-8");
+	const git = await startGitFixture(home);
 
 	const tail = []; // rolling log tail for failure diagnosis
 	let tailBytes = 0;
@@ -118,6 +178,7 @@ async function main() {
 			HOSTNAME: "127.0.0.1",
 			LH_DATA_DIR: dataDir,
 			LH_AUTH_FILE: authFile,
+			...(git ? { NODE_EXTRA_CA_CERTS: git.cert } : {}),
 		},
 		stdio: ["ignore", "pipe", "pipe"],
 	});
@@ -166,10 +227,25 @@ async function main() {
 			if (status !== 200) throw new Error(`GET ${route} → ${status} (expected 200)`);
 			console.log(`[smoke-server] GET ${route} → 200`);
 		}
+
+		// 3) Feature 026: link a token-protected repo, so isomorphic-git loads and pulls in the packaged server.
+		if (git) {
+			const created = await requestJson(`${url}/api/library/links`, "POST", { url: git.url, folderName: "Smoke repo", parentId: null, requestId: "req_smoke", token: git.token });
+			if (created.status !== 201) throw new Error(`POST /api/library/links → ${created.status} (expected 201): ${created.body.slice(0, 300)}`);
+			if (created.body.includes(git.token)) throw new Error("POST /api/library/links answered with the token");
+			const library = await requestJson(`${url}/api/library`, "GET");
+			const items = library.status === 200 ? JSON.parse(library.body).items ?? [] : [];
+			const readme = items.find((item) => item.name === "README.md");
+			if (!readme) throw new Error(`GET /api/library → ${library.status}, no synced README.md`);
+			const content = await requestJson(`${url}/api/library/items/${readme.id}/content`, "GET");
+			if (content.status !== 200 || !content.body.includes("# smoke")) throw new Error(`GET the synced README.md → ${content.status}`);
+			console.log(`[smoke-server] repo sync ok: linked over https, ${items.length} synced files, README.md readable`);
+		}
 	} catch (err) {
 		failed = err;
 	} finally {
 		await kill();
+		await git?.close().catch(() => {});
 		try {
 			fs.rmSync(home, { recursive: true, force: true });
 		} catch {

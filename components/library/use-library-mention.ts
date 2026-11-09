@@ -2,8 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { createElement, Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject } from "react";
-import { hasMentionTrigger, matchMentions, mentionQuery, parseReferences, type LibraryItem } from "@/src/core";
-import type { CreateMentionPage } from "./mention-menu.tsx";
+import { folderPathLabel, hasMentionTrigger, isTombstone, matchMentions, mentionName, mentionQuery, parseReferences, type LibraryFolder, type LibraryItem, type LibraryKind, type LibraryTombstone } from "@/src/core";
+import type { CreateMentionPage, MentionItem } from "./mention-menu.tsx";
 
 /**
  * The @ list for one text field (feature 009, contracts/ui-contract.md). The
@@ -41,6 +41,30 @@ export function mentionKeyAction(state: {
 
 export type MentionStatus = "idle" | "loading" | "ready" | "failed";
 
+/** A name the server still resolves for an item that isn't live (feature 027,
+ *  analyze M1): one in the Trash or deleted for good, or a file removed from its
+ *  repo by one of the paths it was named by. The composer draws it faint. */
+export interface GoneName { id: string; name: string; kind: LibraryKind; removed?: true }
+
+/** What the composer's chips are found by: the list the @ list loaded, and the
+ *  gone names, as tombstones the recogniser ranks below every live name. */
+export interface MentionCatalog {
+	entries: (LibraryItem | LibraryTombstone)[];
+	folders: LibraryFolder[];
+	/** Ids that left their repo (feature 026), drawn "removed" rather than "deleted". */
+	removedIds: ReadonlySet<string>;
+}
+
+type ListBody = { items: LibraryItem[]; folders?: LibraryFolder[]; gone?: { id: string; name: string; kind: LibraryKind }[]; removed?: { id: string; kind?: LibraryKind; names: string[] }[] };
+
+/** The gone names in a list response. A removed file without a known kind reads as a text file. */
+export function goneNames(body: Pick<ListBody, "gone" | "removed">): GoneName[] {
+	return [
+		...(body.gone ?? []),
+		...(body.removed ?? []).flatMap((entry) => entry.names.map((name): GoneName => ({ id: entry.id, name, kind: entry.kind ?? "text", removed: true }))),
+	];
+}
+
 /** A row of matches, or the "New page" row, which stays chosen as matches load. */
 export type MentionCursor = number | "new-page";
 
@@ -71,6 +95,21 @@ export function placeNewPageReference(current: string, token: { start: number; t
 	return { value: current.padEnd(start, " ") + inserted, start, caret: start + inserted.length };
 }
 
+/** Owner, 2026-11-08: the composer says before send when a name reaches an
+ *  item that is gone (in the Trash, deleted for good, or removed from its repo). */
+export const goneLine = (name: string, removed: boolean): string => (removed ? `${name} was removed from the repo` : `${name} is no longer in your Library`);
+
+/** The names the "Attaching" line lists, and one line per gone item, in text order. */
+export function attachingLines(found: readonly (LibraryItem | LibraryTombstone)[], removedIds: ReadonlySet<string>): { attaching: string[]; gone: string[] } {
+	const attaching: string[] = [];
+	const gone: string[] = [];
+	for (const entry of found) {
+		if (isTombstone(entry)) gone.push(goneLine(entry.name, removedIds.has(entry.id)));
+		else attaching.push(entry.name);
+	}
+	return { attaching, gone };
+}
+
 export function useLibraryMention({ value, onValueChange, inputRef }: {
 	value: string;
 	onValueChange: (next: string) => void;
@@ -80,6 +119,8 @@ export function useLibraryMention({ value, onValueChange, inputRef }: {
 	const ref = inputRef ?? ownRef;
 	const listId = useId();
 	const [items, setItems] = useState<LibraryItem[] | null>(null);
+	const [folders, setFolders] = useState<LibraryFolder[]>([]);
+	const [gone, setGone] = useState<GoneName[]>([]);
 	const [status, setStatus] = useState<MentionStatus>("idle");
 	const [caret, setCaret] = useState<number | null>(null);
 	const [composing, setComposing] = useState(false);
@@ -93,11 +134,17 @@ export function useLibraryMention({ value, onValueChange, inputRef }: {
 	const latest = useRef({ value, onValueChange });
 	latest.current = { value, onValueChange };
 
-	const names = useMemo(() => items?.map((item) => item.name) ?? [], [items]);
+	// A mirrored item is reached by its Library path (feature 026, R13); its row
+	// still shows the file name, with the folder path as its meta.
+	const entries = useMemo((): MentionItem[] | null => items?.map((item) => {
+		if (!item.mirror) return item;
+		return { ...item, mention: mentionName(item, folders), place: folderPathLabel(item.folderId, folders) };
+	}) ?? null, [items, folders]);
+	const names = useMemo(() => entries?.map((item) => item.mention ?? item.name) ?? [], [entries]);
 	const token = caret === null || composing ? null : mentionQuery(value, Math.min(caret, value.length), names);
 	const open = token !== null && closedAt !== token.start;
 	const query = open ? token.query : null;
-	const options = useMemo(() => (query !== null && items ? matchMentions(items, query) : []), [query, items]);
+	const options = useMemo(() => (query !== null && entries ? matchMentions(entries.map((item) => ({ item, name: item.mention ?? item.name })), query).map((row) => row.item) : []), [query, entries]);
 	const activeIndex = activeMentionRow(cursor, options.length);
 
 	const load = useCallback(async () => {
@@ -105,7 +152,10 @@ export function useLibraryMention({ value, onValueChange, inputRef }: {
 		try {
 			const response = await fetch("/api/library", { cache: "no-store" });
 			if (!response.ok) throw new Error(String(response.status));
-			setItems(((await response.json()) as { items: LibraryItem[] }).items);
+			const body = (await response.json()) as ListBody;
+			setItems(body.items);
+			setFolders(body.folders ?? []);
+			setGone(goneNames(body));
 			setStatus("ready");
 		} catch {
 			// A failed refresh keeps the last good list.
@@ -138,9 +188,9 @@ export function useLibraryMention({ value, onValueChange, inputRef }: {
 	// A refusal lasts until the learner carries on with the draft.
 	useEffect(() => { setRefusal(null); }, [value]);
 
-	const insert = useCallback((item: Pick<LibraryItem, "name">) => {
+	const insert = useCallback((item: Pick<MentionItem, "name" | "mention">) => {
 		if (!token || caret === null) return;
-		const inserted = `@${item.name} `;
+		const inserted = `@${item.mention ?? item.name} `;
 		pendingCaret.current = token.start + inserted.length;
 		setClosedAt(token.start);
 		onValueChange(value.slice(0, token.start) + inserted + value.slice(caret));
@@ -216,16 +266,26 @@ export function useLibraryMention({ value, onValueChange, inputRef }: {
 		? createElement(MentionMenu, { listId, status, hasItems: (items?.length ?? 0) > 0, options, activeIndex, onPick: insert, onNewPage: () => void createPage(), createPageRef })
 		: null;
 
-	/** Pre-send line: only names, since the mode is decided at send. */
-	const attaching = useMemo(() => (items && hasTrigger ? parseReferences(value, items).map((item) => item.name) : []), [items, value, hasTrigger]);
+	/** The loaded list for the field's chips (feature 027, T036): nothing is
+	 *  fetched for it, so it is null until a trigger loads the @ list. */
+	const catalog = useMemo((): MentionCatalog | null => items && {
+		entries: [...items, ...gone.map(({ id, name, kind }): LibraryTombstone => ({ id, name, kind, deletedAt: "" }))],
+		folders,
+		removedIds: new Set(gone.filter((g) => g.removed).map((g) => g.id)),
+	}, [items, gone, folders]);
+
+	/** Pre-send lines: only names, since the mode is decided at send. A name
+	 *  that reaches a gone item gets its own faint line; it never blocks sending. */
+	const found = useMemo(() => attachingLines(catalog && hasTrigger ? parseReferences(value, catalog.entries, folders) : [], catalog?.removedIds ?? new Set()), [catalog, folders, value, hasTrigger]);
 	const line: ReactNode = createElement(
 		Fragment,
 		null,
-		refusal ? createElement("div", { role: "alert", "data-testid": "mention-new-page-refusal", className: "px-4 pb-1 text-sm [overflow-wrap:anywhere]" }, createElement("span", { className: "font-medium text-foreground" }, "New page"), createElement("span", { className: "text-destructive" }, ` · ${refusal}`)) : null,
-		attaching.length > 0
-			? createElement("div", { "data-testid": "attaching-line", className: "px-4 pb-1 text-sm text-muted-foreground [overflow-wrap:anywhere]" }, `Attaching ${attaching.join(", ")}`)
+		refusal ? createElement("div", { role: "alert", "data-testid": "mention-new-page-refusal", className: "px-4 pb-1 text-sm [overflow-wrap:anywhere]" }, createElement("span", { className: "font-medium text-ink" }, "New page"), createElement("span", { className: "text-red" }, ` · ${refusal}`)) : null,
+		found.attaching.length > 0
+			? createElement("div", { "data-testid": "attaching-line", className: "px-4 pb-1 text-sm text-faint [overflow-wrap:anywhere]" }, `Attaching ${found.attaching.join(", ")}`)
 			: null,
+		...found.gone.map((text, index) => createElement("div", { key: `gone-${index}`, "data-testid": "attaching-gone-line", className: "px-4 pb-1 text-sm text-faint [overflow-wrap:anywhere]" }, text)),
 	);
 
-	return { ref, inputProps, onKeyDown, menu, line };
+	return { ref, inputProps, onKeyDown, menu, line, catalog };
 }

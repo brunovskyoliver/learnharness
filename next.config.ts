@@ -23,6 +23,8 @@ function demoKitVersion(): string {
 }
 
 const nextConfig: NextConfig = {
+	// Dev only: extra hosts allowed to load dev resources, e.g. a Tailscale name (LH_DEV_ORIGINS=a,b).
+	...(process.env.LH_DEV_ORIGINS ? { allowedDevOrigins: process.env.LH_DEV_ORIGINS.split(",").map((h) => h.trim()).filter(Boolean) } : {}),
 	// Resolve the public barrels to used exports, retaining the same validators/UI.
 	experimental: {
 		optimizePackageImports: ["@/src/core", "typebox", "typebox/value", "radix-ui"],

@@ -40,11 +40,10 @@ describe("RenameRow — the inline rename surface", () => {
 		assert.ok(html.includes(`value="${chat.title}"`));
 		// the meta line rides along (row never changes height mid-edit)
 		assert.ok(html.includes("session-rename-row"));
-		// NOTHING MOVES (ui-v2 slim rows): the glyph slot stays, so the draft
-		// sits at the idle row's title x with no padding of its own.
-		assert.ok(html.includes("size-4 shrink-0"), "the glyph slot keeps the title x");
-		const input = html.split('data-testid="session-rename-input"')[1]?.split("/>")[0] ?? "";
-		assert.ok(input.includes("px-0"), "input carries no left padding");
+		// NOTHING MOVES: the same overlay-sidebar row with the icon slot kept, so
+		// the draft sits at the idle row's title x (feature 025; its CSS gives
+		// the input no padding of its own, app/paper.css .nb-side-rename).
+		assert.match(html, /class="nb-side-row nb-side-session nb-side-rename"><span class="nb-side-icon" aria-hidden="true">/, "the icon slot keeps the title x");
 	});
 });
 
@@ -56,7 +55,7 @@ describe("DeleteSessionDialog — the node-dialog shape (owner flow rework 2026-
 		assert.equal(html, "");
 	});
 
-	it("red mono title 'Delete session?' (abort-turn look), the session name below in mono at normal size, no code-block chrome", () => {
+	it("the lifted dialog's title 'Delete session?' (feature 025), the session name below in mono at normal size, no code-block chrome", () => {
 		const html = renderToStaticMarkup(
 			<DeleteSessionBody
 				chat={{ id: "c1", title: "Orbital mechanics" }}
@@ -70,12 +69,12 @@ describe("DeleteSessionDialog — the node-dialog shape (owner flow rework 2026-
 		);
 		assert.match(html, /Delete session\?/);
 		const title = html.match(/<h2[^>]*>/)?.[0] ?? "";
-		assert.match(title, /text-sm font-semibold text-destructive/); // red, abort-turn look (owner, 2026-10-13)
+		assert.match(title, /lh-dialog-title/); // feature 025: 19px 500 ink; the red is the Delete pill's
 		assert.ok(!title.includes("font-title"), "no serif display title");
 		// the name: mono, normal text-sm size (owner, 2026-10-13), NO bg-muted code-block chrome
 		const name = html.match(/data-testid="session-name-code"[^>]*>/)?.[0] ?? "";
 		assert.match(name, /font-mono text-sm/);
-		assert.ok(!name.includes("bg-muted"), "no code-block chrome");
+		assert.ok(!name.includes("bg-shelf"), "no code-block chrome");
 		assert.match(html, /data-testid="session-name-code"[^>]*>Orbital mechanics</);
 	});
 
@@ -117,7 +116,7 @@ describe("DeleteSessionDialog — the node-dialog shape (owner flow rework 2026-
 		);
 		assert.match(html, /data-testid="delete-cancel"[^>]*>Cancel</);
 		const del = html.match(/data-testid="delete-confirm"[^>]*>/)?.[0] ?? "";
-		assert.match(del, /border-destructive\/50/);
+		assert.match(del, /nb-pill lh-pill-danger/);
 		assert.match(html, /data-testid="delete-confirm"[^>]*>Deleting…</); // busy label on Delete
 		// the checkbox survives a busy render (disabled, not unmounted)
 		assert.match(html, /data-testid="delete-traces-checkbox"[^>]*disabled=""/);

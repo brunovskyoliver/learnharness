@@ -6,7 +6,6 @@
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CableIcon, LayoutListIcon, Link2Icon, NetworkIcon, PenLineIcon, PlusIcon, Redo2Icon, Trash2Icon, Undo2Icon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import {
@@ -20,9 +19,9 @@ import { DiagramList } from "./diagram-list.tsx";
 const DiagramCanvas = dynamic(() => import("./diagram-canvas.tsx").then((m) => m.DiagramCanvas), {
 	ssr: false,
 	loading: () => (
-		<div role="status" aria-label="Loading the canvas" className="flex flex-col gap-2 px-3 py-2">
+		<div role="status" aria-label="Loading the canvas" className="flex flex-col gap-2 px-4 py-2">
 			<Skeleton className="h-5 w-2/3 rounded-md" />
-			<Skeleton className="h-40 w-full rounded-[10px]" />
+			<Skeleton className="h-40 w-full rounded-lg" />
 		</div>
 	),
 });
@@ -31,7 +30,6 @@ const LinkDialog = dynamic(() => import("./diagram-link-dialog.tsx").then((m) =>
 
 /** Under this a canvas can't show a node and its neighbour, so the list leads. */
 export const CANVAS_MIN_WIDTH = 360;
-const TOOL = "shrink-0 text-foreground aria-pressed:bg-accent aria-disabled:text-muted-foreground aria-disabled:hover:bg-transparent pointer-coarse:h-11 pointer-coarse:min-w-11";
 
 export interface DiagramEditorHandle {
 	/** Lands on a search hit. False when the words are no longer in any node. */
@@ -55,20 +53,20 @@ export function DiagramOutline({ doc, className, onPick }: { doc: DiagramDoc; cl
 	const rows = diagramOutlineRows(doc);
 	return (
 		<section aria-label="Text outline of the diagram" data-testid="diagram-outline" className={cn("flex flex-col gap-2 text-sm", className)}>
-			<h3 className="font-medium text-muted-foreground">Outline</h3>
-			{rows.length === 0 && <p className="text-ink-2">Nothing here yet.</p>}
+			<h3 className="text-xs font-medium text-faint">Outline</h3>
+			{rows.length === 0 && <p className="text-md text-faint">Nothing here yet.</p>}
 			<ul className="flex flex-col gap-1.5">
 				{rows.map((row) => (
 					<li key={row.id}>
 						{onPick
-							? <button type="button" className="rounded-[6px] text-left text-foreground underline decoration-foreground/40 underline-offset-[3px] [overflow-wrap:anywhere] pointer-coarse:min-h-11" onClick={() => onPick(row.id)}>{row.name}</button>
-							: <span className="text-foreground [overflow-wrap:anywhere]">{row.name}</span>}
+							? <button type="button" className="rounded-md text-left text-ink underline decoration-ink/40 underline-offset-[3px] [overflow-wrap:anywhere] pointer-coarse:min-h-11" onClick={() => onPick(row.id)}>{row.name}</button>
+							: <span className="text-ink [overflow-wrap:anywhere]">{row.name}</span>}
 						{row.to.length > 0 && (
-							<ul className="ps-3 text-ink-2">
+							<ul className="ps-3 text-graphite">
 								{row.to.map((to, index) => <li key={index} className="[overflow-wrap:anywhere]">{to.label ? `${to.label} → ${to.name}` : `→ ${to.name}`}</li>)}
 							</ul>
 						)}
-						{row.links.length > 0 && <p className="ps-3 text-muted-foreground [overflow-wrap:anywhere]">Linked to {row.links.join(", ")}</p>}
+						{row.links.length > 0 && <p className="ps-3 text-faint [overflow-wrap:anywhere]">Linked to {row.links.join(", ")}</p>}
 					</li>
 				))}
 			</ul>
@@ -219,23 +217,23 @@ export function DiagramEditor({ doc: initial, resetKey, name, readOnly = false, 
 		<div ref={root} className="flex min-h-0 min-w-0 flex-1 flex-col" onKeyDownCapture={shortcuts} onKeyDown={escape} data-testid="diagram-editor" data-view={view} data-diagram-layer={drawing || connecting || undefined}>
 			<p role="status" aria-live="polite" className="sr-only" data-testid="diagram-announcement">{announcement}</p>
 			{!readOnly && (
-				<div role="group" aria-label="Diagram tools" className="mx-3 mb-2 flex flex-wrap items-center gap-1 rounded-[10px] bg-card p-1" data-testid="diagram-toolbar">
-					<Button type="button" variant="ghost" className={TOOL} aria-disabled={history.past.length === 0} aria-keyshortcuts="Control+Z Meta+Z" aria-label="Undo" title="Undo (Ctrl or Cmd+Z)" data-testid="diagram-undo" onClick={undo}><Undo2Icon className="ui-icon" aria-hidden="true" /></Button>
-					<Button type="button" variant="ghost" className={TOOL} aria-disabled={history.future.length === 0} aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z" aria-label="Redo" title="Redo (Ctrl or Cmd+Shift+Z)" data-testid="diagram-redo" onClick={redo}><Redo2Icon className="ui-icon" aria-hidden="true" /></Button>
-					<Button type="button" variant="ghost" className={TOOL} data-testid="diagram-add-node" onClick={addNode}><PlusIcon className="ui-icon" aria-hidden="true" /><span className={label}>Add {noun}</span></Button>
-					<Button type="button" variant="ghost" className={TOOL} aria-pressed={connecting} aria-expanded={connecting} data-testid="diagram-connect" onClick={() => setConnecting((open) => !open)}><CableIcon className="ui-icon" aria-hidden="true" /><span className={label}>Connect</span></Button>
+				<div role="group" aria-label="Diagram tools" className="lh-tools mx-4 mb-2 gap-x-1 pb-1.5" data-testid="diagram-toolbar">
+					<button type="button" className="lh-tool" aria-disabled={history.past.length === 0} aria-keyshortcuts="Control+Z Meta+Z" aria-label="Undo" title="Undo (Ctrl or Cmd+Z)" data-testid="diagram-undo" onClick={undo}><Undo2Icon aria-hidden="true" /></button>
+					<button type="button" className="lh-tool" aria-disabled={history.future.length === 0} aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z" aria-label="Redo" title="Redo (Ctrl or Cmd+Shift+Z)" data-testid="diagram-redo" onClick={redo}><Redo2Icon aria-hidden="true" /></button>
+					<button type="button" className="lh-tool" data-testid="diagram-add-node" onClick={addNode}><PlusIcon aria-hidden="true" /><span className={label}>Add {noun}</span></button>
+					<button type="button" className="lh-tool" aria-pressed={connecting} aria-expanded={connecting} data-testid="diagram-connect" onClick={() => setConnecting((open) => !open)}><CableIcon aria-hidden="true" /><span className={label}>Connect</span></button>
 					{doc.form === "whiteboard" && view === "canvas" && (
-						<Button type="button" variant="ghost" className={TOOL} aria-pressed={drawing} data-testid="diagram-draw" onClick={() => setDrawing((on) => !on)}><PenLineIcon className="ui-icon" aria-hidden="true" /><span className={label}>Draw</span></Button>
+						<button type="button" className="lh-tool" aria-pressed={drawing} data-testid="diagram-draw" onClick={() => setDrawing((on) => !on)}><PenLineIcon aria-hidden="true" /><span className={label}>Draw</span></button>
 					)}
-					{view === "canvas" && <Button type="button" variant="ghost" className={TOOL} aria-disabled={!canLink} title={canLink ? undefined : `Select a ${noun} first`} data-testid="diagram-link" onClick={() => { if (canLink) setLinkTarget(selection.nodeId); }}><Link2Icon className="ui-icon" aria-hidden="true" /><span className={label}>Link</span></Button>}
-					{view === "canvas" && <Button type="button" variant="ghost" className={TOOL} aria-disabled={!canDelete} title={canDelete ? undefined : `Select a ${noun} or connection first`} data-testid="diagram-delete" onClick={() => { if (canDelete) removeSelected(); }}><Trash2Icon className="ui-icon" aria-hidden="true" /><span className={label}>Delete</span></Button>}
-					<span role="group" aria-label="View" className="ms-auto flex gap-1">
-						<Button type="button" variant="ghost" className={TOOL} aria-pressed={view === "canvas"} data-testid="diagram-view-canvas" onClick={() => setChosenView("canvas")}><NetworkIcon className="ui-icon" aria-hidden="true" /><span className="sr-only">Canvas</span></Button>
-						<Button type="button" variant="ghost" className={TOOL} aria-pressed={view === "list"} data-testid="diagram-view-list" onClick={() => { setDrawing(false); setChosenView("list"); }}><LayoutListIcon className="ui-icon" aria-hidden="true" /><span className="sr-only">List</span></Button>
+					{view === "canvas" && <button type="button" className="lh-tool" aria-disabled={!canLink} title={canLink ? undefined : `Select a ${noun} first`} data-testid="diagram-link" onClick={() => { if (canLink) setLinkTarget(selection.nodeId); }}><Link2Icon aria-hidden="true" /><span className={label}>Link</span></button>}
+					{view === "canvas" && <button type="button" className="lh-tool" aria-disabled={!canDelete} title={canDelete ? undefined : `Select a ${noun} or connection first`} data-testid="diagram-delete" onClick={() => { if (canDelete) removeSelected(); }}><Trash2Icon aria-hidden="true" /><span className={label}>Delete</span></button>}
+					<span role="group" aria-label="View" className="ms-auto flex gap-0.5">
+						<button type="button" className="lh-tool" aria-pressed={view === "canvas"} data-testid="diagram-view-canvas" onClick={() => setChosenView("canvas")}><NetworkIcon aria-hidden="true" /><span className="sr-only">Canvas</span></button>
+						<button type="button" className="lh-tool" aria-pressed={view === "list"} data-testid="diagram-view-list" onClick={() => { setDrawing(false); setChosenView("list"); }}><LayoutListIcon aria-hidden="true" /><span className="sr-only">List</span></button>
 					</span>
 				</div>
 			)}
-			{drawing && <p role="status" className="px-3 pb-2 text-sm text-ink-2">Draw on the canvas. Press Escape to stop.</p>}
+			{drawing && <p role="status" className="px-4 pb-2 text-sm text-graphite">Draw on the canvas. Press Escape to stop.</p>}
 			{connecting && !readOnly && (
 				<ConnectForm
 					doc={doc}
@@ -249,7 +247,7 @@ export function DiagramEditor({ doc: initial, resetKey, name, readOnly = false, 
 					}}
 				/>
 			)}
-			{showOutline && <DiagramOutline doc={doc} onPick={askFocus} className="mx-3 mb-2 max-h-[40dvh] shrink-0 overflow-y-auto rounded-[10px] bg-popover p-2" />}
+			{showOutline && <DiagramOutline doc={doc} onPick={askFocus} className="mx-4 mb-2 max-h-[40dvh] shrink-0 overflow-y-auto rounded-lg bg-shelf p-2" />}
 			{view === "list" ? (
 				<DiagramList
 					doc={doc}
@@ -263,7 +261,7 @@ export function DiagramEditor({ doc: initial, resetKey, name, readOnly = false, 
 				/>
 			) : (
 				<div className="min-h-0 flex-1">
-					{doc.nodes.length === 0 && <p className="px-3 text-sm text-ink-2" data-testid="diagram-empty">{doc.form === "whiteboard" ? "An empty whiteboard. Add a note or draw." : `Nothing here yet. Add a ${noun} to start.`}</p>}
+					{doc.nodes.length === 0 && <p className="px-4 text-md text-faint" data-testid="diagram-empty">{doc.form === "whiteboard" ? "An empty whiteboard. Add a note or draw." : `Nothing here yet. Add a ${noun} to start.`}</p>}
 					<DiagramCanvas
 						doc={doc}
 						label={`${name}: canvas`}
@@ -299,19 +297,19 @@ function ConnectForm({ doc, fromId, onAdd, onClose }: { doc: DiagramDoc; fromId:
 	const [label, setLabel] = useState("");
 	const first = useRef<HTMLSelectElement>(null);
 	useEffect(() => { first.current?.focus(); }, []);
-	const CONTROL = "h-9 w-full min-w-0 rounded-md border border-input bg-popover px-2 text-sm text-foreground pointer-coarse:h-11";
+	const CONTROL = "lh-bare-field h-8 w-full min-w-0 border-0 border-b border-edge bg-transparent px-0 text-sm text-ink focus-visible:border-ink pointer-coarse:h-11";
 	if (nodes.length < 2) {
 		return (
-			<div role="status" className="mx-3 mb-2 flex flex-wrap items-center gap-2 rounded-[10px] bg-popover p-2 text-sm text-ink-2" data-testid="diagram-connect-form">
+			<div role="status" className="lh-line-card mx-4 mb-2" data-testid="diagram-connect-form">
 				<p className="min-w-0 flex-1">A connection needs two {DIAGRAM_NODE_NOUN[doc.form]}s.</p>
-				<button type="button" className="prompt-secondary" onClick={onClose}>Close</button>
+				<button type="button" className="lh-text-action" onClick={onClose}>Close</button>
 			</div>
 		);
 	}
 	const same = from === to;
 	return (
 		<form
-			className="mx-3 mb-2 grid gap-2 rounded-[10px] bg-popover p-2 text-sm sm:grid-cols-[1fr_1fr_1fr_auto]"
+			className="mx-4 mb-2 grid gap-x-4 gap-y-2 rounded-lg border border-rule px-3 py-2.5 text-sm sm:grid-cols-[1fr_1fr_1fr_auto]"
 			data-testid="diagram-connect-form"
 			aria-label="Add a connection"
 			onSubmit={(event) => {
@@ -321,24 +319,24 @@ function ConnectForm({ doc, fromId, onAdd, onClose }: { doc: DiagramDoc; fromId:
 				setLabel("");
 			}}
 		>
-			<label className="flex min-w-0 flex-col gap-1 text-ink-2">From
+			<label className="flex min-w-0 flex-col gap-0.5 text-xs font-medium text-faint">From
 				<select ref={first} name="from" value={from} className={CONTROL} data-testid="diagram-connect-from" onChange={(event) => setFrom(event.target.value)}>
 					{nodes.map((node) => <option key={node.id} value={node.id}>{diagramNodeName(node)}</option>)}
 				</select>
 			</label>
-			<label className="flex min-w-0 flex-col gap-1 text-ink-2">To
+			<label className="flex min-w-0 flex-col gap-0.5 text-xs font-medium text-faint">To
 				<select name="to" value={to} className={CONTROL} data-testid="diagram-connect-to" onChange={(event) => setTo(event.target.value)}>
 					{nodes.map((node) => <option key={node.id} value={node.id}>{diagramNodeName(node)}</option>)}
 				</select>
 			</label>
-			<label className="flex min-w-0 flex-col gap-1 text-ink-2">Label
+			<label className="flex min-w-0 flex-col gap-0.5 text-xs font-medium text-faint">Label
 				<input name="label" value={label} autoComplete="off" placeholder="Optional…" className={CONTROL} data-testid="diagram-connect-label" onChange={(event) => setLabel(event.target.value)} />
 			</label>
-			<span className="flex items-end gap-1">
-				<button type="submit" className="prompt-secondary" data-testid="diagram-connect-add" aria-disabled={same}>Add</button>
-				<button type="button" className="prompt-secondary" onClick={onClose}>Close</button>
+			<span className="flex items-end gap-4">
+				<button type="submit" className="lh-text-action" data-testid="diagram-connect-add" aria-disabled={same}>Add</button>
+				<button type="button" className="lh-text-action" onClick={onClose}>Close</button>
 			</span>
-			{same && <p role="status" className="text-sm text-muted-foreground sm:col-span-4">A connection joins two different {DIAGRAM_NODE_NOUN[doc.form]}s.</p>}
+			{same && <p role="status" className="text-sm text-faint sm:col-span-4">A connection joins two different {DIAGRAM_NODE_NOUN[doc.form]}s.</p>}
 		</form>
 	);
 }

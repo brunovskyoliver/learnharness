@@ -10,7 +10,9 @@
  * never a bespoke header.
  *
  * Mechanics baked in (the chat-session bar's proven pattern):
- * - h-13 (52px) — matches the sidebar's brand band (ui-v2, after T3 Code).
+ * - h-(--lh-band): at least 52px, with the row on the ☰'s centre line, which
+ *   sits where Notebook's header puts it (app/paper.css section 4, feature 025
+ *   phase 11: nothing jumps on a mode switch).
  * - lh-drag — the window-drag band. NATIVE interactive children
  *   (button/input/a/…) carve out AUTOMATICALLY via the globals.css auto
  *   carve-out rule (owner standardization ruling, 2026-09-29 night) —
@@ -18,9 +20,10 @@
  *   not per-child discipline; manual lh-no-drag is only for clickable
  *   non-natives (spans/divs with onClick).
  * - select-none — dragging never highlights the title.
- * - SidebarToggle FIRST — the sidebar reopen when closed, with its
- *   Electron traffic-light gutter (lh-closed-toggle).
- * - px-3, gap-3 rhythm.
+ * - SidebarToggle FIRST — Notebook's ☰ and the wordmark (feature 025,
+ *   R6/R7), with the Electron traffic-light gutter (lh-closed-toggle).
+ * - No fill: the band is the paper and its grain (feature 025, R7).
+ * - the chrome's left inset (--lh-chrome-left), pr-3, gap-3 rhythm.
  *
  * The consumer brings the breadcrumb title (text-sm font-medium, ui-v2) and
  * any right-side controls. THE TITLE LAW (owner round 11, 2026-10-05):
@@ -61,7 +64,7 @@ export function TopBar({
 		<>
 		<header
 			onMouseDown={onMouseDown}
-			className={`${drag ? "lh-drag " : ""}lh-wco-gutter flex h-13 shrink-0 select-none items-center gap-3 bg-background px-3`}
+			className={`${drag ? "lh-drag " : ""}lh-wco-gutter flex h-(--lh-band) shrink-0 select-none items-center gap-3 pl-(--lh-chrome-left) pr-3 text-sm`}
 		>
 			<SidebarToggle shellMobile={shellMobileNavigation} />
 			{children}

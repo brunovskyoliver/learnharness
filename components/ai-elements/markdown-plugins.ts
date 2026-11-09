@@ -46,32 +46,21 @@ export function needsCode(text: string): boolean {
 
 // ─── Code highlighter, shared download ────────────────────────────────────────
 
-// The house code theme. Type-only version skew: @streamdown/code bundles
-// shiki@3 types while streamdown@2.5 expects shiki@4 types; both work at
-// runtime, so the plugin is held as unknown.
-const CODE_THEMES = ["github-light", {
-	name: "learnharness-dark",
-	type: "dark",
-	colors: { "editor.background": "#141414", "editor.foreground": "#dedede" },
-	tokenColors: [
-		{ scope: ["comment"], settings: { foreground: "#929292" } },
-		{ scope: ["string", "constant.other.symbol"], settings: { foreground: "#b9c7ad" } },
-		{ scope: ["constant.numeric"], settings: { foreground: "#d0be96" } },
-		{ scope: ["keyword", "storage"], settings: { foreground: "#b1b9c4" } },
-		{ scope: ["entity.name.function", "support.function"], settings: { foreground: "#b6ccdf" } },
-		{ scope: ["entity.name.type", "support.class"], settings: { foreground: "#bcafca" } },
-	],
-}] as const;
-
+// The paper code theme (feature 025, T056: components/ai-elements/paper-code-theme.ts,
+// its colours --lh-code-* variables that app/paper.css points at the current
+// theme's paper inks), loaded with the highlighter. Type-only version skew:
+// @streamdown/code bundles shiki@3 types while streamdown@2.5 expects shiki@4
+// types; both work at runtime, so the plugin is held as unknown.
 let codePlugin: unknown = undefined;
 let request: Promise<void> | undefined;
 const listeners = new Set<() => void>();
 
 /** Start (once) and await the highlighter download. Never rejects. */
 export function loadCodeHighlighter(): Promise<void> {
-	return request ??= import("@streamdown/code").then(
-		(mod) => {
-			codePlugin = mod.createCodePlugin({ themes: CODE_THEMES } as unknown as Parameters<typeof mod.createCodePlugin>[0]);
+	return request ??= Promise.all([import("@streamdown/code"), import("./paper-code-theme")]).then(
+		([mod, { paperCodeTheme }]) => {
+			const themes = [paperCodeTheme("paper-light", "light"), paperCodeTheme("paper-dark", "dark")];
+			codePlugin = mod.createCodePlugin({ themes } as unknown as Parameters<typeof mod.createCodePlugin>[0]);
 			for (const listener of listeners) listener();
 		},
 		(error: unknown) => {

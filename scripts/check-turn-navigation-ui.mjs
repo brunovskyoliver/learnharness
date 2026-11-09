@@ -36,22 +36,19 @@ export async function checkTurnNavigationUi(page, base, quizChatId, completedCha
 	await page.setViewport({ width: 2048, height: 1229 });
 	await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "no-preference" }]);
 	await page.goto(`${base}/chat/${quizChatId}`, { waitUntil: "networkidle2" });
+	// Feature 025 (R8): the check is a thread beside the lesson. Scroll to
+	// latest eases to the bottom and leaves the thread as the reader left it.
 	await page.click('[data-testid="teach-check-reveal"]');
 	await wait(450);
 	await scroller();
-	await page.mouse.move(1100, 180);
+	await page.mouse.move(700, 180);
 	await page.mouse.wheel({ deltaY: -2200 });
-	await page.waitForSelector('[data-testid="question-dock-bar"]');
 	await wait(400);
 	const sampling = page.evaluate(() => new Promise((resolve) => {
 		const frames = [];
 		const start = performance.now();
-		// The expanded floating question grows the reserved tail before paint.
-		// Compare the opening frame against the compact range the arrow is
-		// finishing, then separately verify the final expanded range below.
-		const compactBottom = window.turnScroller.scrollHeight - window.turnScroller.clientHeight;
 		const frame = () => {
-			frames.push({ compactBottom, time: performance.now() - start, scroll: window.turnScroller.scrollTop, distance: window.turnScroller.scrollHeight - window.turnScroller.clientHeight - window.turnScroller.scrollTop, expanded: !document.querySelector('[data-testid="question-dock-bar"]'), height: document.querySelector('[data-testid="dock-shell"]').getBoundingClientRect().height });
+			frames.push({ time: performance.now() - start, scroll: window.turnScroller.scrollTop, distance: window.turnScroller.scrollHeight - window.turnScroller.clientHeight - window.turnScroller.scrollTop, thread: document.querySelector('[data-testid="check-thread"]')?.dataset.state });
 			if (performance.now() - start < 700) requestAnimationFrame(frame);
 			else resolve(frames);
 		};
@@ -59,30 +56,24 @@ export async function checkTurnNavigationUi(page, base, quizChatId, completedCha
 	}));
 	await page.click('[aria-label="Scroll to latest"]');
 	const frames = await sampling;
-	const firstExpanded = frames.find((frame) => frame.expanded);
-	assert.ok(firstExpanded && firstExpanded.scroll >= firstExpanded.compactBottom - 2, `the prompt waits for the compact conversation bottom: ${JSON.stringify(firstExpanded)}`);
-	assert.ok(firstExpanded.time >= 200, "expansion follows the 240ms scroll phase");
-	assert.ok(new Set(frames.filter((frame) => !frame.expanded).map((frame) => frame.scroll)).size > 3, "scroll phase has intermediate positions");
-	assert.ok(new Set(frames.filter((frame) => frame.expanded).map((frame) => Math.round(frame.height))).size > 3, "expansion has its own intermediate heights");
-	const expandedDistance = await page.evaluate(() => window.turnScroller.scrollHeight - window.turnScroller.clientHeight - window.turnScroller.scrollTop);
-	assert.ok(expandedDistance < 2, `arrow finishes at the bottom after expanded question reserve settles (remaining ${expandedDistance}px)`);
-	console.log("PASS arrow eases to the bottom before expanding the prompt");
-	await page.mouse.move(1100, 180);
+	assert.ok(new Set(frames.map((frame) => frame.scroll)).size > 3, "scroll phase has intermediate positions");
+	assert.ok(frames.every((frame) => frame.thread === "open"), "the thread stays open through the jump");
+	const endDistance = await page.evaluate(() => window.turnScroller.scrollHeight - window.turnScroller.clientHeight - window.turnScroller.scrollTop);
+	assert.ok(endDistance < 2, `arrow finishes at the bottom (remaining ${endDistance}px)`);
+	console.log("PASS arrow eases to the bottom; the check thread is left as it was");
+	await page.mouse.move(700, 180);
 	await page.mouse.wheel({ deltaY: -2200 });
-	await page.waitForSelector('[data-testid="question-dock-bar"]');
 	await wait(400);
 	await page.click('[aria-label="Scroll to latest"]');
 	await wait(60);
-	await page.mouse.move(1100, 180);
+	await page.mouse.move(700, 180);
 	await page.mouse.wheel({ deltaY: -400 });
 	await wait(500);
-	assert.ok(await page.$('[data-testid="question-dock-bar"]'), "scrolling away cancels the queued expansion");
 	assert.ok(await page.evaluate(() => window.turnScroller.scrollHeight - window.turnScroller.clientHeight - window.turnScroller.scrollTop > 100), "interruption keeps the reader away from the bottom");
 	await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
 	await page.click('[aria-label="Scroll to latest"]');
-	await page.waitForFunction(() => !document.querySelector('[data-testid="question-dock-bar"]'));
+	await page.waitForFunction(() => window.turnScroller.scrollHeight - window.turnScroller.clientHeight - window.turnScroller.scrollTop < 2);
 	assert.equal(await page.$eval('[data-testid="dock-shell"]', (element) => element.getAnimations().length), 0);
-	assert.ok(await page.evaluate(() => window.turnScroller.scrollHeight - window.turnScroller.clientHeight - window.turnScroller.scrollTop < 2));
 	console.log("PASS interrupted arrow sequence and reduced motion");
 
 	await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "no-preference" }]);
@@ -192,6 +183,8 @@ export async function checkTurnNavigationUi(page, base, quizChatId, completedCha
 			return {
 				buttons: document.querySelectorAll('[aria-label="Scroll to latest"]').length,
 				background: getComputedStyle(band).backgroundColor,
+				// The paper ground (feature 025): the token as the body paints it.
+				paper: getComputedStyle(document.body).backgroundColor,
 				height: Math.round(b.height),
 				contains: b.left <= r.left && b.right >= r.right && b.top <= r.top && b.bottom >= r.bottom,
 				fullWidth: Math.round(b.left) <= 0 && Math.round(b.right) >= innerWidth - 1,
@@ -200,7 +193,7 @@ export async function checkTurnNavigationUi(page, base, quizChatId, completedCha
 			};
 		});
 		assert.equal(band.buttons, 1, "exactly one scroll-to-latest button");
-		assert.equal(band.background, "rgb(11, 11, 10)", "the band is the opaque ground, so no text shows under the button");
+		assert.equal(band.background, band.paper, "the band is the opaque ground, so no text shows under the button");
 		assert.equal(band.height, 48);
 		assert.ok(band.contains && band.fullWidth && band.onTop && band.aboveShell, `the button sits in its band above the prompt bar: ${JSON.stringify(band)}`);
 		await page.click('[aria-label="Scroll to latest"]');

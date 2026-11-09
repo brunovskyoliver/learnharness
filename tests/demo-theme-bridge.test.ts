@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { runInNewContext } from "node:vm";
 import { DEMO_BRIDGE_SCRIPT } from "../components/artifacts/demo-card.tsx";
-import { demoAppearanceVars } from "../src/core/demo-theme.ts";
+import { demoAppearanceVars, demoScheme } from "../src/core/demo-theme.ts";
 
 function bridge() {
 	const listeners = new Map<string, (event: unknown) => void>();
@@ -22,13 +22,32 @@ function bridge() {
 }
 
 describe("sandbox appearance bridge", () => {
-	it("reads resolved app roles and keeps data series out of appearance updates", () => {
-		const vars = demoAppearanceVars((name) => ({ "--background": "#101820", "--card": "#182028", "--lh-heading-weight": "600" })[name] ?? "", "Georgia");
-		assert.equal(vars["--lh-bg"], "#101820");
-		assert.equal(vars["--lh-surface"], "#182028");
-		assert.equal(vars["--lh-heading-weight"], "600");
-		assert.equal(vars["--lh-font"], '"Georgia", "LH Sans", system-ui, sans-serif');
-		assert.equal(vars["--lh-blue"], undefined);
+	it("reads the paper roles and the resolved scheme, and keeps data series out of appearance updates", () => {
+		const css: Record<string, string> = { "--paper": "#1a1a19", "--shelf": "#151514", "--code": "#151514", "--rule": "#33322f", "--ink": "#e9e7e2", "--faint": "#868379", "color-scheme": "dark", "--background": "#000000" };
+		const vars = demoAppearanceVars((name) => css[name] ?? "", "Georgia");
+		assert.deepEqual(vars, {
+			"--lh-bg": "#1a1a19", "--lh-surface": "#151514", "--lh-surface-2": "#151514", "--lh-border": "#33322f", "--lh-text": "#e9e7e2", "--lh-muted": "#868379",
+			"--lh-font": '"Georgia", "LH Sans", system-ui, sans-serif',
+			"color-scheme": "dark",
+		});
+		assert.equal(demoAppearanceVars((name) => (name === "color-scheme" ? "light" : ""))["color-scheme"], "light");
+		assert.equal(demoAppearanceVars(() => "")["color-scheme"], "light", "nothing resolved reads as light");
+		assert.equal(demoScheme("only dark"), "dark");
+		assert.equal(demoScheme("light dark"), "light");
+	});
+
+	it("sets the page's colour scheme, light or dark only", () => {
+		const { values, send } = bridge();
+		send({ "color-scheme": "dark" });
+		assert.equal(values["color-scheme"], "dark");
+		send({ "color-scheme": "light" });
+		assert.equal(values["color-scheme"], "light");
+		send({ "color-scheme": "normal" });
+		send({ "color-scheme": "light dark" });
+		send({ "color-scheme": 1 });
+		assert.equal(values["color-scheme"], "light");
+		send({ "--lh-heading-weight": "900", "--lh-ink-strong": "red" });
+		assert.equal(values["--lh-heading-weight"], undefined, "retired roles no longer cross");
 	});
 
 	it("accepts only parent appearance messages and approved, bounded CSS values", () => {

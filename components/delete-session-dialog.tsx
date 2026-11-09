@@ -23,10 +23,8 @@ export const TRACES_COPY = {
  * destructive-confirmation surface, portaled z-50 like the setup dialog,
  * now in the node dialog's shape (the two must read as one design):
  *
- *   - red title "Delete session?" in the abort-turn look (owner, 2026-10-13
- *     polish: text-sm font-semibold JetBrains Mono via the UI default —
- *     the serif display title is gone), the session name below it in
- *     JetBrains Mono at normal text-sm size (was sized-up text-lg), no
+ *   - title "Delete session?" in the paper dialog's title type (feature 025;
+ *     the red moved to the Delete pill), the session name below it, no
  *     code-block chrome;
  *   - ONE unchecked-by-default checkbox "Also remove its graph traces"
  *     (unchecked = preserve-graph: the session record, its jobs, and its
@@ -140,7 +138,7 @@ export function DeleteSessionDialog({
 					event.stopPropagation();
 				}
 			}}
-			className="fixed inset-0 z-50 flex items-center justify-center bg-background"
+			className="nb-dialog-backdrop"
 			{...backdropDismiss}
 		>
 			<DeleteSessionBody
@@ -184,26 +182,23 @@ export function DeleteSessionBody({
 			aria-label="Delete session"
 			data-testid="delete-session-dialog"
 			onClick={(e) => e.stopPropagation()}
-			className="w-[32rem] max-w-[calc(100vw-2rem)] rounded-xl border bg-card p-5 "
+			className="lh-dialog"
 		>
-			<h2 className="text-sm font-semibold text-destructive">Delete session?</h2>
-			{/* The session name below the title in JetBrains Mono (owner,
-			    2026-09-24): no code-block chrome — the font already says
-			    code. Owner, 2026-10-13 polish: normal text-sm size (was
-			    sized-up text-lg), still white. Same shape as the node
-			    dialog. */}
+			<h2 className="lh-dialog-title">Delete session?</h2>
+			{/* The session name below the title in mono (owner, 2026-09-24):
+			    no code-block chrome, the font already says code. */}
 			<div className="mt-1.5">
-				<code data-testid="session-name-code" className="font-mono text-sm text-foreground">
+				<code data-testid="session-name-code" className="font-mono text-sm text-ink [overflow-wrap:anywhere]">
 					{chat.title}
 				</code>
 			</div>
-			<p className="mt-2 text-sm text-muted-foreground">
+			<p className="lh-dialog-text">
 				This permanently removes the session — its messages, background jobs, and extraction records. Everything
 				it added to the graph stays unless you check below. This cannot be undone.
 			</p>
 			<label
 				data-testid={TRACES_COPY.testid}
-				className="mt-4 flex cursor-pointer items-start gap-2.5 rounded-lg border border-border/60 px-4 py-3"
+				className="nb-option-card lh-option-row mt-4"
 			>
 				<input
 					type="checkbox"
@@ -211,51 +206,27 @@ export function DeleteSessionBody({
 					checked={traces}
 					onChange={(e) => onTraces(e.target.checked)}
 					disabled={busy}
-					className="mt-0.5 size-4 shrink-0 accent-primary"
+					className="mt-0.5 size-4 shrink-0 accent-ink"
 				/>
 				<span className="min-w-0">
-					<span className="block text-sm text-foreground">{TRACES_COPY.title}</span>
-					<span className="mt-1 block text-sm text-muted-foreground">{TRACES_COPY.body}</span>
+					<span className="block text-md text-ink">{TRACES_COPY.title}</span>
+					<span className="mt-1 block text-sm text-graphite">{TRACES_COPY.body}</span>
 				</span>
 			</label>
 			{failure && (
-				<div
-					role="alert"
-					data-testid="delete-failure"
-					className="mt-3 rounded-sm border border-border/60 px-3 py-2 text-sm"
-				>
-					<span className="text-foreground">{failure.error}</span>
-					<button
-						type="button"
-						data-testid="delete-retry"
-						onClick={onRun}
-						disabled={busy}
-						className="ml-3 text-sm text-foreground underline-offset-2 hover:underline disabled:opacity-40"
-					>
+				<div role="alert" data-testid="delete-failure" className="lh-dialog-problem">
+					<span>{failure.error}</span>
+					<button type="button" data-testid="delete-retry" onClick={onRun} disabled={busy} className="lh-text-action">
 						Try again
 					</button>
 				</div>
 			)}
-			{/* The node dialog's exact bottom row: quiet Cancel, destructive
-			    red Delete (border + text, fill on hover — the app's
-			    established destructive pair). */}
-			<div className="mt-4 flex justify-end gap-2">
-				<button
-					type="button"
-					data-testid="delete-cancel"
-					onClick={onClose}
-					disabled={busy}
-					className="rounded-sm px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground disabled:opacity-40"
-				>
+			{/* The node dialog's bottom row: Cancel as a text button, Delete as the red pill. */}
+			<div className="lh-dialog-actions">
+				<button type="button" data-testid="delete-cancel" onClick={onClose} disabled={busy} className="lh-text-action">
 					Cancel
 				</button>
-				<button
-					type="button"
-					data-testid="delete-confirm"
-					onClick={onRun}
-					disabled={busy}
-					className="rounded-sm border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-sm text-destructive transition-colors hover:bg-destructive/20 disabled:opacity-40"
-				>
+				<button type="button" data-testid="delete-confirm" onClick={onRun} disabled={busy} className="nb-pill lh-pill-danger">
 					{busy ? "Deleting…" : "Delete"}
 				</button>
 			</div>

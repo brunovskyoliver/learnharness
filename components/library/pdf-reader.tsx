@@ -12,10 +12,12 @@ import { useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, u
 import { ChevronLeftIcon, ChevronRightIcon, HighlighterIcon, MinusIcon, PlusIcon, TextCursorInputIcon } from "lucide-react";
 import { ChatActionsContext } from "@/components/chat-actions-context.ts";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { SelectionAction } from "@/components/paper/selection-action";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ANCHOR_UNANCHORED_TEXT, anchorContext, CARD_PASSAGE_KEY, ANNOTATION_QUOTE_MAX, locateQuote, type AnchorRect, type DocumentAnnotation, type TextAnchor } from "@/src/core";
 import { pdfLoadOptions, textCheckPages } from "./pdf-options.ts";
 import { loadPdfJs, takePdfSource } from "./pdf-preload.ts";
+import { RepoFreshnessLine, useRepoFreshness } from "./repo-freshness.tsx";
 import type { PaneItem } from "./page-pane-context.tsx";
 import { DOCUMENT_TUTOR_ACTIONS, documentTutorMessage, TUTOR_ACTION_LABEL, TUTOR_BLOCKED_TEXT, type DocumentTutorAction } from "./page-tutor-actions.ts";
 import { firstPdfCursor, movePdfCursor, pdfCursorMoveFor, type PdfCursor } from "./pdf-keyboard-selection.ts";
@@ -28,8 +30,9 @@ type PdfDocument = import("pdfjs-dist").PDFDocumentProxy;
 const contentUrl = (id: string) => `/api/library/items/${encodeURIComponent(id)}/content`;
 const annotationsUrl = (id: string) => `/api/library/items/${encodeURIComponent(id)}/annotations`;
 const POSITION_KEY = "lh-pdf-position:";
-const TOOL = "inline-flex size-9 shrink-0 items-center justify-center rounded-md text-foreground hover:bg-accent focus-visible:outline-1 focus-visible:outline-ring disabled:text-muted-foreground pointer-coarse:size-11";
-const TEXT_BUTTON = "inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-sm text-foreground hover:bg-accent focus-visible:outline-1 focus-visible:outline-ring pointer-coarse:min-h-11";
+/** The reader's controls in the toolbar register (feature 025 T050). */
+const TOOL = "lh-tool";
+const TEXT_BUTTON = "lh-tool";
 const MAX_DPR = 2;
 const ZOOMS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3];
 const NEAR_MARGIN = "800px 0px";
@@ -207,7 +210,7 @@ function PdfPage({ pdfjs, doc, number, width, fallbackRatio, annotations, cite, 
 				{citeRects.map((rect, index) => <div key={index} className="lh-pdf-cite" data-testid="pdf-cite-mark" style={percent(rect)} />)}
 			</div>
 			<div ref={layer} className="lh-pdf-text" data-testid="pdf-text-layer" />
-			{failed && <p role="status" className="absolute inset-x-2 top-2 rounded-[6px] bg-card p-2 text-sm text-foreground">Page {number} could not be drawn.</p>}
+			{failed && <p role="status" className="absolute inset-x-2 top-2 rounded-lg bg-paper p-2 text-sm text-ink shadow-lift">Page {number} could not be drawn.</p>}
 		</div>
 	);
 }
@@ -249,9 +252,24 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 	const chat = useContext(ChatActionsContext);
 	const router = useRouter();
 	const [pdfjs, setPdfjs] = useState<PdfJs | null>(null);
+	// A mirrored PDF names its repo (feature 026): from the row that opened it, or the content's header.
+	const [repo, setRepo] = useState(item.repo ?? null);
 	const [doc, setDoc] = useState<PdfDocument | null>(null);
 	const [failure, setFailure] = useState<"load" | "password" | null>(null);
 	const [attempt, setAttempt] = useState(0);
+	// After a pull: "Updated from the repo" + Reload, or "Removed from the repo". The HEAD names the version shown.
+	const { freshness, record, reset } = useRepoFreshness(item.id);
+	useEffect(() => {
+		let live = true;
+		void fetch(contentUrl(item.id), { method: "HEAD", cache: "no-store" }).then((response) => {
+			if (!live) return;
+			const from = response.headers.get("X-Library-Repo");
+			if (from) setRepo(decodeURIComponent(from));
+			record(response);
+			reset();
+		}).catch(() => {});
+		return () => { live = false; };
+	}, [item.id, attempt, record, reset]);
 	const [ratio, setRatio] = useState(1.3);
 	const [paneWidth, setPaneWidth] = useState(0);
 	const [zoom, setZoom] = useState(1);
@@ -588,7 +606,7 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 		if (selected && bubble.current) setBubbleHeight(bubble.current.offsetHeight);
 	}, [selected]);
 	const pageNumbers = useMemo(() => Array.from({ length: numPages }, (_, i) => i + 1), [numPages]);
-	const pageWidth = Math.max(0, Math.round((paneWidth - 16) * zoom));
+	const pageWidth = Math.max(0, Math.round((paneWidth - 32) * zoom));
 	const goToField = () => {
 		const page = Number(pageField);
 		if (Number.isInteger(page) && page >= 1 && page <= numPages) scrollToPage(page);
@@ -613,9 +631,9 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 
 	if (failure) {
 		return (
-			<div role="status" className="flex flex-wrap items-center gap-2 px-3 text-sm text-ink-2" data-testid="pdf-failed">
+			<div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 text-sm text-ink" data-testid="pdf-failed">
 				<p>{failure === "password" ? `${item.name} needs a password, so it can't be shown here. Open it in a new tab, or download it.` : `${item.name} could not be shown here. Open it in a new tab, or download it.`}</p>
-				{failure === "load" && <button type="button" className="prompt-secondary" onClick={() => setAttempt((n) => n + 1)}>Try again</button>}
+				{failure === "load" && <button type="button" className="lh-text-action" onClick={() => setAttempt((n) => n + 1)}>Try again</button>}
 			</div>
 		);
 	}
@@ -646,71 +664,73 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 				else if (panel) { event.preventDefault(); event.stopPropagation(); setPanel(false); }
 			}}
 		>
-			<div role="toolbar" aria-label="PDF controls" className="flex shrink-0 flex-wrap items-center gap-1 px-2 pb-1">
+			{repo && <p className="mx-4 pb-1 text-sm text-faint [overflow-wrap:anywhere]" data-testid="pdf-repo-source">From {repo}</p>}
+			{repo && freshness !== "current" && <div className="mx-4 pb-1"><RepoFreshnessLine freshness={freshness} onReload={() => setAttempt((n) => n + 1)} /></div>}
+			<div role="toolbar" aria-label="PDF controls" className="lh-tools shrink-0 gap-x-1 mx-4 pb-1.5">
 				<button type="button" className={TEXT_BUTTON} aria-pressed={keyboardPage !== null} disabled={noText} onClick={() => { if (keyboardPage !== null) clearSelection(); else startKeyboardSelection(); }} data-testid="pdf-keyboard-select" title="Select text with the keyboard">
-					<TextCursorInputIcon className="ui-icon" aria-hidden="true" />
+					<TextCursorInputIcon aria-hidden="true" />
 					Select text
 				</button>
-				<button type="button" className={TOOL} aria-label="Previous page" disabled={current <= 1} onClick={() => scrollToPage(current - 1)}><ChevronLeftIcon className="ui-icon" aria-hidden="true" /></button>
-				<form className="flex items-center gap-1 text-sm text-ink-2" onSubmit={(event) => { event.preventDefault(); goToField(); }}>
+				<button type="button" className={TOOL} aria-label="Previous page" disabled={current <= 1} onClick={() => scrollToPage(current - 1)}><ChevronLeftIcon aria-hidden="true" /></button>
+				<form className="flex items-center gap-1.5 text-sm text-faint" onSubmit={(event) => { event.preventDefault(); goToField(); }}>
 					<label className="sr-only" htmlFor={`pdf-page-${item.id}`}>Page number</label>
-					<input id={`pdf-page-${item.id}`} name="page" value={pageField} inputMode="numeric" autoComplete="off" data-testid="pdf-page-field" onChange={(event) => setPageField(event.target.value)} onBlur={goToField} className="h-9 w-11 rounded-md border border-input bg-transparent px-1 text-center text-sm text-foreground pointer-coarse:h-11" />
+					<input id={`pdf-page-${item.id}`} name="page" value={pageField} inputMode="numeric" autoComplete="off" data-testid="pdf-page-field" onChange={(event) => setPageField(event.target.value)} onBlur={goToField} className="lh-bare-field h-7 w-10 border-0 border-b border-edge bg-transparent px-0.5 text-center text-sm text-ink tabular-nums focus-visible:border-ink pointer-coarse:h-11" />
 					<span className="whitespace-nowrap" data-testid="pdf-page-count">of {numPages || "…"}</span>
 				</form>
-				<button type="button" className={TOOL} aria-label="Next page" disabled={current >= numPages} onClick={() => scrollToPage(current + 1)}><ChevronRightIcon className="ui-icon" aria-hidden="true" /></button>
-				<button type="button" className={TOOL} aria-label="Zoom out" disabled={zoom <= ZOOMS[0]!} onClick={() => stepZoom(-1)}><MinusIcon className="ui-icon" aria-hidden="true" /></button>
+				<button type="button" className={TOOL} aria-label="Next page" disabled={current >= numPages} onClick={() => scrollToPage(current + 1)}><ChevronRightIcon aria-hidden="true" /></button>
+				<button type="button" className={TOOL} aria-label="Zoom out" disabled={zoom <= ZOOMS[0]!} onClick={() => stepZoom(-1)}><MinusIcon aria-hidden="true" /></button>
 				<button type="button" className={`${TEXT_BUTTON} max-[359px]:hidden`} aria-label={`Fit to width. Zoom is ${Math.round(zoom * 100)} percent`} onClick={() => setZoom(1)}>{Math.round(zoom * 100)}%</button>
-				<button type="button" className={TOOL} aria-label="Zoom in" disabled={zoom >= ZOOMS.at(-1)!} onClick={() => stepZoom(1)}><PlusIcon className="ui-icon" aria-hidden="true" /></button>
-				<button type="button" className={`${TEXT_BUTTON} ml-auto aria-pressed:bg-accent`} aria-pressed={panel} onClick={() => setPanel((open) => !open)} data-testid="pdf-highlights-toggle">
-					<HighlighterIcon className="ui-icon" aria-hidden="true" />
+				<button type="button" className={TOOL} aria-label="Zoom in" disabled={zoom >= ZOOMS.at(-1)!} onClick={() => stepZoom(1)}><PlusIcon aria-hidden="true" /></button>
+				<button type="button" className={`${TEXT_BUTTON} ml-auto`} aria-pressed={panel} onClick={() => setPanel((open) => !open)} data-testid="pdf-highlights-toggle">
+					<HighlighterIcon aria-hidden="true" />
 					Highlights{annotations.length ? ` (${annotations.length})` : ""}
 				</button>
 			</div>
 			{keyboardPage !== null && (
-				<p role="status" aria-live="polite" className="px-3 pb-1 text-sm text-ink-2 [overflow-wrap:anywhere]" data-testid="pdf-keyboard-line">
+				<p role="status" aria-live="polite" className="px-4 pt-1.5 pb-1 text-sm text-graphite [overflow-wrap:anywhere]" data-testid="pdf-keyboard-line">
 					<span className="block">Arrows move a word or line. Shift extends. Enter opens the actions. Escape stops.</span>
-					{keyboardLine && <span className="block text-muted-foreground">{keyboardLine}</span>}
+					{keyboardLine && <span className="block text-faint">{keyboardLine}</span>}
 				</p>
 			)}
-			{noText && <p role="status" className="px-3 pb-1 text-sm text-ink-2" data-testid="pdf-no-text">No text could be read in this PDF, so passages can&apos;t be selected, highlighted or searched. It may be a scan.</p>}
+			{noText && <p role="status" className="px-4 pt-1.5 pb-1 text-sm text-graphite" data-testid="pdf-no-text">No text could be read in this PDF, so passages can&apos;t be selected, highlighted or searched. It may be a scan.</p>}
 			{jumpLine && (
-				<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-1 text-sm text-ink-2" data-testid="pdf-jump-status">
+				<div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 pt-1.5 pb-1 text-sm text-graphite" data-testid="pdf-jump-status">
 					<p className="min-w-0 flex-[1_1_12rem]">{jumpLine}</p>
-					<button type="button" className="prompt-secondary" onClick={() => { setJumpLine(null); setCite(null); }}>Dismiss</button>
+					<button type="button" className="lh-text-action" onClick={() => { setJumpLine(null); setCite(null); }}>Dismiss</button>
 				</div>
 			)}
 			{sentLine && (
-				<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-1 text-sm text-ink-2" data-testid="pdf-sent">
+				<div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 pt-1.5 pb-1 text-sm text-graphite" data-testid="pdf-sent">
 					<p className="min-w-0 flex-[1_1_12rem] [overflow-wrap:anywhere]">{sentLine}</p>
-					<button type="button" className="prompt-secondary" onClick={() => setSentLine(null)}>Dismiss</button>
+					<button type="button" className="lh-text-action" onClick={() => setSentLine(null)}>Dismiss</button>
 				</div>
 			)}
 			{removed && (
-				<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-1 text-sm text-ink-2" data-testid="pdf-removed">
+				<div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 pt-1.5 pb-1 text-sm text-graphite" data-testid="pdf-removed">
 					<p>Highlight on page {removed.anchor.page} removed.</p>
-					<button type="button" className="prompt-secondary" data-testid="pdf-removed-undo" onClick={() => void saveHighlight(removed.anchor, removed.note).then((ok) => { if (ok) setRemoved(null); })}>Undo</button>
-					<button type="button" className="prompt-secondary" onClick={() => setRemoved(null)}>Dismiss</button>
+					<button type="button" className="lh-text-action" data-testid="pdf-removed-undo" onClick={() => void saveHighlight(removed.anchor, removed.note).then((ok) => { if (ok) setRemoved(null); })}>Undo</button>
+					<button type="button" className="lh-text-action" onClick={() => setRemoved(null)}>Dismiss</button>
 				</div>
 			)}
-			{failureLine && <p role="alert" className="px-3 pb-1 text-sm text-destructive">{failureLine}</p>}
+			{failureLine && <p role="alert" className="px-4 pt-1.5 pb-1 text-sm text-red">{failureLine}</p>}
 			{annotationsFailed && (
-				<div role="status" className="flex flex-wrap items-center gap-2 px-3 pb-1 text-sm text-ink-2">
+				<div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 pt-1.5 pb-1 text-sm text-graphite">
 					<p>Your highlights could not be loaded.</p>
-					<button type="button" className="prompt-secondary" onClick={() => void loadAnnotations()}>Try again</button>
+					<button type="button" className="lh-text-action" onClick={() => void loadAnnotations()}>Try again</button>
 				</div>
 			)}
 			{panel && (
-				<div className="mx-2 mb-1 flex max-h-[40dvh] shrink-0 flex-col gap-1 overflow-y-auto rounded-[10px] bg-popover p-2 text-sm" data-testid="pdf-highlights">
-					{changedFile && <p className="text-ink-2">This file changed after some of these were made. Each is checked again on its page.</p>}
-					{annotationsFailed ? null : listed.length === 0 ? <p className="text-ink-2">Nothing highlighted yet. Select text in the PDF to start.</p> : listed.map((annotation) => (
-						<div key={annotation.id} className="flex flex-col gap-0.5 rounded-[6px] bg-card p-2" data-testid="pdf-highlight-row">
-							<p className="text-muted-foreground">Page {annotation.anchor.page}{isUnanchored(annotation) && <span data-testid="pdf-unanchored"> · {ANCHOR_UNANCHORED_TEXT}</span>}</p>
-							<p className="line-clamp-3 text-ink-2 [overflow-wrap:anywhere]">{annotation.anchor.quote}</p>
-							{annotation.note && <p className="text-foreground [overflow-wrap:anywhere]" data-testid="pdf-highlight-note">{annotation.note}</p>}
-							<div className="flex flex-wrap gap-1">
-								{annotation.anchor.page <= numPages && <button type="button" className="prompt-secondary" aria-label={`Go to page ${annotation.anchor.page}`} onClick={() => scrollToPage(annotation.anchor.page)}>Go to</button>}
-								<button type="button" className="prompt-secondary" aria-label={`${annotation.note ? "Edit" : "Add"} note on page ${annotation.anchor.page}`} onClick={(event) => { noteOpener.current = event.currentTarget; setNoteText(annotation.note ?? ""); setNotePrompt({ annotation }); }}>{annotation.note ? "Edit note" : "Add note"}</button>
-								<button type="button" className="prompt-secondary" aria-label={`Remove highlight on page ${annotation.anchor.page}`} onClick={() => void removeAnnotation(annotation)}>Remove</button>
+				<div className="mx-4 mt-2 mb-1 flex max-h-[40dvh] shrink-0 flex-col gap-1 overflow-y-auto rounded-lg border border-rule p-2 text-sm" data-testid="pdf-highlights">
+					{changedFile && <p className="px-1 text-graphite">This file changed after some of these were made. Each is checked again on its page.</p>}
+					{annotationsFailed ? null : listed.length === 0 ? <p className="px-1 text-faint">Nothing highlighted yet. Select text in the PDF to start.</p> : listed.map((annotation) => (
+						<div key={annotation.id} className="lh-row flex flex-col gap-0.5 px-2 py-1.5" data-testid="pdf-highlight-row">
+							<p className="text-xs text-faint">Page {annotation.anchor.page}{isUnanchored(annotation) && <span data-testid="pdf-unanchored"> · {ANCHOR_UNANCHORED_TEXT}</span>}</p>
+							<p className="line-clamp-3 text-ink [overflow-wrap:anywhere]">{annotation.anchor.quote}</p>
+							{annotation.note && <p className="text-graphite [overflow-wrap:anywhere]" data-testid="pdf-highlight-note">{annotation.note}</p>}
+							<div className="flex flex-wrap gap-x-4">
+								{annotation.anchor.page <= numPages && <button type="button" className="lh-text-action" aria-label={`Go to page ${annotation.anchor.page}`} onClick={() => scrollToPage(annotation.anchor.page)}>Go to</button>}
+								<button type="button" className="lh-text-action" aria-label={`${annotation.note ? "Edit" : "Add"} note on page ${annotation.anchor.page}`} onClick={(event) => { noteOpener.current = event.currentTarget; setNoteText(annotation.note ?? ""); setNotePrompt({ annotation }); }}>{annotation.note ? "Edit note" : "Add note"}</button>
+								<button type="button" className="lh-text-action" aria-label={`Remove highlight on page ${annotation.anchor.page}`} onClick={() => void removeAnnotation(annotation)}>Remove</button>
 							</div>
 						</div>
 					))}
@@ -722,7 +742,7 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 				role="region"
 				aria-label={`${item.name}, pages`}
 				data-testid="pdf-scroll"
-				className="min-h-0 flex-1 overflow-auto overscroll-contain focus-visible:outline-1 focus-visible:-outline-offset-1 focus-visible:outline-ring"
+				className="min-h-0 flex-1 overflow-auto overscroll-contain pt-2 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-focus"
 				onKeyDown={(event) => {
 					if (keyboardPage === null || event.target !== event.currentTarget) return;
 					if (event.key === "Enter" && selected) {
@@ -734,11 +754,11 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 				}}
 			>
 				{!doc || !pdfjs ? (
-					<div role="status" aria-label={`Loading ${item.name}`} className="flex flex-col gap-2 px-3 py-2">
+					<div role="status" aria-label={`Loading ${item.name}`} className="flex flex-col gap-2 px-4 py-2">
 						<Skeleton className="h-96 w-full rounded-md" />
 					</div>
 				) : (
-					<div className="flex w-max min-w-full flex-col gap-2 px-2 pb-6">
+					<div className="flex w-max min-w-full flex-col gap-3 px-4 pb-6">
 						{paneWidth > 0 && pageNumbers.map((number) => (
 							<PdfPage
 								key={number}
@@ -763,7 +783,7 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 					ref={bubble}
 					role="toolbar"
 					aria-label="Selected passage"
-					className="lh-pdf-bubble"
+					className="nb-sel-menu lh-pdf-bubble"
 					data-testid="pdf-bubble"
 					style={{
 						left: `clamp(0.5rem, ${selected.rect.left}px, calc(100vw - min(22rem, 100vw - 1rem) - 0.5rem))`,
@@ -779,30 +799,34 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 					}}
 					onMouseDown={(event) => event.preventDefault()}
 				>
-					<button type="button" data-testid="pdf-highlight" onClick={() => void saveHighlight(selected.anchor).then((ok) => { if (ok) clearSelection(); })}>Highlight</button>
-					<button type="button" data-testid="pdf-note" onClick={() => { noteOpener.current = null; setNoteText(""); setNotePrompt({ anchor: selected.anchor }); }}>Add a note</button>
-					<button type="button" data-testid="pdf-save-passage" onClick={() => setSaving({ itemId: item.id, page: selected.anchor.page, text: selected.anchor.quote })}>Save to a page</button>
-					<button type="button" data-testid="pdf-make-cards" onClick={() => { try { sessionStorage.setItem(CARD_PASSAGE_KEY, JSON.stringify({ itemId: item.id, page: selected.anchor.page, text: selected.anchor.quote })); } catch { /* the panel says it can't read it */ } router.push("/review?make=passage"); }}>Make flashcards</button>
-					{blocked ? <p className="w-full px-2 py-1 text-sm text-ink-2">{blocked}</p> : (
+					<div className="nb-sel-actions pt-0">
+						<SelectionAction testId="pdf-highlight" label="Highlight" onRun={() => void saveHighlight(selected.anchor).then((ok) => { if (ok) clearSelection(); })} />
+						<SelectionAction testId="pdf-note" label="Add a note" onRun={() => { noteOpener.current = null; setNoteText(""); setNotePrompt({ anchor: selected.anchor }); }} />
+						<SelectionAction testId="pdf-save-passage" label="Save to a page" onRun={() => setSaving({ itemId: item.id, page: selected.anchor.page, text: selected.anchor.quote })} />
+						<SelectionAction testId="pdf-make-cards" label="Make flashcards" onRun={() => { try { sessionStorage.setItem(CARD_PASSAGE_KEY, JSON.stringify({ itemId: item.id, page: selected.anchor.page, text: selected.anchor.quote })); } catch { /* the panel says it can't read it */ } router.push("/review?make=passage"); }} />
+					</div>
+					{blocked ? <p className="lh-pdf-bubble-line">{blocked}</p> : (
 						<>
-							<p className="w-full px-2 pt-1 text-sm text-muted-foreground">Ask the tutor. Sends this passage, from page {selected.anchor.page}:</p>
-							{DOCUMENT_TUTOR_ACTIONS.map((action) => <button key={action} type="button" data-testid={`pdf-tutor-${action}`} onClick={() => askTutor(action, selected.anchor)}>{TUTOR_ACTION_LABEL[action]}</button>)}
+							<p className="lh-pdf-bubble-line">Ask the tutor. Sends this passage, from page {selected.anchor.page}:</p>
+							<div className="nb-sel-actions pt-0">
+								{DOCUMENT_TUTOR_ACTIONS.map((action) => <SelectionAction key={action} testId={`pdf-tutor-${action}`} label={TUTOR_ACTION_LABEL[action]} onRun={() => askTutor(action, selected.anchor)} />)}
+							</div>
 						</>
 					)}
-					{selected.clipped && <p className="w-full px-2 pb-1 text-sm text-muted-foreground">Only the part on page {selected.anchor.page} is used.</p>}
+					{selected.clipped && <p className="lh-pdf-bubble-line pb-0">Only the part on page {selected.anchor.page} is used.</p>}
 				</div>
 			)}
 			<Dialog open={notePrompt !== null} onOpenChange={(open) => { if (!open) setNotePrompt(null); }}>
-				<DialogContent className="gap-3 rounded-[10px] border-0 bg-card sm:max-w-md" data-testid="pdf-note-dialog" aria-describedby={undefined} onCloseAutoFocus={(event) => { event.preventDefault(); (noteOpener.current?.isConnected ? noteOpener.current : scroller.current)?.focus({ preventScroll: true }); }}>
-					<DialogTitle className="title-serif text-[17px] font-medium">Note on page {notePrompt ? ("anchor" in notePrompt ? notePrompt.anchor.page : notePrompt.annotation.anchor.page) : ""}</DialogTitle>
-					<label className="flex flex-col gap-1 text-sm font-medium text-ink-2">
+				<DialogContent className="gap-3 sm:max-w-md" data-testid="pdf-note-dialog" aria-describedby={undefined} onCloseAutoFocus={(event) => { event.preventDefault(); (noteOpener.current?.isConnected ? noteOpener.current : scroller.current)?.focus({ preventScroll: true }); }}>
+					<DialogTitle>Note on page {notePrompt ? ("anchor" in notePrompt ? notePrompt.anchor.page : notePrompt.annotation.anchor.page) : ""}</DialogTitle>
+					<label className="flex flex-col gap-1.5 text-xs font-medium text-faint">
 						Your note
-						<textarea autoFocus rows={4} value={noteText} onChange={(event) => setNoteText(event.currentTarget.value)} data-testid="pdf-note-text" className="w-full rounded-[6px] border border-input bg-transparent px-2 py-1 text-base font-normal text-foreground" />
+						<textarea autoFocus rows={4} value={noteText} onChange={(event) => setNoteText(event.currentTarget.value)} data-testid="pdf-note-text" className="lh-bare-field w-full resize-none rounded-lg border border-edge bg-transparent px-3 py-2 text-md font-normal text-ink focus-visible:border-ink" />
 					</label>
-					{failureLine && <p role="alert" className="text-sm text-destructive">{failureLine}</p>}
-					<div className="flex justify-end gap-2">
-						<button type="button" className="prompt-secondary" onClick={() => setNotePrompt(null)}>Cancel</button>
-						<button type="button" className="prompt-primary" data-testid="pdf-note-save" onClick={() => void saveNote()}>Save note</button>
+					{failureLine && <p role="alert" className="text-sm text-red">{failureLine}</p>}
+					<div className="mt-1 flex items-center justify-end gap-5">
+						<button type="button" className="lh-text-action" onClick={() => setNotePrompt(null)}>Cancel</button>
+						<button type="button" className="nb-pill" data-testid="pdf-note-save" onClick={() => void saveNote()}>Save note</button>
 					</div>
 				</DialogContent>
 			</Dialog>

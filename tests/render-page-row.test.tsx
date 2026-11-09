@@ -34,7 +34,7 @@ describe("the row", () => {
 		const saved = renderToStaticMarkup(<PageRow part={part("page_revise", { outcome: "revised", itemId: "a", name: "W", version: 5, savedLearnerVersion: 4 })} {...({} as object)} />);
 		assert.ok(saved.includes("Saved your edits first as version 4"));
 		const failed = renderToStaticMarkup(<PageRow part={part("page_revise", { outcome: "stale", reason: "The page is at version 2." })} {...({} as object)} />);
-		assert.ok(failed.includes("text-destructive"));
+		assert.ok(failed.includes("text-red"));
 		assert.ok(failed.includes("The page is at version 2."));
 		assert.ok(!/amber|accent-amber/.test(failed));
 	});

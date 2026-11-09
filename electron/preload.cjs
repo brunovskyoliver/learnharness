@@ -27,6 +27,10 @@
  *   window.lh.onOpenSettings(cb) — menu navigation, buffered until React
  *   subscribes after a window is reopened. Browser builds have no bridge.
  *
+ *   window.lh.setChrome({ background, symbol }) — the window's background
+ *   and title-bar symbol colours follow the paper theme (feature 025);
+ *   main accepts #rrggbb only.
+ *
  * Channel names are mirrored in electron/main.cjs — keep them in sync.
  */
 const { contextBridge, ipcRenderer } = require("electron");
@@ -86,6 +90,7 @@ contextBridge.exposeInMainWorld("lh", {
 		return () => ipcRenderer.removeListener("lh:update-status", listener);
 	},
 	installUpdate: () => ipcRenderer.send("lh:update-install"),
+	setChrome: (colors) => ipcRenderer.send("lh:set-chrome", { background: colors?.background, symbol: colors?.symbol }),
 	getUpdateState: () => ipcRenderer.invoke("lh:update:get"),
 	checkForUpdates: () => ipcRenderer.invoke("lh:update:check"),
 	onOpenSettings: (cb) => {

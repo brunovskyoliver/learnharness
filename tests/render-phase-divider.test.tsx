@@ -34,9 +34,9 @@ describe("PhaseChip (header)", () => {
 	it("UN-PILLED (owner, extraction-UX redesign 2026-09-24): a flat tag — no border, no rounding, no padding", () => {
 		const html = renderToStaticMarkup(<PhaseChip phase="plan" />);
 		assert.ok(!html.includes("rounded-full"), "no pill curve");
-		assert.ok(!html.includes("border-border"), "no border chrome");
+		assert.ok(!html.includes("border-rule"), "no border chrome");
 		assert.ok(!html.includes("px-2"), "no pill padding");
-		assert.match(html, /class="[^"]*text-sm text-muted-foreground/, "the quiet flat label keeps its type treatment");
+		assert.match(html, /class="[^"]*text-sm text-faint/, "the quiet flat label keeps its type treatment");
 	});
 
 	it("NEVER shows a working spinner — the pill's curve suits text, not glyph cells (owner, round 2)", () => {
@@ -52,7 +52,7 @@ describe("PhaseDivider (transcript boundary)", () => {
 		assert.ok(html.includes('data-testid="phase-divider-plan"'));
 		assert.match(html, /Plan · 3 nodes/);
 		assert.ok(!html.includes("border-dotted"), "no dotted separator");
-		assert.ok(!html.includes("border-border"), "no structural border");
+		assert.ok(!html.includes("border-rule"), "no structural border");
 		assert.ok(!html.includes("border-phase-"), "phase-colored rules are retired");
 	});
 

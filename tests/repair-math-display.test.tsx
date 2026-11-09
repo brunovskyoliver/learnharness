@@ -8,6 +8,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { parseHTML } from "linkedom";
 import { validateToolArguments } from "@earendil-works/pi-ai";
 import { problemInputObject } from "../src/agent/tools/practice.ts";
+import { CheckThread } from "../components/study/check-thread.tsx";
 import { PracticeDock } from "../components/practice-dock.tsx";
 import { QuestionDock } from "../components/question-dock.tsx";
 import { LatexGlyph } from "../components/latex-glyph.tsx";
@@ -31,7 +32,7 @@ const part = (input: unknown, over: Partial<ArtifactPartProps["part"]> = {}): Ar
 	type: "tool-problem", state: "input-available", toolCallId: "call_math", input, ...over,
 });
 const dock = (expanded = true) => (
-	<PracticeDock problemCallId="call_math" expanded={expanded} onExpand={() => {}} onSubmit={() => {}} />
+	<PracticeDock problemCallId="call_math" active={expanded} onSubmit={() => {}} />
 );
 
 function math(html: string) {
@@ -91,7 +92,7 @@ describe("upgraded KaTeX rendering on real question and practice surfaces", () =
 			for (const raw of [`$${formula}$`, `\\(${formula}\\)`, `$$\n${formula}\n$$`, `\\[\n${formula}\n\\]`]) {
 				for (const element of [
 					<MessageResponse mode="static">{raw}</MessageResponse>,
-					<QuestionDock toolName="ask_user_question" toolCallId="security_question" input={{ question: raw }} expanded onExpand={() => {}} onSubmit={() => {}} />,
+					<QuestionDock toolName="ask_user_question" toolCallId="security_question" input={{ question: raw }} active onSubmit={() => {}} />,
 					<ProblemCard part={part({ statement: raw })} />,
 				]) {
 					const html = renderToStaticMarkup(element);
@@ -107,7 +108,7 @@ describe("upgraded KaTeX rendering on real question and practice surfaces", () =
 	}
 	it("preserves escaped currency and code on question and problem surfaces", () => {
 		const raw = "Costs \\$5 and \\$10. `" + clean + "`\n\n```text\n" + doubled + "\n```";
-		for (const element of [<ProblemCard part={part({ statement: raw })} />, <QuestionDock toolName="ask_user_question" toolCallId="security_code" input={{ question: raw }} expanded onExpand={() => {}} onSubmit={() => {}} />]) {
+		for (const element of [<ProblemCard part={part({ statement: raw })} />, <QuestionDock toolName="ask_user_question" toolCallId="security_code" input={{ question: raw }} active onSubmit={() => {}} />]) {
 			const html = renderToStaticMarkup(element);
 			assert.deepEqual(math(html).annotations, []);
 			assert.ok(parseHTML(html).document.firstElementChild?.textContent?.includes("$5 and $10"));
@@ -168,7 +169,7 @@ describe("practice display surfaces", () => {
 		const expanded = renderToStaticMarkup(dock());
 		assert.equal(parseHTML(expanded).document.querySelector(".lh-prose")?.textContent ?? "", "",
 			"the mounted public-statement surface stays empty when no statement was supplied");
-		const collapsed = renderToStaticMarkup(dock(false));
+		const collapsed = renderToStaticMarkup(<CheckThread id="call_math" kind="problem" label="Problem" teaser="" reveal={false} open={false} fresh={false} variant="inline" layer={null} lessonWidth={390} shift={0} anchorId={null} onOpen={() => {}} onClose={() => {}}>{dock(false)}</CheckThread>);
 		assert.match(collapsed, /data-testid="practice-dock-bar"/);
 		assert.ok(!collapsed.includes(">17<"));
 		assert.deepEqual(math(collapsed).annotations, []);

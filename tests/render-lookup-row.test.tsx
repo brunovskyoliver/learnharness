@@ -12,14 +12,14 @@ const render = (tool: string, output: unknown, extra: Record<string, unknown> = 
 const documentOf = (html: string) => parseHTML(html).document;
 
 describe("LookupRow", () => {
-	it("uses the identical math-check row skeleton and leaves details selectable", () => {
+	it("uses the identical math-check row skeleton (feature 025's quiet row) and leaves details selectable", () => {
 		const doc = documentOf(render("hub_model", model));
 		assert.equal(doc.querySelector("details")?.className, "group lh-reading my-1");
-		assert.equal(doc.querySelector("summary")?.className, "flex cursor-pointer select-none list-none items-center gap-2 text-sm text-muted-foreground [&::-webkit-details-marker]:hidden");
-		assert.equal(doc.querySelector("details > div")?.className, "mt-2 space-y-2 rounded-xl border bg-card p-3 text-sm");
-		assert.equal(doc.querySelectorAll(".select-none").length, 1);
-		assert.ok(doc.querySelector("summary svg")?.classList.contains("size-3"));
-		assert.ok(doc.querySelector("summary svg")?.classList.contains("opacity-50"));
+		// .lh-quiet-summary is the unselectable headline (app/globals.css); the panel stays selectable.
+		assert.equal(doc.querySelector("summary")?.className, "lh-quiet-summary");
+		assert.equal(doc.querySelector("details > div")?.className, "lh-quiet-panel space-y-2");
+		assert.equal(doc.querySelectorAll(".select-none").length, 0);
+		assert.ok(doc.querySelector("summary svg")?.classList.contains("lh-quiet-chevron"));
 	});
 	it("uses the approved source headlines", () => {
 		for (const [tool, output, expected] of [
@@ -34,7 +34,7 @@ describe("LookupRow", () => {
 		for (const [tool, headline] of [["hub_search", "Hugging Face · lookup failed"], ["hub_model", "Hugging Face · lookup failed"], ["paper_search", "Papers · search failed"], ["paper_read", "Read · failed"]]) {
 			const doc = documentOf(render(tool!, undefined, { state: "output-error", errorText: "The service is unavailable." }));
 			assert.equal(doc.querySelector("summary span")?.textContent, headline);
-			assert.ok(doc.querySelector("summary span")?.classList.contains("text-destructive"));
+			assert.ok(doc.querySelector("summary span")?.classList.contains("text-red"));
 			assert.match(doc.querySelector("details")?.textContent ?? "", /The service is unavailable/);
 			assert.equal(doc.querySelectorAll(".font-mono").length, 0);
 		}
@@ -46,7 +46,7 @@ describe("LookupRow", () => {
 		const link = doc.querySelector("a")!;
 		assert.equal(link.textContent, "Open on Hugging Face");
 		assert.equal(link.getAttribute("target"), "_blank");assert.equal(link.getAttribute("rel"), "noreferrer");
-		assert.ok(link.classList.contains("decoration-foreground/40"));assert.match(link.getAttribute("aria-label")!, /Hugging Face/);
+		assert.ok(link.classList.contains("decoration-ink/40"));assert.match(link.getAttribute("aria-label")!, /Hugging Face/);
 		assert.ok(!html.includes("amber"));
 	});
 	it("shows author metadata and individual paper page links", () => {
@@ -139,7 +139,7 @@ import { readFileSync } from "node:fs";
 it("scopes ink keyboard focus to ML lookup rows and the three ML settings toggles", () => {
 	const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 	const rule = css.match(/\/\* Feature 008: ink focus[^]*?\n\}/)?.[0] ?? "";
-	assert.match(rule, /--ring:\s*var\(--foreground\)/);
+	assert.match(rule, /--nb-focus:\s*var\(--ink\)/);
 	for (const selector of ['[data-testid="lookup-row"]', '[data-tool="ml_visual"]', '[data-tool="tokenize"]', '[data-testid="toggle-tool-ml-visuals"]', '[data-testid="toggle-tool-model-hub"]', '[data-testid="toggle-tool-papers"]']) assert.ok(rule.includes(selector), selector);
 	assert.doesNotMatch(rule, /toggle-tool-math-check|data-tool="plot"|:root/);
 });
@@ -147,7 +147,7 @@ it("scopes ink keyboard focus to ML lookup rows and the three ML settings toggle
 it("uses ink for page citations without changing other transcript links", () => {
 	const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
 	const rule = css.match(/\.lh-reading \.lh-prose a\[href\*="#page="\] \{[^}]+\}/)?.[0] ?? "";
-	assert.match(rule, /color:\s*var\(--foreground\)/);
-	assert.match(rule, /--ring:\s*var\(--foreground\)/);
+	assert.match(rule, /color:\s*var\(--ink\)/);
+	assert.match(rule, /--nb-focus:\s*var\(--ink\)/);
 	assert.doesNotMatch(rule, /text-decoration:\s*none|outline:\s*none/);
 });

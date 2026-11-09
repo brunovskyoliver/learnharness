@@ -44,10 +44,10 @@ export function PhaseChip({ phase }: { phase: Phase3 }) {
 			data-testid="phase-chip"
 			data-phase={phase}
 			aria-hidden="true"
-			className="pointer-events-none flex shrink-0 select-none items-center gap-2 text-sm text-muted-foreground"
+			className="pointer-events-none flex shrink-0 select-none items-center gap-2 text-sm text-faint"
 		>
 			{CHIP_LABEL[phase]}
-			<span className="text-muted-foreground">/</span>
+			<span className="text-faint">/</span>
 		</span>
 	);
 }
@@ -67,10 +67,10 @@ export function PhaseDivider({ phase, nodeCount }: { phase: Phase3; nodeCount?: 
 			? `Plan · ${nodeCount} node${nodeCount === 1 ? "" : "s"}`
 			: CHIP_LABEL[phase];
 	// A running head on the reading edge (feature 001): left-aligned label,
-	// no rule, no centered pill.
+	// no rule, no centered pill; Notebook's 12px faint meta (feature 025, R10).
 	return (
 		<div className="lh-reading mt-8 mb-3" data-testid={`phase-divider-${phase}`}>
-			<span className="text-sm font-medium text-muted-foreground">{label}</span>
+			<span className="text-xs text-faint">{label}</span>
 		</div>
 	);
 }

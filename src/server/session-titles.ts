@@ -12,6 +12,7 @@
 import { normalizeContext, type Message } from "@earendil-works/pi-ai";
 import { tenantScoped } from "../../config.ts";
 import { piEngineForSpec } from "../agent/models.ts";
+import { codexVerifySpec } from "./codex-verify.ts";
 import { connectionBackgroundAllowed } from "../agent/subscription-connections.ts";
 import { titleFromPrompt } from "../core/contracts/graph.ts";
 import type { ChatRecord } from "../core/contracts.ts";
@@ -67,7 +68,7 @@ export function cleanTitle(raw: string): string | null {
 
 /** One cheap-model call: first message in, title out (null on any miss). */
 async function generateTitle(first: string): Promise<string | null> {
-	const spec = effectiveSettings().models.cheap;
+	const spec = codexVerifySpec() ?? effectiveSettings().models.cheap;
 	if (!spec || !connectionBackgroundAllowed(spec.provider)) return null;
 	// A title needs no reasoning: ask for the lowest level, clamped per model.
 	const engine = piEngineForSpec({ ...spec, thinkingLevel: "minimal" }, true);

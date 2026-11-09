@@ -4,7 +4,7 @@
  * pass-through and Clerk is never called, so desktop and plain dev never
  * reach Clerk's keyless mode. tests/tenant-routes.test.ts fails when a
  * route export skips withTenant. */
-import { auth } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { hostedMode, runAsTenant } from "../../config.ts";
 import { clerkConfigured } from "./clerk-configured.ts";
@@ -17,6 +17,18 @@ export async function signedInUserId(): Promise<string | null> {
 	if (!clerkConfigured()) return null;
 	const { userId } = await auth();
 	return userId ?? null;
+}
+
+/** The signed-in account's primary email (hosted mode), for Notebook's
+ * sidebar footer (feature 024). Null outside hosted mode or when unknown. */
+export async function signedInEmail(): Promise<string | null> {
+	if (!hostedMode() || !clerkConfigured()) return null;
+	try {
+		const user = await currentUser();
+		return user?.primaryEmailAddress?.emailAddress ?? null;
+	} catch {
+		return null;
+	}
 }
 
 export function withTenant<A extends unknown[]>(handler: (...args: A) => Response | Promise<Response>) {

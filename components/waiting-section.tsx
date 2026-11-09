@@ -1,13 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { routeLink } from "@/components/paper/navigate";
+import { cloneElement, useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { dueRowText, type ChatListItem, type LessonProgress, type ReviewQueue, type WaitingItem } from "@/src/core";
 import { useServerEvent } from "@/components/server-events";
 import { useSessionList, useSessionListDemand } from "@/components/session-list";
 import { shortAgo } from "@/components/sidebar";
 import { Teaser, teaserPlain } from "@/components/teaser";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, SkeletonLift } from "@/components/ui/skeleton";
+import { inkOrder, rowOrder, useArrival, useLeavingRows, useNewRows, type RowMotionProps } from "@/components/paper/motion-arrival";
+import { BlotGlyph } from "@/components/paper/blot";
+import { EmptyBlot } from "@/components/ui/empty";
 
 type Waiting = ChatListItem & { waiting: WaitingItem };
 type Unfinished = ChatListItem & { progress: LessonProgress };
@@ -86,70 +90,96 @@ export function WaitingSectionView({ chats, loadError, onRetry, cards }: { chats
 	const lessons = useMemo(() => (chats ? continueSessions(chats) : []), [chats]);
 	const due = cards?.due ?? 0;
 	const open = (items?.length ?? 0) + lessons.length + (due > 0 ? 1 : 0);
+	// Row 13 (feature 028): a genuinely new row unfolds, a resolved one lifts
+	// and its gap closes; a refresh with equal data moves nothing.
+	const rows = items === null ? null : [
+		...items.map((chat, i) => <WaitingRow key={`w:${chat.id}`} chat={chat} order={i} />),
+		...lessons.map((chat, i) => <LessonRow key={`l:${chat.id}`} chat={chat} order={items.length + i} />),
+		...(due > 0 ? [<CardsRow key="cards" due={due} weakDue={cards?.weakDue ?? 0} order={items.length + lessons.length} />] : []),
+	];
+	const fresh = useNewRows(rows === null ? null : rows.map((row) => String(row.key)));
+	const shown = useLeavingRows(rows === null ? null : rows.map((row) => (fresh.has(String(row.key)) ? cloneRow(row) : row)));
+	const skeleton = (
+		<div role="status" aria-label="Loading what is waiting" className="flex flex-col gap-1">
+			<Skeleton className="h-[68px] w-full rounded-lg" />
+			<Skeleton className="h-[68px] w-full rounded-lg" />
+		</div>
+	);
 	return (
 		<section aria-labelledby={headingId} data-testid="waiting-section" className="flex flex-col gap-2">
-			<div className="flex items-baseline gap-2.5">
-				<h2 id={headingId} className="text-xl font-semibold leading-[1.3]">Waiting for you</h2>
-				{items && open > 0 && <span className="text-sm font-medium text-muted-foreground">{open} open</span>}
+			{/* Home's reading order (feature 028): after its heading (0) and composer (1). */}
+			<div className="flex items-baseline gap-2.5" {...inkOrder(2)}>
+				<h2 id={headingId} className="text-lg font-[550] leading-heading text-ink">Waiting for you</h2>
+				{items && open > 0 && <span className="text-meta text-faint">{open} open</span>}
 			</div>
-			{items === null ? (
-				loadError ? (
-					<div role="status" className="flex flex-wrap items-center gap-2 text-ink-2">
-						<p>Could not load what is waiting.</p>
-						<button type="button" onClick={onRetry} className="prompt-secondary">Try again</button>
-					</div>
-				) : (
-					<div role="status" aria-label="Loading what is waiting" className="flex flex-col gap-1">
-						<Skeleton className="h-[75px] w-full rounded-[10px]" />
-						<Skeleton className="h-[75px] w-full rounded-[10px]" />
-					</div>
-				)
-			) : open === 0 ? (
-				<p className="text-ink-2">Nothing is waiting. Every check is answered and every problem solved.</p>
+			{items === null && loadError ? (
+				<div role="status" className="flex flex-wrap items-center gap-2 text-graphite">
+					<p>Could not load what is waiting.</p>
+					<button type="button" onClick={onRetry} className="lh-text-action">Try again</button>
+				</div>
 			) : (
-				<ul className="flex flex-col gap-1">
-					{items.map((chat) => <WaitingRow key={chat.id} chat={chat} />)}
-					{lessons.map((chat) => <LessonRow key={chat.id} chat={chat} />)}
-					{due > 0 && <CardsRow due={due} weakDue={cards?.weakDue ?? 0} />}
-				</ul>
+				<SkeletonLift ready={items !== null} skeleton={skeleton}>
+					{open === 0 && shown.length === 0 ? (
+						<p className="text-md text-faint" {...rowOrder(0)}><EmptyBlot arrival="home-waiting" />Nothing is waiting. Every check is answered and every problem solved.</p>
+					) : (
+						<ul className="waiting-list flex flex-col">{shown}</ul>
+					)}
+				</SkeletonLift>
 			)}
 			{cards?.failed && (
-				<div role="status" data-testid="waiting-cards-failed" className="flex flex-wrap items-center gap-2 text-sm text-ink-2">
+				<div role="status" data-testid="waiting-cards-failed" className="flex flex-wrap items-center gap-2 text-sm text-graphite">
 					<p>Could not count your flashcards.</p>
-					<button type="button" onClick={cards.retry} className="prompt-secondary">Try again</button>
+					<button type="button" onClick={cards.retry} className="lh-text-action">Try again</button>
 				</div>
 			)}
 		</section>
 	);
 }
 
+/** A row that just appeared unfolds (app/paper.css `[data-lh-row]`). */
+function cloneRow(row: React.ReactElement<RowMotionProps>): React.ReactElement<RowMotionProps> {
+	return cloneElement(row, { "data-lh-row": "unfold" });
+}
+
+/** Home's reading order (route arrival, `--i` from 3) and the list's own (late arrival, `--j` from 0). */
+function rowProps(order: number): { "data-ink-order"?: ""; "data-row-order"?: ""; style?: React.CSSProperties } {
+	const route = inkOrder(3 + order), list = rowOrder(order);
+	return { ...route, ...list, style: { ...route.style, ...list.style } };
+}
+
+/** Row 14 (feature 028): the bulb-ink label's blot; it splats when the row first appears in this page load. */
+function KindDot({ arrival }: { arrival: string }) {
+	const { arrivalProps } = useArrival(arrival);
+	return <span className="lh-kind-dot" aria-hidden="true" {...arrivalProps}><BlotGlyph className="lh-kind-dot-blot" size={9} /></span>;
+}
+
 /** "{session} · {time}" on a Home row: the title truncates, the time never
  *  does — on phones a long title would otherwise hide it. */
 export function RowMeta({ id, title, at }: { id: string; title: string; at: string }) {
 	return (
-		<span id={id} suppressHydrationWarning className="waiting-row-meta flex min-w-0 text-sm font-medium text-muted-foreground">
+		<span id={id} suppressHydrationWarning className="waiting-row-meta flex min-w-0 text-meta text-faint">
 			<span className="min-w-0 truncate">{title}</span>
 			<span className="shrink-0 whitespace-pre"> · {shortAgo(at)}</span>
 		</span>
 	);
 }
 
-function WaitingRow({ chat }: { chat: Waiting }) {
+function WaitingRow({ chat, order, ...motion }: { chat: Waiting; order: number } & RowMotionProps) {
 	const id = useId();
 	const { kind, action, teaser, postedAt } = chat.waiting;
 	return (
-		<li className="waiting-row" data-testid="waiting-row" data-progress={chat.progress ? "" : undefined}>
-			<span className="waiting-row-kind text-sm font-medium text-primary">{kind}</span>
+		<li className="waiting-row" data-testid="waiting-row" data-progress={chat.progress ? "" : undefined} {...rowProps(order)} {...motion}>
+			<span className="waiting-row-kind text-sm font-medium text-bulb-ink"><KindDot arrival={`home-dot:${chat.id}:${chat.waiting.toolCallId}`} />{kind}</span>
 			<RowMeta id={`${id}-meta`} title={chat.title} at={postedAt} />
-			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-lg leading-[27px] text-foreground">
+			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-base leading-row text-graphite">
 				<Teaser text={teaserPlain(teaser)} />
 			</p>
-			{chat.progress && <span className="waiting-row-progress min-w-0 text-sm text-muted-foreground">{progressLine(chat.progress, chat.course)}</span>}
+			{chat.progress && <span className="waiting-row-progress min-w-0 text-sm text-faint">{progressLine(chat.progress, chat.course)}</span>}
 			<Link
 				href={answerHref(chat)}
+				{...routeLink()}
 				aria-describedby={`${id}-teaser ${id}-meta`}
-				data-quiet=""
-				className="waiting-row-action prompt-primary"
+				className="waiting-row-action lh-tool"
 			>
 				{action}
 			</Link>
@@ -159,20 +189,20 @@ function WaitingRow({ chat }: { chat: Waiting }) {
 
 /** A lesson with topics left and nothing waiting (feature 003): the waiting
  *  row's grid, the progress line in the teaser slot, a quiet Continue. */
-function LessonRow({ chat }: { chat: Unfinished }) {
+function LessonRow({ chat, order, ...motion }: { chat: Unfinished; order: number } & RowMotionProps) {
 	const id = useId();
 	return (
-		<li className="waiting-row" data-testid="waiting-row">
-			<span className="waiting-row-kind text-sm font-medium text-primary">Lesson</span>
+		<li className="waiting-row" data-testid="waiting-row" {...rowProps(order)} {...motion}>
+			<span className="waiting-row-kind text-sm font-medium text-bulb-ink">Lesson</span>
 			<RowMeta id={`${id}-meta`} title={chat.title} at={chat.updatedAt} />
-			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-lg leading-[27px] text-foreground">
+			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-base leading-row text-graphite">
 				{progressLine(chat.progress, chat.course)}
 			</p>
 			<Link
 				href={continueHref(chat)}
+				{...routeLink()}
 				aria-describedby={`${id}-teaser ${id}-meta`}
-				data-quiet=""
-				className="waiting-row-action prompt-primary"
+				className="waiting-row-action lh-tool"
 			>
 				Continue
 			</Link>
@@ -181,14 +211,14 @@ function LessonRow({ chat }: { chat: Unfinished }) {
 }
 
 /** The day's flashcards (feature 021): one row, however many are due. */
-function CardsRow({ due, weakDue }: { due: number; weakDue: number }) {
+function CardsRow({ due, weakDue, order, ...motion }: { due: number; weakDue: number; order: number } & RowMotionProps) {
 	const id = useId();
 	return (
-		<li className="waiting-row" data-testid="waiting-cards-row">
-			<span className="waiting-row-kind text-sm font-medium text-primary">Flashcards</span>
-			<span id={`${id}-meta`} className="waiting-row-meta min-w-0 truncate text-sm font-medium text-muted-foreground">{weakDue > 0 ? `${weakDue} on weak ideas` : "Today"}</span>
-			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-lg leading-[27px] text-foreground">{dueRowText(due)}</p>
-			<Link href="/review" aria-describedby={`${id}-teaser ${id}-meta`} data-quiet="" className="waiting-row-action prompt-primary">Review</Link>
+		<li className="waiting-row" data-testid="waiting-cards-row" {...rowProps(order)} {...motion}>
+			<span className="waiting-row-kind text-sm font-medium text-bulb-ink"><KindDot arrival="home-dot:cards" />Flashcards</span>
+			<span id={`${id}-meta`} className="waiting-row-meta min-w-0 truncate text-meta text-faint">{weakDue > 0 ? `${weakDue} on weak ideas` : "Today"}</span>
+			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-base leading-row text-graphite">{dueRowText(due)}</p>
+			<Link href="/review" {...routeLink()} aria-describedby={`${id}-teaser ${id}-meta`} className="waiting-row-action lh-tool">Review</Link>
 		</li>
 	);
 }

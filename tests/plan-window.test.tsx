@@ -73,13 +73,13 @@ describe("PlanMarginalia render", () => {
 		assert.ok(!/viewBox="-?\d+(\.\d+)? -?\d+(\.\d+)? 360 180"/.test(html), "the windowed viewBox is retired");
 		// Meet-fit mode: the svg fills the band box (h-full w-full), letting
 		// preserveAspectRatio contain the diagram in the flank.
-		assert.ok(html.includes('font-family:var(--font-prose)'), "fill mode classes");
+		assert.ok(html.includes('font-family:var(--font-sans)'), "fill mode classes");
 	});
 
 	it("glows the current node and dims the not-yet-visited (live statuses)", () => {
 		const html = renderToStaticMarkup(<PlanMarginalia messages={transcript(CHAIN, "b")} />);
 		// The yellow blurred halo marks the tagged check's node…
-		assert.ok(html.includes("fill-warning/25"), "glow on the current node");
+		assert.ok(html.includes("fill-bulb/25"), "glow on the current node");
 		assert.ok(html.includes('data-testid="plan-node-b" data-status="current"'), "b is current");
 		// …and arrows into upcoming nodes carry the dimmed head.
 		assert.ok(

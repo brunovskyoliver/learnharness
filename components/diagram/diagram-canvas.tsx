@@ -12,6 +12,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import "./diagram.css";
 import { Link2Icon, MaximizeIcon, MinusIcon, PlusIcon } from "lucide-react";
+import { usePaperAppearance } from "@/components/paper/appearance";
 import { diagramNodeName, type DiagramDoc, type DiagramEdge, type DiagramNode } from "@/src/core";
 
 export interface CanvasActions {
@@ -76,7 +77,7 @@ const NodeText = memo(function NodeText({ node }: { node: DiagramNode }) {
 					}}
 				/>
 			) : (node.text.trim() || "Untitled")}
-			{!editing && node.links?.length ? <Link2Icon className="ms-1 inline size-3 text-muted-foreground" aria-hidden="true" data-testid="diagram-node-linked" /> : null}
+			{!editing && node.links?.length ? <Link2Icon className="ms-1 inline size-3 text-faint" aria-hidden="true" data-testid="diagram-node-linked" /> : null}
 			<Handle type="source" position={Position.Bottom} />
 		</div>
 	);
@@ -93,7 +94,7 @@ function StrokeNode({ data }: NodeProps<Node<{ node: DiagramNode }>>) {
 	const path = points.map(([x, y], i) => `${i ? "L" : "M"}${x} ${y}`).join("");
 	return (
 		<svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} style={{ overflow: "visible", display: "block" }} aria-hidden="true">
-			<path d={path} fill="none" stroke="var(--foreground)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+			<path d={path} fill="none" stroke="var(--ink)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
 		</svg>
 	);
 }
@@ -160,7 +161,7 @@ function LabeledEdge(props: EdgeProps<Edge<{ edge: DiagramEdge }>>) {
 
 const nodeTypes = { box: TextNode, sticky: TextNode, stroke: StrokeNode };
 const edgeTypes = { labeled: LabeledEdge };
-const MARKER = { type: MarkerType.ArrowClosed, color: "var(--muted-foreground)" };
+const MARKER = { type: MarkerType.ArrowClosed, color: "var(--faint)" };
 const NUDGE = 20;
 const FIT = { padding: 0.2, maxZoom: 1 };
 const FIT_ALL_NODES = 12;
@@ -227,14 +228,14 @@ function PenLayer({ onStroke }: { onStroke: (points: [number, number][]) => void
 		>
 			{live && (
 				<svg aria-hidden="true">
-					<polyline points={live.points.map((p) => p.join(",")).join(" ")} fill="none" stroke="var(--foreground)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+					<polyline points={live.points.map((p) => p.join(",")).join(" ")} fill="none" stroke="var(--ink)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
 				</svg>
 			)}
 		</div>
 	);
 }
 
-const ZOOM_BUTTON = "ui-icon-button bg-popover text-foreground hover:bg-accent";
+const ZOOM_BUTTON = "ui-icon-button rounded-full bg-paper shadow-lift text-graphite hover:text-ink";
 
 function ZoomControls() {
 	const flow = useReactFlow();
@@ -249,6 +250,8 @@ function ZoomControls() {
 
 function CanvasInner({ doc, readOnly, drawing, editingNode, editingEdge, focusRequest, actions, label }: DiagramCanvasProps) {
 	const flow = useReactFlow();
+	// React Flow's own colours follow the paper theme ("system" until the OS is read; R1).
+	const colorMode = usePaperAppearance().resolvedTheme;
 	const [nodes, setNodes] = useState<Node[]>(() => doc.nodes.map((node) => toFlowNode(node)));
 	useEffect(() => {
 		setNodes((prior) => {
@@ -353,7 +356,7 @@ function CanvasInner({ doc, readOnly, drawing, editingNode, editingEdge, focusRe
 					deleteKeyCode={null}
 					zoomOnDoubleClick={false}
 					proOptions={{ hideAttribution: true }}
-					colorMode="dark"
+					colorMode={colorMode}
 				>
 					<ZoomControls />
 				</ReactFlow>

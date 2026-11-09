@@ -28,8 +28,8 @@ function RowLinks({ row }: { row: CardRow }) {
 	if (!row.source && row.concepts.length === 0) return null;
 	return (
 		<>
-			{row.source && <span className="text-sm text-muted-foreground [overflow-wrap:anywhere]" data-testid="card-row-source">{row.source.label}{row.source.gone ? " · this source is gone" : ""}</span>}
-			{row.concepts.length > 0 && <span className="text-sm text-muted-foreground [overflow-wrap:anywhere]" data-testid="card-row-concepts">{row.concepts.map((concept) => `${concept.name}${concept.weak ? " · weak" : ""}`).join(", ")}</span>}
+			{row.source && <span className="text-sm text-faint [overflow-wrap:anywhere]" data-testid="card-row-source">{row.source.label}{row.source.gone ? " · this source is gone" : ""}</span>}
+			{row.concepts.length > 0 && <span className="text-sm text-faint [overflow-wrap:anywhere]" data-testid="card-row-concepts">{row.concepts.map((concept) => `${concept.name}${concept.weak ? " · weak" : ""}`).join(", ")}</span>}
 		</>
 	);
 }
@@ -37,10 +37,10 @@ function RowLinks({ row }: { row: CardRow }) {
 export function ListStates({ data, failure, onRetry, label, children }: { data: CardListData | null; failure: boolean; onRetry: () => void; label: string; children: (data: CardListData) => React.ReactNode }) {
 	if (data === null) {
 		return failure
-			? <div role="status" className="flex flex-wrap items-center gap-2 text-ink-2"><p>Your flashcards could not be loaded.</p><button type="button" className="prompt-secondary" onClick={onRetry}>Try again</button></div>
-			: <div role="status" aria-label={label} className="flex flex-col gap-1"><Skeleton className="h-[62px] w-full rounded-[10px]" /><Skeleton className="h-[62px] w-full rounded-[10px]" /></div>;
+			? <div role="status" className="flex flex-wrap items-center gap-2 text-graphite"><p>Your flashcards could not be loaded.</p><button type="button" className="lh-text-action" onClick={onRetry}>Try again</button></div>
+			: <div role="status" aria-label={label} className="flex flex-col gap-1"><Skeleton className="h-[62px] w-full rounded-lg" /><Skeleton className="h-[62px] w-full rounded-lg" /></div>;
 	}
-	return <>{failure && <div role="status" className="flex flex-wrap items-center gap-2 text-sm text-ink-2"><p>Your flashcards could not be refreshed.</p><button type="button" className="prompt-secondary" onClick={onRetry}>Try again</button></div>}{children(data)}</>;
+	return <>{failure && <div role="status" className="flex flex-wrap items-center gap-2 text-sm text-graphite"><p>Your flashcards could not be refreshed.</p><button type="button" className="lh-text-action" onClick={onRetry}>Try again</button></div>}{children(data)}</>;
 }
 
 /** Every kept card, front only: the back stays behind Edit. */
@@ -52,7 +52,7 @@ export function AllCards({ cards, onEdit, onHistory, onChanged, onFailure }: { c
 	const hasWeak = live.some((card) => card.concepts.some((concept) => concept.weak));
 	const needle = query.trim().toLowerCase();
 	const shown = live.filter((card) => (!needle || card.front.toLowerCase().includes(needle)) && (!weakOnly || card.concepts.some((concept) => concept.weak)));
-	if (live.length === 0) return <p className="text-ink-2" data-testid="cards-empty">No flashcards yet.</p>;
+	if (live.length === 0) return <p className="text-md text-faint" data-testid="cards-empty">No flashcards yet.</p>;
 	const suspend = async (card: CardRow) => {
 		const result = await cardFetch(`/api/cards/${encodeURIComponent(card.id)}`, { method: "PATCH", body: { suspended: !card.suspended } });
 		if (failed(result)) onFailure(result.failure); else onChanged(card.suspended ? "Card back in the schedule." : "Card suspended.");
@@ -64,16 +64,16 @@ export function AllCards({ cards, onEdit, onHistory, onChanged, onFailure }: { c
 	return (
 		<div className="flex flex-col gap-2">
 			<div className="flex flex-wrap items-center gap-2">
-				<input aria-label="Search your cards" name="card-search" data-testid="cards-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search your cards…" autoComplete="off" className="h-10 min-w-0 flex-1 rounded-md border border-[var(--edge)] bg-background px-3 text-base text-foreground placeholder:text-muted-foreground pointer-coarse:h-11" />
-				{hasWeak && <button type="button" aria-pressed={weakOnly} data-testid="cards-weak" className={`prompt-secondary ${weakOnly ? "bg-accent text-foreground" : ""}`} onClick={() => setWeakOnly((on) => !on)}>Only weak ideas</button>}
+				<input aria-label="Search your cards" name="card-search" data-testid="cards-search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search your cards…" autoComplete="off" className="lh-line-field min-w-0 flex-1 sm:max-w-80" />
+				{hasWeak && <button type="button" aria-pressed={weakOnly} data-testid="cards-weak" className="nb-set-pill" onClick={() => setWeakOnly((on) => !on)}>Only weak ideas</button>}
 			</div>
-			{shown.length === 0 ? <p role="status" className="text-ink-2">Nothing matched</p> : (
-				<ul className="flex flex-col gap-1" data-testid="cards-list">
+			{shown.length === 0 ? <p role="status" className="text-md text-faint">Nothing matched</p> : (
+				<ul className="lh-row-list flex flex-col" data-testid="cards-list">
 					{shown.slice(0, limit).map((card) => (
-						<li key={card.id} data-testid="card-row" className="flex items-start gap-2 rounded-[10px] bg-card py-2 pl-3 pr-1">
+						<li key={card.id} data-testid="card-row" className="lh-row flex items-start gap-2 py-2.5 pl-3 pr-1">
 							<div className="flex min-w-0 flex-1 flex-col gap-0.5">
-								<span className="text-base text-foreground [overflow-wrap:anywhere]">{teaserPlain(card.front)}</span>
-								<span className="text-sm text-muted-foreground" suppressHydrationWarning data-testid="card-row-meta">{cardMeta(card)}</span>
+								<span className="text-md font-medium text-ink [overflow-wrap:anywhere]">{teaserPlain(card.front)}</span>
+								<span className="text-meta text-faint" suppressHydrationWarning data-testid="card-row-meta">{cardMeta(card)}</span>
 								<RowLinks row={card} />
 							</div>
 							<LibraryMoreButton name={teaserPlain(card.front).slice(0, 60)} actions={[
@@ -86,25 +86,25 @@ export function AllCards({ cards, onEdit, onHistory, onChanged, onFailure }: { c
 					))}
 				</ul>
 			)}
-			{shown.length > limit && <button type="button" data-testid="cards-more" className="prompt-secondary self-start" onClick={() => setLimit((at) => at + 100)}>Show {Math.min(100, shown.length - limit)} more</button>}
+			{shown.length > limit && <button type="button" data-testid="cards-more" className="lh-text-action self-start" onClick={() => setLimit((at) => at + 100)}>Show {Math.min(100, shown.length - limit)} more</button>}
 		</div>
 	);
 }
 
 export function DeletedCards({ cards, onDeleteForGood, onChanged, onFailure }: { cards: CardRow[]; onDeleteForGood: (id: string) => void; onChanged: (message: string) => void; onFailure: (text: string) => void }) {
 	const deleted = cards.filter((card) => card.deletedAt);
-	if (deleted.length === 0) return <p className="text-ink-2" data-testid="deleted-empty">No deleted cards.</p>;
+	if (deleted.length === 0) return <p className="text-md text-faint" data-testid="deleted-empty">No deleted cards.</p>;
 	const restore = async (id: string) => {
 		const result = await cardFetch(`/api/cards/${encodeURIComponent(id)}`, { method: "PATCH", body: { restore: true } });
 		if (failed(result)) onFailure(result.failure); else onChanged("Card restored.");
 	};
 	return (
-		<ul className="flex flex-col gap-1" data-testid="deleted-list">
+		<ul className="lh-row-list flex flex-col" data-testid="deleted-list">
 			{deleted.map((card) => (
-				<li key={card.id} data-testid="deleted-row" className="flex flex-wrap items-center gap-2 rounded-[10px] bg-card px-3 py-2">
-					<span className="min-w-0 flex-1 text-base text-foreground [overflow-wrap:anywhere]">{teaserPlain(card.front)}</span>
-					<button type="button" className="prompt-secondary" data-testid="deleted-restore" aria-label={`Restore ${teaserPlain(card.front).slice(0, 60)}`} onClick={() => void restore(card.id)}>Restore</button>
-					<button type="button" className="prompt-secondary text-destructive" data-testid="deleted-for-good" aria-label={`Delete for good ${teaserPlain(card.front).slice(0, 60)}`} onClick={() => onDeleteForGood(card.id)}>Delete for good</button>
+				<li key={card.id} data-testid="deleted-row" className="lh-row flex flex-wrap items-center gap-x-4 gap-y-1 px-3 py-2">
+					<span className="min-w-0 flex-1 text-md text-ink [overflow-wrap:anywhere]">{teaserPlain(card.front)}</span>
+					<button type="button" className="lh-text-action" data-testid="deleted-restore" aria-label={`Restore ${teaserPlain(card.front).slice(0, 60)}`} onClick={() => void restore(card.id)}>Restore</button>
+					<button type="button" className="lh-text-action" data-danger="" data-testid="deleted-for-good" aria-label={`Delete for good ${teaserPlain(card.front).slice(0, 60)}`} onClick={() => onDeleteForGood(card.id)}>Delete for good</button>
 				</li>
 			))}
 		</ul>
@@ -146,29 +146,29 @@ export function DraftList({ drafts, runs, onEdit, onChanged, onFailure }: { draf
 	return (
 		<div className="flex flex-col gap-3">
 			{runs.length > 0 && (
-				<ul className="flex flex-col gap-1 text-sm text-ink-2" data-testid="draft-runs" aria-live="polite">
+				<ul className="flex flex-col gap-1 text-sm text-graphite" data-testid="draft-runs" aria-live="polite">
 					{runs.slice(0, 3).map((run) => (
 						<li key={run.id} className="flex flex-wrap items-center gap-2" data-status={run.status}>
-							<span className={`min-w-0 [overflow-wrap:anywhere] ${run.status === "failed" ? "text-destructive" : ""}`}>{runLine(run)}</span>
-							{run.status === "running" && <button type="button" className="prompt-secondary" data-testid="draft-stop" onClick={() => stop(run.id)}>Stop</button>}
+							<span className={`min-w-0 [overflow-wrap:anywhere] ${run.status === "failed" ? "text-red" : ""}`}>{runLine(run)}</span>
+							{run.status === "running" && <button type="button" className="lh-text-action" data-testid="draft-stop" onClick={() => stop(run.id)}>Stop</button>}
 						</li>
 					))}
 				</ul>
 			)}
-			{drafts.length === 0 ? <p className="text-ink-2" data-testid="drafts-empty">No drafts waiting. Make flashcards from a note, a PDF passage or a lesson, and they wait here for you to read.</p> : (
-				<ul className="flex flex-col gap-1" data-testid="drafts-list">
+			{drafts.length === 0 ? <p className="text-md text-faint" data-testid="drafts-empty">No drafts waiting. Make flashcards from a note, a PDF passage or a lesson, and they wait here for you to read.</p> : (
+				<ul className="flex flex-col gap-3" data-testid="drafts-list">
 					{drafts.map((draft) => (
-						<li key={draft.id} data-testid="draft-row" className="flex flex-col gap-2 rounded-[10px] bg-card p-3">
+						<li key={draft.id} data-testid="draft-row" className="lh-card-block flex flex-col gap-3">
 							<CardText text={draft.front} />
-							<CardText text={draft.back} className="text-ink-2" />
+							<CardText text={draft.back} className="text-graphite" />
 							<div className="flex flex-col gap-0.5"><RowLinks row={draft} /></div>
 							{draft.duplicates.length > 0 && (
-								<p role="note" data-testid="draft-duplicate" className="text-sm text-ink-2 [overflow-wrap:anywhere]">{draft.duplicates.length === 1 ? "You already have a card with this front" : `You already have ${draft.duplicates.length} cards with this front`}: {teaserPlain(draft.duplicates[0]!.front)}</p>
+								<p role="note" data-testid="draft-duplicate" className="text-sm text-graphite [overflow-wrap:anywhere]">{draft.duplicates.length === 1 ? "You already have a card with this front" : `You already have ${draft.duplicates.length} cards with this front`}: {teaserPlain(draft.duplicates[0]!.front)}</p>
 							)}
-							<div className="flex flex-wrap gap-1">
-								<button type="button" className="prompt-secondary bg-accent text-foreground" data-testid="draft-keep" disabled={busy === draft.id} onClick={() => keep(draft.id, draft.duplicates.length > 0)}>{draft.duplicates.length > 0 ? "Keep both" : "Keep"}</button>
-								<button type="button" className="prompt-secondary" data-testid="draft-edit" onClick={() => onEdit(draft.id)}>Edit</button>
-								<button type="button" className="prompt-secondary" data-testid="draft-skip" disabled={busy === draft.id} onClick={() => skip(draft.id)}>Skip</button>
+							<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+								<button type="button" className="nb-pill" data-testid="draft-keep" disabled={busy === draft.id} onClick={() => keep(draft.id, draft.duplicates.length > 0)}>{draft.duplicates.length > 0 ? "Keep both" : "Keep"}</button>
+								<button type="button" className="lh-text-action" data-testid="draft-edit" onClick={() => onEdit(draft.id)}>Edit</button>
+								<button type="button" className="lh-text-action" data-testid="draft-skip" disabled={busy === draft.id} onClick={() => skip(draft.id)}>Skip</button>
 							</div>
 						</li>
 					))}

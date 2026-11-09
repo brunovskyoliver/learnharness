@@ -11,6 +11,8 @@ export interface PaneItem {
 	name: string;
 	kind: LibraryKind;
 	size: number;
+	/** A file mirrored from a linked repo: the repo's display address (feature 026). */
+	repo?: string;
 	/** Open on its version list, from a transcript row. */
 	history?: boolean;
 	/** Where to land: a search hit or a citation (features 019-020). Not saved. */

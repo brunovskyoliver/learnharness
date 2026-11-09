@@ -54,6 +54,8 @@ export function TranscriptPassages({ chatId, scopeRef }: { chatId: string; scope
 		if (!scope) return;
 		const onClick = (event: MouseEvent) => {
 			if (event.metaKey || event.ctrlKey || event.shiftKey || event.button !== 0) return;
+			// A reference chip navigates itself, to the Library's full view (feature 027).
+			if ((event.target as Element | null)?.closest?.("[data-ref-chip], [data-testid=\"ref-chip\"]")) return;
 			const anchor = (event.target as Element | null)?.closest?.("a[href]");
 			const citation = anchor ? parseCitationHref(anchor.getAttribute("href") ?? "") : null;
 			if (!citation) return;

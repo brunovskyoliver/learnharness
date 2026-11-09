@@ -13,11 +13,12 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { TOGGLE_TOOLS, AgentSection } from "../components/settings/agent-section.tsx";
-import { AppearanceSection, GraphSection } from "../components/settings/appearance-section.tsx";
+import { GraphSection } from "../components/settings/graph-section.tsx";
 import { KeysSection } from "../components/settings/keys-section.tsx";
 import { KeyboardSection } from "../components/settings/keyboard-section.tsx";
 import type { GraphSettings } from "../src/core/index.ts";
-import { SettingsDialogBody } from "../components/settings/settings-dialog-content.tsx";
+import { SETTINGS_NAV, SearchResults, SettingsDialogBody } from "../components/settings/settings-dialog-content.tsx";
+import { searchSettings } from "../components/settings/settings-index.ts";
 import { SettingsDialogProvider } from "../components/settings/settings-dialog.tsx";
 import { KEYBOARD_ACTIONS } from "../src/core/index.ts";
 import { readdirSync, readFileSync } from "node:fs";
@@ -45,22 +46,54 @@ describe("SettingsDialog (the designed surface, SSR)", () => {
 		assert.ok(!html.includes("settings-dialog"));
 	});
 
-	it("the dialog frame: role=dialog + the ✕ + the six-section nav, Providers first and General last", () => {
+	it("the dialog frame: role=dialog + the ✕ + the seven-page nav, Customize first, General last, landing on Providers", () => {
 		const html = renderToStaticMarkup(<SettingsDialogBody onClose={() => {}} />);
 		assert.ok(html.includes('role="dialog"'));
 		assert.ok(html.includes('aria-modal="true"'));
 		assert.ok(html.includes('aria-label="Close settings"'));
-		for (const id of ["general", "keys", "agent", "appearance", "graph", "keyboard"]) {
-			assert.ok(html.includes(`data-testid="settings-nav-${id}"`), id);
-		}
-		// Providers is the first landing section; internal keys deep links survive.
-		assert.ok(tagOf(html, "settings-nav-keys").includes('aria-current="true"'));
-		assert.ok(html.indexOf('data-testid="settings-nav-keys"') < html.indexOf('data-testid="settings-nav-general"'));
-		assert.ok(tagOf(html, "settings-nav-keyboard").includes('aria-current="false"'));
+		// Study opens on Providers; internal keys deep links survive.
+		assert.ok(tagOf(html, "settings-nav-keys").includes('aria-selected="true"'));
+		assert.ok(tagOf(html, "settings-nav-keyboard").includes('aria-selected="false"'));
 		// Fetches don't run under SSR — the loading state IS the SSR state.
 		assert.ok(html.includes("Loading settings…"));
 		// Modal-only doctrine: no link back to /settings anywhere in it.
 		assert.ok(!html.includes('href="/settings"'));
+		// The retired Appearance page is folded into Customize.
+		assert.ok(!html.includes("settings-nav-appearance"));
+	});
+});
+
+describe("the one settings modal (feature 025, US5)", () => {
+	it("lists all seven pages in the contract's order, as vertical tabs", () => {
+		const html = renderToStaticMarkup(<SettingsDialogBody onClose={() => {}} />);
+		const labels = ["Customize", "Reviewers", "Providers", "Agent", "Graph", "Keyboard", "General"];
+		assert.deepEqual(SETTINGS_NAV.map((item) => item.label), labels);
+		const tabs = [...html.matchAll(/<button[^>]*role="tab"[^>]*>([^<]+)<\/button>/g)].map((m) => m[1]);
+		assert.deepEqual(tabs, labels);
+		assert.match(html, /role="tablist" aria-orientation="vertical"/);
+		for (const testid of ["nb-settings-nav-customize", "nb-settings-nav-reviewers", "settings-nav-keys", "settings-nav-agent", "settings-nav-graph", "settings-nav-keyboard", "settings-nav-general"]) assert.ok(html.includes(`data-testid="${testid}"`), testid);
+		// The search sits at the top of the nav, before the tabs.
+		assert.ok(html.indexOf('data-testid="settings-search"') < html.indexOf('role="tablist"'));
+		assert.ok(html.includes('data-testid="settings-nav"'));
+	});
+
+	it("opens on Customize when asked, which waits for the record in Study", () => {
+		const html = renderToStaticMarkup(<SettingsDialogBody onClose={() => {}} initialSection="customize" />);
+		assert.ok(tagOf(html, "nb-settings-nav-customize").includes('aria-selected="true"'));
+		assert.ok(html.includes('data-testid="nb-settings-customize"'));
+		assert.ok(html.includes("Loading settings…"));
+	});
+
+	it("search finds a Study row and a Customize row, under their page names", () => {
+		const local = { hosted: false, desktop: false };
+		const study = renderToStaticMarkup(<SearchResults query="thinking" results={searchSettings("thinking", local)} onChoose={() => {}} />);
+		assert.ok(study.includes('data-testid="settings-result-slot-strong"'));
+		assert.ok(study.includes(">Agent</h3>"));
+		const customize = renderToStaticMarkup(<SearchResults query="dark" results={searchSettings("dark", local)} onChoose={() => {}} />);
+		assert.ok(customize.includes('data-testid="settings-result-theme"'));
+		assert.ok(customize.includes(">Customize</h3>"));
+		const none = renderToStaticMarkup(<SearchResults query="zzzqq" results={[]} onChoose={() => {}} />);
+		assert.ok(none.includes("Nothing matches zzzqq"));
 	});
 });
 
@@ -137,7 +170,7 @@ describe("AgentSection (thin SSR)", () => {
 		const tag = tagOf(html, "graph-tools-row");
 		assert.ok(tag.includes('data-disabled="true"'), "the row is unavailable when the graph is off");
 		assert.ok(!/ opacity-\d|"opacity-\d/.test(tag), "no opacity on the row");
-		assert.ok(row.includes("text-muted-foreground"), "muted ink on the label");
+		assert.ok(row.includes("text-faint"), "muted ink on the label");
 		assert.ok(tagOf(html, "toggle-graph-tools").includes("disabled"), "the control locks");
 		assert.ok(row.includes("Graph is disabled"), "the reason hint replaces the description");
 		assert.ok(row.includes("disabled"), "toggle untouchable while the graph is off");
@@ -244,34 +277,6 @@ describe("KeysSection (thin SSR)", () => {
 	});
 });
 
-describe("AppearanceSection (thin SSR)", () => {
-	it("no mode row: the app is dark-only, so there is no control to show", () => {
-		const html = renderToStaticMarkup(<AppearanceSection appearance={undefined} onSectionChange={() => {}} />);
-		assert.ok(!html.includes('data-testid="row-mode"'));
-		assert.ok(!html.includes("Coming soon"));
-	});
-
-	it("hex inputs carry the factory placeholders; prose size resolves against the factory", () => {
-		const html = renderToStaticMarkup(<AppearanceSection appearance={undefined} onSectionChange={() => {}} />);
-		assert.ok(html.includes(`placeholder="#000000"`));
-		// The reading font is the searchable dropdown now (font-menu
-		// wave): its trigger shows the factory family; the emphasis
-		// inks' empty state is "same as text" (the old hexes died with
-		// the factory token change).
-		assert.ok(html.includes('data-testid="font-trigger"'));
-		assert.equal((html.match(/placeholder="same as text"/g) ?? []).length, 2);
-		assert.ok(html.includes('placeholder="17"'), "reading size shows the factory default");
-		assert.ok(html.includes('placeholder="700"'), "heading weight shows the factory default");
-	});
-
-	it("a set background shows in the input, not the placeholder", () => {
-		const html = renderToStaticMarkup(
-			<AppearanceSection appearance={{ background: "#1a1a2e" }} onSectionChange={() => {}} />,
-		);
-		assert.ok(html.includes(`value="#1a1a2e"`));
-	});
-});
-
 describe("KeyboardSection (thin SSR)", () => {
 	it("renders every registry action in its scope group", () => {
 		const html = renderToStaticMarkup(<KeyboardSection />);
@@ -321,15 +326,16 @@ describe("Settings meets DESIGN.md (feature 009, findings 6-12)", () => {
 	const sources = readdirSync(dir).filter((name) => name.endsWith(".tsx")).map((name) => [name, readFileSync(new URL(name, dir), "utf8")] as const);
 	const strip = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
-	it("titles sit on the scale in the title serif", () => {
+	it("titles are the modal's page title and settings labels (feature 025)", () => {
 		const html = renderToStaticMarkup(<SettingsSection title="Agent"><SettingsGroup label="Models">x</SettingsGroup></SettingsSection>);
-		assert.match(html, /<h2 class="[^"]*font-title[^"]*text-xl/);
-		assert.match(html, /<h3 class="[^"]*font-title[^"]*text-lg/);
+		assert.match(html, /<h2 class="nb-settings-title">Agent<\/h2>/);
+		assert.match(html, /<h3 class="nb-set-label">Models<\/h3>/);
+		assert.ok(html.includes("nb-set-rows"), "the rows sit in one rule-edged card");
 	});
 
-	it("radii are 6px controls and 10px cards only; no rounded-sm, -xl or bare rounded", () => {
-		for (const [name, source] of sources) assert.doesNotMatch(strip(source), /\brounded-(sm|xl|2xl|xs)\b|\brounded(?=[\s"`])/, name);
-		assert.ok(sources.find(([name]) => name === "settings-dialog-content.tsx")![1].includes("rounded-lg border border-border bg-background"), "dialog frame is 10px");
+	it("radii are 8px controls, 10px cards and 12px menus only; no rounded-sm, -2xl or bare rounded", () => {
+		for (const [name, source] of sources) assert.doesNotMatch(strip(source), /\brounded-(sm|2xl|xs)\b|\brounded(?=[\s"`])/, name);
+		assert.ok(sources.find(([name]) => name === "settings-dialog-content.tsx")![1].includes("<SettingsShellFrame"), "the frame is Notebook's modal (radius 16, paper.css)");
 	});
 
 	it("connection rows have no separator", () => {
@@ -347,16 +353,18 @@ describe("Settings meets DESIGN.md (feature 009, findings 6-12)", () => {
 
 	it("a disabled Button in Settings uses muted ink, not its opacity", () => {
 		const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8");
-		assert.match(css, /\[data-settings-surface\] \[data-slot="button"\]:disabled \{ opacity: 1; color: var\(--muted-foreground\); \}/);
+		assert.match(css, /\[data-settings-surface\] \[data-slot="button"\]:disabled \{ opacity: 1; color: var\(--faint\); \}/);
 	});
 
-	it("small controls grow to 44px on coarse pointers", () => {
+	it("controls take the modal's language and grow to 44px on coarse pointers", () => {
 		const html = renderToStaticMarkup(<AgentSection agent={undefined} models={undefined} graph={undefined} compaction={undefined} onSectionChange={() => {}} onModelsChange={() => {}} onCompactionChange={() => {}} />);
-		assert.ok(tagOf(html, "slot-model-strong").includes("pointer-coarse:h-11"));
-		assert.ok(tagOf(html, "input-compaction-threshold").includes("pointer-coarse:h-11"));
-		assert.ok(tagOf(html, "quiz-mechanics-free").includes("pointer-coarse:h-11"));
+		assert.ok(tagOf(html, "slot-model-strong").includes("nb-set-trigger"));
+		assert.ok(tagOf(html, "input-compaction-threshold").includes("nb-set-input"));
+		assert.ok(tagOf(html, "quiz-mechanics-free").includes("nb-set-pill"));
+		assert.ok(tagOf(html, "toggle-tool-demo").includes('class="nb-switch"'), "toggles are Notebook's switch");
 		assert.ok(tagOf(renderToStaticMarkup(<ConnectionRow label="x" action="Connect" disabled={false} onAction={() => {}} actionTestid="act" />), "act").includes("pointer-coarse:min-h-11"));
-		assert.ok(tagOf(html, "toggle-tool-demo").includes("pointer-coarse:before:-inset-3.5"));
+		const css = readFileSync(new URL("../app/paper.css", import.meta.url), "utf8");
+		assert.match(css, /@media \(pointer: coarse\) \{\n\t\.lh-paper :is\(\.nb-set-select, \.nb-set-trigger, \.nb-set-input, \.nb-set-pill, \.nb-settings-result\) \{ min-height: 44px; \}/);
 		for (const name of ["keys-section.tsx"]) assert.doesNotMatch(sources.find(([file]) => file === name)![1], /h-7 (?![^"`]*pointer-coarse:h-11)/);
 	});
 

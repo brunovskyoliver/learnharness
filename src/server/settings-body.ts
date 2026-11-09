@@ -21,9 +21,25 @@ import type {
 	GeneralSettings,
 	GraphSettings,
 	ModelsSettings,
+	NotebookReviewer,
+	NotebookSettings,
 	RoleModelOverride,
 } from "../core/settings.ts";
-import { BACKGROUND_MODEL_ROLES, COMPACTION_THRESHOLD_FLOOR, EXTRACTION_CHUNK_TOKENS_FLOOR, MODEL_SLOTS } from "../core/settings.ts";
+import {
+	BACKGROUND_MODEL_ROLES,
+	COMPACTION_THRESHOLD_FLOOR,
+	EXTRACTION_CHUNK_TOKENS_FLOOR,
+	INTERFACE_MODES,
+	MODEL_SLOTS,
+	NOTEBOOK_APPEARANCES,
+	NOTEBOOK_INKS,
+	NOTEBOOK_LAYOUTS,
+	NOTEBOOK_LETTERINGS,
+	NOTEBOOK_PACES,
+	NOTEBOOK_START_MODES,
+	NOTEBOOK_TEXT_SIZES,
+	reviewerProblem,
+} from "../core/settings.ts";
 import { WRITABLE_TOOL_KEYS } from "../core/pending.ts";
 
 /** Parsed-or-rejected — `ok: false` carries the 400's error message. */
@@ -75,7 +91,7 @@ function asRecord(body: unknown): Record<string, unknown> | null {
 	return body as Record<string, unknown>;
 }
 
-/** general: { autoUpdate?: boolean } */
+/** general: { autoUpdate?: boolean, interface?: "study" | "notebook" } */
 export function parseGeneralSettingsBody(body: unknown): SettingsBodyResult<GeneralSettings> {
 	const raw = asRecord(body);
 	if (!raw) return { ok: false, error: "Invalid JSON body" };
@@ -85,6 +101,12 @@ export function parseGeneralSettingsBody(body: unknown): SettingsBodyResult<Gene
 			return { ok: false, error: "autoUpdate must be a boolean" };
 		}
 		settings.autoUpdate = raw.autoUpdate;
+	}
+	if (raw.interface !== undefined) {
+		if (!(INTERFACE_MODES as readonly unknown[]).includes(raw.interface)) {
+			return { ok: false, error: `interface must be one of ${INTERFACE_MODES.join(", ")}` };
+		}
+		settings.interface = raw.interface as GeneralSettings["interface"];
 	}
 	return { ok: true, settings };
 }
@@ -375,6 +397,62 @@ export function parseCompactionSettingsBody(body: unknown): SettingsBodyResult<C
 	return { ok: true, settings };
 }
 
+/** notebook (feature 024): { startMode?, pointerInk?, pace?, layout?,
+ *  appearance?, textSize?, lettering?, ink?, reviewers?, lastNoteId? }.
+ *  Strict like every section: a bad value is a 400 naming the choices.
+ *  Replace-whole: an absent `reviewers` resolves to the seeded list, a
+ *  present one (even empty) is exactly the list; ids must be unique. */
+export function parseNotebookSettingsBody(body: unknown): SettingsBodyResult<NotebookSettings> {
+	const raw = asRecord(body);
+	if (!raw) return { ok: false, error: "Invalid JSON body" };
+	const settings: NotebookSettings = {};
+	const choices = [
+		["startMode", NOTEBOOK_START_MODES],
+		["pace", NOTEBOOK_PACES],
+		["layout", NOTEBOOK_LAYOUTS],
+		["appearance", NOTEBOOK_APPEARANCES],
+		["textSize", NOTEBOOK_TEXT_SIZES],
+		["lettering", NOTEBOOK_LETTERINGS],
+		["ink", NOTEBOOK_INKS],
+	] as const;
+	for (const [field, options] of choices) {
+		const value = raw[field];
+		if (value === undefined) continue;
+		if (!(options as readonly unknown[]).includes(value)) {
+			return { ok: false, error: `${field} must be one of ${options.join(", ")}` };
+		}
+		(settings as Record<string, unknown>)[field] = value;
+	}
+	if (raw.pointerInk !== undefined) {
+		if (typeof raw.pointerInk !== "boolean") return { ok: false, error: "pointerInk must be a boolean" };
+		settings.pointerInk = raw.pointerInk;
+	}
+	if (raw.lastNoteId !== undefined) {
+		if (typeof raw.lastNoteId !== "string" || !raw.lastNoteId) {
+			return { ok: false, error: "lastNoteId must be a non-empty string" };
+		}
+		settings.lastNoteId = raw.lastNoteId;
+	}
+	if (raw.reviewers !== undefined) {
+		if (!Array.isArray(raw.reviewers)) return { ok: false, error: "reviewers must be an array" };
+		const seen = new Set<string>();
+		const reviewers: NotebookReviewer[] = [];
+		for (const [index, entry] of raw.reviewers.entries()) {
+			const problem = reviewerProblem(entry);
+			if (problem) return { ok: false, error: `reviewers[${index}]: ${problem}` };
+			const r = entry as Record<string, unknown>;
+			const id = r.id as string;
+			if (seen.has(id)) return { ok: false, error: `reviewers[${index}]: duplicate id "${id}"` };
+			seen.add(id);
+			const reviewer: NotebookReviewer = { id, name: r.name as string, instructions: r.instructions as string };
+			if (r.seeded === true) reviewer.seeded = true;
+			reviewers.push(reviewer);
+		}
+		settings.reviewers = reviewers;
+	}
+	return { ok: true, settings };
+}
+
 /** The section→parser map for PUT /api/settings/[section] (the route also
  *  carries the special prompts sub-resource). */
 export const SETTINGS_SECTIONS = {
@@ -385,6 +463,7 @@ export const SETTINGS_SECTIONS = {
 	graph: parseGraphSettingsBody,
 	compaction: parseCompactionSettingsBody,
 	models: parseModelsSettingsBody,
+	notebook: parseNotebookSettingsBody,
 } as const;
 
 export type SettingsSectionName = keyof typeof SETTINGS_SECTIONS;

@@ -21,6 +21,7 @@
 
 import { extractionStatuses, type ExtractionPhase } from "../agent/subagents/extraction.ts";
 import { cardRunFeed } from "./card-generation.ts";
+import { notebookRunFeed } from "./notebook.ts";
 import { chatStore } from "../store/chats.ts";
 import { graphRevision } from "./graph.ts";
 import { catalogContextLimits } from "./model-catalog.ts";
@@ -72,6 +73,8 @@ export function activityFeed(): {
 	extractions: ActivityExtraction[];
 	/** Flashcards being made (feature 021), with their cost so far. */
 	cardRuns: ReturnType<typeof cardRunFeed>;
+	/** Notebook runs (feature 024), with their cost so far. */
+	notebookRuns: ReturnType<typeof notebookRunFeed>;
 	graphRevision: number;
 } {
 	const chats = chatStore.listChats();
@@ -107,6 +110,7 @@ export function activityFeed(): {
 		jobs,
 		extractions: extractions.sort((a, b) => a.startedAt - b.startedAt),
 		cardRuns: cardRunFeed(),
+		notebookRuns: notebookRunFeed(),
 		graphRevision: graphRevision(),
 	};
 }

@@ -12,3 +12,4 @@ auth.json
 *-credentials.json*
 .env*
 *.log
+.claude

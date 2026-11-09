@@ -274,7 +274,7 @@ describe("the catalog", () => {
 
 	it("goes to the trash with its versions, comes back, and goes for good", async () => {
 		const item = await make();
-		const entry = await libraryStore.trashItem(item.id);
+		const entry = (await libraryStore.trashItem(item.id) as TrashEntry | null);
 		assert.ok(entry);
 		assert.equal(entry.kind, "diagram");
 		assert.equal(await diagramStore.read(item.id), null);
@@ -282,7 +282,7 @@ describe("the catalog", () => {
 		assert.ok(fs.existsSync(versionsFile(item.id)), "versions wait");
 		assert.ok(await libraryStore.restoreTrash(entry.id));
 		assert.equal((await head(item.id)).head.n, 1);
-		const again = await libraryStore.trashItem(item.id);
+		const again = (await libraryStore.trashItem(item.id) as TrashEntry | null);
 		const proposal = await diagramStore.propose({ diagramId: null, name: "Other", summary: "s", baseVersion: null, doc: sample() });
 		assert.notEqual(proposal, "missing");
 		assert.ok(await libraryStore.purgeTrash(again!.id));
@@ -295,9 +295,9 @@ describe("the catalog", () => {
 		const folder = await libraryStore.createFolder("F", null);
 		assert.ok(!isRefusal(folder));
 		const item = await make("Inside", sample(), { folderId: folder.id });
-		const entry = await libraryStore.trashFolder(folder.id);
+		const entry = (await libraryStore.trashFolder(folder.id) as TrashEntry | null);
 		assert.equal(entry!.items[0]!.id, item.id);
-		const back = await libraryStore.restoreTrash(entry!.id);
+		const back = await libraryStore.restoreTrash(entry!.id) as Restored | null;
 		assert.equal(back!.items[0]!.kind, "diagram");
 		assert.equal((await head(item.id)).head.n, 1);
 	});
@@ -432,7 +432,7 @@ describe("search", () => {
 		assert.equal(hit.results[0]?.itemId, item.id);
 		assert.equal(hit.results[0]?.kind, "diagram");
 		assert.equal(hit.status.counts.indexed, 1);
-		await libraryStore.trashItem(item.id);
+		(await libraryStore.trashItem(item.id) as TrashEntry | null);
 		assert.equal((await searchDocuments("Frequency", {})).results.length, 0);
 	});
 });
@@ -634,7 +634,7 @@ describe("proposals", () => {
 	it("a trashed target can't be approved, and purging takes its proposals", async () => {
 		const item = await make();
 		const { details } = await propose(change(1, item.id));
-		const entry = await libraryStore.trashItem(item.id);
+		const entry = (await libraryStore.trashItem(item.id) as TrashEntry | null);
 		assert.equal((await diagramStore.approve(details.proposalId!, { expected: { head: 1, rev: 0 } })).outcome, "target-gone");
 		await libraryStore.purgeTrash(entry!.id);
 		assert.equal(await diagramStore.proposal(details.proposalId!), null);
@@ -758,10 +758,14 @@ describe("the teaching rule", () => {
 		await diagramStore.approve(proposal.id, { expected: { head: now.head.n, rev: 0 } });
 		await pageConnectionsResponse(item.id);
 		await libraryStore.rename(item.id, "G2");
-		const entry = await libraryStore.trashItem(item.id);
+		const entry = (await libraryStore.trashItem(item.id) as TrashEntry | null);
 		await libraryStore.restoreTrash(entry!.id);
 		await syncDocumentIndex();
 		await documentIndexIdle();
 		assert.equal(graphFingerprint(), before);
 	});
 });
+
+/** Feature 026: trash and restore can also answer a refusal; these tests never meet one. */
+type TrashEntry = import("../src/core/library.ts").LibraryTrashEntry;
+type Restored = { items: import("../src/core/library.ts").LibraryItem[]; folders: import("../src/core/library.ts").LibraryFolder[] };

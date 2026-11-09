@@ -16,6 +16,7 @@ import {
 } from "@/components/ai-elements/conversation";
 import { Message, MessageContent } from "@/components/ai-elements/message";
 import { AssistantResponse } from "@/components/assistant-response";
+import { InkWait } from "@/components/paper/blot";
 import { Reasoning, ReasoningContent, ReasoningTrigger } from "@/components/ai-elements/reasoning";
 import { Shimmer } from "@/components/ai-elements/shimmer";
 import { BrailleSpinner } from "@/components/braille-spinner";
@@ -57,12 +58,17 @@ import { DemoPanel } from "@/components/artifacts/demo-panel";
 import { PagePaneSlot, usePagePane } from "@/components/library/page-pane-context";
 import { SessionContextSlot } from "@/components/workspace/context-slot";
 import { TranscriptPassages } from "@/components/transcript-passages";
-import { UserTurnText } from "@/components/user-turn-text";
+import { UserTurn } from "@/components/user-turn-text";
+import { ReferenceOriginProvider } from "@/components/reference-chip";
+import { useFocusReturn } from "@/components/reference-return";
 import { useWorkspace } from "@/components/workspace/workspace-context";
 import { isShownPageFailure } from "@/components/library/page-row";
 import { DemoPanelContext, sessionDemos, type DemoPanelApi } from "@/components/artifacts/demo-panel-context";
 import type { PlanBlockData } from "@/src/core";
-import { QuestionDock } from "@/components/question-dock";
+import { QuestionDock, teaserText, type QuestionToolName } from "@/components/question-dock";
+import { CheckMarginLayer, CheckThread } from "@/components/study/check-thread";
+import { PrimaryAction, PromptToolbar } from "@/components/prompt-controls";
+import { checkAnchorPartId, checkLayout, checkMessageIndex } from "@/components/study/check-geometry";
 import { SessionFind } from "@/components/session-find";
 import { SessionMessageNavigation } from "@/components/session-navigation";
 import { PracticeDock } from "@/components/practice-dock";
@@ -71,6 +77,8 @@ import { ReferencesCard } from "@/components/library/references-card";
 import { GraphContextCard, type GraphContextData } from "@/components/graph-context-card";
 import { FollowupContextCard, type FollowupContextData } from "@/components/followup-context-card";
 import { TopBar } from "@/components/top-bar";
+import { RouteContent } from "@/components/paper/route-content";
+import { inkOrder, SettledMessagesContext } from "@/components/paper/motion-arrival";
 import type { ArtifactPartProps, JobRecord, LibraryReference, Phase3, QuestionAnswerData, QuestionFormDraft, TurnUsage, SessionPricing } from "@/src/core";
 import type { LhViewMessage } from "@/src/core";
 import { PhaseChip, PhaseDivider } from "@/components/phase-divider";
@@ -88,6 +96,7 @@ import {
 	phaseTimeline,
 	teachStepIndex,
 	toolQuestionKind,
+	questionKindLabel,
 	questionNeedsReveal,
 } from "@/src/core";
 import { resolveQuestionDemo } from "@/components/artifacts/demo-panel-context";
@@ -108,15 +117,13 @@ import { TranscriptArrivalScript, TranscriptBackfillSentinel, TranscriptRenderSk
 
 const MermaidOverlay = dynamic(() => import("@/components/session-overlay").then((module) => module.MermaidOverlay), { ssr: false });
 
-/** One width for everything: transcript, cards, and the bottom blob share this column. */
 /**
- * Width tokens: the teaching PROSE caps at the --lh-measure (~72ch; polish
- * pass 2026-10-26 superseded the wave-5 full-bleed ruling) with a px-6 margin; the composer/question DOCK is
- * deliberately narrower (~46rem centered) per the reference. Same ELEMENT,
- * same place — width polish only.
+ * One width for the transcript: Notebook's 660px column (--lh-measure,
+ * feature 025 T033) with 24px margins, 22px on phones. The composer/question
+ * DOCK keeps its own width (phase 5 moves checks beside the column).
  */
-const COLUMN = "mx-auto w-full max-w-[calc(var(--lh-measure)+3rem)] px-6";
-const DOCK = "mx-auto w-full max-w-[52rem] px-4";
+const COLUMN = "lh-lesson-column w-full max-w-[calc(var(--lh-measure)+3rem)] px-[22px] sm:px-6";
+const DOCK = "lh-lesson-dock mx-auto w-full max-w-[52rem] px-4";
 // The dock overlay's gradient band (h-24) — part of the reserved tail.
 const GRADIENT_H = 0;
 // Fold thresholds (owner, scroll round 1, tuned round 3): pixel distance
@@ -171,11 +178,18 @@ const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayout
 /** The quiet system line (custom-message scheme rendering): centered, muted,
  *  small — the transcript's voice for events that are not speech (wake
  *  scaffolding). */
+const NO_REFERENCES: readonly LibraryReference[] = [];
+/** The references a message's `data-library-references` parts carry (feature 027, T027). */
+function messageReferences(parts: readonly { type: string; data?: unknown }[]): readonly LibraryReference[] {
+	const found = parts.flatMap((part) => (part.type === "data-library-references" ? (part.data as { references?: LibraryReference[] }).references ?? [] : []));
+	return found.length > 0 ? found : NO_REFERENCES;
+}
+
 function SystemLine({ children, testId }: { children: React.ReactNode; testId?: string }) {
 	return (
 		<div
 			data-testid={testId}
-			className="flex items-center justify-center gap-1.5 py-1 text-sm text-muted-foreground"
+			className="lh-reading lh-quiet-line py-1"
 		>
 			{children}
 		</div>
@@ -183,7 +197,7 @@ function SystemLine({ children, testId }: { children: React.ReactNode; testId?: 
 }
 
 /** The live wait row (polish pass 2026-10-26): the one moment the
- * learner waits, so it counts. Elapsed seconds appear after the first
+ * learner waits, so it counts. Notebook's breathing blot (feature 025, R10). Elapsed seconds appear after the first
  * second; the clock restarts whenever the row remounts (a new turn). */
 function ThinkingPlaceholder() {
 	const [start] = useState(() => Date.now());
@@ -194,10 +208,10 @@ function ThinkingPlaceholder() {
 	}, []);
 	const seconds = Math.floor((now - start) / 1000);
 	return (
-		<span data-testid="thinking-placeholder" className="flex items-center gap-2 font-ui text-sm font-medium text-muted-foreground">
-			<BrailleSpinner label="Thinking" />
-			<Shimmer duration={1}>THINKING…</Shimmer>
-			{seconds > 0 && <span className="tabular-nums normal-case text-muted-foreground">{seconds}s</span>}
+		<span data-testid="thinking-placeholder" className="lh-reading lh-quiet-line">
+			<InkWait label="Thinking" />
+			<Shimmer duration={1} className="text-meta">THINKING…</Shimmer>
+			{seconds > 0 && <span className="tabular-nums normal-case text-faint">{seconds}s</span>}
 		</span>
 	);
 }
@@ -288,6 +302,10 @@ function ChatView({
 	const { messages, nativeMessages, contextTokens, send, continueIfOwed, steer, cancelSteer, steerQueue, submitAnswer, dismissQuestion, dismissProblem, questionDraft, saveQuestionDraft, setMessages, adoptRecord, status, error, stop, clearError, resumeStream, setReattachSettled } =
 		useChatSession({ chatId, initialMessages, initialError, initiallyInFlight });
 
+	// Feature 028 (rows 17-19): what the transcript held when the lesson
+	// mounted is settled history and never animates; a turn he sends, a demo
+	// or plot delivered now arrive (their view and record ids alike).
+	const [settledMessages] = useState<ReadonlySet<string>>(() => new Set([...messages, ...nativeMessages].map((m) => (m as { id?: unknown }).id).filter((id): id is string => typeof id === "string" && id !== "")));
 	const sessionFindScopeRef = useRef<HTMLDivElement | null>(null);
 	const scrollContextRef = useRef<StickToBottomContext | null>(null);
 	const sourceTextParts = useMemo(() => firstSourceTextParts(messages), [messages]);
@@ -306,14 +324,29 @@ function ChatView({
 	setReattachSettled(() => reattachSettledRef.current());
 
 	// New chat with a topic: send the first message exactly once
-	// (initialPromptOwed — the pure gate, pinned in the test suite).
-	const sentInitial = useRef(false);
+	// (initialPromptOwed — the pure gate, pinned in the test suite). Once per
+	// session in this tab, not per mount: going back to a lesson (the
+	// browser's Back, or feature 027's Back pill) can remount it from a
+	// router payload older than its turns (the entry's own, or a prefetch
+	// made while it was new). When this tab has already shown more of the
+	// record than that payload holds, the record is read again (and a running
+	// turn reattached) instead of showing an empty or shortened session.
+	// Its own effect, so a remount's cleanup (which stops the session's
+	// reads) is followed by the read again rather than leaving it aborted.
 	useEffect(() => {
-		if (!sentInitial.current && initialPromptOwed(initialMessages, initialPrompt)) {
-			sentInitial.current = true;
-			void send({ type: "text", text: initialPrompt! });
-		}
-	}, [initialPrompt, initialMessages, send]);
+		if ((recordShown.get(chatId) ?? 0) > initialMessages.length) resumeStream();
+	}, [chatId, initialMessages, resumeStream]);
+	const initialHandled = useRef(false);
+	useEffect(() => {
+		if (initialHandled.current) return;
+		initialHandled.current = true;
+		if (initialPromptSent.has(chatId) || !initialPromptOwed(initialMessages, initialPrompt)) return;
+		initialPromptSent.add(chatId);
+		void send({ type: "text", text: initialPrompt! });
+	}, [chatId, initialPrompt, initialMessages, send]);
+	useEffect(() => {
+		recordShown.set(chatId, Math.max(recordShown.get(chatId) ?? 0, nativeMessages.length));
+	}, [chatId, nativeMessages.length]);
 
 	// A turn running server-side, attached to no live view of ours (navigate
 	// away mid-turn, or a wake turn discovered mid-session): the reattach
@@ -330,6 +363,8 @@ function ChatView({
 	// must not churn), and the sidebar patch is instant via the window event —
 	// its 2.5s poll is only a backstop.
 	const [titleText, setTitleText] = useState(title);
+	// Back from a chip (feature 027): focus returns to the chip he clicked.
+	useFocusReturn(chatId);
 	const [renaming, setRenaming] = useState(false);
 	const [titleDraft, setTitleDraft] = useState("");
 	const titleInputRef = useRef<HTMLInputElement | null>(null);
@@ -562,6 +597,79 @@ function ChatView({
 	// question's phase.
 	const requiresReveal = pending !== null && questionNeedsReveal(pending.tool, pending.input, phaseAt3(messages));
 
+	// ── The check controller (feature 025, R8) ──
+	// A pending question or the active problem is a thread beside the lesson.
+	// Its open state is today's `dock/<id>/expanded` (the fold machine is gone
+	// for checks: a thread does not need to get out of the way) and
+	// `dock/<id>/revealed` keeps the teach check's invitation answered. Both
+	// keys are bare: ChatView sits above every part scope.
+	const checkId = pending?.toolCallId ?? activeProblem?.toolCallId ?? null;
+	const checkKey = checkId ?? "composer";
+	const [checkOpen, setCheckOpen] = useSessionState(`dock/${checkKey}/expanded`, requiresReveal ? revealArrival(false).expanded : probeArrivalExpanded(false));
+	const [checkRevealed, setCheckRevealed] = useSessionState(`dock/${checkKey}/revealed`, false);
+	// Arrived while the lesson was open (not there at mount): its dot and words ink in.
+	const mountCheckRef = useRef(checkId);
+	const checkFresh = checkId !== null && checkId !== mountCheckRef.current;
+	const [lessonWidth, setLessonWidth] = useState(0);
+	const [checkLayer, setCheckLayer] = useState<HTMLDivElement | null>(null);
+	const layout = checkId ? checkLayout(lessonWidth) : ({ variant: "inline", shift: 0 } as const);
+	const checkAnchor = useMemo(() => (checkId ? checkAnchorPartId(messages, checkId) : null), [messages, checkId]);
+	const checkMessage = useMemo(() => (checkId ? checkMessageIndex(messages, checkId) : -1), [messages, checkId]);
+	/** Opens the thread, brings it into view and (fine pointers) puts focus in it:
+	 *  the answer field for free text and problems, the first choice otherwise. */
+	const openCheck = useCallback(() => {
+		if (!checkId) return;
+		setCheckRevealed(true);
+		setCheckOpen(true);
+		scrollContextRef.current?.stopScroll();
+		requestAnimationFrame(() => requestAnimationFrame(() => {
+			const thread = document.querySelector<HTMLElement>(`[data-testid="check-thread"][data-check="${CSS.escape(checkId)}"]`);
+			if (!thread) return;
+			const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+			thread.scrollIntoView({ block: "nearest", behavior: smooth ? "smooth" : "auto" });
+			if (!window.matchMedia("(pointer: fine)").matches) return;
+			thread.querySelector<HTMLElement>('[data-testid="answer-field"] textarea, [data-testid="practice-thinking-field"] textarea, [data-kbdrow="0"]')?.focus({ preventScroll: true });
+		}));
+	}, [checkId, setCheckOpen, setCheckRevealed]);
+	const openCheckRef = useRef(openCheck);
+	openCheckRef.current = openCheck;
+	// Home's Answer/Solve (feature 002, `?answer=<toolCallId>`): once, when it
+	// is still the waiting item, the thread comes into view open and focused.
+	const answerHandledRef = useRef(false);
+	useEffect(() => {
+		if (answerHandledRef.current || initialAnswer === undefined) return;
+		answerHandledRef.current = true;
+		clearAnswerParam();
+		if (!answerOpensDock(initialAnswer, checkId)) return;
+		// After the mount's own layout (reserve, stick-to-bottom) settles. Not
+		// cancelled on cleanup: the handled guard makes this one-shot.
+		requestAnimationFrame(() => requestAnimationFrame(() => openCheckRef.current()));
+	}, [initialAnswer, checkId]);
+	// ENTER OPENS THE WAITING CHECK (owner, keyboard round 2026-10-06): while a
+	// question waits closed, Enter is never dead. A typing surface or a
+	// focused button owns its own Enter; this claims only the dead case.
+	useEffect(() => {
+		if (!pending || checkOpen) return;
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (e.key !== "Enter" || e.altKey) return;
+			if (e.shiftKey && !e.metaKey && !e.ctrlKey) return;
+			const t = e.target as HTMLElement | null;
+			if (t && mlResultKeepsNativeEnter(t)) return;
+			if (
+				t &&
+				((t.tagName === "INPUT" && (t as HTMLInputElement).type !== "range") ||
+				t.tagName === "TEXTAREA" ||
+				t.isContentEditable ||
+				t.closest("button"))
+			)
+				return;
+			e.preventDefault();
+			openCheckRef.current();
+		};
+		document.addEventListener("keydown", onKeyDown);
+		return () => document.removeEventListener("keydown", onKeyDown);
+	}, [pending, checkOpen]);
+
 	// ⌘T (toggle-user-thinking, owner round 2026-10-07): set EVERY user
 	// thinking row to one state — transcript rows default open, so the
 	// first press collapses everything, the second re-expands.
@@ -673,13 +781,18 @@ function ChatView({
 	// DOM at event time — the docks mount and unmount, refs would go
 	// stale. The quiz dock's rows↔thinking claim never reaches here.
 	const cycleChatFields = useCallback((): readonly HTMLElement[] => {
-		const pick = (sel: string) => Array.from(document.querySelectorAll<HTMLElement>(sel));
-		return [
+		// A closed check thread keeps its form mounted but hidden: not a stop.
+		const pick = (sel: string) => Array.from(document.querySelectorAll<HTMLElement>(sel)).filter((el) => !el.closest("[hidden], [inert]"));
+		const fields = [
 			...pick('[data-testid="reading-thinking-field"] textarea'),
 			...pick('[data-testid="question-dock"] textarea'),
 			...pick('[data-testid="practice-dock"] textarea'),
 			...pick('[data-testid="composer"] textarea'),
 		];
+		// A waiting check whose thread is closed leaves no field: Tab goes to the
+		// bottom bar's "Go to it", and Enter there opens the thread (owner, 2026-11-08).
+		if (fields.length > 0) return fields;
+		return pick('[data-testid="check-go-to"]').filter((el) => el.getClientRects().length > 0);
 	}, []);
 	useFieldCycle(cycleChatFields);
 	const composerInputRef = useRef<HTMLTextAreaElement>(null);
@@ -901,7 +1014,6 @@ function ChatView({
 
 	const [readingReserve, setReadingReserve] = useState(0);
 	const [dockReserve, setDockReserve] = useState(160);
-	const [questionTarget, setQuestionTarget] = useState<HTMLDivElement | null>(null);
 	const syncTurns = useCallback(async () => {
 		try {
 			const record = await readSessionMetadata(chatId, true);
@@ -1204,6 +1316,74 @@ function ChatView({
 		<SetupModelsButton onOpen={() => setSetupOpen(true)} />
 	) : undefined;
 
+	// The waiting check's thread, rendered from its part slot (feature 025,
+	// R8). `SessionPartState id=""` keeps its storage keys bare
+	// (`question/<id>/…`, `problem/<id>/…`), as they were in the dock.
+	const problemStatement = activeProblem?.input && typeof activeProblem.input === "object" && "statement" in activeProblem.input && typeof activeProblem.input.statement === "string" ? activeProblem.input.statement : "";
+	const usingLine = pending && (questionDemo.demo || questionDemo.candidates.length > 1 || questionDemo.missing) ? (
+		<p className="question-demo-reference nb-thread-line lh-check-using">
+			{questionDemo.demo ? <button type="button" className="nb-thread-button nb-thread-link" onClick={() => demoPanel.open(questionDemo.demo!.id, questionDemo.panel)}>Using {questionDemo.demo.title}</button> : questionDemo.missing ? <span role="status">The referenced demo is unavailable. You can still answer.</span> : <label>Choose the referenced demo <select aria-label="Referenced demo" defaultValue="" onChange={(e) => demoPanel.open(e.target.value)}><option value="" disabled>Select a demo</option>{questionDemo.candidates.map((d, i) => <option key={d.id} value={d.id}>{d.title} ({i + 1})</option>)}</select></label>}
+		</p>
+	) : null;
+	const checkThread = checkId ? (
+		<SessionPartState id="">
+			<CheckThread
+				key={checkId}
+				id={checkId}
+				kind={pending ? "question" : "problem"}
+				label={pending ? questionKindLabel(pending.tool, (pending.input as { type?: unknown } | null)?.type) : "Problem"}
+				teaser={pending ? teaserText(String((pending.input as { question?: unknown } | null)?.question ?? "")) : problemStatement ? teaserText(problemStatement) : ""}
+				reveal={requiresReveal && !checkRevealed}
+				open={checkOpen}
+				fresh={checkFresh}
+				variant={layout.variant}
+				layer={checkLayer}
+				lessonWidth={lessonWidth}
+				shift={layout.shift}
+				anchorId={checkAnchor}
+				onOpen={openCheck}
+				onClose={() => setCheckOpen(false)}
+				using={usingLine}
+			>
+				{pending ? (
+					<QuestionDock
+						toolName={pending.tool as QuestionToolName}
+						toolCallId={pending.toolCallId}
+						input={pending.input as never}
+						active={checkOpen}
+						onReveal={openCheck}
+						phase={phases.at(-1) ?? "probe"}
+						initialDraft={questionDraft(pending.toolCallId)?.form}
+						onSaveDraft={(form) => saveQuestionDraft(pending.toolCallId, { form })}
+						compactionRunning={compacting}
+						onSubmit={(output) => {
+							// THE ANSWER IS THE QUESTION CALL'S TOOL RESULT (fork 1, owner
+							// 2026-09-26): one input event, one turn — the hook appends
+							// the optimistic graded result (the AnsweredCard shows at
+							// once) and the server's write-ahead persists it before the
+							// turn. Dismissals ride the same callback. The answer draft is
+							// retained until the submission succeeds.
+							submitAnswer(pending.tool, pending.toolCallId, output);
+						}}
+					/>
+				) : (
+					<PracticeDock
+						problemCallId={checkId}
+						statement={problemStatement}
+						active={checkOpen}
+						onReveal={openCheck}
+						// Skip takes the Escape path exactly: the same guard and confirmation.
+						onSkip={() => window.dispatchEvent(new CustomEvent("lh:kbd-abort-turn"))}
+						onSubmit={submitThinking}
+						compactionRunning={compacting}
+					/>
+				)}
+			</CheckThread>
+		</SessionPartState>
+	) : null;
+	// The active problem may sit in the deferred prefix: the window starts at its message.
+	const windowFrom = checkMessage >= 0 ? Math.min(transcript.from, transcript.offsets[checkMessage]!) : transcript.from;
+
 	return (
 		<ChatActionsContext.Provider
 			value={{
@@ -1233,6 +1413,7 @@ function ChatView({
 		>
 		<JobsContext.Provider value={jobs}>
 		<DemoPanelContext.Provider value={demoPanel}>
+		<ReferenceOriginProvider chatId={chatId} title={titleText}>
 		{/* The session surface: the transcript column (header + scroller) and
 		    the plan-tree panel as full-height SIBLINGS — the panel spans top to
 		    bottom exactly like the left sidebar, and the header (name + phase
@@ -1242,7 +1423,7 @@ function ChatView({
 			<div className="flex min-w-0 flex-1 flex-col">
 				{/* The top bar is its own block (owner, top-fade round 4): in flow
 				    above the scroller on the plain page background — no gradient. Its
-				    bottom outline (border-b border-border) matches the one that
+				    bottom outline (border-b border-rule) matches the one that
 				    separates the left sidebar — same width, same color (owner, r5).
 				    h-15 (60px), not py-2: the toggle (a size-9 icon button) renders
 				    only while the sidebar is CLOSED — an auto-height row would
@@ -1273,13 +1454,14 @@ function ChatView({
 							data-testid="phase-chip"
 							data-phase="practice"
 							aria-hidden="true"
-							className="pointer-events-none flex shrink-0 select-none items-center gap-2 text-sm text-muted-foreground"
+							className="pointer-events-none flex shrink-0 select-none items-center gap-2 text-sm text-faint max-sm:hidden"
 						>
 							Practice
-							<span className="text-muted-foreground">/</span>
+							<span className="text-faint">/</span>
 						</span>
 					) : (
-						<PhaseChip phase={phases.at(-1) ?? "probe"} />
+						// Phones give the band to the title (feature 025, T061): the phase shows from 640px.
+						<span className="contents max-sm:hidden"><PhaseChip phase={phases.at(-1) ?? "probe"} /></span>
 					)}
 					{renaming ? (
 						<>
@@ -1309,6 +1491,10 @@ function ChatView({
 						</>
 					) : (
 					<>
+						{/* The session's title is the page's heading (screen-reader heading navigation). */}
+						{/* The title arrives on its own (feature 028, gate 2 item 5); the chrome beside it stays still. */}
+						<RouteContent className="flex min-w-4 shrink items-center">
+						<h1 className="flex min-w-4 shrink">
 						<Hint
 							// F2 renames (registry) — surfaced on the hover.
 							label="Rename session"
@@ -1321,12 +1507,14 @@ function ChatView({
 								setTitleDraft(titleText);
 								setRenaming(true);
 							}}
-							className="lh-no-drag group -mx-1.5 flex min-w-4 shrink cursor-text items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-sm font-medium transition-colors hover:bg-white/[0.06]"
+							className="lh-no-drag group -mx-1.5 flex min-w-4 shrink cursor-text items-center gap-1.5 rounded-md px-1.5 py-1 text-left text-sm font-medium transition-colors hover:bg-shelf pointer-coarse:min-h-11"
 						>
 							<span className="truncate">{titleText}</span>
-							<PencilIcon className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
+							<PencilIcon className="size-3.5 shrink-0 text-faint opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
 							</button>
 						</Hint>
+						</h1>
+						</RouteContent>
 							{/* flex-1 spacer: keeps the chips at the right edge AND stays a
 							    drag surface (no carve-out) — the freed bar is grippable. */}
 							<div className="min-w-4 flex-1" aria-hidden="true" />
@@ -1343,7 +1531,7 @@ function ChatView({
 								}}
 								aria-label={demoOpenId ? "Close demo panel" : "Open demos"}
 								aria-expanded={demoOpenId !== null}
-								className="lh-no-drag flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+								className="lh-no-drag flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-shelf hover:text-ink"
 							>
 								<PanelRightIcon className="size-4" aria-hidden />
 							</button>
@@ -1361,7 +1549,7 @@ function ChatView({
 							}}
 							aria-label="Open the full plan"
 							aria-expanded={planOpen}
-							className="lh-no-drag flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-white/[0.06] hover:text-foreground"
+							className="lh-no-drag flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-faint transition-colors hover:bg-shelf hover:text-ink"
 						>
 							<WaypointsIcon className="size-4" aria-hidden />
 						</button>
@@ -1378,13 +1566,15 @@ function ChatView({
 				</TopBar>
 
 				<SessionFind scopeRef={sessionFindScopeRef} scrollContextRef={scrollContextRef} />
-				<div ref={sessionFindScopeRef} className="lh-session-scale session-workspace-layout relative flex min-h-0 flex-1 flex-col md:flex-row">
+				{/* A lesson arrives still (feature 028, gate 2 item 5): below the band only the composer inks in; the transcript never animates. */}
+				<RouteContent still ref={sessionFindScopeRef} className="session-workspace-layout relative flex min-h-0 flex-1 flex-col md:flex-row" style={layout.shift ? { "--lh-check-shift": `${layout.shift}px` } as React.CSSProperties : undefined}>
 				<Conversation className="@container/session flex h-full min-h-0 min-w-0 flex-1 flex-col" initial={false} resize={transcriptSettled ? "smooth" : "instant"} contextRef={scrollContextRef}>
 					<SessionMessageNavigation />
 					<TurnReadingPosition busy={busy} messages={messages} onReserve={setReadingReserve} />
 					<SessionTurnRail messages={messages} nativeMessages={nativeMessages} turns={turns} onReserve={setReadingReserve} />
-					<ConversationContent scrollClassName="min-h-0 flex-1 [scroll-padding-bottom:160px]" className="@container min-h-full gap-0 p-0">
-						<div data-testid="lesson-content" data-session-find-root="" className={`${COLUMN} flex flex-1 flex-col gap-6 pt-4`}>
+					<ConversationContent scrollClassName="min-h-0 flex-1 [scroll-padding-bottom:160px]" className="@container relative min-h-full gap-0 p-0">
+						<CheckMarginLayer onLayer={setCheckLayer} onWidth={setLessonWidth} />
+						<div data-testid="lesson-content" data-session-find-root="" data-check-margin={layout.variant === "margin" || undefined} className={`${COLUMN} flex flex-1 flex-col gap-6 pt-4`}>
 							{messages.length === 0 && !busy && (
 								<ConversationEmptyState
 									title="New session"
@@ -1392,11 +1582,12 @@ function ChatView({
 								/>
 							)}
 
-							{transcript.from > 0 && <TranscriptBackfillSentinel key={transcript.from} contextRef={scrollContextRef} onNear={transcript.extend} />}
-							<TranscriptScrollKeeper from={transcript.from} contextRef={scrollContextRef}>
+							{windowFrom > 0 && <TranscriptBackfillSentinel key={windowFrom} contextRef={scrollContextRef} onNear={transcript.extend} />}
+							<SettledMessagesContext.Provider value={settledMessages}>
+							<TranscriptScrollKeeper from={windowFrom} contextRef={scrollContextRef}>
 							{messages.map((m, mi) =>
 								// Deferred prefix (transcript window): mounts in idle chunks.
-								transcript.offsets[mi + 1]! <= transcript.from ? null :
+								transcript.offsets[mi + 1]! <= windowFrom ? null :
 								m.role === "user" && isSubagentSteer(m) ? (
 									// Sub-agent delivery (wake-pipeline steer): NO message bubble — the
 									// artifact card sits in the transcript column directly, full width
@@ -1434,9 +1625,9 @@ function ChatView({
 											case "data-compaction-cut":
 												return <CompactionCutDivider key={pi} data={part.data as CompactionDividerData} />;
 											case "data-library-references":
-												return <ReferencesCard key={pi} references={(part.data as { references: LibraryReference[] }).references} />;
+												return <ReferencesCard key={pi} references={(part.data as { references: LibraryReference[] }).references} messageId={m.id || `m-${mi}`} />;
 											case "data-practice-thinking":
-												return <ThinkingCard key={pi} data={part.data as PracticeThinkingData} />;
+												return <ThinkingCard key={pi} data={part.data as PracticeThinkingData} references={messageReferences(m.parts)} messageId={m.id || `m-${mi}`} />;
 											case "data-practice-next":
 												// The learner's move-on signal (owner round 16): a compact
 												// centered mono-caps line — chrome, the dismissal register.
@@ -1444,7 +1635,7 @@ function ChatView({
 													<div
 														key={pi}
 														data-testid="practice-next-line"
-														className="my-4 flex items-center justify-center gap-1.5 font-ui text-sm font-medium text-muted-foreground"
+														className="my-4 flex items-center justify-center gap-1.5 font-sans text-sm font-medium text-faint"
 													>
 														<ArrowRightIcon className="size-3" />
 														Next problem
@@ -1477,50 +1668,27 @@ function ChatView({
 									first lesson block (the Lacan session, 2026-09-27). */}
 									{m.role === "assistant" &&
 									mi > 0 &&
-									transcript.offsets[mi]! >= transcript.from &&
+									transcript.offsets[mi]! >= windowFrom &&
 									phases[mi] === "teach" &&
 									phases[mi - 1] !== "teach" &&
 									teachStepIndex(m.parts) === -1 ? (
 										<PhaseDivider key={`teach-${m.id || `m-${mi}`}`} phase="teach" />
 									) : null}
 									{m.role === "user" ? (
-										/* THE DOCUMENT ROW (owner round, 2026-10-05): no right-aligned
-										    bubble — the transcript reads as a document. User text is a
-										    full-width quote block: muted "You" label, muted rail,
-										    FULL-opacity text (learner words are content, not whisper).
-										    Distinguished from user thinking at a glance: thinking is
-										    collapsed + 50% italic; this is upright and present.
-										    User text renders plain — the model's LaTeX pipeline is not
-										    applied to learner-authored text ($ stays $, no surprises).
-										    Rendered WITHOUT the Message wrapper — that is the bubble. */
-											<div
-										data-testid="user-message"
-										/* THE DOCUMENT, ALL-IN (owner rounds two+three, 2026-10-07):
-										    no chat side — the user message is a full-width card-color
-										    BAND, the IDENTICAL geometry as the thinking rows: 5px band
-										    padding, the left gap matches it, the rail fills the 3ch
-										    inset (the band is the authorship mark against the agent's
-										    transparent prose). The "You" label stays — one register
-										    with the thinking labels. No rail (polish pass 2026-10-26):
-										    the band alone marks authorship; text keeps the 3ch inset. */
-										className="lh-reading my-2 rounded-lg bg-card px-4 py-3 font-ui text-sm"
-									>
-												{/* The rail GROUPS (owner round 4, 2026-10-05): the YOU heading
-												    sits INSIDE the rail, same mono-xs register and same 1ch
-												    rail as the thinking rows — one quote geometry. */}
-												<div className="mb-1 font-medium text-muted-foreground">You</div>
-												{m.parts.map((part, pi) => part.type === "data-library-references" ? (
-													<ReferencesCard key={pi} references={(part.data as { references: LibraryReference[] }).references} />
-												) : null)}
-												<div className="lh-prose whitespace-pre-wrap text-foreground">
-													<UserTurnText text={m.parts.filter((p) => p.type === "text").map((p) => p.text).join("\n")} />
-												</div>
-											</div>
+										<UserTurn
+											arrivalId={mi >= messages.length - 2 ? m.id : undefined}
+											text={m.parts.filter((p) => p.type === "text").map((p) => p.text).join("\n")}
+											references={messageReferences(m.parts)}
+											messageId={m.id || `m-${mi}`}
+											before={m.parts.map((part, pi) => part.type === "data-library-references" ? (
+												<ReferencesCard key={pi} references={(part.data as { references: LibraryReference[] }).references} messageId={m.id || `m-${mi}`} />
+											) : null)}
+										/>
 									) : (
 									<Message from="assistant" className="max-w-full">
 									<MessageContent className="w-full">
 											{m.parts.map((part, pi) => {
-												if (transcript.offsets[mi]! + pi < transcript.from) return null;
+												if (transcript.offsets[mi]! + pi < windowFrom) return null;
 												const isLastPart = mi === messages.length - 1 && pi === m.parts.length - 1;
 												// The step boundary where teaching begins (round 8): when
 												// the teach flip happens in a LATER step, its PhaseDivider
@@ -1558,7 +1726,7 @@ function ChatView({
 														const sourceId = textPartMessageId(part.id);
 														const anchor = sourceId && sourceTextParts.get(sourceId) === part.id ? messageAnchorId(sourceId) : undefined;
 														return (
-															<AssistantResponse key={part.id || pi} id={anchor} data-answer-part-id={part.id} data-source-message-id={sourceId ?? undefined} className="lh-source-passage" source={part.text ?? ""} streaming={part.state === "streaming"} />
+															<AssistantResponse key={part.id || pi} id={anchor} data-answer-part-id={part.id} data-source-message-id={sourceId ?? undefined} className="lh-source-passage" source={part.text ?? ""} streaming={part.state === "streaming"} chipScope={`${m.id || `m-${mi}`}:t${pi}`} />
 														);
 													}
 													case "reasoning":
@@ -1593,14 +1761,15 @@ function ChatView({
 														// transcript; answered ones render as graded records.
 														if (part.state === "output-available") {
 															return (
-																<AnsweredCard key={pi} answer={part.output as QuestionAnswerData} input={part.input} checked={part.wolframChecked === true} />
+																<AnsweredCard key={pi} answer={part.output as QuestionAnswerData} input={part.input} checked={part.wolframChecked === true} chipScope={`${m.id || `m-${mi}`}-${part.toolCallId}`} toolCallId={part.toolCallId} />
 															);
 														}
-														return null;
+														// The waiting one is its check thread (feature 025, R8).
+														return part.toolCallId === pending?.toolCallId ? checkThread : null;
 													}
 													case "tool-problem": {
 														if (part.state === "input-streaming") return <LiveToolCard key={pi} part={part as ArtifactPartProps["part"]} />;
-														if (part.toolCallId === activeProblem?.toolCallId) return null;
+														if (part.toolCallId === activeProblem?.toolCallId) return checkThread;
 														const Renderer = artifactRenderers.problem;
 														return Renderer ? <Renderer key={pi} part={part as ArtifactPartProps["part"]} /> : null;
 													}
@@ -1633,6 +1802,7 @@ function ChatView({
 								</SessionPartState>
 							))}
 							</TranscriptScrollKeeper>
+							</SettledMessagesContext.Provider>
 
 							{/* THE placeholder, ACTION-gated (owner, optimistic round
 							    3, 2026-10-02): spinner + shimmered Thinking… from the
@@ -1655,23 +1825,19 @@ function ChatView({
 						    the THINKING placeholder by construction (the gate sits
 						    BEFORE beginTurn; the settle kick runs after endTurn). */}
 							{compacting && (
-								<span className="flex items-center gap-2 font-ui text-sm font-medium text-muted-foreground">
+								<span className="lh-reading lh-quiet-line">
 									<BrailleSpinner label="Compacting context" />
-									<Shimmer duration={1}>COMPACTING CONTEXT…</Shimmer>
+									<Shimmer duration={1} className="text-meta">COMPACTING CONTEXT…</Shimmer>
 								</span>
 							)}
 							{(status === "submitted" || turnInFlight) && (
 								<ThinkingPlaceholder />
 							)}
 							{error && (
-								<div className="rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm">
+								<div className="rounded-lg border border-red/50 bg-red/10 px-3 py-2 text-sm">
 									Something went wrong: {error.message}
 								</div>
 							)}
-				{pending && (questionDemo.demo || questionDemo.candidates.length > 1 || questionDemo.missing) && <div className="question-demo-reference lh-reading py-2 text-sm">
-					{questionDemo.demo ? <button type="button" className="underline underline-offset-4" onClick={() => demoPanel.open(questionDemo.demo!.id, questionDemo.panel)}>Using {questionDemo.demo.title}</button> : questionDemo.missing ? <span role="status">The referenced demo is unavailable. You can still answer.</span> : <label>Choose the referenced demo <select aria-label="Referenced demo" defaultValue="" onChange={(e) => demoPanel.open(e.target.value)}><option value="" disabled>Select a demo</option>{questionDemo.candidates.map((d, i) => <option key={d.id} value={d.id}>{d.title} ({i + 1})</option>)}</select></label>}
-				</div>}
-							<div ref={setQuestionTarget} data-question-target="" />
 						</div>
 
 						{/* Reading navigation may reserve space independently of the footer. */}
@@ -1680,29 +1846,22 @@ function ChatView({
 				</ConversationContent>
 				<SessionReadingState />
 				<TranscriptScrollPadding reserve={dockReserve} />
-				<TranscriptRenderSkip from={transcript.from} messages={messages} />
+				<TranscriptRenderSkip from={windowFrom} messages={messages} />
 				{/* The active summary and answer float over the scrollable lesson. */}
 
 				<DockFooter
-					questionTarget={questionTarget}
 					onReserve={setDockReserve}
-					pending={pending}
-					initialQuestionDraft={pending ? questionDraft(pending.toolCallId)?.form : undefined}
-					onSaveQuestionDraft={(form) => { if (pending) saveQuestionDraft(pending.toolCallId, { form }); }}
-					practice={activeProblem}
-					compactionRunning={compacting}
-					onSubmitThinking={submitThinking}
+					check={pending ? "question" : activeProblem ? "problem" : null}
+					checkInline={layout.variant === "inline"}
+					checkId={checkId}
+					onGoToCheck={openCheck}
 					chatId={chatId}
-					requiresReveal={requiresReveal}
-					phase={phases.at(-1) ?? "probe"}
 					turns={turns}
 					contextTokens={contextTokens}
 					pricing={pricing}
 					queuedSteers={visibleQueuedSteers(steerQueue, nativeMessages)}
 					onRemoveSteer={cancelSteer}
 					setupCta={setupAction}
-					answerTarget={initialAnswer}
-					onAnswerHandled={clearAnswerParam}
 					composer={
 						<Composer
 							// Stop aborts ANY in-flight turn (stream-reattach wave): the
@@ -1725,17 +1884,6 @@ function ChatView({
 							placeholder={nextReady ? "Ask anything, or press Enter for the next one." : undefined}
 						/>
 					}
-					onSubmitAnswer={(output) => {
-						if (!pending) return;
-						// THE ANSWER IS THE QUESTION CALL'S TOOL RESULT (fork 1, owner
-						// 2026-09-26): one input event, one turn — the hook appends
-						// the optimistic graded result (the AnsweredCard shows at
-						// once) and the server's write-ahead persists it before the
-						// turn; the teacher's reaction streams below it. Dismissals
-						// ride the same callback (QuestionAnswerData.dismissed). The
-						// answer draft is retained until the submission succeeds.
-						submitAnswer(pending.tool, pending.toolCallId, output);
-					}}
 				/>
 				</Conversation>
 				<TranscriptArrivalScript storageKey={sessionStateStore?.storageKey} gradientHeight={GRADIENT_H} />
@@ -1760,9 +1908,10 @@ function ChatView({
 				)}
 				{planOpen && <PlanPopup messages={messages} onClose={() => setPlanOpen(false)} />}
 				<AbortTurnDialog mode={abortAsk} onClose={() => setAbortAsk(null)} onConfirm={confirmAbort} busy={busy} />
-				</div>
+				</RouteContent>
 			</div>
 		</div>
+		</ReferenceOriginProvider>
 		</DemoPanelContext.Provider>
 		</JobsContext.Provider>
 		</SessionMermaidContext.Provider>
@@ -1861,6 +2010,11 @@ export function answerOpensDock(target: string | undefined, pendingId: string | 
 	return Boolean(target) && target === pendingId;
 }
 
+/** Sessions whose `?prompt` topic this tab has sent, and how many record
+ *  messages this tab has shown for each (see the effects in Chat). */
+const initialPromptSent = new Set<string>();
+const recordShown = new Map<string, number>();
+
 export function initialPromptOwed(messages: readonly { role: string }[], prompt: string | undefined): boolean {
 	if (!prompt) return false;
 	return !messages.some((m) => m.role === "user" || m.role === "assistant");
@@ -1914,53 +2068,42 @@ export function shouldStampGeometryMute(nextH: number, prevH: number, pending: b
 	return pending && nextH > prevH + 1;
 }
 
+/** The bar's line while a check waits: where the thread is (beside the lesson
+ *  in the margin, above when inline). Exported for the render pins. */
+export function checkPendingLine(check: "question" | "problem", inline: boolean): string {
+	if (check === "problem") return inline ? "Solve the problem above" : "Solve the problem beside the lesson";
+	return inline ? "Answer the check above" : "Answer the check beside the lesson";
+}
+
 function DockFooter({
-	questionTarget,
 	onReserve,
-	pending,
-	initialQuestionDraft,
-	onSaveQuestionDraft,
-	practice,
-	compactionRunning,
-	onSubmitThinking,
-	requiresReveal,
-	phase,
+	check,
+	checkInline,
+	checkId,
+	onGoToCheck,
 	turns,
 	contextTokens,
 	pricing,
 	composer,
-	onSubmitAnswer,
 	chatId,
 	setupCta,
 	queuedSteers,
 	onRemoveSteer,
-	answerTarget,
-	onAnswerHandled,
 }: {
-	questionTarget: HTMLElement | null;
 	onReserve: (height: number) => void;
-	pending: ReturnType<typeof findPendingToolCall>;
-	initialQuestionDraft?: QuestionFormDraft;
-	onSaveQuestionDraft: (draft: QuestionFormDraft) => void;
-	/** Compaction running for this chat (round 14) — the docks' submit
-	 *  affordance gate (the server's registry is the real one). */
-	compactionRunning: boolean;
-	/** The ACTIVE practice problem (practice sessions, 2026-10-04):
-	 *  {toolCallId, input} — dock ownership exactly like a pending
-	 *  question (the composer is replaced); null in teaching sessions. */
-	practice: { toolCallId: string; input: unknown } | null;
-	/** (commit, text) — the practice dock's two submit lanes. */
-	onSubmitThinking: (text: string) => void;
-	/** Teach-phase pending question: arrives collapsed behind the reveal button (W5). */
-	requiresReveal: boolean;
-	/** Session phase at the pending question — scales the thinking field. */
-	phase: Phase3;
+	/** A waiting check or problem (feature 025, R8): it is answered in its
+	 *  thread beside the lesson, and this bar says so in the composer's place. */
+	check: "question" | "problem" | null;
+	/** The thread sits in the transcript (phones, the pane open), not in the margin. */
+	checkInline: boolean;
+	checkId: string | null;
+	/** "Go to it": scrolls to, opens and focuses the thread. */
+	onGoToCheck: () => void;
 	/** The session's usage log — the stats bar beneath the composer folds it. */
 	turns: TurnUsage[];
 	contextTokens: number | null;
 	pricing?: SessionPricing;
 	composer: React.ReactNode;
-	onSubmitAnswer: (output: QuestionAnswerData) => void;
 	/** The model control's pass-through (the stats bar hosts it). */
 	chatId: string;
 	/** The queued-steer indicator's lines (composer steering, 2026-10-03):
@@ -1968,15 +2111,8 @@ function DockFooter({
 	queuedSteers: QueuedSteerLine[];
 	/** Withdraw one undelivered queued steer (feature 002). */
 	onRemoveSteer: (id: string) => void;
-	/** The persistent setup CTA (BYOK, owner 2026-09-22): the same pill
-	 *  home and /chat/new carry, above the composer while slots are unset. */
+	/** The persistent setup CTA (BYOK, owner 2026-09-22): in the toolbar, in place of the model controls. */
 	setupCta?: React.ReactNode;
-	/** Home's Answer/Solve (feature 002): `?answer=<toolCallId>`. When it is
-	 *  still the waiting item, the dock opens on it at the bottom; a stale
-	 *  id leaves the session as it would open anyway. */
-	answerTarget?: string;
-	/** Runs once after the target is read, to drop the param. */
-	onAnswerHandled?: () => void;
 }) {
 	const { isAtBottom, scrollToBottom, scrollRef, stopScroll, state: scrollState } = useStickToBottomContext();
 	const phone = usePhoneWidth();
@@ -1989,8 +2125,8 @@ function DockFooter({
 	}, [scrollRef, stopScroll]);
 	const scrollMotionRef = useRef<ReturnType<typeof animateDockScroll> | null>(null);
 	const jumpPendingRef = useRef(false);
-	const ownerRef = useRef(pending?.toolCallId ?? practice?.toolCallId);
-	ownerRef.current = pending?.toolCallId ?? practice?.toolCallId;
+	const ownerRef = useRef(checkId);
+	ownerRef.current = checkId;
 	const scrollGestureAtRef = useRef(0);
 	const composingRef = useRef(false);
 	// Retain wheel intent through inertia and layout changes. Geometry can
@@ -2001,43 +2137,20 @@ function DockFooter({
 	// frame too late. Assigned per render like the other refs below.
 	const atBottomRef = useRef(isAtBottom);
 	atBottomRef.current = isAtBottom;
-	// Teach-phase mount (session reload with a pending check): the dock starts
-	// as the collapsed invitation too — the check must not pop open on reload.
-	const [expanded, setExpanded] = useSessionState(`dock/${pending?.toolCallId ?? practice?.toolCallId ?? "composer"}/expanded`, !pending && !practice);
-	// Reveal state (W5): false until the learner clicks the invitation. While
-	// false, the scroll machine must NOT auto-expand at the bottom — the
-	// learner reads the teaching first and opens the check when ready. Once
-	// revealed, the normal collapse machine rules apply untouched.
-	const [revealed, setRevealed] = useSessionState(`dock/${pending?.toolCallId ?? practice?.toolCallId ?? "composer"}/revealed`, false);
-
-
-	const pendingId = pending?.toolCallId ?? practice?.toolCallId ?? null;
-
-	// Teach-question ARRIVAL state, applied during render — BEFORE the
-	// first paint (owner, scroll-honesty round 2026-09-25). Until now the
-	// stale expanded=true left by the previous question painted one frame
-	// of the OPEN question: the dock measured itself tall, permanently
-	// reserved that height, and the collapse after the paint could never
-	// give it back (fold immunity) — so a collapsed teach question scrolled
-	// the transcript as if it had opened. Resetting here means the paint
-	// measures the bar, the reserve keeps the composer's height, and the
-	// only motion is the teaching text itself.
-	const prevPendingIdRef = useRef(pendingId);
-	if (pendingId !== prevPendingIdRef.current) {
-		const wasQuestion = prevPendingIdRef.current !== null;
-		prevPendingIdRef.current = pendingId;
-		if (pendingId && requiresReveal) {
-			const arrival = revealArrival(wasQuestion);
-			setExpanded(arrival.expanded);
-			setRevealed(arrival.revealed);
-		} else if (pendingId) {
-			// Practice and probe arrivals use the same explicit summary reveal.
-			setExpanded(probeArrivalExpanded(atBottomRef.current));
-			setRevealed(false);
-		} else if (atBottomRef.current) {
-			setExpanded(true);
-		}
-	}
+	// The composer's fold (reading history compacts it). A waiting check has
+	// no fold: its bar is one line, and the check itself is in its thread.
+	const [expanded, setExpanded] = useSessionState("dock/composer/expanded", true);
+	// Back to the composer at the bottom (the check was answered): it opens.
+	// In a layout effect, not during render: `expanded` lives in the session
+	// store, and writing it mid-render updates its other subscribers (React's
+	// "Cannot update a component while rendering a different component").
+	// Before paint, so the bar never shows folded for a frame.
+	const prevCheckRef = useRef(checkId);
+	useLayoutEffect(() => {
+		if (checkId === prevCheckRef.current) return;
+		prevCheckRef.current = checkId;
+		if (!checkId && atBottomRef.current && !expandedRef.current) setExpanded(true);
+	}, [checkId, setExpanded]);
 
 	// ── Fold machine (position, not velocity — owner, scroll round 1) ──
 	// Footer reflow is covered by geometry mute while the fold settles. Leave it → fold; reach it
@@ -2047,10 +2160,8 @@ function DockFooter({
 	// Dock ownership (the fold machine, the reserve immunity, the arrival
 	// states): a pending question OR an active practice problem — either
 	// replaces the composer and owns the band.
-	const pendingRef = useRef(!!pending || !!practice);
-	pendingRef.current = !!pending || !!practice;
-	const revealedRef = useRef(revealed);
-	revealedRef.current = revealed;
+	const pendingRef = useRef(!!check);
+	pendingRef.current = !!check;
 
 	// Part A of the same round (the resize mute): any block size change
 	// stamps this — the fold machine ignores scroll events for a beat after,
@@ -2175,8 +2286,7 @@ function DockFooter({
 			atBottomRef.current = false;
 			// A fold can shorten the range all the way to the current position.
 			// The next downward wheel then has no native scroll event to emit.
-			if (e.deltaY > 0 && !expandedRef.current && el.scrollHeight - el.clientHeight - el.scrollTop <= EXPAND_DIST && (!pendingRef.current || revealedRef.current)) {
-				setRevealed(true);
+			if (e.deltaY > 0 && !expandedRef.current && el.scrollHeight - el.clientHeight - el.scrollTop <= EXPAND_DIST) {
 				setExpanded(true);
 				void suppressFoldDuringReveal();
 			}
@@ -2319,27 +2429,6 @@ function DockFooter({
 			interrupt();
 		};
 	}, [scrollRef]);
-	const expandAndReveal = () => {
-		setRevealed(true); // the teach-check invitation was accepted (W5)
-		setExpanded(true);
-		void suppressFoldDuringReveal();
-		// Opening the dock puts the caret in the field (owner, 2026-10-28) —
-		// free-text questions and problems only, so choice questions keep
-		// arrow-key walking, and only on fine pointers, so a phone's keyboard
-		// never covers the question.
-		requestAnimationFrame(() => requestAnimationFrame(() => {
-			if (!window.matchMedia("(pointer: fine)").matches) return;
-			shellRef.current?.querySelector<HTMLTextAreaElement>('[data-testid="answer-field"] textarea, [data-testid="practice-thinking-field"] textarea')?.focus({ preventScroll: true });
-		}));
-	};
-	// The turn strip's collapse control: an explicit fold, like reading
-	// history. Scrolling back to the bottom (or focusing the field) expands.
-	// Skip takes the Escape path exactly: the same guard and confirmation.
-	const onSkipProblem = () => window.dispatchEvent(new CustomEvent("lh:kbd-abort-turn"));
-	const collapseDock = () => {
-		expandIntentRef.current = false;
-		setExpanded(false);
-	};
 	const jumpToBottomThenExpand = () => {
 		const element = scrollRef.current;
 		if (!element || jumpPendingRef.current) return;
@@ -2365,53 +2454,10 @@ function DockFooter({
 			jumpPendingRef.current = false;
 			expandIntentRef.current = false;
 			if (!completed || ownerRef.current !== owner) { setBandHeld(false); return; }
-			setRevealed(true);
 			setExpanded(true);
 			void suppressFoldDuringReveal().finally(() => setBandHeld(false));
 		});
 	};
-	const expandAndRevealRef = useRef(expandAndReveal);
-	expandAndRevealRef.current = expandAndReveal;
-	// Home's Answer/Solve (feature 002): open on the waiting item once.
-	const answerHandledRef = useRef(false);
-	useEffect(() => {
-		if (answerHandledRef.current || answerTarget === undefined) return;
-		answerHandledRef.current = true;
-		onAnswerHandled?.();
-		if (!answerOpensDock(answerTarget, pendingId)) return;
-		// After the mount's own layout (reserve, stick-to-bottom) settles,
-		// exactly like a click on the bar. Not cancelled on cleanup: the
-		// handled guard makes this one-shot (StrictMode re-runs effects).
-		requestAnimationFrame(() => requestAnimationFrame(() => expandAndRevealRef.current()));
-	}, [answerTarget, pendingId, onAnswerHandled]);
-	// ENTER OPENS THE WAITING CHECK (owner, keyboard round 2026-10-06):
-	// while a question waits with the dock CLOSED — behind its reveal
-	// invitation or collapsed by scroll — Enter is never dead. The check
-	// opens. A typing surface or a focused button owns its own Enter (the
-	// focused button activates natively) — this listener claims only
-	// the dead case: plain focus with Enter doing nothing.
-	useEffect(() => {
-		if (!pending || expanded) return;
-		const onKeyDown = (e: KeyboardEvent) => {
-			if (e.key !== "Enter" || e.altKey) return;
-			if (e.shiftKey && !e.metaKey && !e.ctrlKey) return;
-			const t = e.target as HTMLElement | null;
-			if (t && mlResultKeepsNativeEnter(t)) return;
-			if (
-				t &&
-				((t.tagName === "INPUT" && (t as HTMLInputElement).type !== "range") ||
-				t.tagName === "TEXTAREA" ||
-				t.isContentEditable ||
-				t.closest("button"))
-			)
-				return;
-			e.preventDefault();
-			expandAndRevealRef.current();
-		};
-		document.addEventListener("keydown", onKeyDown);
-		return () => document.removeEventListener("keydown", onKeyDown);
-	}, [pending, expanded]);
-
 	useEffect(() => {
 		const el = scrollRef.current;
 		if (!el) return;
@@ -2480,8 +2526,6 @@ function DockFooter({
 			} else if (scrollingDown && d <= EXPAND_DIST) {
 				// Automatic expansion belongs only to the last 16px of the
 				// actual scroll range, including the reserved dock space.
-				if (pendingRef.current && !revealedRef.current) return;
-				setRevealed(true);
 				setExpanded(true);
 				void suppressFoldDuringReveal();
 			}
@@ -2514,11 +2558,7 @@ function DockFooter({
 		if (b) offer(b.getBoundingClientRect().height);
 	};
 
-	const mode = pending
-		? `question:${pending.toolCallId}`
-		: practice
-			? `practice:${practice.toolCallId}`
-			: "chat";
+	const mode = check ? `check:${checkId}` : "chat";
 	// The opening variant of a session appears instantly — the fade/rise is
 	// reserved for mid-session transitions.
 	const initialModeRef = useRef(mode);
@@ -2528,7 +2568,6 @@ function DockFooter({
 	// growth keeps the same stateKey and is NOT animated.
 	const shellRef = useRef<HTMLDivElement>(null);
 	const heightAnimationRef = useRef<Animation | null>(null);
-	const [outgoing, setOutgoing] = useState<{ mode: string; height: number } | null>(null);
 	// Child textarea growth and viewport reflow need to update the reserve
 	// even when the overlay itself did not render. Ignore animated heights.
 	useEffect(() => {
@@ -2551,7 +2590,7 @@ function DockFooter({
 	// term (the fold) belongs to EVERY docked variant — question AND
 	// practice (owner fix, 2026-10-06). Typing growth keeps the key and
 	// never animates; the fold/unfold morphs like teaching always has.
-	const stateKey = dockStateKey(mode, !!pending || !!practice, expanded);
+	const stateKey = dockStateKey(mode, !!check, check ? true : expanded);
 	const latestStateKeyRef = useRef(stateKey);
 	latestStateKeyRef.current = stateKey;
 	const prevRef = useRef<{ key: string; height: number; expanded: boolean; mode: string } | null>(null);
@@ -2578,7 +2617,6 @@ function DockFooter({
 		// fold, or question → composer) is filtered by the offer policy.
 		measureBlock();
 		if (from !== undefined && Math.abs(from - h) > 1 && !reducedDockMotion()) {
-			setOutgoing(p?.expanded && !expanded && p.mode === mode ? { mode, height: from - 2 } : null);
 			const animation = el.animate([{ height: `${from}px` }, { height: `${h}px` }], {
 				duration: DOCK_MOTION_MS,
 				easing: DOCK_EASING,
@@ -2587,16 +2625,15 @@ function DockFooter({
 			void animation.finished.then(() => {
 				if (heightAnimationRef.current !== animation) return;
 				heightAnimationRef.current = null;
-				setOutgoing(null);
 				measureBlock();
 			}, () => {});
-		} else setOutgoing(null);
+		}
 		prevRef.current = { key: stateKey, height: h, expanded, mode };
 	});
 
 	return (
 		<div className="lesson-footer pointer-events-none absolute inset-x-0 bottom-0" style={{ right: sbInset, bottom: keyboardInset }}>
-			<div ref={blockRef} data-dock-block="" className="relative py-3" style={{ "--dock-max-h": dockMaxH ? `${dockMaxH}px` : undefined, "--dock-question-max-h": questionMaxH ? `${questionMaxH}px` : undefined, "--dock-input-max-h": questionMaxH ? `${questionMaxH / 2}px` : undefined } as React.CSSProperties}>
+			<div ref={blockRef} data-dock-block="" className="relative py-3" style={{ "--dock-max-h": dockMaxH ? `${dockMaxH}px` : undefined, "--dock-input-max-h": questionMaxH ? `${questionMaxH / 2}px` : undefined } as React.CSSProperties}>
 				<div className={`${DOCK} relative flex max-h-[var(--dock-max-h)] flex-col [&>div:not([data-testid=dock-shell])]:shrink-0`}>
 					{/* The queued-steer indicator (owner spec 2026-10-03): quiet
 					    one-liners above the shell - right-aligned to where its corner
@@ -2610,51 +2647,28 @@ function DockFooter({
 					    transcript's reachable end stops above it. Desktop keeps the
 					    button at the shell's top-right corner (below). */}
 					{phone && (!isAtBottom || bandHeld) && (
-						<div data-testid="scroll-band" className="pointer-events-auto -mx-4 flex h-12 items-center justify-end bg-background px-4">
+						<div data-testid="scroll-band" className="pointer-events-auto -mx-4 flex h-12 items-center justify-end bg-paper px-4">
 							<ConversationScrollButton aria-label="Scroll to latest" onClick={jumpToBottomThenExpand} className="static translate-x-0" />
 						</div>
 					)}
 
 
-					<div ref={shellRef} data-testid="dock-shell" data-compact={!expanded}
-						onCompositionStartCapture={() => { composingRef.current = true; setRevealed(true); setExpanded(true); }}
+					<div ref={shellRef} data-testid="dock-shell" data-compact={!check && !expanded} {...inkOrder(1)} data-ink-verb="settle"
+						onCompositionStartCapture={() => { composingRef.current = true; setExpanded(true); }}
 						onCompositionEndCapture={() => { composingRef.current = false; }}
-						onFocusCapture={(event) => { if ((event.target as HTMLElement).matches("textarea, input, [contenteditable=true]")) { setRevealed(true); setExpanded(true); } }}
+						onFocusCapture={(event) => { if ((event.target as HTMLElement).matches("textarea, input, [contenteditable=true]")) setExpanded(true); }}
 						onClick={(event) => { if (event.target === event.currentTarget) focusSurfaceInput(event); }} className="prompt-shell pointer-events-auto flex min-h-0 select-none flex-col overflow-hidden data-[compact=true]:[&_.prompt-input]:max-h-11 data-[compact=true]:[&_.prompt-input]:overflow-y-auto data-[compact=true]:[&_[data-prompt-controls]:not(:has(.prompt-setup))]:hidden data-[compact=true]:[&_.prompt-toolbar]:justify-end data-[compact=true]:[&_[data-testid=composer]_[data-slot=input-group]]:flex-row data-[compact=true]:[&_[data-testid=composer]_.prompt-toolbar]:self-end data-[compact=true]:[&_[data-testid=composer]_.prompt-toolbar]:pb-1 data-[compact=true]:[&_[data-testid=composer]_.prompt-toolbar]:w-auto data-[compact=true]:[&_[data-testid=composer]_.prompt-toolbar]:shrink-0 [&_.prompt-input]:max-h-[var(--dock-input-max-h,12rem)]">
 						<div
 						key={mode}
 						className={`flex min-h-0 flex-col ${mode === initialModeRef.current ? "" : "dock-variant"}`}
 					>
-							{pending ? (
-								<QuestionDock
-									toolName={pending.tool as "quiz" | "probe" | "ask_user_question" | "explain" | "recall"}
-									toolCallId={pending.toolCallId}
-									input={pending.input as never}
-									expanded={expanded}
-									outgoingHeight={outgoing?.mode === mode ? outgoing.height : undefined}
-									reveal={requiresReveal && !revealed}
-									phase={phase}
-									onExpand={expandAndReveal}
-									onCollapse={collapseDock}
-									onSubmit={onSubmitAnswer}
-									initialDraft={initialQuestionDraft}
-									onSaveDraft={onSaveQuestionDraft}
-									controls={<StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} setup={setupCta} />}
-									compactionRunning={compactionRunning}
-								/>
-							) : practice ? (
-								<PracticeDock
-									problemCallId={practice.toolCallId}
-									statement={practice.input && typeof practice.input === "object" && "statement" in practice.input && typeof practice.input.statement === "string" ? practice.input.statement : ""}
-									expanded={expanded}
-									outgoingHeight={outgoing?.mode === mode ? outgoing.height : undefined}
-									onExpand={expandAndReveal}
-									onCollapse={collapseDock}
-									onSkip={onSkipProblem}
-									onSubmit={onSubmitThinking}
-									controls={<StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} setup={setupCta} />}
-									compactionRunning={compactionRunning}
-								/>
+							{check ? (
+								<div data-testid="check-pending" className="flex flex-col">
+									<p className="lh-check-pending-line">{checkPendingLine(check, checkInline)}</p>
+									<PromptToolbar controls={<StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} setup={setupCta} />}>
+										<PrimaryAction type="button" data-testid="check-go-to" onClick={onGoToCheck}>Go to it</PrimaryAction>
+									</PromptToolbar>
+								</div>
 							) : (
 								composer
 							)}

@@ -13,7 +13,7 @@ import { WorkspacePane } from "@/components/workspace-pane";
 import { folderPathLabel, sessionTurnEntries, type LhMessage, type LhViewMessage, type LibraryFolder, type LibraryItem, type SessionTurnEntry, type TurnUsage } from "@/src/core";
 import { useWorkspace } from "./workspace-context";
 
-const ROW = "block min-h-8 w-full rounded-[6px] px-2 py-1 text-left text-sm text-ink-2 hover:bg-accent hover:text-foreground pointer-coarse:min-h-11";
+const ROW = "block min-h-8 w-full rounded-md px-2 py-1 text-left text-sm text-graphite hover:bg-shelf hover:text-ink pointer-coarse:min-h-11";
 
 function Shell({ title, children }: { title: string; children: ReactNode }) {
 	const workspace = useWorkspace();
@@ -25,7 +25,7 @@ function Shell({ title, children }: { title: string; children: ReactNode }) {
 			label={title}
 			resizeLabel="Resize context panel"
 			testId="context-pane"
-			className={phone ? "page-workspace bg-background" : "hidden md:flex"}
+			className={phone ? "page-workspace bg-paper" : "hidden md:flex"}
 			rootRef={root}
 			onKeyDown={(event) => {
 				if (!phone || event.key !== "Escape") return;
@@ -43,9 +43,9 @@ function Shell({ title, children }: { title: string; children: ReactNode }) {
 								Back to chat
 							</button>
 						)}
-						<h2 className="min-w-0 flex-1 truncate text-base font-medium">{title}</h2>
+						<h2 className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{title}</h2>
 						{!phone && (
-							<button type="button" aria-label={`Close ${title}`} data-testid="context-pane-close" onClick={workspace?.closeContext} className="ui-icon-button text-muted-foreground hover:bg-accent hover:text-foreground">
+							<button type="button" aria-label={`Close ${title}`} data-testid="context-pane-close" onClick={workspace?.closeContext} className="ui-icon-button text-faint hover:bg-shelf hover:text-ink">
 								<XIcon className="ui-icon" />
 							</button>
 						)}
@@ -60,7 +60,7 @@ function Shell({ title, children }: { title: string; children: ReactNode }) {
 function Section({ title, children }: { title: string; children: ReactNode }) {
 	return (
 		<section className="flex flex-col gap-1">
-			<h3 className="px-2 text-sm font-medium text-muted-foreground">{title}</h3>
+			<h3 className="px-2 text-sm font-medium text-faint">{title}</h3>
 			{children}
 		</section>
 	);
@@ -83,7 +83,7 @@ export function SessionContextBody({ entries, demos, onJump, onOpenDemo, notes }
 			{notes}
 			<Section title="Outline">
 				{entries.length === 0
-					? <p className="px-2 text-sm text-ink-2">The outline fills in as the session goes.</p>
+					? <p className="px-2 text-sm text-graphite">The outline fills in as the session goes.</p>
 					: <nav aria-label="Session outline" data-testid="session-outline" className="flex flex-col gap-0.5">{entries.map((entry) => (
 						<button key={entry.id} type="button" onClick={() => onJump(entry)} className={`${ROW} line-clamp-2`}>{outlineLabel(entry)}</button>
 					))}</nav>}
@@ -115,17 +115,17 @@ export function SessionNotesBody({ pages, failed, canMakeNotes, busy, error, onO
 	return (
 		<Section title="Notes">
 			{pages === null && !failed && <div role="status" aria-label="Loading notes" className="flex flex-col gap-2 px-2"><Skeleton className="h-5 w-2/3" /></div>}
-			{pages === null && failed && <div role="status" className="flex flex-wrap items-center gap-2 px-2 text-sm text-ink-2"><p>Notes could not be loaded.</p><button type="button" className="prompt-secondary" onClick={onRetry}>Try again</button></div>}
-			{pages?.length === 0 && <p className="px-2 text-sm text-ink-2">No page is tied to this session yet.</p>}
+			{pages === null && failed && <div role="status" className="flex flex-wrap items-center gap-2 px-2 text-sm text-graphite"><p>Notes could not be loaded.</p><button type="button" className="prompt-secondary" onClick={onRetry}>Try again</button></div>}
+			{pages?.length === 0 && <p className="px-2 text-sm text-graphite">No page is tied to this session yet.</p>}
 			{pages?.map((row) => (
 				<button key={row.id} type="button" data-testid="session-note" onClick={() => onOpen(row)} className={ROW}>
-					<span className="block text-foreground [overflow-wrap:anywhere]">{row.name}</span>
-					{row.passages > 0 && <span className="block text-muted-foreground">{count(row.passages)}</span>}
+					<span className="block text-ink [overflow-wrap:anywhere]">{row.name}</span>
+					{row.passages > 0 && <span className="block text-faint">{count(row.passages)}</span>}
 				</button>
 			))}
 			{canMakeNotes && <button type="button" className={ROW} disabled={busy} data-testid="session-study-notes" onClick={onStudyNotes}>{busy ? "Making study notes…" : "Turn this lesson into study notes"}</button>}
 			{canMakeNotes && chatId && <Link href={`/review?make=${encodeURIComponent(`lesson:${chatId}`)}`} data-testid="session-make-cards" className={ROW}>Make flashcards from this lesson</Link>}
-			{error && <p role="alert" className="px-2 text-sm text-destructive">{error}</p>}
+			{error && <p role="alert" className="px-2 text-sm text-red">{error}</p>}
 		</Section>
 	);
 }
@@ -209,7 +209,7 @@ export function LibraryContextBody({ items, folders, folderId, recentIds, failed
 }) {
 	if (items === null) {
 		return failed
-			? <p role="status" className="px-2 text-sm text-ink-2">Your Library could not be loaded.</p>
+			? <p role="status" className="px-2 text-sm text-graphite">Your Library could not be loaded.</p>
 			: <div role="status" aria-label="Loading context" className="flex flex-col gap-2 px-2"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-5 w-1/2" /></div>;
 	}
 	const here = items.filter((item) => !item.archivedAt && (item.folderId ?? null) === folderId);
@@ -221,8 +221,8 @@ export function LibraryContextBody({ items, folders, folderId, recentIds, failed
 	return (
 		<>
 			<Section title="Location">
-				<p className="px-2 text-sm text-ink-2 [overflow-wrap:anywhere]" data-testid="context-location">{folderPathLabel(folderId, [...folders]) || "Library"}</p>
-				<p className="px-2 text-sm text-muted-foreground">{count(subfolders.length, "folder")} · {count(here.length, "item")}</p>
+				<p className="px-2 text-sm text-graphite [overflow-wrap:anywhere]" data-testid="context-location">{folderPathLabel(folderId, [...folders]) || "Library"}</p>
+				<p className="px-2 text-sm text-faint">{count(subfolders.length, "folder")} · {count(here.length, "item")}</p>
 			</Section>
 			{tags.length > 0 && (
 				<Section title="Tags here">
@@ -231,7 +231,7 @@ export function LibraryContextBody({ items, folders, folderId, recentIds, failed
 			)}
 			<Section title="Recently opened">
 				{recent.length === 0
-					? <p className="px-2 text-sm text-ink-2">Nothing opened yet.</p>
+					? <p className="px-2 text-sm text-graphite">Nothing opened yet.</p>
 					: recent.map((item) => <button key={item.id} type="button" onClick={() => onOpenItem(item)} className={ROW}>{item.name}</button>)}
 			</Section>
 		</>

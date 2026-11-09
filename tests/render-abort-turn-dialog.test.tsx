@@ -40,8 +40,12 @@ describe("AbortTurnBody", () => {
 		const cancelAt = html.indexOf('data-testid="abort-turn-cancel"');
 		assert.ok(confirmAt > -1 && cancelAt > -1);
 		const confirmBtn = html.slice(confirmAt, html.indexOf("</button>", confirmAt));
-		assert.match(confirmBtn, /destructive/);
+		// Feature 025: the red pill on the lifted dialog; Cancel a text button.
+		assert.match(confirmBtn, /nb-pill lh-pill-danger/);
 		const cancelBtn = html.slice(cancelAt, html.indexOf("</button>", cancelAt));
-		assert.ok(!cancelBtn.includes("destructive"));
+		assert.ok(!cancelBtn.includes("lh-pill-danger"));
+		assert.match(cancelBtn, /lh-text-action/);
+		assert.match(html, /class="nb-dialog-backdrop"/);
+		assert.match(html, /class="lh-dialog"/);
 	});
 });

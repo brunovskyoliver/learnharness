@@ -1,60 +1,63 @@
 "use client";
 
-import {
-	useCallback,
-	useEffect,
-	useMemo,
-	useRef,
-useState,
-} from "react";
-import { Dialog } from "radix-ui";
-import { BotIcon, KeyboardIcon, NetworkIcon, PaletteIcon, SearchIcon, Settings2Icon, KeyRoundIcon, XIcon } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useBackdropDismiss } from "@/components/backdrop-dismiss";
+/**
+ * The settings modal (feature 025, T040-T042): Notebook's modal shell
+ * (components/paper/settings-shell.tsx) in both modes, with Customize and
+ * Reviewers first and Study's categories after them. Search settings at the
+ * top of the nav finds every row in every page; choosing a result opens its
+ * page, scrolls to the row, focuses its control and shows a brief shelf
+ * highlight (research R12). Every change saves at once; a refused save stays
+ * pinned under the page title with Show details and Try again.
+ */
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { SearchIcon } from "lucide-react";
 import {
 	CURRENT_SETTINGS_VERSION,
+	resolveSettings,
 	type AgentSettings,
-	type AppearanceSettings,
 	type CompactionSettings,
 	type GraphSettings,
+	type ModelsSettings,
 	type UserSettings,
 } from "@/src/core";
-import { useAppearance } from "./appearance.tsx";
+import { usePaperAppearance } from "@/components/paper/appearance";
+import { SettingsPage, SettingsShellBody, SettingsShellFrame, SettingsTitle, type SettingsNavItem } from "@/components/paper/settings-shell";
+import { MENU_CLOSE_EVENT, MENU_OPEN_EVENT, MenuPortalContext } from "@/components/menu-shell";
+import { notifySettingsSaved } from "@/components/settings-signal";
+import { CustomizePage } from "@/components/notebook/settings-modal";
+import { ReviewersPage } from "@/components/notebook/reviewers";
+import type { NotebookPreferences, NotebookReviewerView } from "@/components/notebook/nb-shared";
 import { SettingsFailure, SettingsGroup, SettingsRowsSkeleton, SettingsSection } from "./controls.tsx";
-import { useSettingsDialog } from "./settings-dialog.tsx";
+import { useSettingsDialog, type NotebookSettingsSource, type SectionId } from "./settings-dialog.tsx";
 import { searchSettings, type SettingsIndexEntry } from "./settings-index";
 import { UpdateSettings } from "./update-settings.tsx";
 import { AgentSection } from "./agent-section.tsx";
-import type { ModelsSettings } from "@/src/core";
-import { MENU_CLOSE_EVENT, MENU_OPEN_EVENT, MenuPortalContext } from "@/components/menu-shell";
-import { notifySettingsSaved } from "@/components/settings-signal";
 import { KeysSection } from "./keys-section.tsx";
-import { Hint } from "@/components/ui/hint";
-import { AppearanceSection, GraphSection } from "./appearance-section.tsx";
+import { GraphSection } from "./graph-section.tsx";
 import { GraphDisplaySection } from "./graph-display-section.tsx";
 import { KeyboardSection } from "./keyboard-section.tsx";
 
-/** Owner (2026-09-20): hints earn their place — mechanics-explaining
- *  prose is out; only the keyboard note stays (storage location is a
- *  real question users ask). */
-const SECTIONS = [
-	{ id: "keys", icon: KeyRoundIcon, label: "Providers" },
-	{ id: "agent", icon: BotIcon, label: "Agent" },
-	{ id: "appearance", icon: PaletteIcon, label: "Appearance" },
-	{ id: "graph", icon: NetworkIcon, label: "Graph" },
-	{ id: "keyboard", icon: KeyboardIcon, label: "Keyboard", hint: "Stored on this device" },
-	{ id: "general", icon: Settings2Icon, label: "General" },
-] as const;
-export type SectionId = (typeof SECTIONS)[number]["id"];
+export type { SectionId } from "./settings-dialog.tsx";
 
-type WritableSection = "general" | "agent" | "models" | "appearance" | "graph" | "compaction";
+/** The nav (ui-contract "Settings nav"); Notebook's two pages keep their test ids. */
+export const SETTINGS_NAV: readonly (SettingsNavItem & { value: SectionId; hint?: string })[] = [
+	{ value: "customize", label: "Customize", testid: "nb-settings-nav-customize" },
+	{ value: "reviewers", label: "Reviewers", testid: "nb-settings-nav-reviewers" },
+	{ value: "keys", label: "Providers", testid: "settings-nav-keys" },
+	{ value: "agent", label: "Agent", testid: "settings-nav-agent" },
+	{ value: "graph", label: "Graph", testid: "settings-nav-graph" },
+	/** Owner (2026-09-20): hints earn their place — only the keyboard note stays. */
+	{ value: "keyboard", label: "Keyboard", testid: "settings-nav-keyboard", hint: "Stored on this device" },
+	{ value: "general", label: "General", testid: "settings-nav-general" },
+];
+
+type WritableSection = "general" | "agent" | "models" | "graph" | "compaction";
 
 /** Section names in words, for failed saves (contract, finding 11). */
 const SECTION_WORDS: Record<WritableSection, string> = {
 	general: "General",
 	agent: "Agent",
 	models: "Model",
-	appearance: "Appearance",
 	graph: "Graph",
 	compaction: "Context",
 };
@@ -68,6 +71,7 @@ interface SaveFailure {
 const ROW_CONTROL = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const ROW_WAIT_MS = 5000;
 const ROW_HIGHLIGHT_MS = 160;
+
 export default function SettingsDialog({
 	onClose,
 	initialSection,
@@ -76,57 +80,91 @@ export default function SettingsDialog({
 }: {
 	onClose: () => void;
 	initialSection: SectionId;
-	/** The keys-section row to unfold (see DialogContext above). */
+	/** The row to land on (see the provider). */
 	initialRow: string | null;
 	returnFocusElement?: HTMLElement | null;
 }) {
-	const backdropDismiss = useBackdropDismiss(onClose);
+	const { notebook } = useSettingsDialog();
 	const [portalContainer, setPortalContainer] = useState<HTMLDivElement | null>(null);
+	const atOpen = useRef<HTMLElement | null>(null);
 	const returnFocus = useRef<HTMLElement | null>(
 		returnFocusElement ?? (typeof document === "undefined" ? null : document.activeElement as HTMLElement | null),
 	);
-
 	return (
-		<Dialog.Root open onOpenChange={(open) => { if (!open) onClose(); }}>
-			<Dialog.Portal>
-				<Dialog.Overlay className="fixed inset-0 z-50 bg-background" data-testid="settings-backdrop" {...backdropDismiss} />
-				<Dialog.Content
-					ref={setPortalContainer}
-					// The dialog itself takes focus, so no control's tooltip opens with it.
-					tabIndex={-1}
-					onOpenAutoFocus={(event) => {
-						event.preventDefault();
-						(event.currentTarget as HTMLElement).focus();
-					}}
-					data-lh-modal-content
-					aria-describedby={undefined}
-					data-settings-surface
-					className="fixed inset-3 z-50 overflow-hidden rounded-lg border border-border bg-background outline-none sm:inset-6 lg:inset-x-[6vw] lg:inset-y-[5vh]"
-					onPointerDownOutside={(event) => event.preventDefault()}
-					onEscapeKeyDown={(event) => event.preventDefault()}
-						onCloseAutoFocus={(event) => {
-							event.preventDefault();
-							const target = returnFocus.current;
-							requestAnimationFrame(() => {
-								if (document.querySelector("[data-lh-modal-content]")) return;
-								// Hint can replace its trigger subtree when its open state changes.
-								const liveTarget = target?.dataset.testid === "settings-entry"
-									? document.querySelector<HTMLElement>('[data-testid="settings-entry"]')
-									: target;
-								const rect = liveTarget?.getBoundingClientRect();
-								if (liveTarget?.isConnected && rect && rect.width > 0 && rect.left >= 0 && rect.right <= innerWidth) liveTarget.focus();
-								else document.querySelector<HTMLElement>('[aria-label="Open sidebar"]')?.focus();
-							});
-						}}
-				>
-					<Dialog.Title className="sr-only">Settings</Dialog.Title>
-					<MenuPortalContext.Provider value={portalContainer}>
-						<SettingsDialogBody onClose={onClose} initialSection={initialSection} initialRow={initialRow} inModal />
-					</MenuPortalContext.Provider>
-				</Dialog.Content>
-			</Dialog.Portal>
-		</Dialog.Root>
+		<SettingsShellFrame
+			onClose={onClose}
+			container={notebook?.root}
+			contentRef={setPortalContainer}
+			// The page's tab takes the focus (Notebook's rule), not the search field.
+			onOpenAutoFocus={(event) => {
+				event.preventDefault();
+				// Where the focus was as the card opened (a menu item that opened it has given the focus back by now).
+				if (document.activeElement instanceof HTMLElement && document.activeElement !== document.body) atOpen.current = document.activeElement;
+				const content = event.currentTarget as HTMLElement;
+				(content.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]') ?? content).focus();
+			}}
+			onPointerDownOutside={(event) => {
+				// A menu or tooltip portalled outside the card is not "outside".
+				if ((event.target as Element | null)?.closest?.("[data-lh-menu], [data-lh-modal-content]")) event.preventDefault();
+			}}
+			onCloseAutoFocus={(event) => {
+				event.preventDefault();
+				const target = returnFocus.current;
+				const fallback = () => document.querySelector<HTMLElement>('[aria-label="Open sidebar"]');
+				requestAnimationFrame(() => {
+					if (document.querySelector("[data-lh-modal-content]")) return;
+					// Hint can replace its trigger subtree when its open state changes.
+					const opener = target?.dataset.testid === "settings-entry"
+						? document.querySelector<HTMLElement>('[data-testid="settings-entry"]')
+						: target;
+					const liveTarget = opener?.isConnected && opener !== document.body ? opener : atOpen.current;
+					const rect = liveTarget?.getBoundingClientRect();
+					if (liveTarget?.isConnected && liveTarget !== document.body && rect && rect.width > 0 && rect.left >= 0 && rect.right <= innerWidth) liveTarget.focus();
+					else if (liveTarget?.isConnected && liveTarget.isContentEditable) liveTarget.focus();
+					else fallback()?.focus();
+				});
+			}}
+		>
+			<MenuPortalContext.Provider value={portalContainer}>
+				<SettingsDialogBody onClose={onClose} initialSection={initialSection} initialRow={initialRow} inModal />
+			</MenuPortalContext.Provider>
+		</SettingsShellFrame>
 	);
+}
+
+/** Customize and Reviewers in Study: the stored `notebook` section, written through the shared queue. */
+function useStoredNotebookSettings(record: UserSettings | null | undefined): NotebookSettingsSource | null {
+	const paper = usePaperAppearance();
+	const stored = useMemo(() => (record ? resolveSettings(record).notebook : null), [record]);
+	const [own, setOwn] = useState<Partial<NotebookPreferences>>({});
+	const [reviewers, setReviewers] = useState<readonly NotebookReviewerView[] | null>(null);
+	const [failed, setFailed] = useState(false);
+	const look = paper.appearance;
+	const preferences = useMemo<NotebookPreferences | null>(() => stored && ({
+		startMode: stored.startMode, pointerInk: stored.pointerInk, pace: stored.pace, layout: stored.layout, ...own,
+		appearance: look.theme, textSize: look.textSize, lettering: look.lettering, ink: look.ink,
+	}), [stored, own, look]);
+	const current = useRef(preferences);
+	current.current = preferences;
+	const { apply, queueWrite } = paper;
+	const save = useCallback(async (patch: Record<string, unknown>) => {
+		const ok = await queueWrite(patch);
+		setFailed(!ok);
+		return ok;
+	}, [queueWrite]);
+	const update = useCallback((patch: Partial<NotebookPreferences>) => {
+		const { appearance: theme, textSize, lettering, ink, ...rest } = patch;
+		const shared = Object.fromEntries(Object.entries({ theme, textSize, lettering, ink }).filter(([, v]) => v !== undefined));
+		apply(shared, () => setOwn((now) => ({ ...now, ...rest })));
+		return save(patch);
+	}, [apply, save]);
+	const retry = useCallback(() => save({ ...(current.current ?? {}) }), [save]);
+	const list = useMemo(() => reviewers ?? stored?.reviewers.map((r) => ({ id: r.id, name: r.name, instructions: r.instructions, ...(r.seeded ? { seeded: true as const } : {}) })) ?? [], [reviewers, stored]);
+	const saveReviewers = useCallback((next: readonly NotebookReviewerView[]) => {
+		setReviewers(next);
+		return queueWrite({ reviewers: next.map((r) => ({ id: r.id, name: r.name, instructions: r.instructions, ...(r.seeded ? { seeded: true as const } : {}) })) });
+	}, [queueWrite]);
+	return useMemo(() => (preferences ? { root: null, preferences, failed, update, retry, reviewers: list, saveReviewers } : null), [preferences, failed, update, retry, list, saveReviewers]);
 }
 
 /** The dialog without the portal/backdrop — the SSR-testable frame
@@ -142,33 +180,32 @@ export function SettingsDialogBody({
 	initialSection?: SectionId;
 	/** The row to jump to on arrival (null = none); a keys row also unfolds.
 	 *  While-open retargets follow it exactly like initialSection below. */
-initialRow?: string | null;
+	initialRow?: string | null;
 }) {
-	const { onAppearanceChange } = useAppearance();
-	const [record, setRecord] = useState<UserSettings | null | undefined>(
-		undefined,
-	);
+	const [record, setRecord] = useState<UserSettings | null | undefined>(undefined);
 	const [error, setError] = useState<SaveFailure | null>(null);
 	const [loadRequest, setLoadRequest] = useState(0);
-	const { hosted } = useSettingsDialog();
-// MenuShell open-count — drives the content column's scroll lock.
+	const { hosted, notebook: liveNotebook } = useSettingsDialog();
+	const storedNotebook = useStoredNotebookSettings(record);
+	// A mounted Notebook hands its live state (the open note follows at once).
+	const notebook = liveNotebook ?? storedNotebook;
+	// MenuShell open-count — drives the page's scroll lock.
 	const [openMenus, setOpenMenus] = useState(0);
-	const contentRef = useRef<HTMLDivElement | null>(null);
+	const bodyRef = useRef<HTMLDivElement | null>(null);
 	// Scroll-lock (fix wave, owner ruling: scrolling must NOT happen, nothing
-	// may move): scrollbars are hidden globally now, and the lock still stops
-	// scrolling. The content column keeps overflow-y-auto, and while any
-	// MenuShell is open, non-passive wheel + touchmove listeners on the column
-	// preventDefault. React attaches synthetic wheel/touch passively at the
-	// root, so this needs the native-listener ref seam.
-useEffect(() => {
-		const el = contentRef.current;
-		if (!el || openMenus === 0) return;
+	// may move while a menu is open): the page keeps overflow-y-auto, and
+	// non-passive wheel + touchmove listeners on it preventDefault. React
+	// attaches synthetic wheel/touch passively at the root, so this needs the
+	// native listeners. Menus portal into the card, outside the page.
+	useEffect(() => {
+		const page = bodyRef.current?.querySelector<HTMLElement>(".nb-settings-page");
+		if (!page || openMenus === 0) return;
 		const block = (e: Event) => e.preventDefault();
-		el.addEventListener("wheel", block, { passive: false });
-		el.addEventListener("touchmove", block, { passive: false });
+		page.addEventListener("wheel", block, { passive: false });
+		page.addEventListener("touchmove", block, { passive: false });
 		return () => {
-			el.removeEventListener("wheel", block);
-			el.removeEventListener("touchmove", block);
+			page.removeEventListener("wheel", block);
+			page.removeEventListener("touchmove", block);
 		};
 	}, [openMenus]);
 
@@ -189,10 +226,8 @@ useEffect(() => {
 	const results = useMemo(() => searchSettings(search, { hosted, desktop }), [search, hosted, desktop]);
 	/** One jump request; the count re-runs a repeated jump to the same row. */
 	const [jump, setJump] = useState<{ row: string | null; request: number }>({ row: initialRow, request: 0 });
-	const activeSection = SECTIONS.find((section) => section.id === active) ?? SECTIONS[0];
-// A deep-link fired while the dialog is ALREADY open (first exercised by
-	// the wave-6 embedding picker's "Add a provider key first…" link — the
-	// picker itself died with wave 7, the mechanism is general) changes
+	const activeSection = SETTINGS_NAV.find((section) => section.value === active) ?? SETTINGS_NAV[2]!;
+	// A deep link fired while the dialog is ALREADY open changes
 	// initialSection under our feet — follow it, or the link silently does
 	// nothing.
 	useEffect(() => {
@@ -211,7 +246,7 @@ useEffect(() => {
 	// The row jump (research R12): rows can arrive after the record or a
 	// section's own fetch, so wait for the row rather than assume it is there.
 	useEffect(() => {
-		const root = contentRef.current;
+		const root = bodyRef.current;
 		const row = jump.row;
 		if (!root || !row) return;
 		let clear: ReturnType<typeof setTimeout> | undefined;
@@ -220,7 +255,9 @@ useEffect(() => {
 			if (!target) return false;
 			const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 			target.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" });
-			target.querySelector<HTMLElement>(ROW_CONTROL)?.focus({ preventScroll: true });
+			// A card group lands on its chosen card.
+			const control = target.matches(ROW_CONTROL) ? target : target.querySelector<HTMLElement>('[role="radio"][aria-checked="true"]') ?? target.querySelector<HTMLElement>(ROW_CONTROL);
+			control?.focus({ preventScroll: true });
 			target.setAttribute("data-settings-jump", "");
 			clear = setTimeout(() => target.removeAttribute("data-settings-jump"), ROW_HIGHLIGHT_MS);
 			return true;
@@ -233,323 +270,217 @@ useEffect(() => {
 		observer.observe(root, { childList: true, subtree: true });
 		return () => { stop(); clearTimeout(clear); };
 	}, [jump]);
-// Fetch once per dialog mount. 200 {settings: null} is FIRST BOOT
+	// Fetch once per dialog mount. 200 {settings: null} is FIRST BOOT
 	// (no record = factory everything), not a failure — the error state is
 	// a non-200 or a network throw only.
 	useEffect(() => {
 		setRecord(undefined);
 		fetch("/api/settings")
-.then((r) =>
-				r.ok ? r.json() : Promise.reject(new Error(`status ${r.status}`)),
-			)
-			.then((body: { settings: UserSettings | null }) =>
-				setRecord(body.settings ?? { version: CURRENT_SETTINGS_VERSION }),
-			)
+			.then((r) => (r.ok ? r.json() : Promise.reject(new Error(`status ${r.status}`))))
+			.then((body: { settings: UserSettings | null }) => setRecord(body.settings ?? { version: CURRENT_SETTINGS_VERSION }))
 			.catch(() => setRecord(null));
 	}, [loadRequest]);
-// Escape closes — the layered-dismiss convention (Esc is dead for the
-	// sections' own editors while they hold focus; this listener is the
-	// dialog's outer layer).
+	// Escape closes — the layered-dismiss convention. The closer listens on
+	// the window's bubble phase, so every inner layer that claims the key at
+	// the document (the search clearing itself, a key editor, a rebind, a
+	// section menu, a connection dialog) stops it before it gets here; an
+	// open MenuShell handles its own. Radix marks the key handled when it
+	// sees it (its own close is ignored by the frame), so the window chain
+	// (dictation → abort) leaves it alone: one Esc, one action.
 	useEffect(() => {
 		const onKey = (e: KeyboardEvent) => {
-			if (e.key === "Escape" && openMenus === 0) {
-				// THE ONE-ESC LAW (owner, keyboard round 2026-10-06): claim
-				// at the document level — the window chain (dictation →
-				// abort) must not also act. One Esc, one action.
-				e.preventDefault();
-				e.stopPropagation();
-				onClose();
-			}
+			if (e.key !== "Escape" || openMenus > 0) return;
+			e.preventDefault();
+			e.stopImmediatePropagation();
+			onClose();
 		};
-		document.addEventListener("keydown", onKey);
-		return () => document.removeEventListener("keydown", onKey);
+		window.addEventListener("keydown", onKey);
+		return () => window.removeEventListener("keydown", onKey);
 	}, [onClose, openMenus]);
 
-	/** ONE writer for the whole dialog: PUT the whole section, keep the
-	 *  record mirror in sync, surface route errors inline (a 400 is a
-	 *  schema mistake caught by the validation surface). */
-	const write = useCallback(
-		async (section: WritableSection, body: object) => {
-			// A failure in another section keeps its own Try again.
-			setError((current) => (current?.section === section ? null : current));
-			let res: Response;
-			try {
-				res = await fetch(`/api/settings/${section}`, {
-					method: "PUT",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify(body),
-				});
-			} catch {
-				setError({ section, body, detail: "The server could not be reached." });
-				return;
-			}
-			if (!res.ok) {
-				const detail = (await res.json().catch(() => ({}))) as {
-					error?: string;
-				};
-				setError({ section, body, detail: `${res.status}${detail.error ? `: ${detail.error}` : ""}` });
-				return;
-			}
-// Server truth, never the request body (fix wave, owner repro):
-			// the models section clamps pinned thinking levels on write
-			// (bd68486) — a swap that rides an unsupported level lands
-			// CLAMPED in the record, and the writing surface must show the
-			// stored value in this same interaction, not the optimistic one.
-			const stored = (
-				(await res.json().catch(() => null)) as { settings?: UserSettings } | null
-			)?.settings;
-			setRecord(
-				(prev) =>
-					stored ?? ({ ...(prev ?? {}), [section]: body }) as UserSettings,
-			);
-			notifySettingsSaved(section);
-			if (section === "appearance")
-				onAppearanceChange(body as AppearanceSettings);
-		},
-		[onAppearanceChange],
+	/** ONE writer for Study's sections: PUT the whole section, keep the
+	 *  record mirror in sync, surface route errors inline. */
+	const write = useCallback(async (section: WritableSection, body: object) => {
+		// A failure in another section keeps its own Try again.
+		setError((current) => (current?.section === section ? null : current));
+		let res: Response;
+		try {
+			res = await fetch(`/api/settings/${section}`, {
+				method: "PUT",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify(body),
+			});
+		} catch {
+			setError({ section, body, detail: "The server could not be reached." });
+			return;
+		}
+		if (!res.ok) {
+			const detail = (await res.json().catch(() => ({}))) as { error?: string };
+			setError({ section, body, detail: `${res.status}${detail.error ? `: ${detail.error}` : ""}` });
+			return;
+		}
+		// Server truth, never the request body: the models section clamps
+		// pinned thinking levels on write, and the surface must show the
+		// stored value in this same interaction.
+		const stored = ((await res.json().catch(() => null)) as { settings?: UserSettings } | null)?.settings;
+		setRecord((prev) => stored ?? ({ ...(prev ?? {}), [section]: body }) as UserSettings);
+		notifySettingsSaved(section);
+	}, []);
+
+	const alert = error && (
+		<div className="nb-set-pinned">
+			<SettingsFailure
+				testid="settings-error"
+				retryTestid="settings-error-retry"
+				detailsTestid="settings-error-details"
+				message={`Your ${SECTION_WORDS[error.section]} settings could not be saved.`}
+				detail={error.detail}
+				onRetry={() => void write(error.section, error.body)}
+			/>
+		</div>
+	);
+
+	/** Loading and a failed load, for a page that needs the record. */
+	const waiting = (title: string) => record === undefined ? (
+		<SettingsSection title={title}>
+			<SettingsRowsSkeleton label="Loading settings…" />
+		</SettingsSection>
+	) : record === null ? (
+		<SettingsSection title={title}>
+			<SettingsFailure testid="settings-load-error" retryTestid="settings-load-retry" message="Settings could not be loaded." onRetry={() => setLoadRequest((request) => request + 1)} />
+		</SettingsSection>
+	) : null;
+
+	const searchField = (
+		<label className="nb-settings-search">
+			<SearchIcon aria-hidden="true" className="nb-settings-search-icon" />
+			<input
+				type="search"
+				name="settings-search"
+				autoComplete="off"
+				aria-label="Search settings"
+				data-testid="settings-search"
+				placeholder="Search settings"
+				value={search}
+				onChange={(event) => setSearch(event.target.value)}
+				onKeyDown={(event) => {
+					if (event.key === "Enter" && results[0]) {
+						event.preventDefault();
+						chooseResult(results[0]);
+					}
+					// Escape clears the search first, the innermost layer.
+					if (event.key === "Escape" && search) {
+						event.preventDefault();
+						event.stopPropagation();
+						setSearch("");
+					}
+				}}
+				className="nb-settings-search-input"
+			/>
+		</label>
 	);
 
 	return (
 		<div
+			ref={bodyRef}
 			role={inModal ? undefined : "dialog"}
 			aria-modal={inModal ? undefined : true}
 			aria-label={inModal ? undefined : "Settings"}
 			data-testid="settings-dialog"
-			className="settings-dialog-pop flex h-full min-h-0 w-full flex-col overflow-hidden bg-background"
-			onClick={(e) => e.stopPropagation()}
+			className="nb-settings-frame"
 		>
-			{/* Shared header height and section breadcrumb. */}
-			<header className="flex h-13 shrink-0 items-center gap-3 px-5 sm:px-6">
-				<span className="text-sm text-muted-foreground">Settings</span>
-				<span aria-hidden="true" className="text-muted-foreground">/</span>
-				<span className="truncate text-sm font-medium text-foreground">{activeSection.label}</span>
-				<Hint
-						// Esc closes the dialog (its own listener) — surface it.
-						label="Close"
-						binding="escape"
-						side="left"
-					>
-						<button
-					type="button"
-					aria-label="Close settings"
-					data-testid="settings-close"
-					className="ui-icon-button ml-auto"
-					onClick={onClose}
-				>
-					<XIcon aria-hidden="true" className="mx-auto size-4" />
-				</button>
-					</Hint>
-			</header>
-
-			<div className="flex min-h-0 flex-1 flex-col sm:flex-row">
-				{/* Searchable categories; horizontal navigation on narrow screens. */}
-				<nav
-					aria-label="Settings sections"
-					data-testid="settings-nav"
-					className="flex min-h-0 shrink-0 flex-col gap-3 bg-background p-3 sm:w-56 sm:p-4"
-				>
-					<label className="flex h-9 items-center gap-2 rounded-md border border-input bg-background px-2.5 text-muted-foreground pointer-coarse:h-11">
-						<SearchIcon aria-hidden="true" className="size-4 shrink-0" />
-						<input
-							type="search"
-							name="settings-search"
-							autoComplete="off"
-							aria-label="Search settings"
-							data-testid="settings-search"
-							placeholder="Search settings"
-							value={search}
-							onChange={(event) => setSearch(event.target.value)}
-							onKeyDown={(event) => {
-								if (event.key === "Enter" && results[0]) {
-									event.preventDefault();
-									chooseResult(results[0]);
-								}
-								// Escape clears the search first, the innermost layer.
-								if (event.key === "Escape" && search) {
-									event.preventDefault();
-									event.stopPropagation();
-									setSearch("");
-								}
-							}}
-							className="min-w-0 flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground [&::-webkit-search-cancel-button]:hidden"
-						/>
-					</label>
-					{search.trim() ? (
-						<SearchResults query={search} results={results} onChoose={chooseResult} />
-					) : (
-						<div className="-m-1 flex gap-1 overflow-x-auto p-1 sm:flex-col">
-							{SECTIONS.map((s) => (
-								<button
-									key={s.id}
-									type="button"
-									data-testid={`settings-nav-${s.id}`}
-									aria-current={active === s.id}
-									className={cn("flex min-h-10 shrink-0 items-center gap-3 rounded-md px-3 py-2 text-left font-ui text-sm transition-colors", active === s.id ? "bg-accent text-foreground" : "text-ink-2 hover:bg-accent hover:text-foreground")}
-									onClick={() => setActive(s.id)}
-								>
-									<s.icon aria-hidden="true" className="size-[18px] shrink-0" strokeWidth={1.75} />
-									{s.label}
-								</button>
-							))}
-						</div>
-					)}
-</nav>
-
-				{/* Content column — one section at a time, this scrolls — and
-				    LOCKS while any MenuShell is open (owner ruling: no
-				    scrolling with a dropdown down; MenuShell announces
-				    open/close, the count keeps overlap honest). Scrollbars are
-				    hidden globally; the lock intercepts wheel/touch so nothing
-				    moves while a menu is open. */}
-				<div
-					ref={contentRef}
-					className="min-w-0 flex-1 overflow-y-auto overscroll-contain pb-[env(safe-area-inset-bottom)]"
-					data-testid="settings-content"
-				>
-					{/* Stays in view however far down the failed control was. */}
-					{error && (
-						<div className="sticky top-0 z-10 mx-auto w-full max-w-5xl bg-background px-5 pt-3 sm:px-8">
-							<SettingsFailure
-								testid="settings-error"
-								retryTestid="settings-error-retry"
-								detailsTestid="settings-error-details"
-								message={`Your ${SECTION_WORDS[error.section]} settings could not be saved.`}
-								detail={error.detail}
-								onRetry={() => void write(error.section, error.body)}
-							/>
-						</div>
-					)}
-					{record === undefined ? (
-						<SettingsSection title={activeSection.label}>
-							<SettingsRowsSkeleton label="Loading settings…" />
-						</SettingsSection>
-					) : record === null ? (
-						<SettingsSection title={activeSection.label}>
-							<SettingsFailure
-								testid="settings-load-error"
-								retryTestid="settings-load-retry"
-								message="Settings could not be loaded."
-								onRetry={() => setLoadRequest((request) => request + 1)}
-							/>
-						</SettingsSection>
-					) : (
-						<div>
-							{active === "general" && (
-								<SettingsSection
-									title="General"
-									testid="section-general"
-								>
-									<SettingsGroup>
-<UpdateSettings
-										autoUpdate={record.general?.autoUpdate ?? true}
-										onAutoUpdateChange={(on) =>
-											void write("general", { ...record.general, autoUpdate: on })
-										}
-									/>
-</SettingsGroup>
-								</SettingsSection>
-							)}
-							{active === "keys" && (
-								<SettingsSection title="Providers" testid="section-keys">
-									<KeysSection initialRow={jump.row ?? undefined} rowRequest={jump.request} />
-								</SettingsSection>
-							)}
-							{active === "agent" && (
-								<SettingsSection
-									title="Agent"
-									testid="section-agent"
-								>
-									<AgentSection
-										agent={record.agent}
-										models={record.models}
-										graph={record.graph}
-										compaction={record.compaction}
-										onModelsChange={(next: ModelsSettings) =>
-											void write("models", next)
-										}
-										onSectionChange={(next: AgentSettings) =>
-											void write("agent", next)
-										}
-										onCompactionChange={(next: CompactionSettings) =>
-											void write("compaction", next)
-										}
-									/>
-								</SettingsSection>
-							)}
-							{active === "appearance" && (
-								<SettingsSection
-									title="Appearance"
-									testid="section-appearance"
-								>
-									<AppearanceSection
-										appearance={record.appearance}
-										onSectionChange={(next: AppearanceSettings) =>
-											void write("appearance", next)
-										}
-									/>
-								</SettingsSection>
-							)}
-							{active === "graph" && (
-								<SettingsSection
-									title="Graph"
-									testid="section-graph"
-								>
-									<SettingsGroup>
-<GraphSection
-										graph={record.graph}
-										onSectionChange={(next: GraphSettings) =>
-											void write("graph", next)
-										}
-									/>
-</SettingsGroup>
-									{/* Display (feature 002): moved here from the gear over the graph. */}
-									<SettingsGroup label="Display" testid="graph-group-display">
-										<div className="py-4"><GraphDisplaySection /></div>
-									</SettingsGroup>
-								</SettingsSection>
-							)}
-							{active === "keyboard" && (
-								<SettingsSection
-									title="Keyboard"
-									hint="Stored on this device"
-									testid="section-keyboard"
-								>
-									<KeyboardSection />
-								</SettingsSection>
-							)}
-						</div>
-					)}
-				</div>
-			</div>
+			<SettingsShellBody
+				items={SETTINGS_NAV}
+				value={active}
+				onValueChange={(value) => setActive(value as SectionId)}
+				search={searchField}
+				results={search.trim() ? <SearchResults query={search} results={results} onChoose={chooseResult} /> : null}
+				onClose={inModal ? undefined : onClose}
+			>
+				<SettingsPage value="customize" testid="nb-settings-customize">
+					{notebook ? (
+						<CustomizePage preferences={notebook.preferences} failed={notebook.failed} onChange={(patch) => void notebook.update(patch)} onRetry={() => void notebook.retry()} alert={alert} />
+					) : waiting("Customize")}
+				</SettingsPage>
+				<SettingsPage value="reviewers" testid="nb-settings-reviewers">
+					{notebook ? (
+						<>
+							<SettingsTitle className="nb-sr-only">Reviewers</SettingsTitle>
+							{alert}
+							<ReviewersPage reviewers={notebook.reviewers} onSave={notebook.saveReviewers} />
+						</>
+					) : waiting("Reviewers")}
+				</SettingsPage>
+				{SETTINGS_NAV.slice(2).map((section) => (
+					<SettingsPage key={section.value} value={section.value} testid="settings-content">
+						{waiting(section.label) ?? (record && (
+							<>
+								{section.value === "general" && (
+									<SettingsSection title="General" testid="section-general" alert={alert}>
+										<SettingsGroup>
+											<UpdateSettings autoUpdate={record.general?.autoUpdate ?? true} onAutoUpdateChange={(on) => void write("general", { ...record.general, autoUpdate: on })} />
+										</SettingsGroup>
+									</SettingsSection>
+								)}
+								{section.value === "keys" && (
+									<SettingsSection title="Providers" testid="section-keys" alert={alert}>
+										<KeysSection initialRow={jump.row ?? undefined} rowRequest={jump.request} />
+									</SettingsSection>
+								)}
+								{section.value === "agent" && (
+									<SettingsSection title="Agent" testid="section-agent" alert={alert}>
+										<AgentSection
+											agent={record.agent}
+											models={record.models}
+											graph={record.graph}
+											compaction={record.compaction}
+											onModelsChange={(next: ModelsSettings) => void write("models", next)}
+											onSectionChange={(next: AgentSettings) => void write("agent", next)}
+											onCompactionChange={(next: CompactionSettings) => void write("compaction", next)}
+										/>
+									</SettingsSection>
+								)}
+								{section.value === "graph" && (
+									<SettingsSection title="Graph" testid="section-graph" alert={alert}>
+										<SettingsGroup>
+											<GraphSection graph={record.graph} onSectionChange={(next: GraphSettings) => void write("graph", next)} />
+										</SettingsGroup>
+										{/* Display (feature 002): moved here from the gear over the graph. */}
+										<SettingsGroup label="Display" testid="graph-group-display">
+											<div className="nb-set-display"><GraphDisplaySection /></div>
+										</SettingsGroup>
+									</SettingsSection>
+								)}
+								{section.value === "keyboard" && (
+									<SettingsSection title="Keyboard" hint={section.hint} testid="section-keyboard" alert={alert}>
+										<KeyboardSection />
+									</SettingsSection>
+								)}
+							</>
+						))}
+					</SettingsPage>
+				))}
+			</SettingsShellBody>
 		</div>
 	);
 }
 
-/** Matches under their category headings; choosing one jumps to the row. */
-function SearchResults({ query, results, onChoose }: { query: string; results: SettingsIndexEntry[]; onChoose: (entry: SettingsIndexEntry) => void }) {
-	if (results.length === 0) return <p role="status" data-testid="settings-search-empty" className="px-2 text-sm text-muted-foreground">Nothing matches {query}</p>;
+/** Matches under their page names; choosing one jumps to the row. */
+export function SearchResults({ query, results, onChoose }: { query: string; results: SettingsIndexEntry[]; onChoose: (entry: SettingsIndexEntry) => void }) {
+	if (results.length === 0) return <p role="status" data-testid="settings-search-empty" className="nb-settings-results-empty">Nothing matches {query}</p>;
 	return (
-		<div data-testid="settings-search-results" className="-m-1 flex max-h-[40dvh] min-h-0 flex-col gap-3 overflow-y-auto p-1 sm:max-h-none">
+		<div data-testid="settings-search-results" className="nb-settings-results">
 			<p role="status" className="sr-only">{results.length === 1 ? "1 setting found" : `${results.length} settings found`}</p>
-			{SECTIONS.map((section) => {
-				const hits = results.filter((entry) => entry.section === section.id);
+			{SETTINGS_NAV.map((section) => {
+				const hits = results.filter((entry) => entry.section === section.value);
 				if (hits.length === 0) return null;
 				return (
-					<div key={section.id} className="flex flex-col gap-0.5">
-						<h3 className="flex items-center gap-2 px-2 pb-1 text-sm text-muted-foreground">
-							<section.icon aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.75} />
-							{section.label}
-						</h3>
+					<div key={section.value} className="nb-settings-results-group">
+						<h3 className="nb-settings-results-head">{section.label}</h3>
 						{hits.map((entry) => (
-							<button
-								key={entry.row}
-								type="button"
-								data-testid={`settings-result-${entry.row}`}
-								className="flex min-h-10 w-full flex-col justify-center rounded-md px-2 py-1.5 text-left text-sm text-foreground transition-colors hover:bg-accent pointer-coarse:min-h-11"
-								onClick={() => onChoose(entry)}
-							>
-								{entry.label}
-								{entry.hint && <span className="line-clamp-1 text-muted-foreground">{entry.hint}</span>}
+							<button key={entry.row} type="button" data-testid={`settings-result-${entry.row}`} className="nb-settings-result" onClick={() => onChoose(entry)}>
+								<span className="nb-settings-result-label">{entry.label}</span>
+								{entry.hint && <span className="nb-settings-result-hint">{entry.hint}</span>}
 							</button>
 						))}
 					</div>

@@ -47,9 +47,9 @@ export function LiveToolCard({ part }: ArtifactPartProps) {
 	if (["math_check", "ml_visual", "tokenize", "hub_search", "hub_model", "paper_search", "paper_read"].includes(tool)) {
 		return (
 			<div data-testid="live-tool-card" data-tool={tool} className="lh-reading my-1">
-				<div className="flex items-center gap-2 text-sm text-muted-foreground">
+				<div className="lh-quiet-line">
 					<BrailleSpinner label={`${toolActivityLabel(tool)} — live`} />
-					<Shimmer duration={1} className="text-sm">
+					<Shimmer duration={1} className="text-meta">
 						{toolActivityLabel(tool)}
 					</Shimmer>
 				</div>
@@ -63,16 +63,16 @@ export function LiveToolCard({ part }: ArtifactPartProps) {
 			data-tool={tool}
 			className="group lh-reading my-1"
 		>
-			<summary className="flex cursor-pointer select-none list-none items-center gap-2 text-sm text-muted-foreground [&::-webkit-details-marker]:hidden">
+			<summary className="lh-quiet-summary">
 				<BrailleSpinner label={`${toolActivityLabel(tool)} — live`} />
-				<Shimmer duration={1} className="text-sm">
+				<Shimmer duration={1} className="text-meta">
 					{toolActivityLabel(tool)}
 				</Shimmer>
 				{arg && <span className="truncate">{arg}</span>}
-				<ChevronRight className="size-3 shrink-0 opacity-50 transition-transform group-open:rotate-90" />
+				<ChevronRight className="lh-quiet-chevron" aria-hidden="true" />
 			</summary>
-			<div className="mt-2 rounded-xl border bg-card p-3 text-sm">
-				<div className="mb-1 font-medium text-muted-foreground">Input (streaming)</div>
+			<div className="lh-quiet-panel">
+				<div className="mb-1 font-medium text-faint">Input (streaming)</div>
 				<pre className="max-h-32 overflow-auto whitespace-pre-wrap break-all font-mono text-xs leading-relaxed">
 					{hasInput ? JSON.stringify(p.input, null, 2) : "…"}
 				</pre>

@@ -127,8 +127,8 @@ async function checkWidth(width) {
 		const styles = await page.$eval(".react-flow__node .lh-diagram-box", (el) => { const s = getComputedStyle(el); return { background: s.backgroundColor, shadow: s.boxShadow, border: s.borderStyle }; });
 		assert.equal(styles.shadow, "none");
 		assert.notEqual(styles.border, "dashed");
-		assert.notEqual(styles.background, "rgb(255, 255, 255)", "Study ink overrides the default");
-		pass(`${width}: Study ink overrides React Flow's defaults`);
+		assert.notEqual(styles.background, "rgb(255, 255, 255)", "the paper tokens override the default");
+		pass(`${width}: the paper tokens override React Flow's defaults`);
 	}
 
 	// Add a node without a pointer.
@@ -441,7 +441,7 @@ try {
 		if (!ready) await pause(250);
 	}
 	assert.ok(ready, "isolated server starts");
-	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true });
+	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true, args: ["--no-sandbox"] });
 	for (const width of [1440, 390, 320]) await checkWidth(width);
 	assert.ok((await readdir(downloads)).length === 3);
 	console.log(`Diagram browser checks passed: ${passes} PASS lines.`);

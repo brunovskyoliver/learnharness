@@ -1,6 +1,6 @@
 /**
  * POST /api/activity/abort — the dock's END/ABORT control, uniform across
- * process kinds (user-decided contract): body {kind: "job"|"extraction"|"turn", id}
+ * process kinds (user-decided contract): body {kind: "job"|"extraction"|"turn"|"cards"|"notebook", id}
  * where id is the jobId for sub-agent jobs, the chatId for extraction runs
  * (the pipeline registry is chat-keyed), and the chatId for turns
  * (background-turn wave, 2026-09-25: a running turn is a background
@@ -17,7 +17,7 @@
  * Extraction abort is idempotent by design (aborting with nothing in
  * flight is success — the blob is gone either way) -> 200.
  */
-import { abortCardRun, abortExtraction, abortJob, abortTurn, withTenant } from "@/src/server";
+import { abortCardRun, abortExtraction, abortJob, abortNotebookRun, abortTurn, withTenant } from "@/src/server";
 
 async function handlePOST(req: Request) {
 	let body: unknown;
@@ -27,8 +27,8 @@ async function handlePOST(req: Request) {
 		return Response.json({ error: "Invalid JSON body" }, { status: 400 });
 	}
 	const { kind, id } = (body ?? {}) as { kind?: string; id?: string };
-	if ((kind !== "job" && kind !== "extraction" && kind !== "turn" && kind !== "cards") || typeof id !== "string" || id === "") {
-		return Response.json({ error: 'Body must be {kind: "job"|"extraction"|"turn"|"cards", id: string}' }, { status: 400 });
+	if ((kind !== "job" && kind !== "extraction" && kind !== "turn" && kind !== "cards" && kind !== "notebook") || typeof id !== "string" || id === "") {
+		return Response.json({ error: 'Body must be {kind: "job"|"extraction"|"turn"|"cards"|"notebook", id: string}' }, { status: 400 });
 	}
 	if (!/^[A-Za-z0-9:_-]+$/.test(id)) {
 		return Response.json({ error: "Invalid id" }, { status: 400 });
@@ -44,6 +44,9 @@ async function handlePOST(req: Request) {
 	}
 	if (kind === "cards") {
 		return abortCardRun(id) ? Response.json({ ok: true }) : Response.json({ ok: false, reason: "not_running" }, { status: 409 });
+	}
+	if (kind === "notebook") {
+		return abortNotebookRun(id) ? Response.json({ ok: true }) : Response.json({ ok: false, reason: "not_running" }, { status: 409 });
 	}
 	if (kind === "turn") {
 		const outcome = abortTurn(id);

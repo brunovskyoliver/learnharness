@@ -8,10 +8,6 @@
  * opens UP from the bottom bar, the settings rows open DOWN inside the
  * dialog).
  *
- * The appearance wave (2026-09-26) added the reading-font picker over the
- * same machine: FontMenuList (families instead of models, plus the
- * always-offerable DEFAULT row and a custom-family escape input).
- *
  * Keyboard machine (owner polish, 2026-09-17): focus STAYS in the search
  * field — ↑/↓ walk the filtered results (clamped, no wrap), Enter picks
  * the walked row (or the first result when nothing is walked).
@@ -117,7 +113,7 @@ export function ModelMenuList({
 						}
 					}}
 					placeholder="Search models…"
-					className="min-w-0 flex-1 bg-transparent py-2 text-base text-foreground outline-none"
+					className="min-w-0 flex-1 bg-transparent py-2 text-md text-ink outline-none"
 				/>
 			</div>
 			{!models && <div role="status" className="model-menu-empty">Loading models…</div>}
@@ -144,7 +140,7 @@ export function ModelMenuList({
 								className="model-menu-option"
 							>
 								<span className="min-w-0 flex-1">
-									<span className="block truncate text-lg font-medium text-foreground">{m.name}</span>
+									<span className="block truncate text-lg font-medium text-ink">{m.name}</span>
 									<span className="model-menu-meta" aria-label={subscription ? `${subscription} (subscription)` : undefined}>
 										<span className="truncate">{subscription ?? m.provider}</span>
 										{subscription ? <span className="shrink-0 text-sm">Subscription</span> : (
@@ -188,7 +184,7 @@ export function ThinkingMenuList({
 		<div className="reasoning-menu-content" role="menu" aria-label="Reasoning">
 			<div className="reasoning-menu-heading">Reasoning</div>
 			{levels.length === 0 ? (
-				<div className="px-2 py-3 text-center text-muted-foreground">{empty ?? "No thinking levels."}</div>
+				<div className="px-2 py-3 text-center text-faint">{empty ?? "No thinking levels."}</div>
 			) : (
 				levels.map((level) => (
 					<button
@@ -274,10 +270,10 @@ export function ProviderMenuList({
 					}
 				}}
 				placeholder="Search providers…"
-				className="lh-input mb-1.5 w-full rounded-md border border-input bg-background pointer-coarse:min-h-11 px-2 py-1.5 text-foreground outline-none focus:ring-1 focus:ring-ring"
+				className="lh-input mb-1.5 w-full rounded-md border border-edge bg-paper pointer-coarse:min-h-11 px-2 py-1.5 text-ink outline-none focus:ring-1 focus:ring-focus"
 			/>
 			{results.length === 0 && (
-				<div className="px-2 py-3 text-center text-muted-foreground">No providers match.</div>
+				<div className="px-2 py-3 text-center text-faint">No providers match.</div>
 			)}
 			<ul ref={listRef} data-testid="provider-list" className="flex max-h-72 flex-col overflow-y-auto px-1">
 				{results.map((p, i) => (
@@ -287,166 +283,16 @@ export function ProviderMenuList({
 							data-testid={`provider-option-${p.id.replace(/[^a-z0-9-]/gi, "_")}`}
 							data-idx={i}
 							onClick={() => onPick(p)}
-							className={`flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left outline-none transition-colors hover:bg-muted pointer-coarse:min-h-11 ${
-								i === menuIdx ? "bg-muted ring-1 ring-inset ring-border" : ""
+							className={`flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left outline-none transition-colors hover:bg-shelf pointer-coarse:min-h-11 ${
+								i === menuIdx ? "bg-shelf ring-1 ring-inset ring-rule" : ""
 							}`}
 						>
-							<span className="truncate text-card-foreground">{p.label}</span>
-							<span className="shrink-0 font-mono text-xs text-muted-foreground">{p.envVar}</span>
+							<span className="truncate text-ink">{p.label}</span>
+							<span className="shrink-0 font-mono text-xs text-faint">{p.envVar}</span>
 						</button>
 					</li>
 				))}
 			</ul>
-		</>
-	);
-}
-
-/** The reading-font dropdown's row set — the SAME fuzzy + arrow-walk +
- *  Enter machine over font families (appearance wave, 2026-09-26). The
- *  DEFAULT row (null) is a candidate like any family: it matches empty
- *  and "source"/"sans"/"default" queries, so an unfiltered list opens
- *  with the default first and a searched list drops it honestly — Enter
- *  can never pick a row that isn't on screen. Pure — exported for
- *  tests. */
-export function fontMenuResults(query: string, families: string[]): Array<string | null> {
-	const scored = families
-		.map((f) => ({ f, s: fuzzyScore(query, f) }))
-		.filter((r) => r.s !== null)
-		.sort((a, b) => b.s! - a.s! || a.f.localeCompare(b.f))
-		.map((r) => r.f);
-	// The default row's searchable identity: the factory family + the
-	// word "default" (the suffix it renders with).
-	const defaultScore = fuzzyScore(query, "Source Sans 3", "default");
-	if (query.trim() === "" || defaultScore !== null) return [null, ...scored];
-	return scored;
-}
-
-/** The custom-family action row's decision (pure, 2026-09-26): a typed
- *  query that matches NO family becomes the "Use '<query>'" custom pick —
- *  a matching family is the better pick, so the action row only exists
- *  when there is nothing else to pick. Exported for tests. */
-export function customFamilyFor(query: string, families: string[]): string | null {
-	const trimmed = query.trim();
-	if (trimmed === "") return null;
-	return fontMenuResults(query, families).length === 0 ? trimmed : null;
-}
-
-/** The reading-font dropdown body — ONE search field (owner ask
- *  2026-09-26: "why two?"): the fuzzy machine filters the families, and
- *  when nothing matches, a "Use '<query>'" action row commits the typed
- *  text as a custom family — the old separate custom input is gone, the
- *  search field absorbed its job. `families === undefined` is the
- *  enumerating state; the curated fallback arrives as plain families with
- *  a footer that says so honestly. */
-export function FontMenuList({
-	families,
-	effectiveFamily,
-	onPick,
-	footer,
-}: {
-	/** Enumerated font families (already deduped/sorted by the caller);
-	 *  undefined while the enumeration runs. */
-	families: string[] | undefined;
-	/** The stored override (null = the factory Source Sans 3). */
-	effectiveFamily: string | null;
-	/** Receives the pick: a family string, or null for the default. */
-	onPick: (family: string | null) => void;
-	/** Quiet footer note under the list. */
-	footer?: string;
-}) {
-	const [query, setQuery] = useState("");
-	const [menuIdx, setMenuIdx] = useState<number | null>(null);
-	const searchRef = useRef<HTMLInputElement>(null);
-	const listRef = useRef<HTMLUListElement>(null);
-
-	useEffect(() => {
-		searchRef.current?.focus();
-	}, []);
-
-	useEffect(() => {
-		if (menuIdx === null) return;
-		listRef.current?.querySelector(`[data-idx="${menuIdx}"]`)?.scrollIntoView({ block: "nearest" });
-	}, [menuIdx]);
-
-	const results = fontMenuResults(query, families ?? []);
-	// The custom-family action row: only when a typed query matches
-	// nothing (a matching family is the better pick). Enter picks it.
-	const customFamily = customFamilyFor(query, families ?? []);
-	const walkable: Array<string | null> = customFamily !== null ? ["__custom__"] : results;
-
-	return (
-		<>
-			<input
-				ref={searchRef}
-				data-testid="font-search"
-				value={query}
-				onChange={(e) => {
-					setQuery(e.target.value);
-					setMenuIdx(null); // new query → the walk restarts on Enter/↓
-				}}
-				onKeyDown={(e) => {
-					if (e.key === "ArrowDown" || e.key === "ArrowUp") {
-						e.preventDefault();
-						e.stopPropagation();
-						if (walkable.length === 0) return;
-						setMenuIdx((i) =>
-							e.key === "ArrowDown"
-								? Math.min((i ?? -1) + 1, walkable.length - 1)
-								: Math.max((i ?? walkable.length) - 1, 0),
-						);
-					} else if (e.key === "Enter") {
-						const chosen = walkable[menuIdx ?? 0];
-						if (chosen !== undefined) {
-							e.preventDefault();
-							e.stopPropagation();
-							onPick(chosen === "__custom__" ? customFamily : chosen);
-						}
-					}
-				}}
-				placeholder="Search fonts…"
-				className="lh-input mb-1.5 w-full rounded-md border border-input bg-background pointer-coarse:min-h-11 px-2 py-1.5 text-foreground outline-none focus:ring-1 focus:ring-ring"
-			/>
-			{!families && <div className="px-2 py-3 text-center text-muted-foreground">Loading fonts…</div>}
-			<ul ref={listRef} data-testid="font-list" className="flex max-h-72 flex-col overflow-y-auto px-1">
-				{families &&
-					results.map((family, i) => {
-						const isDefault = family === null;
-						const effective = isDefault ? effectiveFamily === null : family === effectiveFamily;
-						return (
-							<li key={family ?? "__default"}>
-								<button
-									type="button"
-									data-testid={isDefault ? "font-option-default" : `font-option-${family.replace(/[^a-z0-9-]/gi, "_")}`}
-									data-idx={i}
-									onClick={() => onPick(family)}
-									className={`flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left outline-none transition-colors hover:bg-muted pointer-coarse:min-h-11 ${
-										i === menuIdx ? "bg-muted ring-1 ring-inset ring-border" : ""
-									}${effective && i !== menuIdx ? " bg-muted" : ""}`}
-								>
-									<span className="truncate text-card-foreground">{family ?? "Source Sans 3"}</span>
-									<span className="shrink-0 text-muted-foreground">{isDefault ? "default" : effective && <span aria-hidden>✓</span>}</span>
-								</button>
-							</li>
-						);
-					})}
-				{families && customFamily !== null && (
-					<li>
-						<button
-							type="button"
-							data-testid="font-option-custom"
-							data-idx={0}
-							onClick={() => onPick(customFamily)}
-							className={`flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left outline-none transition-colors hover:bg-muted pointer-coarse:min-h-11 ${
-								menuIdx === 0 ? "bg-muted ring-1 ring-inset ring-border" : ""
-							}`}
-						>
-							<span className="truncate text-card-foreground">Use “{customFamily}”</span>
-							<span className="shrink-0 text-muted-foreground">custom</span>
-						</button>
-					</li>
-				)}
-			</ul>
-			{footer && <div className="px-2 pt-1.5 text-sm text-muted-foreground">{footer}</div>}
 		</>
 	);
 }

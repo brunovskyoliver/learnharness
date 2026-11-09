@@ -147,7 +147,7 @@ describe("downloaded demos", () => {
 	it("carry the theme and load kit scripts and the font from the app", () => {
 		const out = downloadableDemo(kitDemoHtml(GD), "https://learn.example");
 		assert.match(out, /src="https:\/\/learn\.example\/demo-kit\/runtime\.js"/);
-		assert.match(out, /url\("https:\/\/learn\.example\/fonts\/source-sans-3-latin\.woff2"\)/);
+		assert.match(out, /url\("https:\/\/learn\.example\/fonts\/instrument-sans-latin\.woff2"\)/);
 		assert.match(out, /data-lh-theme/);
 	});
 });

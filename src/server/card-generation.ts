@@ -16,7 +16,7 @@ import { emit } from "../core/events.ts";
 import { getGraph } from "../core/graph.ts";
 import { lessonPassages, graphLinksOf } from "../core/note-sources.ts";
 import { modelsNotConfigured, providerKeyMissing } from "../core/settings.ts";
-import { resolveRoleSpec } from "../core/settings-resolution.ts";
+import { studyRoleSpec as resolveRoleSpec } from "./codex-verify.ts";
 import { cardStore } from "../store/cards.ts";
 import { providerKeyPresent } from "./keys.ts";
 import { jobCost } from "./pricing.ts";
@@ -48,8 +48,11 @@ export async function resolveCardSource(input: CardGenerationSource): Promise<Re
 	}
 	if (input.kind === "passage") {
 		const item = await stores.libraryStore.get(input.itemId);
-		if (!item || item.kind !== "pdf") return { error: "That item is no longer in your Library.", status: 404 };
+		// A PDF passage names its page; a note's passage (Notebook's selection menu) is his own text and names none.
+		const fits = item && (input.page === undefined ? item.kind === "page" : item.kind === "pdf");
+		if (!item || !fits) return { error: "That item is no longer in your Library.", status: 404 };
 		if (!input.text.trim()) return { error: "That passage could not be read.", status: 400 };
+		if (input.page === undefined) return shaped(`a passage of ${item.name}`, input.text, { type: "item", itemId: item.id, name: item.name });
 		return shaped(`${item.name}, page ${input.page}`, input.text, { type: "citation", itemId: item.id, name: item.name, page: input.page, quote: citationQuote(input.text) });
 	}
 	const chat = stores.chatStore.getChat(input.chatId);

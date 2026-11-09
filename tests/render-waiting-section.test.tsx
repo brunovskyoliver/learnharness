@@ -60,8 +60,9 @@ describe("WaitingSectionView", () => {
 		const b = html.indexOf("Session b");
 		const a = html.indexOf("Session a");
 		assert.ok(b > 0 && a > b, "newest first");
-		assert.match(html, /text-primary">Prediction</);
-		assert.match(html, /text-primary">Problem</);
+		// The label's blot (feature 028, row 14) sits before the word, hidden from assistive tech.
+		assert.match(html, /text-bulb-ink"><span class="lh-kind-dot" aria-hidden="true"[^>]*><svg[^]*?<\/svg><\/span>Prediction</);
+		assert.match(html, /text-bulb-ink"><span class="lh-kind-dot" aria-hidden="true"[^>]*><svg[^]*?<\/svg><\/span>Problem</);
 		assert.match(html, /Find the eigenvalues\./, "markdown is stripped, never raw");
 		assert.doesNotMatch(html, /\*\*/);
 		assert.match(html, />Solve</);
@@ -74,10 +75,13 @@ describe("WaitingSectionView", () => {
 		assert.match(render([chat]), /href="\/chat\/x%20y\?answer=call%2F1"/);
 	});
 
-	it("uses the quiet button: raised grey, never the amber fill", () => {
+	it("is a quiet row on the paper: no fill, a toolbar text action, the teaser in graphite (feature 025)", () => {
 		const html = render([item("a", {})]);
-		assert.match(html, /<a[^>]*data-quiet=""[^>]*class="waiting-row-action prompt-primary"/);
-		assert.doesNotMatch(html, /bg-primary/);
+		assert.match(html, /<li class="waiting-row"/);
+		assert.match(html, /<a[^>]*class="waiting-row-action lh-tool"[^>]*>Answer</);
+		assert.match(html, /class="waiting-row-teaser[^"]*text-base[^"]*text-graphite"/);
+		assert.match(html, /<h2[^>]*class="text-lg font-\[550\][^"]*text-ink"[^>]*>Waiting for you</);
+		assert.doesNotMatch(html, /bg-ink|bg-shelf|prompt-primary/);
 	});
 
 	it("truncates a long title in the meta line, never the time", () => {
@@ -91,10 +95,11 @@ describe("WaitingSectionView", () => {
 		assert.doesNotMatch(render([item("idle")]), /px-1/);
 	});
 
-	it("says nothing is waiting in one sentence, with no icon", () => {
+	it("says nothing is waiting in one sentence, with only the empty state's blot (feature 028, row 30)", () => {
 		const html = render([item("idle")]);
 		assert.match(html, /Nothing is waiting\. Every check is answered and every problem solved\./);
-		assert.doesNotMatch(html, /<svg/);
+		assert.equal(html.match(/<svg/g)?.length, 1);
+		assert.match(html, /<span class="lh-empty-blot" aria-hidden="true"[^>]*><svg/);
 		assert.doesNotMatch(html, /open<\/span>/);
 	});
 
@@ -142,7 +147,7 @@ describe("Continue rows (feature 003)", () => {
 			item("check", { postedAt: "2026-10-01T09:00:00.000Z" }),
 		]);
 		assert.ok(html.indexOf("Session check") < html.indexOf("Session lesson"), "Answer/Solve rows come first");
-		assert.match(html, /text-primary">Lesson</);
+		assert.match(html, /text-bulb-ink">Lesson</);
 		assert.match(html, /2 of 11 topics left · next: Learning by gradient descent/);
 		assert.match(html, /href="\/chat\/lesson\?continue=1"[^>]*>Continue</);
 		assert.match(html, /2 open/, "the heading counts every row");

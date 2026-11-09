@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { PlusIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { TopBar } from "@/components/top-bar";
+import { RouteContent } from "@/components/paper/route-content";
 import { useServerEvent } from "@/components/server-events";
 import { cardFetch, failed } from "./card-api.ts";
 import { CardEditorDialog, CardHistoryDialog, DeleteForGoodDialog, type EditorTarget } from "./card-dialogs.tsx";
@@ -14,8 +14,6 @@ import { AllCards, DeletedCards, DraftList, ListStates, type CardListData } from
 import { MakePanel } from "./make-panel.tsx";
 import { QueuePanel } from "./queue-panel.tsx";
 
-const RAISED_2 = "bg-accent text-foreground hover:bg-[color-mix(in_srgb,var(--accent)_80%,var(--foreground))] pointer-coarse:h-11";
-const PILL = "inline-flex h-9 items-center rounded-md px-3 text-sm font-medium transition-colors hover:bg-accent motion-reduce:transition-none pointer-coarse:h-11";
 const VIEWS = { due: "Due", cards: "All cards", drafts: "Drafts", deleted: "Deleted" } as const;
 type ViewName = keyof typeof VIEWS;
 
@@ -78,23 +76,24 @@ export function ReviewView() {
 		<div className="relative flex h-dvh flex-col">
 			<TopBar tabs />
 			<div data-testid="review-scroll" className="min-h-0 flex-1 overflow-y-auto">
-				<div className="mx-auto flex w-full max-w-[52rem] flex-col gap-4 px-4 pb-12 pt-3 sm:pt-11">
+				{/* The content inks in as one on arrival (feature 028); its panels load their own rows. */}
+				<RouteContent className="mx-auto flex w-full max-w-[52rem] flex-col gap-4 px-4 pb-12 pt-3 sm:pt-11">
 					<div className="flex flex-wrap items-center justify-between gap-3">
-						<h1 className="font-title text-2xl font-medium leading-[1.2] tracking-[-0.3px]">Review</h1>
-						<Button type="button" className={RAISED_2} data-testid="review-new" onClick={newCard}>
-							<PlusIcon className="ui-icon" aria-hidden="true" />
+						<h1 className="tracking-title text-2xl font-medium leading-title">Review</h1>
+						<button type="button" className="lh-tool" data-testid="review-new" onClick={newCard}>
+							<PlusIcon aria-hidden="true" />
 							New card
-						</Button>
+						</button>
 					</div>
-					<nav aria-label="Flashcard views" className="flex flex-wrap gap-1" data-testid="review-views">
+					<nav aria-label="Flashcard views" className="nb-set-pills" data-testid="review-views">
 						{(Object.keys(VIEWS) as ViewName[]).map((name) => (
-							<Link key={name} href={hrefOf(name)} aria-current={view === name && !make ? "page" : undefined} className={`${PILL} ${view === name && !make ? "bg-accent text-foreground" : "text-ink-2"}`}>
+							<Link key={name} href={hrefOf(name)} aria-current={view === name && !make ? "page" : undefined} className="nb-set-pill">
 								{VIEWS[name]}{name === "drafts" && draftCount ? ` (${draftCount})` : ""}
 							</Link>
 						))}
 					</nav>
-					{note && <p role="status" data-testid="review-note" className="text-sm text-ink-2">{note}</p>}
-					{failure && <p role="alert" data-testid="review-failure" className="text-sm text-destructive">{failure}</p>}
+					{note && <p role="status" data-testid="review-note" className="text-sm text-graphite">{note}</p>}
+					{failure && <p role="alert" data-testid="review-failure" className="text-sm text-red">{failure}</p>}
 
 					{make ? (
 						<MakePanel param={make} onStarted={() => router.push("/review?view=drafts")} onCancel={() => router.push("/review")} onByHand={(source, label) => { remember(); drafts.clear("new"); setEditor({ mode: "new", source, sourceLabel: label }); router.replace("/review"); }} />
@@ -109,7 +108,7 @@ export function ReviewView() {
 									: <DeletedCards cards={list.cards} onDeleteForGood={(id) => { remember(); setDeleteOf(id); }} onChanged={changed} onFailure={setFailure} />}
 						</ListStates>
 					)}
-				</div>
+				</RouteContent>
 			</div>
 			<CardEditorDialog target={editor} onClose={() => { setEditor(null); refocus(); }} onSaved={(message) => { setEditor(null); changed(message); refocus(); }} />
 			<CardHistoryDialog cardId={historyOf} onClose={() => { setHistoryOf(null); refocus(); }} />

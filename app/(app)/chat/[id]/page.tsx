@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { Chat } from "@/components/chat";
-import { continueDraft, lessonProgressOf, slotsConfigured } from "@/src/core";
-import { clientMessages, compactionInFlight, getChat, isTurnRunning, sessionCost, readSettingsRecord, turnFailure, withTenantPage } from "@/src/server";
+import { RouteExit } from "@/components/paper/route-content";
+import { continueDraft, lessonProgressOf } from "@/src/core";
+import { clientMessages, compactionInFlight, getChat, isTurnRunning, sessionCost, readSettingsRecord, turnFailure, withTenantPage, studySlotsConfigured } from "@/src/server";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ async function ChatPage({
 	// now, so a stale list never drafts a finished topic.
 	const progress = resume === "1" && chat.kind !== "practice" ? lessonProgressOf(chat.tree, chat.messages) : null;
 	return (
+		<RouteExit>
 		<Chat
 			key={chat.id}
 			chatId={chat.id}
@@ -35,7 +37,7 @@ async function ChatPage({
 			initialTurns={chat.turns ?? []}
 			initialPricing={sessionCost(chat)}
 			initialError={turnFailure(chat.id)}
-			initialConfigured={slotsConfigured(record?.models)}
+			initialConfigured={studySlotsConfigured(record?.models)}
 			initialSettings={chat.settings}
 			initialModels={record?.models}
 			initialPrompt={prompt}
@@ -46,6 +48,7 @@ async function ChatPage({
 			initiallyInFlight={isTurnRunning(chat.id)}
 			initiallyCompacting={compactionInFlight(chat.id)}
 		/>
+		</RouteExit>
 	);
 }
 

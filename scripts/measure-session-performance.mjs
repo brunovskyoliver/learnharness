@@ -19,7 +19,7 @@ try {
 					new PerformanceObserver((list) => { window.audit.shifts.push(...list.getEntries().filter((entry) => !entry.hadRecentInput).map((entry) => entry.value)); }).observe({ type: "layout-shift", buffered: true });
 				});
 				await page.goto(`${base}/chat/${process.env.LH_PERF_CHAT ?? "perf-a"}`, { waitUntil: "load", timeout: 90000 });
-				await page.waitForSelector('[data-testid="session-row"]');
+				await page.waitForSelector('[role="log"]');
 				await new Promise((resolve) => setTimeout(resolve, 500));
 				const loading = await page.evaluate(() => {
 					const resources = performance.getEntriesByType("resource");

@@ -10,7 +10,7 @@ import { matchMentions } from "@/src/core";
 import type { LibraryItem } from "@/src/core";
 import type { PassageSelection } from "@/components/passage-selection";
 
-const ROW = "flex min-h-9 w-full items-center rounded-[6px] px-2 text-left text-sm text-foreground hover:bg-accent focus-visible:outline-1 focus-visible:outline-ring pointer-coarse:min-h-11";
+const ROW = "flex min-h-9 w-full items-center rounded-md px-2 text-left text-sm text-ink hover:bg-shelf focus-visible:outline-1 focus-visible:outline-focus pointer-coarse:min-h-11";
 
 async function postPassage(pageId: string, chatId: string, passage: PassageSelection): Promise<string | null> {
 	try {
@@ -79,20 +79,20 @@ export function SavePassageDialog({ chatId, passage, document: fromDocument, onC
 	const exact = pages.some((page) => page.name.toLowerCase() === query.trim().toLowerCase());
 	return (
 		<Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-			<DialogContent className="gap-3 rounded-[10px] border-0 bg-card sm:max-w-md" data-testid="save-passage-dialog" aria-describedby={undefined}>
-				<DialogTitle className="title-serif text-[17px] font-medium">{saved ? "Saved" : "Save to a page"}</DialogTitle>
+			<DialogContent className="gap-3 rounded-lg border-0 bg-shelf sm:max-w-md" data-testid="save-passage-dialog" aria-describedby={undefined}>
+				<DialogTitle className="text-lg font-medium tracking-title">{saved ? "Saved" : "Save to a page"}</DialogTitle>
 				{saved ? (
 					<>
-						<p role="status" className="text-sm text-ink-2" data-testid="save-passage-saved">Saved to {saved.name}, {fromDocument ? `with a citation to page ${fromDocument.page}` : "with a link back to this lesson"}.</p>
+						<p role="status" className="text-sm text-graphite" data-testid="save-passage-saved">Saved to {saved.name}, {fromDocument ? `with a citation to page ${fromDocument.page}` : "with a link back to this lesson"}.</p>
 						<div className="flex flex-wrap gap-2">
-							<button type="button" className="prompt-secondary" data-testid="save-passage-open" onClick={() => { workspace?.openItem(saved); onClose(); }}>Open page</button>
-							<button type="button" className="prompt-primary" onClick={onClose}>Done</button>
+							<button type="button" className="lh-text-action" data-testid="save-passage-open" onClick={() => { workspace?.openItem(saved); onClose(); }}>Open page</button>
+							<button type="button" className="nb-pill" onClick={onClose}>Done</button>
 						</div>
 					</>
 				) : (
 					<>
-						<p className="max-h-24 overflow-y-auto rounded-[6px] bg-background px-2 py-1 text-sm text-ink-2 [overflow-wrap:anywhere] [scrollbar-width:none]" data-testid="save-passage-preview">{fromDocument?.text ?? passage?.markdown}</p>
-						<label className="flex flex-col gap-1 text-sm font-medium text-ink-2">
+						<p className="max-h-24 overflow-y-auto rounded-md bg-paper px-2 py-1 text-sm text-graphite [overflow-wrap:anywhere] [scrollbar-width:none]" data-testid="save-passage-preview">{fromDocument?.text ?? passage?.markdown}</p>
+						<label className="flex flex-col gap-1 text-sm font-medium text-graphite">
 							Find a page, or name a new one
 							<input
 								autoFocus
@@ -100,17 +100,17 @@ export function SavePassageDialog({ chatId, passage, document: fromDocument, onC
 								onChange={(event) => setQuery(event.currentTarget.value)}
 								autoComplete="off"
 								data-testid="save-passage-query"
-								className="h-8 w-full rounded-[6px] border border-input bg-transparent px-2 text-base font-normal text-foreground pointer-coarse:h-11"
+								className="h-8 w-full rounded-md border border-edge bg-transparent px-2 text-md font-normal text-ink pointer-coarse:h-11"
 							/>
 						</label>
 						<div className="flex max-h-56 flex-col gap-0.5 overflow-y-auto [scrollbar-width:none]">
 							{library.items === null && !library.failed && <div role="status" aria-label="Loading your pages" className="flex flex-col gap-2 py-1"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-5 w-1/2" /></div>}
-							{library.failed && <div role="status" className="flex flex-wrap items-center gap-2 text-sm text-ink-2"><p>Your Library could not be loaded.</p><button type="button" className="prompt-secondary" onClick={library.retry}>Try again</button></div>}
-							{library.items !== null && pages.length === 0 && !query.trim() && <p className="text-sm text-ink-2">You have no pages yet. Name one above.</p>}
+							{library.failed && <div role="status" className="flex flex-wrap items-center gap-2 text-sm text-graphite"><p>Your Library could not be loaded.</p><button type="button" className="lh-text-action" onClick={library.retry}>Try again</button></div>}
+							{library.items !== null && pages.length === 0 && !query.trim() && <p className="text-sm text-graphite">You have no pages yet. Name one above.</p>}
 							{rows.map((page) => <button key={page.id} type="button" className={ROW} disabled={busy} data-testid="save-passage-page" onClick={() => void saveTo(page)}>{page.name}</button>)}
 							{library.items !== null && query.trim() && !exact && <button type="button" className={ROW} disabled={busy} data-testid="save-passage-new" onClick={() => void saveToNew()}>New page: {query.trim()}</button>}
 						</div>
-						{error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+						{error && <p role="alert" className="text-sm text-red">{error}</p>}
 					</>
 				)}
 			</DialogContent>

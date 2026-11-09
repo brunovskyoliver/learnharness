@@ -1,3 +1,5 @@
+> **Retired mirror.** This folder mirrors Study ink, the theme feature 025 (2026-11-07) removed. It is not updated: [DESIGN.md](../DESIGN.md) is the only authority for the interface, which now uses one paper design system in both modes (tokens and parts in `app/paper.css` and `components/paper/`). Read what follows as history.
+
 Study ink is the interface of Brunovský's study, a learning app for guided lessons, practice and a knowledge graph. It is a dark reading room, not a terminal. The interface steps back so the lesson comes forward, and one amber accent always means "this needs you".
 
 ## Content fundamentals

@@ -43,6 +43,7 @@ import { chartSize, useSessionMermaid } from "@/components/session-overlay-conte
 import { findDemoByTitle, normalizeDemoTitle, useDemoPanel } from "@/components/artifacts/demo-panel-context";
 import { Hint } from "@/components/ui/hint";
 import { Button } from "@/components/ui/button";
+import { BlotGlyph } from "@/components/paper/blot";
 
 // ─── The one affordance: the hover-reveal corner copy ────────────────────────
 
@@ -109,8 +110,8 @@ export function CopyCorner({
 				aria-label={label}
 				data-testid="md-copy"
 				className={cn(
-					"flex h-6 items-center justify-center rounded-md text-muted-foreground transition-opacity hover:text-foreground focus-visible:opacity-100",
-					text ? "px-1 text-sm pointer-coarse:min-h-11" : cn("size-6 hover:bg-accent pointer-coarse:size-11", !visible && "opacity-0 group-hover/md:opacity-100"),
+					"flex h-6 items-center justify-center rounded-md text-faint transition-opacity hover:text-ink focus-visible:opacity-100",
+					text ? "px-1 text-sm pointer-coarse:min-h-11" : cn("size-6 hover:bg-shelf pointer-coarse:size-11", !visible && "opacity-0 group-hover/md:opacity-100"),
 				)}
 				onClick={(e) => {
 					blurAfterPointerClick(e);
@@ -159,7 +160,7 @@ function MermaidInline({ chart }: { chart: string }) {
 	// so a chart would otherwise stretch to the full column and render its
 	// text larger than the session's own text. Cap the holder at the width
 	// where the chart's 16px base font lands at the SESSION font (measured
-	// live from the wrapper — --lh-prose-size today): a chart may shrink to
+	// live from the wrapper — --note-size today): a chart may shrink to
 	// fit the column, but never blow its text up past the chat's.
 	const holderRef = useRef<HTMLDivElement>(null);
 	const [capW, setCapW] = useState<number | null>(null);
@@ -191,7 +192,7 @@ function MermaidInline({ chart }: { chart: string }) {
 	if (incomplete || (svg === null && error === null)) {
 		return (
 			<div data-testid="md-mermaid" className="my-4 flex justify-center p-4" aria-busy="true">
-				<span className="inline-block size-4 animate-spin rounded-full border border-current border-b-2 text-muted-foreground" />
+				<span className="nb-ink-wait text-faint" aria-hidden="true"><BlotGlyph className="nb-ink-wait-blot" size={13} /></span>
 			</div>
 		);
 	}
@@ -221,7 +222,7 @@ function MermaidInline({ chart }: { chart: string }) {
 						type="button"
 						aria-label="Expand diagram"
 						data-testid="md-mermaid-expand"
-												className="flex size-6 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-accent hover:text-foreground group-hover/md:opacity-100"
+												className="flex size-6 items-center justify-center rounded-md text-faint opacity-0 transition-opacity hover:bg-shelf hover:text-ink group-hover/md:opacity-100"
 						onClick={(e) => {
 							blurAfterPointerClick(e);
 							overlay.openMermaid(chart);
@@ -248,7 +249,7 @@ export function MarkdownCode(props: ComponentProps<"code"> & ExtraProps) {
 	// Inline code: no data-block (the pre handler stamps block fences only).
 	if (!("data-block" in props)) {
 		return (
-			<code className={cn("rounded bg-white/[0.07] px-[0.3em] py-[0.1em] font-mono text-[0.88em]", className)} data-streamdown="inline-code" {...rest}>
+			<code className={cn("rounded bg-code px-[0.3em] py-[0.1em] font-mono text-inline-code", className)} data-streamdown="inline-code" {...rest}>
 				{children}
 			</code>
 		);
@@ -267,7 +268,7 @@ export function MarkdownCode(props: ComponentProps<"code"> & ExtraProps) {
 	return (
 		<div className="md-code-panel group/md relative" data-testid="md-code" data-wrap={wrapped}>
 			<div className="md-code-toolbar">
-				<span className="truncate font-mono text-xs text-muted-foreground">{language || "text"}</span>
+				<span className="truncate font-mono text-xs text-faint">{language || "text"}</span>
 				<div role="toolbar" aria-label="Code block actions" className="flex items-center gap-0.5">
 					<Hint label={wrapped ? "Disable line wrap" : "Wrap lines"}>
 						<Button variant="ghost" size="icon-xs" aria-label={wrapped ? "Disable line wrap" : "Wrap lines"} aria-pressed={wrapped} onClick={(event) => { blurAfterPointerClick(event); setWrapped((value) => !value); }}>
@@ -365,7 +366,7 @@ export function MarkdownBlockquote(props: ComponentProps<"blockquote"> & ExtraPr
 		return (
 			<blockquote
 				{...rest}
-				className="my-4 pl-6 text-ink-2 italic"
+				className="my-4 pl-6 text-graphite italic"
 				data-streamdown="blockquote"
 			>
 				{children}
@@ -376,7 +377,7 @@ export function MarkdownBlockquote(props: ComponentProps<"blockquote"> & ExtraPr
 		<div
 			data-testid="md-callout"
 			data-alert-kind={alert.kind}
-			className="my-4 w-fit max-w-full border border-white px-4 py-3 [&> :first-child]:mt-0 [&> :last-child]:mb-0"
+			className="my-4 w-fit max-w-full border border-rule px-4 py-3 [&> :first-child]:mt-0 [&> :last-child]:mb-0"
 		>
 			{alert.children}
 		</div>
@@ -532,11 +533,11 @@ export function MathDisplay(props: ComponentProps<"span"> & ExtraProps) {
 /** Bold as the REAL element (appearance fix, 2026-09-23): streamdown's
  *  default `strong` renders `<span class="font-semibold" data-streamdown=
  *  "strong">` — and `.lh-prose :where(strong, b)` matches strong/b
- *  ELEMENTS, so neither the factory ink (#ee928c) nor a settings
+ *  ELEMENTS, so neither the factory ink nor a settings
  *  boldColor ever landed on bold text (italic worked: streamdown leaves
  *  `em` native). Rendering the semantic element restores screen-reader
  *  emphasis AND lets the designed token rule apply unmodified — color
- *  --lh-ink-strong, weight 700 (beating the old 600 utility). */
+ *  the paper ink, weight 700 (beating the old 600 utility). */
 export function MarkdownStrong(props: ComponentProps<"strong"> & ExtraProps) {
 	const { children, className, node, ...rest } = props;
 	const panel = useDemoPanel();
@@ -560,7 +561,7 @@ export function MarkdownStrong(props: ComponentProps<"strong"> & ExtraProps) {
 			onClick={() => panel.open(demo.id)}
 			title="Open demo"
 			data-testid="demo-link"
-			className="cursor-pointer underline decoration-muted-foreground decoration-dotted underline-offset-4 transition-colors hover:decoration-foreground"
+			className="cursor-pointer underline decoration-faint decoration-dotted underline-offset-4 transition-colors hover:decoration-ink"
 		>
 			{strong}
 		</button>

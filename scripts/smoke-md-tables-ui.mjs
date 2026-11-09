@@ -58,7 +58,7 @@ try {
 	assert.ok(ready, `server starts: ${output}`);
 	browser = process.env.LH_BROWSER_URL
 		? await puppeteer.connect({ browserURL: process.env.LH_BROWSER_URL })
-		: await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true });
+		: await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true, args: ["--no-sandbox"] });
 	context = await browser.createBrowserContext();
 	await context.overridePermissions(base, ["clipboard-read", "clipboard-write"]);
 	const page = await context.newPage();
@@ -96,7 +96,11 @@ try {
 		console.log(JSON.stringify({ viewport: width, tables: rows }));
 		await capture(`table-${width}`);
 		if (width < 640) {
-			assert.ok(rows[0].content <= rows[0].available + 1, `three-column table fits at ${width}px`);
+			// Feature 025 (R8): the problem now sits in its inline thread (22px indent inside the
+			// 22px-gutter column), 254px wide at 320. There the three-column table keeps its 13px
+			// floor and scrolls inside its frame; from 390 it fits.
+			if (width >= 390) assert.ok(rows[0].content <= rows[0].available + 1, `three-column table fits at ${width}px`);
+			else assert.ok(rows[0].content <= rows[0].available + 1 || (rows[0].clip === "end" && rows[0].tabIndex === 0), `three-column table fits or scrolls at ${width}px`);
 			assert.ok(rows.every((r) => r.effectiveFont >= 13 - 0.01), "13px floor is preserved");
 			assert.equal(rows[2].zoom, 1, "small table is not shrunk");
 			assert.ok(Math.abs(rows[0].height - rows[0].scrollHeight) < 2, "scaled height takes no unscaled blank space");
@@ -131,15 +135,18 @@ try {
 	console.log("PASS wide-table floor, scrolling, keyboard focus, and hidden scrollbars");
 
 	// Change a reading preference without remounting the table or composer.
-	await page.$eval(body, (el) => el.style.setProperty("--lh-prose-size", "24px"));
+	await page.$eval(body, (el) => el.style.setProperty("--note-size", "24px"));
 	await frames();
 	rows = await metrics();
 	assert.equal(rows[0].font, 24);
 	assert.ok(rows.every((r) => r.effectiveFont >= 12.99));
 	await capture("table-large-reading");
-	await page.$eval(body, (el) => el.style.removeProperty("--lh-prose-size"));
+	await page.$eval(body, (el) => el.style.removeProperty("--note-size"));
 	await frames();
-	// A streamed cell can grow without changing the available width.
+	// A streamed cell can grow without changing the available width. At 390, where the
+	// three-column table fits its inline thread (at 320 it already sits on the 13px floor).
+	await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
+	await frames();
 	const original = await page.$eval(`${table} th`, (el) => el.textContent);
 	await page.$eval(`${table} th`, (el) => { el.textContent = "An exceptionally long example heading newly streamed into this table"; });
 	await frames();
@@ -154,10 +161,10 @@ try {
 	await page.$eval(body, (el) => el.style.removeProperty("width"));
 	await frames();
 	assert.ok((await metrics())[0].effectiveFont > 13.1);
-	await page.$eval(body, (el) => el.style.setProperty("--lh-prose-size", "12px"));
+	await page.$eval(body, (el) => el.style.setProperty("--note-size", "12px"));
 	await frames();
 	assert.ok((await metrics()).every((r) => r.zoom === 1), "existing small reading preferences are never enlarged or shrunk");
-	await page.$eval(body, (el) => el.style.removeProperty("--lh-prose-size"));
+	await page.$eval(body, (el) => el.style.removeProperty("--note-size"));
 	await frames();
 	const mutations = await page.$eval(body, (el) => new Promise((resolve) => {
 		let count = 0;

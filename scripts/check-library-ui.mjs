@@ -273,12 +273,10 @@ async function checkWidth(width) {
 	assert.deepEqual(await readdir(files), []);
 	await page.waitForFunction(() => document.body.innerText.includes("Nothing here yet."));
 
-	// The sidebar reaches the view at this width.
-	if (mobile) {
-		await page.click('[aria-label="Open sidebar"]');
-		await page.waitForSelector('[data-testid="sidebar-library"]', { visible: true });
-		await shot(page, "sidebar");
-	}
+	// The sidebar (feature 025: the overlay at every width) reaches the view.
+	await page.click('[aria-label="Open sidebar"]');
+	await page.waitForSelector('[data-testid="sidebar-library"]', { visible: true });
+	if (mobile) await shot(page, "sidebar");
 	const link = await page.$eval('[data-testid="sidebar-library"]', (el) => [el.getAttribute("href"), el.getAttribute("aria-current"), el.textContent.trim()]);
 	assert.deepEqual(link, ["/library", "page", "Library"]);
 	assert.deepEqual(errors, [], `${width}px: no browser exceptions`);
@@ -421,7 +419,8 @@ async function checkMentionField(page, posts, width, name, selector, { sends = t
 	await page.waitForFunction((row, sel) => document.querySelector(row) && document.querySelector(sel)?.querySelector('[role="status"]')?.textContent === "Nothing matched", {}, newRow, menu);
 	assert.equal(await isActive(), false, `${name}: no match activates nothing`);
 	if (width < 768) {
-		const height = await page.$eval(newRow, (el) => el.getBoundingClientRect().height);
+		// Layout height: Notebook's menu scales in from .98 (feature 025), so the box is smaller mid-entry.
+		const height = await page.$eval(newRow, (el) => el.offsetHeight);
 		assert.ok(height >= 44, `${name}: the row is at least 44px (${height})`);
 	}
 	assert.equal((await page.$eval(menu, (el) => el.lastElementChild.dataset.testid)), "mention-new-page", `${name}: last in the list`);
@@ -535,7 +534,14 @@ async function checkMentions(width) {
 			return typeof field?.[props]?.onChange === "function";
 		}, {}, selector);
 		const hidden = await page.$eval(selector, (el) => !el.offsetParent);
-		if (hidden) await page.click('[data-testid="question-dock-bar"], [data-testid="practice-dock-bar"]');
+		// Feature 025: a pending check or problem is a thread beside the lesson; "Go to it" opens it
+		// (the collapsed thread's own line when the bottom bar has no Go to it).
+		if (hidden) {
+			const goTo = await page.$('[data-testid="check-go-to"]');
+			if (goTo) await goTo.click();
+			else await page.click('[data-testid="question-dock-bar"], [data-testid="practice-dock-bar"], [data-testid="teach-check-reveal"]');
+			await page.waitForFunction((sel) => !!document.querySelector(sel)?.offsetParent, {}, selector);
+		}
 	};
 	const composer = '[data-testid="composer"] textarea';
 	await open("/", composer);
@@ -589,7 +595,7 @@ async function checkMentions(width) {
 	if (shots) await page.screenshot({ path: path.join(shots, `mention-${width}-new-page-long-list.png`) });
 	// Styled as the rows beside it: only the active treatment differs, and it isn't amber at rest.
 	const compare = await page.evaluate((sel) => {
-		const pick = (el) => { const c = getComputedStyle(el); return { height: Math.round(el.getBoundingClientRect().height) >= 44, radius: c.borderRadius, padding: c.paddingLeft, cursor: c.cursor }; };
+		const pick = (el) => { const c = getComputedStyle(el); return { height: el.offsetHeight >= 44, radius: c.borderRadius, padding: c.paddingLeft, cursor: c.cursor }; };
 		const text = (el) => { const c = getComputedStyle(el.firstElementChild); return { color: c.color, size: c.fontSize }; };
 		const other = document.querySelector('[data-testid="mention-option"]');
 		const own = document.querySelector(sel);
@@ -705,7 +711,7 @@ try {
 		if (!ready) await pause(250);
 	}
 	assert.ok(ready, "isolated server starts");
-	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true });
+	browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true, args: ["--no-sandbox"] });
 	if (toolsOnly) {
 		if (!process.env.LH_UI_SKIP_FORMAT) for (const width of [1440, 390, 320]) await checkEditorTools(width);
 		if (!process.env.LH_UI_SKIP_ACTIONS) for (const width of [1440, 390]) await checkTutorActions(width);
@@ -781,7 +787,7 @@ async function checkSettings(width) {
 	const id = (name) => `[data-testid="${name}"]`;
 	const openSettings = async () => {
 		await page.goto(`${base}/library`, { waitUntil: "domcontentloaded" });
-		if (phone) { await live(page, '[aria-label="Open sidebar"]'); for (let i = 0; i < 30 && !(await page.$("[data-mobile-navigation]")); i++) { await page.click('[aria-label="Open sidebar"]'); await pause(300); } }
+		await live(page, '[aria-label="Open sidebar"]'); for (let i = 0; i < 30 && !(await page.$('[data-testid="nb-sidebar"]')); i++) { await page.click('[aria-label="Open sidebar"]'); await pause(300); }
 		await live(page, id("settings-entry"));
 		await page.click(id("settings-entry"));
 		await page.waitForSelector(id("settings-dialog"), { visible: true });
@@ -809,11 +815,12 @@ async function checkSettings(width) {
 		await page.waitForSelector(id("settings-nav-agent"), { visible: true });
 		assert.ok(await page.$(id("settings-dialog")), "the first Escape only clears the search");
 		// Jump: section changes and the row's control holds focus.
-		await type("font");
-		await page.waitForSelector(id("settings-result-font"), { visible: true });
-		await page.click(id("settings-result-font"));
-		await page.waitForSelector(id("row-font"), { visible: true });
-		await page.waitForFunction(() => document.activeElement?.matches('[data-testid="font-trigger"]'));
+		// Feature 025: the theme lives in Customize; the jump lands on its chosen card.
+		await type("dark");
+		await page.waitForSelector(id("settings-result-theme"), { visible: true });
+		await page.click(id("settings-result-theme"));
+		await page.waitForSelector(id("nb-set-appearance"), { visible: true });
+		await page.waitForFunction(() => document.activeElement?.matches('[data-testid^="nb-set-appearance-"][aria-checked="true"]'));
 		await type("thinking");
 		await page.click(id("settings-result-slot-vision"));
 		await page.waitForFunction(() => document.activeElement?.matches('[data-testid="slot-model-vision"]'));
@@ -1294,14 +1301,15 @@ async function checkTutorActions(width) {
 		await page.keyboard.up("Shift");
 		await page.waitForSelector('[data-testid="page-bubble"]', { visible: true });
 		await pause(400);
-		// Above the text it selects, even on the first line, and inside the page pane.
+		// Clear of the text it selects (above it, or below when the card has no room there:
+		// feature 025 made it Notebook's taller selection card), even on the first line, and inside the page pane.
 		const bubble = await page.evaluate(() => {
 			const text = getSelection().getRangeAt(0).getBoundingClientRect();
 			const box = document.querySelector('[data-testid="page-bubble"]').getBoundingClientRect();
 			const pane = document.querySelector(".page-workspace").getBoundingClientRect();
-			return { above: box.bottom <= text.top, inPane: box.left >= pane.left && box.right <= pane.right };
+			return { clear: box.bottom <= text.top + 1 || box.top >= text.bottom - 1, inPane: box.left >= pane.left - 1 && box.right <= pane.right + 1 };
 		});
-		assert.deepEqual(bubble, { above: true, inPane: true }, `selection bubble at ${width}px`);
+		assert.deepEqual(bubble, { clear: true, inPane: true }, `selection bubble at ${width}px`);
 	};
 
 	// Beside a chat: Explain sends at once; Ask… only fills the composer.
@@ -1469,19 +1477,27 @@ async function checkOutlineExport(width) {
 	await page.waitForFunction(() => window.getSelection()?.anchorNode?.parentElement?.closest("h3")?.textContent === "Third");
 	console.log(`PASS ${width}px outline lists h1-h3 and jumps the caret, word count leaves out formulas`);
 
+	// Feature 025 (T049): Export is the paper export dialog: PDF, Word and Markdown through the
+	// export route, with Copy as Markdown and Print kept as its own actions. A page with no
+	// Notebook notes shows no "Include the notes".
 	await page.click('[data-testid="page-export"]');
-	await page.waitForSelector('[data-testid="page-export-menu"]');
+	await page.waitForSelector('[data-testid="page-export-dialog"]');
+	assert.equal(await page.$('[data-testid="page-export-include"]'), null, "no notes switch for a page without notes");
 	await page.click('[data-testid="page-export-copy"]');
 	await page.waitForFunction(() => document.querySelector('[data-testid="page-export-copy"]')?.textContent === "Copied");
 	assert.equal(await page.evaluate(() => navigator.clipboard.readText()), text);
-	await page.click('[data-testid="page-export-download"]');
+	await page.click('[data-testid="page-export-format-md"]');
+	await page.click('[data-testid="page-export-run"]');
 	let file = null;
 	for (let i = 0; i < 40 && !file; i++) {
 		file = (await readdir(downloads)).find((f) => f.endsWith(".md"));
 		if (!file) await pause(250);
 	}
 	assert.equal(file, `${name}.md`);
-	assert.equal(await readFile(path.join(downloads, file), "utf8"), text);
+	const exported = await readFile(path.join(downloads, file), "utf8");
+	assert.ok(exported.includes("Second part") && exported.includes("Six."), exported);
+	await page.waitForFunction(() => !document.querySelector('[data-testid="page-export-dialog"]'));
+	await page.waitForFunction((n) => document.querySelector('[data-testid="page-exported"]')?.textContent === `Exported “${n}.md”.`, {}, name);
 	await page.click('[data-testid="page-export"]');
 	await page.waitForSelector('[data-testid="page-export-print"]');
 	await page.click('[data-testid="page-export-print"]');
@@ -1490,7 +1506,7 @@ async function checkOutlineExport(width) {
 	assert.equal(printed.title, name);
 	assert.ok(printed.text.includes("Second part") && printed.text.includes("Six."), printed.text);
 	await page.waitForFunction(() => !document.getElementById("lh-print-root"));
-	console.log(`PASS ${width}px export: copy is the stored Markdown, download is "${name}.md", print shows only the page`);
+	console.log(`PASS ${width}px export: copy is the stored Markdown, the Markdown file is "${name}.md", print shows only the page`);
 	assert.deepEqual(errors, [], `${width}px: no browser exceptions`);
 	await context.close();
 }

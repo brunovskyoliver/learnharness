@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useBackdropDismiss } from "@/components/backdrop-dismiss";
+import { useModalFocus } from "@/components/modal-focus";
 
 /**
  * The ESC-abort guard (owner, 2026-10-02): the global Esc → abort chain
@@ -62,43 +63,34 @@ export function AbortTurnBody({
 }) {
 	const backdropDismiss = useBackdropDismiss(onClose);
 	const copy = COPY[mode];
+	const modal = useRef<HTMLDivElement>(null);
+	// Cancel takes the focus (the cautious default, like Esc), Tab stays inside, the focus goes back on close.
+	useModalFocus(modal, true, '[data-testid="abort-turn-cancel"]');
 	return (
 		<div
+			ref={modal}
 			role="dialog"
 			aria-modal="true"
 			aria-label={copy.title}
 			data-testid="abort-turn-dialog"
-			className="fixed inset-0 z-50 flex items-center justify-center bg-background "
+			className="nb-dialog-backdrop"
 			// A genuine click on the scrim cancels — the cautious default, like Esc.
 			{...backdropDismiss}
 		>
-			<div
-				className="mx-4 w-full max-w-sm rounded-xl border bg-card p-5 "
-				onClick={(e) => e.stopPropagation()}
-			>
-				<h2 className="text-sm font-semibold text-card-foreground" data-testid="abort-turn-title">
+			<div className="lh-dialog" style={{ "--lh-dialog-width": "24rem" } as CSSProperties} onClick={(e) => e.stopPropagation()}>
+				<h2 className="lh-dialog-title" data-testid="abort-turn-title">
 					{copy.title}
 				</h2>
-				<p className="mt-1.5 text-sm text-muted-foreground" data-testid="abort-turn-line">
+				<p className="lh-dialog-text" data-testid="abort-turn-line">
 					{copy.line}
 					{busy && mode !== "turn" ? " The working turn stops too." : ""}
 				</p>
-				<div className="mt-4 flex justify-end gap-2">
-					<button
-						type="button"
-						data-testid="abort-turn-cancel"
-						onClick={onClose}
-						className="rounded-sm px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-					>
+				<div className="lh-dialog-actions">
+					<button type="button" data-testid="abort-turn-cancel" onClick={onClose} className="lh-text-action">
 						Cancel
 					</button>
-					<button
-						type="button"
-						data-testid="abort-turn-confirm"
-						onClick={onConfirm}
-						// Destructive red — the app's established destructive pair.
-						className="rounded-sm border border-destructive/50 bg-destructive/10 px-3 py-1.5 text-sm text-destructive transition-colors hover:bg-destructive/20"
-					>
+					{/* Destructive: the ink pill in red. */}
+					<button type="button" data-testid="abort-turn-confirm" onClick={onConfirm} className="nb-pill lh-pill-danger">
 						{copy.action}
 					</button>
 				</div>

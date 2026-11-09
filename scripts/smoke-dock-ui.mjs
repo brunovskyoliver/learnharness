@@ -84,7 +84,7 @@ try {
 	assert.ok(ready, "isolated server starts");
 	browser = process.env.LH_BROWSER_URL
 		? await puppeteer.connect({ browserURL: process.env.LH_BROWSER_URL, defaultViewport: null })
-		: await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true });
+		: await puppeteer.launch({ executablePath: process.env.CHROME_PATH, headless: true, args: ["--no-sandbox"] });
 	context = await browser.createBrowserContext();
 	page = await context.newPage();
 	page.setDefaultTimeout(5000);
@@ -170,15 +170,21 @@ try {
 		};
 		requestAnimationFrame(frame);
 	}));
-	let sampling = sample();
+	let sampling;
+	let frames;
+	// Feature 025 (R8): the check is a thread beside the lesson, not in the prompt bar.
+	assert.match(await page.$eval('[data-testid="check-pending"]', (element) => element.textContent), /Answer the check beside the lesson/, "the bar says where the check is");
 	await page.click('[data-testid="teach-check-reveal"]');
-	let frames = await sampling;
-	const heights = frames.map((frame) => Math.round(frame.height));
-	assert.ok(new Set(heights).size > 3, "expansion has intermediate heights");
-	assert.ok(heights.at(-1) > heights[0] + 100, "question expands");
-	assert.ok(frames.some((frame) => frame.scroll > frames[0].scroll + 1 && frame.scroll < frames.at(-1).scroll - 1), "reveal scroll moves through intermediate positions");
-	assert.equal(await page.$eval('[data-testid="lesson-question"]', (element) => !!element.closest('[data-testid="dock-shell"]') && !element.closest('[data-testid="lesson-content"]')), true, "active question follows the floating prompt");
-	console.log("PASS coordinated expansion and scroll");
+	await page.waitForSelector('[data-testid="check-thread"][data-state="open"]');
+	await wait(450); // the thread unfolds (.34s clip): let it finish before pointing into it
+	const placement = await page.$eval('[data-testid="lesson-question"]', (element) => {
+		const thread = element.closest('[data-testid="check-thread"]');
+		const lesson = document.querySelector('[data-testid="lesson-content"]');
+		const text = lesson.getBoundingClientRect().right - parseFloat(getComputedStyle(lesson).paddingRight);
+		return { thread: !!thread, variant: thread?.dataset.variant, inLesson: !!element.closest('[data-testid="lesson-content"]'), inShell: !!element.closest('[data-testid="dock-shell"]'), gap: Math.round(thread.getBoundingClientRect().left - text), width: Math.round(thread.getBoundingClientRect().width) };
+	});
+	assert.deepEqual(placement, { thread: true, variant: "margin", inLesson: false, inShell: false, gap: 71, width: 410 }, "the open check is a 410px thread 71px right of the lesson column");
+	console.log("PASS the check opens as a margin thread beside lesson-content");
 	assert.equal(await page.$('[data-testid="plan-sidebar"]'), null, "no persistent plan sidebar");
 	assert.equal(await page.$('[data-testid="plan-popup"]'), null, "plan starts closed");
 	const centered = await page.evaluate(() => {
@@ -199,75 +205,39 @@ try {
 	const chosenConfidence = await page.$eval('[data-testid="confidence-segments"] [aria-checked="true"]', (element) => element.textContent);
 	await page.evaluate(() => document.activeElement?.blur());
 	const selection = await page.evaluate(() => ({
-		button: getComputedStyle(document.querySelector('button[type="submit"]')).userSelect,
+		button: getComputedStyle(document.querySelector('[data-testid="check-thread"] button[type="submit"]')).userSelect,
 		input: getComputedStyle(document.querySelector('[aria-label="Your thinking"]')).userSelect,
 		question: getComputedStyle(document.querySelector('[data-testid="lesson-question"]')).userSelect,
 	}));
 	assert.deepEqual(selection, { button: "none", input: "text", question: "text" });
 	console.log("PASS blank-area focus and selective text selection");
 	await wait(500);
-	const shell = await page.$('[data-testid="dock-shell"]');
-	const shellBox = await shell.boundingBox();
-	await page.mouse.move(shellBox.x + 20, shellBox.y + shellBox.height - 15);
-	sampling = sample();
+	// Reading history no longer folds a check: the thread stays as it is.
+	await page.mouse.move(700, 300);
 	await page.mouse.wheel({ deltaY: -420 });
-	frames = await sampling;
-	assert.ok(new Set(frames.map((frame) => Math.round(frame.scroll))).size > 3, "wheel over prompt scrolls smoothly");
+	await wait(450);
+	assert.equal(await page.$eval('[data-testid="check-thread"]', (element) => element.dataset.state), "open", "scrolling never folds the thread");
+	await page.click('[aria-label="Collapse question"]');
 	await page.waitForSelector('[data-testid="question-dock-bar"]', { visible: true });
-	assert.equal(await page.$eval('[data-testid="lesson-question"]', (element) => element.inert), true, "outgoing choices become inert as soon as folding begins");
-	await page.waitForFunction(() => document.querySelector('[data-testid="lesson-question"]').hidden);
+	assert.equal(await page.$eval('[data-testid="lesson-question"]', (element) => !!element.closest("[hidden][inert]")), true, "a closed thread hides its form and makes it inert");
 	await page.click('[data-testid="question-dock-bar"]');
-	await wait(400);
-	assert.equal(await page.$eval('[data-kbdrow="0"]', (element) => element.getAttribute("aria-checked")), "true", "fold preserves the selected answer");
-	assert.equal(await page.$eval('[data-testid="confidence-segments"] [aria-checked="true"]', (element) => element.textContent), chosenConfidence, "fold preserves confidence");
+	await page.waitForSelector('[data-testid="check-thread"][data-state="open"]');
+	assert.equal(await page.$eval('[data-kbdrow="0"]', (element) => element.getAttribute("aria-checked")), "true", "closing preserves the selected answer");
+	assert.equal(await page.$eval('[data-testid="confidence-segments"] [aria-checked="true"]', (element) => element.textContent), chosenConfidence, "closing preserves confidence");
 	assert.equal(await page.$eval('[aria-label="Your thinking"]', (element) => element.value), "Keep this draft.");
-	await page.evaluate(() => { window.dockScroller.scrollTop = window.dockScroller.scrollHeight; });
+	console.log("PASS closed threads preserve drafts, choice and confidence; scrolling leaves them alone");
+	// "Go to it" brings the thread back, open.
+	await page.click('[aria-label="Collapse question"]');
+	await page.mouse.move(700, 300);
+	await page.mouse.wheel({ deltaY: -2000 });
 	await wait(450);
-	await page.click('[aria-label="Your thinking"]');
-	await page.keyboard.down("Control");
-	await page.keyboard.press("KeyA", { commands: ["SelectAll"] });
-	await page.keyboard.up("Control");
-	await page.keyboard.press("Backspace");
-	assert.equal(await page.$eval('[aria-label="Your thinking"]', (element) => element.value), "");
-	await page.mouse.wheel({ deltaY: -420 });
-	await wait(450);
-	assert.equal(await page.$('[data-testid="question-dock-bar"]'), null, "scrolling up must keep an empty focused input expanded");
-	await page.evaluate(() => { document.activeElement?.blur(); window.dockScroller.scrollTop = window.dockScroller.scrollHeight; });
-	await wait(450);
-	await page.mouse.wheel({ deltaY: -420 });
-	await page.waitForSelector('[data-testid="question-dock-bar"]');
-	await page.click('[data-testid="question-dock-bar"]');
-	await wait(400);
-	assert.equal(await page.$eval('[aria-label="Your thinking"]', (element) => element.value), "", "cleared draft stays empty after folding");
-	assert.equal(await page.$eval('[data-kbdrow="0"]', (element) => element.getAttribute("aria-checked")), "true", "fold preserves choice");
-	const revealDistance = await page.evaluate(() => window.dockScroller.scrollHeight - window.dockScroller.clientHeight - window.dockScroller.scrollTop);
-	assert.ok(revealDistance < 2, `reveal ends at the bottom (remaining ${revealDistance}px)`);
-	console.log("PASS focused inputs stay open; folded inputs preserve drafts, choice and confidence");
-	// The lesson can end above the prompt while its reserved tail remains.
-	// Expansion now waits for the final 16px of the actual scroll range.
-	await page.mouse.wheel({ deltaY: -1000 });
-	await page.waitForSelector('[data-testid="question-dock-bar"]');
-	await wait(450);
-	await page.evaluate(() => {
-		window.dockScroller.scrollTop = window.dockScroller.scrollHeight - window.dockScroller.clientHeight - 300;
-	});
-	await wait(450);
-	await page.waitForSelector('[data-testid="question-dock-bar"]');
-	await page.mouse.move(1000, 160);
-	sampling = sample();
-	await page.mouse.wheel({ deltaY: 200 });
-	frames = await sampling;
-	assert.ok(frames.every((frame) => !frame.expanded), "the prompt stays collapsed more than 16px from the actual bottom");
-	sampling = sample();
-	await page.mouse.wheel({ deltaY: 100 });
-	frames = await sampling;
-	assert.ok(frames.some((frame) => frame.expanded), "the prompt opens in the final 16px");
-	const expansionThreshold = frames.find((frame) => frame.expanded).collapsedDistance;
-	assert.ok(typeof expansionThreshold === "number" && expansionThreshold <= 16, `the lesson-end position does not trigger early expansion (threshold ${expansionThreshold}px)`);
-	await wait(300);
-	assert.equal(await page.$('[data-testid="question-dock-bar"]'), null);
-	assert.equal(await page.$eval('[aria-label="Your thinking"]', (element) => element.value), "");
-	console.log("PASS prompt expands only within 16px of the actual bottom");
+	await page.click('[data-testid="check-go-to"]');
+	await page.waitForFunction(() => {
+		const thread = document.querySelector('[data-testid="check-thread"]');
+		const box = thread?.getBoundingClientRect();
+		return thread?.dataset.state === "open" && box.top >= 0 && box.bottom <= innerHeight;
+	}, { timeout: 3000 });
+	console.log("PASS Go to it scrolls to and opens the thread");
 	await page.click('[data-testid="plan-chip"]');
 	await page.waitForSelector('[data-testid="plan-popup"]');
 	const overlay = await page.$eval('[data-testid="plan-popup"]', (element) => {
@@ -296,22 +266,27 @@ try {
 		const layout = await page.evaluate(() => {
 			const prompt = document.querySelector('[data-testid="dock-shell"]').getBoundingClientRect();
 			const question = document.querySelector('[data-testid="lesson-question"]');
-			return { sidebar: !!document.querySelector('[data-testid="plan-sidebar"]'), top: prompt.top, bottom: prompt.bottom, questionHeight: question.clientHeight, width: document.documentElement.scrollWidth, viewport: innerWidth };
+			const thread = question.closest('[data-testid="check-thread"]');
+			return { sidebar: !!document.querySelector('[data-testid="plan-sidebar"]'), top: prompt.top, bottom: prompt.bottom, questionHeight: question.clientHeight, width: document.documentElement.scrollWidth, viewport: innerWidth, variant: thread.dataset.variant, threadRight: thread.getBoundingClientRect().right };
 		});
 		assert.equal(layout.sidebar, false);
 		assert.ok(layout.top >= 52 && layout.bottom <= viewport.height, `prompt stays within ${viewport.width}×${viewport.height}: ${JSON.stringify(layout)}`);
 		assert.ok(layout.questionHeight >= 80, "question remains usable");
 		assert.ok(layout.questionHeight <= viewport.height / 2 + 1, "question stays within half the available screen");
 		assert.ok(layout.width <= layout.viewport, "no horizontal overflow");
+		assert.equal(layout.variant, "inline", `no room beside the lesson at ${viewport.width}px: the thread sits inline`);
+		assert.ok(layout.threadRight <= viewport.width, "the inline thread stays on screen");
 		if (viewport.width === 800) {
-			await page.waitForFunction(() => window.dockScroller.scrollHeight - window.dockScroller.clientHeight - window.dockScroller.scrollTop < 2);
-			const nested = await page.evaluate(() => {
+			const nested = await page.evaluate(async () => {
 				const element = document.querySelector('[data-testid="lesson-question"]');
+				element.scrollIntoView({ block: "start" });
+				await new Promise((resolve) => setTimeout(resolve, 300));
 				element.scrollTop = 0;
 				const bounds = element.getBoundingClientRect();
 				return { x: bounds.left + 30, y: bounds.top + 30, main: window.dockScroller.scrollTop };
 			});
 			await page.mouse.move(nested.x, nested.y);
+			assert.ok(await page.$eval('[data-testid="lesson-question"]', (element) => element.scrollHeight > element.clientHeight + 10), "the question overflows its half-screen area here");
 			await page.mouse.wheel({ deltaY: 80 });
 			await wait(100);
 			assert.ok(await page.$eval('[data-testid="lesson-question"]', (element) => element.scrollTop > 0), "nested question area keeps native scrolling");
@@ -325,13 +300,14 @@ try {
 	await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
 	await page.evaluate(() => document.activeElement?.blur());
 	await page.waitForSelector('[data-testid="plan-popup"]', { hidden: true });
-	await page.mouse.move(180, 160);
-	await page.mouse.wheel({ deltaY: -420 });
+	await page.$eval('[aria-label="Collapse question"]', (element) => element.click());
 	await page.waitForSelector('[data-testid="question-dock-bar"]');
-	await page.click('[data-testid="question-dock-bar"]');
+	await page.$eval('[data-testid="question-dock-bar"]', (element) => element.click());
+	await page.waitForSelector('[data-testid="check-thread"][data-state="open"]');
 	await wait(50);
+	assert.equal(await page.$eval('[data-testid="check-thread"]', (element) => element.getAnimations({ subtree: true }).length), 0, "reduced motion: the thread opens without unfolding");
 	assert.equal(await page.$eval('[data-testid="dock-shell"]', (element) => element.getAnimations().length), 0, "reduced motion has no height animation");
-	assert.equal(await page.$eval('[aria-label="Your thinking"]', (element) => element.value), "");
+	assert.equal(await page.$eval('[aria-label="Your thinking"]', (element) => element.value), "Keep this draft.");
 	await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "no-preference" }]);
 	await openChat(completed.id);
 	const composer = await page.$('[data-testid="composer"]');
@@ -421,10 +397,11 @@ try {
 	await openChat(practice.id);
 	await page.setViewport({ width: 390, height: 844 });
 	await page.waitForSelector('[data-testid="practice-dock-bar"]', { visible: true });
-	assert.equal(await page.$eval('[data-testid="practice-problem-content"]', (element) => element.hidden && element.inert), true, "practice starts with a compact summary");
+	assert.equal(await page.$eval('[data-testid="practice-problem-content"]', (element) => !!element.closest("[hidden][inert]")), true, "practice starts as a collapsed thread");
+	assert.match(await page.$eval('[data-testid="check-pending"]', (element) => element.textContent), /Solve the problem above/, "inline at 390: the problem is above the bar");
 	await page.click('[data-testid="practice-dock-bar"]');
 	await page.waitForSelector('[data-testid="practice-problem-content"]', { visible: true });
-	assert.ok(await page.$eval('[data-testid="practice-problem-content"]', (element) => element.textContent.trim().length > 0 && !!element.closest('[data-testid="dock-shell"]')), "expanded practice statement follows the prompt");
+	assert.ok(await page.$eval('[data-testid="practice-problem-content"]', (element) => element.textContent.trim().length > 0 && element.closest('[data-testid="check-thread"]')?.dataset.variant === "inline" && !!element.closest('[data-testid="lesson-content"]') && !element.closest('[data-testid="dock-shell"]')), "on a phone the problem's thread sits inline in the lesson");
 	await page.type('[data-testid="practice-thinking-field"] textarea', "My practice reasoning survives folding.");
 	await page.evaluate(() => {
 		window.practiceInput = document.querySelector('[data-testid="practice-thinking-field"] textarea');
@@ -433,24 +410,40 @@ try {
 		while (scroller && !/auto|scroll/.test(getComputedStyle(scroller).overflowY)) scroller = scroller.parentElement;
 		window.dockScroller = scroller;
 	});
-	const practiceLessonLeft = await page.$eval('[role="log"]', (element) => element.getBoundingClientRect().left);
-	await page.mouse.move(practiceLessonLeft + 20, 100);
-	await page.mouse.wheel({ deltaY: -420 });
+	await page.click('[aria-label="Collapse problem"]');
 	await page.waitForSelector('[data-testid="practice-dock-bar"]', { visible: true });
 	await page.click('[data-testid="practice-dock-bar"]');
 	await page.waitForSelector('[data-testid="practice-problem-content"]', { visible: true });
 	assert.equal(await page.$eval('[data-testid="practice-thinking-field"] textarea', (element) => element.value), "My practice reasoning survives folding.");
-	assert.equal(await page.evaluate(() => window.practiceInput === document.querySelector('[data-testid="practice-thinking-field"] textarea')), true, "practice folding keeps the input mounted");
+	assert.equal(await page.evaluate(() => window.practiceInput === document.querySelector('[data-testid="practice-thinking-field"] textarea')), true, "closing the problem thread keeps the input mounted");
 	assert.ok(await page.$eval('[data-testid="practice-problem-content"]', (element) => element.getBoundingClientRect().height <= (window.visualViewport?.height ?? innerHeight) / 2 + 1), "mobile practice content is bounded to half the available viewport");
-	console.log("PASS floating practice summary, expanded statement, mobile bounds and preserved draft/input");
+	console.log("PASS practice thread: collapsed line, inline statement, mobile bounds and preserved draft/input");
 	await openChat(codeChat.id);
 	await page.setViewport({ width: 1024, height: 768 });
 	await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "no-preference" }]);
 	await page.waitForSelector('[data-testid="md-code"]');
 	await page.waitForFunction(() => {
 		const code = document.querySelector('[data-testid="md-code"] code');
-		return [...code.querySelectorAll('span span')].some((token) => token.textContent.trim() === '=' && getComputedStyle(token).color === 'rgb(177, 185, 196)');
+		// Shiki's highlighted tokens are in, in the paper theme's colours (feature 025): the
+		// operator takes the keyword role (--lh-code-token-keyword → the paper's purple ink
+		// of the current theme), which is not the code's own ink.
+		const probe = document.createElement("span");
+		probe.style.color = "var(--lh-code-token-keyword)";
+		code.append(probe);
+		const keyword = getComputedStyle(probe).color;
+		probe.style.color = "var(--lh-code-foreground)";
+		const ink = getComputedStyle(probe).color;
+		probe.remove();
+		return keyword !== ink && [...code.querySelectorAll('span span')].some((token) => token.textContent.trim() === '=' && getComputedStyle(token).color === keyword);
 	});
+	// The pair is one set of variables: the keyword colour is the paper's purple ink.
+	assert.deepEqual(await page.evaluate(() => {
+		const code = document.querySelector('[data-testid="md-code"] code');
+		const token = [...code.querySelectorAll('span span')].find((t) => t.textContent.trim() === '=');
+		const probe = document.createElement("span"); probe.style.color = "var(--text-purple)"; code.append(probe);
+		const purple = getComputedStyle(probe).color; probe.remove();
+		return { token: getComputedStyle(token).color === purple, light: token.style.getPropertyValue("--sdm-c").includes("--lh-code-"), dark: token.style.getPropertyValue("--shiki-dark").includes("--lh-code-") };
+	}), { token: true, light: true, dark: true }, "Shiki tokens use the paper code variables in both themes");
 	const presentation = await page.evaluate(() => {
 		const blocks = [...document.querySelectorAll('[data-testid="md-code"]')];
 		const short = blocks[0].querySelector('[data-streamdown="code-block"]');
@@ -507,52 +500,31 @@ try {
 		await page.click('[data-testid="teach-check-reveal"]');
 		await wait(450);
 		await page.evaluate(() => document.activeElement?.blur());
-		await page.mouse.move(1100, 180);
+		await page.mouse.move(700, 180);
+		// Feature 025 (R8): a thread does not fold with scrolling. Up and down
+		// gestures leave it open; only the reader closes it.
 		const observing = page.evaluate(() => new Promise((resolve) => {
 			window.stopDockObservation = false;
+			const thread = () => document.querySelector('[data-testid="check-thread"]')?.dataset.state;
+			let previous = thread();
 			let transitions = 0;
-			const phases = [];
-			window.dockObservationPhases = phases;
-			window.dockDebugScrollEvents = [];
-			window.dockDebugWheelEvents = [];
-			let scroller = document.querySelector('[data-testid="dock-spacer"]').parentElement;
-			while(scroller && !/auto|scroll/.test(getComputedStyle(scroller).overflowY)) scroller=scroller.parentElement;
-			window.debugMotionScroller = scroller;
-			scroller.addEventListener("wheel", (event) => window.dockDebugWheelEvents.push({time:performance.now(),deltaY:event.deltaY,target:event.target.tagName}), true);
-			scroller.addEventListener("scroll", () => { window.dockDebugScrollEvents.push({time:performance.now(),y:scroller.scrollTop,distance:scroller.scrollHeight-scroller.clientHeight-scroller.scrollTop,height:scroller.scrollHeight,client:scroller.clientHeight,compact:document.querySelector('[data-testid="dock-shell"]').dataset.compact});if(window.dockDebugScrollEvents.length>150)window.dockDebugScrollEvents.shift(); }, true);
-			let blankFrames = 0;
-			let previous = !!document.querySelector('[data-testid="question-dock-bar"]');
 			const start = performance.now();
 			const frame = () => {
-				const shell = document.querySelector('[data-testid="dock-shell"]');
-				const bar = !!document.querySelector('[data-testid="question-dock-bar"]');
-				if (bar !== previous) { transitions++; previous = bar; phases.push({ t: Math.round(performance.now() - start), bar, y: Math.round(scroller.scrollTop), distance: scroller.scrollHeight-scroller.clientHeight-scroller.scrollTop, scrollHeight: scroller.scrollHeight, clientHeight: scroller.clientHeight, h: Math.round(shell.getBoundingClientRect().height) }); }
-				const outgoing = shell.querySelector('.dock-outgoing');
-				const painted = Math.max(shell.firstElementChild.getBoundingClientRect().height, outgoing && Number(getComputedStyle(outgoing).opacity) > .03 ? outgoing.getBoundingClientRect().height : 0);
-				if (shell.getBoundingClientRect().height - painted > 80) blankFrames++;
+				const now = thread();
+				if (now !== previous) { transitions++; previous = now; }
 				if (!window.stopDockObservation && performance.now() - start < 10000) requestAnimationFrame(frame);
-				else resolve({ transitions, blankFrames, phases });
+				else resolve({ transitions, state: now });
 			};
 			requestAnimationFrame(frame);
 		}));
 		void observing.catch(() => {});
-		await page.mouse.wheel({ deltaY: -360 });
-		await page.waitForSelector('[data-testid="question-dock-bar"]');
-		await wait(450);
-		assert.ok(await page.$('[data-testid="question-dock-bar"]'), "layout movement cannot reopen an upward gesture");
-		await page.mouse.wheel({ deltaY: 360 });
-		await page.waitForFunction(() => !document.querySelector('[data-testid="question-dock-bar"]'));
-		await page.mouse.wheel({ deltaY: -240 });
-		await page.waitForSelector('[data-testid="question-dock-bar"]');
-		await page.mouse.wheel({ deltaY: 360 });
-		await page.waitForFunction(() => !document.querySelector('[data-testid="question-dock-bar"]'));
+		for (const deltaY of [-360, 360, -240, 360]) { await page.mouse.wheel({ deltaY }); await wait(450); }
 		for (let i = 0; i < 12; i++) await page.mouse.wheel({ deltaY: 8 });
 		await wait(350);
 		await page.evaluate(() => { window.stopDockObservation = true; });
 		const stable = await observing;
-		assert.equal(stable.transitions, 4, `two up/down gestures produce exactly two collapses and two openings: ${JSON.stringify(stable.phases)}`);
-		if (stable.blankFrames !== 0) motionFailures.push(`the outgoing quiz stays painted during the morph at ${rate}x CPU (${stable.blankFrames} blank frames)`);
-		console.log(`PASS recording regression at ${rate}x CPU slowdown: no repeated toggles; blank frames ${stable.blankFrames}`);
+		assert.deepEqual(stable, { transitions: 0, state: "open" }, "scrolling never toggles the open thread");
+		console.log(`PASS recording regression at ${rate}x CPU slowdown: the thread stays open through up/down gestures`);
 	}
 	await motionClient.send("Emulation.setCPUThrottlingRate", { rate: 1 });
 	}

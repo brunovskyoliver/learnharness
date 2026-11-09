@@ -24,8 +24,8 @@ function PlanText({ plan }: { plan: ReadablePlan | null }) {
 					.map((edge) => titles.get(edge.from) ?? edge.from);
 				return <li key={node.id}>
 					<span>{node.title}</span>
-					{node.status && <span className="text-muted-foreground"> · {node.status}</span>}
-					{prerequisites.length > 0 && <p className="text-muted-foreground">After: {prerequisites.join(", ")}</p>}
+					{node.status && <span className="text-faint"> · {node.status}</span>}
+					{prerequisites.length > 0 && <p className="text-faint">After: {prerequisites.join(", ")}</p>}
 				</li>;
 			})}
 		</ul>
@@ -35,7 +35,7 @@ function PlanText({ plan }: { plan: ReadablePlan | null }) {
 function BlockFallback({ data, onOpen, failed = false }: BlockProps & { failed?: boolean }) {
 	return (
 		<div className="space-y-2 text-sm" data-testid="plan-block-fallback">
-			<p role={failed ? "alert" : "status"} className="text-muted-foreground">
+			<p role={failed ? "alert" : "status"} className="text-faint">
 				{failed ? "The plan diagram could not load. Your plan is shown below." : "Loading plan diagram…"}
 			</p>
 			<PlanText plan={data} />
@@ -57,14 +57,14 @@ function PopupFallback({ messages, onClose, failed = false }: PopupProps & { fai
 	}, [onClose]);
 	return (
 		<div role="dialog" aria-modal="true" aria-label="The full plan" data-testid="plan-popup-fallback"
-			className="absolute inset-0 z-40 flex flex-col bg-background p-4 "
+			className="absolute inset-0 z-40 flex flex-col bg-paper p-4 "
 			onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
 			<div className="mb-2 flex items-center justify-between gap-2">
 				<span className="text-sm font-medium">Plan</span>
-				<button type="button" onClick={onClose} className="min-h-11 rounded-lg px-3 hover:bg-accent">Close</button>
+				<button type="button" onClick={onClose} className="min-h-11 rounded-lg px-3 hover:bg-shelf">Close</button>
 			</div>
-			<div className="min-h-0 flex-1 overflow-auto rounded-xl bg-background p-4 text-sm">
-				<p role={failed ? "alert" : "status"} className="mb-4 text-muted-foreground">
+			<div className="min-h-0 flex-1 overflow-auto rounded-lg bg-paper p-4 text-sm">
+				<p role={failed ? "alert" : "status"} className="mb-4 text-faint">
 					{failed ? "The plan diagram could not load. Your plan is shown below." : "Loading plan diagram…"}
 				</p>
 				<PlanText plan={latestTree(messages)} />

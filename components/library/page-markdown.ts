@@ -18,6 +18,7 @@ import { Node as PmNode, type Schema } from "@tiptap/pm/model";
 import { TextSelection } from "@tiptap/pm/state";
 import StarterKit from "@tiptap/starter-kit";
 import { decodeNamedCharacterReference } from "decode-named-character-reference";
+import { InkColorMark, underlineTokenizer } from "./page-ink.ts";
 
 type Token = { raw?: string; type?: string; block?: boolean; text?: string; latex?: string; open?: string; close?: string; source?: string; tokens?: Token[]; [k: string]: unknown };
 
@@ -480,7 +481,6 @@ function fenceFor(text: string): string {
 export function pageExtensions(mathOptions?: { onSave?: () => void; wiki?: WikiBridge }): AnyExtension[] {
 	return [
 		StarterKit.configure({
-			underline: false,
 			link: { openOnClick: false, autolink: false, linkOnPaste: true, HTMLAttributes: { rel: "noreferrer", target: "_blank" } },
 			codeBlock: { HTMLAttributes: { spellcheck: "false" } },
 		}).extend({
@@ -497,6 +497,8 @@ export function pageExtensions(mathOptions?: { onSave?: () => void; wiki?: WikiB
 					// reader would otherwise turn it into a hard break on the first
 					// keystroke nearby, rewriting bytes nobody edited.
 					if (ext.name === "paragraph") return ext.extend({ whitespace: "pre" });
+					// `<u>…</u>` only, lowercase (page-ink.ts), so other HTML stays verbatim.
+					if (ext.name === "underline") return ext.extend({ markdownTokenizer: underlineTokenizer as never });
 					if (ext.name === "link") return ext.extend({
 						renderMarkdown: (node: JSONContent, h) => {
 							const title = node.attrs?.title;
@@ -520,6 +522,7 @@ export function pageExtensions(mathOptions?: { onSave?: () => void; wiki?: WikiB
 		Callout,
 		Collapsible,
 		CollapsibleSummary,
+		InkColorMark,
 	];
 }
 
@@ -564,6 +567,9 @@ function shared() {
 		const mark = attrs ? { type: markType, attrs } : { type: markType };
 		return content.map((node) => node.content
 			? { ...node, content: apply(markType, node.content, attrs) }
+			// Code takes no other mark; underline and ink (feature 024) around code text leave it plain code
+			// rather than fail the page (an edit there writes `x` without the <u> or <span>).
+			: (markType === "underline" || markType === "inkColor") && node.marks?.some((m) => m.type === "code") ? node
 			: { ...node, marks: node.marks?.some((m) => m.type === markType) ? node.marks : [...(node.marks ?? []), mark] }) as JSONContent[];
 	};
 	cached = { manager, schema: getSchema(extensions) };

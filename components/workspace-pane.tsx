@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode, type Ref } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type AnimationEvent, type ReactNode, type Ref } from "react";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/components/workspace/workspace-context";
 
@@ -10,14 +10,27 @@ const MIN_WIDTH = 320;
 /** The transcript keeps at least this much of the session area. */
 const MIN_TRANSCRIPT = 420;
 const STEP = 16;
+/** The collapse's lift (row 12, `--motion-quick`), then the pane folds away. */
+const LIFT_MS = 160;
+
+const noSubscribe = () => () => {};
 
 function clampWidth(width: number, area: number): number {
 	const max = Math.max(MIN_WIDTH, area - MIN_TRANSCRIPT);
 	return Math.round(Math.min(Math.max(width, MIN_WIDTH), max));
 }
 
-/** The column beside the lesson that a demo or a page sits in: resize handle and
- *  saved width. The width is shared, so swapping contents never moves the edge. */
+/** Set by the Library's full view (feature 027, R9): the pane fills the
+ *  content column instead of sitting beside it, and its header's ✕ becomes
+ *  "← Library". */
+export interface PaneFull { onLibrary: () => void }
+export const PaneFullContext = createContext<PaneFull | null>(null);
+export const usePaneFull = () => useContext(PaneFullContext);
+
+/** The column beside the lesson that a demo or a page sits in: a paper panel
+ *  with the grain (feature 025, R11), its edge the rule hairline that is also
+ *  the resize handle (arrows by keyboard, double-click resets), and the saved
+ *  width. The width is shared, so swapping contents never moves the edge. */
 export function WorkspacePane({ label, resizeLabel, testId, className, rootRef, onKeyDownCapture, onKeyDown, children }: {
 	label: string;
 	resizeLabel: string;
@@ -29,16 +42,43 @@ export function WorkspacePane({ label, resizeLabel, testId, className, rootRef, 
 	children: (dragging: boolean) => ReactNode;
 }) {
 	const workspace = useWorkspace();
+	const full = usePaneFull() !== null;
 	// Collapse keeps everything mounted: a page's editor, a demo's live iframe.
-	const collapsed = Boolean(workspace?.paneCollapsed) && testId !== "context-pane";
+	const collapsed = !full && Boolean(workspace?.paneCollapsed) && testId !== "context-pane";
 	const own = useRef<HTMLElement | null>(null);
+	// Row 12 (feature 028): the pane slides in when it opens on the client
+	// (not when a page load renders it open) or comes back from collapse,
+	// and lifts away before it folds.
+	const hydrating = useSyncExternalStore(noSubscribe, () => false, () => true);
+	const [arriving, setArriving] = useState(() => !hydrating && !collapsed);
+	const [leaving, setLeaving] = useState(false);
+	const was = useRef(collapsed);
+	useLayoutEffect(() => {
+		if (was.current === collapsed) return;
+		was.current = collapsed;
+		if (!collapsed) { setLeaving(false); setArriving(true); return; }
+		setArriving(false);
+		setLeaving(true);
+		const timer = window.setTimeout(() => setLeaving(false), LIFT_MS);
+		return () => window.clearTimeout(timer);
+	}, [collapsed]);
+	useEffect(() => {
+		if (!arriving) return;
+		const timer = window.setTimeout(() => setArriving(false), 600);
+		return () => window.clearTimeout(timer);
+	}, [arriving]);
+	const settled = (event: AnimationEvent<HTMLElement>) => {
+		if (event.target !== event.currentTarget) return;
+		if (event.animationName === "nb-chat-in" || event.animationName === "lh-fade") setArriving(false);
+	};
 	const [width, setWidth] = useState(DEFAULT_WIDTH);
 	const [dragging, setDragging] = useState(false);
 
 	useEffect(() => {
+		if (full) return;
 		const saved = Number(window.localStorage.getItem(WIDTH_KEY));
 		if (Number.isFinite(saved) && saved > 0) setWidth(saved);
-	}, []);
+	}, [full]);
 
 	const area = () => own.current?.parentElement?.clientWidth ?? window.innerWidth;
 	const commit = (next: number) => {
@@ -80,6 +120,27 @@ export function WorkspacePane({ label, resizeLabel, testId, className, rootRef, 
 		e.stopPropagation();
 	};
 
+	if (full) {
+		// The full view: no resize edge, no saved width, the column's width.
+		return (
+			<section
+				ref={(node) => {
+					own.current = node;
+					if (typeof rootRef === "function") rootRef(node);
+					else if (rootRef) rootRef.current = node;
+				}}
+				aria-label={label}
+				data-testid={testId}
+				data-pane-full=""
+				onKeyDownCapture={onKeyDownCapture}
+				onKeyDown={onKeyDown}
+				className={cn("lh-pane-full relative flex min-h-0 w-full flex-1 flex-col", className)}
+			>
+				<div className="lh-pane-inner flex min-h-0 w-full flex-1 flex-col">{children(false)}</div>
+			</section>
+		);
+	}
+
 	return (
 		<aside
 			ref={(node) => {
@@ -90,11 +151,14 @@ export function WorkspacePane({ label, resizeLabel, testId, className, rootRef, 
 			aria-label={label}
 			data-testid={testId}
 			data-workspace-pane=""
-			data-pane-collapsed={collapsed || undefined}
+			data-pane-collapsed={(collapsed && !leaving) || undefined}
+			data-pane-leaving={leaving || undefined}
+			data-pane-arrive={arriving || undefined}
+			onAnimationEnd={settled}
 			onKeyDownCapture={onKeyDownCapture}
 			onKeyDown={onKeyDown}
 			style={{ "--lh-demo-w": `${clampWidth(width, typeof window === "undefined" ? 1440 : area())}px` } as React.CSSProperties}
-			className={cn("relative flex min-h-0 shrink-0 flex-col bg-background md:h-full md:w-[var(--lh-demo-w)]", className)}
+			className={cn("lh-paper-panel relative flex min-h-0 shrink-0 flex-col md:h-full md:w-[var(--lh-demo-w)]", className)}
 		>
 			<div
 				role="separator"

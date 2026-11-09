@@ -25,7 +25,9 @@ describe("GraphDisplayControls", () => {
 	it("region controls use the muted ink and lock while background colors are off, with no opacity", () => {
 		const off = { ...DEFAULT_RENDER_SETTINGS, regions: { ...DEFAULT_RENDER_SETTINGS.regions, enabled: false } };
 		const html = renderToStaticMarkup(<GraphDisplayControls settings={off} changeSettings={() => {}} />);
-		assert.match(html, /<span class="[^"]*text-muted-foreground[^"]*">Dilation/);
+		// The slider row carries the unavailable state (muted ink in paper.css) and its range locks.
+		assert.match(html, /<label[^>]*class="nb-set-slider" data-disabled=""><span class="nb-set-slider-head">Dilation/);
+		assert.match(html, /type="range"[^>]*disabled=""|disabled=""[^>]*type="range"/);
 		assert.ok(!html.includes("opacity-"));
 	});
 });

@@ -11,7 +11,7 @@ import { pageRowHeadline, toolActivityLabel, type ArtifactPartProps, type PageRo
 const DiagramProposalDialog = dynamic(() => import("@/components/diagram/diagram-proposal-dialog.tsx").then((m) => m.DiagramProposalDialog), { ssr: false });
 const PageProposalDialog = dynamic(() => import("./page-proposal-dialog.tsx").then((m) => m.PageProposalDialog), { ssr: false });
 
-const ACTION = "text-foreground underline decoration-foreground/40 underline-offset-[3px] hover:decoration-foreground pointer-coarse:min-h-11";
+const ACTION = "text-ink underline decoration-ink/40 underline-offset-[3px] hover:decoration-ink pointer-coarse:min-h-11";
 const OUTCOMES = ["created", "revised", "stale", "failed", "read", "proposed"];
 
 function detailsOf(output: unknown): PageRowDetails | null {
@@ -34,8 +34,8 @@ export function PageRow({ part }: ArtifactPartProps) {
 	const errored = p.state === "output-error";
 	if (p.state !== "output-available" && !errored) {
 		return (
-			<div role="status" data-testid="page-row-running" className="lh-reading my-1 flex items-center gap-2 text-sm text-muted-foreground">
-				<LoaderCircleIcon className="size-3.5 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+			<div role="status" data-testid="page-row-running" className="lh-reading lh-quiet-line my-1">
+				<LoaderCircleIcon className="animate-spin motion-reduce:animate-none" aria-hidden="true" />
 				{toolActivityLabel(tool)}
 			</div>
 		);
@@ -49,12 +49,12 @@ export function PageRow({ part }: ArtifactPartProps) {
 	const open = (history: boolean) => pane?.open({ id: target!.id, name: target!.name, kind: target!.kind as "page", size: target!.size, ...(history ? { history: true } : {}) });
 	return (
 		<SessionDetails stateKey={`tool/${p.toolCallId}`} initialOpen={!!proposal} data-testid="page-row" data-tool={tool} className="group lh-reading my-1">
-			<summary className="flex cursor-pointer select-none list-none items-center gap-2 text-sm text-muted-foreground [&::-webkit-details-marker]:hidden">
-				<span className={`font-medium [overflow-wrap:anywhere] ${bad ? "text-destructive" : ""}`}>{pageRowHeadline(tool, d)}</span>
-				<ChevronRight className="size-3 shrink-0 opacity-50 transition-transform group-open:rotate-90" aria-hidden="true" />
+			<summary className="lh-quiet-summary">
+				<span className={`font-medium [overflow-wrap:anywhere] ${bad ? "text-red" : ""}`}>{pageRowHeadline(tool, d)}</span>
+				<ChevronRight className="lh-quiet-chevron" aria-hidden="true" />
 			</summary>
-			<div className="mt-2 flex flex-col gap-2 rounded-[10px] bg-card p-3 text-sm">
-				{reason && <p className="text-destructive">{reason}</p>}
+			<div className="lh-quiet-panel flex flex-col gap-2">
+				{reason && <p className="text-red">{reason}</p>}
 				{proposal && (
 					<div className="flex flex-wrap gap-3">
 						<button type="button" className={ACTION} aria-label={`Review the proposal for ${proposal.name}`} data-testid={proposal.target === "page" ? "page-row-review" : "diagram-row-review"} onClick={() => setReviewing(true)}>Review</button>
@@ -74,7 +74,7 @@ export function PageRow({ part }: ArtifactPartProps) {
 						onApproved={(item) => pane?.open({ id: item.id, name: item.name, kind: item.kind, size: item.size })}
 					/>
 				)}
-				{d && "savedLearnerVersion" in d && d.savedLearnerVersion !== undefined && <p className="text-ink-2">Saved your edits first as version {d.savedLearnerVersion}</p>}
+				{d && "savedLearnerVersion" in d && d.savedLearnerVersion !== undefined && <p className="text-graphite">Saved your edits first as version {d.savedLearnerVersion}</p>}
 				{opensHere && (
 					<div className="flex flex-wrap gap-3">
 						<button type="button" className={ACTION} aria-label={`Open ${target!.name}`} onClick={() => open(false)}>Open</button>

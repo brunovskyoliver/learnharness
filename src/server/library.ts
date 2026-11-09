@@ -8,11 +8,12 @@ import { createHash } from "node:crypto";
 import { Readable } from "node:stream";
 import {
 	ACCEPTED_EXTENSIONS, cleanTags, CONTENT_CHUNK_SIZES, extensionOf, isPageStale, isRefusal, isVersionedKind, kindForName, LIBRARY_REFUSALS, LibraryCatalogError, MAX_FILE_BYTES,
-	REFERENCE_INLINE_MAX_BYTES, uploadName,
+	isTombstone, REFERENCE_INLINE_MAX_BYTES, uploadName,
 	pageVersionName, type LibraryItem, type LibraryMarks, type LibraryRefusal, type LibraryRefusalCode, type PageVersionCause, type PageWriteResult,
 } from "../core/library.ts";
 import { libraryStore, openDocumentStream, type ByteRange, type DocumentStat } from "../store/library.ts";
 import { indexAfterUpload } from "./library-text.ts";
+import { repoLinkViews } from "./repo-link-views.ts";
 
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
 
@@ -27,6 +28,19 @@ const REFUSAL_STATUS: Record<LibraryRefusalCode, number> = {
 	folder_missing: 404,
 	folder_cycle: 409,
 	folder_not_empty: 409,
+	// Feature 026 (contracts/api.md)
+	repo_file: 409,
+	repo_folder: 409,
+	repo_linked: 409,
+	holds_linked: 409,
+	not_https: 400,
+	credential_in_address: 400,
+	invalid_address: 400,
+	invalid_branch: 400,
+	already_linked: 409,
+	limit_links: 409,
+	address_blocked: 403,
+	sync_failed: 422,
 };
 
 function refusal(r: LibraryRefusal, status = REFUSAL_STATUS[r.refused]): Response {
@@ -44,13 +58,26 @@ async function guarded(run: () => Promise<Response>): Promise<Response> {
 	}
 }
 
+/** For the repo-link routes (feature 026): the same refusal shape and catalog guard. */
+export { refusal as libraryRefusal, guarded as libraryGuarded };
+
 export function libraryListResponse(): Promise<Response> {
-	return guarded(async () => json({
+	return guarded(async () => {
+		const catalog = await libraryStore.catalog();
+		return json({
 		items: await libraryStore.list(),
 		folders: await libraryStore.folders(),
 		recentIds: (await libraryStore.recent()).map((item) => item.id),
+		links: await repoLinkViews(),
+		// Feature 027: files removed from a linked repo, by the paths a sent
+		// message still names them by, so its chip reads "Removed from the repo".
+		removed: catalog.flatMap((entry) => (isTombstone(entry) && entry.mirror && entry.removedBecause ? [{ id: entry.id, kind: entry.kind, names: entry.kept?.previousNames ?? [] }] : [])),
+		// Feature 027 (analyze M1): the other names the server still resolves, of
+		// items in the Trash or deleted for good, so the composer draws them faint.
+		gone: catalog.flatMap((entry) => (isTombstone(entry) && !entry.mirror ? [{ id: entry.id, name: entry.name, kind: entry.kind }] : [])),
 		limits: { maxFileBytes: MAX_FILE_BYTES, inlineItemBytes: REFERENCE_INLINE_MAX_BYTES, accepted: ACCEPTED_EXTENSIONS },
-	}));
+		});
+	});
 }
 
 export function libraryUploadResponse(request: Request): Promise<Response> {
@@ -117,6 +144,7 @@ export function libraryTrashResponse(request: Request): Promise<Response> {
 			: typeof body?.folderId === "string" ? await libraryStore.trashFolder(body.folderId) : undefined;
 		if (entry === undefined) return json({ error: "Say what to move to the trash.", code: "invalid_trash" }, 400);
 		if (!entry) return json({ error: "That is no longer in your Library." }, 404);
+		if (isRefusal(entry)) return refusal(entry);
 		return json({ entry }, 201);
 	});
 }
@@ -124,6 +152,7 @@ export function libraryTrashResponse(request: Request): Promise<Response> {
 export function libraryRestoreResponse(entryId: string): Promise<Response> {
 	return guarded(async () => {
 		const restored = await libraryStore.restoreTrash(entryId);
+		if (restored && isRefusal(restored)) return refusal(restored);
 		return restored ? json(restored) : json({ error: "That is no longer in the trash." }, 404);
 	});
 }
@@ -184,15 +213,16 @@ export function libraryPatchResponse(request: Request, id: string): Promise<Resp
 		const result = await libraryStore.rename(id, body.name);
 		if (!result) return json({ error: "That item is no longer in your Library." }, 404);
 		// The contract has no 415 here: a type the bytes don't fit is a bad name.
-		if (isRefusal(result)) return refusal(result, result.refused === "name_taken" ? 409 : 400);
+		if (isRefusal(result)) return refusal(result, result.refused === "name_taken" || result.refused === "repo_file" ? 409 : 400);
 		return json({ item: result });
 	});
 }
 
 export function libraryDeleteResponse(id: string): Promise<Response> {
 	return guarded(async () => {
-		if (!await libraryStore.remove(id)) return json({ error: "That item is no longer in your Library." }, 404);
-		return json({ ok: true });
+		const removed = await libraryStore.remove(id);
+		if (!removed) return json({ error: "That item is no longer in your Library." }, 404);
+		return removed === true ? json({ ok: true }) : refusal(removed);
 	});
 }
 
@@ -300,22 +330,40 @@ function contentPlan(request: Request, tag: string, size: number): ContentPlan {
 export function libraryContentResponse(request: Request, id: string): Promise<Response> {
 	return guarded(async () => {
 		const missing = () => json({ error: "That item is no longer in your Library." }, 404);
-		const item = await libraryStore.get(id);
+		let item = await libraryStore.get(id);
 		if (!item || isVersionedKind(item.kind)) return missing();
 		const params = new URL(request.url).searchParams;
 		const ask = chunkAsk(params);
 		if (ask === "bad") return json({ error: "That part of the file can't be read." }, 400);
 		const chosen: { plan?: ContentPlan } = {};
-		const opened = await openDocumentStream(libraryStore.documentPath(item), (stat) => {
-			const tag = documentTag(item, stat);
+		const open = (at: LibraryItem) => openDocumentStream(libraryStore.documentPath(at), (stat) => {
+			const tag = documentTag(at, stat);
 			const plan = chosen.plan = ask ? chunkPlan(ask, tag, stat.size) : contentPlan(request, tag, stat.size);
 			return plan.status === 206 || plan.status === "chunk" ? plan.range : plan.status === 200 ? "all" : "none";
 		});
+		let opened = await open(item);
+		// A pull may have swapped the snapshot between the read and the open (feature 026, R4): once more from a fresh catalog.
+		if (!opened && item.mirror) {
+			item = await libraryStore.get(id);
+			if (item?.mirror) opened = await open(item);
+		}
 		const plan = chosen.plan;
-		if (!opened || !plan) return missing();
-		if (plan.status === 304) return new Response(null, { status: 304, headers: { "ETag": plan.tag, "Cache-Control": CONTENT_CACHE } });
+		if (!item || !opened || !plan) return missing();
+		// A mirrored file names its repo, so a reader opened from anywhere can say where it comes from,
+		// and its blob oid: an open reader compares it after a pull ("Updated from the repo").
+		const repoHeaders = new Headers();
+		const linkId = item.mirror?.linkId;
+		const display = linkId ? (await libraryStore.repoLinks()).find((l) => l.id === linkId)?.display : undefined;
+		if (display) repoHeaders.set("X-Library-Repo", encodeURIComponent(display));
+		if (item.mirror?.oid) repoHeaders.set("X-Library-Version", item.mirror.oid);
+		if (plan.status === 304) {
+			repoHeaders.set("ETag", plan.tag);
+			repoHeaders.set("Cache-Control", CONTENT_CACHE);
+			return new Response(null, { status: 304, headers: repoHeaders });
+		}
 		if (plan.status === 412) return json({ error: "This file changed. Reload it.", code: "stale" }, 412);
 		const headers = contentHeaders(item, plan.tag, params.get("download") === "1");
+		for (const [name, value] of repoHeaders) headers.set(name, value);
 		if (plan.status === 416) {
 			headers.set("Content-Range", `bytes */${plan.size}`);
 			return new Response(null, { status: 416, headers });

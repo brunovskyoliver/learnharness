@@ -3,6 +3,7 @@
 import { useSessionState } from "@/components/session-state";
 
 import { useState } from "react";
+import { useArrival, wasPosedCheck } from "@/components/paper/motion-arrival";
 import { ChevronDownIcon } from "lucide-react";
 import { blurAfterPointerClick } from "@/components/focus-hygiene";
 import { ConfidenceRail } from "@/components/confidence-rail";
@@ -12,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { ToolContentResponse } from "@/components/ai-elements/message";
 import { WolframCheckedLabel } from "@/components/artifacts/math-check-card";
 import { ReferencesCard } from "@/components/library/references-card";
+import { copySource, ReferenceText } from "@/components/reference-text";
 import type { LibraryReference, QuestionAnswerData } from "@/src/core";
 import { answerForPresentation, parseAskInput, parseQuizInput } from "@/src/core";
 
@@ -25,12 +27,29 @@ import { answerForPresentation, parseAskInput, parseQuizInput } from "@/src/core
  * client — the card reveals his answer, the committed correct answer, and
  * the explanation, with NO verdict chips (owner ruling 2026-09-27).
  */
-export function AnsweredCard({ answer: savedAnswer, input, checked = false }: { answer: QuestionAnswerData; input?: unknown; checked?: boolean }) {
+const NO_REFERENCES: LibraryReference[] = [];
+
+/**
+ * Feature 028, row 18: a pencil stroke under a correct grade. It draws once,
+ * when the grade arrives for a check posed in this page load (the learner
+ * just answered it); settled history shows it finished.
+ */
+function GradePencil({ toolCallId }: { toolCallId: string }) {
+	const { arriving } = useArrival(`grade:${toolCallId}`, wasPosedCheck(toolCallId));
+	return (
+		<svg className="lh-grade-pencil" viewBox="0 0 100 6" preserveAspectRatio="none" aria-hidden="true" data-testid="grade-pencil" data-drawing={arriving ? "" : undefined}>
+			<path d="M1 4 C 28 2.4, 62 5.2, 99 3.2" pathLength={1} vectorEffect="non-scaling-stroke" className={cn("nb-pencil-stroke", !arriving && "lh-pencil-still")} strokeWidth={1.3} />
+		</svg>
+	);
+}
+
+export function AnsweredCard({ answer: savedAnswer, input, checked = false, chipScope = "", toolCallId = "" }: { answer: QuestionAnswerData; input?: unknown; checked?: boolean; /** Focus keys for its chips (feature 027). */ chipScope?: string; /** Its question's call, for the grade's one pencil stroke (feature 028). */ toolCallId?: string }) {
 	const answer = answerForPresentation(savedAnswer, input);
+	const references = (savedAnswer as { references?: LibraryReference[] }).references ?? NO_REFERENCES;
 	const [whyOpen, setWhyOpen] = useSessionState("why", false); // the tucked explanation (predictions, owner 2026-10-03)
 	if (answer.dismissed) {
 		return (
-			<div className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
+			<div className="rounded-lg border bg-shelf p-4 text-sm text-faint">
 				<span className="font-medium">{answer.questionText}</span> — skipped
 			</div>
 		);
@@ -65,10 +84,10 @@ export function AnsweredCard({ answer: savedAnswer, input, checked = false }: { 
 		    p-4 into a 28px void below (12px above); the card's own padding is
 		    the bottom rhythm when a row ends the card. */}
 		<div
-			className="rounded-xl border bg-card p-4 text-card-foreground [&>*:last-child]:mb-0"
+			className="rounded-lg border bg-shelf p-4 text-ink [&>*:last-child]:mb-0"
 			data-testid="answered-card"
 		>
-			<div className="mb-1 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+			<div className="mb-1 flex items-center gap-2 text-sm font-medium text-faint">
 				{/* The tool's OWN name first (owner 2026-10-09): probe-phase
 			    cards label Probe/Recall — the phase boundary visible in the
 			    transcript. No `tool` on old records: kind labels as before. */}
@@ -85,11 +104,11 @@ export function AnsweredCard({ answer: savedAnswer, input, checked = false }: { 
 											: "Question"}
 				{isQuiz &&
 					(answer.dontKnow ? (
-						<span className="rounded border border-border px-1.5 py-0.5">didn't know</span>
+						<span className="rounded border border-rule px-1.5 py-0.5">didn't know</span>
 					) : answer.correct ? (
-						<span className="rounded border border-success/50 px-1.5 py-0.5 text-success">correct</span>
+						<span className="relative rounded border border-green/50 px-1.5 py-0.5 text-green">correct<GradePencil toolCallId={toolCallId} /></span>
 					) : (
-						<span className="rounded border border-destructive/50 px-1.5 py-0.5 text-destructive">incorrect</span>
+						<span className="rounded border border-red/50 px-1.5 py-0.5 text-red">incorrect</span>
 					))}
 			</div>
 			<div className="mb-3 font-medium">
@@ -98,7 +117,7 @@ export function AnsweredCard({ answer: savedAnswer, input, checked = false }: { 
 			{parsedDetails && (
 				// The details line, same paint as the pending dock (owner,
 				// 2026-10-12): full markdown, LaTeX included.
-				<div className="mb-3 text-sm text-muted-foreground">
+				<div className="mb-3 text-sm text-faint">
 					<ToolContentResponse>{parsedDetails}</ToolContentResponse>
 				</div>
 			)}
@@ -113,12 +132,12 @@ export function AnsweredCard({ answer: savedAnswer, input, checked = false }: { 
 								key={opt.index}
 								className={cn(
 									"flex items-center gap-2 rounded-lg border px-3 py-1.5",
-									sel && key && "border-success/60 bg-success/10",
+									sel && key && "border-green/60 bg-green/10",
 									// The wrong pick is marked, not shouted: the KEY below carries
 									// the weight (polish pass 2026-10-26).
-									sel && !key && isQuiz && "border-destructive/40",
-									sel && !isQuiz && "border-primary bg-accent",
-									!sel && key && "border-success/60",
+									sel && !key && isQuiz && "border-red/40",
+									sel && !isQuiz && "border-ink bg-shelf",
+									!sel && key && "border-green/60",
 								)}
 							>
 								{isQuiz && (
@@ -131,9 +150,9 @@ export function AnsweredCard({ answer: savedAnswer, input, checked = false }: { 
 											// Fixed gutter (polish pass 2026-10-26): every row reserves the
 											// mark's width, so option text aligns whether or not a mark shows.
 											"flex w-3.5 shrink-0 items-center",
-											sel && key && "text-success",
-											sel && !key && "text-destructive",
-											!sel && key && "text-success",
+											sel && key && "text-green",
+											sel && !key && "text-red",
+											!sel && key && "text-green",
 										)}
 									>
 										{/* Owner round 8: a touch smaller than the text (size-4→size-3.5,
@@ -141,13 +160,13 @@ export function AnsweredCard({ answer: savedAnswer, input, checked = false }: { 
 										{(key || sel) && <GlyphMark kind={key ? "check" : "x"} className="lh-mark-in size-3.5" />}
 									</span>
 								)}
-								<span className={cn(!sel && !key && "text-muted-foreground")}>
+								<span className={cn(!sel && !key && "text-faint")}>
 									<ToolContentResponse>{opt.label}</ToolContentResponse>
 									{descByIndex.get(opt.index) && (
 										// Ask-option subtext (owner, 2026-10-12): same markdown path
 										// as the pending dock — LaTeX included. Quiz options carry
 										// none (owner ruling 2026-09-26); the map stays empty for them.
-										<ToolContentResponse className="lh-prose block text-sm text-muted-foreground">
+										<ToolContentResponse className="lh-prose block text-sm text-faint">
 											{descByIndex.get(opt.index)}
 										</ToolContentResponse>
 									)}
@@ -161,7 +180,7 @@ export function AnsweredCard({ answer: savedAnswer, input, checked = false }: { 
 					{answer.other && (
 						<div
 							data-testid="answered-other"
-							className="flex items-center gap-2 rounded-lg border border-primary bg-accent px-3 py-1.5"
+							className="flex items-center gap-2 rounded-lg border border-ink bg-shelf px-3 py-1.5"
 						>
 							<span>“{answer.other}”</span>
 						</div>
@@ -169,7 +188,7 @@ export function AnsweredCard({ answer: savedAnswer, input, checked = false }: { 
 				</div>
 			)}
 
-			{answer.text && <div className="lh-prose mt-2 whitespace-pre-wrap">“{answer.text}”</div>}
+			{answer.text && <div className="lh-prose mt-2 whitespace-pre-wrap" onCopy={copySource}>“<ReferenceText text={answer.text} references={references} messageId={chipScope} />”</div>}
 
 			{/* The confidence record (owner round 6): the slider's rail, disc
 			    removed — the missing handle itself says "this is a record, not a
@@ -182,15 +201,15 @@ export function AnsweredCard({ answer: savedAnswer, input, checked = false }: { 
 				<div className="mt-3 flex items-center gap-3" data-testid="answered-confidence">
 					{/* Labeled like the dock (polish pass 2026-10-26): unlabeled, the
 					    rail + % read as a progress meter. */}
-					<span className="shrink-0 text-sm font-medium text-muted-foreground">Confidence</span>
+					<span className="shrink-0 text-sm font-medium text-faint">Confidence</span>
 					<ConfidenceRail value={answer.confidence} className="min-w-0 flex-1" />
-					<span className="w-9 shrink-0 text-right font-mono text-sm tabular-nums text-muted-foreground">
+					<span className="w-9 shrink-0 text-right font-mono text-sm tabular-nums text-faint">
 						{answer.confidence}%
 					</span>
 				</div>
 			)}
 			{answer.dontKnow && isQuiz && (
-				<div className="mt-2 text-sm text-muted-foreground">Answered “I don't know”.</div>
+				<div className="mt-2 text-sm text-faint">Answered “I don't know”.</div>
 			)}
 
 			{(answer.thinking ?? answer.note) && (
@@ -224,13 +243,13 @@ export function AnsweredCard({ answer: savedAnswer, input, checked = false }: { 
 							setWhyOpen((v) => !v);
 							blurAfterPointerClick(e);
 						}}
-						className="flex items-center gap-2 py-1 font-ui text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+						className="flex items-center gap-2 py-1 font-sans text-sm font-medium text-faint transition-colors hover:text-ink"
 					>
 						Why
 						<ChevronDownIcon className={cn("size-4 shrink-0 transition-transform", whyOpen ? "rotate-180" : "rotate-0")} />
 					</button>
 					{whyOpen && (
-						<div className="mt-1 rounded-lg py-1 text-sm text-muted-foreground">
+						<div className="mt-1 rounded-lg py-1 text-sm text-faint">
 							{/* Keep the first paragraph beside the label, not every paragraph:
 							   later paragraphs must retain their recovered document structure. */}
 							<ToolContentResponse className="inline [&>p:first-child]:inline [&>p:first-child]:m-0">{answer.explanation}</ToolContentResponse>
@@ -243,13 +262,13 @@ export function AnsweredCard({ answer: savedAnswer, input, checked = false }: { 
 			    — one field, reasoning included — shown on submit; no verdict,
 			    the model's next reply IS the grading. */}
 			{isExplain && answer.committed && (
-				<div className="mt-3 rounded-lg bg-muted py-2 text-sm text-muted-foreground">
-					<span className="font-medium text-foreground">The answer: </span>
+				<div className="mt-3 rounded-lg bg-shelf py-2 text-sm text-faint">
+					<span className="font-medium text-ink">The answer: </span>
 					<ToolContentResponse className="inline [&>p:first-child]:inline [&>p:first-child]:m-0">{answer.committed}</ToolContentResponse>
 				</div>
 			)}
 			{/* Feature 009: what his answer attached. The server wrote this field. */}
-			<ReferencesCard references={(savedAnswer as { references?: LibraryReference[] }).references ?? []} />
+			<ReferencesCard references={references} messageId={chipScope} />
 			{/* Feature 007: the answer was checked with Wolfram before it was posed. */}
 			{checked && <WolframCheckedLabel />}
 		</div>

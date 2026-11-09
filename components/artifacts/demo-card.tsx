@@ -1,17 +1,18 @@
 "use client";
 
 import { useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useArrival, useArrivedMessage } from "@/components/paper/motion-arrival";
 import { ArrowRightIcon, DownloadIcon, PanelRightOpenIcon, MaximizeIcon, XIcon } from "lucide-react";
 import { createPortal } from "react-dom";
 import { InvertDiscIcon } from "@/components/artifacts/invert-disc";
 import { ChatActionsContext } from "@/components/chat";
 import { downloadFile, slugFilename } from "@/components/artifacts/download";
 import { DispatchCard } from "@/components/artifacts/dispatch-card";
-import { kitSpecOf, injectDemoTheme, DEMO_APPEARANCE_PROPERTIES, demoAppearanceVars, type ArtifactPartProps, type DemoResult, type DemoTokenizeRequest, type DemoTokensReply } from "@/src/core";
-import { useAppearance } from "@/components/settings/appearance";
+import { kitSpecOf, injectDemoTheme, DEMO_BRIDGE_KEYS, demoAppearanceVars, demoPrefersInvert, type ArtifactPartProps, type DemoResult, type DemoTokenizeRequest, type DemoTokensReply } from "@/src/core";
 import { useDemoPresentation } from "@/components/artifacts/demo-presentation";
 import { useDemoPanel } from "@/components/artifacts/demo-panel-context";
 import { getDemoLib, isDemoLibFile, type DemoLibFile } from "@/components/artifacts/demo-lib-cache";
+import { usePaperAppearance } from "@/components/paper/appearance";
 
 /**
  * Demo artifact card (W6): while the part is input-available, a job activity
@@ -32,7 +33,7 @@ import { getDemoLib, isDemoLibFile, type DemoLibFile } from "@/components/artifa
 
 // ─── bridge injection + message handling (pure, testable) ───────────────────
 
-const THEME_PROPERTIES = JSON.stringify([...Object.keys(DEMO_APPEARANCE_PROPERTIES), "--lh-font"]);
+const THEME_PROPERTIES = JSON.stringify(DEMO_BRIDGE_KEYS);
 
 export const DEMO_BRIDGE_SCRIPT = `<script>(function(){
 var send=function(m){try{parent.postMessage(m,"*")}catch(e){}};
@@ -51,7 +52,7 @@ window.addEventListener("keydown",function(e){if(e.key==="Escape"){e.preventDefa
 window.addEventListener("message",function(e){if(e.source!==parent||!e.data)return;
 if(e.data.type==="lh-demo-theme"&&e.data.vars&&typeof e.data.vars==="object"&&!Array.isArray(e.data.vars)){
 var rules=document.querySelector("style[data-lh-theme]");var root=rules&&rules.sheet&&Array.from(rules.sheet.cssRules).find(function(r){return r.selectorText===":root"});
-if(root){var allowed=${THEME_PROPERTIES};allowed.forEach(function(k){var v=e.data.vars[k];if(typeof v!=="string"||v.length>512)return;var prop=k==="--lh-font"?"font-family":k==="--lh-heading-weight"?"font-weight":"color";if(CSS.supports(prop,v))root.style.setProperty(k,v)});window.dispatchEvent(new Event("lh-demo-theme"))}
+if(root){var allowed=${THEME_PROPERTIES};allowed.forEach(function(k){var v=e.data.vars[k];if(typeof v!=="string"||v.length>512)return;if(k==="color-scheme"){if(v==="light"||v==="dark")root.style.setProperty(k,v);return}var prop=k==="--lh-font"?"font-family":"color";if(CSS.supports(prop,v))root.style.setProperty(k,v)});window.dispatchEvent(new Event("lh-demo-theme"))}
 }
 if(e.data.type==="lh-demo-size"&&typeof e.data.size==="number"&&e.data.size>=12&&e.data.size<=48)document.documentElement.style.setProperty("--lh-demo-size",e.data.size+"px");
 if(e.data.type==="lh-demo-preview"){try{var s=Array.from(document.querySelectorAll("svg")).find(function(x){var r=x.getBoundingClientRect();return r.width>80&&r.height>80}),c=document.querySelector("canvas");var url=s?"data:image/svg+xml;charset=utf-8,"+encodeURIComponent(new XMLSerializer().serializeToString(s)):c?c.toDataURL():null;if(url&&url.length<2000000)send({type:"demo-preview",url:url})}catch(_){}}
@@ -185,16 +186,20 @@ export function DemoCard({ part }: ArtifactPartProps) {
 export function DemoOutputCard({
 	output,
 	messageId,
-	initialInverted = false,
+	initialInverted = null,
+	look = "card",
 }: {
 	output: unknown;
 	messageId?: string;
-	initialInverted?: boolean;
+	/** The learner's saved switch; null or absent follows the resolved theme. */
+	initialInverted?: boolean | null;
+	/** "sketch": a quick plot's title in the voice, Notebook's sketch frame (feature 025, R12). */
+	look?: "card" | "sketch";
 }) {
 	const result = output as DemoResult | undefined;
 	if (!result || typeof result.html !== "string" || typeof result.title !== "string") {
 		return (
-			<div className="rounded-xl border bg-card p-4 text-sm text-muted-foreground">
+			<div className="rounded-lg border bg-shelf p-4 text-sm text-faint">
 				Demo completed, but the result could not be displayed.
 			</div>
 		);
@@ -202,38 +207,51 @@ export function DemoOutputCard({
 	const failed = result.html.length === 0;
 	if (failed) {
 		return (
-			<div className="rounded-xl border bg-card p-4 text-card-foreground" data-testid="demo-card-failed">
-				<div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+			<div className="rounded-lg border bg-shelf p-4 text-ink" data-testid="demo-card-failed">
+				<div className="flex items-center gap-2 text-xs font-medium text-faint">
 					Demo
-					<span className="rounded bg-destructive/15 px-1.5 py-0.5 text-destructive">failed</span>
+					<span className="rounded bg-red/15 px-1.5 py-0.5 text-red">failed</span>
 				</div>
-				<p className="mt-2 text-sm text-muted-foreground">{result.notes ?? "The demo could not be built."}</p>
+				<p className="mt-2 text-sm text-faint">{result.notes ?? "The demo could not be built."}</p>
 			</div>
 		);
 	}
 	return (
-		<DemoFrame title={result.title} html={result.html} messageId={messageId} initialInverted={initialInverted} />
+		<DemoFrame title={result.title} html={result.html} messageId={messageId} initialInverted={initialInverted} look={look} />
 	);
+}
+
+/** The app's resolved theme for a demo: light or dark ("system" asks the OS; on the server, light). */
+function useDemoScheme(): "light" | "dark" {
+	const { resolvedTheme } = usePaperAppearance();
+	if (resolvedTheme !== "system") return resolvedTheme;
+	return typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 export function DemoFrame({
 	title,
 	html,
 	messageId,
-	initialInverted = false,
+	initialInverted = null,
 	variant = "card",
+	look = "card",
 }: {
 	title: string;
 	html: string;
 	messageId?: string;
-	initialInverted?: boolean;
+	initialInverted?: boolean | null;
 	/** "panel": the side panel supplies its own header; no card frame. */
 	variant?: "card" | "panel";
+	/** "sketch": the title in the voice at 19px, as Notebook's sketch block (feature 025, R12). */
+	look?: "card" | "sketch";
 }) {
 	const actions = useContext(ChatActionsContext);
-	const { appearance } = useAppearance();
 	const panel = useDemoPanel();
 	const iframeRef = useRef<HTMLIFrameElement | null>(null);
+	// Feature 028, row 19: a demo or plot delivered while the lesson is open
+	// unfolds its frame once (our frame only; the sandbox is never touched).
+	const delivered = useArrivedMessage(messageId);
+	const { arrivalProps } = useArrival(`demo:${messageId}`, delivered && variant === "card");
 	const dialogRef = useRef<HTMLDialogElement | null>(null);
 	const focusOrigin = useRef<{ left: number; top: number; width: number; height: number } | null>(null);
 	const focusInvoker = useRef<HTMLElement | null>(null);
@@ -259,29 +277,45 @@ export function DemoFrame({
 		if (inWorkspace) iframeRef.current?.contentWindow?.postMessage({ type: "lh-demo-preview" }, "*");
 	}, [inWorkspace, state.height]);
 	useEffect(() => {
-		const sendAppearance = () => {
-			const size = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--lh-prose-size")) || 17;
-			iframeRef.current?.contentWindow?.postMessage({ type: "lh-demo-size", size }, "*");
+		// The last appearance sent: an <html> attribute change that leaves it as it was
+		// (the theme soak's origin variables, feature 028) sends nothing, so the demo
+		// does not redraw for it; a (re)loaded frame always gets it.
+		let sent = "";
+		const sendAppearance = (force = false) => {
 			const styles = getComputedStyle(document.documentElement);
-			const vars = demoAppearanceVars((name) => styles.getPropertyValue(name), appearance.fontFamily);
+			const size = parseFloat(styles.getPropertyValue("--note-size")) || 17;
+			const vars = demoAppearanceVars((name) => styles.getPropertyValue(name));
+			const now = JSON.stringify([size, vars]);
+			if (!force && now === sent) return;
+			sent = now;
+			iframeRef.current?.contentWindow?.postMessage({ type: "lh-demo-size", size }, "*");
 			iframeRef.current?.contentWindow?.postMessage({ type: "lh-demo-theme", vars }, "*");
 		};
-		const observer = new MutationObserver(sendAppearance);
-		observer.observe(document.documentElement, { attributes: true, attributeFilter: ["style", "class"] });
-		iframeRef.current?.addEventListener("load", sendAppearance);
-		sendAppearance();
-		return () => { observer.disconnect(); iframeRef.current?.removeEventListener("load", sendAppearance); };
-	}, [appearance.fontFamily]);
+		const changed = () => sendAppearance();
+		const loaded = () => sendAppearance(true);
+		// The paper theme lives on <html> (feature 025); "system" follows the OS.
+		const observer = new MutationObserver(changed);
+		observer.observe(document.documentElement, { attributes: true, attributeFilter: ["style", "class", "data-theme", "data-ink"] });
+		const scheme = typeof window.matchMedia === "function" ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+		scheme?.addEventListener("change", changed);
+		const frame = iframeRef.current;
+		frame?.addEventListener("load", loaded);
+		sendAppearance(true);
+		return () => { observer.disconnect(); scheme?.removeEventListener("change", changed); frame?.removeEventListener("load", loaded); };
+	}, []);
 	// Brightness inversion (owner, 2026-10-07): the switch state PERSISTS on
 	// the steer record (details.ui.inverted) — seeded here, written through
 	// the silent artifact-ui route on toggle. Without a chat page (tests,
-	// previews) the toggle stays local-only. Light demos built before the
-	// dark default seed inverted (demoPrefersInvert). The filter rides the
+	// previews) the toggle stays local-only. Until the learner sets it, a demo
+	// whose own page is the other scheme than the resolved theme shows
+	// inverted, and follows a theme change (demoPrefersInvert). The filter rides the
 	// iframe element, so one filter flips page + content together while
 	// hue-rotate(180deg) undoes invert's hue flip.
-	const [inverted, setInverted] = useState(initialInverted);
+	const scheme = useDemoScheme();
+	const [chosen, setChosen] = useState<boolean | null>(initialInverted);
+	const inverted = chosen ?? demoPrefersInvert(html, scheme);
 	const toggleInverted = (next: boolean) => {
-		setInverted(next);
+		setChosen(next);
 		if (!actions?.chatId || !messageId) return;
 		void fetch(`/api/chats/${actions.chatId}/artifact-ui`, {
 			method: "POST",
@@ -350,7 +384,7 @@ export function DemoFrame({
 	}, []);
 
 	const controls = (
-		<div className="flex shrink-0 items-center gap-1.5" style={hasMlPanels ? { "--ring": "var(--foreground)" } as React.CSSProperties : undefined}>
+		<div className="flex shrink-0 items-center gap-1.5" style={hasMlPanels ? { "--nb-focus": "var(--ink)" } as React.CSSProperties : undefined}>
 			<button type="button" aria-label={focused ? "Close expanded demo" : "Expand demo"} onClick={(event) => { if (!focused) focusInvoker.current = event.currentTarget; focusOrigin.current = dialogRef.current?.getBoundingClientRect() ?? null; setFocused(!focused); }} className="ui-icon-button">{focused ? <XIcon className="ui-icon" /> : <MaximizeIcon className="ui-icon" />}</button>
 			<button type="button" aria-label="Invert demo brightness" title="Invert colors" aria-pressed={inverted} onClick={() => toggleInverted(!inverted)} className="ui-icon-button"><InvertDiscIcon className="ui-icon" /></button>
 			<button
@@ -402,7 +436,7 @@ export function DemoFrame({
 				scrolling={inWorkspace || focused ? "auto" : "no"}
 				// White backing only under inversion (it flips to black); dark
 				// demos sit on the card color.
-				className={`w-full ${inverted ? "bg-white" : "bg-background"}`}
+				className={`w-full ${!inverted ? "bg-paper" : scheme === "dark" ? "bg-white" : "bg-black"}`}
 				// content-box: the bridge reports the CONTENT height — with the
 				// preflight's border-box the 2px border would eat into it and clip
 				// the bottom of the demo (smoke finding, 2026-10-07).
@@ -419,16 +453,16 @@ export function DemoFrame({
 	);
 
 	return (
-		<div className="lh-breakout demo-artifact py-4 text-foreground" data-testid="demo-card">
+		<div className="lh-breakout demo-artifact py-4 text-ink" data-testid="demo-card" {...arrivalProps}>
 			{/* While the workspace shows this demo, its place in the lesson is one
 			    row (feature 001); focus without the workspace keeps the preview
 			    box so the reading position holds. */}
 			{inWorkspace && <button type="button" data-testid="demo-inline-row" className="demo-inline-row" onClick={() => { if (messageId) panel?.open(messageId); }}>
 				{/* The image is an in-memory sandbox snapshot, not an optimizable URL. */}
 				{/* eslint-disable-next-line @next/next/no-img-element */}
-				{preview && <img src={preview} alt="" className="h-8 w-12 shrink-0 rounded-sm object-cover" />}
-				<span className="flex min-w-0 flex-1 flex-col text-left"><span className="truncate text-base font-medium">{title}</span><span className="text-sm text-muted-foreground">Open in workspace</span></span>
-				<ArrowRightIcon aria-hidden="true" className="ui-icon text-muted-foreground" />
+				{preview && <img src={preview} alt="" className="h-8 w-12 shrink-0 rounded-md object-cover" />}
+				<span className="flex min-w-0 flex-1 flex-col text-left"><span className="truncate text-md font-medium">{title}</span><span className="text-sm text-faint">Open in workspace</span></span>
+				<ArrowRightIcon aria-hidden="true" className="ui-icon text-faint" />
 			</button>}
 			{focused && !inWorkspace && <div className="demo-inline-preview" style={{ minHeight: previewHeight.current }}>
 				{/* eslint-disable-next-line @next/next/no-img-element */}
@@ -441,8 +475,11 @@ export function DemoFrame({
 				onKeyDown={(e) => { if (focused) e.stopPropagation(); if (e.key === "Escape" && focused) { e.preventDefault(); e.stopPropagation(); const menu = (e.target as HTMLElement).closest("details[open]"); if (menu) menu.removeAttribute("open"); else setFocused(false); } }}
 				className={`demo-live ${focused ? "demo-live-focus" : inWorkspace ? "demo-live-workspace" : "demo-live-inline"}`}
 				style={bounds ? { left: bounds.left, top: bounds.top, width: bounds.width, height: bounds.height } : undefined}>
-				{inWorkspace && !focused && actionsTarget ? createPortal(controls, actionsTarget) : <div className="flex shrink-0 items-center justify-between gap-2 pb-2">
-					<span className="min-w-0 truncate text-sm font-medium">{title}</span>{controls}
+				{inWorkspace && !focused && actionsTarget ? createPortal(controls, actionsTarget) : <div className={`flex shrink-0 justify-between gap-2 ${look === "sketch" && !focused ? "demo-sketch-head items-start pb-3" : "items-center pb-2"}`}>
+					{look === "sketch" && !focused
+						? <span className="nb-voice nb-sketch-title min-w-0">{title}</span>
+						: <span className="min-w-0 truncate text-sm font-medium">{title}</span>}
+					{controls}
 				</div>}
 				{frame}
 			</dialog>
@@ -462,7 +499,7 @@ export function DemoErrorChip({
 }) {
 	return (
 		<div
-			className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive"
+			className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-red/10 px-3 py-2 text-sm text-red"
 			data-testid="demo-error-chip"
 		>
 			<span className="font-medium">This demo threw an error</span>
@@ -473,7 +510,7 @@ export function DemoErrorChip({
 				<button
 					type="button"
 					onClick={onSend}
-					className="rounded-md border border-destructive/40 px-2 py-1 text-xs font-medium hover:bg-destructive/15"
+					className="rounded-md border border-red/40 px-2 py-1 text-xs font-medium hover:bg-red/15"
 					data-testid="demo-error-send"
 				>
 					Send to teacher

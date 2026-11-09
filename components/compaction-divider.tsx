@@ -21,7 +21,7 @@ export interface CompactionDividerData {
 export function CompactionMomentDivider({ data: _data }: { data: CompactionDividerData }) {
 	return (
 		<div className="flex w-full items-center justify-center py-1">
-			<span data-testid="compaction-divider" className="px-1.5 text-sm text-muted-foreground">
+			<span data-testid="compaction-divider" className="px-1.5 text-xs text-faint">
 				Context compacted
 			</span>
 		</div>
@@ -38,11 +38,11 @@ export function CompactionCutDivider({ data }: { data: CompactionDividerData }) 
 	const kTok = data.details.tokensBefore > 0 ? ` · ${Math.round(data.details.tokensBefore / 1000)}k tok` : "";
 	return (
 		<div data-testid="compaction-cut-divider" className="my-4 flex w-full items-center gap-3">
-			<span className="h-0 flex-1 border-t-2 border-dotted border-border/50" aria-hidden />
-			<span className="rounded-full border border-border/80 px-2.5 py-0.5 text-sm font-medium text-muted-foreground">
+			<span className="h-0 flex-1 border-t-2 border-dotted border-rule" aria-hidden />
+			<span className="px-1 text-xs text-faint">
 				History compacted{kTok}
 			</span>
-			<span className="h-0 flex-1 border-t-2 border-dotted border-border/50" aria-hidden />
+			<span className="h-0 flex-1 border-t-2 border-dotted border-rule" aria-hidden />
 		</div>
 	);
 }

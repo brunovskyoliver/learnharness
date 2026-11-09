@@ -55,7 +55,7 @@ import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 /** The pickers' slot identity — same roster language as the Agent
  *  section's slot rows. */
 const SLOT_META: Record<ModelSlotName, { label: string; roster: string }> = {
-	strong: { label: "Strong", roster: "Prober, teacher" },
+	strong: { label: "Strong", roster: "Prober, teacher, Notebook" },
 	cheap: { label: "Cheap", roster: "Researcher, demo builder, extractor, auditor" },
 	vision: { label: "Vision", roster: "Visual maker + PDF reader" },
 };
@@ -192,10 +192,10 @@ export function SetupKeysBody({
 						data-testid="setup-key-provider"
 						aria-expanded={menuOpen}
 						onClick={onToggleMenu}
-						className="flex h-7 w-full items-center gap-1 rounded-sm border border-border bg-background px-2.5 font-ui text-sm text-foreground transition-colors hover:border-muted-foreground/50"
+						className="nb-set-trigger w-full"
 					>
 						<span className="min-w-0 flex-1 truncate text-left">{provider ? provider.label : "Pick a provider…"}</span>
-						<ChevronDownIcon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+						<ChevronDownIcon aria-hidden="true" className="nb-set-trigger-chevron" />
 					</button>
 					{menuOpen && (
 						<MenuShell
@@ -203,7 +203,7 @@ export function SetupKeysBody({
 							testid="setup-key-provider-menu"
 							preferredSide="down"
 							align="left"
-							menuClass="flex w-[22rem] flex-col rounded-xl border border-border bg-card p-2 text-sm "
+							menuClass="flex w-[22rem] flex-col text-sm"
 						>
 							<ProviderMenuList providers={providers ?? []} onPick={onPick} />
 						</MenuShell>
@@ -223,21 +223,21 @@ export function SetupKeysBody({
 							data-testid="setup-key-input"
 							disabled={saving}
 							autoFocus
-							className="h-7 min-w-0 flex-1 rounded-sm border border-border bg-background px-1.5 font-mono text-xs text-foreground outline-none placeholder:text-muted-foreground focus:border-muted-foreground/50"
+							className="nb-set-input nb-set-mono min-w-0 flex-1"
 						/>
 						<button
 							type="button"
 							onClick={onSave}
 							disabled={saving || !value.trim()}
 							data-testid="setup-key-save"
-							className="shrink-0 rounded-sm border border-border bg-background px-3 py-1.5 font-ui text-sm text-foreground transition-colors hover:border-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-40"
+							className="nb-pill"
 						>
 							{saving ? "Saving…" : "Save key"}
 						</button>
 					</div>
 				)}
 				{error && (
-					<p role="alert" data-testid="setup-key-error" className="text-sm text-destructive">
+					<p role="alert" data-testid="setup-key-error" className="text-md text-ink">
 						{error}
 					</p>
 				)}
@@ -245,14 +245,14 @@ export function SetupKeysBody({
 	);
 	if (hosted) {
 		return (
-			<div className="flex flex-col gap-3 px-6 py-5" data-testid="setup-stage-keys">
-				<p className="text-sm text-muted-foreground">
+			<div className="flex flex-col gap-3" data-testid="setup-stage-keys">
+				<p className="text-md text-graphite">
 					Connect your ChatGPT subscription. Your plan covers the models, so no API key is needed. You’ll pick your models next.
 				</p>
 				<div data-testid="setup-chatgpt-lead"><ChatGPTConnection setup /></div>
-				<div className="mt-2 flex flex-col gap-3 border-t border-border/60 pt-4" data-testid="setup-other-providers">
-					<h3 className="font-ui text-sm text-muted-foreground">Other providers</h3>
-					<p className="text-sm text-muted-foreground">Or paste an API key, or connect another subscription.</p>
+				<div className="mt-4 flex flex-col gap-3" data-testid="setup-other-providers">
+					<h3 className="text-md font-medium text-ink">Other providers</h3>
+					<p className="text-sm text-faint">Or paste an API key, or connect another subscription.</p>
 					{keyPicker}
 					<SubscriptionConnections setup without="chatgpt" />
 				</div>
@@ -260,12 +260,12 @@ export function SetupKeysBody({
 		);
 	}
 	return (
-		<div className="flex flex-col gap-3 px-6 py-5" data-testid="setup-stage-keys">
-			<p className="text-sm text-muted-foreground">
+		<div className="flex flex-col gap-3" data-testid="setup-stage-keys">
+			<p className="text-md text-graphite">
 				Choose your AI provider and paste its API key. You’ll pick your models next.
 			</p>
 			{keyPicker}
-			<div className="mt-2 border-t border-border/60 pt-4"><h3 className="mb-3 font-ui text-sm text-muted-foreground">Subscriptions</h3><SubscriptionConnections setup /></div>
+			<div className="mt-4"><h3 className="mb-1 text-md font-medium text-ink">Subscriptions</h3><SubscriptionConnections setup /></div>
 		</div>
 	);
 }
@@ -459,38 +459,39 @@ export function SetupDialog({
 	return (
 		<Dialog.Root open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
 			<Dialog.Portal>
-				<Dialog.Overlay className="fixed inset-0 z-50 bg-background" data-testid="setup-backdrop" {...backdropDismiss} />
+				<Dialog.Overlay className="nb-dialog-backdrop" data-testid="setup-backdrop" {...backdropDismiss}>
 				<Dialog.Content
 					ref={setPortalContainer}
 					data-lh-modal-content
 					aria-describedby={undefined}
 					data-testid="setup-dialog"
-					className="fixed inset-4 z-50 m-auto flex h-fit max-h-[calc(100dvh-2rem)] w-[640px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-border bg-background outline-none"
+					className="lh-dialog lh-dialog-flush"
+					style={{ "--lh-dialog-width": "640px" } as React.CSSProperties}
 					onPointerDownOutside={(event) => event.preventDefault()}
 					onEscapeKeyDown={(event) => event.preventDefault()}
 					onOpenAutoFocus={() => { returnFocus.current = document.activeElement as HTMLElement | null; }}
 					onCloseAutoFocus={(event) => { event.preventDefault(); returnFocus.current?.focus(); }}
 				>
 				<MenuPortalContext.Provider value={portalContainer}>
-				<header className="flex h-13 shrink-0 items-center gap-3 border-b border-border px-5">
-					<Dialog.Title className="text-base font-semibold">Set up your models</Dialog.Title>
+				<header className="flex shrink-0 items-center gap-3 py-5 pr-4 pl-6">
+					<Dialog.Title className="lh-dialog-title">Set up your models</Dialog.Title>
 					<Hint label="Close" binding="escape" side="left">
 <button
 						type="button"
 						aria-label="Close setup"
 						data-testid="setup-close"
 						onClick={onClose}
-						className="ml-auto flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+						className="nb-dialog-close static ml-auto shrink-0"
 					>
-						<XIcon aria-hidden="true" className="size-[18px]" />
+						<XIcon aria-hidden="true" className="size-4" />
 					</button>
 </Hint>
 				</header>
 
 				{stage === "keys" ? (
-					<div className="flex flex-col px-6 py-5">
+					<div className="flex min-h-0 flex-col overflow-y-auto px-6 pb-6">
 						{failed ? (
-							<p className="text-sm text-foreground">
+							<p role="alert" className="text-md text-ink">
 								Model catalog could not be loaded. Check the connection and retry.
 							</p>
 						) : (
@@ -515,8 +516,8 @@ export function SetupDialog({
 						)}
 					</div>
 				) : (
-					<div className="flex flex-col gap-4 overflow-y-auto px-6 py-5" data-testid="setup-stage-pickers">
-						<p className="text-sm text-muted-foreground">
+					<div className="flex min-h-0 flex-col gap-4 overflow-y-auto px-6 pb-6" data-testid="setup-stage-pickers">
+						<p className="text-md text-graphite">
 							Pick the model for each tier. All three are required before chats can start.
 						</p>
 						{SLOT_ORDER.map((slot) => {
@@ -526,19 +527,19 @@ export function SetupDialog({
 							const catalog =
 								slot === "vision" ? body?.models.filter((m) => m.input.includes("image")) : body?.models;
 							return (
-								<div key={slot} data-testid={`setup-slot-${slot}`} className="flex flex-col gap-2 rounded-lg border border-border bg-card p-4">
+								<div key={slot} data-testid={`setup-slot-${slot}`} className="lh-card-block flex flex-col gap-2">
 									<span className="flex items-center gap-1.5">
-										<span className="font-ui text-sm text-foreground">{SLOT_META[slot].label}</span>
+										<span className="text-md font-medium text-ink">{SLOT_META[slot].label}</span>
 										{!body?.slots?.[slot]?.model && !picked[slot] && (
 											<span
 												data-testid={`setup-needed-${slot}`}
-												className="rounded-sm border border-border px-1 py-0.5 text-sm font-normal tracking-wide text-muted-foreground"
+												className="rounded-md px-1.5 py-0.5 text-xs text-faint ring-1 ring-inset ring-rule"
 											>
 												needed
 											</span>
 										)}
 									</span>
-									<span className="text-sm text-muted-foreground">{SLOT_META[slot].roster}</span>
+									<span className="text-sm text-faint">{SLOT_META[slot].roster}</span>
 									{slot !== "strong" && <><ChatGPTBackgroundAccess provider={entry?.provider} /><NativeSubscriptionBackgroundAccess provider={entry?.provider} /></>}
 									<div className="flex items-center gap-2">
 										<div className="relative flex-1">
@@ -548,10 +549,10 @@ export function SetupDialog({
 												data-testid={`setup-trigger-${slot}`}
 												aria-expanded={openMenu?.slot === slot && openMenu.kind === "model"}
 												onClick={() => setOpenMenu(openMenu?.slot === slot && openMenu.kind === "model" ? null : { slot, kind: "model" })}
-												className="flex h-9 min-w-0 w-full items-center gap-2 rounded-md border border-border bg-background px-2.5 font-ui text-sm text-foreground transition-colors hover:border-muted-foreground/50"
+												className="nb-set-trigger w-full"
 											>
 												<span className="min-w-0 flex-1 truncate">{entry ? prettyModel(entry.id) : "Pick a model…"}</span>
-												<ChevronDownIcon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+												<ChevronDownIcon aria-hidden="true" className="nb-set-trigger-chevron" />
 											</button>
 											{/* Anchor by TESTID, not a ref (the settings-section pattern):
 											    React attaches a host element's ref AFTER its descendants'
@@ -568,7 +569,7 @@ export function SetupDialog({
 													testid={`setup-menu-${slot}`}
 													preferredSide="down"
 													align="left"
-													menuClass="flex w-[22rem] flex-col rounded-xl border border-border bg-card p-2 text-sm "
+													menuClass="flex w-[22rem] flex-col text-sm"
 												>
 													<ModelMenuList
 														models={catalog}
@@ -601,12 +602,12 @@ export function SetupDialog({
 												aria-expanded={openMenu?.slot === slot && openMenu.kind === "thinking"}
 												disabled={!entry}
 												onClick={() => setOpenMenu(openMenu?.slot === slot && openMenu.kind === "thinking" ? null : { slot, kind: "thinking" })}
-												className="flex h-9 w-24 items-center gap-2 rounded-md border border-border bg-background px-2.5 font-ui text-sm text-foreground transition-colors hover:border-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-40"
+												className="nb-set-trigger w-24"
 											>
 												<span className="min-w-0 flex-1 truncate text-left">
 													{entry ? (level ? THINKING_LABEL[level] ?? level : "…") : "—"}
 												</span>
-												<ChevronDownIcon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
+												<ChevronDownIcon aria-hidden="true" className="nb-set-trigger-chevron" />
 											</button>
 											{openMenu?.slot === slot && openMenu.kind === "thinking" && (
 												<MenuShell
@@ -614,7 +615,7 @@ export function SetupDialog({
 													testid={`setup-thinking-menu-${slot}`}
 													preferredSide="down"
 													align="left"
-													menuClass="flex w-44 flex-col gap-0.5 rounded-xl border border-border bg-card p-2 text-sm "
+													menuClass="flex w-44 flex-col gap-0.5 text-sm"
 												>
 													<ThinkingMenuList
 														levels={levelsForEntry.map(String)}
@@ -631,22 +632,23 @@ export function SetupDialog({
 								</div>
 							);
 						})}
-						<div className="flex items-center gap-3">
+						<div className="flex flex-wrap items-center justify-end gap-3">
+							{error && <p role="alert" className="mr-auto text-md text-ink">{error}</p>}
 							<button
 								type="button"
 								data-testid="setup-save"
 								disabled={!allPicked || saving}
 								onClick={() => void save()}
-								className="rounded-sm border border-border bg-background px-3 py-1.5 font-ui text-sm text-foreground transition-colors hover:border-muted-foreground/50 disabled:cursor-not-allowed disabled:opacity-40"
+								className="nb-pill"
 							>
 								{saving ? "Saving…" : "Save models"}
 							</button>
-							{error && <p className="text-sm text-destructive">{error}</p>}
 						</div>
 					</div>
 				)}
 				</MenuPortalContext.Provider>
 				</Dialog.Content>
+				</Dialog.Overlay>
 			</Dialog.Portal>
 		</Dialog.Root>
 	);

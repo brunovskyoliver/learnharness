@@ -16,7 +16,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MessageResponse } from "../components/ai-elements/message.tsx";
-import { QuestionDock } from "../components/question-dock.tsx";
+import { QuestionDock, teaserText } from "../components/question-dock.tsx";
+import { CheckThread } from "../components/study/check-thread.tsx";
+import { questionKindLabel } from "../src/core/waiting.ts";
 import { ProbeDoneCard } from "../components/artifacts/probe-done-card.tsx";
 import { DispatchCard } from "../components/artifacts/dispatch-card.tsx";
 import { JobsContext } from "../components/jobs-context.ts";
@@ -70,11 +72,13 @@ function renderDock(props: {
 	input: never;
 	onSubmit?: () => void;
 }) {
-	// expanded=true renders the full form (the collapsed bar is covered by the
-	// QuestionDockBar test below). No scroll context needed — the DockOverlay
-	// in the chat view owns that.
+	// Wrapped as ChatView does (feature 025): the open check thread carries
+	// the kind label (questionKindLabel) in its head.
+	const label = questionKindLabel(props.toolName, (props.input as { type?: unknown } | null)?.type);
 	return renderToStaticMarkup(
-		<QuestionDock {...props} expanded={true} onExpand={() => {}} onSubmit={props.onSubmit ?? (() => {})} />,
+		<CheckThread id={props.toolCallId} kind="question" label={label} teaser="" reveal={false} open fresh={false} variant="inline" layer={null} lessonWidth={390} shift={0} anchorId={null} onOpen={() => {}} onClose={() => {}}>
+			<QuestionDock {...props} active onSubmit={props.onSubmit ?? (() => {})} />
+		</CheckThread>,
 	);
 }
 
@@ -88,17 +92,17 @@ describe("question submission draft restoration", () => {
 	};
 
 	it("restores a quiz selection, thinking, and confidence when its form remounts", () => {
-		const html = renderToStaticMarkup(<QuestionDock toolName="quiz" toolCallId="q1" input={quizInput} expanded onExpand={() => {}} onSubmit={() => {}} initialDraft={draft} />);
+		const html = renderToStaticMarkup(<QuestionDock toolName="quiz" toolCallId="q1" input={quizInput} active onSubmit={() => {}} initialDraft={draft} />);
 		assert.match(html, /role="radio" aria-checked="true" data-kbdrow="0"/);
 		assert.ok(html.includes("preserved reasoning"));
 		assert.match(html, /aria-checked="true"[^>]*>Fairly sure</);
 	});
 
 	it("restores an ask's custom answer and a free-text answer", () => {
-		const custom = renderToStaticMarkup(<QuestionDock toolName="ask_user_question" toolCallId="ask1" input={{ question: "Fixture?", options: [{ label: "Listed answer" }, { label: "Another answer" }], multiSelect: true }} expanded onExpand={() => {}} onSubmit={() => {}} initialDraft={draft} />);
+		const custom = renderToStaticMarkup(<QuestionDock toolName="ask_user_question" toolCallId="ask1" input={{ question: "Fixture?", options: [{ label: "Listed answer" }, { label: "Another answer" }], multiSelect: true }} active onSubmit={() => {}} initialDraft={draft} />);
 		assert.ok(custom.includes('value="preserved custom answer"'));
 		assert.match(custom, /aria-checked="true" data-testid="other-option"/);
-		const text = renderToStaticMarkup(<QuestionDock toolName="ask_user_question" toolCallId="ask2" input={{ question: "Fixture?" }} expanded onExpand={() => {}} onSubmit={() => {}} initialDraft={draft} />);
+		const text = renderToStaticMarkup(<QuestionDock toolName="ask_user_question" toolCallId="ask2" input={{ question: "Fixture?" }} active onSubmit={() => {}} initialDraft={draft} />);
 		assert.ok(text.includes("preserved free-text answer"));
 	});
 });
@@ -134,7 +138,7 @@ describe("DispatchCard — the BYOK refusal tone (owner, 2026-09-22)", () => {
 		assert.ok(html.includes('data-testid="dispatch-setup-link"'));
 		assert.ok(html.includes("Set up models"));
 		assert.ok(!html.includes("failed"));
-		assert.ok(!html.includes("text-destructive"));
+		assert.ok(!html.includes("text-red"));
 	});
 
 	it("a key-refused job is INFO: 'needs a provider key', 'Add a key' (zero-keys wave, 66dbea9)", () => {
@@ -152,7 +156,7 @@ describe("DispatchCard — the BYOK refusal tone (owner, 2026-09-22)", () => {
 		const html = renderToStaticMarkup(inJobs([job({ error: "FAILED: headless crashed" })]));
 		assert.ok(html.includes('data-testid="dispatch-settled"'));
 		assert.ok(html.includes("failed"));
-		assert.ok(html.includes("text-destructive"));
+		assert.ok(html.includes("text-red"));
 		assert.ok(!html.includes("dispatch-refused"));
 	});
 
@@ -217,7 +221,7 @@ describe("render smoke tests", () => {
 		assert.ok(html.includes('role="group"'), "checkbox group");
 		assert.ok((html.match(/role="checkbox"/g) ?? []).length >= 3, "options AND the Other row are checkboxes");
 		assert.ok(html.includes('data-testid="other-option"'), "Other is still an option row in multi-select");
-		// The bigger \u2713 glyph (text-base, 2026-09-24 owner round) only
+		// The bigger \u2713 glyph (text-md, 2026-09-24 owner round) only
 		// mounts on a CHECKED row — unreachable from the unselected static
 		// render, so it's live-verified (Playwright: 14px computed in the
 		// 16px box) instead of pinned here.
@@ -242,9 +246,8 @@ describe("render smoke tests", () => {
 				toolName="quiz"
 				toolCallId="t1"
 				input={quizInput as never}
-				expanded={true}
+				active
 				phase="teach"
-				onExpand={() => {}}
 				onSubmit={() => {}}
 			/>,
 		);
@@ -305,7 +308,7 @@ describe("render smoke tests", () => {
 		const answer = buildAnswer(askQD(), { other: "Fairly confident — but shaky on applications" });
 		const html = renderToStaticMarkup(<AnsweredCard answer={answer} />);
 		assert.ok(html.includes('data-testid="answered-other"'), "the Other answer is an option row");
-		assert.match(html, /border-primary bg-accent/, "styled like its selected siblings");
+		assert.match(html, /border-ink bg-shelf/, "styled like its selected siblings");
 		assert.match(html, /shaky on applications/, "the typed words render");
 		// Inside the options container — same list, not a loose quote outside it.
 		assert.ok(
@@ -329,7 +332,7 @@ describe("render smoke tests", () => {
 		// ONE GEOMETRY, NO BAND IN CARDS (owner round five, 2026-10-07): the
 		// accent lift read too light — rail only, heights match everywhere.
 		const yourRow = html.slice(html.indexOf('data-testid="your-thinking"'));
-		assert.ok(!yourRow.slice(0, 400).includes("bg-card") && !yourRow.slice(0, 400).includes("bg-accent"), "no band inside the card");
+		assert.ok(!yourRow.slice(0, 400).includes("bg-shelf") && !yourRow.slice(0, 400).includes("bg-shelf"), "no band inside the card");
 		// No side rail (feature 001): the label and ink carry ownership.
 		assert.ok(!yourRow.slice(0, 400).includes("border-l"), "no side border on the thinking row");
 		assert.ok(!html.includes("brightness isn&#x27;t distance"), "the text is hidden until expanded");
@@ -424,41 +427,27 @@ describe("math rendering (streamdown + KaTeX)", () => {
 });
 
 describe("teach-check reveal (W5 phase separation)", () => {
-	// The collapsed dock renders the bar AND the hidden form (it stays mounted
-	// so a half-made selection survives) — assertions target the bar species.
-	it("teach-phase check collapses into the invitation bar, not the scroll bar", () => {
-		const html = renderToStaticMarkup(
-				<QuestionDock
-					toolName="quiz"
-					toolCallId="t1"
-					input={quizInput as never}
-					expanded={false}
-					reveal
-					onExpand={() => {}}
-					onSubmit={() => {}}
-				/>,
-		);
+	// The collapsed thread renders its line AND the hidden form (it stays
+	// mounted so a half-made selection survives) — assertions target the line.
+	const collapsed = (reveal: boolean) => renderToStaticMarkup(
+		<CheckThread id="t1" kind="question" label="Lesson check" teaser={teaserText(quizInput.question)} reveal={reveal} open={false} fresh={false} variant="inline" layer={null} lessonWidth={390} shift={0} anchorId={null} onOpen={() => {}} onClose={() => {}}>
+			<QuestionDock toolName="quiz" toolCallId="t1" input={quizInput as never} active={false} onSubmit={() => {}} />
+		</CheckThread>,
+	);
+	it("teach-phase check collapses into the invitation line, not the plain one", () => {
+		const html = collapsed(true);
 		assert.ok(html.includes('data-testid="teach-check-reveal"'), "invitation affordance present");
 		assert.match(html, /Check your understanding/);
 		assert.match(html, /Which planet is closest/, "question teaser invites, not minimizes");
-		assert.match(html, /Your turn/, "the turn strip says whose turn it is");
+		assert.match(html, /Your turn/, "the thread says whose turn it is");
 		assert.match(html, />Answer</, "a clear reveal action");
 	});
 
-	it("probe questions keep the plain collapsed bar (no invitation copy)", () => {
-		const html = renderToStaticMarkup(
-				<QuestionDock
-					toolName="quiz"
-					toolCallId="q1"
-					input={quizInput as never}
-					expanded={false}
-					onExpand={() => {}}
-					onSubmit={() => {}}
-				/>,
-		);
-		assert.ok(html.includes('data-testid="question-dock-bar"'), "the scroll-collapse strip");
+	it("probe questions keep the plain collapsed line (no invitation copy)", () => {
+		const html = collapsed(false);
+		assert.ok(html.includes('data-testid="question-dock-bar"'), "the plain collapsed line");
 		assert.ok(!html.includes("Check your understanding"), "no invitation copy outside teach phase");
-		assert.match(html, /Answer/, "the strip keeps its Answer affordance");
+		assert.match(html, /Answer/, "the line keeps its Answer affordance");
 	});
 
 	it("after the reveal, the teach check renders the full form (probe default, unchanged)", () => {
@@ -639,34 +628,12 @@ describe("probe-phase naming: Question/Recall labels", () => {
 // stays inline.
 describe("predict vs check rendering", () => {
 	it("a predict quiz renders the 'Prediction' eyebrow in the dock", () => {
-		const html = renderToStaticMarkup(
-			<QuestionDock
-				{...{
-					toolName: "quiz" as const,
-					toolCallId: "call-p1",
-					input: { ...quizInput, type: "predict", nodeId: "planet-order" },
-				}}
-				expanded={true}
-				onExpand={() => {}}
-				onSubmit={() => {}}
-			/>,
-		);
+		const html = renderDock({ toolName: "quiz", toolCallId: "call-p1", input: { ...quizInput, type: "predict", nodeId: "planet-order" } as never });
 		assert.ok(html.includes("Prediction"), `eyebrow missing: ${html.slice(0, 200)}`);
 	});
 
 	it("a check quiz reads the 'Check' eyebrow — the type name IS the label (owner, 2026-10-09)", () => {
-		const html = renderToStaticMarkup(
-			<QuestionDock
-				{...{
-					toolName: "quiz" as const,
-					toolCallId: "call-c1",
-					input: { ...quizInput, type: "check", nodeId: "planet-order" },
-				}}
-				expanded={true}
-				onExpand={() => {}}
-				onSubmit={() => {}}
-			/>,
-		);
+		const html = renderDock({ toolName: "quiz", toolCallId: "call-c1", input: { ...quizInput, type: "check", nodeId: "planet-order" } as never });
 		assert.ok(html.includes("Lesson check"), "the turn strip carries the question's type");
 		assert.ok(!html.includes(">Quiz<"), "the generic label is retired");
 	});

@@ -34,11 +34,11 @@ export function DiagramProposalsLine() {
 	if (rows.length === 0 && !failed && !open) return null;
 	return (
 		<section aria-label="Proposed diagrams" className="flex flex-col gap-1" data-testid="diagram-proposals">
-			{failed && rows.length === 0 && <div role="status" className="flex flex-wrap items-center gap-2 text-sm text-ink-2"><p>Proposed diagrams could not be loaded.</p><button type="button" className="prompt-secondary" onClick={() => void refresh()}>Try again</button></div>}
+			{failed && rows.length === 0 && <div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink"><p>Proposed diagrams could not be loaded.</p><button type="button" className="lh-text-action" onClick={() => void refresh()}>Try again</button></div>}
 			{rows.map((row) => (
-				<div key={row.id} className="flex flex-wrap items-center gap-2 rounded-[10px] bg-card px-3 py-2 text-sm" data-testid="diagram-proposal-row">
-					<span className="min-w-0 flex-[1_1_12rem] [overflow-wrap:anywhere]"><span className="text-foreground">{row.name}</span> <span className="text-muted-foreground">· Proposed by the tutor, waiting for you</span></span>
-					<button type="button" className="prompt-secondary" aria-label={`Review the proposal for ${row.name}`} data-testid="diagram-proposal-open" onClick={(event) => { opener.current = event.currentTarget; setOpen(row.id); }}>Review</button>
+				<div key={row.id} className="lh-line-card" data-testid="diagram-proposal-row">
+					<span className="min-w-0 flex-[1_1_12rem] [overflow-wrap:anywhere]"><span className="text-ink">{row.name}</span> <span className="text-graphite">· Proposed by the tutor, waiting for you</span></span>
+					<button type="button" className="lh-text-action" aria-label={`Review the proposal for ${row.name}`} data-testid="diagram-proposal-open" onClick={(event) => { opener.current = event.currentTarget; setOpen(row.id); }}>Review</button>
 				</div>
 			))}
 			{open && (

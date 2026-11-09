@@ -2,28 +2,30 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import "katex/dist/katex.min.css";
 import "../globals.css";
+import "../paper.css";
 import { fontClasses } from "../fonts";
 import { AppShell, SidebarProvider } from "@/components/sidebar";
 import { ActivityProvider } from "@/components/activity-dock";
 import { PagePaneProvider } from "@/components/library/page-pane-context";
 import { ServerEventsProvider } from "@/components/server-events";
-import { AppearanceProvider } from "@/components/settings/appearance";
+import { PaperAppearanceProvider } from "@/components/paper/appearance";
 import UpdateBanner from "@/components/update-banner";
 import { SessionAccountProvider } from "@/components/session-state";
 import { SessionStateStore, WORKSPACE_STATE_ID } from "@/components/session-state-store";
-import { appearanceVars, resolveAppearance } from "@/components/settings/appearance-vars";
 import { compactionInFlight, hostedMode, isTurnRunning, listChats, readSettingsRecord, runAsTenant, signedInUserId } from "@/src/server";
-import type { AppearanceSettings } from "@/src/core";
+import { DEFAULT_SHARED_APPEARANCE, SIGNATURE_SCRIPT, resolveSharedAppearance, sharedAppearanceAttributes, type SharedAppearance } from "@/src/core";
+import { MotionArrival } from "@/components/paper/motion-arrival";
 
-/** The signed-in reader's appearance, read here so the first response is
- * already styled (the client used to restyle after a settings fetch). */
-function readAppearance(account: string | null, hosted: boolean): { loaded: boolean; appearance?: AppearanceSettings } {
+/** The signed-in reader's shared Appearance (feature 025, R2), read from the
+ * stored record (not the factory merge) so the first response is already in
+ * the right theme. */
+function readAppearance(account: string | null, hosted: boolean): { loaded: boolean; appearance: SharedAppearance } {
 	try {
-		if (hosted && !account) return { loaded: false };
-		const read = () => readSettingsRecord()?.appearance;
+		if (hosted && !account) return { loaded: false, appearance: DEFAULT_SHARED_APPEARANCE };
+		const read = () => resolveSharedAppearance(readSettingsRecord());
 		return { loaded: true, appearance: hosted ? runAsTenant(account!, read) : read() };
 	} catch {
-		return { loaded: false };
+		return { loaded: false, appearance: DEFAULT_SHARED_APPEARANCE };
 	}
 }
 
@@ -45,30 +47,33 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 	// the sidebar's ordinary retry path available without blocking the shell.
 	let initialChats;
 	try { initialChats = hosted ? account ? runAsTenant(account, readSidebar) : undefined : readSidebar(); } catch { /* client retries */ }
-	const htmlStyle = loaded ? (appearanceVars(resolveAppearance(appearance)) as React.CSSProperties) : undefined;
 	const app = (
 		/* The notification channel rides OUTSIDE everything: sidebar, dock,
 		   and pages all subscribe as the polls retire (push S3, 2026-10-02). */
 		<SessionAccountProvider account={account}><ServerEventsProvider>
-			<AppearanceProvider initialAppearance={appearance} initialLoaded={loaded}>
+			<PaperAppearanceProvider initial={appearance} loaded={loaded}>
 				<SidebarProvider>
 					<ActivityProvider>
 						<PagePaneProvider><AppShell initialChats={initialChats} hosted={hosted} account={hostedShell ? <hostedShell.AccountRow /> : undefined}><Suspense>{children}</Suspense></AppShell></PagePaneProvider>
 					</ActivityProvider>
 				</SidebarProvider>
-			</AppearanceProvider>
+			</PaperAppearanceProvider>
 		</ServerEventsProvider></SessionAccountProvider>
 	);
 	return (
-		<html lang="en" className={fontClasses} style={htmlStyle}>
+		// suppressHydrationWarning: the signature script sets data-lh-arrival before hydration (feature 028, R5).
+		<html lang="en" className={`lh-paper ${fontClasses}`} {...sharedAppearanceAttributes(appearance)} suppressHydrationWarning>
 			<body className="min-h-dvh antialiased">
+				{/* First in <body>: the cold-load signature, once per tab, keyed in CSS from first paint (feature 028). */}
+				<script dangerouslySetInnerHTML={{ __html: SIGNATURE_SCRIPT }} />
+				{/* The paper's grain behind every page (app/paper.css). */}
+				<div className="nb-paper lh-body-paper" aria-hidden="true" />
 				{/* Reserve the tab strip on surfaces that show it only with tabs, so a reload doesn't shift them (feature 014). */}
 				{account && <script dangerouslySetInnerHTML={{ __html: `try{var t=JSON.parse(localStorage.getItem(${JSON.stringify(new SessionStateStore(account, WORKSPACE_STATE_ID, () => undefined).storageKey).replace(/</g, "\\u003c")})||'{}').values;if(t&&t.tabs&&t.tabs.length){var b=document.createElement('style');b.id='lh-tabs-bootstrap';b.textContent='[data-tab-reserve]{display:block!important}';document.head.appendChild(b)}}catch{}` }} />}
-				{/* Apply local navigation preferences before the seeded pane paints. */}
-				<script dangerouslySetInnerHTML={{ __html: `try{var s=localStorage.getItem('lh:sidebar-open'),w=Number(localStorage.getItem('lh:sidebar-width'));var css=s==='0'?'width:0!important;visibility:hidden':Number.isFinite(w)&&w>0?'width:'+Math.round(Math.max(208,Math.min(w,innerWidth-640)))+'px!important':'';if(css){var e=document.createElement('style');e.textContent='@media(min-width:928px){[data-sidebar-bootstrap]{'+css+'}}';document.head.appendChild(e)}}catch{}` }} />
 				{hostedShell ? <hostedShell.HostedProvider publishableKey={process.env.CLERK_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>{app}</hostedShell.HostedProvider> : app}
 				{/* Auto-update banner (Wave C): fixed card, Electron-only pushes. */}
 				<UpdateBanner />
+				<MotionArrival />
 			</body>
 		</html>
 	);

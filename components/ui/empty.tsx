@@ -1,5 +1,9 @@
+"use client"
+
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
+import { BlotGlyph } from "@/components/paper/blot"
+import { useArrival } from "@/components/paper/motion-arrival"
 
 function Empty({ className, ...props }: React.ComponentProps<"div">) {
   return (
@@ -33,7 +37,7 @@ const emptyMediaVariants = cva(
     variants: {
       variant: {
         default: "bg-transparent",
-        icon: "flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-foreground [&_svg:not([class*='size-'])]:size-6",
+        icon: "flex size-10 shrink-0 items-center justify-center rounded-lg bg-shelf text-ink [&_svg:not([class*='size-'])]:size-6",
       },
     },
     defaultVariants: {
@@ -61,7 +65,7 @@ function EmptyTitle({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="empty-title"
-      className={cn("text-lg font-medium tracking-tight", className)}
+      className={cn("text-lg font-medium tracking-title text-ink", className)}
       {...props}
     />
   )
@@ -72,7 +76,7 @@ function EmptyDescription({ className, ...props }: React.ComponentProps<"p">) {
     <div
       data-slot="empty-description"
       className={cn(
-        "text-sm/relaxed text-muted-foreground [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary",
+        "text-md text-faint [&>a]:underline [&>a]:decoration-ink/40 [&>a]:underline-offset-4 [&>a:hover]:text-ink",
         className
       )}
       {...props}
@@ -93,8 +97,23 @@ function EmptyContent({ className, ...props }: React.ComponentProps<"div">) {
   )
 }
 
+/**
+ * Feature 028, row 30: the one blot glyph beside an empty state's sentence.
+ * It splats the first time that state shows in this page load (`arrival`
+ * names it), and sits still after.
+ */
+function EmptyBlot({ arrival, className }: { arrival: string; className?: string }) {
+  const { arrivalProps } = useArrival(`empty:${arrival}`)
+  return (
+    <span className={cn("lh-empty-blot", className)} aria-hidden="true" {...arrivalProps}>
+      <BlotGlyph className="lh-empty-blot-glyph" size={10} />
+    </span>
+  )
+}
+
 export {
   Empty,
+  EmptyBlot,
   EmptyHeader,
   EmptyTitle,
   EmptyDescription,

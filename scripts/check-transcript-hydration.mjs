@@ -51,7 +51,7 @@ const PROBE = `(() => {
   } }).observe(document, { childList: true, subtree: true });
   let shown = false, emptyAt = null;
   const frame = () => {
-    const main = document.querySelector('main');
+    const main = document.querySelector('[role="main"]');
     const filled = !!main && (main.textContent || '').trim().length > 0;
     const t = now();
     if (filled) { if (T.firstContent === null) T.firstContent = t; shown = true; if (emptyAt !== null) { T.empties.push([emptyAt, t]); emptyAt = null; } }
@@ -80,9 +80,9 @@ async function coldLoad(i) {
 	await cdp.send("Network.emulateNetworkConditions", { offline: false, latency: 60, downloadThroughput: 20e6 / 8, uploadThroughput: 5e6 / 8 });
 	await page.evaluateOnNewDocument(PROBE);
 	await page.goto(`${base}/chat/${chatId}`, { waitUntil: "load", timeout: 60000 });
-	await page.waitForFunction(() => performance.now() > 6000 && !!document.querySelector('main [data-testid="lesson-content"]'), { polling: 200, timeout: 60000 });
+	await page.waitForFunction(() => performance.now() > 6000 && !!document.querySelector('[role="main"] [data-testid="lesson-content"]'), { polling: 200, timeout: 60000 });
 	const result = await page.evaluate(() => {
-		const live = document.querySelector('main [data-testid="lesson-content"]');
+		const live = document.querySelector('[role="main"] [data-testid="lesson-content"]');
 		const T = window.__transcript;
 		return { segment: T.segment, streamed: !!window.__streamed, kept: !!live && live === window.__streamed, empties: T.empties, firstContent: T.firstContent };
 	});

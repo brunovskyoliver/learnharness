@@ -117,7 +117,7 @@ export function StatsBarDetails({
 			// (so its transparent gradient area never blocks scrolling) — this row
 			// must re-enable events or every control on it is dead (the model-
 			// control wave caught this live: buttons rendered, clicks never landed).
-			className="pointer-events-auto relative flex min-h-10 min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1 text-sm text-ink-2"
+			className="pointer-events-auto relative flex min-h-10 min-w-0 flex-1 flex-wrap items-center gap-x-1 gap-y-1 text-sm text-graphite"
 		>
 			{setup ?? <ModelControl chatId={chatId} onModelChange={setSelectedModel} />}
 			{/* The summary button + its popover: the popover anchors to this
@@ -142,7 +142,7 @@ export function StatsBarDetails({
 				onPointerLeave={(e) => { if (e.pointerType === "mouse") unpeek(); }}
 				aria-expanded={open}
 				data-testid="stats-summary"
-				className="flex min-h-10 items-center gap-1.5 rounded-sm px-2.5 font-mono text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground pointer-coarse:min-h-11"
+				className="flex min-h-10 items-center gap-1.5 rounded-md px-2.5 font-mono text-xs text-faint transition-colors hover:bg-shelf hover:text-ink pointer-coarse:min-h-11"
 			>
 				<ContextRing fraction={fraction} />
 				{/* The percentage, visible (owner 2026-10-27); "?" when the
@@ -163,32 +163,32 @@ export function StatsBarDetails({
 						focusOnOpen={false}
 						onPointerEnter={peek}
 						onPointerLeave={unpeek}
-						menuClass="w-64 rounded-lg border bg-popover p-3 text-sm"
+						menuClass="nb-menu-roomy w-64 text-sm"
 					>
 						{/* Summary only (ui-v2): context, turns, tokens, usage. */}
 						<div className="mb-1.5 flex items-baseline justify-between gap-2">
-							<span className="text-muted-foreground">Context</span>
-							<span className="tabular-nums text-card-foreground">{contextLabel}</span>
+							<span className="text-faint">Context</span>
+							<span className="tabular-nums text-ink">{contextLabel}</span>
 						</div>
 						{contextTokens !== null && limit !== null && limit > 0 && (
-							<div className="mb-3 h-1 overflow-hidden rounded-full bg-accent" aria-hidden>
-								<div className="h-full rounded-full bg-ink-2" style={{ width: `${fraction * 100}%` }} />
+							<div className="mb-3 h-1 overflow-hidden rounded-full bg-shelf" aria-hidden>
+								<div className="h-full rounded-full bg-graphite" style={{ width: `${fraction * 100}%` }} />
 							</div>
 						)}
-						<dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-muted-foreground">
+						<dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-faint">
 							<dt>Turns</dt>
-							<dd className="text-right tabular-nums text-card-foreground">{turns.length}</dd>
+							<dd className="text-right tabular-nums text-ink">{turns.length}</dd>
 							<dt>Tokens used</dt>
-							<dd className="text-right tabular-nums text-card-foreground">{formatTokens(totalTokens(turns))}</dd>
+							<dd className="text-right tabular-nums text-ink">{formatTokens(totalTokens(turns))}</dd>
 							<dt>{subscription ? "Plan" : "Cost"}</dt>
-							<dd className="text-right tabular-nums text-card-foreground">{costLabel}</dd>
+							<dd className="text-right tabular-nums text-ink">{costLabel}</dd>
 						</dl>
 						{providers.includes("ChatGPT") && (
 							<a
 								href="https://chatgpt.com/settings/usage"
 								target="_blank"
 								rel="noreferrer"
-								className="mt-3 block border-t border-border pt-2 text-muted-foreground transition-colors hover:text-foreground"
+								className="mt-3 block text-faint transition-colors hover:text-ink"
 							>
 								Manage usage ↗
 							</a>
@@ -212,7 +212,7 @@ function ContextRing({ fraction }: { fraction: number }) {
 	const c = 2 * Math.PI * r;
 	return (
 		<svg aria-hidden="true" data-testid="stats-context-meter" viewBox="0 0 16 16" className="size-4 -rotate-90">
-			<circle cx="8" cy="8" r={r} fill="none" stroke="var(--input)" strokeWidth="2" />
+			<circle cx="8" cy="8" r={r} fill="none" stroke="var(--rule)" strokeWidth="2" />
 			<circle
 				cx="8"
 				cy="8"

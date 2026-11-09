@@ -53,31 +53,31 @@ export function DiagramVersions({ id, name, onRestore, canRestore }: { id: strin
 		const before = older ? await readDoc(id, older.n) : null;
 		setShown({ doc, before: typeof before === "string" ? null : before });
 	};
-	if (failed) return <div role="status" className="flex flex-wrap items-center gap-2 px-3 text-sm text-ink-2"><p>The history could not be loaded.</p><button type="button" className="prompt-secondary" onClick={() => void load()}>Try again</button></div>;
-	if (!versions) return <div role="status" aria-label="Loading the history" className="flex flex-col gap-2 px-3"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-5 w-1/2" /></div>;
+	if (failed) return <div role="status" className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 text-sm text-ink"><p>The history could not be loaded.</p><button type="button" className="lh-text-action" onClick={() => void load()}>Try again</button></div>;
+	if (!versions) return <div role="status" aria-label="Loading the history" className="flex flex-col gap-2 px-4"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-5 w-1/2" /></div>;
 	return (
-		<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 pb-6" data-testid="diagram-history">
-			<ul className="flex flex-col gap-1">
+		<div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-6" data-testid="diagram-history">
+			<ul className="flex flex-col gap-0.5">
 				{versions.map((version) => (
 					<li key={version.n}>
-						<button type="button" aria-pressed={picked?.n === version.n} data-testid="diagram-version" className="min-h-9 w-full rounded-[6px] px-2 py-1 text-left text-sm text-foreground hover:bg-accent aria-pressed:bg-accent pointer-coarse:min-h-11" onClick={() => void pick(version)}>{versionLine(version)}</button>
+						<button type="button" aria-pressed={picked?.n === version.n} data-testid="diagram-version" className="lh-outline-row w-full aria-pressed:bg-shelf aria-pressed:text-ink" onClick={() => void pick(version)}>{versionLine(version)}</button>
 					</li>
 				))}
 			</ul>
-			{picked && shown === null && <div role="status" aria-label="Loading this version"><Skeleton className="h-32 w-full rounded-[10px]" /></div>}
-			{picked && typeof shown === "string" && <p role="status" className="text-sm text-ink-2">{shown}</p>}
+			{picked && shown === null && <div role="status" aria-label="Loading this version"><Skeleton className="h-32 w-full rounded-lg" /></div>}
+			{picked && typeof shown === "string" && <p role="status" className="text-sm text-graphite">{shown}</p>}
 			{picked && shown && typeof shown !== "string" && (
-				<section aria-label={`Version ${picked.n}`} className="flex flex-col gap-3 rounded-[10px] bg-card p-3" data-testid="diagram-version-preview">
+				<section aria-label={`Version ${picked.n}`} className="flex flex-col gap-3 rounded-lg border border-rule p-3" data-testid="diagram-version-preview">
 					{/* An image can't run anything, and the SVG's text is escaped. */}
 					{/* eslint-disable-next-line @next/next/no-img-element */}
-					<img src={svgDataUrl(diagramToSvg(shown.doc, name))} alt={`Version ${picked.n} of ${name}`} className="max-h-72 w-full rounded-[6px] object-contain" />
+					<img src={svgDataUrl(diagramToSvg(shown.doc, name))} alt={`Version ${picked.n} of ${name}`} className="max-h-72 w-full rounded-md object-contain" />
 					<DiagramDiffView diff={diffDiagrams(shown.before, shown.doc)} />
-					<details className="text-sm text-ink-2">
-						<summary className="cursor-pointer select-none text-foreground pointer-coarse:min-h-11">Read as text</summary>
+					<details className="text-sm text-graphite">
+						<summary className="cursor-pointer select-none text-ink pointer-coarse:min-h-11">Read as text</summary>
 						<p className="mt-2 whitespace-pre-wrap [overflow-wrap:anywhere]">{diagramOutline(shown.doc)}</p>
 					</details>
-					{refusal && <p role="alert" className="text-sm text-destructive">{refusal}</p>}
-					<div><button type="button" className="prompt-secondary" disabled={!canRestore} data-testid="diagram-restore" onClick={() => void onRestore(picked.n).then(setRefusal)}>Restore this version</button></div>
+					{refusal && <p role="alert" className="text-sm text-red">{refusal}</p>}
+					<div><button type="button" className="nb-pill" disabled={!canRestore} data-testid="diagram-restore" onClick={() => void onRestore(picked.n).then(setRefusal)}>Restore this version</button></div>
 				</section>
 			)}
 		</div>

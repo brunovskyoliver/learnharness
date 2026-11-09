@@ -53,11 +53,11 @@ describe("a rename and the links to it", () => {
 	it("a trashed target reads as deleted, a restored one as live, and a purged one stays deleted", async () => {
 		const target = await page("Waves");
 		const linker = await page("Index", "[[Waves]]");
-		const entry = await store.trashItem(target.id);
+		const entry = (await store.trashItem(target.id) as TrashEntry | null);
 		assert.equal((await resolve(linker.id, "Waves")).state, "deleted");
 		await store.restoreTrash(entry!.id);
 		assert.equal((await resolve(linker.id, "Waves")).id, target.id);
-		const again = await store.trashItem(target.id);
+		const again = (await store.trashItem(target.id) as TrashEntry | null);
 		await store.purgeTrash(again!.id);
 		assert.deepEqual([(await resolve(linker.id, "Waves")).state, await store.readText(linker)], ["deleted", "[[Waves]]"]);
 	});
@@ -77,7 +77,7 @@ describe("page texts", () => {
 		assert.ok(!isRefusal(b));
 		await store.revisePageAsAgent(b.item.id, { baseVersion: 1, chatId: "chat_2", apply: () => "b2" });
 		const c = await page("C", "c");
-		await store.trashItem(c.id);
+		(await store.trashItem(c.id) as TrashEntry | null);
 		const texts = await store.pageTexts();
 		assert.deepEqual(texts.map((t) => [t.item.name, t.text, t.chatIds]).sort(), [["A", "draft", []], ["B", "b2", ["chat_1", "chat_2"]]]);
 	});
@@ -110,3 +110,7 @@ describe("appending a passage", () => {
 		assert.equal(await store.readText(a), "> q\n>\n> [Lesson: T](/chat/c1#message-m1)");
 	});
 });
+
+/** Feature 026: trash and restore can also answer a refusal; these tests never meet one. */
+type TrashEntry = import("../src/core/library.ts").LibraryTrashEntry;
+type Restored = { items: import("../src/core/library.ts").LibraryItem[]; folders: import("../src/core/library.ts").LibraryFolder[] };

@@ -4,7 +4,7 @@
  *  same folder only when a panel needs them. Colors and fonts come from the
  *  --lh-* variables injected ahead of the demo (src/core/demo-theme.ts). */
 
-import { DEMO_THEME_VARS, DEMO_SCROLLBAR_CSS } from "../core/demo-theme.ts";
+import { DEMO_ERROR_INK, DEMO_ERROR_TINT, DEMO_PAPER, DEMO_SCROLLBAR_CSS, DEMO_SERIES, DEMO_SERIES_NAMES } from "../core/demo-theme.ts";
 import { distribution, sample, type SamplingOptions, type SamplingToken, type SamplingRow } from "../core/ml-sampling.ts";
 import { forward, backward, steps, type NetworkSpec, type ForwardPass, type BackwardPass } from "../core/ml-net.ts";
 import { arithmetic, nearest, coordinates, validatePoints, type Point, type Arithmetic } from "../core/ml-vectors.ts";
@@ -103,17 +103,42 @@ function load(file: string): Promise<void> {
 function cssVar(name: string, fallback: string): string {
 	return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 }
+/** A colour role as the renderers need it: resolved by the page's colour
+ *  scheme (the defaults are light-dark() pairs, src/core/demo-theme.ts), so
+ *  a probe's computed colour, not the variable's text. */
+let probe: HTMLElement | null = null;
+function colorVar(name: string, fallback: string): string {
+	if (!probe) {
+		probe = document.createElement("span");
+		probe.setAttribute("aria-hidden", "true");
+		probe.style.cssText = "position:absolute;width:0;height:0;overflow:hidden;visibility:hidden;pointer-events:none";
+		document.documentElement.append(probe);
+	}
+	probe.style.color = "";
+	probe.style.color = `var(${name}, ${fallback})`;
+	return getComputedStyle(probe).color || fallback;
+}
+/** Light or dark: the resolved page background's luminance (the bridge sets the app's scheme). */
+function schemeOf(bg: string): "light" | "dark" {
+	const [r = 0, g = 0, b = 0] = (bg.match(/[\d.]+/g) ?? []).map(Number);
+	return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.5 ? "light" : "dark";
+}
 function readTheme() {
+	const bg = colorVar("--lh-bg", DEMO_PAPER.dark["--lh-bg"]);
+	const scheme = schemeOf(bg);
+	const paper = DEMO_PAPER[scheme];
+	// Strong heatmap cells: the ground's ink on the dark theme's pale series, the text on paper light.
+	document.documentElement.style.setProperty("--k-strong-ink", scheme === "dark" ? "var(--lh-bg)" : "var(--lh-text)");
 	return {
-		bg: cssVar("--lh-bg", DEMO_THEME_VARS["--lh-bg"]),
-		surface: cssVar("--lh-surface", DEMO_THEME_VARS["--lh-surface"]),
-		surface2: cssVar("--lh-surface-2", DEMO_THEME_VARS["--lh-surface-2"]),
-		border: cssVar("--lh-border", DEMO_THEME_VARS["--lh-border"]),
-		text: cssVar("--lh-text", DEMO_THEME_VARS["--lh-text"]),
-		muted: cssVar("--lh-muted", DEMO_THEME_VARS["--lh-muted"]),
-		series: ["--lh-blue", "--lh-teal", "--lh-amber", "--lh-red", "--lh-green"].map((v, i) =>
-			cssVar(v, ["#7cacf8", "#5fd4c4", "#e5b55a", "#f28b82", "#7fd18b"][i]!),
-		),
+		scheme,
+		bg,
+		surface: colorVar("--lh-surface", paper["--lh-surface"]),
+		surface2: colorVar("--lh-surface-2", paper["--lh-surface-2"]),
+		border: colorVar("--lh-border", paper["--lh-border"]),
+		text: colorVar("--lh-text", paper["--lh-text"]),
+		muted: colorVar("--lh-muted", paper["--lh-muted"]),
+		// Per scheme (the defaults are light-dark() pairs); a demo's own --lh-* colours win.
+		series: DEMO_SERIES_NAMES.map((name) => colorVar(name, DEMO_SERIES[scheme][name])),
 		font: cssVar("--lh-font", "system-ui, sans-serif"),
 		mono: cssVar("--lh-mono", "ui-monospace, monospace"),
 	};
@@ -172,7 +197,7 @@ ${DEMO_SCROLLBAR_CSS}
 button:focus-visible,input:focus-visible{outline:2px solid var(--lh-muted);outline-offset:3px}
 @media(max-width:640px){#lh-kit.k-focus{grid-template-columns:1fr;grid-template-rows:minmax(180px,1fr) auto;gap:12px}.k-focus .k-controls{grid-column:1;grid-row:2;padding:12px 0 0;max-height:45dvh}.k-focus .k-parameters-toggle{display:block;width:100%;text-align:left;margin-bottom:12px}.k-controls.k-collapsed>:not(.k-parameters-toggle){display:none}}
 @media(prefers-reduced-motion:reduce){.react-flow__edge-path{animation:none!important}}
-.k-error{padding:8px 10px;border-radius:6px;background:rgba(242,139,130,.12);color:var(--lh-red);font:12px var(--lh-mono)}
+.k-error{padding:8px 10px;border-radius:6px;background:${DEMO_ERROR_TINT};color:light-dark(${DEMO_ERROR_INK.light},${DEMO_ERROR_INK.dark});font:12px var(--lh-mono)}
 .k-token-text{resize:none;box-sizing:border-box;width:100%;border:1px solid var(--lh-border);border-radius:6px;background:var(--lh-bg);color:var(--lh-text);padding:8px 10px;font:inherit;line-height:1.6}
 .k-token-text:focus-visible{outline:2px solid var(--lh-muted);outline-offset:3px}
 .k-token-controls{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin:12px 0}
@@ -887,7 +912,7 @@ class Kit {
 				const color = (value: number) => {
 					const amount = panel.scale === "sequential" ? max === min ? 0 : (value - min) / (max - min) : value < 0 ? min === 0 ? 0 : value / min : max === 0 ? 0 : value / max;
 					const strength = Math.max(0, Math.min(1, amount));
-					return { background: `color-mix(in srgb,var(${panel.scale === "diverging" && value > 0 ? "--lh-red" : "--lh-blue"}) ${strength * 100}%,var(--lh-bg))`, ink: strength > .55 ? "var(--lh-bg)" : "var(--lh-text)" };
+					return { background: `color-mix(in srgb,var(${panel.scale === "diverging" && value > 0 ? "--lh-red" : "--lh-blue"}) ${strength * 100}%,var(--lh-bg))`, ink: strength > .55 ? "var(--k-strong-ink, var(--lh-bg))" : "var(--lh-text)" };
 				};
 				grid.style.setProperty("--k-heatmap-columns", String(cols.length)); grid.style.setProperty("--k-heatmap-width", `${72 + cols.length * 58}px`); grid.classList.toggle("k-large", rows.length > 12 || cols.length > 12);
 				grid.replaceChildren(); cells = []; rowLabels = []; colLabels = [];

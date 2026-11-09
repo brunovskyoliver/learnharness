@@ -112,14 +112,14 @@ export function KeyboardSection() {
 										rowId={`kbd-${def.id}`}
 									>
 										<span className="flex items-center gap-2">
-											<kbd className="rounded-md border border-input bg-background px-1.5 py-0.5 font-ui text-sm">
+											<kbd className="nb-set-kbd">
 												{rebinding === def.id ? "Press keys…" : formatBinding(effective)}
 											</kbd>
 											{def.displayOnly ? null : rebinding === def.id ? (
 												<button
 													type="button"
 													onClick={() => setRebinding(null)}
-													className="text-sm text-ink-2 underline-offset-2 hover:text-foreground hover:underline pointer-coarse:min-h-11"
+													className="nb-set-text-button"
 												>
 													Cancel
 												</button>
@@ -129,7 +129,7 @@ export function KeyboardSection() {
 														type="button"
 														onClick={() => setRebinding(def.id)}
 														data-testid={`kbd-rebind-${def.id}`}
-														className="text-sm text-ink-2 underline-offset-2 hover:text-foreground hover:underline pointer-coarse:min-h-11"
+														className="nb-set-text-button"
 													>
 														Rebind
 													</button>
@@ -138,7 +138,7 @@ export function KeyboardSection() {
 															type="button"
 															onClick={() => resetOne(def.id)}
 															data-testid={`kbd-reset-${def.id}`}
-															className="text-sm text-ink-2 underline-offset-2 hover:text-foreground hover:underline pointer-coarse:min-h-11"
+															className="nb-set-text-button"
 														>
 															Reset
 														</button>
@@ -157,7 +157,7 @@ export function KeyboardSection() {
 					type="button"
 					onClick={resetAll}
 					data-testid="kbd-reset-all"
-					className="text-sm text-ink-2 underline-offset-2 hover:text-foreground hover:underline pointer-coarse:min-h-11"
+					className="nb-set-text-button"
 				>
 					Reset all to defaults
 				</button>

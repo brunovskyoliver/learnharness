@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { folderSubtree, folderTrail, type LibraryFolder } from "@/src/core";
 
-const CONTENT = "gap-3 rounded-[10px] border-0 bg-card sm:max-w-md";
-const RAISED_2 = "bg-accent text-foreground hover:bg-[color-mix(in_srgb,var(--accent)_80%,var(--foreground))] pointer-coarse:h-11";
+const CONTENT = "gap-3 sm:max-w-md";
 
 /** Sends a folder or item change and answers with the server's sentence on refusal. */
 export async function sendLibraryChange(url: string, method: "POST" | "PATCH" | "DELETE", body?: unknown): Promise<string | null> {
@@ -58,7 +57,7 @@ export function FolderNameDialog({ title, label = "Folder name", action, initial
 	return (
 		<Dialog open={open} onOpenChange={(next) => { if (!next && !busy) onClose(); }}>
 			<DialogContent showCloseButton={false} aria-describedby={undefined} data-testid="library-folder-dialog" className={CONTENT} onCloseAutoFocus={(event) => { event.preventDefault(); returnFocus(); }}>
-				<DialogTitle className="text-base font-semibold">{title}</DialogTitle>
+				<DialogTitle className="[overflow-wrap:anywhere]">{title}</DialogTitle>
 				<form onSubmit={(event) => void submit(event)} className="flex flex-col gap-3">
 					<input
 						autoFocus
@@ -70,12 +69,12 @@ export function FolderNameDialog({ title, label = "Folder name", action, initial
 						data-testid="library-folder-name"
 						onFocus={(event) => event.currentTarget.select()}
 						onChange={(event) => setName(event.target.value)}
-						className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-base text-foreground pointer-coarse:h-11"
+						className="lh-line-field"
 					/>
-					{failure && <p role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{failure}</p>}
-					<div className="flex justify-end gap-2">
-						<Button type="button" variant="ghost" className="pointer-coarse:h-11" disabled={busy} onClick={onClose}>Cancel</Button>
-						<Button type="submit" className={RAISED_2} disabled={busy || (!allowEmpty && !name.trim())} data-testid="library-folder-submit">{action}</Button>
+					{failure && <p role="alert" className="text-sm text-red [overflow-wrap:anywhere]">{failure}</p>}
+					<div className="mt-1 flex items-center justify-end gap-5">
+						<button type="button" className="lh-text-action" disabled={busy} onClick={onClose}>Cancel</button>
+						<button type="submit" className="nb-pill" disabled={busy || (!allowEmpty && !name.trim())} data-testid="library-folder-submit">{action}</button>
 					</div>
 				</form>
 			</DialogContent>
@@ -87,7 +86,8 @@ export function FolderNameDialog({ title, label = "Folder name", action, initial
 export function moveTargets(folders: readonly LibraryFolder[], moving: { folderIds?: readonly string[] } | null): { id: string | null; label: string; depth: number }[] {
 	const blocked = new Set((moving?.folderIds ?? []).flatMap((id) => [...folderSubtree(id, folders)]));
 	const rows = folders
-		.filter((folder) => !blocked.has(folder.id) && !folderTrail(folder.id, folders).some((f) => blocked.has(f.id)))
+		// Nothing moves into a mirror (feature 026, R11).
+		.filter((folder) => !folder.mirror && !blocked.has(folder.id) && !folderTrail(folder.id, folders).some((f) => blocked.has(f.id)))
 		.map((folder) => {
 			const trail = folderTrail(folder.id, folders);
 			return { id: folder.id as string | null, label: trail.map((f) => f.name).join(" / "), depth: trail.length };
@@ -122,7 +122,7 @@ export function MoveDialog({ name, folders, moving, current, onClose, onMove, re
 	return (
 		<Dialog open={name !== null} onOpenChange={(next) => { if (!next && !busy) onClose(); }}>
 			<DialogContent showCloseButton={false} aria-describedby={undefined} data-testid="library-move-dialog" className={CONTENT} onCloseAutoFocus={(event) => { event.preventDefault(); returnFocus(); }}>
-				<DialogTitle className="text-base font-semibold [overflow-wrap:anywhere]">Move {name} to</DialogTitle>
+				<DialogTitle className="[overflow-wrap:anywhere]">Move {name} to</DialogTitle>
 				<ul className="flex max-h-[50dvh] flex-col gap-1 overflow-y-auto">
 					{moveTargets(folders, moving).map((target) => {
 						const here = target.id === current;
@@ -132,19 +132,19 @@ export function MoveDialog({ name, folders, moving, current, onClose, onMove, re
 									type="button"
 									disabled={busy || here}
 									data-testid="library-move-target"
-									className={`flex min-h-9 w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-base transition-colors pointer-coarse:min-h-11 ${here ? "text-muted-foreground" : "hover:bg-accent"}`}
+									className={`flex min-h-9 w-full items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-left text-md transition-colors pointer-coarse:min-h-11 ${here ? "text-faint" : "text-ink hover:bg-shelf"}`}
 									onClick={() => void choose(target.id)}
 								>
-									<FolderIcon className="ui-icon shrink-0" aria-hidden="true" />
+									<FolderIcon className="size-[15px] shrink-0 text-faint" aria-hidden="true" />
 									<span className="min-w-0 [overflow-wrap:anywhere]">{target.label}{here ? " · Already here" : ""}</span>
 								</button>
 							</li>
 						);
 					})}
 				</ul>
-				{failure && <p role="alert" className="text-sm text-destructive [overflow-wrap:anywhere]">{failure}</p>}
+				{failure && <p role="alert" className="text-sm text-red [overflow-wrap:anywhere]">{failure}</p>}
 				<div className="flex justify-end">
-					<Button type="button" variant="ghost" className="pointer-coarse:h-11" disabled={busy} onClick={onClose}>Cancel</Button>
+					<button type="button" className="lh-text-action" disabled={busy} onClick={onClose}>Cancel</button>
 				</div>
 			</DialogContent>
 		</Dialog>

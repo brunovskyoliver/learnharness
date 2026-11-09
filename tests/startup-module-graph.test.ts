@@ -29,14 +29,34 @@ for (const entry of ["components/sidebar.tsx", "components/home.tsx", "component
 			for (const [input, attribution] of Object.entries(output.inputs)) {
 				if (attribution.bytesInOutput === 0) continue;
 				assert.doesNotMatch(input, /node_modules\/(?:typebox|katex)\//, `${input} entered initial JS`);
+				// Feature 026: the git client is server-only (R5).
+				assert.doesNotMatch(input, /node_modules\/(?:isomorphic-git|pako|sha\.js)\//, `${input} entered startup JS; isomorphic-git is server-only`);
 				assert.doesNotMatch(input, /node_modules\/(?:mdast-util-from-markdown|micromark[^/]*)\//, `${input} entered startup JS without a Markdown surface`);
 				assert.doesNotMatch(input, /node_modules\/(?:@tiptap|prosemirror-[^/]+)\//, `${input} entered startup JS; the page editor loads on demand`);
 				// The composer's small @ hook is the one exception (research R14).
 				assert.doesNotMatch(input, /components\/library\/(?!use-library-mention\.ts$)/, `${input} entered startup JS; the Library loads with its own route`);
+				// Feature 024: Notebook's code, styles and fonts load with its own route.
+				assert.doesNotMatch(input, /(?:components\/notebook\/|app\/\(app\)\/notebook\/|src\/core\/notebook(?:-sketch|-export)?\.ts$)/, `${input} entered Study's startup JS; Notebook loads with its own route`);
 				if (entry === "components/graph-view.tsx") assert.doesNotMatch(input, /(?:components\/graph-canvas\.ts|src\/core\/layout\.ts|node_modules\/d3-[^/]+\/)/, `${input} entered the empty graph's static JS`);
 			}
 			for (const imported of output.imports) if (imported.kind === "import-statement" && !imported.external) walk(imported.path);
 		};
 		walk(entryOutput[0]);
+	});
+}
+
+// Feature 026 (R5, SC-008): isomorphic-git stays out of every client chunk,
+// static or loaded on demand, including the Library's own route.
+for (const entry of ["components/library/library-view.tsx", "components/sidebar.tsx", "components/home.tsx"]) {
+	test(`${entry} never pulls isomorphic-git into any client chunk`, async () => {
+		const { metafile } = await build({
+			entryPoints: [entry], bundle: true, write: false, metafile: true,
+			platform: "browser", format: "esm", splitting: true,
+			outdir: process.env.TMPDIR ?? "/tmp",
+			external: ["react", "react-dom", "react-dom/*", "next", "next/*", "@clerk/nextjs"],
+		});
+		for (const input of Object.keys(metafile.inputs)) {
+			assert.doesNotMatch(input, /node_modules\/isomorphic-git\/|src\/server\/repo-(?:git|sync)\.ts$/, `${input} entered the client graph`);
+		}
 	});
 }

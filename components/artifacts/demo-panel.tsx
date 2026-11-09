@@ -32,7 +32,7 @@ export function DemoPanel() {
 								aria-label="Demo"
 								value={demo.id}
 								onChange={(e) => panel.open(e.target.value)}
-								className="min-w-0 flex-1 truncate rounded-md bg-transparent py-1 text-sm font-medium text-foreground outline-none hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring"
+								className="min-w-0 flex-1 truncate rounded-md bg-transparent py-1 text-sm font-medium text-ink outline-none hover:bg-shelf focus-visible:ring-1 focus-visible:ring-focus"
 								data-testid="demo-panel-select"
 							>
 								{panel.demos.map((d) => (
@@ -50,7 +50,7 @@ export function DemoPanel() {
 							aria-label="Close demo panel"
 							onClick={panel.close}
 							data-testid="demo-panel-close"
-							className="ui-icon-button text-muted-foreground hover:bg-accent hover:text-foreground"
+							className="ui-icon-button text-faint hover:bg-shelf hover:text-ink"
 						>
 							<XIcon className="ui-icon" />
 						</button>

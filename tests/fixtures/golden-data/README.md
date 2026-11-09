@@ -30,6 +30,11 @@ core tool surface must appear in real data here.
 - `jobs/` — five records covering kind × status: research done + aborted by
   learner, demo done, visual done, pdf error.
 - `settings.json` — the stamped settings record (version 1, model slots).
+- `library/notebook/lib_2D9xpc6CWLSgAYRtI1og4.json` — a Notebook companion
+  (feature 024, 2026-11-06), written by the real notebook handlers and run
+  registry with the faux engine: instruction + reviewer, a resolved read
+  thread, an ask thread with a streamed reply, a visualize thread with a
+  sketch, and a chat exchange.
 
 ## Regenerating / extending
 

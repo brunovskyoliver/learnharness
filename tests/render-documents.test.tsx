@@ -79,12 +79,18 @@ describe("tutor messages from a PDF", () => {
 		assert.match(documentTutorMessage("questions", source, "x"), /keeping the answers until I have answered/);
 		assert.ok(documentTutorMessage("ask", source, "x").endsWith("\n\n"), "room for the learner's question");
 	});
-	it("shows the learner a quote and its page, not the marked block", () => {
-		const html = renderToStaticMarkup(<UserTurnText text={`Explain @a.pdf, page 2:\n\n${renderLibraryPassage({ itemId: "lib_1", page: 2 }, "<b>the words</b>")}`} />);
-		assert.ok(!html.includes("library_passage"), html);
-		assert.ok(html.includes("&lt;b&gt;the words"), html);
+	it("shows the learner one chip carrying the passage, not the marked block (feature 027, FR-010)", () => {
+		const text = `Explain @a.pdf, page 2:\n\n${renderLibraryPassage({ itemId: "lib_1", page: 2 }, "<b>the words</b>")}`;
+		const html = renderToStaticMarkup(<UserTurnText text={text} references={[{ itemId: "lib_1", name: "a.pdf", kind: "pdf", mode: "inline" }]} messageId="m1" />);
+		const shown = html.replace(/<span hidden=""[^>]*><\/span>/g, "").replace(/<[^>]+>/g, "");
+		assert.equal(shown, "Explain a.pdf · p. 2:", html);
+		assert.ok(!shown.includes("library_passage"), html);
+		assert.ok(html.includes('aria-description="&lt;b&gt;the words&lt;/b&gt;"'), html);
 		assert.ok(html.includes("/library?item=lib_1&amp;page=2"), html);
-		assert.ok(html.includes("Sent from page 2"), html);
+		assert.ok(!html.includes("Sent from page"), html);
+		// Copy gives back the exact characters: the chip, its tail, then the passage.
+		const sources = [...html.matchAll(/data-source="([^"]*)"/g)].map((m) => m[1]!.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&amp;/g, "&"));
+		assert.equal(`Explain ${sources[0]}:${sources[1]}`, text);
 	});
 });
 
