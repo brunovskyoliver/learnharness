@@ -4,7 +4,7 @@
  * names, so the jailed fs tools keep working; library/catalog.json holds what
  * a folder can't. Listing reconciles the two and never touches bytes.
  */
-import { createReadStream, createWriteStream } from "node:fs";
+import { createWriteStream, type ReadStream } from "node:fs";
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import { pipeline } from "node:stream/promises";
@@ -1122,9 +1122,32 @@ export const libraryStore: LibraryStore = {
 	documentPath: (item) => path.join(PATHS.files, item.name),
 };
 
-/** A read stream for a document, refusing anything but a regular file. */
-export async function openDocumentStream(file: string): Promise<{ stream: ReturnType<typeof createReadStream>; size: number } | null> {
-	const stat = await fs.lstat(file).catch(() => null);
-	if (!stat?.isFile()) return null;
-	return { stream: createReadStream(file), size: stat.size };
+export type DocumentStat = { size: number; mtimeMs: number };
+/** Inclusive byte offsets, as in an HTTP Range. */
+export type ByteRange = { start: number; end: number };
+export type OpenedDocument = DocumentStat & { stream: ReadStream | null };
+
+/** A read stream for a document, refusing anything but a regular file.
+ *  `pick` sees the opened file's own size and mtime, so the bytes it chooses
+ *  always belong to that version: a range, "all", or "none" (no stream, for
+ *  answers without a body). */
+export async function openDocumentStream(file: string, pick: (stat: DocumentStat) => ByteRange | "all" | "none" = () => "all"): Promise<OpenedDocument | null> {
+	const link = await fs.lstat(file).catch(() => null);
+	if (!link?.isFile()) return null;
+	const handle = await fs.open(file, "r").catch(() => null);
+	if (!handle) return null;
+	const stat = await handle.stat().catch(() => null);
+	// Same inode as the checked path, so a swap between the two calls can't slip a symlink in.
+	if (!stat?.isFile() || stat.ino !== link.ino || stat.dev !== link.dev) {
+		await handle.close();
+		return null;
+	}
+	const found = { size: stat.size, mtimeMs: stat.mtimeMs };
+	const chosen = pick(found);
+	if (chosen === "none") {
+		await handle.close();
+		return { ...found, stream: null };
+	}
+	const stream = handle.createReadStream(chosen === "all" ? {} : { start: chosen.start, end: chosen.end });
+	return { ...found, stream };
 }

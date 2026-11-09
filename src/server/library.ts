@@ -4,13 +4,14 @@
  * declared length, type by extension, then the store's stream, received
  * length, content check and link.
  */
+import { createHash } from "node:crypto";
 import { Readable } from "node:stream";
 import {
 	ACCEPTED_EXTENSIONS, cleanTags, extensionOf, isPageStale, isRefusal, isVersionedKind, kindForName, LIBRARY_REFUSALS, LibraryCatalogError, MAX_FILE_BYTES,
 	REFERENCE_INLINE_MAX_BYTES, uploadName,
 	pageVersionName, type LibraryItem, type LibraryMarks, type LibraryRefusal, type LibraryRefusalCode, type PageVersionCause, type PageWriteResult,
 } from "../core/library.ts";
-import { libraryStore, openDocumentStream } from "../store/library.ts";
+import { libraryStore, openDocumentStream, type ByteRange, type DocumentStat } from "../store/library.ts";
 import { indexAfterUpload } from "./library-text.ts";
 
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
@@ -205,15 +206,50 @@ const INLINE_TYPES: Record<string, string> = {
 	bmp: "image/bmp",
 };
 
+/** Kept privately in the browser and revalidated on every open (feature 024).
+ *  no-transform keeps Next's gzip off: a byte range is only usable unencoded. */
+const CONTENT_CACHE = "private, no-cache, no-transform";
+
+/** Strong and opaque; changes with the item, the file's size or its mtime. */
+function documentTag(item: LibraryItem, stat: DocumentStat): string {
+	return `"${createHash("sha256").update(`${item.id}\0${stat.size}\0${stat.mtimeMs}`).digest("base64url").slice(0, 32)}"`;
+}
+
+/** If-None-Match by weak comparison (RFC 9110 13.1.2). */
+function tagMatches(header: string | null, tag: string): boolean {
+	if (header === null) return false;
+	if (header.trim() === "*") return true;
+	return header.split(",").some((part) => part.trim().replace(/^W\//, "") === tag);
+}
+
+/** One satisfiable range, "unsatisfiable", or "all" for no Range, several
+ *  ranges, or a malformed one (RFC 9110 14.2: those may be ignored). */
+function parseByteRange(header: string | null, size: number): ByteRange | "unsatisfiable" | "all" {
+	const match = header === null ? null : /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+	if (!match || (match[1] === "" && match[2] === "")) return "all";
+	const first = match[1] === "" ? null : Number(match[1]);
+	const last = match[2] === "" ? null : Number(match[2]);
+	if ((first !== null && !Number.isSafeInteger(first)) || (last !== null && !Number.isSafeInteger(last))) return "all";
+	if (first === null) {
+		// Suffix: the last n bytes, or the whole file when it is shorter.
+		if (last === 0 || size === 0) return "unsatisfiable";
+		return { start: Math.max(0, size - last!), end: size - 1 };
+	}
+	if (last !== null && last < first) return "all";
+	if (first >= size) return "unsatisfiable";
+	return { start: first, end: Math.min(last ?? size - 1, size - 1) };
+}
+
 /** PDF and raster images show with their type. Everything else is plain text,
  *  so nothing a learner uploaded ever runs as HTML in the app's origin. */
-function contentHeaders(item: LibraryItem, size: number, download: boolean): Headers {
+function contentHeaders(item: LibraryItem, tag: string, download: boolean): Headers {
 	const inlineType = item.kind === "pdf" || item.kind === "image" ? INLINE_TYPES[extensionOf(item.name)] : undefined;
 	const headers = new Headers({
 		"Content-Type": inlineType ?? "text/plain; charset=utf-8",
-		"Content-Length": String(size),
+		"Accept-Ranges": "bytes",
+		"ETag": tag,
 		"X-Content-Type-Options": "nosniff",
-		"Cache-Control": "no-store",
+		"Cache-Control": CONTENT_CACHE,
 	});
 	const filename = `filename*=UTF-8''${encodeURIComponent(item.name)}`;
 	if (download) headers.set("Content-Disposition", `attachment; ${filename}`);
@@ -221,15 +257,47 @@ function contentHeaders(item: LibraryItem, size: number, download: boolean): Hea
 	return headers;
 }
 
+type ContentPlan =
+	| { status: 304 | 416 | 200; tag: string; size: number }
+	| { status: 206; tag: string; size: number; range: ByteRange };
+
+/** What a request gets for this version of the file. */
+function contentPlan(request: Request, tag: string, size: number): ContentPlan {
+	if (tagMatches(request.headers.get("if-none-match"), tag)) return { status: 304, tag, size };
+	const ifRange = request.headers.get("if-range");
+	const range = ifRange !== null && ifRange.trim() !== tag ? "all" : parseByteRange(request.headers.get("range"), size);
+	if (range === "unsatisfiable") return { status: 416, tag, size };
+	if (range === "all") return { status: 200, tag, size };
+	return { status: 206, tag, size, range };
+}
+
+/** Ranges, a version tag and conditional requests
+ *  (specs/024-instant-loads/contracts/library-content-ranges.md). */
 export function libraryContentResponse(request: Request, id: string): Promise<Response> {
 	return guarded(async () => {
 		const missing = () => json({ error: "That item is no longer in your Library." }, 404);
 		const item = await libraryStore.get(id);
 		if (!item || isVersionedKind(item.kind)) return missing();
-		const opened = await openDocumentStream(libraryStore.documentPath(item));
-		if (!opened) return missing();
+		const chosen: { plan?: ContentPlan } = {};
+		const opened = await openDocumentStream(libraryStore.documentPath(item), (stat) => {
+			const plan = chosen.plan = contentPlan(request, documentTag(item, stat), stat.size);
+			return plan.status === 206 ? plan.range : plan.status === 200 ? "all" : "none";
+		});
+		const plan = chosen.plan;
+		if (!opened || !plan) return missing();
+		if (plan.status === 304) return new Response(null, { status: 304, headers: { "ETag": plan.tag, "Cache-Control": CONTENT_CACHE } });
 		const download = new URL(request.url).searchParams.get("download") === "1";
-		return new Response(Readable.toWeb(opened.stream) as ReadableStream<Uint8Array>, { headers: contentHeaders(item, opened.size, download) });
+		const headers = contentHeaders(item, plan.tag, download);
+		if (plan.status === 416) {
+			headers.set("Content-Range", `bytes */${plan.size}`);
+			return new Response(null, { status: 416, headers });
+		}
+		const body = Readable.toWeb(opened.stream!) as ReadableStream<Uint8Array>;
+		if (plan.status === 206) {
+			headers.set("Content-Range", `bytes ${plan.range.start}-${plan.range.end}/${plan.size}`);
+			headers.set("Content-Length", String(plan.range.end - plan.range.start + 1));
+		} else headers.set("Content-Length", String(plan.size));
+		return new Response(body, { status: plan.status, headers });
 	});
 }
 

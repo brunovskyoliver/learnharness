@@ -6,19 +6,19 @@ Format: `- [ ] Txxx [P] [USn] description (path)`.
 
 ## Phase 1: Setup
 
-- [ ] T001 Add `plotly.js@4.1.2` as a devDependency (build-time only; same version as `plotly.js-dist-min`); confirm it is not imported by any app/server module (`package.json`, `package-lock.json`)
-- [ ] T002 Record pre-change numbers for constitution VIII: Home and chat first-load JS (transferred/decoded) from the current `npm run build` route output (`.next` app-build-manifest / build log) and the baseline in spec.md (`~/agent-runs/2026-11-09-instant-loads/before.md`)
+- [X] T001 Add `plotly.js@4.1.2` as a devDependency (build-time only; same version as `plotly.js-dist-min`); confirm it is not imported by any app/server module (`package.json`, `package-lock.json`)
+- [X] T002 Record pre-change numbers for constitution VIII: Home and chat first-load JS (transferred/decoded) from the current `npm run build` route output (`.next` app-build-manifest / build log) and the baseline in spec.md (`~/agent-runs/2026-11-09-instant-loads/before.md`)
 
 ## Phase 2: User Story 1 — A PDF opens at once (P1) 🎯 MVP
 
 **Goal**: page 1 from ranges; reopen revalidates (304). **Independent test**: contract table + perf driver PDF scenario.
 
-- [ ] T003 [P] [US1] Tests for the content route per `contracts/library-content-ranges.md`: 200 with Accept-Ranges/ETag/`private, no-cache`; 304 on If-None-Match; 206 for `a-b`, `a-`, `-n`; If-Range mismatch → 200; multi/malformed → 200; unsatisfiable → 416; `?download=1`; ETag changes after the file is rewritten; tenant isolation unchanged (`tests/library-content-ranges.test.ts`)
-- [ ] T004 [US1] `openDocumentStream` accepts an optional byte range and returns size + mtime (`src/server/documents.ts` or its store adapter)
-- [ ] T005 [US1] Implement ranges, ETag, conditional requests and `private, no-cache` in `contentHeaders` / `libraryContentResponse`; never content-encode this response (`src/server/library.ts`)
-- [ ] T006 [P] [US1] Tests: `pdfjsAssetResponse` gzips `.mjs`/`.js` when Accept-Encoding has gzip, sets `Vary: Accept-Encoding`, leaves binary assets alone (`tests/pdfjs-assets.test.ts`)
-- [ ] T007 [US1] Gzip text pdf.js assets with an in-memory memo (`src/server/documents.ts`)
-- [ ] T008 [US1] `pdfLoadOptions`: `disableStream: true`, `disableAutoFetch: true`, `rangeChunkSize: 262144`; update its pinning test (`components/library/pdf-options.ts`, existing test)
+- [X] T003 [P] [US1] Tests for the content route per `contracts/library-content-ranges.md`: 200 with Accept-Ranges/ETag/`private, no-cache`; 304 on If-None-Match; 206 for `a-b`, `a-`, `-n`; If-Range mismatch → 200; multi/malformed → 200; unsatisfiable → 416; `?download=1`; ETag changes after the file is rewritten; tenant isolation unchanged (`tests/library-content-ranges.test.ts`)
+- [X] T004 [US1] `openDocumentStream` accepts an optional byte range and returns size + mtime (`src/server/documents.ts` or its store adapter)
+- [X] T005 [US1] Implement ranges, ETag, conditional requests and `private, no-cache` in `contentHeaders` / `libraryContentResponse`; never content-encode this response (`src/server/library.ts`)
+- [X] T006 [P] [US1] Tests: `pdfjsAssetResponse` gzips `.mjs`/`.js` when Accept-Encoding has gzip, sets `Vary: Accept-Encoding`, leaves binary assets alone (`tests/pdfjs-assets.test.ts`)
+- [X] T007 [US1] Gzip text pdf.js assets with an in-memory memo (`src/server/documents.ts`)
+- [X] T008 [US1] `pdfLoadOptions`: `disableStream: true`, `disableAutoFetch: true`, `rangeChunkSize: 262144`; update its pinning test (`components/library/pdf-options.ts`, existing test)
 - [ ] T009 [US1] Verify in headless Chromium against a local build: page 1 renders, jump to a far page fetches only its ranges, reload shows 304s, Download still returns the whole file; note the result in progress.md
 
 ## Phase 3: User Story 2 — Plots appear at once after the first view (P1)

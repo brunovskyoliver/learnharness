@@ -32,6 +32,10 @@ describe("the reader's options", () => {
 		const options = pdfLoadOptions("/api/library/items/lib_1/content");
 		assert.equal(options.isEvalSupported, false);
 		assert.equal(options.enableXfa, false);
+		// Ranges only: page 1 without the whole file (feature 024).
+		assert.equal(options.disableStream, true);
+		assert.equal(options.disableAutoFetch, true);
+		assert.equal(options.rangeChunkSize, 262144);
 		for (const url of [options.standardFontDataUrl, options.cMapUrl, options.wasmUrl, options.iccUrl, PDF_WORKER_SRC]) assert.ok(url.startsWith("/pdfjs/"), url);
 	});
 	it("doesn't use pdf.js's scripting or annotation layers, or a CDN, anywhere in the reader", () => {

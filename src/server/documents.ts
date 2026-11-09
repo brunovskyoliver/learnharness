@@ -6,6 +6,8 @@
 import { promises as fs } from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
+import { gzip } from "node:zlib";
 import { ANNOTATION_NOTE_MAX, ANNOTATION_QUOTE_MAX, documentPassageBlock, parseAnchor, type DocumentCitation } from "../core/document-anchors.ts";
 import { DOC_QUERY_MAX_CHARS, type DocFilters } from "../core/document-search.ts";
 import { KIND_LABEL, LIBRARY_REFUSALS, LibraryCatalogError, type LibraryKind } from "../core/library.ts";
@@ -146,23 +148,59 @@ const ALLOWED_ASSETS: readonly RegExp[] = [
 ];
 const ASSET_TYPE: Record<string, string> = { ".mjs": "text/javascript; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".wasm": "application/wasm" };
 
-/** Only named forms under pdfjs-dist, whose version is the bundled client's. */
-export async function pdfjsAssetResponse(segments: readonly string[]): Promise<Response> {
+/** Text assets worth compressing: the worker alone is 1.3 MB raw, ~390 KB gzipped. */
+const TEXT_ASSET = /\.(?:mjs|js)$/;
+const gzipped = new Map<string, Promise<Buffer>>();
+const gzipAsync = promisify(gzip);
+
+/** True when the request's Accept-Encoding allows gzip (q > 0, or a positive `*`). */
+function acceptsGzip(request: Request | undefined): boolean {
+	const header = request?.headers.get("accept-encoding");
+	if (!header) return false;
+	let gzipQ: number | null = null;
+	let anyQ: number | null = null;
+	for (const part of header.split(",")) {
+		const [name, ...params] = part.trim().toLowerCase().split(";");
+		const qParam = params.map((p) => p.trim()).find((p) => p.startsWith("q="));
+		const q = qParam ? Number(qParam.slice(2)) : 1;
+		if (name === "gzip" || name === "x-gzip") gzipQ = q;
+		else if (name === "*") anyQ = q;
+	}
+	const q = gzipQ ?? anyQ ?? 0;
+	return Number.isFinite(q) && q > 0;
+}
+
+/** Only named forms under pdfjs-dist, whose version is the bundled client's.
+ *  Text assets go gzipped when the browser accepts it, compressed once per file
+ *  and kept in memory (the set is bounded by ALLOWED_ASSETS). */
+export async function pdfjsAssetResponse(segments: readonly string[], request?: Request): Promise<Response> {
 	const rel = segments.join("/");
 	if (!ALLOWED_ASSETS.some((pattern) => pattern.test(rel))) return new Response("Not found", { status: 404 });
 	const roots = [PDFJS_ROOT, path.join(process.cwd(), "node_modules", "pdfjs-dist")];
 	for (const root of roots) {
 		// The tracer can't follow this and would sweep the whole project. It doesn't
 		// need to: next.config.ts includes these folders, and the patterns above bound it.
-		const bytes = await fs.readFile(/*turbopackIgnore: true*/ path.join(/*turbopackIgnore: true*/ root, rel)).catch(() => null);
+		const file = path.join(/*turbopackIgnore: true*/ root, rel);
+		const bytes = await fs.readFile(/*turbopackIgnore: true*/ file).catch(() => null);
 		if (bytes) {
-			return new Response(new Uint8Array(bytes), {
-				headers: {
-					"Content-Type": ASSET_TYPE[path.extname(rel)] ?? "application/octet-stream",
-					"Cache-Control": process.env.NODE_ENV === "production" ? "public, max-age=86400" : "no-store",
-					"X-Content-Type-Options": "nosniff",
-				},
+			const headers = new Headers({
+				"Content-Type": ASSET_TYPE[path.extname(rel)] ?? "application/octet-stream",
+				"Cache-Control": process.env.NODE_ENV === "production" ? "public, max-age=86400" : "no-store",
+				"X-Content-Type-Options": "nosniff",
 			});
+			if (!TEXT_ASSET.test(rel)) return new Response(new Uint8Array(bytes), { headers });
+			headers.set("Vary", "Accept-Encoding");
+			if (!acceptsGzip(request)) return new Response(new Uint8Array(bytes), { headers });
+			let packed = gzipped.get(file);
+			if (!packed) {
+				packed = gzipAsync(bytes);
+				gzipped.set(file, packed);
+				packed.catch(() => gzipped.delete(file));
+			}
+			const body = await packed;
+			headers.set("Content-Encoding", "gzip");
+			headers.set("Content-Length", String(body.length));
+			return new Response(new Uint8Array(body), { headers });
 		}
 	}
 	return new Response("Not found", { status: 404 });
