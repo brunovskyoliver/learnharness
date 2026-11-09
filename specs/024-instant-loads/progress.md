@@ -1,5 +1,5 @@
 # Feature 024: Instant loads
-Stage: implement
+Stage: done (implemented on main, not pushed or deployed)
 Updated: 2026-11-09
 
 ## Decisions
@@ -47,4 +47,23 @@ Updated: 2026-11-09
 - 2026-11-09 T030 constitution VIII (vs before.md): Home JS 282 KB / 886 KB vs 280 / 882 local (+0.7% / +0.5%), vs 298 / 924 container (−5% / −4%). Chat (big chat) 695 / 2272 vs 693 / 2279 local (+0.3% / −0.3%), vs 729 / 2359 container; small chat 567 / 1832 vs 673 / 2162 container (−16% / −15%). Home sidebar ready 174–209 ms over 6 cold runs (median 188) vs 186 ms local (+1%) and 177 ms container (one run; the after range spans it). Home load 392–408 ms vs 396 local / 474 container. No regression over 5% on desktop; the driver has no mobile profile, so mobile wasn't re-measured here (T033 measured the 390 px hamburger unchanged).
 - 2026-11-09 T031: docs updated: src/core/demo-kit.ts header, scripts/build-demo-kit.mjs header, docs/architecture.md (demo frames, PDF reader), specs/ROADMAP.md (024 row, plotly.js build-time dependency row). Demo-builder prompt left as is: it tells the agent to write `<script src="/demo-kit/…">`, which is still exactly what the card inlines, so no wording describes the old loading.
 
+- 2026-11-09 converge: all 38 tasks [X]; no unbuilt work in spec/plan. Remaining items are owner decisions on two targets (below).
+
 ## Report
+
+**What changed** (all on `main`):
+- PDF (a9a115a, cfeb536, b2ad557): byte ranges, ETag + `private, no-cache`, versioned 16 KB chunks with immutable caching via a pdf.js range transport, first chunk + worker started at click, gzipped pdf.js worker, scanned-PDF note checks pages 1–3.
+- Plots (2cc46ff→cherry-picked, 8397b9c→cherry-picked): versioned immutable /demo-kit, libraries fetched once by the app page and handed to sandboxed frames (inline srcdoc + bridge), frames no longer remount on stream reveal; light plotly (583 KB gz) with per-plot fallback to full.
+- Renderers (e3bf25a and predecessor): code highlighter on demand, math eager and server-rendered.
+- Blank flash (93d85329): six shell providers deliver state via stable stores + useSyncExternalStore; transcript kept 12/12 cold loads; regression script scripts/check-transcript-hydration.mjs.
+- Final verification and docs (49658727).
+
+**Verified**: npm test 3908 pass / 0 fail / 27 skipped; lint, typecheck, build clean; hydration check 6/6; smoke-demo-workspace, check-documents-ui (1440/390/320), browser demo tests 90/90. Before/after table in spec.md Baseline. Constitution VIII: no regression >5%.
+
+**Left / open**:
+- SC-002 (warm plot chat ≤0.8 s): 1.19–1.24 s, zero library bytes; remaining time is plotly's first 3D render (~0.2 s per plot, software GL in headless). Owner to accept or pursue.
+- SC-004 longest start-up task ≤0.4 s: 0.43–0.44 s (from 0.75 s). Owner to accept or pursue.
+- `.dockerignore` lacks `.claude/` (agent worktrees would bloat a `docker build .` from this repo; deploys build from ~/learnharness/src and are unaffected).
+- `check-transcript-hydration.mjs` is not part of `npm test`.
+- Not pushed, not deployed.
+
