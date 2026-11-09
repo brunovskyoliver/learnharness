@@ -193,7 +193,14 @@ describe("small parts and the ink soak (feature 028, US5)", () => {
 		const props = [...body.matchAll(/(--?[a-z-]+)\s*:/g)].map(([, p]) => p!);
 		assert.deepEqual([...new Set(props)], ["--lh-soak-p"]);
 		assert.match(css, /@property\s+--lh-soak-p\s*\{[^}]*syntax:\s*"<length>"/);
-		assert.match(css, /html:active-view-transition-type\(lh-theme\)::view-transition-new\(root\)\s*\{[^}]*mask-image:\s*radial-gradient\([^;]*calc\(var\(--lh-soak-p\)\s*-\s*24px\)[^;]*var\(--lh-soak-p\)\);[^}]*var\(--motion-soak\)\s+var\(--ease-unfold\)\s+both\s+lh-soak/);
+		// The new look's mask: a soft band (--lh-soak-f wide, several stops) ending at the animated radius (lead review, phase 8: never a crisp circle).
+		const soakRule = /html:active-view-transition-type\(lh-theme\)::view-transition-new\(root\)\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
+		assert.match(soakRule, /mask-image:\s*radial-gradient\(/);
+		assert.match(soakRule, /black calc\(var\(--lh-soak-p\)\s*-\s*var\(--lh-soak-f, 240px\)\)/);
+		assert.ok((soakRule.match(/rgb\(0 0 0 \/ 0\.\d+\)/g) ?? []).length >= 3, "a graded falloff, not one linear step");
+		assert.match(soakRule, /transparent var\(--lh-soak-p\)\)/);
+		assert.match(soakRule, /var\(--motion-soak\)\s+var\(--ease-unfold\)\s+both\s+lh-soak/);
+		assert.match(body, /calc\(var\(--lh-soak-r, 2400px\) \+ var\(--lh-soak-f, 240px\)\)/);
 		assert.match(css, /html:active-view-transition-type\(lh-theme\)::view-transition-old\(root\)\s*\{\s*animation:\s*none;/);
 		assert.doesNotMatch(css, /^::view-transition-(old|new)\(root\)/m, "no untyped root cross-fade is left");
 	});

@@ -68,13 +68,16 @@ export function staggerCount(stagger: Stagger): number {
 }
 
 /**
- * The ink soak's origin (R9): the control's centre, and the radius that
- * reaches the farthest viewport corner from it.
+ * The ink soak's origin (R9): the control's centre, the radius that reaches
+ * the farthest viewport corner from it, and the width of its feathered edge
+ * (about a sixth of that reach, 64-280px), so the edge reads as ink taking
+ * to paper at any window size.
  */
-export function soakOrigin(rect: { left: number; top: number; width: number; height: number }, viewport: { width: number; height: number }): { x: number; y: number; r: number } {
+export function soakOrigin(rect: { left: number; top: number; width: number; height: number }, viewport: { width: number; height: number }): { x: number; y: number; r: number; f: number } {
 	const x = rect.left + rect.width / 2;
 	const y = rect.top + rect.height / 2;
 	const dx = Math.max(x, viewport.width - x);
 	const dy = Math.max(y, viewport.height - y);
-	return { x, y, r: Math.ceil(Math.hypot(dx, dy)) };
+	const r = Math.ceil(Math.hypot(dx, dy));
+	return { x, y, r, f: Math.min(280, Math.max(64, Math.round(r / 6))) };
 }

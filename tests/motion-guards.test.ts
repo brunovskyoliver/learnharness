@@ -95,4 +95,9 @@ describe("ink soak origin (R9)", () => {
 		const o = soakOrigin({ left: 380, top: 834, width: 10, height: 10 }, { width: 390, height: 844 });
 		assert.equal(o.r, Math.ceil(Math.hypot(385, 839)));
 	});
+	it("the feathered edge is about a sixth of the reach, 64-280px (lead review, phase 8)", () => {
+		assert.equal(soakOrigin({ left: 380, top: 834, width: 10, height: 10 }, { width: 390, height: 844 }).f, Math.round(Math.ceil(Math.hypot(385, 839)) / 6));
+		assert.equal(soakOrigin({ left: 0, top: 0, width: 0, height: 0 }, { width: 2560, height: 1440 }).f, 280);
+		assert.equal(soakOrigin({ left: 100, top: 100, width: 0, height: 0 }, { width: 200, height: 200 }).f, 64);
+	});
 });

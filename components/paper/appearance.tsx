@@ -60,13 +60,13 @@ export function noteSoakOrigin(rect: { left: number; top: number; width: number;
 }
 /** A card's box this old no longer says where the change came from. */
 const SOAK_ORIGIN_MS = 1000;
-const SOAK_VARS = ["--lh-soak-x", "--lh-soak-y", "--lh-soak-r"] as const;
+const SOAK_VARS = ["--lh-soak-x", "--lh-soak-y", "--lh-soak-r", "--lh-soak-f"] as const;
 
 type ViewTransitionStart = (arg: (() => void) | { update: () => void; types: string[] }) => { finished: Promise<void> };
 
 /**
  * Row 23 (feature 028, research R9): a theme change soaks in like ink. The
- * new theme spreads from the chosen card (a feathered circle, app/paper.css
+ * new theme spreads from the chosen card (a soft, feathered edge, app/paper.css
  * `lh-soak`, 450ms); without a card, from the middle of the window. Reduced
  * motion: a 150ms cross-fade. The OS changing its theme never comes here
  * (CSS follows it at once, FR-024). Nothing is remounted, so a demo keeps
@@ -83,6 +83,7 @@ function withThemeFade(apply: () => void): void {
 	root.style.setProperty("--lh-soak-x", `${Math.round(soak.x)}px`);
 	root.style.setProperty("--lh-soak-y", `${Math.round(soak.y)}px`);
 	root.style.setProperty("--lh-soak-r", `${soak.r}px`);
+	root.style.setProperty("--lh-soak-f", `${soak.f}px`);
 	const update = () => flushSync(apply);
 	let transition: { finished: Promise<void> };
 	try {

@@ -3595,8 +3595,10 @@ html.lh-paper body [data-lh-arrive] [data-ink-order][data-ink-verb="settle"] {
 .lh-paper [data-ring-sliding] > .nb-option-card[data-state="checked"] { box-shadow: none; }
 
 /* Row 23: the ink soak. A theme change's new look spreads from the chosen
-   card (--lh-soak-x/y, components/paper/appearance.tsx) as a circle with a
-   24px feathered edge, over the old look, which holds still (450ms). */
+   card (--lh-soak-x/y, components/paper/appearance.tsx) over the old look,
+   which holds still (450ms). The edge is feathered like ink taking to paper:
+   a wide soft band (--lh-soak-f, about a sixth of the reach) that thins out
+   gradually, never a drawn circle. */
 @property --lh-soak-p {
 	syntax: "<length>";
 	inherits: false;
@@ -3604,7 +3606,7 @@ html.lh-paper body [data-lh-arrive] [data-ink-order][data-ink-verb="settle"] {
 }
 @keyframes lh-soak {
 	0% { --lh-soak-p: 0px; }
-	to { --lh-soak-p: calc(var(--lh-soak-r, 2400px) + 24px); }
+	to { --lh-soak-p: calc(var(--lh-soak-r, 2400px) + var(--lh-soak-f, 240px)); }
 }
 /* The root keeps its place: no group movement (the browser's own is a no-op here). */
 html:active-view-transition-type(lh-theme)::view-transition-group(root) { animation: none; }
@@ -3612,7 +3614,12 @@ html:active-view-transition-type(lh-theme)::view-transition-group(root) { animat
 	html:active-view-transition-type(lh-theme)::view-transition-old(root) { animation: none; mix-blend-mode: normal; }
 	html:active-view-transition-type(lh-theme)::view-transition-new(root) {
 		mix-blend-mode: normal;
-		mask-image: radial-gradient(circle at var(--lh-soak-x, 50%) var(--lh-soak-y, 50%), black calc(var(--lh-soak-p) - 24px), transparent var(--lh-soak-p));
+		mask-image: radial-gradient(circle at var(--lh-soak-x, 50%) var(--lh-soak-y, 50%),
+			black calc(var(--lh-soak-p) - var(--lh-soak-f, 240px)),
+			rgb(0 0 0 / 0.82) calc(var(--lh-soak-p) - var(--lh-soak-f, 240px) * 0.72),
+			rgb(0 0 0 / 0.5) calc(var(--lh-soak-p) - var(--lh-soak-f, 240px) * 0.45),
+			rgb(0 0 0 / 0.2) calc(var(--lh-soak-p) - var(--lh-soak-f, 240px) * 0.2),
+			transparent var(--lh-soak-p));
 		animation: var(--motion-soak) var(--ease-unfold) both lh-soak;
 	}
 }

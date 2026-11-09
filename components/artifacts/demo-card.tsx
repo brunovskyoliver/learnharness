@@ -225,21 +225,31 @@ export function DemoFrame({
 		if (inWorkspace) iframeRef.current?.contentWindow?.postMessage({ type: "lh-demo-preview" }, "*");
 	}, [inWorkspace, state.height]);
 	useEffect(() => {
-		const sendAppearance = () => {
-			const size = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--note-size")) || 17;
-			iframeRef.current?.contentWindow?.postMessage({ type: "lh-demo-size", size }, "*");
+		// The last appearance sent: an <html> attribute change that leaves it as it was
+		// (the theme soak's origin variables, feature 028) sends nothing, so the demo
+		// does not redraw for it; a (re)loaded frame always gets it.
+		let sent = "";
+		const sendAppearance = (force = false) => {
 			const styles = getComputedStyle(document.documentElement);
+			const size = parseFloat(styles.getPropertyValue("--note-size")) || 17;
 			const vars = demoAppearanceVars((name) => styles.getPropertyValue(name));
+			const now = JSON.stringify([size, vars]);
+			if (!force && now === sent) return;
+			sent = now;
+			iframeRef.current?.contentWindow?.postMessage({ type: "lh-demo-size", size }, "*");
 			iframeRef.current?.contentWindow?.postMessage({ type: "lh-demo-theme", vars }, "*");
 		};
+		const changed = () => sendAppearance();
+		const loaded = () => sendAppearance(true);
 		// The paper theme lives on <html> (feature 025); "system" follows the OS.
-		const observer = new MutationObserver(sendAppearance);
+		const observer = new MutationObserver(changed);
 		observer.observe(document.documentElement, { attributes: true, attributeFilter: ["style", "class", "data-theme", "data-ink"] });
 		const scheme = typeof window.matchMedia === "function" ? window.matchMedia("(prefers-color-scheme: dark)") : null;
-		scheme?.addEventListener("change", sendAppearance);
-		iframeRef.current?.addEventListener("load", sendAppearance);
-		sendAppearance();
-		return () => { observer.disconnect(); scheme?.removeEventListener("change", sendAppearance); iframeRef.current?.removeEventListener("load", sendAppearance); };
+		scheme?.addEventListener("change", changed);
+		const frame = iframeRef.current;
+		frame?.addEventListener("load", loaded);
+		sendAppearance(true);
+		return () => { observer.disconnect(); scheme?.removeEventListener("change", changed); frame?.removeEventListener("load", loaded); };
 	}, []);
 	// Brightness inversion (owner, 2026-10-07): the switch state PERSISTS on
 	// the steer record (details.ui.inverted) — seeded here, written through
