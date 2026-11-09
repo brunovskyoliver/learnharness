@@ -10,7 +10,7 @@ description: "Tasks for feature 028, one motion language"
 
 **UI tasks** (T021-T028, T034-T035, T039-T043, T046-T054, T057-T074) are built with the `shadcn` skill (constitution VI) and checked in T079-T080.
 
-**Gate 2**: answered `go` 2026-11-09. Tasks marked **(gate 2)** implement the approved versions in plan.md "Owner review at gate 2". Tasks marked **(O1)** or **(O2)** wait for the items in plan.md "Open after gate 2".
+**Gate 2**: answered `go` 2026-11-09. Tasks marked **(gate 2)** implement the approved versions in plan.md "Owner review at gate 2". Tasks marked **(O1)** or **(O2)** implement the resolutions of plan.md "Open after gate 2" (owner intent applied by the lead, 2026-11-09: O1 A, O2 A).
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -53,21 +53,21 @@ description: "Tasks for feature 028, one motion language"
 
 **Independent test**: cold-load Home, a lesson, Library, Review and Settings at 1440 and 390; order mark → heading → body; text solid by 600ms; a key at 50ms acts; reload shows no signature.
 
-- [ ] T017 [US1] Add to tests/e2e/study/motion.spec.ts: "plays once" (fresh context: `html[data-lh-arrival=signature]` and a running `lh-mark-draw`; reload: neither; a new context: plays again); "hidden tab skips it"
-- [ ] T018 [US1] Add to tests/e2e/study/motion.spec.ts: every text animation in the first viewport ends by 600ms after first paint on `/`, `/chat/{id}`, `/library`, `/review`, `/settings` at 1440 and 390 (SC-001); a lesson's transcript turns have no animation (US1 AS4)
-- [ ] T019 [US1] Add to tests/e2e/study/motion.spec.ts: Mod+K at 50ms opens the palette and a row click at 50ms navigates, 20 trials each at offsets spread over the signature (US1 AS2, SC-002); reduced motion: the signature is a ≤150ms fade with no stroke or splat (US1 AS3)
-- [ ] T085 [US1] Add to tests/e2e/study/motion.spec.ts: with JavaScript disabled (`javaScriptEnabled: false`) a cold load of `/` and `/library` shows every first-viewport element at opacity 1 with no transform (FR-008)
-- [ ] T020 [US1] Put `SIGNATURE_SCRIPT` first in `<body>` of app/(app)/layout.tsx and app/(auth)/layout.tsx, add `suppressHydrationWarning` to `<html>`, mount `<MotionArrival />` in app/(app)/layout.tsx
-- [ ] T021 [P] [US1] Add the signature mask mode to components/lh-mark.tsx: a `useId()` mask with a stroked circle on the ring's centre line (`pathLength="1"`), clockwise from the spiral's open end **(gate 2, items 1 and 4)**; static and complete without the attribute
-- [ ] T022 [US1] Add the signature rules for `.nb-wordmark-mark` (ring `lh-mark-draw` `--motion-mark` 400ms, dot `nb-blot-splat` `--motion-mark-dot` 300ms from 280ms, spiral `nb-fade-in`) and the band settle to app/paper.css **(gate 2, item 1)**, and pass the signature mode from `Wordmark` in components/paper/chrome.tsx
-- [ ] T023 [US1] **(O1)** Wrap Home's content in `RouteContent` and mark heading, sections and rows with `data-ink-order`/`--i` in components/home.tsx and components/waiting-section.tsx; a route arrival includes the row stagger in its one ink-in and rows do not replay row 13 **(gate 2, item 6)**
-- [ ] T024 [P] [US1] **(O1)** Same for the Library view in components/library/library-view.tsx (24ms step, 160ms cap; gate 2 item 6 as T023)
-- [ ] T025 [P] [US1] Same for Review in components/review/review-view.tsx
-- [ ] T026 [P] [US1] Same for the Settings route in app/(app)/settings/page.tsx
-- [ ] T027 [US1] Lessons: wrap the band title and the composer only (transcript untouched) in components/chat.tsx and components/new-session.tsx **(gate 2, item 5)**
-- [ ] T028 [P] [US1] Notebook cold load: wordmark signature and the note's title and first lines in components/notebook/notebook-app.tsx
-- [ ] T029 [US1] Sign-in and sign-up pages use the same script and ink-in (app/(auth)/layout.tsx, app/(auth)/sign-in/[[...sign-in]]/page.tsx); Clerk's widget itself is not animated
-- [ ] T030 [US1] Live Electron check (`npm run desktop:dev`): cold start plays the signature once per window, reload does not; note in specs/028-motion/progress.md Log
+- [X] T017 [US1] Add to tests/e2e/study/motion.spec.ts: "plays once" (fresh context: `html[data-lh-arrival=signature]` and a running `lh-mark-draw`; reload: neither; a new context: plays again); "hidden tab skips it"
+- [X] T018 [US1] Add to tests/e2e/study/motion.spec.ts: every text animation in the first viewport ends by 600ms after first paint on `/`, `/chat/{id}`, `/library`, `/review`, `/settings` at 1440 and 390 (SC-001); a lesson's transcript turns have no animation (US1 AS4)
+- [X] T019 [US1] Add to tests/e2e/study/motion.spec.ts: Mod+K at 50ms opens the palette and a row click at 50ms navigates, 20 trials each at offsets spread over the signature (US1 AS2, SC-002); reduced motion: the signature is a ≤150ms fade with no stroke or splat (US1 AS3)
+- [X] T085 [US1] Add to tests/e2e/study/motion.spec.ts: with JavaScript disabled (`javaScriptEnabled: false`) a cold load of `/` and `/library` shows every first-viewport element at opacity 1 with no transform (FR-008)
+- [X] T020 [US1] Put `SIGNATURE_SCRIPT` first in `<body>` of app/(app)/layout.tsx and app/(auth)/layout.tsx, add `suppressHydrationWarning` to `<html>`, mount `<MotionArrival />` in app/(app)/layout.tsx
+- [X] T021 [P] [US1] Add the signature mask mode to components/lh-mark.tsx: a `useId()` mask with a stroked circle on the ring's centre line (`pathLength="1"`), clockwise from the spiral's open end **(gate 2, items 1 and 4)**; static and complete without the attribute
+- [X] T022 [US1] Add the signature rules for `.nb-wordmark-mark` (ring `lh-mark-draw` `--motion-mark` 400ms, dot `nb-blot-splat` `--motion-mark-dot` 300ms from 280ms, spiral `nb-fade-in`) and the band settle to app/paper.css **(gate 2, item 1)**, and pass the signature mode from `Wordmark` in components/paper/chrome.tsx
+- [X] T023 [US1] **(O1)** Wrap Home's content in `RouteContent` and mark heading, sections and rows with `data-ink-order`/`--i` in components/home.tsx and components/waiting-section.tsx; a route arrival includes the row stagger in its one ink-in and rows do not replay row 13 **(gate 2, item 6)**; the lift and the heading fit 300ms, the stagger ends by 600ms (O1)
+- [X] T024 [P] [US1] **(O1)** Same for the Library view in components/library/library-view.tsx (24ms step, 160ms cap; gate 2 item 6 as T023)
+- [X] T025 [P] [US1] Same for Review in components/review/review-view.tsx
+- [X] T026 [P] [US1] Same for the Settings route in app/(app)/settings/page.tsx (no surface: the route redirects to /chat/new, whose draft arrives through T027; Settings is the modal, US4)
+- [X] T027 [US1] Lessons: wrap the band title and the composer only (transcript untouched) in components/chat.tsx and components/new-session.tsx **(gate 2, item 5)**
+- [X] T028 [P] [US1] Notebook cold load: wordmark signature and the note's title and first lines in components/notebook/notebook-app.tsx
+- [X] T029 [US1] Sign-in and sign-up pages use the same script and ink-in (app/(auth)/layout.tsx, app/(auth)/sign-in/[[...sign-in]]/page.tsx); Clerk's widget itself is not animated
+- [X] T030 [US1] Live Electron check (`npm run desktop:dev`): cold start plays the signature once per window, reload does not; note in specs/028-motion/progress.md Log
 
 **Checkpoint**: US1 works alone; routes still swap as today.
 
@@ -176,7 +176,7 @@ description: "Tasks for feature 028, one motion language"
 - Phase 1 → Phase 2 → stories. T003's results may adjust T012-T015 before they start.
 - US1 (Phase 3) needs T005-T016. US2 needs T014-T015 and T012; it does not need US1 but shares components/notebook/notebook-app.tsx with T028 (do T028 first).
 - US3 needs T014-T016; T039-T040 reuse `navigateTo`. US4 needs T005-T007, T011. US5 needs T013 (registry) and T005-T007; T065-T067 need T012.
-- Gate 2 answered (T016, T021-T022, T027, T065 use the approved values). O1 blocks T023-T024; O2 blocks T060-T061.
+- Gate 2 answered (T016, T021-T022, T027, T065 use the approved values). O1 and O2 resolved 2026-11-09 (T023-T024 and T060-T061 unblocked).
 - Phase 8 after the stories in scope.
 
 ## Parallel examples

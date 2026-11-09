@@ -5,7 +5,8 @@ import { fontClasses } from "../fonts";
 import { ClerkProvider } from "@clerk/nextjs";
 import { CLERK_APPEARANCE, CLERK_URLS } from "@/components/clerk-appearance";
 import { hostedMode } from "@/src/server";
-import { DEFAULT_SHARED_APPEARANCE, sharedAppearanceAttributes } from "@/src/core";
+import { DEFAULT_SHARED_APPEARANCE, SIGNATURE_SCRIPT, sharedAppearanceAttributes } from "@/src/core";
+import { MotionArrival } from "@/components/paper/motion-arrival";
 
 export const metadata: Metadata = { title: "Sign in · Brunovský's study" };
 
@@ -16,8 +17,10 @@ export const metadata: Metadata = { title: "Sign in · Brunovský's study" };
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
 	return (
 		// Signed out there is no stored Appearance: the paper follows the OS.
-		<html lang="en" className={`lh-paper ${fontClasses}`} {...sharedAppearanceAttributes(DEFAULT_SHARED_APPEARANCE)}>
+		<html lang="en" className={`lh-paper ${fontClasses}`} {...sharedAppearanceAttributes(DEFAULT_SHARED_APPEARANCE)} suppressHydrationWarning>
 			<body className="min-h-dvh antialiased">
+				{/* The same cold-load signature as the app (feature 028, R5). */}
+				<script dangerouslySetInnerHTML={{ __html: SIGNATURE_SCRIPT }} />
 				<div className="nb-paper lh-body-paper" aria-hidden="true" />
 				{/* Outside hosted mode the pages 404; no keys, so no Clerk. */}
 				{hostedMode() ? (
@@ -29,6 +32,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 						{children}
 					</ClerkProvider>
 				) : children}
+				<MotionArrival />
 			</body>
 		</html>
 	);

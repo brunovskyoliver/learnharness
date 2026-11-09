@@ -42,6 +42,11 @@ Owner replied `go` to plan.md "Owner review at gate 2" and the analysis items, 2
 - Navigating to Home or the Library plays one route ink-in that includes the row stagger; the rows do not animate a second time.
 - The "skip the signature if the page is not interactive in time" clause is dropped (no mechanism in the CSS-only design; input is never blocked anyway, FR-005).
 
+Owner intent applied by the lead, 2026-11-09 (plan.md "Open after gate 2"):
+
+- O1: SC-003's 300ms route budget counts the outgoing lift plus the heading's ink-in; the row stagger that follows is bounded by the 600ms cap (FR-006).
+- O2: 024's streaming-word ink-in and the correct-answer pencil underline keep their durations (rows 17-18 are exempt from the 600ms cap because the text is readable throughout); everything else ends by 600ms.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - The page writes itself on first load (Priority: P1)
@@ -219,7 +224,7 @@ New custom properties on `html.lh-paper` in app/paper.css, named after the 024 m
 **Never in the way**
 
 - **FR-005**: Input MUST stay live during every animation: typing, clicks, shortcuts and Escape act immediately; focus moves when a layer opens, not when its animation ends.
-- **FR-006**: No animation MAY keep content from being readable for more than 600ms after it is requested; the cold-load signature MUST complete within 600ms of first paint.
+- **FR-006**: No animation MAY keep content from being readable for more than 600ms after it is requested; the cold-load signature MUST complete within 600ms of first paint. Every catalogue arrival ends within 600ms, except rows 17-18's existing 024 strokes (the streaming-word ink-in, `nb-ink-word` .64s, and the pencil underline under a correct grade, 800ms), which keep their durations because the text is readable throughout (owner, O2). A route's row stagger on Home and the Library is bounded by this 600ms cap (owner, O1).
 - **FR-007**: A newer transition MUST interrupt a running one; transitions never queue.
 - **FR-008**: Content MUST be visible in its final state if scripts fail or the animation does not start (the default state is the finished state).
 
@@ -265,7 +270,7 @@ New custom properties on `html.lh-paper` in app/paper.css, named after the 024 m
 
 - **SC-001**: On cold load of each primary route at 1440 and 390px, all text in the first viewport is at full opacity within 600ms of first paint.
 - **SC-002**: A key press or click issued at any moment during any catalogued animation takes effect in the same frame budget as with motion off (no lost or delayed input in 20 scripted trials per surface).
-- **SC-003**: Route, tab and mode transitions each complete within 400ms (routes and tabs within 300ms).
+- **SC-003**: Route, tab and mode transitions each complete within 400ms (routes and tabs within 300ms). A route's 300ms counts the outgoing lift and the heading's ink-in; the row stagger that follows on Home and the Library is bounded by FR-006's 600ms cap (owner, O1).
 - **SC-004**: Re-rendering a settled surface 10 times (data refresh, resize, theme change) starts 0 new animations.
 - **SC-005**: With reduced motion on, a frame capture of every catalogue trigger shows 0 transforms or stroke draws in progress.
 - **SC-006**: Initial JavaScript and startup stay within +5% of the recorded baseline on the throttled desktop and mobile benchmark.

@@ -6,6 +6,8 @@ import { Conversation, ConversationContent, ConversationEmptyState } from "@/com
 import { Composer } from "@/components/composer";
 import { useFieldCycle } from "@/components/field-cycle";
 import { SidebarToggle } from "@/components/sidebar";
+import { RouteContent } from "@/components/paper/route-content";
+import { inkOrder } from "@/components/paper/motion-arrival";
 import { WorkspaceTabStrip } from "@/components/workspace/tab-strip";
 import { useReloadDraft } from "@/components/reload-recovery";
 import { LazySetupDialog as SetupDialog } from "@/components/lazy-setup-dialog";
@@ -132,7 +134,8 @@ export function DraftShell({
 			    law: no-drag subtraction resolves by DOM order, so every
 			    carved control later in the tree subtracts correctly). */}
 			<div className="lh-drag absolute inset-x-0 top-0 h-(--lh-band)" aria-hidden="true" />
-			<div className="flex min-w-0 flex-1 flex-col">
+			{/* The draft arrives (feature 028): its title, then the composer one step later. */}
+			<RouteContent className="flex min-w-0 flex-1 flex-col">
 				<div className="relative flex min-h-0 flex-1">
 					{/* The pointer-events pattern (953b22b): the sticky wrapper is
 					    pointer-events-none so nothing here blocks the empty-state
@@ -141,6 +144,7 @@ export function DraftShell({
 						<Conversation className="h-full min-w-0 flex-1" initial="instant">
 							<ConversationContent className="min-h-full gap-0 p-0">
 								<ConversationEmptyState
+									{...inkOrder(0)}
 									title={mode === "practice" ? "New practice session" : "New session"}
 									description={
 										mode === "practice"
@@ -152,7 +156,7 @@ export function DraftShell({
 						</Conversation>
 						<div className="h-24 bg-gradient-to-t from-paper via-paper/85 to-transparent" />
 						<div className="bg-paper pb-4">
-							<div className={DOCK}>
+							<div className={DOCK} {...inkOrder(1)}>
 								<ComposerActions
 									picker={(picks.length > 0 || mode === "practice") && (
 										<NodePickerControl count={picks.length} onOpen={onOpenPicker} onClear={onClearPicks} />
@@ -181,7 +185,7 @@ export function DraftShell({
 					</div>
 					{overlay}
 				</div>
-			</div>
+			</RouteContent>
 			{/* The floating reopen toggle — pointer-events-none except the
 			    toggle itself (home's pattern), painted AFTER the overlay's
 			    column so nothing of it blocks the canvas area. */}

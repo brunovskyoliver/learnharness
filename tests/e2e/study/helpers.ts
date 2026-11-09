@@ -406,3 +406,87 @@ export async function boxFrames(page: Page, selector: string, ms: number): Promi
 	}
 	return frames;
 }
+
+/** One animation the recorder saw: what played, where, and when (document timeline ms). */
+export interface RecordedAnimation {
+	name: string;
+	/** The `data-lh-arrive` kind of the region it plays in, if any. */
+	kind: string | null;
+	target: string;
+	pseudo: string | null;
+	properties: string[];
+	delay: number;
+	duration: number;
+	start: number;
+	/** Inside a transcript turn (`.is-user`, `.is-assistant`). */
+	inTurn: boolean;
+	/** Inside the top-left chrome (☰ + wordmark). */
+	inChrome: boolean;
+}
+
+/**
+ * Records every animation of every page in `context` from the first frame
+ * (an init script polling `document.getAnimations()` each frame), and when
+ * `<html data-lh-arrival>` was set. Read with `recordedAnimations`.
+ */
+export async function recordAnimations(context: BrowserContext) {
+	await context.addInitScript(() => {
+		type Rec = { name: string; kind: string | null; target: string; pseudo: string | null; properties: string[]; delay: number; duration: number; start: number; inTurn: boolean; inChrome: boolean };
+		const w = window as unknown as { __lhAnims: Rec[]; __lhArrival: { set: number | null; cleared: number | null } };
+		w.__lhAnims = [];
+		w.__lhArrival = { set: null, cleared: null };
+		const seen = new WeakSet<Animation>();
+		const note = () => {
+			const on = document.documentElement.getAttribute("data-lh-arrival") === "signature";
+			if (on && w.__lhArrival.set === null) w.__lhArrival.set = performance.now();
+			if (!on && w.__lhArrival.set !== null && w.__lhArrival.cleared === null) w.__lhArrival.cleared = performance.now();
+		};
+		new MutationObserver(note).observe(document, { attributes: true, subtree: true, attributeFilter: ["data-lh-arrival"] });
+		const tick = () => {
+			note();
+			for (const animation of document.getAnimations()) {
+				if (seen.has(animation)) continue;
+				seen.add(animation);
+				const effect = animation.effect as KeyframeEffect | null;
+				const target = effect?.target as Element | null;
+				const timing = effect?.getComputedTiming();
+				const properties = new Set<string>();
+				for (const frame of effect?.getKeyframes() ?? []) for (const key of Object.keys(frame)) if (!["offset", "computedOffset", "easing", "composite"].includes(key)) properties.add(key);
+				w.__lhAnims.push({
+					name: (animation as CSSAnimation).animationName ?? (animation as CSSTransition).transitionProperty ?? "",
+					kind: target?.closest?.("[data-lh-arrive]")?.getAttribute("data-lh-arrive") ?? null,
+					target: target ? `${target.tagName.toLowerCase()}${target.getAttribute("data-testid") ? `[${target.getAttribute("data-testid")}]` : ""}.${String(target.getAttribute("class") ?? "").split(" ").slice(0, 2).join(".")}` : "",
+					pseudo: effect?.pseudoElement ?? null,
+					properties: [...properties],
+					delay: Number(timing?.delay ?? 0),
+					duration: Number(timing?.duration ?? 0),
+					start: Number(animation.startTime ?? performance.now()),
+					inTurn: Boolean(target?.closest?.(".is-user, .is-assistant")),
+					inChrome: Boolean(target?.closest?.(".lh-study-chrome, .nb-header")),
+				});
+			}
+			requestAnimationFrame(tick);
+		};
+		requestAnimationFrame(tick);
+	});
+}
+
+export const recordedAnimations = (page: Page) => page.evaluate(() => (window as unknown as { __lhAnims: RecordedAnimation[] }).__lhAnims ?? []);
+export const arrivalWindow = (page: Page) => page.evaluate(() => (window as unknown as { __lhArrival: { set: number | null; cleared: number | null } }).__lhArrival);
+export const clearRecorded = (page: Page) => page.evaluate(() => { (window as unknown as { __lhAnims: unknown[] }).__lhAnims.length = 0; });
+
+/** The keyframes arrivals play (contract §1-§3). */
+export const ARRIVAL_NAMES = new Set(["nb-ink-in", "nb-unfold", "nb-settle", "lh-fade", "lh-lift", "lh-mark-draw", "nb-blot-splat", "nb-fade-in"]);
+
+/** Slows every animation of `page` by `rate` (CDP Animation domain), so a dev server's slow hydration still lands inside them. */
+export async function slowAnimations(page: Page, rate: number) {
+	const cdp = await page.context().newCDPSession(page);
+	await cdp.send("Animation.enable");
+	await cdp.send("Animation.setPlaybackRate", { playbackRate: rate });
+	return cdp;
+}
+
+/** Every arrival (feature 028) has ended: geometry checks measure the final state, not a 2px ink-in. */
+export async function arrived(page: Page) {
+	await page.waitForFunction(() => document.querySelectorAll("[data-lh-arrive]").length === 0 && !document.documentElement.hasAttribute("data-lh-arrival"), undefined, { timeout: 10_000 });
+}

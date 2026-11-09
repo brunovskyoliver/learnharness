@@ -37,6 +37,8 @@ const LibraryFullView = dynamic(() => import("./library-full-view.tsx").then((m)
 
 /** Only loads once "Full text" is chosen: the search field itself stays small. */
 import { DiagramProposalsLine } from "@/components/diagram/diagram-proposals-line.tsx";
+import { RouteContent } from "@/components/paper/route-content";
+import { inkOrder } from "@/components/paper/motion-arrival";
 /** Page edits waiting for him (feature 023): loads after the list, so /library's first load stays as it was. */
 // Loads only when a chip left a return point; the column's padding is set before it arrives.
 const BackPill = dynamic(() => import("./back-pill.tsx").then((m) => m.BackPill), { ssr: false });
@@ -158,11 +160,11 @@ export function LibraryBody({ items, folders = [], folderId = null, view = "all"
 		<>
 			{refreshFailed && failedLine}
 			{filtering && nothing ? (
-				<p role="status" className="text-md text-faint">Nothing matched</p>
+				<p role="status" className="text-md text-faint" {...inkOrder(4)}>Nothing matched</p>
 			) : nothing ? (
-				<p className="text-md text-faint">{folderId ? "This folder is empty." : EMPTY[view]}</p>
+				<p className="text-md text-faint" {...inkOrder(4)}>{folderId ? "This folder is empty." : EMPTY[view]}</p>
 			) : (
-				<ul className={layout === "grid" ? "lh-grid grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col"} data-testid="library-list">
+				<ul className={layout === "grid" ? "lh-grid grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3" : "flex flex-col"} data-testid="library-list" {...inkOrder(4)}>
 					{failuresHere.map((failure) => (
 						<li key={failure.id} role="alert" className="lh-line-card justify-between gap-3 py-1.5 pr-1.5" data-testid="library-link-failure">
 							<p className="min-w-0 text-sm [overflow-wrap:anywhere]">
@@ -664,16 +666,17 @@ export function LibraryView() {
 			<TopBar tabs />
 			{returnPoint && <BackPill point={returnPoint} />}
 			{address ? (
-				<div data-testid="library-scroll" className="mx-auto flex min-h-0 w-full max-w-[52rem] flex-1 flex-col pt-3 sm:pt-6">
+				<RouteContent data-testid="library-scroll" className="mx-auto flex min-h-0 w-full max-w-[52rem] flex-1 flex-col pt-3 sm:pt-6">
 					<LibraryFullView key={search} address={address} items={items} loadFailed={loadFailed} onRetry={retry} onChanged={() => void refresh()} />
-				</div>
+				</RouteContent>
 			) : (
 			<div data-testid="library-scroll" className="min-h-0 flex-1 overflow-y-auto">
-				<div className="mx-auto flex w-full max-w-[52rem] flex-col gap-4 px-4 pb-12 pt-3 sm:pt-11">
-					<div onDragOver={(event) => { if (trail.length > 0 && event.dataTransfer.types.includes(DRAG_TYPE)) { event.preventDefault(); setOverTop(true); } }} onDragLeave={() => setOverTop(false)} onDrop={(event) => { setOverTop(false); if (event.dataTransfer.types.includes(DRAG_TYPE)) { event.preventDefault(); void dropOn(trail.at(-2)?.id ?? null, event); } }} className={overTop ? "rounded-md bg-shelf" : undefined}>
+				{/* The content arrives in reading order (feature 028; the Library's 24ms steps, capped at 160ms): the trail and the heading together, so the heading ends inside the route's 300ms. */}
+				<RouteContent stagger="library" className="mx-auto flex w-full max-w-[52rem] flex-col gap-4 px-4 pb-12 pt-3 sm:pt-11">
+					<div {...inkOrder(0)} onDragOver={(event) => { if (trail.length > 0 && event.dataTransfer.types.includes(DRAG_TYPE)) { event.preventDefault(); setOverTop(true); } }} onDragLeave={() => setOverTop(false)} onDrop={(event) => { setOverTop(false); if (event.dataTransfer.types.includes(DRAG_TYPE)) { event.preventDefault(); void dropOn(trail.at(-2)?.id ?? null, event); } }} className={overTop ? "rounded-md bg-shelf" : undefined}>
 						<FolderBreadcrumbs trail={trail} />
 					</div>
-					<div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+					<div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3" {...inkOrder(0)}>
 						<div className="flex min-w-0 flex-col gap-1">
 							<h1 className="tracking-title text-2xl font-medium leading-title text-ink [overflow-wrap:anywhere]">{trail.at(-1)?.name ?? (view === "all" ? "Library" : VIEW_LABELS[view])}</h1>
 							{openLink && <RepoStatusLine link={openLink} onSyncNow={() => void syncNow(openLink)} />}
@@ -733,7 +736,7 @@ export function LibraryView() {
 							}}
 						/>
 					</div>
-					<div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+					<div className="flex flex-wrap items-center gap-x-4 gap-y-2" {...inkOrder(1)}>
 					<label className="nb-reply-line flex h-9 min-w-[11rem] flex-[1_1_16rem] items-center gap-2 border-b border-edge text-faint pointer-coarse:h-11">
 						<SearchIcon className="size-[15px] shrink-0" aria-hidden="true" />
 						<input
@@ -768,13 +771,13 @@ export function LibraryView() {
 					)}
 					<DiagramProposalsLine />
 					<PageProposalsLine exceptPageId={pane?.item?.id} onAccepted={(item) => { if (workspace) workspace.openItem(item); else pane?.open({ id: item.id, name: item.name, kind: item.kind, size: item.size }); }} />
-					<nav aria-label="Library views" className="nb-set-pills" data-testid="library-views">
+					<nav aria-label="Library views" className="nb-set-pills" data-testid="library-views" {...inkOrder(2)}>
 						{(Object.keys(VIEW_LABELS) as LibraryViewName[]).map((name) => (
 							<Link key={name} href={viewHref(name)} aria-current={view === name ? "page" : undefined} className={PILL}>{VIEW_LABELS[name]}</Link>
 						))}
 					</nav>
 					{view !== "trash" && (
-						<div className="flex flex-wrap items-center gap-x-4 gap-y-2" data-testid="library-filters">
+						<div className="flex flex-wrap items-center gap-x-4 gap-y-2" data-testid="library-filters" {...inkOrder(3)}>
 							{prefs.searchMode === "names" && (
 								<>
 									<LibraryChoice label="Sort" name="Sort by" testId="library-sort" value={prefs.sort} onChange={(sort) => updatePrefs({ sort })} options={(Object.keys(SORT_LABELS) as LibrarySort[]).map((name) => ({ value: name, label: SORT_LABELS[name] }))} />
@@ -888,7 +891,7 @@ export function LibraryView() {
 							onDismissLinkFailure={(id) => setLinkFailures((list) => list.filter((f) => f.id !== id))}
 						/>
 					)}
-				</div>
+				</RouteContent>
 			</div>
 			)}
 			<DeleteItemDialog

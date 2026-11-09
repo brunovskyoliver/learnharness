@@ -17,7 +17,7 @@ export function MenuGlyph() {
 export function Wordmark({ href, className }: { href: string; className?: string }) {
 	return (
 		<Link href={href} className={className ? `nb-wordmark ${className}` : "nb-wordmark"} data-testid="nb-wordmark">
-			<LhMark className="nb-wordmark-mark" />
+			<LhMark className="nb-wordmark-mark" signature />
 			<span translate="no">Brunovský’s study</span>
 		</Link>
 	);

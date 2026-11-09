@@ -24,6 +24,7 @@ import type { NoteEditorHandle } from "./note-editor";
 import { NoteThinking } from "./thinking";
 import { ToolbarRow } from "./toolbar-row";
 import { useCompanion } from "./use-notebook-data";
+import { inkOrder } from "@/components/paper/motion-arrival";
 
 const NoteEditor = dynamic(() => import("./note-editor"), { ssr: false, loading: () => <BodyLoading /> });
 
@@ -111,6 +112,7 @@ export const TitleField = forwardRef<TitleHandle, {
 			<textarea
 				ref={field}
 				className="nb-title"
+				{...inkOrder(0)}
 				rows={1}
 				value={value}
 				placeholder="Untitled"
@@ -265,7 +267,7 @@ export function NoteView({ note }: { note: { id: string; name: string } }) {
 					}}
 					onEnter={() => body.current?.focusStart()}
 				/>
-				{mounted ? <NoteBody id={note.id} name={name} mode={mode} handle={body} title={title} noteBridge={bridge} onDeleted={setDeleted} draft={draft} /> : <div className="nb-body"><BodyLoading /></div>}
+				{mounted ? <NoteBody id={note.id} name={name} mode={mode} handle={body} title={title} noteBridge={bridge} onDeleted={setDeleted} draft={draft} /> : <div className="nb-body" {...inkOrder(1)}><BodyLoading /></div>}
 				{mounted && (
 					<NoteThinking
 						bridge={bridge}
@@ -372,7 +374,7 @@ function NoteBody({ id, name, mode, handle, title, noteBridge, onDeleted, draft 
 					<button type="button" className="nb-text-button" onClick={() => void controller.retry()}>Try again</button>
 				</p>
 			)}
-			<div className="nb-body">
+			<div className="nb-body" {...inkOrder(1)}>
 				{loadFailed ? (
 					<p role="status" className="nb-status-line">
 						{`${name} could not be loaded.`}

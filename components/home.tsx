@@ -22,6 +22,8 @@ import { CalibrationSection } from "@/components/calibration-section";
 import { OverlayHostContext } from "@/components/overlay-host";
 import { NotesImportErrors, useNotesImport } from "@/components/notes-import.tsx";
 import { useActivity } from "@/components/activity-dock";
+import { RouteContent } from "@/components/paper/route-content";
+import { inkOrder } from "@/components/paper/motion-arrival";
 import type { GraphSnapshot } from "@/src/core";
 
 /**
@@ -158,10 +160,11 @@ export function Home({
 
 			{/* One page, one scroll (hidden tracks, globals.css). */}
 			<div data-testid="home-scroll" className="min-h-0 flex-1 overflow-y-auto">
-				<div className="mx-auto flex w-full max-w-[52rem] flex-col gap-8 px-4 pb-12 pt-3 sm:gap-10 sm:pt-11">
+				{/* The content arrives (feature 028): the heading, the composer, then the waiting rows in reading order. */}
+				<RouteContent stagger="rows" className="mx-auto flex w-full max-w-[52rem] flex-col gap-8 px-4 pb-12 pt-3 sm:gap-10 sm:pt-11">
 					<section aria-labelledby={startId} className="flex flex-col gap-3 sm:gap-4">
-						<h1 id={startId} className="tracking-title text-2xl font-medium leading-title">What do you want to learn?</h1>
-						<div>
+						<h1 id={startId} className="tracking-title text-2xl font-medium leading-title" {...inkOrder(0)}>What do you want to learn?</h1>
+						<div {...inkOrder(1)}>
 							{/* The pick bar (owner vision, 2026-10-04): the chain
 							    table's selection is PERSISTENT — picked
 							    propositions show here as a count + Clear in EITHER
@@ -246,7 +249,7 @@ export function Home({
 						onPracticeSelectionChange={setPracticeProps}
 						onChainSelectClose={() => setChainSelectOpen(false)}
 					/>
-				</div>
+				</RouteContent>
 			</div>
 
 			{/* First-run setup (unconfigured): the CTA's target and the send
@@ -322,7 +325,7 @@ function GraphSection({
 	const { importing, onImportFiles } = notesImport;
 
 	return (
-		<section aria-labelledby={headingId} data-testid="graph-section" className="flex flex-col gap-2.5 sm:gap-3">
+		<section aria-labelledby={headingId} data-testid="graph-section" className="flex flex-col gap-2.5 sm:gap-3" {...inkOrder(6)}>
 			<div className="flex flex-wrap items-center gap-x-2 gap-y-1 sm:gap-x-2.5">
 				<h2 id={headingId} className="flex-1 whitespace-nowrap text-lg font-[550] leading-heading text-ink sm:flex-none">Knowledge graph</h2>
 				{statsLabel && <span data-testid="graph-stats" className="text-meta text-faint max-sm:hidden">{statsLabel}</span>}

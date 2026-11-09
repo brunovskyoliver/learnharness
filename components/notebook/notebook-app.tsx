@@ -25,6 +25,7 @@ import { NoteView } from "./note-view";
 import { OverlaySidebar } from "./overlay-sidebar";
 import { PointerInk } from "./pointer-ink";
 import { useLibraryList } from "./use-notebook-data";
+import { RouteContent } from "@/components/paper/route-content";
 
 export type { NotebookPreferences } from "./nb-shared";
 
@@ -207,9 +208,10 @@ export function NotebookApp({ note, fontClasses = "", preferences, reviewers = [
 				</header>
 				<EdgeStrip onOpen={() => setSidebar((open) => open ?? { via: "hover", search: false })} />
 				<OverlaySidebar returnFocus={menuButton} />
-				<div className="nb-sheet" data-aside={sidebar ? "" : undefined} inert={sidebar ? true : undefined}>
+				{/* The page arrives (feature 028): its title and first lines ink in; on a mode switch the sheet unfolds. The chrome above stays still. */}
+				<RouteContent className="nb-sheet" data-aside={sidebar ? "" : undefined} inert={sidebar ? true : undefined}>
 					<NoteView key={note.id} note={note} />
-				</div>
+				</RouteContent>
 				<LinksPanel open={linksOpen} onOpenChange={setLinksOpen} pageId={note.id} noteName={library?.items.find((item) => item.id === note.id)?.name ?? note.name} returnFocus={menuButton} />
 				{prefs.pointerInk && <PointerInk />}
 				<CornerHint />

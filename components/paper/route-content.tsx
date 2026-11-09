@@ -14,9 +14,19 @@
  * turns that into the signature in CSS, from first paint.
  */
 
-import { ViewTransition, useEffect, useState, useSyncExternalStore, type AnimationEvent, type HTMLAttributes } from "react";
+import * as React from "react";
+import { useEffect, useState, useSyncExternalStore, type AnimationEvent, type ComponentProps, type ReactNode } from "react";
 import { pendingArrival, signaturePlaying } from "@/components/paper/motion-arrival";
 import { arrivalKind, type ArrivalKind } from "@/src/core";
+
+/**
+ * React's <ViewTransition>: Next's compiled React exports it; plain `react`
+ * (the unit tests' renderer) does not, and a named import would fail to link
+ * there, so it is read off the namespace with a pass-through fallback.
+ */
+type ViewTransitionProps = React.ComponentProps<typeof React.ViewTransition>;
+const ViewTransition: (props: ViewTransitionProps) => ReactNode =
+	(React as { ViewTransition?: (props: ViewTransitionProps) => ReactNode }).ViewTransition ?? (({ children }) => children as ReactNode);
 
 /** The keyframes an arrival plays (app/paper.css); other animations inside (loops, carets) never hold it. */
 const ARRIVAL_ANIMATIONS = new Set(["nb-ink-in", "nb-unfold", "lh-fade"]);
@@ -27,7 +37,14 @@ const noSubscribe = () => () => {};
 /** True on the server and while hydrating; false for a mount made on the client. */
 const useHydrating = () => useSyncExternalStore(noSubscribe, () => false, () => true);
 
-export function RouteContent({ children, onAnimationEnd, ...rest }: HTMLAttributes<HTMLDivElement>) {
+export interface RouteContentProps extends ComponentProps<"div"> {
+	/** The rows keep their reading-order stagger on a route arrival (Home, the Library; gate 2 item 6). */
+	stagger?: "rows" | "library";
+	/** The box itself never moves, only its marked parts ink in (a lesson, whose region holds the chrome). */
+	still?: boolean;
+}
+
+export function RouteContent({ children, onAnimationEnd, stagger, still, ...rest }: RouteContentProps) {
 	const hydrating = useHydrating();
 	const [kind, setKind] = useState<ArrivalKind | null>(() => (hydrating ? "cold" : arrivalKind(pendingArrival(), signaturePlaying())));
 	useEffect(() => {
@@ -42,7 +59,7 @@ export function RouteContent({ children, onAnimationEnd, ...rest }: HTMLAttribut
 	};
 	return (
 		<ViewTransition exit={{ "lh-route": "lh-lift", "lh-mode": "lh-lift", default: "none" }} enter="none" update="none" share="none" default="none">
-			<div {...rest} data-lh-arrive={kind ?? undefined} onAnimationEnd={kind ? ended : onAnimationEnd}>
+			<div {...rest} data-lh-arrive={kind ?? undefined} data-lh-stagger={stagger} data-lh-still={still ? "" : undefined} onAnimationEnd={kind ? ended : onAnimationEnd}>
 				{children}
 			</div>
 		</ViewTransition>

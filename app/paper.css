@@ -869,11 +869,24 @@ html.lh-paper {
  *   [data-ink-order] + --i           reading order inside it; pages mark only
  *                                    the leading rows (staggerCount, R6)
  *   [data-arrive]                    one element's first arrival (useArrival)
- * The mode and tab kinds get their rules with their stories (T035, T042). */
+ *   [data-lh-stagger]                a region whose rows keep their stagger on a
+ *                                    route arrival (Home, Library; gate 2 item 6)
+ *   [data-lh-still]                  a region whose box never moves, only its
+ *                                    marked parts (a lesson: chrome inside)
+ * The tab kind gets its rules with its story (T042). */
+
+/* The Library's own reading-order step and cap (FR-011), phones included. */
+.lh-paper [data-lh-stagger="library"] { --motion-stagger: 24ms; --stagger-cap: 160ms; }
 
 /* Rows 4 and cold: the heading, then the body one step later. */
 .lh-paper :is([data-lh-arrive="route"], [data-lh-arrive="cold"]) [data-ink-order] {
 	animation: var(--motion-route) var(--ease-ink) calc(min(var(--i, 0), 1) * var(--motion-stagger)) both nb-ink-in;
+}
+/* Home and the Library (gate 2 item 6, O1): the one route ink-in carries the
+   row stagger. The heading (--i 0) still ends at 280ms, inside the route's
+   300ms; the rows end by 280 + 240 = 520ms (Library 280 + 160), inside 600ms. */
+.lh-paper :is([data-lh-arrive="route"], [data-lh-arrive="cold"])[data-lh-stagger] [data-ink-order] {
+	animation-delay: min(calc(var(--i, 0) * var(--motion-stagger)), var(--stagger-cap));
 }
 .lh-paper :is([data-lh-arrive="route"], [data-lh-arrive="cold"]):not(:has([data-ink-order])) {
 	animation: var(--motion-route) var(--ease-ink) both nb-ink-in;
@@ -889,8 +902,32 @@ html.lh-paper [data-lh-arrive="signature"]:not(:has([data-ink-order])) {
 	animation: var(--motion-arrive) var(--ease-ink) both nb-ink-in;
 }
 /* Row 5: browser back/forward, a plain ink-in with no stagger. */
-.lh-paper [data-lh-arrive="history"] {
+.lh-paper [data-lh-arrive="history"]:not([data-lh-still]) {
 	animation: var(--motion-settle) var(--ease-ink) both nb-ink-in;
+}
+.lh-paper [data-lh-arrive="history"][data-lh-still] [data-ink-order] {
+	animation: var(--motion-settle) var(--ease-ink) both nb-ink-in;
+}
+/* Row 1: the wordmark's mark on the signature. The ring draws as one stroke
+   (its mask, components/lh-mark.tsx), the dot lands as a blot at the stroke's
+   end, the spiral fades in; all done by 580ms. */
+html.lh-paper[data-lh-arrival="signature"] .nb-wordmark-mark .lh-mark-ring-stroke {
+	stroke-dasharray: 1;
+	animation: var(--motion-mark) var(--ease-draw) both lh-mark-draw;
+}
+html.lh-paper[data-lh-arrival="signature"] .nb-wordmark-mark .lh-mark-dot {
+	transform-box: fill-box;
+	transform-origin: center;
+	animation:
+		var(--motion-mark-dot) var(--ease-splat) var(--motion-mark-dot-delay) both nb-blot-splat,
+		80ms linear var(--motion-mark-dot-delay) both nb-fade-in;
+}
+html.lh-paper[data-lh-arrival="signature"] .nb-wordmark-mark .lh-mark-spiral {
+	animation: var(--motion-settle) ease-out both nb-fade-in;
+}
+/* Row 2: the top band settles under the mark (the ☰ and the wordmark's words). */
+html.lh-paper[data-lh-arrival="signature"] :is(.lh-study-chrome, .nb-header) :is(.nb-menu-button, .nb-wordmark > span) {
+	animation: var(--motion-settle) ease-out both nb-settle;
 }
 
 /* ── Motion: view transitions (contract §4, research R1-R2) ───────────────
@@ -909,7 +946,8 @@ html:active-view-transition-type(lh-route, lh-mode) { view-transition-name: none
  * ceiling over every surface's own arrival rule. Loops keep 024's rules. */
 @media (prefers-reduced-motion: reduce) {
 	html.lh-paper :is([data-lh-arrive], [data-arrive]),
-	html.lh-paper[data-lh-arrival="signature"] .nb-wordmark-mark {
+	html.lh-paper[data-lh-arrival="signature"] .nb-wordmark-mark,
+	html.lh-paper[data-lh-arrival="signature"] :is(.lh-study-chrome, .nb-header) :is(.nb-menu-button, .nb-wordmark > span) {
 		animation: var(--motion-fade-reduced) linear both lh-fade !important;
 	}
 	html.lh-paper :is([data-lh-arrive], [data-arrive]) :is([data-ink-order], [data-arrive]),

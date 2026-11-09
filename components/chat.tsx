@@ -77,6 +77,8 @@ import { ReferencesCard } from "@/components/library/references-card";
 import { GraphContextCard, type GraphContextData } from "@/components/graph-context-card";
 import { FollowupContextCard, type FollowupContextData } from "@/components/followup-context-card";
 import { TopBar } from "@/components/top-bar";
+import { RouteContent } from "@/components/paper/route-content";
+import { inkOrder } from "@/components/paper/motion-arrival";
 import type { ArtifactPartProps, JobRecord, LibraryReference, Phase3, QuestionAnswerData, QuestionFormDraft, TurnUsage, SessionPricing } from "@/src/core";
 import type { LhViewMessage } from "@/src/core";
 import { PhaseChip, PhaseDivider } from "@/components/phase-divider";
@@ -1486,6 +1488,8 @@ function ChatView({
 					) : (
 					<>
 						{/* The session's title is the page's heading (screen-reader heading navigation). */}
+						{/* The title arrives on its own (feature 028, gate 2 item 5); the chrome beside it stays still. */}
+						<RouteContent className="flex min-w-4 shrink items-center">
 						<h1 className="flex min-w-4 shrink">
 						<Hint
 							// F2 renames (registry) — surfaced on the hover.
@@ -1506,6 +1510,7 @@ function ChatView({
 							</button>
 						</Hint>
 						</h1>
+						</RouteContent>
 							{/* flex-1 spacer: keeps the chips at the right edge AND stays a
 							    drag surface (no carve-out) — the freed bar is grippable. */}
 							<div className="min-w-4 flex-1" aria-hidden="true" />
@@ -1557,7 +1562,8 @@ function ChatView({
 				</TopBar>
 
 				<SessionFind scopeRef={sessionFindScopeRef} scrollContextRef={scrollContextRef} />
-				<div ref={sessionFindScopeRef} className="session-workspace-layout relative flex min-h-0 flex-1 flex-col md:flex-row" style={layout.shift ? { "--lh-check-shift": `${layout.shift}px` } as React.CSSProperties : undefined}>
+				{/* A lesson arrives still (feature 028, gate 2 item 5): below the band only the composer inks in; the transcript never animates. */}
+				<RouteContent still ref={sessionFindScopeRef} className="session-workspace-layout relative flex min-h-0 flex-1 flex-col md:flex-row" style={layout.shift ? { "--lh-check-shift": `${layout.shift}px` } as React.CSSProperties : undefined}>
 				<Conversation className="@container/session flex h-full min-h-0 min-w-0 flex-1 flex-col" initial={false} resize={transcriptSettled ? "smooth" : "instant"} contextRef={scrollContextRef}>
 					<SessionMessageNavigation />
 					<TurnReadingPosition busy={busy} messages={messages} onReserve={setReadingReserve} />
@@ -1895,7 +1901,7 @@ function ChatView({
 				)}
 				{planOpen && <PlanPopup messages={messages} onClose={() => setPlanOpen(false)} />}
 				<AbortTurnDialog mode={abortAsk} onClose={() => setAbortAsk(null)} onConfirm={confirmAbort} busy={busy} />
-				</div>
+				</RouteContent>
 			</div>
 		</div>
 		</ReferenceOriginProvider>
@@ -2640,7 +2646,7 @@ function DockFooter({
 					)}
 
 
-					<div ref={shellRef} data-testid="dock-shell" data-compact={!check && !expanded}
+					<div ref={shellRef} data-testid="dock-shell" data-compact={!check && !expanded} {...inkOrder(1)}
 						onCompositionStartCapture={() => { composingRef.current = true; setExpanded(true); }}
 						onCompositionEndCapture={() => { composingRef.current = false; }}
 						onFocusCapture={(event) => { if ((event.target as HTMLElement).matches("textarea, input, [contenteditable=true]")) setExpanded(true); }}

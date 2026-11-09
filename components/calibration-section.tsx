@@ -6,6 +6,7 @@ import { levelLine, mergeCalibration, messageAnchorId, type ChatListItem, type M
 import { useSessionList, useSessionListDemand } from "@/components/session-list";
 import { RowMeta } from "@/components/waiting-section";
 import { Teaser, teaserPlain } from "@/components/teaser";
+import { inkOrder } from "@/components/paper/motion-arrival";
 
 /** Rows shown before "Show all" (owner, 2026-10-28). */
 const FIRST_MISSES = 5;
@@ -38,7 +39,7 @@ export function CalibrationSectionView({ chats }: { chats: readonly ChatListItem
 	if (!merged || merged.levels.length === 0) return null;
 	const shown = showAll ? merged.misses : merged.misses.slice(0, FIRST_MISSES);
 	return (
-		<section aria-labelledby={headingId} data-testid="calibration-section" className="flex flex-col gap-2">
+		<section aria-labelledby={headingId} data-testid="calibration-section" className="flex flex-col gap-2" {...inkOrder(6)}>
 			<h2 id={headingId} className="text-lg font-[550] leading-heading text-ink">Calibration</h2>
 			<ul className="flex flex-col gap-0.5">
 				{merged.levels.map((level) => (

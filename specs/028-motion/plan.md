@@ -61,10 +61,10 @@ Approved timings: ring 400ms (`--motion-mark`), dot 300ms from 280ms (`--motion-
 
 ## Open after gate 2
 
-These came out of applying gate 2 and need the owner before the tasks named here start; Phase 1-2 do not depend on them.
+These came out of applying gate 2. Both resolved 2026-11-09 (owner intent applied by the lead): O1 A, O2 A; T023-T024 and T060-T061 are unblocked.
 
-- **O1. Route stagger vs the 300ms route budget** (blocks T023, T024): item 6 puts the row stagger inside the route ink-in, so a Home or Library arrival ends at 280ms + 240ms cap = 520ms (phones 280 + 160 = 440ms). That meets FR-006 (600ms) but not SC-003 / US3 AS1 ("routes within 300ms"), and row 4's own "one 40ms step" already ends at 320ms. Options: (A, recommended) SC-003 counts the lift and the heading (both ≤300ms) and FR-006 bounds the rows; (B) compress the route stagger to fit 300ms (for example ink 200ms, 20ms steps, cap 100ms).
-- **O2. 024 strokes vs "every row ends by 600ms"** (blocks T060-T061): rows 17 and 18 reuse 024 motions longer than 600ms (`nb-ink-word` .64s per streaming word, the pencil underline 800ms under a correct grade). They draw over text that is already readable. Options: (A, recommended) keep 024 timings, since FR-006 measures readability; (B) shorten the new pencil under a grade to 600ms.
+- **O1. Route stagger vs the 300ms route budget** (blocks T023, T024): item 6 puts the row stagger inside the route ink-in, so a Home or Library arrival ends at 280ms + 240ms cap = 520ms (phones 280 + 160 = 440ms). That meets FR-006 (600ms) but not SC-003 / US3 AS1 ("routes within 300ms"), and row 4's own "one 40ms step" already ends at 320ms. Options: (A, recommended) SC-003 counts the lift and the heading (both ≤300ms) and FR-006 bounds the rows; (B) compress the route stagger to fit 300ms (for example ink 200ms, 20ms steps, cap 100ms). **Resolved: A.** SC-003's 300ms counts the lift and the heading's ink-in; the row stagger is bounded by FR-006's 600ms.
+- **O2. 024 strokes vs "every row ends by 600ms"** (blocks T060-T061): rows 17 and 18 reuse 024 motions longer than 600ms (`nb-ink-word` .64s per streaming word, the pencil underline 800ms under a correct grade). They draw over text that is already readable. Options: (A, recommended) keep 024 timings, since FR-006 measures readability; (B) shorten the new pencil under a grade to 600ms. **Resolved: A.** Rows 17-18 keep 024's durations (exempt from the 600ms cap; the text is readable throughout); everything else ≤600ms.
 
 ## Project Structure
 

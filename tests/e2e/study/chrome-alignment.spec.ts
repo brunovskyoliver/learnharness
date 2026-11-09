@@ -1,5 +1,5 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
-import { CHATS, clearStudyKey, hydrated, openChat, seedStudy, studySettings, visible } from "./helpers";
+import { CHATS, clearStudyKey, hydrated, openChat, seedStudy, studySettings, visible, arrived } from "./helpers";
 
 // Feature 025, phase 11 (spec US1, "nothing jumps"): the ☰ and the wordmark
 // sit at the same place in both modes at every width. Notebook's header is the
@@ -58,6 +58,7 @@ test.describe("The top-left chrome: one place in both modes", () => {
 
 			// A lesson: ☰ (and the wordmark from 640px) in place; the title on the same centre line.
 			await openChat(page, CHATS.plain);
+			await arrived(page);
 			same(await centre(studyMenu(page)), reference.menu, `lesson ☰ at ${width}`);
 			if (!phone) same(await centre(studyWordmark(page)), reference.wordmark, `lesson wordmark at ${width}`);
 			const title = visible(page, "header button:has-text('E2E · Plain lesson')");

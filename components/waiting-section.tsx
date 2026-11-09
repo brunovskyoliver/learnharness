@@ -8,6 +8,7 @@ import { useSessionList, useSessionListDemand } from "@/components/session-list"
 import { shortAgo } from "@/components/sidebar";
 import { Teaser, teaserPlain } from "@/components/teaser";
 import { Skeleton } from "@/components/ui/skeleton";
+import { inkOrder } from "@/components/paper/motion-arrival";
 
 type Waiting = ChatListItem & { waiting: WaitingItem };
 type Unfinished = ChatListItem & { progress: LessonProgress };
@@ -88,7 +89,8 @@ export function WaitingSectionView({ chats, loadError, onRetry, cards }: { chats
 	const open = (items?.length ?? 0) + lessons.length + (due > 0 ? 1 : 0);
 	return (
 		<section aria-labelledby={headingId} data-testid="waiting-section" className="flex flex-col gap-2">
-			<div className="flex items-baseline gap-2.5">
+			{/* Home's reading order (feature 028): after its heading (0) and composer (1). */}
+			<div className="flex items-baseline gap-2.5" {...inkOrder(2)}>
 				<h2 id={headingId} className="text-lg font-[550] leading-heading text-ink">Waiting for you</h2>
 				{items && open > 0 && <span className="text-meta text-faint">{open} open</span>}
 			</div>
@@ -108,9 +110,9 @@ export function WaitingSectionView({ chats, loadError, onRetry, cards }: { chats
 				<p className="text-md text-faint">Nothing is waiting. Every check is answered and every problem solved.</p>
 			) : (
 				<ul className="waiting-list flex flex-col">
-					{items.map((chat) => <WaitingRow key={chat.id} chat={chat} />)}
-					{lessons.map((chat) => <LessonRow key={chat.id} chat={chat} />)}
-					{due > 0 && <CardsRow due={due} weakDue={cards?.weakDue ?? 0} />}
+					{items.map((chat, i) => <WaitingRow key={chat.id} chat={chat} order={3 + i} />)}
+					{lessons.map((chat, i) => <LessonRow key={chat.id} chat={chat} order={3 + items.length + i} />)}
+					{due > 0 && <CardsRow due={due} weakDue={cards?.weakDue ?? 0} order={3 + items.length + lessons.length} />}
 				</ul>
 			)}
 			{cards?.failed && (
@@ -134,11 +136,11 @@ export function RowMeta({ id, title, at }: { id: string; title: string; at: stri
 	);
 }
 
-function WaitingRow({ chat }: { chat: Waiting }) {
+function WaitingRow({ chat, order }: { chat: Waiting; order: number }) {
 	const id = useId();
 	const { kind, action, teaser, postedAt } = chat.waiting;
 	return (
-		<li className="waiting-row" data-testid="waiting-row" data-progress={chat.progress ? "" : undefined}>
+		<li className="waiting-row" data-testid="waiting-row" data-progress={chat.progress ? "" : undefined} {...inkOrder(order)}>
 			<span className="waiting-row-kind text-sm font-medium text-bulb-ink">{kind}</span>
 			<RowMeta id={`${id}-meta`} title={chat.title} at={postedAt} />
 			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-base leading-row text-graphite">
@@ -158,10 +160,10 @@ function WaitingRow({ chat }: { chat: Waiting }) {
 
 /** A lesson with topics left and nothing waiting (feature 003): the waiting
  *  row's grid, the progress line in the teaser slot, a quiet Continue. */
-function LessonRow({ chat }: { chat: Unfinished }) {
+function LessonRow({ chat, order }: { chat: Unfinished; order: number }) {
 	const id = useId();
 	return (
-		<li className="waiting-row" data-testid="waiting-row">
+		<li className="waiting-row" data-testid="waiting-row" {...inkOrder(order)}>
 			<span className="waiting-row-kind text-sm font-medium text-bulb-ink">Lesson</span>
 			<RowMeta id={`${id}-meta`} title={chat.title} at={chat.updatedAt} />
 			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-base leading-row text-graphite">
@@ -179,10 +181,10 @@ function LessonRow({ chat }: { chat: Unfinished }) {
 }
 
 /** The day's flashcards (feature 021): one row, however many are due. */
-function CardsRow({ due, weakDue }: { due: number; weakDue: number }) {
+function CardsRow({ due, weakDue, order }: { due: number; weakDue: number; order: number }) {
 	const id = useId();
 	return (
-		<li className="waiting-row" data-testid="waiting-cards-row">
+		<li className="waiting-row" data-testid="waiting-cards-row" {...inkOrder(order)}>
 			<span className="waiting-row-kind text-sm font-medium text-bulb-ink">Flashcards</span>
 			<span id={`${id}-meta`} className="waiting-row-meta min-w-0 truncate text-meta text-faint">{weakDue > 0 ? `${weakDue} on weak ideas` : "Today"}</span>
 			<p id={`${id}-teaser`} className="waiting-row-teaser min-w-0 text-base leading-row text-graphite">{dueRowText(due)}</p>

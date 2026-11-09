@@ -13,7 +13,8 @@ import UpdateBanner from "@/components/update-banner";
 import { SessionAccountProvider } from "@/components/session-state";
 import { SessionStateStore, WORKSPACE_STATE_ID } from "@/components/session-state-store";
 import { compactionInFlight, hostedMode, isTurnRunning, listChats, readSettingsRecord, runAsTenant, signedInUserId } from "@/src/server";
-import { DEFAULT_SHARED_APPEARANCE, resolveSharedAppearance, sharedAppearanceAttributes, type SharedAppearance } from "@/src/core";
+import { DEFAULT_SHARED_APPEARANCE, SIGNATURE_SCRIPT, resolveSharedAppearance, sharedAppearanceAttributes, type SharedAppearance } from "@/src/core";
+import { MotionArrival } from "@/components/paper/motion-arrival";
 
 /** The signed-in reader's shared Appearance (feature 025, R2), read from the
  * stored record (not the factory merge) so the first response is already in
@@ -60,8 +61,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 		</ServerEventsProvider></SessionAccountProvider>
 	);
 	return (
-		<html lang="en" className={`lh-paper ${fontClasses}`} {...sharedAppearanceAttributes(appearance)}>
+		// suppressHydrationWarning: the signature script sets data-lh-arrival before hydration (feature 028, R5).
+		<html lang="en" className={`lh-paper ${fontClasses}`} {...sharedAppearanceAttributes(appearance)} suppressHydrationWarning>
 			<body className="min-h-dvh antialiased">
+				{/* First in <body>: the cold-load signature, once per tab, keyed in CSS from first paint (feature 028). */}
+				<script dangerouslySetInnerHTML={{ __html: SIGNATURE_SCRIPT }} />
 				{/* The paper's grain behind every page (app/paper.css). */}
 				<div className="nb-paper lh-body-paper" aria-hidden="true" />
 				{/* Reserve the tab strip on surfaces that show it only with tabs, so a reload doesn't shift them (feature 014). */}
@@ -69,6 +73,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 				{hostedShell ? <hostedShell.HostedProvider publishableKey={process.env.CLERK_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}>{app}</hostedShell.HostedProvider> : app}
 				{/* Auto-update banner (Wave C): fixed card, Electron-only pushes. */}
 				<UpdateBanner />
+				<MotionArrival />
 			</body>
 		</html>
 	);
