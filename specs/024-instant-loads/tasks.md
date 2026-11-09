@@ -53,12 +53,12 @@ Format: `- [ ] Txxx [P] [USn] description (path)`.
 
 **Goal**: math/code renderers on demand, no raw-source flash. **Independent test**: Home first-load JS without katex/shiki; math chat shows no raw `$`.
 
-- [ ] T023 [P] [US4] Tests for `needsMath` / `needsCode` (dollar math, `\(`/`\[`, fenced code, inline code alone → no, `$` inside code → no) (`tests/markdown-plugins.test.ts`)
-- [ ] T024 [US4] `components/ai-elements/markdown-plugins.ts`: detectors, shared dynamic imports of `@streamdown/math` (+ `katex/dist/katex.min.css`) and `@streamdown/code` with the existing options, `useStreamdownPlugins(text)`
-- [ ] T025 [US4] Use it in `message.tsx` and `reasoning.tsx`; a message needing a pending plugin shows the existing pending state; failure renders with available plugins and logs; remove the katex CSS import from `app/(app)/layout.tsx`
+- [X] T023 [P] [US4] Tests for `needsMath` / `needsCode` (dollar math, `\(`/`\[`, fenced code, inline code alone → no, `$` inside code → no) (`tests/markdown-plugins.test.ts`)
+- [X] T024 [US4] `components/ai-elements/markdown-plugins.ts`: detectors, shared dynamic imports of `@streamdown/math` (+ `katex/dist/katex.min.css`) and `@streamdown/code` with the existing options, `useStreamdownPlugins(text)`
+- [X] T025 [US4] Use it in `message.tsx` and `reasoning.tsx`; a message needing a pending plugin shows the existing pending state; failure renders with available plugins and logs; remove the katex CSS import from `app/(app)/layout.tsx`
 - [ ] T026 [US4] Check whether `latex-glyph.tsx`, `page-math-view.ts`, `src/core/content-reader.ts` put katex in Home's or the chat's first-load graph; lazy-load where they do
-- [ ] T027 [US4] Render tests: a math message never renders raw `$…$` text; a plain message renders immediately (`tests/render-message-plugins.test.tsx`)
-- [ ] T028 [US4] UI check of the transcript at 320, 390, 1440 px with `impeccable` and `web-design-guidelines`
+- [X] T027 [US4] Render tests: a math message never renders raw `$…$` text; a plain message renders immediately (`tests/render-message-plugins.test.tsx`)
+- [X] T028 [US4] UI check of the transcript at 320, 390, 1440 px with `impeccable` and `web-design-guidelines`
 
 ## Phase 5b: Cold-load blank flash (owner-added 2026-11-09)
 

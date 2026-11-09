@@ -3,8 +3,9 @@ import katex from "katex";
 /**
  * THE LaTeX glyph seam (owner ruling, 2026-09-30): UI connectors that
  * want math symbols render the REAL LaTeX glyphs through KaTeX — the
- * app's math engine, already shipped (app/layout.tsx carries the
- * katex stylesheet) — never hand-rolled SVGs or font-dependent
+ * app's math engine, already shipped (the chain table's lazy loader
+ * brings the katex stylesheet, components/katex-css.ts) — never
+ * hand-rolled SVGs or font-dependent
  * unicode. Born for the chain table's logical connectives: premises
  * join with \land (∧), the conclusion separates with \implies (⟹) —
  * `A ∧ B ⟹ C`, not the misleading `A → B → C`.

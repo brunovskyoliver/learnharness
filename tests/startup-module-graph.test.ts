@@ -10,6 +10,8 @@ for (const entry of ["components/sidebar.tsx", "components/home.tsx", "component
 			platform: "browser", format: "esm", splitting: true,
 			outdir: process.env.TMPDIR ?? "/tmp",
 			external: ["react", "react-dom", "react-dom/*", "next", "next/*", "@clerk/nextjs"],
+			// The KaTeX stylesheet loads on demand (feature 024); its fonts are not JS.
+			loader: { ".woff": "empty", ".woff2": "empty", ".ttf": "empty" },
 			// These are the explicit graph download boundaries. Keep their
 			// implementations external here: esbuild otherwise co-locates a
 			// shared runtime helper with D3 in a synthetic common chunk, which

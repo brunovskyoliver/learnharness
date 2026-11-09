@@ -16,6 +16,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MessageResponse } from "../components/ai-elements/message.tsx";
 import { MermaidError } from "../components/mermaid-error.tsx";
 import { transformMathDelimiters, healOverescapedCommands } from "../src/core/math-delims.ts";
+import { preloadRenderers } from "../components/ai-elements/markdown-plugins.ts";
+
+// The math and code renderers load on demand (feature 024); these renders
+// assert their output, so load them first.
+await preloadRenderers();
 
 /** Render through MessageResponse in static mode (no streaming/remend artifacts). */
 function render(md: string): string {

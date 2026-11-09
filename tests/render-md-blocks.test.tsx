@@ -18,6 +18,11 @@ import { ThinkingBlock, setAllUserThinkingOpen } from "@/components/thinking-blo
 import { MermaidOverlay, SessionMermaidContext, chartSize } from "../components/session-overlay.tsx";
 import { PlanPopup } from "../components/plan-block.tsx";
 import { MarkdownCode, codeSource } from "../components/md-blocks.tsx";
+import { preloadRenderers } from "../components/ai-elements/markdown-plugins.ts";
+
+// The math and code renderers load on demand (feature 024); these renders
+// assert their output, so load them first.
+await preloadRenderers();
 
 function render(md: string): string {
 	return renderToStaticMarkup(<MessageResponse mode="static">{md}</MessageResponse>);

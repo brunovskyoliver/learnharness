@@ -28,8 +28,10 @@ import type { PageHeading, PageStats } from "./page-editor-extras.ts";
 import { downloadMarkdown, PrintRoot } from "./page-export.tsx";
 import { pageImageAlt, pageImageSrc, uploadPageImage } from "./upload.ts";
 import { usePageDraft } from "./use-page-draft.ts";
+import { loadKatexCss } from "@/components/katex-css";
 
-const PageEditor = dynamic(() => import("./page-editor.tsx").then((m) => m.PageEditor), {
+/** Formulas in a page are KaTeX: the stylesheet arrives with the editor. */
+const PageEditor = dynamic(() => Promise.all([import("./page-editor.tsx"), loadKatexCss()]).then(([m]) => m.PageEditor), {
 	ssr: false,
 	loading: () => <EditorLoading />,
 });

@@ -12,9 +12,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-import { cjk } from "@streamdown/cjk";
-import { createCodePlugin } from "@streamdown/code";
-import { createMathPlugin } from "@streamdown/math";
 
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
@@ -30,13 +27,10 @@ import {
   useRef,
   useState,
 } from "react";
-import remarkBreaks from "remark-breaks";
-import {
-  Streamdown,
-  type PluginConfig,
-} from "streamdown";
+import { Streamdown } from "streamdown";
 import { mdComponents } from "@/components/md-blocks";
 import { completedMarkdownPrefix, repairMathForDisplay, transformMathDelimiters } from "@/src/core";
+import { useStreamdownPlugins } from "./markdown-plugins";
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: LhViewMessage["role"];
@@ -329,49 +323,18 @@ export const MessageBranchPage = ({
 
 export type MessageResponseProps = ComponentProps<typeof Streamdown> & { streaming?: boolean };
 
-// Type-only version skew: @streamdown/code bundles shiki@3 types while
-// streamdown@2.5 expects shiki@4 types. Both work at runtime (each ships its
-// own highlighter); the cast papers over the .d.ts mismatch.
-//
 // Standard dollar authoring (owner, 2026-10-12): $...$ inline, $$ fenced
 // on separate lines for display. transformMathDelimiters stays as the
 // compatibility reader for old \(...\)/\[...\] content; its two-dollar
 // output remains valid alongside native single-dollar math.
 //
-// remark-breaks rides in the cjk plugin's remarkPluginsAfter slot (public
-// PluginConfig API): Streamdown's bare `remarkPlugins` PROP would REPLACE the
-// defaults ([remark-gfm, codeMeta]), silently dropping GFM and code-fence
-// metastring parsing. The slot appends after the defaults, which is the
-// standard remark-gfm → remark-breaks order.
+// The math and code plugins load on demand (feature 024, markdown-plugins.ts):
+// text that needs one waits for it, everything else renders at once.
 //
 // MERMAID is app-owned since the chrome-melt wave (2026-09-19): the md-blocks
 // `code` override intercepts mermaid fences and renders via
 // components/mermaid-render.ts — streamdown's internal mermaid machinery
 // (the plugin entry + the `mermaid` prop) is retired with it.
-const code = createCodePlugin({
-  themes: ["github-light", {
-    name: "learnharness-dark",
-    type: "dark",
-    colors: { "editor.background": "#141414", "editor.foreground": "#dedede" },
-    tokenColors: [
-      { scope: ["comment"], settings: { foreground: "#929292" } },
-      { scope: ["string", "constant.other.symbol"], settings: { foreground: "#b9c7ad" } },
-      { scope: ["constant.numeric"], settings: { foreground: "#d0be96" } },
-      { scope: ["keyword", "storage"], settings: { foreground: "#b1b9c4" } },
-      { scope: ["entity.name.function", "support.function"], settings: { foreground: "#b6ccdf" } },
-      { scope: ["entity.name.type", "support.class"], settings: { foreground: "#bcafca" } },
-    ],
-  }],
-});
-
-export const streamdownPlugins = {
-  cjk: {
-    ...cjk,
-    remarkPluginsAfter: [...cjk.remarkPluginsAfter, remarkBreaks],
-  },
-  code,
-  math: createMathPlugin({ singleDollarTextMath: true }),
-} as unknown as PluginConfig;
 
 export const MessageResponse = memo(
   ({ className, children, streaming = false, mode = "static", ...props }: MessageResponseProps) => {
@@ -382,7 +345,13 @@ export const MessageResponse = memo(
       typeof children === "string"
         ? transformMathDelimiters(children)
         : children;
-    const content = streaming && typeof normalized === "string" ? completedMarkdownPrefix(normalized) : normalized;
+    const latest = streaming && typeof normalized === "string" ? completedMarkdownPrefix(normalized) : normalized;
+
+    // Renderers on demand (feature 024, markdown-plugins.ts): text needing
+    // math or code appears once its renderer is ready, so raw `$…$` never
+    // shows; a message that already appeared holds its last ready text.
+    const shown = useStreamdownPlugins(typeof latest === "string" ? latest : "");
+    const content = typeof latest === "string" ? shown.text : latest;
 
     // Wide display math shrinks to fit the column, down to 70% (ui-v2);
     // past that it scrolls. ponytail: runs per render, not on resize.
@@ -395,6 +364,9 @@ export const MessageResponse = memo(
       }
     }, [content]);
 
+    // Not appeared yet: its renderer is still on the way.
+    if (content === null) return <div ref={ref} className="contents" data-renderer-pending="" aria-busy="true" />;
+
     return (
       <div ref={ref} className="contents">
       <Streamdown
@@ -405,7 +377,7 @@ export const MessageResponse = memo(
           className
         )}
         components={mdComponents}
-        plugins={streamdownPlugins}
+        plugins={shown.plugins}
         mode={streaming ? "static" : mode}
         parseIncompleteMarkdown={false}
         {...props}
