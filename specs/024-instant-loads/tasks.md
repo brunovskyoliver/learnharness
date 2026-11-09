@@ -62,7 +62,7 @@ Format: `- [ ] Txxx [P] [USn] description (path)`.
 
 ## Phase 5b: Cold-load blank flash (owner-added 2026-11-09)
 
-- [ ] T032 Find which update makes React discard the streamed chat transcript on a cold load (main empty ~150–360 ms; suspects: mount-time state in SidebarProvider / PagePaneProvider above `<Suspense>{children}</Suspense>` in `app/(app)/layout.tsx`); prove it with a trace
+- [X] T032 Find which update makes React discard the streamed chat transcript on a cold load (main empty ~150–360 ms; suspects: mount-time state in SidebarProvider / PagePaneProvider above `<Suspense>{children}</Suspense>` in `app/(app)/layout.tsx`); prove it with a trace
 - [ ] T033 Fix it so the server-rendered transcript is kept through hydration; regression test or browser check that main is never empty after first paint on a cold load
 
 ## Phase 6: Polish & verification
