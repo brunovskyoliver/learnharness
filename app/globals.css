@@ -1580,6 +1580,16 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 	left: calc(-1 * var(--lh-check-shift, 0px));
 	transition: left 0.34s cubic-bezier(0.22, 1, 0.36, 1);
 }
+/* With a margin thread open, the bottom bar keeps to the text column (same
+   edges as the text), so it never runs under the thread, its line or its dot. */
+.lh-paper:has([data-check-margin]) .lh-lesson-dock {
+	left: 0;
+	max-width: calc(var(--lh-measure) + 3rem);
+	margin-left: max(0px, calc((100% - var(--lh-measure) - 3rem) / 2 - var(--lh-check-shift, 0px)));
+	margin-right: auto;
+	padding-inline: 24px;
+	transition: margin-left 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
 .lh-check-margin {
 	position: absolute;
 	inset: 0;
@@ -1815,7 +1825,7 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
 	.lh-lesson-column,
-	.lh-lesson-dock { transition: none; }
+	.lh-lesson-dock, .lh-paper:has([data-check-margin]) .lh-lesson-dock { transition: none; }
 	.lh-check-inking :is(.lh-check-prompt > * > *, .lh-check-options > *) { animation: none; }
 	.lh-check-stop,
 	.lh-check-dont-know { transition: none; }
