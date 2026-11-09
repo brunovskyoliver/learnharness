@@ -35,6 +35,7 @@ function useCloseFocusNow(
   onCloseAutoFocus: ((event: Event) => void) | undefined
 ) {
   const opener = React.useRef<Element | null>(null)
+  const content = React.useRef<HTMLDivElement | null>(null)
   const wasOpen = React.useRef(false)
   const returned = React.useRef(false)
   const handler = React.useRef(onCloseAutoFocus)
@@ -52,18 +53,26 @@ function useCloseFocusNow(
     if (!wasOpen.current) return
     wasOpen.current = false
     returned.current = true
+    // A layer that opened as this one closed keeps the focus it took.
+    const now = document.activeElement
+    if (now && now !== document.body && !content.current?.contains(now)) return
     const event = new Event("lh.closeAutoFocus", { cancelable: true })
     handler.current?.(event)
     const back = opener.current
     if (!event.defaultPrevented && back instanceof HTMLElement && back.isConnected && back !== document.body) back.focus()
   }, [open])
   // Uncontrolled dialogs keep Radix's own return.
-  return open === undefined
+  const onClose = open === undefined
     ? onCloseAutoFocus
     : (event: Event) => {
-        if (returned.current) event.preventDefault()
-        else handler.current?.(event)
+        const lost = document.activeElement === null || document.activeElement === document.body
+        if (!returned.current) return handler.current?.(event)
+        event.preventDefault()
+        // Back already, unless focus went into the closing dialog since (it is gone now).
+        const back = opener.current
+        if (lost && back instanceof HTMLElement && back.isConnected) back.focus()
       }
+  return { content, onCloseAutoFocus: onClose }
 }
 
 function DialogTrigger({
@@ -110,7 +119,8 @@ function DialogContent({
   showCloseButton?: boolean
 }) {
   const open = React.useContext(DialogOpenContext)
-  const closeAutoFocus = useCloseFocusNow(open, onCloseAutoFocus)
+  const { content, onCloseAutoFocus: closeAutoFocus } = useCloseFocusNow(open, onCloseAutoFocus)
+  const { ref: givenRef, ...contentProps } = props as typeof props & { ref?: React.Ref<HTMLDivElement> }
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
@@ -120,7 +130,12 @@ function DialogContent({
           "lh-dialog-grain lh-layer-dialog fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-xl bg-paper p-6 text-ink shadow-lift outline-none sm:max-w-lg",
           className
         )}
-        {...props}
+        {...contentProps}
+        ref={(node: HTMLDivElement | null) => {
+          content.current = node
+          if (typeof givenRef === "function") givenRef(node)
+          else if (givenRef) (givenRef as React.RefObject<HTMLDivElement | null>).current = node
+        }}
         onCloseAutoFocus={closeAutoFocus}
       >
         {children}

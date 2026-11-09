@@ -125,13 +125,12 @@ function onPopState() {
 	setPendingArrival("history");
 }
 
-/** Radix menus and popovers (row 10), whose triggers name them by `aria-controls`. */
-const RETURNING = '[role="menu"], [data-slot="popover-content"]';
+/** Popovers (row 10), which lift away while still mounted. Radix menus close at once (app/paper.css). */
+const RETURNING = '[data-slot="popover-content"]';
 
 /**
- * Feature 028 (R7, FR-005): a Radix menu or popover lifts away for 100ms and
- * Radix gives focus back to its trigger only when it unmounts, after the
- * lift. This gives it back as the layer closes, when focus is still inside
+ * Feature 028 (R7, FR-005): a popover lifts away for 100ms and Radix gives
+ * focus back to its trigger only when it unmounts, after the lift. This gives it back as the layer closes, when focus is still inside
  * it (so a choice that moved focus elsewhere keeps it there).
  */
 function returnFocusOnClose(): () => void {
@@ -139,8 +138,7 @@ function returnFocusOnClose(): () => void {
 		const closed = records.filter((record) => record.oldValue !== "closed" && (record.target as Element).getAttribute("data-state") === "closed").map((record) => record.target as HTMLElement);
 		for (const layer of closed) {
 			if (!layer.matches(RETURNING) || !layer.contains(document.activeElement)) continue;
-			// A menu names its trigger (aria-labelledby); a popover's trigger
-			// closed in the same commit (its aria-controls may already be gone).
+			// The trigger names the popover, or closed in the same commit.
 			const named = layer.getAttribute("aria-labelledby");
 			const trigger = (named ? document.getElementById(named) : null)
 				?? (layer.id ? document.querySelector<HTMLElement>(`[aria-controls="${CSS.escape(layer.id)}"]`) : null)
@@ -155,7 +153,7 @@ function returnFocusOnClose(): () => void {
 /**
  * Ends the cold-load signature at the first navigation or 900ms after
  * mount, whichever is first, marks browser back/forward as `history`, and
- * gives focus back as a menu or popover closes.
+ * gives focus back as a popover closes.
  */
 export function MotionArrival(): null {
 	const pathname = usePathname();

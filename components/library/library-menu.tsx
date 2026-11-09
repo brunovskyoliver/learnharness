@@ -6,7 +6,7 @@ import { CheckIcon, ChevronDownIcon, MoreHorizontalIcon } from "lucide-react";
 
 export interface LibraryMenuAction { label: string; onSelect: () => void; destructive?: boolean; testId?: string }
 
-const PANEL = "nb-menu min-w-44";
+const PANEL = "nb-menu min-w-44 data-[state=closed]:hidden";
 const ROW = "nb-menu-item items-center";
 
 /** The ⋯ menu and the right-click menu share one list of actions. */

@@ -119,6 +119,9 @@ export function PaperExportDialog({ open, onOpenChange, pageId, shownName, befor
 		if (!wasOpen.current) return;
 		wasOpen.current = false;
 		returned.current = true;
+		// A layer that opened as this one closed keeps the focus it took.
+		const now = document.activeElement;
+		if (now && now !== document.body && !now.closest(".nb-export")) return;
 		const back = before.current;
 		if (back instanceof HTMLElement && back.isConnected && back !== document.body) back.focus();
 		else returnFocus.current?.focus();
@@ -136,7 +139,8 @@ export function PaperExportDialog({ open, onOpenChange, pageId, shownName, befor
 						// Focus went back as it closed (above); else (unmounted outright) here.
 						onCloseAutoFocus={(event) => {
 							event.preventDefault();
-							if (returned.current) return;
+							const lost = document.activeElement === null || document.activeElement === document.body;
+							if (returned.current && !lost) return;
 							const back = before.current;
 							if (back instanceof HTMLElement && back.isConnected && back !== document.body) back.focus();
 							else returnFocus.current?.focus();

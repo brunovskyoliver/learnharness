@@ -49,6 +49,9 @@ export function OverlaySidebarDialog({ state, onClose, onPromote, title, returnF
 		if (!wasOpen.current) return;
 		wasOpen.current = false;
 		returned.current = true;
+		// Another layer that opened as this one closed (Settings, Links) keeps the focus it took.
+		const now = document.activeElement;
+		if (now && now !== document.body && !content.current?.contains(now)) return;
 		const back = before.current;
 		if (back instanceof HTMLElement && back.isConnected && back !== document.body && !back.closest(".nb-sidebar")) back.focus();
 		else fallback.current()?.focus();
@@ -79,10 +82,12 @@ export function OverlaySidebarDialog({ state, onClose, onPromote, title, returnF
 						if (state?.search) { event.preventDefault(); searchRef?.current?.focus(); }
 						else if (hover) { event.preventDefault(); (event.currentTarget as HTMLElement | null)?.focus(); }
 					}}
-					// Focus went back as it closed (above); else (unmounted outright) here.
+					// Focus went back as it closed (above); else (unmounted outright, or lost since) here.
 					onCloseAutoFocus={(event) => {
 						event.preventDefault();
-						if (returned.current) return;
+						// Already back, unless something took it into the closing sheet since (it is gone now).
+						const lost = document.activeElement === null || document.activeElement === document.body;
+						if (returned.current && !lost) return;
 						const back = before.current;
 						if (back instanceof HTMLElement && back.isConnected && back !== document.body && !back.closest(".nb-sidebar")) back.focus();
 						else returnFocus()?.focus();

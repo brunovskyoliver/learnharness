@@ -967,9 +967,9 @@ html:active-view-transition-type(lh-route, lh-mode) [style*="view-transition-cla
  * Layers open like paper and lift away. Radix keeps a closing layer until
  * its exit animation ends, so every exit is opacity only, short, and takes
  * no clicks; focus has already gone back to the opener (components/ui/
- * dialog.tsx, the sidebar dialog, MotionArrival for menus and popovers). A
- * layer that closes over another one closes at once, so a second Escape
- * reaches the layer beneath (T055). */
+ * dialog.tsx, the sidebar dialog, MotionArrival for popovers). A tooltip or
+ * popover that closes over a dialog closes at once, so a second Escape
+ * reaches the dialog (T055). */
 
 /* Row 11: dialogs (components/ui/dialog.tsx, the export dialog, Settings). */
 .lh-paper .lh-layer-scrim[data-state="open"] { animation: var(--motion-quick) ease-out both nb-fade-in; }
@@ -979,21 +979,22 @@ html:active-view-transition-type(lh-route, lh-mode) [style*="view-transition-cla
 	animation: 120ms var(--ease-out) both lh-lift;
 	pointer-events: none;
 }
-/* Row 10: popovers and tooltips (components/ui), Radix menus (.nb-menu). */
+/* Row 10: popovers and tooltips (components/ui). Radix menus (.nb-menu) close
+   at once: a menu still mounted for its lift takes focus back from its
+   trigger (Radix's own focus handling), so the lift would lose focus. */
 .lh-paper .lh-layer-pop:is([data-state="open"], [data-state="delayed-open"], [data-state="instant-open"]) {
 	animation: var(--motion-quick) var(--ease-menu) both nb-menu-in;
 }
-.lh-paper :is(.lh-layer-pop, .nb-menu)[data-state="closed"] {
+.lh-paper .lh-layer-pop[data-state="closed"] {
 	animation: 100ms var(--ease-out) both lh-lift;
 	pointer-events: none;
 }
-/* Rows 7-8: the overlay sidebar slides in as a sheet over its wash, and lifts. */
+/* Row 7: the overlay sidebar slides in as a sheet over its wash. Row 8: it
+   closes at once. A sheet still lifting over the ☰ swallowed a quick click
+   on the ☰ (it reopens nothing) and lost focus to its closing contents, so
+   the lift is left out (phase 6, progress.md). */
 .lh-paper .nb-sidebar[data-state="open"] { animation: var(--motion-sheet) var(--spring-soft) both lh-sheet-in; }
 .lh-paper .nb-side-dim[data-dim][data-state="open"] { animation: var(--motion-quick) ease-out both nb-fade-in; }
-.lh-paper :is(.nb-sidebar, .nb-side-dim[data-dim])[data-state="closed"] {
-	animation: var(--motion-quick) var(--ease-out) both lh-lift;
-	pointer-events: none;
-}
 /* Its rows ink in on the first open of a page load only (24ms steps, 200ms cap). */
 .lh-paper .nb-sidebar[data-rows-arrive] [data-ink-order] {
 	animation: var(--motion-arrive) var(--ease-ink) min(calc(var(--i, 0) * 24ms), 200ms) both nb-ink-in;
@@ -1008,8 +1009,11 @@ html.lh-paper[data-lh-menu-redraw] :is(.lh-study-chrome, .nb-header) .nb-menu-gl
 /* Row 12: the right pane slides in from the edge and lifts on collapse. */
 .lh-paper [data-workspace-pane][data-pane-arrive] { animation: var(--motion-route) var(--ease-menu) both nb-chat-in; }
 .lh-paper [data-workspace-pane][data-pane-leaving] { animation: var(--motion-quick) var(--ease-out) both lh-lift; pointer-events: none; }
-/* T055: a layer that closes over another one closes at once. */
-body:has(:is([role="dialog"], [role="menu"])[data-state="open"]) :is(.lh-layer-scrim, .lh-layer-dialog, .lh-layer-pop, .nb-menu, .nb-sidebar, .nb-side-dim, .nb-dialog-backdrop)[data-state="closed"] { animation: none; }
+/* T055: a tooltip or popover that closes over an open dialog closes at once,
+   so a second Escape reaches the dialog. Only these: a rule that turns an exit
+   off mid-flight (another layer opening during it) leaves Radix waiting for an
+   end that never comes, which kept the sidebar from opening again. */
+body:has(:is([role="dialog"], [role="menu"])[data-state="open"]) .lh-layer-pop[data-state="closed"] { animation: none; }
 @media (prefers-reduced-motion: reduce) {
 	.lh-paper .lh-layer-scrim[data-state="open"],
 	.lh-paper :is(.lh-layer-dialog, .nb-export)[data-state="open"],
@@ -1018,7 +1022,6 @@ body:has(:is([role="dialog"], [role="menu"])[data-state="open"]) :is(.lh-layer-s
 	.lh-paper .nb-sidebar[data-state="open"],
 	.lh-paper .nb-side-dim[data-dim][data-state="open"],
 	.lh-paper [data-workspace-pane][data-pane-arrive] { animation: 120ms linear both lh-fade; }
-	.lh-paper :is(.nb-sidebar, .nb-side-dim[data-dim], [data-workspace-pane][data-pane-leaving])[data-state="closed"],
 	.lh-paper [data-workspace-pane][data-pane-leaving] { animation-duration: 120ms; }
 	.lh-paper .nb-sidebar[data-rows-arrive] [data-ink-order] { animation: none; }
 	.lh-paper .nb-sidebar[data-state="open"] .nb-side-head .nb-menu-glyph path,
