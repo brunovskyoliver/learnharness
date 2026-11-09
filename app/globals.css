@@ -1791,13 +1791,10 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 .lh-check-inking .lh-check-prompt > * > :nth-child(3) { animation-delay: 0.24s; }
 .lh-check-inking .lh-check-prompt > * > :nth-child(n + 4) { animation-delay: 0.36s; }
 .lh-check-inking .lh-check-options > * { animation: 0.52s cubic-bezier(0.2, 0.7, 0.2, 1) 0.3s both nb-ink-in; }
-/* While a margin thread is shown, wide visuals and tables stop at the column's right
-   edge (they would run under the thread); visuals still widen to the left, as far as
-   the room left of the column allows. */
-[data-check-margin] .lh-breakout {
-	margin-left: max(calc(2 * min(0px, calc((100% - var(--lh-breakout-w)) / 2))), calc(var(--lh-check-shift, 0px) - (100cqw - var(--lh-measure)) / 2 + 3rem));
-	margin-right: 0;
-}
+/* While a margin thread is shown, wide visuals and tables keep to the text column
+   (the thread and its line sit just past the column's right edge), so they stay
+   centred on the messages: edges line up with the text (owner, 2026-11-09). */
+[data-check-margin] .lh-breakout { margin-inline: 0; }
 [data-check-margin].lh-lesson-column .lh-bleed .lh-prose > .lh-table-bleed,
 [data-check-margin] .lh-bleed .lh-prose > .lh-table-bleed { margin-inline: 0; }
 /* A table in a check stays inside the thread (transcript tables bleed past the column). */
