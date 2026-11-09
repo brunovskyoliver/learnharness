@@ -39,6 +39,25 @@ export async function writeSettingsKey(section: "general" | "notebook", patch: R
 	return put.ok;
 }
 
+/**
+ * The note bare /notebook would open, asked before navigating: going there
+ * directly skips the page's redirect, which Next handles on the client by
+ * rendering nothing until it follows it (a blank frame between the modes,
+ * feature 028). Falls back to /notebook, which still resolves on the server.
+ */
+async function notebookTarget(): Promise<string> {
+	try {
+		const response = await fetch("/api/notebook/open", { method: "POST", cache: "no-store" });
+		if (response.ok) {
+			const { href } = (await response.json()) as { href?: unknown };
+			if (typeof href === "string" && href.startsWith(`${notebookHref()}/`)) return href;
+		}
+	} catch {
+		/* the server resolves it on the way */
+	}
+	return notebookHref();
+}
+
 /** Saves the mode, then goes there. False (and no navigation) when the save failed. */
 export async function switchInterface(target: InterfaceMode, navigate: (href: string) => void): Promise<boolean> {
 	let saved = false;
@@ -51,6 +70,6 @@ export async function switchInterface(target: InterfaceMode, navigate: (href: st
 		console.error(`[interface] could not save the switch to ${target}`);
 		return false;
 	}
-	navigate(target === "notebook" ? notebookHref() : studyReturnPath(storedStudyPath()));
+	navigate(target === "notebook" ? await notebookTarget() : studyReturnPath(storedStudyPath()));
 	return true;
 }

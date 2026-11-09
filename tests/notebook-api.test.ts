@@ -23,6 +23,7 @@ const messagesRoute = await import("../app/api/notebook/[pageId]/threads/[thread
 const runsRoute = await import("../app/api/notebook/[pageId]/runs/route.ts");
 const streamRoute = await import("../app/api/notebook/runs/[runId]/stream/route.ts");
 const summaryRoute = await import("../app/api/notebook/summary/route.ts");
+const openRoute = await import("../app/api/notebook/open/route.ts");
 const abortRoute = await import("../app/api/activity/abort/route.ts");
 const activityRoute = await import("../app/api/activity/route.ts");
 after(() => { delete process.env.LH_NOTEBOOK_FAUX; fs.rmSync(dir, { recursive: true, force: true }); });
@@ -245,5 +246,15 @@ describe("the note Notebook opens", () => {
 		} finally {
 			delete process.env.LH_HOSTED;
 		}
+	});
+
+	it("POST /api/notebook/open answers with the address bare /notebook leads to (feature 028)", async () => {
+		const response = await openRoute.POST();
+		assert.equal(response.status, 200);
+		const { href } = (await response.json()) as { href: string };
+		const resolved = await resolveNotebookNote(undefined);
+		assert.ok("redirectTo" in resolved);
+		assert.equal(href, resolved.redirectTo);
+		assert.match(href, /^\/notebook\/lib_/);
 	});
 });

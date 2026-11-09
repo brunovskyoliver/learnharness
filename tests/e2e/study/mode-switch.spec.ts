@@ -94,10 +94,8 @@ test.describe("Study: the mode switch's motion (feature 028, US2)", () => {
 		const clip = { x: Math.floor(box.x), y: Math.floor(box.y), width: Math.ceil(box.width), height: Math.ceil(box.height) };
 		for (const [label, arrive] of [["to Notebook", toNotebook], ["to Study", toLesson]] as const) {
 			await clearRecorded(page);
-			// The route gap: between the two pages the App Router briefly renders
-			// neither (pre-existing, also without view transitions and before
-			// feature 028; progress.md). That frame is the bare paper, never a
-			// moving or fading chrome, so it is counted apart.
+			// The old route gap (fixed in feature 028; progress.md): a frame of
+			// bare paper between the two pages. It must not come back.
 			await page.addStyleTag({ content: ".lh-study-chrome, .nb-header { visibility: hidden !important; }" }).then((tag) => tag.evaluate((el) => (el as Element).setAttribute("data-bare", "")));
 			const bare = (await framesOf(page, clip, 0))[0]!;
 			await page.evaluate(() => document.querySelector("style[data-bare]")?.remove());
@@ -110,13 +108,55 @@ test.describe("Study: the mode switch's motion (feature 028, US2)", () => {
 			const after = await framesOf(page, clip, 0);
 			const moved = frames.filter((frame) => !frame.equals(before[0]!) && !frame.equals(after[0]!) && !frame.equals(bare));
 			const gap = frames.filter((frame) => frame.equals(bare)).length;
-			if (gap) test.info().annotations.push({ type: "route gap", description: `${label}: ${gap} bare frame(s) of ${frames.length}` });
 			if (moved.length) for (const [i, frame] of [before[0]!, ...frames, after[0]!].entries()) await test.info().attach(`${label}-${String(i).padStart(3, "0")}${moved.includes(frame) ? "-moved" : ""}.png`, { body: frame, contentType: "image/png" });
 			expect(moved.length, `${label}: chrome frames that differ from both ends (of ${frames.length})`).toBe(0);
+			expect(gap, `${label}: bare frames between the pages (of ${frames.length})`).toBe(0);
 			const motion = switchMotion(await recordedAnimations(page));
 			expect(motion.length, `${label}: the switch moves`).toBeGreaterThan(0);
 			for (const a of motion) expect(a.delay + a.duration, `${label}: ${a.name} ${a.pseudo ?? a.target}`).toBeLessThanOrEqual(400);
 			expect(motion.some((a) => a.inChrome), `${label}: nothing in the chrome animates`).toBe(false);
+		}
+	});
+
+	test("no blank frame between the two modes, both ways (the old page stays until the new one paints)", async ({ page }) => {
+		// Two causes of the old gap (progress.md): bare /notebook redirected,
+		// and Next's redirect boundary renders nothing while it follows a
+		// redirect; and the shell swapped its tree around the page, so the
+		// layout's Suspense boundary remounted and showed its empty fallback.
+		// Every animation frame of the switch must show a lesson or a note.
+		test.setTimeout(240_000);
+		await openChat(page, CHATS.plain);
+		await page.waitForTimeout(1200);
+		const sample = () => page.evaluate(() => {
+			const w = window as unknown as { __lhBlank: { frames: number; blank: number; stop: boolean } };
+			w.__lhBlank = { frames: 0, blank: 0, stop: false };
+			const filled = () => [...document.querySelectorAll("[data-chat-id], [data-testid='nb-page']")].some((el) => {
+				const r = el.getBoundingClientRect();
+				return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== "hidden";
+			});
+			const tick = () => {
+				if (w.__lhBlank.stop) return;
+				w.__lhBlank.frames++;
+				if (!filled()) w.__lhBlank.blank++;
+				requestAnimationFrame(tick);
+			};
+			requestAnimationFrame(tick);
+		});
+		const result = () => page.evaluate(() => {
+			const w = window as unknown as { __lhBlank: { frames: number; blank: number; stop: boolean } };
+			w.__lhBlank.stop = true;
+			return { frames: w.__lhBlank.frames, blank: w.__lhBlank.blank };
+		});
+		for (let round = 0; round < 3; round++) {
+			for (const [label, arrive] of [["to Notebook", toNotebook], ["to Study", toLesson]] as const) {
+				await sample();
+				await page.keyboard.press("Control+Shift+O");
+				await arrive(page);
+				await page.waitForTimeout(600);
+				const { frames, blank } = await result();
+				expect(frames, `${label} (round ${round}): frames sampled`).toBeGreaterThan(10);
+				expect(blank, `${label} (round ${round}): blank frames of ${frames}`).toBe(0);
+			}
 		}
 	});
 

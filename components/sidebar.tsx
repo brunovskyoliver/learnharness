@@ -796,34 +796,28 @@ export function AppShell({ children, account, hosted = false, initialChats }: { 
 	useEffect(() => {
 		if (!notebook) rememberStudyPath(`${pathname}${window.location.search}`);
 	}, [pathname, notebook]);
-	if (notebook) {
-		// Notebook brings its own chrome: no sessions sidebar, tabs, right pane
-		// or palette. The providers stay, so drafts, settings and events work,
-		// and the keyboard listener keeps only the mode toggle there.
-		return (
-			<SettingsDialogProvider hosted={hosted}>
-				<SessionListProvider initialChats={initialChats}>
-					<WorkspaceProvider>
-						{children}
-						<KeyboardShortcuts />
-					</WorkspaceProvider>
-				</SessionListProvider>
-			</SettingsDialogProvider>
-		);
-	}
+	// One tree for both modes: Notebook brings its own chrome (no sessions
+	// sidebar, tabs, right pane or palette), but the page slot keeps its place
+	// and type, so a mode switch never remounts the layout's Suspense boundary
+	// around the page. A remounted boundary shows its empty fallback while the
+	// new mode loads (a blank frame); a kept one holds the old page until the
+	// new one is ready (feature 028). The providers stay, so drafts, settings
+	// and events work, and the keyboard listener keeps only the mode toggle in
+	// Notebook (keyed by mode: it remounts on a switch, as before).
 	return (
 		<SettingsDialogProvider hosted={hosted}>
 			<SessionListProvider initialChats={initialChats}>
 				<WorkspaceProvider>
-				<StudySidebar account={account} hosted={hosted} />
-				{conversation && <div data-mobile-chat-navigation="" className="fixed left-0 top-0 z-20 flex h-(--lh-band) items-center pl-(--lh-chrome-left) pr-3"><SidebarToggle /></div>}
-				<main className="min-w-0 flex-1">{children}</main>
+				{!notebook && <StudySidebar account={account} hosted={hosted} />}
+				{!notebook && conversation && <div data-mobile-chat-navigation="" className="fixed left-0 top-0 z-20 flex h-(--lh-band) items-center pl-(--lh-chrome-left) pr-3"><SidebarToggle /></div>}
+				{/* Study's main landmark; in Notebook a layout-free wrapper (its note page is the main). */}
+				<div role={notebook ? undefined : "main"} className={notebook ? "contents" : "min-w-0 flex-1"}>{children}</div>
 				{/* The single document-level keydown listener (keyboard wave A) —
 				    window-level, so order only matters for the events it
 				    dispatches, never for DOM priority. */}
-				<KeyboardShortcuts />
-				<CommandPaletteHost />
-				<ActivityCornerHint />
+				<KeyboardShortcuts key={notebook ? "notebook" : "study"} />
+				{!notebook && <CommandPaletteHost />}
+				{!notebook && <ActivityCornerHint />}
 				</WorkspaceProvider>
 			</SessionListProvider>
 		</SettingsDialogProvider>

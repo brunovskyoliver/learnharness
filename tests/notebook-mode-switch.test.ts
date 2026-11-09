@@ -54,28 +54,50 @@ describe("the client switch", () => {
 	let calls: Call[] = [];
 	let record: Record<string, unknown> = {};
 	let putOk = true;
+	let open: Response | null = null;
 	const g = globalThis as unknown as { window?: unknown; fetch: typeof fetch };
 	const realFetch = g.fetch;
 	const install = () => {
 		storage.clear();
 		calls = [];
 		putOk = true;
+		open = null;
 		g.window = { localStorage: { getItem: (k: string) => storage.get(k) ?? null, setItem: (k: string, v: string) => void storage.set(k, v) } };
 		g.fetch = (async (url: string, init?: RequestInit) => {
 			const method = init?.method ?? "GET";
 			calls.push({ url, method, ...(init?.body ? { body: JSON.parse(String(init.body)) } : {}) });
 			if (method === "GET") return Response.json({ settings: record });
+			if (url === "/api/notebook/open") return open ?? Response.json({ error: "no" }, { status: 500 });
 			return putOk ? Response.json({ ok: true }) : Response.json({ error: "no" }, { status: 400 });
 		}) as typeof fetch;
 	};
 	afterEach(() => { g.fetch = realFetch; delete g.window; });
 
-	it("to Notebook: saves interface, keeps the rest of general, then goes to /notebook", async () => {
+	it("to Notebook: saves interface, keeps the rest of general, then goes to /notebook when the note is not known", async () => {
 		install();
 		record = { version: 1, general: { autoUpdate: false } };
 		const went: string[] = [];
 		assert.equal(await switchInterface("notebook", (href) => went.push(href)), true);
-		assert.deepEqual(calls.at(-1), { url: "/api/settings/general", method: "PUT", body: { autoUpdate: false, interface: "notebook" } });
+		assert.deepEqual(calls.find((c) => c.method === "PUT"), { url: "/api/settings/general", method: "PUT", body: { autoUpdate: false, interface: "notebook" } });
+		assert.deepEqual(went, ["/notebook"]);
+	});
+
+	it("to Notebook: goes straight to the note bare /notebook opens (no redirect, feature 028)", async () => {
+		install();
+		record = { version: 1 };
+		open = Response.json({ href: "/notebook/lib_last" });
+		const went: string[] = [];
+		assert.equal(await switchInterface("notebook", (href) => went.push(href)), true);
+		assert.deepEqual(calls.map((c) => `${c.method} ${c.url}`), ["GET /api/settings", "PUT /api/settings/general", "POST /api/notebook/open"]);
+		assert.deepEqual(went, ["/notebook/lib_last"]);
+	});
+
+	it("to Notebook: an answer that is not a note address falls back to /notebook", async () => {
+		install();
+		record = { version: 1 };
+		open = Response.json({ href: "https://evil.example/notebook/x" });
+		const went: string[] = [];
+		await switchInterface("notebook", (href) => went.push(href));
 		assert.deepEqual(went, ["/notebook"]);
 	});
 

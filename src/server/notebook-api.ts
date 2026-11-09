@@ -189,5 +189,18 @@ export async function resolveNotebookNote(requested: string | undefined): Promis
 	return to(made.item.id);
 }
 
+/**
+ * POST /api/notebook/open → `{ href }`: where bare /notebook leads (the same
+ * resolution, a new "Untitled note" included). The Study → Notebook switch
+ * asks first and goes straight there: a page redirect on a client
+ * navigation renders a blank page while Next follows it (feature 028).
+ */
+export function notebookOpenResponse(): Promise<Response> {
+	return guarded(async () => {
+		const resolved = await resolveNotebookNote(undefined);
+		return json({ href: "redirectTo" in resolved ? resolved.redirectTo : null });
+	});
+}
+
 /** The name a new note gets (research R2). */
 export const UNTITLED_NOTE = "Untitled note";
