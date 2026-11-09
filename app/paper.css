@@ -985,10 +985,12 @@ html:active-view-transition-type(lh-route, lh-mode) [style*="view-transition-cla
 .lh-paper .lh-layer-pop:is([data-state="open"], [data-state="delayed-open"], [data-state="instant-open"]) {
 	animation: var(--motion-quick) var(--ease-menu) both nb-menu-in;
 }
-.lh-paper .lh-layer-pop[data-state="closed"] {
+.lh-paper .lh-layer-pop:not(.lh-layer-tip)[data-state="closed"] {
 	animation: 100ms var(--ease-out) both lh-lift;
 	pointer-events: none;
 }
+/* Tooltips close at once: a tooltip still lifting is still the top layer,
+   and the Escape meant for the page under it (abort a turn) went to it. */
 /* Row 7: the overlay sidebar slides in as a sheet over its wash. Row 8: it
    closes at once. A sheet still lifting over the ☰ swallowed a quick click
    on the ☰ (it reopens nothing) and lost focus to its closing contents, so
