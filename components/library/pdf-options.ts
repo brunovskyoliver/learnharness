@@ -5,8 +5,11 @@
  *  - The worker and every asset are same-origin (app/pdfjs), never a CDN.
  *  - The legacy build, for the older WebKit and Chromium the app also ships to.
  *  - Ranges only (feature 024): no whole-file stream and no background fetch of
- *    the rest, so page 1 comes from the bytes it needs; 256 KB chunks keep round
- *    trips few on a remote link. The content route answers single ranges. */
+ *    the rest, so page 1 comes from the bytes it needs. The reader hands pdf.js
+ *    versioned chunks of PDF_CHUNK_SIZE (pdf-transport.ts), so pdf.js's range
+ *    chunk size must be the same. */
+import { PDF_CHUNK_SIZE } from "./pdf-transport.ts";
+
 export const PDFJS_BASE = "/pdfjs/";
 export const PDF_WORKER_SRC = `${PDFJS_BASE}legacy/build/pdf.worker.min.mjs`;
 
@@ -23,7 +26,7 @@ export function pdfLoadOptions(url: string) {
 		iccUrl: `${PDFJS_BASE}iccs/`,
 		disableStream: true,
 		disableAutoFetch: true,
-		rangeChunkSize: 262144,
+		rangeChunkSize: PDF_CHUNK_SIZE,
 		verbosity: 0,
 	} as const;
 }

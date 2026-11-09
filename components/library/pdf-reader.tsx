@@ -18,6 +18,7 @@ import { pdfLoadOptions, PDF_WORKER_SRC } from "./pdf-options.ts";
 import type { PaneItem } from "./page-pane-context.tsx";
 import { DOCUMENT_TUTOR_ACTIONS, documentTutorMessage, TUTOR_ACTION_LABEL, TUTOR_BLOCKED_TEXT, type DocumentTutorAction } from "./page-tutor-actions.ts";
 import { firstPdfCursor, movePdfCursor, pdfCursorMoveFor, type PdfCursor } from "./pdf-keyboard-selection.ts";
+import { makeChunkTransport, openPdfSource, PDF_CHUNK_SIZE } from "./pdf-transport.ts";
 import { SavePassageDialog, type DocumentPassage } from "./save-passage-dialog.tsx";
 
 type PdfJs = typeof import("pdfjs-dist/legacy/build/pdf.mjs");
@@ -294,18 +295,43 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 		else pages.current.delete(page);
 	}, []);
 
-	// Load: the same bytes the Download link gives, through the tenant's own route.
+	// A file replaced while open is opened again, a couple of times at most.
+	const staleReloads = useRef({ id: item.id, count: 0 });
+	if (staleReloads.current.id !== item.id) staleReloads.current = { id: item.id, count: 0 };
+
+	// Load: the same bytes the Download link gives, through the tenant's own route,
+	// as versioned chunks the browser keeps (pdf-transport.ts, feature 024).
 	useEffect(() => {
 		let cancelled = false;
 		let task: { destroy: () => Promise<void> } | null = null;
+		const opening = new AbortController();
 		setFailure(null);
 		setDoc(null);
 		void (async () => {
 			try {
-				const library = await loadPdfJs();
+				const [library, source] = await Promise.all([loadPdfJs(), openPdfSource(contentUrl(item.id), PDF_CHUNK_SIZE, fetch, opening.signal)]);
 				if (cancelled) return;
 				setPdfjs(library);
-				const loading = library.getDocument(pdfLoadOptions(contentUrl(item.id)));
+				const options = pdfLoadOptions(contentUrl(item.id));
+				const loading = source.kind === "whole"
+					? library.getDocument({ ...options, data: source.data })
+					: library.getDocument({
+						...options,
+						range: makeChunkTransport(library.PDFDataRangeTransport, source, {
+							contentUrl: contentUrl(item.id),
+							chunkSize: PDF_CHUNK_SIZE,
+							onFailure: (kind, error) => {
+								if (cancelled) return;
+								if (kind === "stale" && staleReloads.current.count < 2) {
+									staleReloads.current.count++;
+									setAttempt((n) => n + 1);
+									return;
+								}
+								console.error("[pdf] chunk", error);
+								setFailure("load");
+							},
+						}),
+					});
 				task = loading;
 				const loaded = await loading.promise;
 				if (cancelled) return;
@@ -324,7 +350,7 @@ export function PdfReader({ item, phone, onClosePane }: { item: PaneItem; phone:
 				if (!cancelled) setFailure((err as { name?: string })?.name === "PasswordException" ? "password" : "load");
 			}
 		})();
-		return () => { cancelled = true; void task?.destroy().catch(() => {}); };
+		return () => { cancelled = true; opening.abort(); void task?.destroy().catch(() => {}); };
 	}, [item.id, attempt]);
 
 	const loadAnnotations = useCallback(async () => {

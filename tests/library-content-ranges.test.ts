@@ -18,7 +18,8 @@ after(async () => {
 	fs.rmSync(dir, { recursive: true, force: true });
 });
 
-const PDF = fs.readFileSync(path.join(import.meta.dirname, "fixtures", "sample-3page.pdf"));
+// Padded past several chunks of every allowed size (trailing whitespace keeps it a PDF).
+const PDF = Buffer.concat([fs.readFileSync(path.join(import.meta.dirname, "fixtures", "sample-3page.pdf")), Buffer.alloc(150_000, 0x20)]);
 const SIZE = PDF.length;
 const asUser = <T>(user: string, fn: () => Promise<T>) => runAsTenant(user, fn) as Promise<T>;
 const stored = (user: string, name: string) => path.join(dir, "users", user, "files", name);
@@ -155,6 +156,72 @@ describe("library content ranges", () => {
 				assert.equal(response.status, 404);
 				assert.equal(response.headers.get("cache-control"), "no-store");
 			}
+		});
+	});
+});
+
+describe("library content versioned chunks", () => {
+	const tagNow = async () => (await get({ range: "bytes=0-0" })).headers.get("etag")!.replace(/"/g, "");
+	const chunk = (v: string, n: number | string, size: number | string) => get({}, `?v=${encodeURIComponent(v)}&chunk=${n}&size=${size}`);
+
+	it("answers a chunk with exactly its bytes and immutable private caching", async () => {
+		const v = await tagNow();
+		for (const size of [16384, 32768, 65536]) {
+			const last = Math.ceil(SIZE / size) - 1;
+			for (const n of [0, 1, last]) {
+				const response = await chunk(v, n, size);
+				assert.equal(response.status, 200, `${size}/${n}`);
+				const start = n * size;
+				const end = Math.min(start + size, SIZE);
+				assert.equal(response.headers.get("content-length"), String(end - start));
+				assert.match(response.headers.get("cache-control") ?? "", /^private, max-age=31536000, immutable\b/);
+				assert.equal(response.headers.get("etag"), `"${v}"`);
+				assert.equal(response.headers.get("content-encoding"), null);
+				assert.equal(response.headers.get("content-type"), "application/pdf");
+				assert.deepEqual(await bytes(response), new Uint8Array(PDF.subarray(start, end)), `${size}/${n}`);
+			}
+		}
+	});
+
+	it("ignores a Range header on a chunk URL", async () => {
+		const v = await tagNow();
+		const response = await get({ range: "bytes=0-9" }, `?v=${v}&chunk=0&size=16384`);
+		assert.equal(response.status, 200);
+		assert.equal((await bytes(response)).length, Math.min(16384, SIZE));
+	});
+
+	it("refuses a stale version with 412 and no-store, so a new file is never mixed with an old one", async () => {
+		const stale = await chunk("not-the-tag", 0, 16384);
+		assert.equal(stale.status, 412);
+		assert.equal(stale.headers.get("cache-control"), "no-store");
+		const v = await tagNow();
+		const file = stored("u_ranges", "doc.pdf");
+		fs.utimesSync(file, new Date(), new Date(Date.now() + 20000));
+		const after = await chunk(v, 0, 16384);
+		assert.equal(after.status, 412);
+		assert.equal(after.body === null || (await after.json()).error.length > 0, true);
+		assert.notEqual(await tagNow(), v);
+	});
+
+	it("answers 400 for a bad chunk or size and 416 past the end", async () => {
+		const v = await tagNow();
+		for (const [n, size] of [["x", 16384], ["-1", 16384], ["1.5", 16384], [0, 1000], [0, "abc"], [0, 1048576], ["", 16384]] as const) {
+			const response = await chunk(v, n, size);
+			assert.equal(response.status, 400, `${n}/${size}`);
+			assert.equal(response.headers.get("cache-control"), "no-store");
+		}
+		const missingV = await get({}, "?chunk=0&size=16384");
+		assert.equal(missingV.status, 400);
+		const past = await chunk(v, Math.ceil(SIZE / 16384), 16384);
+		assert.equal(past.status, 416);
+		assert.equal(past.headers.get("content-range"), `bytes */${SIZE}`);
+	});
+
+	it("keeps tenants apart on chunk URLs", async () => {
+		const v = await tagNow();
+		await asUser("u_other", async () => {
+			const response = await libraryContentResponse(new Request(`http://localhost/x?v=${v}&chunk=0&size=16384`), id);
+			assert.equal(response.status, 404);
 		});
 	});
 });

@@ -7,7 +7,7 @@
 import { createHash } from "node:crypto";
 import { Readable } from "node:stream";
 import {
-	ACCEPTED_EXTENSIONS, cleanTags, extensionOf, isPageStale, isRefusal, isVersionedKind, kindForName, LIBRARY_REFUSALS, LibraryCatalogError, MAX_FILE_BYTES,
+	ACCEPTED_EXTENSIONS, cleanTags, CONTENT_CHUNK_SIZES, extensionOf, isPageStale, isRefusal, isVersionedKind, kindForName, LIBRARY_REFUSALS, LibraryCatalogError, MAX_FILE_BYTES,
 	REFERENCE_INLINE_MAX_BYTES, uploadName,
 	pageVersionName, type LibraryItem, type LibraryMarks, type LibraryRefusal, type LibraryRefusalCode, type PageVersionCause, type PageWriteResult,
 } from "../core/library.ts";
@@ -210,6 +210,9 @@ const INLINE_TYPES: Record<string, string> = {
  *  no-transform keeps Next's gzip off: a byte range is only usable unencoded. */
 const CONTENT_CACHE = "private, no-cache, no-transform";
 
+/** A versioned chunk's bytes never change: the version is in its URL (R1a). */
+const CHUNK_CACHE = "private, max-age=31536000, immutable, no-transform";
+
 /** Strong and opaque; changes with the item, the file's size or its mtime. */
 function documentTag(item: LibraryItem, stat: DocumentStat): string {
 	return `"${createHash("sha256").update(`${item.id}\0${stat.size}\0${stat.mtimeMs}`).digest("base64url").slice(0, 32)}"`;
@@ -258,8 +261,29 @@ function contentHeaders(item: LibraryItem, tag: string, download: boolean): Head
 }
 
 type ContentPlan =
-	| { status: 304 | 416 | 200; tag: string; size: number }
-	| { status: 206; tag: string; size: number; range: ByteRange };
+	| { status: 304 | 412 | 416 | 200; tag: string; size: number }
+	| { status: 206; tag: string; size: number; range: ByteRange }
+	| { status: "chunk"; tag: string; size: number; range: ByteRange };
+
+type ChunkAsk = { version: string; index: number; chunkSize: number };
+
+/** `?v=&chunk=&size=` (contract revision): null when absent, "bad" when malformed. */
+function chunkAsk(params: URLSearchParams): ChunkAsk | "bad" | null {
+	if (!params.has("chunk") && !params.has("v") && !params.has("size")) return null;
+	const version = params.get("v") ?? "";
+	const index = params.get("chunk") ?? "";
+	const size = params.get("size") ?? "";
+	if (!version || !/^\d{1,9}$/.test(index) || !/^\d{1,7}$/.test(size) || !CONTENT_CHUNK_SIZES.includes(Number(size))) return "bad";
+	return { version, index: Number(index), chunkSize: Number(size) };
+}
+
+/** A chunk of this version, or why not. */
+function chunkPlan(ask: ChunkAsk, tag: string, size: number): ContentPlan {
+	if (`"${ask.version}"` !== tag) return { status: 412, tag, size };
+	const start = ask.index * ask.chunkSize;
+	if (start >= size) return { status: 416, tag, size };
+	return { status: "chunk", tag, size, range: { start, end: Math.min(start + ask.chunkSize, size) - 1 } };
+}
 
 /** What a request gets for this version of the file. */
 function contentPlan(request: Request, tag: string, size: number): ContentPlan {
@@ -278,21 +302,31 @@ export function libraryContentResponse(request: Request, id: string): Promise<Re
 		const missing = () => json({ error: "That item is no longer in your Library." }, 404);
 		const item = await libraryStore.get(id);
 		if (!item || isVersionedKind(item.kind)) return missing();
+		const params = new URL(request.url).searchParams;
+		const ask = chunkAsk(params);
+		if (ask === "bad") return json({ error: "That part of the file can't be read." }, 400);
 		const chosen: { plan?: ContentPlan } = {};
 		const opened = await openDocumentStream(libraryStore.documentPath(item), (stat) => {
-			const plan = chosen.plan = contentPlan(request, documentTag(item, stat), stat.size);
-			return plan.status === 206 ? plan.range : plan.status === 200 ? "all" : "none";
+			const tag = documentTag(item, stat);
+			const plan = chosen.plan = ask ? chunkPlan(ask, tag, stat.size) : contentPlan(request, tag, stat.size);
+			return plan.status === 206 || plan.status === "chunk" ? plan.range : plan.status === 200 ? "all" : "none";
 		});
 		const plan = chosen.plan;
 		if (!opened || !plan) return missing();
 		if (plan.status === 304) return new Response(null, { status: 304, headers: { "ETag": plan.tag, "Cache-Control": CONTENT_CACHE } });
-		const download = new URL(request.url).searchParams.get("download") === "1";
-		const headers = contentHeaders(item, plan.tag, download);
+		if (plan.status === 412) return json({ error: "This file changed. Reload it.", code: "stale" }, 412);
+		const headers = contentHeaders(item, plan.tag, params.get("download") === "1");
 		if (plan.status === 416) {
 			headers.set("Content-Range", `bytes */${plan.size}`);
 			return new Response(null, { status: 416, headers });
 		}
 		const body = Readable.toWeb(opened.stream!) as ReadableStream<Uint8Array>;
+		if (plan.status === "chunk") {
+			headers.set("Cache-Control", CHUNK_CACHE);
+			headers.delete("Accept-Ranges");
+			headers.set("Content-Length", String(plan.range.end - plan.range.start + 1));
+			return new Response(body, { status: 200, headers });
+		}
 		if (plan.status === 206) {
 			headers.set("Content-Range", `bytes ${plan.range.start}-${plan.range.end}/${plan.size}`);
 			headers.set("Content-Length", String(plan.range.end - plan.range.start + 1));

@@ -5,6 +5,7 @@ import { describe, it } from "node:test";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DocSnippetText, docHitPlace } from "../components/library/doc-snippet.tsx";
 import { pdfLoadOptions, PDF_WORKER_SRC } from "../components/library/pdf-options.ts";
+import { PDF_CHUNK_SIZE } from "../components/library/pdf-transport.ts";
 import { LibraryRow } from "../components/library/library-row.tsx";
 import { splitAtLine } from "../components/library/read-only-view.tsx";
 import { documentTutorMessage, DOCUMENT_TUTOR_ACTIONS } from "../components/library/page-tutor-actions.ts";
@@ -35,7 +36,7 @@ describe("the reader's options", () => {
 		// Ranges only: page 1 without the whole file (feature 024).
 		assert.equal(options.disableStream, true);
 		assert.equal(options.disableAutoFetch, true);
-		assert.equal(options.rangeChunkSize, 262144);
+		assert.equal(options.rangeChunkSize, PDF_CHUNK_SIZE);
 		for (const url of [options.standardFontDataUrl, options.cMapUrl, options.wasmUrl, options.iccUrl, PDF_WORKER_SRC]) assert.ok(url.startsWith("/pdfjs/"), url);
 	});
 	it("doesn't use pdf.js's scripting or annotation layers, or a CDN, anywhere in the reader", () => {

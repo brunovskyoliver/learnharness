@@ -10,6 +10,9 @@ export const REFERENCE_MESSAGE_MAX_BYTES = 64 * 1024;
 export const REFERENCE_MAX_PER_MESSAGE = 8;
 export const OUTLINE_MAX_BYTES = 8 * 1024;
 export const PAGE_MAX_BYTES = 1_048_576;
+/** Chunk sizes the content route serves at versioned URLs (feature 024, R1a):
+ *  a small fixed set, so a client can't make the cache hold arbitrary slices. */
+export const CONTENT_CHUNK_SIZES: readonly number[] = [16_384, 32_768, 65_536, 131_072, 262_144];
 /** Text kinds must decode as strict UTF-8 over this many leading bytes. */
 export const CONTENT_CHECK_BYTES = 1_048_576;
 const NUL_CHECK_BYTES = 8 * 1024;
