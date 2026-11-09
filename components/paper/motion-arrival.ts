@@ -174,11 +174,26 @@ export function useLeavingRows(rows: readonly ReactElement<RowMotionProps>[] | n
  * Order props for a list's own late arrival (`[data-row-order]` + `--j`):
  * its rows ink in staggered when the data lands after the page arrived
  * (SkeletonLift, components/ui/skeleton.tsx). Only the leading rows take
- * part (FR-011).
+ * part; the rest of the first viewport takes the last step (FR-011).
  */
 export function rowOrder(index: number, limit = staggerCount(STAGGER.desktop)): { "data-row-order"?: ""; style?: CSSProperties } {
-	if (!(index >= 0) || index >= limit) return {};
-	return { "data-row-order": "", style: { "--j": Math.floor(index) } as CSSProperties };
+	const slot = orderSlot(index, limit);
+	return slot === null ? {} : { "data-row-order": "", style: { "--j": slot } as CSSProperties };
+}
+
+/**
+ * The most items a first viewport holds (Home's rows are ~44px; 900px fits
+ * about 20). Items past the stagger's last step but within this many still
+ * ink in, with that last step, so the first viewport never shows a later row
+ * solid before an earlier one (rows 2, 13, 29; FR-011 caps the delay, not
+ * the ink-in); items past it are below the fold and arrive finished.
+ */
+const FIRST_VIEWPORT_ITEMS = 24;
+
+/** The stagger slot of the item at `index`: its own up to the cap, then the cap's; null below the fold. */
+function orderSlot(index: number, limit: number): number | null {
+	if (!(index >= 0) || index >= Math.max(limit, FIRST_VIEWPORT_ITEMS)) return null;
+	return Math.min(Math.floor(index), limit - 1);
 }
 
 // ─── Settled history (rows 17-19) ────────────────────────────────────────────
@@ -206,12 +221,13 @@ export function wasPosedCheck(id: string): boolean { return posed.has(id); }
 
 /**
  * Reading-order props for the item at `index` inside an arriving region
- * (`[data-ink-order]` + `--i`). Only the leading items take part; later ones
- * get none and arrive finished (FR-011, R6).
+ * (`[data-ink-order]` + `--i`). The leading items stagger; later ones in the
+ * first viewport ink in with the last step; items below the fold get none
+ * and arrive finished (FR-011, R6).
  */
 export function inkOrder(index: number, limit = staggerCount(STAGGER.desktop)): { "data-ink-order"?: ""; style?: CSSProperties } {
-	if (!(index >= 0) || index >= limit) return {};
-	return { "data-ink-order": "", style: { "--i": Math.floor(index) } as CSSProperties };
+	const slot = orderSlot(index, limit);
+	return slot === null ? {} : { "data-ink-order": "", style: { "--i": slot } as CSSProperties };
 }
 
 // ─── <MotionArrival /> (root layout) ─────────────────────────────────────────

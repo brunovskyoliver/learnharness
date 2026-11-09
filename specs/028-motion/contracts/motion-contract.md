@@ -36,7 +36,7 @@ The catalogue the implementation and the tests check against. Spec rows keep the
 
 Literal timings that equal a token are rewritten to it; literals that equal none keep their value (the `ease-out` keyword on `nb-settle`, `nb-side-in`, `nb-fade-in`; `nb-code-in` .42s; the sketch pops' curves; `nb-desk-catch-in`). Existing keyframe names never change.
 
-New keyframes: `lh-lift` (opacity 1 → 0), `lh-fade` (0 → 1), `lh-dialog-rise` (opacity 0, `translateY(6px) scale(.98)` → none), `lh-sheet-in` (opacity 0, `translateX(-16px)` → none), `lh-soak` (feathered radial mask, 24px edge, radius `--lh-soak-p` 0 → `--lh-soak-r` + 24px; `clip-path: circle()` where `@property` is missing; gate 2), `lh-mark-draw` (`stroke-dashoffset` 1 → 0). Only transform, opacity, clip-path, mask (including the registered `--lh-soak-p` radius that drives it) and stroke-dashoffset are animated (FR-017).
+New keyframes: `lh-lift` (opacity 1 → 0), `lh-fade` (0 → 1), `lh-dialog-rise` (opacity 0, `translateY(6px) scale(.98)` → none), `lh-sheet-in` (opacity 0, `translateX(-16px)` → none), `lh-soak` (feathered radial mask with a graded edge `--lh-soak-f` wide, about a sixth of the reach, 64-280px (lead review, phase 8; was 24px, which read as a crisp circle), radius `--lh-soak-p` 0 → `--lh-soak-r` + `--lh-soak-f`; `clip-path: circle()` where `@property` is missing; gate 2), `lh-mark-draw` (`stroke-dashoffset` 1 → 0). Only transform, opacity, clip-path, mask (including the registered `--lh-soak-p` radius that drives it) and stroke-dashoffset are animated (FR-017).
 
 ## 2. Signature (rows 1-2)
 

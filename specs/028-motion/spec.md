@@ -168,7 +168,7 @@ Tokens in the Duration/easing column are defined in "Motion tokens" below. "Once
 | 20 | Expand demo / graph focus | Expand | Existing expand (≤160ms) unchanged | as today | as today |
 | 21 | Back pill | Appears / leaves | Pops in with the sketch pop (5px rise, .92→1); leaves with a lift | `nb-sketch-pop-in` 380ms; 120ms | Fade ≤150ms |
 | 22 | Reference chips | In a streaming reply; hover | Ink in as one word unit (as 027); on hover/focus a pencil underline draws under the label | ink-word; underline 200ms `--ease-pencil` | Underline shown, no draw |
-| 23 | Theme change | Customize → Appearance (the chosen option card) | Ink soak: the new theme spreads from the control's position like ink into paper (view transition, clip-path or mask on the new snapshot), replacing the .35s cross-fade | `--motion-soak` 450ms `--ease-unfold`, feathered mask edge (24px) | Fade ≤150ms |
+| 23 | Theme change | Customize → Appearance (the chosen option card) | Ink soak: the new theme spreads from the control's position like ink into paper (view transition, clip-path or mask on the new snapshot), replacing the .35s cross-fade | `--motion-soak` 450ms `--ease-unfold`, feathered mask edge (about a sixth of the reach, 64-280px; was 24px, lead review phase 8) | Fade ≤150ms |
 | 24 | Status lines (Saved, All notes saved, Syncing…, Linking…, errors) | Text changes | New text settles; old text lifts; no layout shift | settle 200ms; lift 120ms | Text cross-fades ≤150ms |
 | 25 | Waiting / thinking | Pending work | Breathing blot (as 024) everywhere a spinner remains outside tool rows | `nb-ink-wait` | Static at .7 |
 | 26 | Pills and toolbar words | Hover / press / release | Hover: shelf fill (as today); press: scale .97; release: springs back; ink pill press darkens | hover 150ms; press `--motion-press` 100ms `--ease-out`; release 220ms `--spring-pop` | Colour only, no scale |
@@ -254,7 +254,7 @@ New custom properties on `html.lh-paper` in app/paper.css, named after the 024 m
 **Platform transitions**
 
 - **FR-023**: Route changes (rows 4-5) and the Notebook ⇄ Study switch (row 3) MUST use the platform's view transitions where available, tagged by navigation kind (in-app route, mode switch; browser back/forward carries none), with the same motion delivered by on-arrival keyframes where view transitions are missing. The transition layer MUST NOT take pointer events: clicks, typing and shortcuts reach the live page while it runs.
-- **FR-024**: A theme change MUST play the ink soak (row 23), a growing circle with a feathered 24px edge, from the centre of the control that made it; a change with no control (the OS switching while the theme follows the system) changes at once as today. It MUST NOT restart other animations, reload demos or move content.
+- **FR-024**: A theme change MUST play the ink soak (row 23), a growing circle with a wide feathered edge (about a sixth of its reach, 64-280px; lead review 2026-11-09, phase 8: the 24px edge read as a crisp circle against the owner's "feathered"), from the centre of the control that made it; a change with no control (the OS switching while the theme follows the system) changes at once as today. It MUST NOT restart other animations, reload demos or move content.
 - **FR-025**: Phones (viewports below 640px) MUST get the same catalogue, with stagger steps of 24ms and a cap of 160ms (desktop 40ms / 240ms; the sidebar and Library keep their own caps when lower); nothing is removed for phones.
 
 ### Key Entities

@@ -159,15 +159,15 @@ description: "Tasks for feature 028, one motion language"
 
 ## Phase 8: Polish and cross-cutting
 
-- [ ] T076 Rewrite DESIGN.md "Motion" (tokens, the five verbs, the catalogue in short, signature once per tab, live arrival, reduced motion per FR-013, ink soak) and the Tokens line on the theme cross-fade (FR-022)
-- [ ] T077 Throttled mobile profile (4× CPU, Fast 3G) on `/` and `/library`: LCP before/after and long tasks over 50ms from motion code (SC-007); evidence in `~/agent-runs/2026-11-09-motion/perf/`
-- [ ] T078 Measure startup after the feature at desktop and 390 (`startup-after.json`, `startup-after-390.json`); each route ≤ +5% gzip of T002 (SC-006, FR-019)
-- [ ] T079 Check every motion surface with the `impeccable` skill (animate and audit); fix or record findings in specs/028-motion/progress.md
-- [ ] T080 Check with the `web-design-guidelines` skill (reduced motion, focus, input during animation); fix or record findings
-- [ ] T081 Walk quickstart.md §3 at 320, 390 and 1440 px, light and dark, reduced motion on and off, including print
-- [ ] T082 Record all 30 catalogue rows side by side (light, dark, one reduced-motion pass) into `~/agent-runs/2026-11-09-motion/recordings/` for the owner (SC-008)
-- [ ] T083 Run `npm test`, `npm run lint`, `npm run typecheck`, `npm run build` and `npm run test:e2e`; record pre-existing failures separately from new ones in specs/028-motion/progress.md
-- [ ] T084 Write the Report in specs/028-motion/progress.md: what changed, how it was verified, what is left
+- [X] T076 Rewrite DESIGN.md "Motion" (tokens, the five verbs, the catalogue in short, signature once per tab, live arrival, reduced motion per FR-013, ink soak) and the Tokens line on the theme cross-fade (FR-022)
+- [X] T077 Throttled mobile profile (4× CPU, Fast 3G) on `/` and `/library`: LCP before/after and long tasks over 50ms from motion code (SC-007); evidence in `~/agent-runs/2026-11-09-motion/perf/`
+- [X] T078 Measure startup after the feature at desktop and 390 (`startup-after.json`, `startup-after-390.json`); each route ≤ +5% gzip of T002 (SC-006, FR-019)
+- [X] T079 Check every motion surface with the `impeccable` skill (animate and audit); fix or record findings in specs/028-motion/progress.md
+- [X] T080 Check with the `web-design-guidelines` skill (reduced motion, focus, input during animation); fix or record findings
+- [X] T081 Walk quickstart.md §3 at 320, 390 and 1440 px, light and dark, reduced motion on and off, including print
+- [X] T082 Record all 30 catalogue rows side by side (light, dark, one reduced-motion pass) into `~/agent-runs/2026-11-09-motion/recordings/` for the owner (SC-008)
+- [X] T083 Run `npm test`, `npm run lint`, `npm run typecheck`, `npm run build` and `npm run test:e2e`; record pre-existing failures separately from new ones in specs/028-motion/progress.md
+- [X] T084 Write the Report in specs/028-motion/progress.md: what changed, how it was verified, what is left
 
 ---
 

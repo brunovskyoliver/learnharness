@@ -3616,9 +3616,9 @@ html:active-view-transition-type(lh-theme)::view-transition-group(root) { animat
 		mix-blend-mode: normal;
 		mask-image: radial-gradient(circle at var(--lh-soak-x, 50%) var(--lh-soak-y, 50%),
 			black calc(var(--lh-soak-p) - var(--lh-soak-f, 240px)),
-			rgb(0 0 0 / 0.82) calc(var(--lh-soak-p) - var(--lh-soak-f, 240px) * 0.72),
-			rgb(0 0 0 / 0.5) calc(var(--lh-soak-p) - var(--lh-soak-f, 240px) * 0.45),
-			rgb(0 0 0 / 0.2) calc(var(--lh-soak-p) - var(--lh-soak-f, 240px) * 0.2),
+			color-mix(in srgb, black 82%, transparent) calc(var(--lh-soak-p) - var(--lh-soak-f, 240px) * 0.72),
+			color-mix(in srgb, black 50%, transparent) calc(var(--lh-soak-p) - var(--lh-soak-f, 240px) * 0.45),
+			color-mix(in srgb, black 20%, transparent) calc(var(--lh-soak-p) - var(--lh-soak-f, 240px) * 0.2),
 			transparent var(--lh-soak-p));
 		animation: var(--motion-soak) var(--ease-unfold) both lh-soak;
 	}

@@ -197,7 +197,7 @@ describe("small parts and the ink soak (feature 028, US5)", () => {
 		const soakRule = /html:active-view-transition-type\(lh-theme\)::view-transition-new\(root\)\s*\{([^}]*)\}/.exec(css)?.[1] ?? "";
 		assert.match(soakRule, /mask-image:\s*radial-gradient\(/);
 		assert.match(soakRule, /black calc\(var\(--lh-soak-p\)\s*-\s*var\(--lh-soak-f, 240px\)\)/);
-		assert.ok((soakRule.match(/rgb\(0 0 0 \/ 0\.\d+\)/g) ?? []).length >= 3, "a graded falloff, not one linear step");
+		assert.ok((soakRule.match(/color-mix\(in srgb, black \d+%, transparent\)/g) ?? []).length >= 3, "a graded falloff, not one linear step");
 		assert.match(soakRule, /transparent var\(--lh-soak-p\)\)/);
 		assert.match(soakRule, /var\(--motion-soak\)\s+var\(--ease-unfold\)\s+both\s+lh-soak/);
 		assert.match(body, /calc\(var\(--lh-soak-r, 2400px\) \+ var\(--lh-soak-f, 240px\)\)/);
