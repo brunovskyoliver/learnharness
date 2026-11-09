@@ -10,7 +10,7 @@
 
 /** Kit files a frame may receive. Extend here (and in the contract) when the
  *  kit build adds a file. */
-export const DEMO_LIB_FILES = ["runtime.js", "vega.js", "plotly.js", "flow.js", "flow.css"] as const;
+export const DEMO_LIB_FILES = ["runtime.js", "vega.js", "plotly-light.js", "plotly.js", "flow.js", "flow.css"] as const;
 export type DemoLibFile = (typeof DEMO_LIB_FILES)[number];
 
 export function isDemoLibFile(file: unknown): file is DemoLibFile {

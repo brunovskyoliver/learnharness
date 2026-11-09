@@ -9,6 +9,7 @@ import { distribution, sample, type SamplingOptions, type SamplingToken, type Sa
 import { forward, backward, steps, type NetworkSpec, type ForwardPass, type BackwardPass } from "../core/ml-net.ts";
 import { arithmetic, nearest, coordinates, validatePoints, type Point, type Arithmetic } from "../core/ml-vectors.ts";
 import { layeredLayout } from "../core/demo-kit-layout.ts";
+import { lightPlotlyCovers } from "./plotly-gate.ts";
 import type { FinalizedDemoKitPanel as DemoKitPanel, FinalizedDemoKitSpec as DemoKitSpec, TokenizedPanel, Token, TokenEncoding } from "../core/demo-kit.ts";
 
 type Values = Record<string, any>;
@@ -27,6 +28,7 @@ declare global {
 		vega?: any;
 		vegaLite?: any;
 		Plotly?: any;
+		PlotlyLight?: any;
 		LHFlow?: FlowApi;
 		__lhKit?: KitApi;
 	}
@@ -65,6 +67,13 @@ function fromParent(file: string): Promise<void> {
 		window.addEventListener("message", onMessage);
 		window.parent.postMessage({ type: "demo-lib-request", file }, "*");
 	});
+}
+
+/** The light plotly (plotly-light.js, its own `PlotlyLight` global) or the
+ *  full one (`Plotly`; the light entry never replaces it). */
+async function plotlyBuild(light: boolean): Promise<any> {
+	await load(light ? "plotly-light.js" : "plotly.js");
+	return light ? window.PlotlyLight : window.Plotly;
 }
 
 const loaded = new Map<string, Promise<void>>();
@@ -1242,8 +1251,9 @@ class Kit {
 	}
 
 	private async plot3d(panel: Extract<DemoKitPanel, { type: "plot3d" }>, box: HTMLElement, data?: () => Values[]): Promise<PanelView> {
-		await load("plotly.js");
-		const Plotly = window.Plotly;
+		const initial = (() => { try { return data ? data() : this.eval(panel.traces); } catch { return undefined; } })();
+		let light = lightPlotlyCovers(initial) && !loaded.has("plotly.js");
+		let Plotly = await plotlyBuild(light);
 		const target = el("div", "k-chart");
 		box.append(target);
 		const axis = { color: theme.muted, gridcolor: theme.border, zerolinecolor: theme.border, linecolor: theme.border };
@@ -1288,6 +1298,12 @@ class Kit {
 			resize: async () => { await Plotly.relayout(target, { width: target.clientWidth, height: this.focusIndex === null ? layout.height : Math.max(160, box.clientHeight - 50) }); },
 			update: async () => {
 				const traces = (data ? data() : this.eval(panel.traces) ?? []) as { type?: string }[];
+				// A trace type outside the light build: this plot moves to the full one.
+				if (light && !lightPlotlyCovers(traces)) {
+					Plotly.purge(target);
+					light = false;
+					Plotly = await plotlyBuild(false);
+				}
 				// 3D scenes fill the panel; 2D plots keep room for axis labels.
 				const scene = traces.some((tr) => SCENE.has(tr.type ?? ""));
 				const margin = scene ? { l: 0, r: 0, t: 0, b: 0, ...(extra.margin ?? {}) } : layout.margin;

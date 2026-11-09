@@ -9,7 +9,7 @@ function counting(body: (url: string) => Response | Promise<Response>) {
 }
 
 it("allows exactly the kit files of the bridge contract", () => {
-	assert.deepEqual([...DEMO_LIB_FILES], ["runtime.js", "vega.js", "plotly.js", "flow.js", "flow.css"]);
+	assert.deepEqual([...DEMO_LIB_FILES], ["runtime.js", "vega.js", "plotly-light.js", "plotly.js", "flow.js", "flow.css"]);
 	for (const file of DEMO_LIB_FILES) assert.ok(isDemoLibFile(file));
 	for (const bad of ["", "plotly", "../auth.json", "runtime.js?x", "/demo-kit/vega.js", "VEGA.JS", 1, null, undefined, {}]) assert.equal(isDemoLibFile(bad), false);
 });
@@ -18,7 +18,7 @@ it("never fetches a file outside the allow-list", async () => {
 	const { calls, fetcher } = counting(() => new Response("x"));
 	const cache = createDemoLibCache({ fetcher, version: "abc" });
 	await assert.rejects(cache.get("../../auth.json"), /could not load/);
-	await assert.rejects(cache.get("plotly-light.js"), /could not load/);
+	await assert.rejects(cache.get("plotly-heavy.js"), /could not load/);
 	assert.deepEqual(calls, []);
 });
 

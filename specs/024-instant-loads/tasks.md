@@ -43,11 +43,11 @@ Format: `- [ ] Txxx [P] [USn] description (path)`.
 
 **Goal**: light plotly by default, full per plot when needed. **Independent test**: cold 4-plot chat bytes and longest task.
 
-- [ ] T018 [US3] `src/demo-kit/plotly-light-entry.ts`: plotly core + scatter3d, surface, mesh3d, cone, streamtube, isosurface, volume, contour, heatmap; exposes `window.Plotly`
-- [ ] T019 [US3] Build `public/demo-kit/plotly-light.js` in `scripts/build-demo-kit.mjs`; print its raw and gzip size; add it to the bridge allow-list (`contracts/demo-lib-bridge.md`, `demo-lib-cache.ts`)
-- [ ] T020 [P] [US3] Test the pure trace-type gate (`lightPlotlyCovers(traces)`; default type `scatter`) (`tests/demo-kit-plotly-gate.test.ts`)
-- [ ] T021 [US3] `plot3d` in the runtime: load `plotly-light.js` when covered, else `plotly.js`; camera, invert, resize, focus and theme behave as before (`src/demo-kit/runtime.ts`)
-- [ ] T022 [US3] Headless check: built-in quick plot (surface + contour) renders with the light build; a plot with a `bar` trace loads the full build and renders
+- [X] T018 [US3] `src/demo-kit/plotly-light-entry.ts`: plotly core + scatter3d, surface, mesh3d, cone, streamtube, isosurface, volume, contour, heatmap; exposes `window.Plotly`
+- [X] T019 [US3] Build `public/demo-kit/plotly-light.js` in `scripts/build-demo-kit.mjs`; print its raw and gzip size; add it to the bridge allow-list (`contracts/demo-lib-bridge.md`, `demo-lib-cache.ts`)
+- [X] T020 [P] [US3] Test the pure trace-type gate (`lightPlotlyCovers(traces)`; default type `scatter`) (`tests/demo-kit-plotly-gate.test.ts`)
+- [X] T021 [US3] `plot3d` in the runtime: load `plotly-light.js` when covered, else `plotly.js`; camera, invert, resize, focus and theme behave as before (`src/demo-kit/runtime.ts`)
+- [X] T022 [US3] Headless check: built-in quick plot (surface + contour) renders with the light build; a plot with a `bar` trace loads the full build and renders
 
 ## Phase 5: User Story 4 — Pages load with less code (P3)
 

@@ -61,7 +61,7 @@ it("3D scatter uses Plotly with keyboard highlight, pinning and unchanged camera
 	const browser = await puppeteer.launch({ executablePath: chrome, args: ["--no-sandbox", "--enable-unsafe-swiftshader"], headless: true });
 	try {
 		const page = await browser.newPage(); await page.setViewport({ width: 1440, height: 900, hasTouch: true, isMobile: true }); await page.setRequestInterception(true);
-		page.on("request", request => { if (request.url().endsWith("/plotly.js")) void request.respond({ status: 200, contentType: "application/javascript", body: readFileSync("public/demo-kit/plotly.js") }); else void request.abort(); });
+		page.on("request", request => { const plotly = /\/(plotly(?:-light)?\.js)$/.exec(request.url()); if (plotly) void request.respond({ status: 200, contentType: "application/javascript", body: readFileSync(`public/demo-kit/${plotly[1]}`) }); else void request.abort(); });
 		await mount(page, { ...panel, title: "Word vectors, 3D", points: JSON.stringify(points.map((point, i) => ({ ...point, z: i / 10 }))) });
 		assert.equal(await page.$$eval(".k-scatter-3d .js-plotly-plot", es => es.length), 1);
 		await page.focus(".k-scatter-point"); await page.keyboard.press("ArrowRight");

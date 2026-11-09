@@ -132,7 +132,7 @@ it("3D linked points receive a Plotly highlight without changing selection or ca
 	const browser = await puppeteer.launch({ executablePath: chrome, args: ["--no-sandbox", "--enable-unsafe-swiftshader"], headless: true });
 	try {
 		const page = await browser.newPage(); await page.setRequestInterception(true);
-		page.on("request", request => { if (request.url().endsWith("/plotly.js")) void request.respond({ status: 200, contentType: "application/javascript", body: readFileSync("public/demo-kit/plotly.js") }); else void request.abort(); });
+		page.on("request", request => { const plotly = /\/(plotly(?:-light)?\.js)$/.exec(request.url()); if (plotly) void request.respond({ status: 200, contentType: "application/javascript", body: readFileSync(`public/demo-kit/${plotly[1]}`) }); else void request.abort(); });
 		await mount(page, { panels: [{ ...panels[0]!, link: "words" }, { type: "scatter", title: "3D", link: "words", metric: "euclidean", points: '[{"label":"cat","x":1,"y":2,"z":3},{"label":" dog","x":2,"y":1,"z":4}]' }] });
 		const readout = await page.$eval('.k-panel:nth-child(2) .k-readout-line', el => el.textContent);
 		await page.evaluate(async () => window.Plotly.relayout(document.querySelector('.js-plotly-plot'), { "scene.camera.eye": { x: 2, y: 1, z: .5 } }));

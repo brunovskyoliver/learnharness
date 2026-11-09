@@ -8,3 +8,5 @@ Parent → frame: `{ type: "lh-demo-lib", file, code }` (`code` string) or `{ ty
 The frame's `load(file)` resolves on `code` (injects `<script>`/`<style>` with textContent), rejects on `error` (existing "could not load" failure), and uses `<script src>` when it has no parent (`window.parent === window`) — downloaded demos and the headless checker.
 
 Static references in demo HTML (`<script src="/demo-kit/F">`, `<link rel="stylesheet" href="/demo-kit/flow.css">`) are inlined by the parent before the srcdoc is set; the file list is the same.
+
+`plotly-light.js` (phase 4) is requested only by the kit runtime's `plot3d`, when every trace type is in `LIGHT_PLOTLY_TRACES` (`src/demo-kit/plotly-gate.ts`); it sets `window.PlotlyLight` and never replaces a full `window.Plotly`. Static `<script src="/demo-kit/plotly.js">` tags in hand-written demos keep the full build.
