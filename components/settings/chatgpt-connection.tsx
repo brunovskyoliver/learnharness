@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createLiveContext } from "@/components/live-context";
 import type { ChatGPTStatus } from "@/src/core";
 import { ConnectionDialog, ConnectionFooter, ConnectionRow } from "./connection-controls";
 import { Button } from "@/components/ui/button";
@@ -32,7 +33,9 @@ function isStatus(value: unknown): value is ChatGPTStatus {
 function replyError(value: unknown): string {
 	return value && typeof value === "object" && "error" in value && typeof value.error === "string" ? value.error : CONTROL_ERROR;
 }
-const Context = createContext({
+// A live context (feature 024): its value never changes identity, so a status
+// that lands before the page hydrates can't discard the streamed page.
+const Context = createLiveContext({
 	status: empty,
 	busy: false,
 	error: null as string | null,
@@ -358,7 +361,7 @@ function AccountDialog({ children, onClose, busy }: { children: React.ReactNode;
 
 /** Shared compact settings/setup row; account selection precedes the quiet action. */
 export function ChatGPTConnection(_props: { setup?: boolean } = {}) {
-	const ui = useContext(Context);
+	const ui = Context.useValue();
 	const active = ui.status.accounts.find((a) => a.id === ui.status.activeId && a.connected);
 	const accounts = ui.status.accounts.filter((a) => a.connected);
 	return <div className="flex scroll-mt-4 flex-col gap-2 rounded-md" data-testid="chatgpt-connection" data-settings-row="chatgpt">
@@ -374,7 +377,7 @@ export function ChatGPTConnection(_props: { setup?: boolean } = {}) {
 
 /** Contextual consent discovery belongs beside background model choices only. */
 export function ChatGPTBackgroundAccess({ provider }: { provider: string | undefined }) {
-	const ui = useContext(Context);
+	const ui = Context.useValue();
 	const account: Account | undefined = ui.status.accounts.find((a) => a.id === ui.status.activeId && a.connected);
 	if (provider !== "chatgpt" || !account || ui.status.allowBackgroundUse) return null;
 	return <Button type="button" size="xs" variant="ghost" className="cursor-pointer pointer-coarse:min-h-11" disabled={ui.busy} onClick={() => ui.manage(account.id)}>Enable background use</Button>;

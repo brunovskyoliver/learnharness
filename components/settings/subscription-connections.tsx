@@ -1,5 +1,6 @@
 "use client";
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createLiveContext } from "@/components/live-context";
 import { NATIVE_SUBSCRIPTIONS, type NativeSubscriptionProviderId, type NativeSubscriptionStatus } from "@/src/core";
 import { Button } from "@/components/ui/button";
 import { notifySettingsSaved } from "@/components/settings-signal";
@@ -13,7 +14,9 @@ export const SUBSCRIPTION_BACKGROUND_HINT = "Allow Brunovský's study helper age
 export function subscriptionNotice(label: string, web = false): string { return `Your prompts, tool results, and relevant session context are sent to ${label} to run the work you select. Credentials are stored ${web ? "on the machine running Brunovský's study" : "locally"} in an owner-only plaintext file. Provider terms, data-use policies, and plan limits apply. This connection never falls back to an API key.`; }
 export function subscriptionDisconnectCopy(label: string, web = false): string { return `Disconnect ${label} from Brunovský's study? This stops work using this connection and removes its saved credentials from ${web ? "the machine running Brunovský's study" : "this device"}. It does not cancel your subscription or revoke access at the provider. Saved model choices will remain unavailable until you reconnect or change them.`; }
 export function emptySubscriptionStatus(providerId: NativeSubscriptionProviderId): NativeSubscriptionStatus { return { providerId, available: false, connected: false, pending: false, allowBackgroundUse: true, connectionId: null, epoch: 0, authorityRevision: 0, revision: 0 }; }
-const Context = createContext({ statuses: [] as NativeSubscriptionStatus[], busy: false, open: (_providerId: NativeSubscriptionProviderId) => {} });
+// A live context (feature 024): its value never changes identity, so a status
+// that lands before the page hydrates can't discard the streamed page.
+const Context = createLiveContext({ statuses: [] as NativeSubscriptionStatus[], busy: false, open: (_providerId: NativeSubscriptionProviderId) => {} });
 const CONTROL_ERROR = "The connection could not be changed. Try again.";
 
 export function NativeSubscriptionUIProvider({ children }: { children: React.ReactNode }) {
@@ -120,7 +123,7 @@ export function NativeSubscriptionUIProvider({ children }: { children: React.Rea
 }
 
 export function NativeSubscriptionConnection({ providerId }: { providerId: NativeSubscriptionProviderId }) {
-	const ui = useContext(Context), descriptor = NATIVE_SUBSCRIPTIONS.find((p) => p.providerId === providerId)!;
+	const ui = Context.useValue(), descriptor = NATIVE_SUBSCRIPTIONS.find((p) => p.providerId === providerId)!;
 	const status = ui.statuses.find((s) => s.providerId === providerId) ?? emptySubscriptionStatus(providerId);
 	return <div className="flex scroll-mt-4 flex-col gap-2 rounded-md" data-testid={`${providerId}-connection`} data-settings-row={providerId}>
 		<ConnectionRow label={descriptor.label} action={status.connectionId ? "Manage…" : "Connect"} disabled={ui.busy || !status.available || ui.statuses.some((s) => s.pending)} onAction={() => ui.open(providerId)} />
@@ -131,7 +134,7 @@ export function SubscriptionConnections({ setup = false, without }: { setup?: bo
 	return <div data-testid="subscription-connections">{without !== "chatgpt" && <ChatGPTConnection setup={setup} />}{NATIVE_SUBSCRIPTIONS.map((p) => <NativeSubscriptionConnection key={p.providerId} providerId={p.providerId} />)}</div>;
 }
 export function NativeSubscriptionBackgroundAccess({ provider }: { provider: string | undefined }) {
-	const ui = useContext(Context), descriptor = NATIVE_SUBSCRIPTIONS.find((p) => p.logicalId === provider);
+	const ui = Context.useValue(), descriptor = NATIVE_SUBSCRIPTIONS.find((p) => p.logicalId === provider);
 	const status = ui.statuses.find((s) => s.providerId === descriptor?.providerId);
 	if (!descriptor || !status?.connected || status.allowBackgroundUse) return null;
 	return <Button type="button" size="xs" variant="ghost" className="pointer-coarse:min-h-11" disabled={ui.busy} onClick={() => ui.open(descriptor.providerId)}>Enable background use</Button>;

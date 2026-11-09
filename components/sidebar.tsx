@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, Fragment, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import { usePathname, useRouter } from "next/navigation";
@@ -19,6 +19,7 @@ import { Hint } from "@/components/ui/hint";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { createLiveContext } from "@/components/live-context";
 import { fuzzyScore } from "@/src/core";
 import type { ChatListItem } from "@/src/core";
 import { kbdEventForAction } from "@/src/core";
@@ -88,7 +89,10 @@ declare global {
 	}
 }
 
-const SidebarContext = createContext<{ initializing: boolean; open: boolean; overlay: boolean; close: () => void; toggle: () => void }>({
+type SidebarState = { initializing: boolean; open: boolean; overlay: boolean; close: () => void; toggle: () => void };
+// A live context: the value above the page's Suspense boundary never changes
+// identity, so the mount-time restore no longer discards the streamed page (024).
+const SidebarContext = createLiveContext<SidebarState>({
 	initializing: true,
 	open: false,
 	overlay: false,
@@ -97,7 +101,7 @@ const SidebarContext = createContext<{ initializing: boolean; open: boolean; ove
 });
 
 export function useSidebar() {
-	return useContext(SidebarContext);
+	return SidebarContext.useValue();
 }
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
@@ -187,8 +191,9 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 		return () => window.removeEventListener(event, onToggle);
 	}, [toggle]);
 
+	const value = useMemo<SidebarState>(() => ({ initializing: !mounted, open: narrow ? !IS_ELECTRON && overlayOpen : open, overlay: narrow && !IS_ELECTRON, close, toggle }), [mounted, narrow, overlayOpen, open, close, toggle]);
 	return (
-		<SidebarContext.Provider value={{ initializing: !mounted, open: narrow ? !IS_ELECTRON && overlayOpen : open, overlay: narrow && !IS_ELECTRON, close, toggle }}>
+		<SidebarContext.Provider value={value}>
 			{/* transitions gated on mount: no slide-in flash on page load */}
 			<div className={cn("flex h-dvh", mounted && "[&_.sidebar-motion]:transition-[width,margin,opacity]")}>{children}</div>
 		</SidebarContext.Provider>

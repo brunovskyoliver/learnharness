@@ -1,4 +1,4 @@
-import React, { act, useContext } from "react";
+import React, { act } from "react";
 (globalThis as Record<string, unknown>).React = React;
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -14,7 +14,7 @@ const originalFetch = globalThis.fetch;
 const { SessionAccountContext } = await import("../components/session-state.tsx");
 const { SessionStateStore } = await import("../components/session-state-store.ts");
 const { PagePaneProvider } = await import("../components/library/page-pane-context.tsx");
-const { PagePaneContext } = await import("../components/workspace/pane-context.ts");
+const { usePagePane } = await import("../components/workspace/pane-context.ts");
 const { useQuestionDemoAutoOpen } = await import("../components/question-demo-auto-open.ts");
 
 const tick = () => new Promise((resolve) => setTimeout(resolve, 5));
@@ -31,7 +31,7 @@ async function mount(savedPage: boolean) {
 	const opens: string[] = [];
 	const items: (string | null)[] = [];
 	function Question() {
-		const pane = useContext(PagePaneContext);
+		const pane = usePagePane();
 		items.push(pane?.item?.id ?? null);
 		useQuestionDemoAutoOpen("call_1", { id: "demo_1" }, (id) => { opens.push(id); pane?.close(); });
 		return null;

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createLiveContext } from "@/components/live-context";
 import type { DocJump, LibraryKind } from "@/src/core";
 
 /** What the pane has open. Small and free of the editor, so it can sit in the
@@ -29,9 +29,11 @@ export interface PagePaneApi {
 	update: (item: PaneItem) => void;
 }
 
-export const PagePaneContext = createContext<PagePaneApi | null>(null);
+/** A live context (feature 024): its value never changes identity, so a pane
+ *  restore above the page's Suspense boundary can't discard the streamed page. */
+export const PagePaneContext = createLiveContext<PagePaneApi | null>(null);
 
 /** Null outside the app shell (render tests, previews). */
 export function usePagePane() {
-	return useContext(PagePaneContext);
+	return PagePaneContext.useValue();
 }

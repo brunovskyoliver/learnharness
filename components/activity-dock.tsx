@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createLiveContext } from "@/components/live-context";
 import { ActivityIcon, BotIcon, FileTextIcon, ImageIcon, PenToolIcon, PlayIcon, SearchIcon, SquareIcon, WaypointsIcon } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Item, ItemGroup } from "@/components/ui/item";
@@ -82,7 +83,9 @@ const EMPTY_FEED: ActivityFeed = { jobs: [], extractions: [] };
 
 // ─── The activity feed (composition root: the root layout) ───────────────────
 
-const ActivityContext = createContext<{ feed: ActivityFeed; refresh: () => void }>({
+// A live context (feature 024): its value never changes identity, so a feed
+// that lands before the page hydrates can't discard the streamed page.
+const ActivityContext = createLiveContext<{ feed: ActivityFeed; refresh: () => void }>({
 	feed: EMPTY_FEED,
 	refresh: () => {},
 });
@@ -157,7 +160,8 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
 		[],
 	);
 
-	return <ActivityContext.Provider value={{ feed, refresh }}>{children}</ActivityContext.Provider>;
+	const value = useMemo(() => ({ feed, refresh }), [feed, refresh]);
+	return <ActivityContext.Provider value={value}>{children}</ActivityContext.Provider>;
 }
 
 /** The activity feed seam for the rest of the shell: the dock's data +
@@ -165,7 +169,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
  *  (the extract/import buttons — extraction-coverage, graph-view); every
  *  server-side cause announces itself on the events channel now. */
 export function useActivity(): { feed: ActivityFeed; refresh: () => void } {
-	return useContext(ActivityContext);
+	return ActivityContext.useValue();
 }
 
 // ─── Pure presentation helpers (exported for tests) ──────────────────────────
@@ -292,7 +296,7 @@ const KIND_ICON: Record<JobKind, typeof SearchIcon> = {
 type AbortState = "pending" | "failed";
 
 export function ActivitySection({ feed: feedProp }: { feed?: ActivityFeed }) {
-	const ctx = useContext(ActivityContext);
+	const ctx = ActivityContext.useValue();
 	const feed = feedProp ?? ctx.feed;
 	const refresh = ctx.refresh;
 	const blobs = useMemo(() => toBlobs(feed), [feed]);

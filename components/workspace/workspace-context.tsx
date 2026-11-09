@@ -1,7 +1,8 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { createLiveContext } from "@/components/live-context";
 import { usePagePane } from "./pane-context";
 import { SessionAccountContext } from "@/components/session-state";
 import { SessionStateStore, WORKSPACE_STATE_ID } from "@/components/session-state-store";
@@ -46,11 +47,13 @@ export interface WorkspaceApi {
 	toggleFolder: (id: string, open?: boolean) => void;
 }
 
-const WorkspaceContext = createContext<WorkspaceApi | null>(null);
+// A live context (feature 024): its value never changes identity, so a restore
+// above the page's Suspense boundary can't discard the streamed page.
+const WorkspaceContext = createLiveContext<WorkspaceApi | null>(null);
 
 /** Null outside the app shell (render tests, previews). */
 export function useWorkspace() {
-	return useContext(WorkspaceContext);
+	return WorkspaceContext.useValue();
 }
 
 export const NEW_TAB_ITEM_KINDS: readonly LibraryKind[] = ["image"];
