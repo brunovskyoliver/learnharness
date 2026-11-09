@@ -328,8 +328,8 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown> & { streami
 // compatibility reader for old \(...\)/\[...\] content; its two-dollar
 // output remains valid alongside native single-dollar math.
 //
-// The math and code plugins load on demand (feature 024, markdown-plugins.ts):
-// text that needs one waits for it, everything else renders at once.
+// Plugins live in markdown-plugins.ts (feature 024): math is static, the
+// code highlighter loads on demand and nothing waits for it.
 //
 // MERMAID is app-owned since the chrome-melt wave (2026-09-19): the md-blocks
 // `code` override intercepts mermaid fences and renders via
@@ -345,13 +345,10 @@ export const MessageResponse = memo(
       typeof children === "string"
         ? transformMathDelimiters(children)
         : children;
-    const latest = streaming && typeof normalized === "string" ? completedMarkdownPrefix(normalized) : normalized;
-
-    // Renderers on demand (feature 024, markdown-plugins.ts): text needing
-    // math or code appears once its renderer is ready, so raw `$…$` never
-    // shows; a message that already appeared holds its last ready text.
-    const shown = useStreamdownPlugins(typeof latest === "string" ? latest : "");
-    const content = typeof latest === "string" ? shown.text : latest;
+    const content = streaming && typeof normalized === "string" ? completedMarkdownPrefix(normalized) : normalized;
+    // The code highlighter loads on demand (feature 024, markdown-plugins.ts):
+    // code shows plain at once and is highlighted when it arrives.
+    const plugins = useStreamdownPlugins(typeof content === "string" ? content : "");
 
     // Wide display math shrinks to fit the column, down to 70% (ui-v2);
     // past that it scrolls. ponytail: runs per render, not on resize.
@@ -364,9 +361,6 @@ export const MessageResponse = memo(
       }
     }, [content]);
 
-    // Not appeared yet: its renderer is still on the way.
-    if (content === null) return <div ref={ref} className="contents" data-renderer-pending="" aria-busy="true" />;
-
     return (
       <div ref={ref} className="contents">
       <Streamdown
@@ -377,7 +371,7 @@ export const MessageResponse = memo(
           className
         )}
         components={mdComponents}
-        plugins={shown.plugins}
+        plugins={plugins}
         mode={streaming ? "static" : mode}
         parseIncompleteMarkdown={false}
         {...props}

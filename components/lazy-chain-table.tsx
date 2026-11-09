@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { useReloadRetry, useRestoreReloadRecovery, type ReloadOverlay } from "@/components/reload-recovery";
 import { TopBar } from "@/components/top-bar";
 import type { ChainTableOverlay } from "@/components/chain-table";
-import { loadKatexCss } from "@/components/katex-css";
 
 type ChainProps = ComponentProps<typeof ChainTableOverlay>;
 type ChainComponent = typeof ChainTableOverlay;
@@ -15,9 +14,8 @@ let tableRequest: Promise<ChainComponent> | undefined;
 
 function loadTable(): Promise<ChainComponent> {
 	if (loadedTable) return Promise.resolve(loadedTable);
-	// The table's glyphs are KaTeX: its stylesheet arrives with it.
-	return tableRequest ??= Promise.all([import("@/components/chain-table"), loadKatexCss()])
-		.then(([module]) => (loadedTable = module.ChainTableOverlay))
+	return tableRequest ??= import("@/components/chain-table")
+		.then((module) => (loadedTable = module.ChainTableOverlay))
 		.catch((error: unknown) => { tableRequest = undefined; throw error; });
 }
 

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import "katex/dist/katex.min.css";
 import "../globals.css";
 import { fontClasses } from "../fonts";
 import { AppShell, SidebarProvider } from "@/components/sidebar";

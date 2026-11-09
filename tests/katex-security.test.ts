@@ -10,11 +10,6 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { parseHTML } from "linkedom";
 import katex from "katex";
 import { MessageResponse } from "../components/ai-elements/message.tsx";
-import { preloadRenderers } from "../components/ai-elements/markdown-plugins.ts";
-
-// The math and code renderers load on demand (feature 024); these renders
-// assert their output, so load them first.
-await preloadRenderers();
 
 (globalThis as Record<string, unknown>).React = React;
 const blocked = String.raw`\href{https://katex-security.invalid/blocked}{blocked}`;

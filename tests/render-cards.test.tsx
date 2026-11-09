@@ -30,11 +30,6 @@ import {
 	questionNeedsReveal,
 	type QuestionData,
 } from "../src/core/question-core.ts";
-import { preloadRenderers } from "../components/ai-elements/markdown-plugins.ts";
-
-// The math and code renderers load on demand (feature 024); these renders
-// assert their output, so load them first.
-await preloadRenderers();
 
 const quizInput = {
 	question: "Which planet is closest to the sun?",

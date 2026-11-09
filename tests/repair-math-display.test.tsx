@@ -18,11 +18,6 @@ import {
 	parseQuizInput, parseAskInput, parseExplainInput, activeProblemOf, projectView,
 	toLlmMessages, type LhMessage, type ArtifactPartProps,
 } from "../src/core/index.ts";
-import { preloadRenderers } from "../components/ai-elements/markdown-plugins.ts";
-
-// The math and code renderers load on demand (feature 024); these renders
-// assert their output, so load them first.
-await preloadRenderers();
 
 const tex = String.raw`\nabla f(x) \in \mathbb{R}^{m \times n}`;
 const clean = `$${tex}$`;

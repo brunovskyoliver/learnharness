@@ -17,8 +17,6 @@ for (const entry of ["components/home.tsx", "components/new-session.tsx"]) {
 			platform: "browser", format: "esm", splitting: true,
 			outdir: process.env.TMPDIR ?? "/tmp",
 			external: ["react", "react-dom", "react-dom/*", "next", "next/*", "@clerk/nextjs"],
-			// The KaTeX stylesheet loads on demand (feature 024); its fonts are not JS.
-			loader: { ".woff": "empty", ".woff2": "empty", ".ttf": "empty" },
 		});
 		const root = Object.entries(metafile.outputs).find(([, output]) => output.entryPoint === entry);
 		assert.ok(root);

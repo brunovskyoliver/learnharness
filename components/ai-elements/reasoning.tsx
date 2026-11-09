@@ -195,14 +195,15 @@ export type ReasoningContentProps = ComponentProps<
 };
 
 // Shares message text's Streamdown plugins (markdown-plugins.ts: math,
-// code, remark-breaks) — reasoning renders the same contract as message text.
+// on-demand code highlighting, remark-breaks) — reasoning renders the same
+// contract as message text.
 
 export const ReasoningContent = memo(
   ({ className, children, ...props }: ReasoningContentProps) => {
     const text = transformMathDelimiters(children);
-    // Same on-demand renderers as message text (feature 024): reasoning
-    // that needs math or code appears once its renderer is ready.
-    const shown = useStreamdownPlugins(text);
+    // Same plugins as message text (feature 024): code highlights once the
+    // on-demand highlighter arrives.
+    const plugins = useStreamdownPlugins(text);
     return (
       <CollapsibleContent
         className={cn(
@@ -210,14 +211,11 @@ export const ReasoningContent = memo(
           "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2 data-[state=open]:slide-in-from-top-2 text-muted-foreground outline-none data-[state=closed]:animate-out data-[state=open]:animate-in",
           className
         )}
-        aria-busy={shown.text === null ? true : undefined}
         {...props}
       >
-        {shown.text !== null && (
-          <Streamdown components={mdComponents} plugins={shown.plugins}>
-            {shown.text}
-          </Streamdown>
-        )}
+        <Streamdown components={mdComponents} plugins={plugins}>
+          {text}
+        </Streamdown>
       </CollapsibleContent>
     );
   }
