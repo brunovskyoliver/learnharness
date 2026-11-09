@@ -134,26 +134,26 @@ description: "Tasks for feature 028, one motion language"
 
 **Independent test**: per row, trigger once, then re-render (refresh, resize, theme change) ten times: zero new animations (SC-004).
 
-- [ ] T056 [US5] Add to tests/e2e/study/motion.spec.ts: for Home rows, a Library folder, a demo frame and a Review card, ten re-renders (refresh with equal data, resize, theme change) start 0 animations; a genuinely new Home row unfolds and a resolved one lifts
-- [ ] T057 [US5] Home rows 13-14: `useNewRows` for added and resolved rows, bulb-ink label dot splat on first appearance, in components/waiting-section.tsx and components/home.tsx
-- [ ] T058 [P] [US5] Library rows 15: rows ink (`--motion-arrive` 360ms, 24ms step, 160ms cap), upload row settles and its status dot splats, in components/library/library-row.tsx and components/library/page-row.tsx
-- [ ] T059 [P] [US5] Library folders 16: children unfold on expand and lift on collapse in components/library/folder-row.tsx
-- [ ] T060 [P] [US5] **(O2)** Transcript 17: a sent learner turn and the composer settle on arrival (history untouched) in components/user-turn-text.tsx and components/composer.tsx
-- [ ] T061 [P] [US5] **(O2)** Check threads 18: "Your turn" dot splat and the pencil underline under a correct grade, once, in components/study/check-thread.tsx
-- [ ] T062 [P] [US5] Demos and plots 19: `useArrival("demo:{id}")` frame unfold, our own axes pencil-draw (600ms) and data ink (`--motion-arrive` 360ms from 240ms, done by 600ms; gate 2 item 1), never inside the sandbox, in components/artifacts/demo-card.tsx and components/artifacts/plot-card.tsx
-- [ ] T063 [P] [US5] Back pill 21: `nb-sketch-pop-in` on appear, `lh-lift` 120ms on leave, in components/library/back-pill.tsx
-- [ ] T064 [P] [US5] Reference chips 22: pencil underline on hover/focus (200ms `--ease-pencil`, shown under reduced motion) in components/reference-chip.tsx and app/paper.css
-- [ ] T065 [US5] Theme ink soak 23: `withThemeFade(apply, origin)` with `startViewTransition({ update, types: ["lh-theme"] })` (callback fallback), soak variables from `soakOrigin`, `lh-soak` keyframe (feathered 24px mask edge) and the §4 rules, OS-driven changes instant, in components/paper/appearance.tsx and app/paper.css **(gate 2, item 2)**
-- [ ] T066 [US5] Pass the chosen card's rect as the soak origin (pointer and keyboard) from components/paper/option-cards.tsx and components/notebook/settings-modal.tsx
-- [ ] T067 [US5] Add to tests/e2e/study/motion.spec.ts: the soak starts at the chosen card, ends by 450ms, a demo's iframe gets no new `load`, reduced motion is a ≤150ms fade, an emulated OS theme change is instant (FR-024)
-- [ ] T068 [P] [US5] Status lines 24: old and new text stacked in one grid cell (settle 200ms, lift 120ms, no resize) in components/library/repo-status-line.tsx and components/library/page-proposals-line.tsx
-- [ ] T069 [P] [US5] Waiting 25: replace remaining non-tool-row spinners with the `nb-ink-wait` blot (find with `grep -rn "animate-spin" components`) in components/loading-modal.tsx and the files found
-- [ ] T070 [P] [US5] Pills 26: press scale .97 (`--motion-press`), release `--spring-pop` 220ms, colour only under reduced motion, on touch too (a Playwright `hasTouch` tap shows the press scale, FR-016), in components/ui/button.tsx and the `.nb-pill` rules of app/paper.css
-- [ ] T071 [US5] Segmented controls 27: one sliding ink pill (300ms `--spring-soft`, jumps under reduced motion) in components/paper/option-cards.tsx (after T066)
-- [ ] T072 [P] [US5] Review cards 28: back unfolds, next card inks in, in components/review/queue-panel.tsx
-- [ ] T073 [P] [US5] Skeleton → content 29: skeleton lifts 120ms, content inks 280ms, in components/ui/skeleton.tsx
-- [ ] T074 [P] [US5] Empty states 30: one blot glyph splat beside the sentence, once, in components/ui/empty.tsx
-- [ ] T075 [US5] Add to tests/e2e/study/motion.spec.ts: a reduced-motion sweep over every catalogue trigger shows only opacity animations ≤150ms and no stroke draw (SC-005), and a layout-shift sweep shows 0 per trigger (SC-007)
+- [X] T056 [US5] Add to tests/e2e/study/motion.spec.ts: for Home rows, a Library folder, a demo frame and a Review card, ten re-renders (refresh with equal data, resize, theme change) start 0 animations; a genuinely new Home row unfolds and a resolved one lifts
+- [X] T057 [US5] Home rows 13-14: `useNewRows` for added and resolved rows, bulb-ink label dot splat on first appearance, in components/waiting-section.tsx and components/home.tsx
+- [X] T058 [P] [US5] Library rows 15: rows ink (`--motion-arrive` 360ms, 24ms step, 160ms cap), upload row settles and its status dot splats, in components/library/library-row.tsx and components/library/page-row.tsx
+- [X] T059 [P] [US5] Library folders 16: children unfold on expand and lift on collapse in components/library/folder-row.tsx
+- [X] T060 [P] [US5] **(O2)** Transcript 17: a sent learner turn and the composer settle on arrival (history untouched) in components/user-turn-text.tsx and components/composer.tsx
+- [X] T061 [P] [US5] **(O2)** Check threads 18: "Your turn" dot splat and the pencil underline under a correct grade, once, in components/study/check-thread.tsx
+- [X] T062 [P] [US5] Demos and plots 19: `useArrival("demo:{id}")` frame unfold, our own axes pencil-draw (600ms) and data ink (`--motion-arrive` 360ms from 240ms, done by 600ms; gate 2 item 1), never inside the sandbox, in components/artifacts/demo-card.tsx and components/artifacts/plot-card.tsx
+- [X] T063 [P] [US5] Back pill 21: `nb-sketch-pop-in` on appear, `lh-lift` 120ms on leave, in components/library/back-pill.tsx
+- [X] T064 [P] [US5] Reference chips 22: pencil underline on hover/focus (200ms `--ease-pencil`, shown under reduced motion) in components/reference-chip.tsx and app/paper.css
+- [X] T065 [US5] Theme ink soak 23: `withThemeFade(apply, origin)` with `startViewTransition({ update, types: ["lh-theme"] })` (callback fallback), soak variables from `soakOrigin`, `lh-soak` keyframe (feathered 24px mask edge) and the §4 rules, OS-driven changes instant, in components/paper/appearance.tsx and app/paper.css **(gate 2, item 2)**
+- [X] T066 [US5] Pass the chosen card's rect as the soak origin (pointer and keyboard) from components/paper/option-cards.tsx and components/notebook/settings-modal.tsx
+- [X] T067 [US5] Add to tests/e2e/study/motion.spec.ts: the soak starts at the chosen card, ends by 450ms, a demo's iframe gets no new `load`, reduced motion is a ≤150ms fade, an emulated OS theme change is instant (FR-024)
+- [X] T068 [P] [US5] Status lines 24: old and new text stacked in one grid cell (settle 200ms, lift 120ms, no resize) in components/library/repo-status-line.tsx and components/library/page-proposals-line.tsx
+- [X] T069 [P] [US5] Waiting 25: replace remaining non-tool-row spinners with the `nb-ink-wait` blot (find with `grep -rn "animate-spin" components`) in components/loading-modal.tsx and the files found
+- [X] T070 [P] [US5] Pills 26: press scale .97 (`--motion-press`), release `--spring-pop` 220ms, colour only under reduced motion, on touch too (a Playwright `hasTouch` tap shows the press scale, FR-016), in components/ui/button.tsx and the `.nb-pill` rules of app/paper.css
+- [X] T071 [US5] Segmented controls 27: one sliding ink pill (300ms `--spring-soft`, jumps under reduced motion) in components/paper/option-cards.tsx (after T066)
+- [X] T072 [P] [US5] Review cards 28: back unfolds, next card inks in, in components/review/queue-panel.tsx
+- [X] T073 [P] [US5] Skeleton → content 29: skeleton lifts 120ms, content inks 280ms, in components/ui/skeleton.tsx
+- [X] T074 [P] [US5] Empty states 30: one blot glyph splat beside the sentence, once, in components/ui/empty.tsx
+- [X] T075 [US5] Add to tests/e2e/study/motion.spec.ts: a reduced-motion sweep over every catalogue trigger shows only opacity animations ≤150ms and no stroke draw (SC-005), and a layout-shift sweep shows 0 per trigger (SC-007)
 
 ---
 

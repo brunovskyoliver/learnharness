@@ -63,9 +63,9 @@ Every part finishes by 600ms (FR-006, SC-001). A lesson (US1 AS4) inks only its 
 | 5 | Arrival CSS only | `[data-lh-arrive=history]` (popstate) | `nb-ink-in`, no stagger | 200ms `--ease-ink` | `lh-fade` |
 | 6 | Transition + arrival CSS | tab-strip marker (`.lh-tab-marker`, transform), pane `[data-lh-arrive=tab]` | marker transform; pane `nb-ink-in` | 280ms `--spring-soft`; 200ms `--ease-ink` | marker jumps; pane `lh-fade` |
 | 7 | Arrival CSS | overlay sidebar (components/paper/overlay-sidebar-dialog.tsx) `data-[state=open]`; rows `useArrival("sidebar-rows")` | `lh-sheet-in`; wash `nb-fade-in`; rows `nb-ink-in` `--motion-arrive` 360ms, step 24ms cap 200ms | `--motion-sheet` 340ms `--spring-soft` | sheet and wash fade ≤120ms; rows at once |
-| 8 | Radix exit | same, `data-[state=closed]` | `lh-lift` | 160ms `--ease-out` | ≤120ms fade |
+| 8 | Instant close (lead, 2026-11-09; owner may veto) | same, `data-[state=closed]` | none: the sheet closes at once (a lift swallowed a quick ☰ click and lost focus into the closing sheet, phase 6) | — | — |
 | 9 | Transition | `MenuGlyph` ⇄ `CloseGlyph` paths (stroke-dashoffset) | draw | 200ms `--ease-draw` | cross-fade ≤150ms |
-| 10 | Radix open/close | components/ui/popover.tsx, tooltip.tsx, `.nb-menu`, palette | `nb-menu-in`; close `lh-lift` 100ms | `--motion-quick` `--ease-menu` | `lh-fade` ≤150ms |
+| 10 | Radix open/close | components/ui/popover.tsx, tooltip.tsx, `.nb-menu`, palette | `nb-menu-in`; close: popovers `lh-lift` 100ms; menus and tooltips close at once (lead, 2026-11-09; owner may veto: a menu or tooltip still lifting kept focus or took the next Escape, phase 6) | `--motion-quick` `--ease-menu` | `lh-fade` ≤150ms |
 | 11 | Radix open/close | components/ui/dialog.tsx (overlay + content), `.nb-settings`, export, link-repo | `lh-dialog-rise`; scrim `nb-fade-in`; close `lh-lift` 120ms | 220ms `--spring-soft` | scrim and sheet `lh-fade` ≤150ms |
 | 12 | Arrival CSS | right pane (components/workspace-pane.tsx) | `nb-chat-in`; collapse `lh-lift` 160ms | 280ms `--ease-menu` | `lh-fade` |
 | 13 | `useArrival` + `useNewRows` | components/waiting-section.tsx, components/home.tsx | heading/rows `nb-ink-in` staggered; new row `nb-unfold`; removed row `lh-lift` | `--motion-arrive` 360ms, step 40 cap 240 (phones 24/160); 340ms; 160ms | `lh-fade` in/out |
@@ -97,12 +97,14 @@ html:active-view-transition-type(lh-theme)::view-transition-old(root) { animatio
 html:active-view-transition-type(lh-theme)::view-transition-new(root) { animation: var(--motion-soak) var(--ease-unfold) both lh-soak; }
 ```
 
+The leaving page's chrome (`.lh-study-chrome`, `.nb-header > *`) is captured apart (`view-transition-name: match-element`, class `lh-chrome-gone`) and that copy is never shown, so the live chrome below never fades (phase 7; hiding it with `visibility` also hid it in the frame presented during the capture).
+
 Types: `lh-route` (in-app link or push; a tab select adds `lh-tab`), `lh-mode` (mode switch), `lh-theme` (theme change). Back/forward and `router.refresh()` carry none. The wrapper: `<ViewTransition exit={{ "lh-route": "lh-lift", "lh-mode": "lh-lift", default: "none" }} enter="none" update="none" share="none" default="none">`. Nothing else is named.
 
 ## 5. Interruption and input
 
 - A newer navigation or theme change skips the running transition (the platform's behaviour) and its content mounts with its own arrival; arrival CSS restarts only on a new mount (FR-007).
-- `::view-transition` takes no pointer events; the incoming page is live from its first frame (R2). Layers move focus on open and back to the opener on close in the same task (R7).
+- `::view-transition` takes no pointer events; the incoming page is live from its first frame (R2). One exception, accepted by the lead on 2026-11-09 (owner may veto): while the browser captures the leaving page (from React's `startViewTransition` until its update has run, one frame, 14-38ms under `next dev`) rendering is paused and hit testing returns `<html>`, so a click landing in that frame is lost (≤1 frame); it is not replayed. Layers move focus on open and back to the opener on close in the same task (R7).
 - Hidden documents start no view transition (the platform refuses) and finish CSS on the document timeline; the signature never starts in a hidden tab.
 
 ## 6. Reduced motion (FR-013)
