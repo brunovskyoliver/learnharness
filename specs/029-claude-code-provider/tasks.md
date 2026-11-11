@@ -23,10 +23,10 @@ description: "Tasks for feature 029, Claude Code provider (port from upstream)"
 
 ## Phase 1: Setup
 
-- [ ] T001 Read `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/route.md` and `.../02-route-segment-config/` (runtime, dynamic); run `npm test`, `npm run lint`, `npm run typecheck` at HEAD and record pre-existing failures under Log in specs/029-claude-code-provider/progress.md
-- [ ] T002 Add the runtime dependency: `npm install --save-exact @modelcontextprotocol/sdk@1.32.1` (package.json `dependencies`, package-lock.json); confirm `node_modules/@modelcontextprotocol/sdk/package.json` version 1.32.1 and that no other dependency changed
-- [ ] T003 Measure the startup baseline at HEAD `fe682a3f` before any source change: `npm run build`, `next start` with a fresh `LH_DATA_DIR`, `~/agent-runs/2026-11-07-unified-redesign/startup-js/startup-js.mjs` for `/`, `/chat/new`, `/library` at desktop and 390×844, plus server cold start (process start → first `/api/models` 200); save `startup-base.json`, `startup-base-390.json`, `server-cold-base.json` in `~/agent-runs/2026-11-11-claude-code/`
-- [ ] T004 [P] Port the fixtures `tests/fixtures/claude-code/fake-claude.mjs`, `text.jsonl`, `tool.jsonl`, `signed-out.jsonl` unchanged from upstream
+- [X] T001 Read `node_modules/next/dist/docs/01-app/03-api-reference/03-file-conventions/route.md` and `.../02-route-segment-config/` (runtime, dynamic); run `npm test`, `npm run lint`, `npm run typecheck` at HEAD and record pre-existing failures under Log in specs/029-claude-code-provider/progress.md
+- [X] T002 Add the runtime dependency: `npm install --save-exact @modelcontextprotocol/sdk@1.32.1` (package.json `dependencies`, package-lock.json); confirm `node_modules/@modelcontextprotocol/sdk/package.json` version 1.32.1 and that no other dependency changed
+- [X] T003 Measure the startup baseline at HEAD `fe682a3f` before any source change: `npm run build`, `next start` with a fresh `LH_DATA_DIR`, `~/agent-runs/2026-11-07-unified-redesign/startup-js/startup-js.mjs` for `/`, `/chat/new`, `/library` at desktop and 390×844, plus server cold start (process start → first `/api/models` 200); save `startup-base.json`, `startup-base-390.json`, `server-cold-base.json` in `~/agent-runs/2026-11-11-claude-code/`
+- [X] T004 [P] Port the fixtures `tests/fixtures/claude-code/fake-claude.mjs`, `text.jsonl`, `tool.jsonl`, `signed-out.jsonl` unchanged from upstream
 
 ---
 

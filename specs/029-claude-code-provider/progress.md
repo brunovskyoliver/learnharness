@@ -17,6 +17,8 @@ Updated: 2026-11-11
   - Live local checks on the owner's signed-in CLI (T033 and phase 9) approved as part of `go`. Deploy NOT requested: stop at local build.
 
 ## Log
+- 2026-11-11 T001 baseline at 0222e2f4 (docs-only after fe682a3f): `npm run typecheck` exit 0, `npm run lint` exit 0, `npm test` (TMPDIR=$HOME/tmp-lh) 4587 tests, 4560 pass, 0 fail, 27 skipped. No pre-existing failures. Next docs read: route.md (handlers take Request), route-segment-config (`runtime` 'nodejs' default; `dynamic` is removed only when cacheComponents is on, which this repo does not enable, so `export const dynamic = "force-dynamic"` stays valid as in app/api/settings/route.ts). Logs in ~/agent-runs/2026-11-11-claude-code/base-*.log.
+- 2026-11-11 T003 baseline: `~/agent-runs/2026-11-07-unified-redesign/startup-js/startup-js.mjs` is not on this VM; used its copy from the notebook-mode run (same method: scripts after networkidle + 1.5 s, gzip -9), saved as ~/agent-runs/2026-11-11-claude-code/startup-js.mjs with optional viewport args, and server-cold.mjs (spawn `next start`, fresh LH_DATA_DIR, first 200 on /api/models, median of 5). Results: / 269,372, /chat/new 259,141, /library 278,292 bytes gzip (desktop and 390 identical); server cold start median 776 ms.
 - 2026-11-11 plan: plan.md, research.md (R1-R14), data-model.md, contracts/{cli,http,settings-ui}.md, quickstart.md. Constitution Check I-VIII pass; open questions O1-O4 in plan.md. No agent-context script exists in .specify/scripts, so AGENTS.md/CLAUDE.md are unchanged.
 - 2026-11-11 tasks: tasks.md, 76 tasks in 9 phases; MVP = Phases 1-3 (T001-T033).
 - 2026-11-11 specify: spec.md written; 1 NEEDS CLARIFICATION (FR-012 hosted mode).
