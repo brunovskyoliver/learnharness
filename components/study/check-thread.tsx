@@ -77,6 +77,9 @@ export interface CheckThreadProps {
 	onClose: () => void;
 	/** The "Using {demo}" line. */
 	using?: ReactNode;
+	/** A submitted try is with the tutor (owner, 2026-11-11): the closed
+	 *  card says so instead of offering "Solve". */
+	checking?: boolean;
 	children: ReactNode;
 }
 
@@ -182,7 +185,7 @@ export function CheckThread(props: CheckThreadProps) {
 	);
 }
 
-function ThreadBody({ id, kind, label, teaser, reveal, open, fresh, variant, layer, lessonWidth, shift, anchorId, onOpen, onClose, using, children, slotRef }: CheckThreadProps & { slotRef: React.RefObject<HTMLDivElement | null> }) {
+function ThreadBody({ id, kind, label, teaser, reveal, open, fresh, variant, layer, lessonWidth, shift, anchorId, onOpen, onClose, using, checking = false, children, slotRef }: CheckThreadProps & { slotRef: React.RefObject<HTMLDivElement | null> }) {
 	const margin = variant === "margin";
 	// A closed thread says when it holds his draft; an empty one says nothing.
 	const draft = useCheckDraft(kind, id);
@@ -272,7 +275,9 @@ function ThreadBody({ id, kind, label, teaser, reveal, open, fresh, variant, lay
 					<span className="lh-check-meta"><span className="lh-check-turn">Your turn</span> · <span>{reveal ? REVEAL_LINE : label}</span></span>
 					<span className="lh-check-teaser nb-voice"><InkText text={teaser || (kind === "problem" ? "Open the active problem" : "")} animate={inkTeaser} /></span>
 					{draft && <span className="lh-check-draft" data-testid="check-draft-kept">{DRAFT_KEPT}</span>}
-					<span className="lh-check-action">{action}</span>
+					{checking
+						? <span className="lh-check-draft" role="status" data-testid="check-checking">Checking your work…</span>
+						: <span className="lh-check-action">{action}</span>}
 				</button>
 			)}
 			{using}

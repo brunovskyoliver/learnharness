@@ -546,6 +546,8 @@ function ChatView({
 	const cliContextWindow = useMemo(() => cliContextWindowOf(nativeMessages), [nativeMessages]);
 	const activeProblemRef = useRef(activeProblem);
 	activeProblemRef.current = activeProblem;
+	const nativeMessagesRef = useRef(nativeMessages);
+	nativeMessagesRef.current = nativeMessages;
 
 	const localStream = status === "submitted" || status === "streaming";
 	const busy = localStream || turnInFlight;
@@ -583,11 +585,21 @@ function ChatView({
 	// Submit closes the card; the tutor's reply reopens it (bug
 	// practice-hint-in-card, owner 2026-11-11): see the effect after openCheck.
 	const reopenAfterReplyRef = useRef<string | null>(null);
+	// The tries already on record at submit, and whether the reply turn has
+	// started: only a reply after THIS try reopens; a turn that ends with no
+	// words clears the wait instead of leaving "Checking…" up.
+	const submittedTriesRef = useRef(0);
+	const sawTurnRef = useRef(false);
+	// Mirrors the ref for render: the closed card says "Checking your work…".
+	const [awaitingReply, setAwaitingReply] = useState<string | null>(null);
 	const submitThinking = useCallback(
 		(text: string) => {
 			const problem = activeProblemRef.current;
 			if (!problem) return;
 			reopenAfterReplyRef.current = problem.toolCallId;
+			submittedTriesRef.current = thinkingCount(nativeMessagesRef.current, problem.toolCallId);
+			sawTurnRef.current = false;
+			setAwaitingReply(problem.toolCallId);
 			closeCheckRef.current();
 			void send({ type: "thinking", problemCallId: problem.toolCallId, text });
 		},
@@ -652,12 +664,16 @@ function ChatView({
 	);
 	useEffect(() => {
 		const waiting = reopenAfterReplyRef.current;
-		if (waiting === null || busy) return;
-		if (activeProblem?.toolCallId !== waiting) { reopenAfterReplyRef.current = null; return; }
-		if (!practiceTutorReply) return;
-		reopenAfterReplyRef.current = null;
+		if (waiting === null) return;
+		if (busy) { sawTurnRef.current = true; return; }
+		const clear = () => { reopenAfterReplyRef.current = null; setAwaitingReply(null); };
+		if (activeProblem?.toolCallId !== waiting) { clear(); return; }
+		// This try has not landed yet (the optimistic append follows awaits).
+		if (thinkingCount(nativeMessages, waiting) <= submittedTriesRef.current) return;
+		if (!practiceTutorReply) { if (sawTurnRef.current) clear(); return; }
+		clear();
 		openCheckRef.current();
-	}, [busy, activeProblem, practiceTutorReply]);
+	}, [busy, activeProblem, practiceTutorReply, nativeMessages]);
 	// A check that arrives while the lesson is open opens itself and takes
 	// the focus (owner, 2026-11-11): no "Go to it" click.
 	const arrivedCheckRef = useRef(checkId);
@@ -1377,6 +1393,7 @@ function ChatView({
 				onOpen={openCheck}
 				onClose={() => setCheckOpen(false)}
 				using={usingLine}
+				checking={!pending && !checkOpen && awaitingReply !== null && awaitingReply === activeProblem?.toolCallId}
 			>
 				{pending ? (
 					<QuestionDock
@@ -2077,6 +2094,16 @@ export function escAbortTarget(s: {
 	if (s.problem) return "problem";
 	if (s.busy) return "turn";
 	return null;
+}
+
+/** The learner's submitted tries on a problem (practice-thinking markers). */
+function thinkingCount(messages: readonly LhMessage[], problemCallId: string): number {
+	let n = 0;
+	for (const m of messages) {
+		const marker = m as { role?: string; customType?: string; details?: { problemCallId?: unknown } };
+		if (marker.role === "custom" && marker.customType === "practice-thinking" && marker.details?.problemCallId === problemCallId) n++;
+	}
+	return n;
 }
 
 /** Every new check opens itself (owner, 2026-11-11, bug

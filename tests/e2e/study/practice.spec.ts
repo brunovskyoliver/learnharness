@@ -38,6 +38,23 @@ test.describe("Study: practice", () => {
 		expect(input.text).toBe("Hidden state, noisy observations, and learning over time.");
 	});
 
+	test("submit closes the card and it says the work is being checked, not Solve", async ({ page }) => {
+		await interceptModel(page);
+		// The tutor is still on it: the submission is held open.
+		let release!: () => void;
+		const held = new Promise<void>((resolve) => { release = resolve; });
+		await page.route("**/api/chat", async (route) => { await held; await route.abort(); });
+		await openProblem(page);
+		await page.getByTestId("practice-thinking-field").locator("textarea").fill("x^3/3 + C");
+		await page.getByTestId("practice-send").click();
+		await expect(thread(page)).toHaveAttribute("data-state", "collapsed");
+		await expect(thread(page).getByTestId("check-checking")).toHaveText("Checking your work…");
+		await expect(thread(page).locator(".lh-check-action")).toHaveCount(0);
+		// A submit that fails never reached the tutor: Solve comes back.
+		release();
+		await expect(thread(page).locator(".lh-check-action")).toHaveText("Solve");
+	});
+
 	test("skip asks first; Cancel keeps the problem, Skip dismisses it", async ({ page }) => {
 		const posts = await interceptModel(page);
 		await openProblem(page);
