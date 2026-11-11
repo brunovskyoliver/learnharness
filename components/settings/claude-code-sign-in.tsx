@@ -275,7 +275,8 @@ function SignInSteps({ step, onStart, onSubmit, onRestart, onCancel, onExpired }
 			</div>
 			{step.error && <p id={errorId} role="alert" className="mt-3 text-meta text-red" data-testid="claude-code-sign-in-error">
 				{step.error}
-				{step.restart && <> <button ref={restartButton} type="button" className="lh-text-action ml-1 underline underline-offset-2 pointer-coarse:min-h-11" onClick={onRestart} data-testid="claude-code-sign-in-restart">Start again</button></>}
+				{/* Its own line: inline, the focus ring crossed the wrapped message above. */}
+				{step.restart && <> <span className="mt-1.5 block"><button ref={restartButton} type="button" className="lh-text-action underline underline-offset-2 pointer-coarse:min-h-11" onClick={onRestart} data-testid="claude-code-sign-in-restart">Start again</button></span></>}
 			</p>}
 			<ConnectionFooter testid="claude-code-sign-in-footer">
 				<button type="button" className="lh-text-action pointer-coarse:min-h-11" disabled={step.submitting} onClick={onCancel}>Cancel</button>

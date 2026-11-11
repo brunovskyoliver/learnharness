@@ -164,13 +164,13 @@ description: "Tasks for feature 029, Claude Code provider (port from upstream)"
 
 ## Phase 9: Polish and gates
 
-- [ ] T069 Check every changed UI file (claude-code-status.tsx, claude-code-sign-in.tsx, keys-section.tsx, model-menu.tsx, stats-bar.tsx, connection-controls.tsx) with the `impeccable` and `web-design-guidelines` skills; fix findings or record owner-facing ones in progress.md
-- [ ] T070 Manual UI walk at 320, 390 and 1440 px, light and dark, reduced motion on and off (quickstart §6); screenshots to `~/agent-runs/2026-11-11-claude-code/ui/`
-- [ ] T071 `npm test`: all ported and new suites pass, no new failures against T001's record (SC-004)
-- [ ] T072 `npm run lint` (boundaries: src/agent never imports src/store or src/server; components import only `@/src/core`) and `npm run typecheck`
-- [ ] T073 `npm run build`; confirm `.next/standalone/node_modules/@modelcontextprotocol/sdk/package.json` exists and `scripts/build-server.mjs` checks still pass
-- [ ] T074 Re-measure startup as in T003 (desktop, 390, server cold start); each within +5% of the baseline (SC-005); save `startup-after*.json` and the comparison in `~/agent-runs/2026-11-11-claude-code/`
-- [ ] T075 Secret hygiene: grep the test run's captured output, `next start` logs from quickstart §4 and the repo diff for codes, `sk-ant-`, `.credentials.json` contents, `configDirectory` and absolute tenant paths; none may appear
+- [X] T069 Check every changed UI file (claude-code-status.tsx, claude-code-sign-in.tsx, keys-section.tsx, model-menu.tsx, stats-bar.tsx, connection-controls.tsx) with the `impeccable` and `web-design-guidelines` skills; fix findings or record owner-facing ones in progress.md
+- [X] T070 Manual UI walk at 320, 390 and 1440 px, light and dark, reduced motion on and off (quickstart §6); screenshots to `~/agent-runs/2026-11-11-claude-code/ui/`
+- [X] T071 `npm test`: all ported and new suites pass, no new failures against T001's record (SC-004)
+- [X] T072 `npm run lint` (boundaries: src/agent never imports src/store or src/server; components import only `@/src/core`) and `npm run typecheck`
+- [X] T073 `npm run build`; confirm `.next/standalone/node_modules/@modelcontextprotocol/sdk/package.json` exists and `scripts/build-server.mjs` checks still pass
+- [X] T074 Re-measure startup as in T003 (desktop, 390, server cold start); each within +5% of the baseline (SC-005); save `startup-after*.json` and the comparison in `~/agent-runs/2026-11-11-claude-code/`
+- [X] T075 Secret hygiene: grep the test run's captured output, `next start` logs from quickstart §4 and the repo diff for codes, `sk-ant-`, `.credentials.json` contents, `configDirectory` and absolute tenant paths; none may appear
 - [ ] T076 Write the Report in specs/029-claude-code-provider/progress.md: what changed, how it was verified (tests, live local turn on the owner's signed-in CLI, hosted checks with the fake CLI, UI checks, perf numbers), pre-existing vs new failures, and "left for owner": Docker build and deploy on request; the real hosted-site check of SC-001 and sign-in (needs a deploy, not requested); a real valid sign-in and the Console `authMethod` value, unless T048 could read them without a new login
 
 ---
