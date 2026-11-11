@@ -1691,6 +1691,9 @@ div.lh-math-source > .lh-math-input { width: 100%; }
 	white-space: normal;
 }
 .lh-check-prompt .lh-prose { color: inherit; font-family: inherit; font-size: inherit; line-height: inherit; }
+/* The tutor's latest reply under a practice problem (bug practice-hint-in-card). */
+.lh-check-reply { margin-top: 12px; }
+.lh-check-reply > .lh-check-meta { margin-bottom: 2px; }
 .lh-check-hint,
 .lh-check-details { color: var(--graphite); font-family: var(--nb-sans); font-size: var(--text-md); line-height: 1.5; }
 .lh-check-hint { margin-bottom: 6px; font-size: var(--text-sm); font-weight: 500; }

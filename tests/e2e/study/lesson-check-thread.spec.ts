@@ -11,9 +11,8 @@ type Answer = { dontKnow: boolean; answers: Array<{ index: number }>; confidence
 const answerOf = (post: Submission) => (post.body.input as { answer: Answer }).answer;
 
 /** Reveal-gated teach check: "Check your understanding" opens it. */
+/** Every new check arrives open (owner, 2026-11-11): no reveal click. */
 async function reveal(page: Page) {
-	await expect(thread(page)).toHaveAttribute("data-state", "collapsed");
-	await page.getByTestId("teach-check-reveal").click();
 	await expect(thread(page)).toHaveAttribute("data-state", "open");
 }
 
@@ -33,9 +32,9 @@ test.describe("Study: a lesson check in its thread", () => {
 		await openChat(page, CHATS.check);
 		await expect(thread(page)).toHaveAttribute("data-variant", "margin");
 		await expect(page.getByTestId("check-pending")).toContainText("Answer the check beside the lesson");
-		// Reveal-gated: closed, the form is hidden and inert until revealed.
-		expect(await page.getByTestId("lesson-question").evaluate((el) => !!el.closest("[hidden][inert]"))).toBe(true);
+		// Arrives open (owner, 2026-11-11): the form is live at once.
 		await reveal(page);
+		expect(await page.getByTestId("lesson-question").evaluate((el) => !!el.closest("[hidden][inert]"))).toBe(false);
 		const box = await thread(page).boundingBox();
 		const column = await page.getByTestId("lesson-content").evaluate((el) => el.getBoundingClientRect().right - parseFloat(getComputedStyle(el).paddingRight));
 		expect(box!.x).toBeGreaterThan(column);

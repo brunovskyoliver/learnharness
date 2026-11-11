@@ -90,6 +90,7 @@ import {
 import { CoverageRing } from "@/components/extraction-coverage";
 import {
 	activeProblemOf,
+	latestTutorReplyOf,
 	cliContextWindowOf,
 	dismissedAnswer,
 	findPendingToolCall,
@@ -579,10 +580,15 @@ function ChatView({
 	// read from the text by the agent, not declared here. Starts a turn;
 	// the dock stays mounted (the problem is still active until the agent
 	// concludes).
+	// Submit closes the card; the tutor's reply reopens it (bug
+	// practice-hint-in-card, owner 2026-11-11): see the effect after openCheck.
+	const reopenAfterReplyRef = useRef<string | null>(null);
 	const submitThinking = useCallback(
 		(text: string) => {
 			const problem = activeProblemRef.current;
 			if (!problem) return;
+			reopenAfterReplyRef.current = problem.toolCallId;
+			closeCheckRef.current();
 			void send({ type: "thinking", problemCallId: problem.toolCallId, text });
 		},
 		[send],
@@ -635,6 +641,31 @@ function ChatView({
 	}, [checkId, setCheckOpen, setCheckRevealed]);
 	const openCheckRef = useRef(openCheck);
 	openCheckRef.current = openCheck;
+	const closeCheckRef = useRef(() => setCheckOpen(false));
+	closeCheckRef.current = () => setCheckOpen(false);
+	// The tutor's reply to a submitted try: when the turn ends with the same
+	// problem still open and a reply to show, the card reopens on it. A
+	// concluded problem (or a new one) just clears the wait.
+	const practiceTutorReply = useMemo(
+		() => (activeProblem ? latestTutorReplyOf(nativeMessages, activeProblem.toolCallId) : null),
+		[activeProblem, nativeMessages],
+	);
+	useEffect(() => {
+		const waiting = reopenAfterReplyRef.current;
+		if (waiting === null || busy) return;
+		if (activeProblem?.toolCallId !== waiting) { reopenAfterReplyRef.current = null; return; }
+		if (!practiceTutorReply) return;
+		reopenAfterReplyRef.current = null;
+		openCheckRef.current();
+	}, [busy, activeProblem, practiceTutorReply]);
+	// A check that arrives while the lesson is open opens itself and takes
+	// the focus (owner, 2026-11-11): no "Go to it" click.
+	const arrivedCheckRef = useRef(checkId);
+	useEffect(() => {
+		if (checkId === arrivedCheckRef.current) return;
+		arrivedCheckRef.current = checkId;
+		if (checkId !== null) openCheckRef.current();
+	}, [checkId]);
 	// Home's Answer/Solve (feature 002, `?answer=<toolCallId>`): once, when it
 	// is still the waiting item, the thread comes into view open and focused.
 	const answerHandledRef = useRef(false);
@@ -1372,6 +1403,7 @@ function ChatView({
 					<PracticeDock
 						problemCallId={checkId}
 						statement={problemStatement}
+						tutorReply={practiceTutorReply}
 						active={checkOpen}
 						onReveal={openCheck}
 						// Skip takes the Escape path exactly: the same guard and confirmation.
@@ -2047,13 +2079,16 @@ export function escAbortTarget(s: {
 	return null;
 }
 
+/** Every new check opens itself (owner, 2026-11-11, bug
+ *  practice-hint-in-card: "it should expand automatically… I should not
+ *  click on solve"), teach quizzes included: the reveal step is gone. */
 export function revealArrival(_wasQuestion: boolean): { expanded: boolean; revealed: boolean } {
-	return { expanded: false, revealed: false };
+	return { expanded: true, revealed: true };
 }
 
-/** A new active question stays a summary until the learner opens it. */
+/** A new active question or problem opens itself (owner, 2026-11-11). */
 export function probeArrivalExpanded(_isAtBottom: boolean): boolean {
-	return false;
+	return true;
 }
 
 /**

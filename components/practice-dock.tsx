@@ -17,6 +17,10 @@ export interface PracticeDockProps {
 	/** The active problem's tool-call id (submissions target it). */
 	problemCallId: string;
 	statement?: string;
+	/** The tutor's latest reply to the learner's work on this problem (bug
+	 *  practice-hint-in-card): shown under the statement so a hint that asks
+	 *  something sits where the learner types. Null before the first try. */
+	tutorReply?: string | null;
 	/** The thread is open: Enter from anywhere submits. Closed, Enter opens it. */
 	active: boolean;
 	onReveal?: () => void;
@@ -31,7 +35,7 @@ export interface PracticeDockProps {
 	compactionRunning?: boolean;
 }
 
-export function PracticeDock({ problemCallId, statement = "", active, onReveal, onSkip, onSubmit, compactionRunning = false }: PracticeDockProps) {
+export function PracticeDock({ problemCallId, statement = "", tutorReply = null, active, onReveal, onSkip, onSubmit, compactionRunning = false }: PracticeDockProps) {
 	const [thinking, setThinking] = useSessionState(`problem/${problemCallId}/thinking`, "");
 	// Ref MIRRORS the field ("nothing gets lost", the question-dock
 	// discipline): a submit resuming after `await finishDictation()` reads
@@ -65,6 +69,12 @@ export function PracticeDock({ problemCallId, statement = "", active, onReveal, 
 		<div data-testid="practice-dock" data-problem={problemCallId} className="lh-check-form">
 			<div data-testid="practice-problem-content" className="lh-check-question lh-check-prompt nb-voice lh-voice select-text">
 				<ToolContentResponse>{statement}</ToolContentResponse>
+				{tutorReply && (
+					<div data-testid="practice-tutor-reply" className="lh-check-reply">
+						<span className="lh-check-meta">Tutor</span>
+						<ToolContentResponse>{tutorReply}</ToolContentResponse>
+					</div>
+				)}
 			</div>
 			{/* The learner's half: Enter SENDS (owner round 2, 2026-10-05);
 			    Shift+Enter makes a newline — less to decide about. */}
@@ -77,7 +87,7 @@ export function PracticeDock({ problemCallId, statement = "", active, onReveal, 
 						ref={mention.ref}
 						id={`${problemCallId}-thinking`}
 						aria-label="Your thinking"
-						placeholder="Work through the problem here"
+						placeholder={tutorReply ? "Answer the tutor, or keep working" : "Work through the problem here"}
 						value={thinking}
 						onChange={(e) => {
 							thinkingRef.current = e.target.value;

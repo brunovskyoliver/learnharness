@@ -154,6 +154,30 @@ export function userFacingTextOf(content: unknown, failedOutputCalls?: ReadonlyS
 	return out;
 }
 
+/** The tutor's latest reply to the learner's work on the active problem
+ *  (bug practice-hint-in-card): the learner-facing prose of the assistant
+ *  messages after the LAST practice-thinking submission for this problem.
+ *  Null before the first submission, or while the reply has no prose yet.
+ *  The problem card shows it under the statement, so a hint that asks the
+ *  learner something sits where they type. */
+export function latestTutorReplyOf(messages: readonly LhMessage[], problemCallId: string): string | null {
+	let lastThinking = -1;
+	for (let i = messages.length - 1; i >= 0; i--) {
+		const m = messages[i] as { role?: string; customType?: string; details?: { problemCallId?: unknown } };
+		if (m.role === "custom" && m.customType === "practice-thinking" && m.details?.problemCallId === problemCallId) { lastThinking = i; break; }
+	}
+	if (lastThinking < 0) return null;
+	const failed = failedOutputCallIds(messages);
+	const parts: string[] = [];
+	for (let i = lastThinking + 1; i < messages.length; i++) {
+		const m = messages[i]!;
+		if (m.role !== "assistant") continue;
+		parts.push(...userFacingTextOf(m.content, failed));
+	}
+	const text = parts.join("\n\n").trim();
+	return text ? text : null;
+}
+
 /** Failed output calls remain retry context, not delivered teaching.
  * Truncated calls can have valid-looking partial arguments. Failed/aborted
  * generations do not execute their calls at all, so may have no result. */

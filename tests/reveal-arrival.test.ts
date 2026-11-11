@@ -35,23 +35,23 @@ describe("shouldStampGeometryMute — when a block resize is our own stretch", (
 	});
 });
 
+/** Every new check opens itself (owner, 2026-11-11): no reveal step. */
 describe("revealArrival — how a teach question lands", () => {
-	it("fresh arrival after the composer: collapsed behind the reveal button", () => {
-		assert.deepEqual(revealArrival(false), { expanded: false, revealed: false });
+	it("fresh arrival after the composer: open", () => {
+		assert.deepEqual(revealArrival(false), { expanded: true, revealed: true });
 	});
 
-	it("a subsequent question also waits for an explicit reveal", () => {
-		assert.deepEqual(revealArrival(true), { expanded: false, revealed: false });
+	it("a subsequent question also arrives open", () => {
+		assert.deepEqual(revealArrival(true), { expanded: true, revealed: true });
 	});
 });
 
-/** Probe arrivals follow the same explicit summary reveal as lessons. */
-describe("probeArrivalExpanded — how a probe question lands", () => {
-	it("at the bottom following along: stays a summary", () => {
-		assert.equal(probeArrivalExpanded(true), false);
+describe("probeArrivalExpanded — how a question or problem lands", () => {
+	it("at the bottom following along: open", () => {
+		assert.equal(probeArrivalExpanded(true), true);
 	});
 
-	it("scrolled up in history: arrive already-collapsed (owner ruling)", () => {
-		assert.equal(probeArrivalExpanded(false), false);
+	it("scrolled up in history: open", () => {
+		assert.equal(probeArrivalExpanded(false), true);
 	});
 });
