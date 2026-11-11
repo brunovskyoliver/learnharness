@@ -7,7 +7,7 @@ import {
 	type TeachingAgent,
 } from "../agent/teacher-agent.ts";
 import { piEngineForSpec, type PiEngine } from "../agent/models.ts";
-import { connectionBackgroundAllowed, connectionScopeCurrent, isSubscriptionProvider } from "../agent/subscription-connections.ts";
+import { connectionScopeCurrent, isSubscriptionProvider } from "../agent/subscription-connections.ts";
 import { nativeSubscriptionError } from "../agent/subscription-stream.ts";
 import { chatGPTStreamError } from "../agent/chatgpt-stream.ts";
 import { SubscriptionRequestCycle, type SubscriptionDispatchLifecycle } from "../agent/subscription-request-cycle.ts";
@@ -33,6 +33,8 @@ import { providerEventNote } from "../agent/provider-events.ts";
 import { effectiveSettings, stores } from "./stores.ts";
 import { searchAvailable, searchProvider } from "./search.ts";
 import { providerKeyPresent } from "./keys.ts";
+import { cliBackgroundAllowed, claudeCodeRefusalText } from "./claude-code-config.ts";
+import { CLAUDE_CODE_PROVIDER } from "../core/contracts/claude-code.ts";
 import {
 	extractionEnabled,
 	graphToolsEnabled,
@@ -101,7 +103,7 @@ const jobRunner = createJobRunner({
 	// layer may not read the key store); a missing key refuses the spawn
 	// with the 503-envelope family instead of dying mid-run.
 	providerKeyMissing: (provider, tier) =>
-		providerKeyPresent(provider) ? null : providerKeyMissingEnvelope(provider, [tier]),
+		providerKeyPresent(provider) ? null : providerKeyMissingEnvelope(provider, [tier], provider === CLAUDE_CODE_PROVIDER ? claudeCodeRefusalText() : undefined),
 	// Search port wave (2026-09-20): the researcher's web_search runs on the
 	// injected port — resolved FRESH per job (key rotations land immediately).
 	// null = honestly unavailable; the dispatch-level drop (below) uses the
@@ -126,7 +128,7 @@ export const extraction = createExtractionPipeline({
 	// the job runner gets — a stage engine whose provider key is gone
 	// refuses BEFORE any batch runs (the typed throw), never mid-run.
 	providerKeyMissing: (provider, tier) =>
-		providerKeyPresent(provider) ? null : providerKeyMissingEnvelope(provider, [tier]),
+		providerKeyPresent(provider) ? null : providerKeyMissingEnvelope(provider, [tier], provider === CLAUDE_CODE_PROVIDER ? claudeCodeRefusalText() : undefined),
 });
 
 
@@ -227,15 +229,15 @@ export async function handleChatInput(
 		// Refuse before starting its run when automatic use is disabled.
 		const followupOpening = input.type === "continue" && record.followup && record.messages.some((m) => m.role === "custom" && m.customType === "followup-context") &&
 			record.messages.every((m) => m.role === "custom" && ["followup-context", "graph-context"].includes(m.customType));
-		if (followupOpening && !connectionBackgroundAllowed(conversation.provider)) {
+		if (followupOpening && !cliBackgroundAllowed(conversation.provider)) {
 			return Response.json({ error: "Background use is off for this connection. Open the follow-up session and ask it to start." }, { status: 403 });
 		}
-		if (input.type === "steers" && !connectionBackgroundAllowed(conversation.provider)) {
+		if (input.type === "steers" && !cliBackgroundAllowed(conversation.provider)) {
 			return Response.json({ error: "Background use is off for this connection. Automatic follow-up remains deferred in its queue." }, { status: 403 });
 		}
 	}
 	if (!providerKeyPresent(conversation.provider)) {
-		const envelope = providerKeyMissingEnvelope(conversation.provider, ["strong"]);
+		const envelope = providerKeyMissingEnvelope(conversation.provider, ["strong"], conversation.provider === CLAUDE_CODE_PROVIDER ? claudeCodeRefusalText() : undefined);
 		console.info(`[chat ${chatId}] turn refused — ${JSON.stringify(envelope)}`);
 		return Response.json(envelope, { status: 503 });
 	}
@@ -264,7 +266,7 @@ export async function handleChatInput(
 		{
 			chatStore: stores.chatStore,
 			engine: piEngineForSpec(conversation, true),
-			canStart: () => connectionBackgroundAllowed(conversation.provider),
+			canStart: () => cliBackgroundAllowed(conversation.provider),
 			modelId: modelIdForCompaction,
 			kind: record.kind === "practice" ? "practice" : hasProbeDone(record.messages) ? "teach" : "probe",
 			thresholdTokens: effectiveThresholdTokens(
@@ -640,7 +642,7 @@ export async function handleChatInput(
 					kickCompaction(() => {
 						const fresh = effectiveSettings();
 						const spec = studyConversationSpec(stores.chatStore.getChat(chatId)?.settings, fresh.models.strong);
-						if (!spec || !connectionBackgroundAllowed(spec.provider)) return null;
+						if (!spec || !cliBackgroundAllowed(spec.provider)) return null;
 						let kickEngine: PiEngine;
 						try { kickEngine = piEngineForSpec(spec, true); } catch { return null; }
 						const kickModelId = `${kickEngine.model.provider}:${kickEngine.model.id}`;
@@ -649,7 +651,7 @@ export async function handleChatInput(
 						return {
 							chatStore: stores.chatStore,
 							engine: kickEngine,
-							canStart: () => connectionBackgroundAllowed(spec.provider),
+							canStart: () => cliBackgroundAllowed(spec.provider),
 							modelId: kickModelId,
 							kind: freshRecord.kind === "practice" ? "practice" : hasProbeDone(freshRecord.messages) ? "teach" : "probe",
 							thresholdTokens: effectiveThresholdTokens(

@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { ContextWindowProbe } from "../src/agent/claude-code/context-window.ts";
+import { CLAUDE_CODE_MODELS } from "../src/agent/claude-code/provider.ts";
 import { asAgentMessages, cliContextWindowOf, toLlmMessages, type LhMessage } from "../src/core/native-messages.ts";
+import { catalogLimits } from "../components/model-picker.tsx";
 import { formatContextMeasurement } from "../components/stats-bar.tsx";
+import { toModelDto } from "../src/server/model-catalog.ts";
 
 function setup() {
 	const writes: { type: string; request_id: string; request: Record<string, string> }[] = [];
@@ -83,6 +86,11 @@ test("per-session metadata survives JSON persistence, never borrows older report
 });
 
 // Upstream's contextLimitForModel assertions (the test above) land with
-// stats-bar.tsx in T045; this case needs toModelDto's Claude Code nulls (T025).
+// stats-bar.tsx in T045.
 test.todo("contextLimitForModel prefers the session's CLI report, never a placeholder (T045)");
-test.todo("CLI catalog limits remain unknown and cannot create a global denominator (T025)");
+
+test("CLI catalog limits remain unknown and cannot create a global denominator", () => {
+	const models = CLAUDE_CODE_MODELS.map(toModelDto);
+	assert(models.every((model) => model.contextWindow === null && model.maxTokens === null));
+	assert.equal(catalogLimits({ models }).size, 0);
+});

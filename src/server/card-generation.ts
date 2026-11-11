@@ -19,6 +19,8 @@ import { modelsNotConfigured, providerKeyMissing } from "../core/settings.ts";
 import { studyRoleSpec as resolveRoleSpec } from "./codex-verify.ts";
 import { cardStore } from "../store/cards.ts";
 import { providerKeyPresent } from "./keys.ts";
+import { claudeCodeRefusalText } from "./claude-code-config.ts";
+import { CLAUDE_CODE_PROVIDER } from "../core/contracts/claude-code.ts";
 import { jobCost } from "./pricing.ts";
 import { stores } from "./stores.ts";
 
@@ -68,7 +70,7 @@ export function cardModelRefusal(): { body: Record<string, unknown>; status: 503
 	if (cardModelOverride.current) return null;
 	const spec = resolveRoleSpec("extractor", stores.settingsStore.readSettings());
 	if (!spec) return { body: { ...modelsNotConfigured(["cheap"]) }, status: 503 };
-	if (!providerKeyPresent(spec.provider)) return { body: { ...providerKeyMissing(spec.provider, ["cheap"]) }, status: 503 };
+	if (!providerKeyPresent(spec.provider)) return { body: { ...providerKeyMissing(spec.provider, ["cheap"], spec.provider === CLAUDE_CODE_PROVIDER ? claudeCodeRefusalText() : undefined) }, status: 503 };
 	return null;
 }
 

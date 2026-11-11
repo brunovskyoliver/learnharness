@@ -241,12 +241,12 @@ describe("parseCompactionSettingsBody (owner round 14)", () => {
 });
 
 describe("SETTINGS_SECTIONS (the route's section map)", () => {
-	it("maps exactly the eight record sections", () => {
+	it("maps exactly the nine record sections", () => {
 		// compaction joined (owner round 14): its own section PUT — the
 		// threshold is engine behavior, not an agent-section key.
 		assert.deepEqual(
 			Object.keys(SETTINGS_SECTIONS),
-			["general", "chat", "agent", "appearance", "graph", "compaction", "models", "notebook"],
+			["general", "chat", "agent", "appearance", "graph", "compaction", "models", "notebook", "claudeCode"],
 		);
 	});
 });

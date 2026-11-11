@@ -71,7 +71,8 @@ import { danglingQuestionOf, endsInDismissal, type LhMessage } from "../core/nat
 import { fireJobAbort, isJobLive } from "../agent/subagents/aborts.ts";
 import { stores, effectiveSettings } from "./stores.ts";
 import { studyConversationSpec } from "./codex-verify.ts";
-import { connectionBackgroundAllowed, isSubscriptionProvider, onSubscriptionChange } from "../agent/subscription-connections.ts";
+import { isSubscriptionProvider, onSubscriptionChange } from "../agent/subscription-connections.ts";
+import { cliBackgroundAllowed } from "./claude-code-config.ts";
 import { isTurnRunning } from "./turn-liveness.ts";
 import type { Agent } from "@earendil-works/pi-agent-core";
 
@@ -250,7 +251,7 @@ function queueSteer(chatId: string, steer: SteerMessage): QueuedSteer {
 export function automaticFollowUpAllowed(chatId: string, agent?: Agent): boolean {
 	if (agent && state().automaticDeferred.has(agent)) return false;
 	const provider = agent?.state?.model?.provider ?? studyConversationSpec(stores.chatStore.getChat(chatId)?.settings, effectiveSettings().models.strong)?.provider;
-	return connectionBackgroundAllowed(provider);
+	return cliBackgroundAllowed(provider);
 }
 
 function handOffEligible(chatId: string, agent: Agent): void {

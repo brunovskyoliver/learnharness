@@ -59,6 +59,8 @@ import { isSubscriptionProvider, subscriptionConnected } from "../agent/subscrip
 // globalThis (Symbol.for("lh.authBoot")) so HMR re-imports never re-run the
 // snapshot; shared with external CLIs through core/auth-env.ts.
 import { authEnvRecord as boot } from "../core/auth-env.ts";
+import { CLAUDE_CODE_PROVIDER } from "../core/contracts/claude-code.ts";
+import { claudeCodeAdmissible } from "./claude-code-config.ts";
 
 /** Is `id` a WRITABLE key name — curated catalog or model-provider env
  *  var (provider-keys interlude: PUT/DELETE accept both). */
@@ -194,6 +196,9 @@ export function keyValue(id: string): string | undefined {
  * (gate by what would run). Providers absent from AUTH_PROVIDER_KEYS take
  * no key at all: nothing to gate, present by definition. */
 export function providerKeyPresent(provider: string): boolean {
+	// Explicit opt-in + installation only, never authentication readiness.
+	// Consulted at admission, not inside already-running agent loops.
+	if (provider === CLAUDE_CODE_PROVIDER) return claudeCodeAdmissible();
 	if (isSubscriptionProvider(provider)) return subscriptionConnected(provider);
 	const info = AUTH_PROVIDER_KEYS.find((p) => p.id === provider);
 	return info ? keyValue(info.envVar) !== undefined : true;

@@ -453,6 +453,15 @@ export function parseNotebookSettingsBody(body: unknown): SettingsBodyResult<Not
 	return { ok: true, settings };
 }
 
+/** claudeCode: explicit app-wide opt-in. Empty section resets to off. */
+export function parseClaudeCodeSettingsBody(body: unknown): SettingsBodyResult<{ enabled?: boolean }> {
+	const raw = asRecord(body);
+	if (!raw) return { ok: false, error: "Invalid JSON body" };
+	if (raw.enabled === undefined) return { ok: true, settings: {} };
+	if (typeof raw.enabled !== "boolean") return { ok: false, error: "enabled must be a boolean" };
+	return { ok: true, settings: { enabled: raw.enabled } };
+}
+
 /** The section→parser map for PUT /api/settings/[section] (the route also
  *  carries the special prompts sub-resource). */
 export const SETTINGS_SECTIONS = {
@@ -464,6 +473,7 @@ export const SETTINGS_SECTIONS = {
 	compaction: parseCompactionSettingsBody,
 	models: parseModelsSettingsBody,
 	notebook: parseNotebookSettingsBody,
+	claudeCode: parseClaudeCodeSettingsBody,
 } as const;
 
 export type SettingsSectionName = keyof typeof SETTINGS_SECTIONS;

@@ -37,6 +37,8 @@ import { modelsNotConfigured, providerKeyMissing, resolveReviewer } from "../cor
 import { resolveRoleSpec } from "../core/settings-resolution.ts";
 import { NotebookReadOnlyError, type CompanionChange } from "../store/notebook.ts";
 import { providerKeyPresent } from "./keys.ts";
+import { claudeCodeRefusalText } from "./claude-code-config.ts";
+import { CLAUDE_CODE_PROVIDER } from "../core/contracts/claude-code.ts";
 import { jobCost } from "./pricing.ts";
 import { effectiveSettings, stores } from "./stores.ts";
 
@@ -91,7 +93,7 @@ export function notebookModelRefusal(): { body: Record<string, unknown>; status:
 	}
 	const spec = resolveRoleSpec("notebook", stores.settingsStore.readSettings());
 	if (!spec) return { body: { ...modelsNotConfigured(["strong"]), reason: "models" }, status: 503 };
-	if (!providerKeyPresent(spec.provider)) return { body: { ...providerKeyMissing(spec.provider, ["strong"]), reason: "key" }, status: 503 };
+	if (!providerKeyPresent(spec.provider)) return { body: { ...providerKeyMissing(spec.provider, ["strong"], spec.provider === CLAUDE_CODE_PROVIDER ? claudeCodeRefusalText() : undefined), reason: "key" }, status: 503 };
 	return null;
 }
 
