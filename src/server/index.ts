@@ -47,6 +47,7 @@ export * from "./observability.ts";
 export * from "./model-catalog.ts";
 export { subscriptionControlsResponse, subscriptionBrowserResponse } from "./web-subscription-http.ts";
 export { sessionCost } from "./pricing.ts";
+export { claudeCodeInstallationResponse } from "./claude-code.ts";
 export * from "./library.ts";
 export { repoLinkCreateResponse, repoLinkDeleteResponse, repoLinkPatchResponse, repoLinkSyncResponse, repoLinksListResponse } from "./repo-links.ts";
 export * from "./diagrams.ts";

@@ -27,6 +27,7 @@ import { useEffect, useRef, useState } from "react";
 import { type AuthKeyStatus } from "@/src/core";
 import { SettingsFailure, SettingsGroup, SettingsRowsSkeleton } from "./controls.tsx";
 import { SubscriptionConnections } from "./subscription-connections.tsx";
+import { ClaudeCodeInstallationStatus } from "./claude-code-status.tsx";
 import { ProviderMenuList } from "./model-menu.tsx";
 import { MenuShell } from "@/components/menu-shell";
 import { notifySettingsSaved } from "@/components/settings-signal";
@@ -438,6 +439,10 @@ const { providerRows, toolRows, unknownRows, addable } = classifyKeys(statuses, 
 
 			<SettingsGroup label="Subscriptions" testid="group-subscriptions">
 				<SubscriptionConnections />
+			</SettingsGroup>
+
+			<SettingsGroup label="External CLI" testid="group-external-cli">
+				<ClaudeCodeInstallationStatus />
 			</SettingsGroup>
 
 			{(["Search"] as const).map((label) => <SettingsGroup key={label} label={label} testid="group-search">

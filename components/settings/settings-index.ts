@@ -60,6 +60,7 @@ export const SETTINGS_INDEX: readonly SettingsIndexEntry[] = [
 	{ section: "keys", row: "add-provider", label: "Add provider key", hint: "Model API keys" },
 	{ section: "keys", row: "chatgpt", label: "ChatGPT", hint: "Subscriptions" },
 	...NATIVE_SUBSCRIPTIONS.map((sub) => ({ section: "keys" as const, row: sub.providerId, label: sub.label, hint: "Subscriptions" })),
+	{ section: "keys", row: "claude-code", label: "Claude Code", hint: "External CLI" },
 	{ section: "agent", row: "slot-strong", label: "Strong model and thinking", hint: "The main model for your sessions" },
 	{ section: "agent", row: "slot-cheap", label: "Cheap model and thinking", hint: "The assistants that research, build demos, and grade your work" },
 	{ section: "agent", row: "slot-vision", label: "Vision model and thinking", hint: "The assistants that draw and read PDFs" },

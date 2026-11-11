@@ -86,14 +86,17 @@ test("Providers is Study's first/default page; General is last and other pages k
  assert.deepEqual([...hosted.matchAll(/data-testid="(?:nb-)?settings-nav-([^"]+)"/g)].map((m) => m[1]), ["customize", "reviewers", "keys", "agent", "graph", "keyboard", "general"], "hosted has no Files section (feature 009)");
 });
 
-test("Providers has exactly four ordered sections; unknown variables stay masked/read-only at the end of Model API keys", async () => {
+test("Providers has four ordered sections including External CLI; unknown variables stay masked/read-only at the end of Model API keys", async () => {
  globalThis.fetch = async (url) => {
+  if (url === "/api/claude-code") return Response.json({ state: "not-found", version: null, minimumVersion: "2.1.259" });
+  if (url === "/api/settings") return Response.json({ settings: null });
   assert.equal(url, "/api/keys");
   return Response.json({ providers: [{ id: "openai", envVar: "OPENAI_API_KEY", label: "OpenAI" }], keys: [{ id: "FUTURE_VAR", info: null, present: true, masked: "…abcd", source: "file", shadowedByEnv: false }] });
  };
  fixture(); await mount(<KeysSection />);
  const headings = [...document.querySelectorAll('[data-testid^="group-"] > h3')].map((el) => el.textContent);
- assert.deepEqual(headings, ["Model API keys", "Subscriptions", "Search"]);
+ assert.deepEqual(headings, ["Model API keys", "Subscriptions", "External CLI", "Search"]);
+ assert(byTest("claude-code-installation").closest('[data-testid="group-external-cli"]'));
  assert(byTest("key-tavily_api_key").closest('[data-testid="group-search"]'));
  assert(byTest("key-brave_api_key").closest('[data-testid="group-search"]'));
  assert(byTest("unknown-FUTURE_VAR").closest('[data-testid="group-provider-keys"]'));

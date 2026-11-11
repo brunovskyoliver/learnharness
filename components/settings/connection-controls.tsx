@@ -4,11 +4,18 @@ import { LoadingModal } from "@/components/loading-modal";
 import type { ConnectionDialog as LoadedDialog } from "./connection-dialog";
 import { Button } from "@/components/ui/button";
 
-export function ConnectionRow({ label, action, disabled, onAction, children, testid, actionTestid }: { label: string; action: string; disabled: boolean; onAction: () => void; children?: React.ReactNode; testid?: string; actionTestid?: string }) {
+/** The connection action's classes, shared with other outline row actions
+ *  (Claude Code's Check again) so they read as one control. */
+export function connectionActionClass(variant: "outline" | "ghost"): string {
+	return `ml-auto cursor-pointer disabled:cursor-not-allowed pointer-coarse:min-h-11 ${variant === "outline" ? "" : "text-faint hover:text-ink"}`;
+}
+
+export function ConnectionRow({ label, action, actionVariant, disabled, onAction, children, testid, actionTestid }: { label: string; action: string; actionVariant?: "outline" | "ghost"; disabled: boolean; onAction: () => void; children?: React.ReactNode; testid?: string; actionTestid?: string }) {
+	const variant = actionVariant ?? (action === "Connect" ? "outline" : "ghost");
 	return <div className="flex min-h-14 flex-wrap items-center gap-3 py-3" data-testid={testid}>
 		<span className="nb-set-row-label">{label}</span>
 		{children}
-		<Button type="button" size="xs" variant={action === "Connect" ? "outline" : "ghost"} className={`ml-auto cursor-pointer disabled:cursor-not-allowed pointer-coarse:min-h-11 ${action === "Connect" ? "" : "text-faint hover:text-ink"}`} data-testid={actionTestid} disabled={disabled} onClick={onAction}>{action}</Button>
+		<Button type="button" size="xs" variant={variant} className={connectionActionClass(variant)} data-testid={actionTestid} disabled={disabled} onClick={onAction}>{action}</Button>
 	</div>;
 }
 

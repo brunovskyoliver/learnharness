@@ -19,6 +19,7 @@ const { chatStore } = await import("../src/store/chats.ts");
 const { jobStore } = await import("../src/store/jobs.ts");
 const { createJobRunner } = await import("../src/agent/subagents/runner.ts");
 const { CLAUDE_CODE_MODELS } = await import("../src/agent/claude-code/provider.ts");
+const { claudeCodeInstallationResponse } = await import("../src/server/claude-code.ts");
 
 function setup(t: TestContext) {
 	const previous = readSettings();
@@ -73,8 +74,12 @@ test("default off even with an installed binary; section writes toggle availabil
 	assert.equal((await save({})).status, 200); assert.equal(claudeCodeEnabled(), false);
 });
 
-// The installation route (src/server/claude-code.ts) lands in T034 with this case.
-test.todo("off cannot launch a version probe even through an otherwise authorized HTTP request (T034)");
+test("off cannot launch a version probe even through an otherwise authorized HTTP request", async (t) => {
+	setup(t);
+	const request = new Request("http://test/api/claude-code", { headers: { "x-learnharness-claude-code": "1" } });
+	const response = await claudeCodeInstallationResponse(request, async () => assert.fail("disabled CLI must not execute"));
+	assert.equal(response.status, 403);
+});
 
 test("a saved CLI background job is refused before model execution while opt-in is off", async (t) => {
 	setup(t);

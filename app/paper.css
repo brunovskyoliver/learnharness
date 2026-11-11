@@ -2659,8 +2659,8 @@ html.lh-paper {
 .lh-paper .nb-set-skeleton .nb-set-row { flex-direction: row; align-items: center; justify-content: space-between; }
 
 /* The switch, locked: the rule track and a faint knob; the cursor says why. */
-.lh-paper .nb-switch:disabled { cursor: not-allowed; background: var(--shelf); box-shadow: inset 0 0 0 1px var(--rule); }
-.lh-paper .nb-switch:disabled .nb-switch-thumb { background: var(--faint); box-shadow: none; }
+.lh-paper .nb-switch:is(:disabled, [aria-disabled="true"]) { cursor: not-allowed; background: var(--shelf); box-shadow: inset 0 0 0 1px var(--rule); }
+.lh-paper .nb-switch:is(:disabled, [aria-disabled="true"]) .nb-switch-thumb { background: var(--faint); box-shadow: none; }
 .lh-paper .nb-switch-thumb[data-icon] { display: flex; align-items: center; justify-content: center; color: var(--ink); }
 .lh-paper .nb-switch-thumb[data-icon] > svg { width: 12px; height: 12px; }
 
