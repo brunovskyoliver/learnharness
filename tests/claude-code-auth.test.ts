@@ -191,10 +191,10 @@ test("invalid codes are refused before reaching the CLI", async (t) => {
 test("failures carry the CLI's line without the code, and end the attempt", async (t) => {
 	t.after(reset);
 	const cases: [string, string][] = [
-		["wrong#code-1234", "Sign-in failed: Login failed: That code wasn't accepted. It may be incomplete, expired, already used, or from an earlier sign-in attempt. Sign in again to get a new code."],
+		["wrong#code-1234", "Sign-in failed: That code wasn't accepted. It may be incomplete, expired, already used, or from an earlier sign-in attempt. Sign in again to get a new code."],
 		// 2.1.321 keeps waiting after "Invalid code"; the relay ends the attempt at once.
 		["nohash-code-5678", "Sign-in failed: Invalid code. Please make sure the full code was copied."],
-		["echo#secret-code-9999", "Sign-in failed: Login failed: code … was rejected"],
+		["echo#secret-code-9999", "Sign-in failed: code … was rejected"],
 	];
 	for (const [code, error] of cases) {
 		assert.ok(record(await runAsTenant(B, () => startSignIn("claudeai"))).ok);

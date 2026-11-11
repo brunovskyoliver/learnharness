@@ -152,7 +152,7 @@ test("code errors: invalid 400, nothing pending 409, CLI failure 422", async (t)
 	}
 	const wrong = await call(TENANT, request("POST", { action: "code", code: "echo#http-secret-code" }));
 	assert.equal(wrong.status, 422);
-	assert.equal(wrong.body.error, "Sign-in failed: Login failed: code … was rejected");
+	assert.equal(wrong.body.error, "Sign-in failed: code … was rejected");
 	const again = await call(TENANT, request("POST", { action: "code", code: "good-code" }));
 	assert.deepEqual([again.status, again.body], [409, { error: "This sign-in expired. Start again." }], "the failed attempt ended");
 });

@@ -314,7 +314,7 @@ export async function submitSignInCode(code: unknown): Promise<SubmitCodeResult>
 	if (verdict === 0) return { ok: true, auth: await readClaudeCodeAuth() };
 	const last = after.findLast((entry) => entry.stream === "stderr")?.line
 		?? after.findLast((entry) => !entry.line.startsWith("Paste code here"))?.line ?? "";
-	const message = last.split(code).join("…") || `Claude Code exited with code ${verdict ?? "unknown"}`;
+	const message = last.split(code).join("…").replace(/^Login failed:\s*/i, "") || `Claude Code exited with code ${verdict ?? "unknown"}`;
 	return { ok: false, status: 422, error: `Sign-in failed: ${message}` };
 }
 
