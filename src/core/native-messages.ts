@@ -45,6 +45,7 @@ import {
 import { compactAnswerForModel, type QuestionAnswerData } from "./question-core.ts";
 import { activeCompactionOf, keptIndexFor } from "./compaction.ts";
 import { referencesOf, renderReferences, type LibraryReference } from "./library-refs.ts";
+import { CLAUDE_CODE_PROVIDER } from "./contracts/claude-code.ts";
 
 /** The hard-invariant wording for an aborted turn's unanswered calls —
  *  carried over verbatim from the pre-native era so the model's view
@@ -94,7 +95,26 @@ declare module "@earendil-works/pi-agent-core" {
 }
 
 /** A record message: a native pi message (or our marker) plus the record id. */
-export type LhMessage = ((UserMessage & { references?: LibraryReference[] }) | AssistantMessage | ToolResultMessage | LhMarkerMessage) & { id: string };
+export type LhMessage = ((UserMessage & { references?: LibraryReference[] }) | AssistantMessage | ToolResultMessage | LhMarkerMessage) & {
+	id: string;
+	/** CLI-reported effective context budget, not a catalog model maximum.
+	 * App-only metadata: never transmitted as provider/model message content. */
+	cliContextWindow?: number;
+};
+
+/** Latest response only: never borrow an older process/model's window when
+ * a fresh response has no metadata. Compaction invalidates the old report. */
+export function cliContextWindowOf(messages: readonly LhMessage[]): { model: string; tokens: number } | null {
+	for (let i = messages.length - 1; i >= 0; i--) {
+		const message = messages[i]!;
+		if (message.role === "custom" && message.customType === "compaction") return null;
+		if (message.role !== "assistant") continue;
+		const tokens = message.cliContextWindow;
+		return message.provider === CLAUDE_CODE_PROVIDER && typeof tokens === "number" && Number.isSafeInteger(tokens) && tokens > 0
+			? { model: `${message.provider}:${message.model}`, tokens } : null;
+	}
+	return null;
+}
 
 /** A record message list is assignable to the agent's context — that IS
  *  the replay (ui-stream/chat-handler assign it to initialState.messages). */
@@ -648,8 +668,8 @@ export function toLlmMessages(messages: readonly AgentMessage[]): Message[] {
 			});
 			continue;
 		}
-		// Strip the record id: the wire carries the native shape only.
-		const { id: _id, ...native } = m as LhMessage;
+		// Strip the record id and app-only metadata: the wire carries the native shape only.
+		const { id: _id, cliContextWindow: _cliContextWindow, ...native } = m as LhMessage;
 		out.push(referencesOf(native).length ? withMaterial(native as Message) : (native as Message));
 		// Dangling-call synthesis: an assistant message whose toolCalls have
 		// no results in the remaining tail (abort mid-question) — the

@@ -17,6 +17,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { after, describe, it } from "node:test";
+import { authEnvRecord, externalCliEnv } from "../src/core/auth-env.ts";
 
 // THIS PROCESS'S ENV IS THE TEST SUBJECT — strip any inherited catalog vars
 // (a developer shell may export REAL keys; tests use throwaway values only,
@@ -71,10 +72,17 @@ describe("boot fill-gap + precedence", () => {
 		assert.ok(row.shadowedByEnv, "file value differs from the env value");
 		assert.equal(row.masked, `…${ENV_OWNED.slice(-4)} (${ENV_OWNED.length} chars)`);
 		assert.equal(authStore.authVars().OPENROUTER_API_KEY, "sk-or-v1-filefilefile", "file copy untouched");
+		assert.equal(externalCliEnv().OPENROUTER_API_KEY, ENV_OWNED, "external CLIs retain launch-env ownership");
+	});
+
+	it("the boot record is the shared core/auth-env one", () => {
+		assert.ok(authEnvRecord().realEnv.has("OPENROUTER_API_KEY"), "real env snapshotted into the shared record");
+		assert.ok(authEnvRecord().fillGap.has("FUTURE_PLANS_TOKEN"), "fill-gap recorded in the shared record");
 	});
 
 	it("unknown file var: fill-gapped into env, surfaced as a generic row", () => {
 		assert.equal(process.env.FUTURE_PLANS_TOKEN, "opaque-plans-token", "reflected at boot");
+		assert.equal(externalCliEnv().FUTURE_PLANS_TOKEN, undefined, "external CLIs exclude unknown file-only injections too");
 		const row = keyStatuses().find((s) => s.id === "FUTURE_PLANS_TOKEN")!;
 		assert.equal(row.info, null, "no curated form");
 		assert.equal(row.source, "file");
@@ -102,6 +110,7 @@ describe("saveKey / deleteKey (immediate effect, no restart)", () => {
 		const r = saveKey("BRAVE_API_KEY", value);
 		assert.ok(r.ok);
 		assert.equal(process.env.BRAVE_API_KEY, value, "env updated immediately");
+		assert.equal(externalCliEnv().BRAVE_API_KEY, undefined);
 		assert.equal(authStore.authVars().BRAVE_API_KEY, value, "file updated");
 		assert.equal(r.status.source, "file", "the reflected copy is the store's — the file is its origin of truth");
 		assert.ok(!r.status.shadowedByEnv);
@@ -111,6 +120,7 @@ describe("saveKey / deleteKey (immediate effect, no restart)", () => {
 		const r = saveKey("OPENROUTER_API_KEY", "sk-or-v1-newvalue12345");
 		assert.ok(r.ok);
 		assert.equal(process.env.OPENROUTER_API_KEY, ENV_OWNED, "real env untouched");
+		assert.equal(externalCliEnv().OPENROUTER_API_KEY, ENV_OWNED, "saving a shadowed key cannot remove real env ownership");
 		assert.equal(authStore.authVars().OPENROUTER_API_KEY, "sk-or-v1-newvalue12345", "file updated for later");
 		assert.ok(r.status.shadowedByEnv);
 	});

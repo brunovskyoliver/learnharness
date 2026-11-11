@@ -37,6 +37,8 @@ for (const entry of ["components/sidebar.tsx", "components/home.tsx", "component
 				assert.doesNotMatch(input, /components\/library\/(?!use-library-mention\.ts$)/, `${input} entered startup JS; the Library loads with its own route`);
 				// Feature 024: Notebook's code, styles and fonts load with its own route.
 				assert.doesNotMatch(input, /(?:components\/notebook\/|app\/\(app\)\/notebook\/|src\/core\/notebook(?:-sketch|-export)?\.ts$)/, `${input} entered Study's startup JS; Notebook loads with its own route`);
+				// Feature 029 (FR-013): the Claude Code adapter and the MCP SDK are server-only.
+				assert.doesNotMatch(input, /node_modules\/@modelcontextprotocol\/|src\/agent\/claude-code\//, `${input} entered startup JS; Claude Code is server-only`);
 				if (entry === "components/graph-view.tsx") assert.doesNotMatch(input, /(?:components\/graph-canvas\.ts|src\/core\/layout\.ts|node_modules\/d3-[^/]+\/)/, `${input} entered the empty graph's static JS`);
 			}
 			for (const imported of output.imports) if (imported.kind === "import-statement" && !imported.external) walk(imported.path);
@@ -57,6 +59,8 @@ for (const entry of ["components/library/library-view.tsx", "components/sidebar.
 		});
 		for (const input of Object.keys(metafile.inputs)) {
 			assert.doesNotMatch(input, /node_modules\/isomorphic-git\/|src\/server\/repo-(?:git|sync)\.ts$/, `${input} entered the client graph`);
+			// Feature 029 (FR-013): nor the Claude Code adapter or the MCP SDK.
+			assert.doesNotMatch(input, /node_modules\/@modelcontextprotocol\/|src\/agent\/claude-code\//, `${input} entered the client graph; Claude Code is server-only`);
 		}
 	});
 }

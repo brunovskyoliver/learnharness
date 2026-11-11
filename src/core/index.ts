@@ -73,6 +73,7 @@ export type { ChatGPTStatus, ChatGPTControlBridge } from "./contracts/chatgpt.ts
 export { NATIVE_SUBSCRIPTIONS } from "./contracts/subscriptions.ts";
 export type { NativeSubscriptionProviderId, NativeSubscriptionLogicalId, NativeSubscriptionStatus, NativeSubscriptionSnapshot, NativeSubscriptionScope, NativeSubscriptionControlBridge, SubscriptionInteraction, SubscriptionPrompt } from "./contracts/subscriptions.ts";
 export * from "./cost-summary.ts";
+export { CLAUDE_CODE_PROVIDER, CLAUDE_CODE_MINIMUM_VERSION, type ClaudeCodeStatus, type ClaudeCodeAuthStatus, type ClaudeCodeSignInMethod, type ClaudeCodePendingSignIn } from "./contracts/claude-code.ts";
 export * from "./fuzzy.ts";
 export * from "./workspace-tabs.ts";
 export * from "./command-palette.ts";
