@@ -633,7 +633,7 @@ function ChatView({
 	const [lessonWidth, setLessonWidth] = useState(0);
 	const [checkLayer, setCheckLayer] = useState<HTMLDivElement | null>(null);
 	const layout = checkId ? checkLayout(lessonWidth) : ({ variant: "inline", shift: 0 } as const);
-	const checkAnchor = useMemo(() => (checkId ? checkAnchorPartId(messages, checkId) : null), [messages, checkId]);
+	const checkAnchor = useMemo(() => (checkId ? checkAnchorPartId(messages, checkId, !pending) : null), [messages, checkId, pending]);
 	const checkMessage = useMemo(() => (checkId ? checkMessageIndex(messages, checkId) : -1), [messages, checkId]);
 	/** Opens the thread, brings it into view and (fine pointers) puts focus in it:
 	 *  the answer field for free text and problems, the first choice otherwise. */
@@ -1774,6 +1774,9 @@ function ChatView({
 												const renderPart = () => {
 													switch (part.type) {
 													case "text": {
+														// A text part with no words draws nothing (it was an empty
+														// 59px block with a hidden action bar between tool rows).
+														if (!part.text?.trim() && part.state !== "streaming") return null;
 														const sourceId = textPartMessageId(part.id);
 														const anchor = sourceId && sourceTextParts.get(sourceId) === part.id ? messageAnchorId(sourceId) : undefined;
 														return (
@@ -1782,7 +1785,7 @@ function ChatView({
 													}
 													case "reasoning":
 														return (
-															<Reasoning key={pi} isStreaming={status === "streaming" && isLastPart} className="lh-reading mb-2">
+															<Reasoning key={pi} isStreaming={status === "streaming" && isLastPart} className="lh-reading mb-0">
 																<ReasoningTrigger />
 																<ReasoningContent>{part.text ?? ""}</ReasoningContent>
 															</Reasoning>
@@ -1792,7 +1795,11 @@ function ChatView({
 															return <PhaseDivider key={`teach-step-${pi}`} phase="teach" />;
 														// A trailing step-start has nothing under it yet: no
 														// hairline over the live Thinking row (polish pass).
-														return pi > 0 && !isLastPart ? <div key={pi} className="h-6" aria-hidden /> : null;
+														// Small rows (thinking, Wolfram, tools) group tight; a step
+														// that opens with the tutor's words gets ~24px before them
+														// (owner, 2026-11-11: the old 24px spacer sat before every step).
+														if (pi === 0 || isLastPart) return null;
+														return nextIsProse(m.parts, pi) ? <div key={pi} className="h-2" aria-hidden /> : null;
 													case "data-plan-block":
 														// The plan in the chat (wave 4): a frozen snapshot
 														// block — rendered as carried, never re-derived.
@@ -2094,6 +2101,17 @@ export function escAbortTarget(s: {
 	if (s.problem) return "problem";
 	if (s.busy) return "turn";
 	return null;
+}
+
+/** The next drawn part after a step boundary is the tutor's prose. */
+function nextIsProse(parts: readonly { type: string; text?: string }[], from: number): boolean {
+	for (let i = from + 1; i < parts.length; i++) {
+		const part = parts[i]!;
+		if (part.type === "step-start") continue;
+		if (part.type === "text" && !part.text?.trim()) continue;
+		return part.type === "text";
+	}
+	return false;
 }
 
 /** The learner's submitted tries on a problem (practice-thinking markers). */

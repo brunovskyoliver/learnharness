@@ -14,7 +14,8 @@ function textIds(messages: readonly LhViewMessage[]): string[] {
 }
 
 /** Finish at the answer's beginning, while respecting a reader who left the
- * live tail. Temporary tail space lets short answers reach the same position. */
+ * live tail. A short answer stops where the content ends: no tail space
+ * (owner, 2026-11-11). */
 export function TurnReadingPosition({ busy, messages, onReserve }: {
 	busy: boolean;
 	messages: readonly LhViewMessage[];
@@ -122,9 +123,8 @@ export function TurnReadingPosition({ busy, messages, onReserve }: {
 					if (detached.current) return;
 					const answer = findAnswer();
 					if (!answer) { pending.current = false; return; }
-					const top = main.scrollTop + answer.getBoundingClientRect().top - main.getBoundingClientRect().top - 16;
-					const spacer = main.querySelector<HTMLElement>('[data-testid="dock-spacer"]');
-					onReserve((spacer?.getBoundingClientRect().height ?? 0) + Math.max(0, top + main.clientHeight - main.scrollHeight));
+					// No tail space (owner, 2026-11-11): the answer moves toward the top only as far
+					// as the real content allows; nothing scrolls past the last item.
 					frames.current.push(requestAnimationFrame(() => {
 						if (detached.current) return;
 						const animation = animateDockScroll(main, () => {

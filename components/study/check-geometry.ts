@@ -43,7 +43,23 @@ interface ViewPart { type: string; id?: string; toolCallId?: string; text?: stri
 interface ViewMessage { role: string; parts: readonly ViewPart[] }
 
 /** The anchor of a check: the nearest assistant text part with words before its tool part (`data-answer-part-id`), or null. */
-export function checkAnchorPartId(messages: readonly ViewMessage[], toolCallId: string): string | null {
+export function checkAnchorPartId(messages: readonly ViewMessage[], toolCallId: string, followLatest = false): string | null {
+	// A practice problem follows the conversation (owner, 2026-11-11): the
+	// tutor's latest words after the pose anchor it, so a reply's reopened
+	// card sits beside that reply, not back at the pose.
+	if (followLatest) {
+		const at = messages.findIndex((message) => message.parts.some((part) => part.toolCallId === toolCallId));
+		if (at >= 0) {
+			for (let m = messages.length - 1; m > at; m--) {
+				if (messages[m]!.role !== "assistant") continue;
+				const parts = messages[m]!.parts;
+				for (let p = parts.length - 1; p >= 0; p--) {
+					const part = parts[p]!;
+					if (part.type === "text" && part.id && part.text?.trim()) return part.id;
+				}
+			}
+		}
+	}
 	for (let mi = messages.length - 1; mi >= 0; mi--) {
 		const parts = messages[mi]!.parts;
 		const at = parts.findIndex((part) => part.toolCallId === toolCallId);

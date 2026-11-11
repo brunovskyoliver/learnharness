@@ -171,6 +171,13 @@
 /* Compact chat (reading history): the field and the send share one row. */
 [data-compact="true"] [data-testid="composer"] .answer-well {
 	flex: 1;
+	/* One row: the field's text centres on the send/Stop row (owner,
+	   2026-11-11: the placeholder sat 6px high). */
+	display: flex;
+	align-items: center;
+}
+[data-compact="true"] [data-testid="composer"] .answer-well .prompt-input {
+	padding-block: 12px;
 }
 
 /* At 360px and below, when the compact row also shows the model/usage

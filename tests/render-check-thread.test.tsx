@@ -62,6 +62,12 @@ describe("the anchor: the nearest tutor paragraph before the check", () => {
 	it("skips blank text and looks back into earlier assistant messages, never the learner's", () => assert.equal(checkAnchorPartId(messages, "p1"), "t2"));
 	it("no paragraph before it: null (the thread anchors at its own slot)", () => assert.equal(checkAnchorPartId([{ role: "assistant", parts: [{ type: "tool-quiz", toolCallId: "x" }] }], "x"), null));
 	it("finds the message holding the check (the windowing exemption)", () => assert.equal(checkMessageIndex(messages, "p1"), 3));
+	it("a problem follows the tutor's latest reply after its pose (owner, 2026-11-11)", () => {
+		const later = [...messages, { role: "user", parts: [{ type: "text", id: "u2", text: "x^3/2" }] }, { role: "assistant", parts: [{ type: "text", id: "hint", text: "Differentiate your answer." }] }];
+		assert.equal(checkAnchorPartId(later, "p1", true), "hint");
+		assert.equal(checkAnchorPartId(later, "p1", false), "t2");
+		assert.equal(checkAnchorPartId(messages, "p1", true), "t2", "no reply yet: the pose's paragraph");
+	});
 });
 
 describe("CheckThread faces", () => {
