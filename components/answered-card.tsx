@@ -1,10 +1,11 @@
 "use client";
 
-import { useSessionState } from "@/components/session-state";
+import { SessionDetails, useSessionState } from "@/components/session-state";
+import { teaserText } from "@/components/question-dock";
 
 import { useState } from "react";
 import { useArrival, wasPosedCheck } from "@/components/paper/motion-arrival";
-import { ChevronDownIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronRight } from "lucide-react";
 import { blurAfterPointerClick } from "@/components/focus-hygiene";
 import { ConfidenceRail } from "@/components/confidence-rail";
 import { GlyphMark } from "@/components/ui/glyph-mark";
@@ -47,10 +48,19 @@ export function AnsweredCard({ answer: savedAnswer, input, checked = false, chip
 	const answer = answerForPresentation(savedAnswer, input);
 	const references = (savedAnswer as { references?: LibraryReference[] }).references ?? NO_REFERENCES;
 	const [whyOpen, setWhyOpen] = useSessionState("why", false); // the tucked explanation (predictions, owner 2026-10-03)
+	const kindLabel = answer.tool === "probe"
+		? "Question"
+		: answer.tool === "recall"
+			? "Recall"
+			: answer.kind === "quiz"
+				? answer.questionType === "predict" ? "Prediction" : "Check"
+				: answer.kind === "explain" ? "Explain" : "Question";
 	if (answer.dismissed) {
+		// A skipped question is one quiet line: nothing to unfold (owner, 2026-11-11).
 		return (
-			<div className="rounded-lg border bg-shelf p-4 text-sm text-faint">
-				<span className="font-medium">{answer.questionText}</span> — skipped
+			<div className="lh-reading lh-quiet-line my-1" data-testid="answered-card" data-dismissed="" data-check-anchor-id={toolCallId || undefined}>
+				<span className="font-medium">{kindLabel}</span>
+				<span className="min-w-0 truncate">{teaserText(answer.questionText)} — skipped</span>
 			</div>
 		);
 	}
@@ -70,12 +80,22 @@ export function AnsweredCard({ answer: savedAnswer, input, checked = false, chip
 	const descByIndex = new Map((askInput?.options ?? []).map((o, i) => [i + 1, o.description]));
 
 	return (
-		<>
-		{/* The reading channel LIFTED (owner round, 2026-10-05): thoughts
-		    captured while reading are chronologically PRIOR to the question —
-		    rendered as its own user-side block ABOVE the card, the unified
-		    ThinkingBlock, instead of an inset inside the answer. Same muted
-		    rail as before; the label is now plain "Your thinking". */}
+		<SessionDetails stateKey={`answered/${toolCallId}`} className="group lh-reading my-1" data-testid="answered-card" data-check-anchor-id={toolCallId || undefined}>
+			{/* Answered questions fold into one quiet row (owner, 2026-11-11):
+			    kind, the verdict for graded checks, the question and his answer;
+			    the full record opens on the shelf panel below. */}
+			<summary className="lh-quiet-summary" data-testid="answered-summary">
+				<span className="shrink-0 font-medium">{kindLabel}</span>
+				{isQuiz && <Verdict answer={answer} toolCallId={toolCallId} />}
+				<span className="min-w-0 truncate">
+					<ToolContentResponse className="lh-row-inline">{leadIn(answer.questionText)}</ToolContentResponse>
+					{summaryAnswer(answer) && <span className="text-graphite"> — <ToolContentResponse className="lh-row-inline">{summaryAnswer(answer)}</ToolContentResponse></span>}
+				</span>
+				<ChevronRight className="lh-quiet-chevron" aria-hidden="true" />
+			</summary>
+			<div className="lh-quiet-panel">
+		{/* The reading channel (owner round, 2026-10-05): thoughts captured
+		    while reading come before the question, so they lead the record. */}
 		{answer.readingThinking && (
 			<ThinkingBlock testId="reading-thinking-block" label="Your thinking" text={answer.readingThinking} defaultOpen />
 		)}
@@ -83,34 +103,7 @@ export function AnsweredCard({ answer: savedAnswer, input, checked = false, chip
 		    thinking row is the last child — its my-3 stacked with the card's
 		    p-4 into a 28px void below (12px above); the card's own padding is
 		    the bottom rhythm when a row ends the card. */}
-		<div
-			className="rounded-lg border bg-shelf p-4 text-ink [&>*:last-child]:mb-0"
-			data-testid="answered-card"
-		>
-			<div className="mb-1 flex items-center gap-2 text-sm font-medium text-faint">
-				{/* The tool's OWN name first (owner 2026-10-09): probe-phase
-			    cards label Probe/Recall — the phase boundary visible in the
-			    transcript. No `tool` on old records: kind labels as before. */}
-				{answer.tool === "probe"
-					? "Question"
-					: answer.tool === "recall"
-						? "Recall"
-						: isQuiz
-								? answer.questionType === "predict"
-									? "Prediction"
-									: "Check"
-									: isExplain
-										? "Explain"
-											: "Question"}
-				{isQuiz &&
-					(answer.dontKnow ? (
-						<span className="rounded border border-rule px-1.5 py-0.5">didn't know</span>
-					) : answer.correct ? (
-						<span className="relative rounded border border-green/50 px-1.5 py-0.5 text-green">correct<GradePencil toolCallId={toolCallId} /></span>
-					) : (
-						<span className="rounded border border-red/50 px-1.5 py-0.5 text-red">incorrect</span>
-					))}
-			</div>
+		<div className="text-ink [&>*:last-child]:mb-0" data-testid="answered-record">
 			<div className="mb-3 font-medium">
 				<ToolContentResponse>{answer.questionText}</ToolContentResponse>
 			</div>
@@ -272,6 +265,30 @@ export function AnsweredCard({ answer: savedAnswer, input, checked = false, chip
 			{/* Feature 007: the answer was checked with Wolfram before it was posed. */}
 			{checked && <WolframCheckedLabel />}
 		</div>
-		</>
+			</div>
+		</SessionDetails>
 	);
+}
+
+/** The graded verdict in the folded row: the colour carries it, the word says it. */
+function Verdict({ answer, toolCallId }: { answer: ReturnType<typeof answerForPresentation>; toolCallId: string }) {
+	if (answer.dontKnow) return <span className="shrink-0">didn't know</span>;
+	if (answer.correct) return <span className="relative shrink-0 text-green" data-testid="answered-verdict">correct<GradePencil toolCallId={toolCallId} /></span>;
+	return <span className="shrink-0 text-red" data-testid="answered-verdict">incorrect</span>;
+}
+
+/** The question's words before its first display equation or paragraph
+ *  break: the folded row is one line, and a display equation is not. */
+function leadIn(question: string): string {
+	const cut = question.search(/\$\$|\\\[|\n\s*\n/);
+	return cut > 0 ? `${question.slice(0, cut).trim()} …` : question;
+}
+
+/** His answer, flattened to one line for the folded row. */
+function summaryAnswer(answer: ReturnType<typeof answerForPresentation>): string {
+	if (answer.dontKnow) return "";
+	const picked = (answer.options ?? []).filter((o) => answer.answers.some((a) => a.index === o.index)).map((o) => leadIn(o.label));
+	if (answer.other) picked.push(`“${teaserText(answer.other)}”`);
+	if (picked.length) return picked.join(", ");
+	return answer.text ? `“${teaserText(answer.text)}”` : "";
 }

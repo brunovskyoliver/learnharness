@@ -221,9 +221,9 @@ function ThreadBody({ id, kind, label, teaser, reveal, open, fresh, variant, lay
 		if (!margin || !layer) return;
 		const box = layer.getBoundingClientRect();
 		const lesson = layer.parentElement?.querySelector<HTMLElement>('[data-testid="lesson-content"]');
-		const anchor = (anchorId ? layer.parentElement?.querySelector<HTMLElement>(`[data-answer-part-id="${CSS.escape(anchorId)}"]`) : null) ?? slotRef.current;
+		const anchor = (anchorId ? layer.parentElement?.querySelector<HTMLElement>(`[data-answer-part-id="${CSS.escape(anchorId)}"], [data-check-anchor-id="${CSS.escape(anchorId)}"]`) : null) ?? slotRef.current;
 		if (!anchor || !lesson) return;
-		const end = lastLineEnd(anchor);
+		const end = anchor.dataset.checkAnchorId ? rowEnd(anchor) : lastLineEnd(anchor);
 		const passageY = end.y - box.top;
 		const height = elements.get(id)?.offsetHeight ?? NOTE_LINE * 3;
 		const bottom = lesson.getBoundingClientRect().bottom - box.top;
@@ -307,6 +307,14 @@ function ThreadBody({ id, kind, label, teaser, reveal, open, fresh, variant, lay
  * Only text counts, never the response's copy row under it, so the tether
  * ends on the tutor's last word. With no text, the element's box (x null).
  */
+/** An answered question's folded row (owner, 2026-11-11): the tether starts past its chevron.
+ *  Its text truncates, so the words' own rects can run past the column. */
+function rowEnd(element: HTMLElement): { y: number; x: number | null } {
+	const row = (element.querySelector("summary") ?? element).getBoundingClientRect();
+	const mark = element.querySelector("summary .lh-quiet-chevron")?.getBoundingClientRect();
+	return { y: (row.top + row.bottom) / 2, x: mark ? mark.right : null };
+}
+
 function lastLineEnd(element: HTMLElement): { y: number; x: number | null } {
 	try {
 		const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {

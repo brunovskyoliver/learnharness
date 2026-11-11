@@ -68,6 +68,18 @@ describe("the anchor: the nearest tutor paragraph before the check", () => {
 		assert.equal(checkAnchorPartId(later, "p1", false), "t2");
 		assert.equal(checkAnchorPartId(messages, "p1", true), "t2", "no reply yet: the pose's paragraph");
 	});
+	it("a question right after answered ones tethers to the last answered row (owner, 2026-11-11)", () => {
+		const asked = [{ role: "assistant", parts: [
+			{ type: "text", id: "t", text: "First, the book." },
+			{ type: "tool-ask_user_question", toolCallId: "a1", state: "output-available" },
+			{ type: "tool-ask_user_question", toolCallId: "a2", state: "output-available" },
+			{ type: "tool-quiz", toolCallId: "q", state: "input-available" },
+		] }];
+		assert.equal(checkAnchorPartId(asked, "q"), "a2");
+		assert.equal(checkAnchorPartId(asked, "a2"), "a1");
+		const withProse = [{ role: "assistant", parts: [...asked[0]!.parts.slice(0, 3), { type: "text", id: "t2", text: "Now this:" }, asked[0]!.parts[3]!] }];
+		assert.equal(checkAnchorPartId(withProse, "q"), "t2", "prose after the answers still wins");
+	});
 });
 
 describe("CheckThread faces", () => {

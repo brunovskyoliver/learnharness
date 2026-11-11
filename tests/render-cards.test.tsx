@@ -283,6 +283,19 @@ describe("render smoke tests", () => {
 		assert.ok(html.includes('data-mark="check"') && html.includes('data-mark="x"'));
 	});
 
+	it("AnsweredCard folds into one quiet row: kind, verdict, question, his answer (owner, 2026-11-11)", () => {
+		const answer = buildAnswer(quizQD(), { values: ["Venus"] });
+		const html = renderToStaticMarkup(<AnsweredCard answer={answer} toolCallId="q9" />);
+		assert.match(html, /^<details[^>]*data-testid="answered-card"[^>]*data-check-anchor-id="q9"/);
+		assert.ok(!/^<details[^>]* open/.test(html), "folded by default");
+		const summary = html.slice(html.indexOf("<summary"), html.indexOf("</summary>"));
+		assert.match(summary, />Check</);
+		assert.match(summary, /data-testid="answered-verdict"[^>]*>incorrect/);
+		assert.match(summary, /text-graphite"> — .*<p>Venus<\/p>/);
+		assert.ok(html.includes('class="lh-quiet-panel"'), "the full record sits on the shelf panel");
+		assert.ok(!html.includes("rounded-lg border bg-shelf p-4"), "no boxed card");
+	});
+
 	it("AnsweredCard shows the confidence rail on quiz answers (record, no disc)", () => {
 		// The slider's rail, disc removed: same paint, same ticks, the % read-out.
 		const answer = buildAnswer(quizQD(), { values: ["Venus"], confidence: 70 });
@@ -666,9 +679,9 @@ describe("predict vs check rendering", () => {
 		// 2026-10-07): the reading thoughts render BEFORE the card as the
 		// banded user-thinking row, arriving EXPANDED (clearly sent).
 		const blockAt = html.indexOf("reading-thinking-block");
-		const cardAt = html.indexOf("answered-card");
+		const recordAt = html.indexOf("answered-record");
 		assert.ok(blockAt !== -1, "the lifted block renders");
-		assert.ok(blockAt < cardAt, "it sits ABOVE the answered card");
+		assert.ok(blockAt > html.indexOf("</summary>") && blockAt < recordAt, "it leads the folded record, above the question (owner, 2026-11-11)");
 		assert.ok(html.includes("Your thinking"), "the plain label");
 		assert.ok(!html.includes("Your thinking while reading"), "the old verbose label is gone");
 		assert.ok(!html.includes("your-reading-thinking"), "the in-card inset is gone");

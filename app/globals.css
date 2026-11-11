@@ -712,6 +712,16 @@ body {
 	line-height: var(--lh-prose-leading);
 }
 
+/* Markdown inside a folded answered-question row (owner, 2026-11-11): one
+   line in the row's own type; math stays KaTeX. */
+.lh-prose.lh-row-inline {
+	display: inline;
+	font: inherit;
+	color: inherit;
+	overflow-wrap: normal;
+}
+.lh-prose.lh-row-inline, .lh-row-inline :where(div, p) { display: inline; margin: 0; white-space: inherit; }
+
 .lh-prose :where(strong, b) {
 	color: var(--ink);
 	font-weight: 620;

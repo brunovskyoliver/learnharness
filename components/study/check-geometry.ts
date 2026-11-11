@@ -39,10 +39,14 @@ export function checkColumn(width: number, shift: number): { left: number; right
 	return { left, right: left + measure };
 }
 
-interface ViewPart { type: string; id?: string; toolCallId?: string; text?: string }
+interface ViewPart { type: string; id?: string; toolCallId?: string; text?: string; state?: string }
+
+const QUESTION_PARTS = new Set(["tool-quiz", "tool-probe", "tool-ask_user_question", "tool-explain", "tool-recall"]);
 interface ViewMessage { role: string; parts: readonly ViewPart[] }
 
-/** The anchor of a check: the nearest assistant text part with words before its tool part (`data-answer-part-id`), or null. */
+/** The anchor of a check: the nearest assistant text part with words before its tool part (`data-answer-part-id`), or null.
+ *  An answered question met first anchors it instead (its toolCallId, `data-check-anchor-id`): a question
+ *  asked right after answered ones sits below them (owner, 2026-11-11). */
 export function checkAnchorPartId(messages: readonly ViewMessage[], toolCallId: string, followLatest = false): string | null {
 	// A practice problem follows the conversation (owner, 2026-11-11): the
 	// tutor's latest words after the pose anchor it, so a reply's reopened
@@ -69,6 +73,7 @@ export function checkAnchorPartId(messages: readonly ViewMessage[], toolCallId: 
 			for (; p >= 0; p--) {
 				const part = messages[m]!.parts[p]!;
 				if (part.type === "text" && part.id && part.text?.trim()) return part.id;
+				if (QUESTION_PARTS.has(part.type) && part.state === "output-available" && part.toolCallId) return part.toolCallId;
 			}
 		}
 		return null;
