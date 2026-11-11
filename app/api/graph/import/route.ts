@@ -13,7 +13,7 @@
  * healthy. The dock's chips + graph refetch track progress live through
  * /api/graph/status, as with session runs.
  */
-import { extraction, NotesImportError, withTenant } from "@/src/server";
+import { extraction, NotesImportError, notesImportText, withTenant } from "@/src/server";
 import {
 	ModelsNotConfiguredError,
 	PROVIDER_KEY_MISSING_CODE,
@@ -55,7 +55,8 @@ async function handlePOST(request: Request) {
 			if (!next) return;
 			const { file, requestIndex } = next;
 			try {
-				const text = await file.text();
+				// PDFs through the PDF reader, never raw bytes (bug graph-import-pdf-binary).
+				const text = await notesImportText(file);
 				const stats = await extraction.importNotes({ filePath: file.name, text });
 				results.push({ filePath: file.name, requestIndex, outcome: "completed", ok: true, stats });
 			} catch (err) {
