@@ -12,6 +12,8 @@ import { notifySettingsSaved, useSettingsSaved } from "@/components/settings-sig
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { connectionActionClass } from "./connection-controls";
+import { ClaudeCodeSignIn } from "./claude-code-sign-in";
+import { useSettingsDialog } from "./settings-dialog";
 import { SettingsFailure, SettingsRow, Toggle } from "./controls";
 
 export function claudeCodeStatusLabel(status: ClaudeCodeStatus | null): string {
@@ -24,6 +26,7 @@ export function claudeCodeStatusLabel(status: ClaudeCodeStatus | null): string {
 }
 
 export function ClaudeCodeInstallationStatus() {
+	const { hosted } = useSettingsDialog();
 	const [enabled, setEnabled] = useState(false);
 	const [loaded, setLoaded] = useState(false);
 	// The first successful read makes the row a search target; the remount
@@ -127,8 +130,15 @@ export function ClaudeCodeInstallationStatus() {
 				{/* aria-disabled, not disabled: a check in flight keeps keyboard focus on the button. */}
 				<Button type="button" size="xs" variant="outline" className={cn(connectionActionClass("outline"), "aria-disabled:text-faint")} aria-disabled={busy || undefined} onClick={() => { if (!busy) void refresh(); }} data-testid="claude-code-check-again">Check again</Button>
 			</div>
-			<p className="nb-set-row-hint"><strong className="font-medium text-graphite">Install and authenticate Claude Code in your terminal, then select a Claude Code model here.</strong> LearnHarness starts it when needed—no background process required.</p>
-			<p className="nb-set-row-hint">Checks installation/version only—not authentication, model access, or quota. Claude Code controls billing. Requires v{CLAUDE_CODE_MINIMUM_VERSION}+. <a href="https://code.claude.com/docs/en/setup" target="_blank" rel="noreferrer" className="text-graphite underline underline-offset-2 hover:text-ink">Setup <span aria-hidden="true">↗</span></a></p>
+			{hosted ? <>
+				{/* Hosted (owner O2): each user signs in with their own account; no terminal setup, no Setup link. */}
+				<p className="nb-set-row-hint">Sign in with your own Claude account. Your usage is billed to that account.</p>
+				<p className="nb-set-row-hint">Claude Code controls billing. Requires v{CLAUDE_CODE_MINIMUM_VERSION}+.</p>
+				<ClaudeCodeSignIn />
+			</> : <>
+				<p className="nb-set-row-hint"><strong className="font-medium text-graphite">Install and authenticate Claude Code in your terminal, then select a Claude Code model here.</strong> LearnHarness starts it when needed—no background process required.</p>
+				<p className="nb-set-row-hint">Checks installation/version only—not authentication, model access, or quota. Claude Code controls billing. Requires v{CLAUDE_CODE_MINIMUM_VERSION}+. <a href="https://code.claude.com/docs/en/setup" target="_blank" rel="noreferrer" className="text-graphite underline underline-offset-2 hover:text-ink">Setup <span aria-hidden="true">↗</span></a></p>
+			</>}
 		</div>}
 	</div>;
 }
