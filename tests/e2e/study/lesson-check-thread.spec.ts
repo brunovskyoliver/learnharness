@@ -105,6 +105,9 @@ test.describe("Study: a lesson check in its thread", () => {
 		const posts = await interceptModel(page);
 		await openChat(page, CHATS.check);
 		await reveal(page);
+		// The thread draws inline until the lesson's width is measured (~300 ms),
+		// then moves to the margin; a click during the move lands nowhere.
+		await expect(thread(page)).toHaveAttribute("data-variant", "margin");
 		await page.locator('[data-kbdrow="2"]').click();
 		await page.locator('[data-testid="confidence-segments"] [role="radio"]').last().click();
 		await thread(page).getByLabel("Your thinking", { exact: true }).fill("The predict step only moves unmastered mass.");
