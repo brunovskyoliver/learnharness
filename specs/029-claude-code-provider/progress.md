@@ -1,5 +1,5 @@
 # Feature 029: Claude Code provider (port from upstream)
-Stage: done (implemented on main, not pushed, built or deployed)
+Stage: done (deployed 750cd32c to learn.brunovsky.online, 2026-11-11)
 Updated: 2026-11-11
 
 ## Decisions
@@ -63,3 +63,4 @@ Updated: 2026-11-11
 - Copy calls that use wording outside the approved list or repeat it: "Sign-in failed: Claude Code exited with code N"; "Sign-in failed: no reply from the server."; expiry suffix "until 12 Dec"; "This sign-in expired. Start again." followed by a Start again button; "CLI billing" explained only in a hover tooltip; the "Window reported by Claude Code…" line shows before the CLI reports a window (as upstream); upstream's "Check actual charges and entitlements independently." kept in docs.
 - After a server restart, hosted notebook/card/background requests refuse until the user's sign-in status is refreshed (a chat turn or opening Settings does it); accepted risk in plan.md.
 - Upstream remote ref `refs/remotes/upstream-tmp/main` is still present locally; delete with `git update-ref -d refs/remotes/upstream-tmp/main` when no longer needed.
+- 2026-11-11 deploy: pushed main 750cd32c (with fixes d7e58164 setup/settings menus, 750cd32c Graph PDF import); image built with CLI 2.1.321, rollback image learnharness:rollback-before-750cd32c, data backup data-before-750cd32c.tgz; live CSS verified on learn.brunovsky.online. Open: e2e mode-switch.spec.ts:229 fails 3/3 on main vs 3/3 pass at fe682a3f (demo srcdoc fill counted as a reload; demo-card unchanged; not yet diagnosed); a11y:161 and notebook smoke flaky; 7 e2e failures pre-existing at fe682a3f.
