@@ -62,6 +62,17 @@ async function pickerShows(page: Page, ids: string[]) {
 	const menu = page.getByTestId("slot-model-menu-strong");
 	await expect(menu.getByTestId("model-list")).toBeVisible();
 	for (const id of ["opus", "sonnet", "haiku"]) await expect(menu.getByTestId(`model-option-${id}`)).toHaveCount(ids.includes(id) ? 1 : 0);
+	// US3: CLI rows read "CLI billing" and "—", never a price.
+	for (const id of ids) {
+		const row = menu.getByTestId(`model-option-${id}`);
+		await expect(row).toContainText("CLI billing");
+		await expect(row).toContainText("—");
+		await expect(row).not.toContainText("/ 1M");
+	}
+	if (ids.length) {
+		await menu.getByTestId("model-search").fill("claude");
+		await menu.screenshot({ path: path.join(SHOTS, `model-menu-cli-${page.viewportSize()!.width}.png`) });
+	}
 	await page.keyboard.press("Escape");
 	await expect(menu).toBeHidden();
 	await page.getByTestId("settings-nav-keys").click();

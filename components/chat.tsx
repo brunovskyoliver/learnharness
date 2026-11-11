@@ -90,6 +90,7 @@ import {
 import { CoverageRing } from "@/components/extraction-coverage";
 import {
 	activeProblemOf,
+	cliContextWindowOf,
 	dismissedAnswer,
 	findPendingToolCall,
 	phaseAt3,
@@ -541,6 +542,7 @@ function ChatView({
 	// replaces the composer. Computed from the NATIVE record (the fold is
 	// the gate the tools themselves read), not the projected view.
 	const activeProblem = activeProblemOf(nativeMessages);
+	const cliContextWindow = useMemo(() => cliContextWindowOf(nativeMessages), [nativeMessages]);
 	const activeProblemRef = useRef(activeProblem);
 	activeProblemRef.current = activeProblem;
 
@@ -1858,6 +1860,7 @@ function ChatView({
 					chatId={chatId}
 					turns={turns}
 					contextTokens={contextTokens}
+					cliContextWindow={cliContextWindow}
 					pricing={pricing}
 					queuedSteers={visibleQueuedSteers(steerQueue, nativeMessages)}
 					onRemoveSteer={cancelSteer}
@@ -1875,7 +1878,7 @@ function ChatView({
 							onSend={onSend}
 							onStop={abortInFlightTurn}
 							canSend={canSend}
-							controls={<StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} setup={setupAction} />}
+							controls={<StatsBar turns={turns} contextTokens={contextTokens} cliContextWindow={cliContextWindow} pricing={pricing} chatId={chatId} setup={setupAction} />}
 							// The pause affordance (owner round 16): the placeholder
 							// IS the hint — empty state, exactly where Enter-on-empty
 							// applies.
@@ -2083,6 +2086,7 @@ function DockFooter({
 	onGoToCheck,
 	turns,
 	contextTokens,
+	cliContextWindow,
 	pricing,
 	composer,
 	chatId,
@@ -2102,6 +2106,8 @@ function DockFooter({
 	/** The session's usage log — the stats bar beneath the composer folds it. */
 	turns: TurnUsage[];
 	contextTokens: number | null;
+	/** The session's latest Claude Code window report (feature 029). */
+	cliContextWindow: ReturnType<typeof cliContextWindowOf>;
 	pricing?: SessionPricing;
 	composer: React.ReactNode;
 	/** The model control's pass-through (the stats bar hosts it). */
@@ -2665,7 +2671,7 @@ function DockFooter({
 							{check ? (
 								<div data-testid="check-pending" className="flex flex-col">
 									<p className="lh-check-pending-line">{checkPendingLine(check, checkInline)}</p>
-									<PromptToolbar controls={<StatsBar turns={turns} contextTokens={contextTokens} pricing={pricing} chatId={chatId} setup={setupCta} />}>
+									<PromptToolbar controls={<StatsBar turns={turns} contextTokens={contextTokens} cliContextWindow={cliContextWindow} pricing={pricing} chatId={chatId} setup={setupCta} />}>
 										<PrimaryAction type="button" data-testid="check-go-to" onClick={onGoToCheck}>Go to it</PrimaryAction>
 									</PromptToolbar>
 								</div>

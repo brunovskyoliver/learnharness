@@ -18,7 +18,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { CheckIcon, SearchIcon } from "lucide-react";
 import type { ModelCatalogEntry } from "@/src/core";
-import { fuzzyScore, subscriptionLabel } from "@/src/core";
+import { CLAUDE_CODE_PROVIDER, fuzzyScore, subscriptionLabel } from "@/src/core";
 import { formatTokens } from "@/components/usage-format";
 import { THINKING_LABEL } from "@/components/thinking-default";
 
@@ -144,7 +144,9 @@ export function ModelMenuList({
 									<span className="block truncate text-lg font-medium text-ink">{m.name}</span>
 									<span className="model-menu-meta" aria-label={subscription ? `${subscription} (subscription)` : undefined}>
 										<span className="truncate">{subscription ?? m.provider}</span>
-										{subscription ? <span className="shrink-0 text-sm">Subscription</span> : (
+										{subscription ? <span className="shrink-0 text-sm">Subscription</span> : m.provider === CLAUDE_CODE_PROVIDER ? (
+											<span className="shrink-0 text-sm" title="Billing is determined by your Claude Code configuration; LearnHarness does not estimate it.">CLI billing</span>
+										) : (
 											<span className="shrink-0 text-sm tabular-nums" title="USD per 1M tokens in/out">{priceLabel(m.cost)} / 1M</span>
 										)}
 										<span className="ml-auto shrink-0 text-sm tabular-nums" title="Context window in tokens">{m.contextWindow === null ? "—" : formatTokens(m.contextWindow)}</span>

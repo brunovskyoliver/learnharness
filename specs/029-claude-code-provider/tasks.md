@@ -103,11 +103,11 @@ description: "Tasks for feature 029, Claude Code provider (port from upstream)"
 
 **Independent test**: fake-CLI turn, then the stats bar and model menu (US3 acceptance 1-2).
 
-- [ ] T043 [P] [US3] In components/settings/model-menu.tsx: `priceLabel` returns "Unpriced" for null cost; Claude Code rows show "CLI billing" (title "Billing is determined by your Claude Code configuration; LearnHarness does not estimate it.") in place of "{price} / 1M"; the context cell shows "—" for a null window
-- [ ] T044 [P] [US3] In components/model-picker.tsx `catalogLimits` (line 69) skip entries whose `contextWindow` is null (074ba7af); un-`todo` the case in tests/claude-code-context-window.test.ts
-- [ ] T045 [US3] In components/stats-bar.tsx (`StatsBarDetails`): `cliContextWindow` prop, exported `contextLimitForModel(model, limits, cliWindow)`, `limit` from it (line 92), "CLI" added to the cost label's providers when any turn's model starts with `claude-code:` (line 111), and the detail line "Window reported by Claude Code; may be lower for auto-compaction." when the selected model is Claude Code
-- [ ] T046 [US3] Pass `cliContextWindow={cliContextWindowOf(nativeMessages)}` to both `StatsBar` call sites in components/chat.tsx (lines 1878, 2668)
-- [ ] T047 [US3] Port tests/claude-code-usage.test.tsx and tests/claude-code-context-ui.test.tsx without the `InteractionLayersProvider` / `interaction-layer-render.tsx` wrappers (render `StatsBar` and `ModelMenuList` directly), with the fork's `ModelCatalogResponse` shape (role pins as in the fork)
+- [X] T043 [P] [US3] In components/settings/model-menu.tsx: `priceLabel` returns "Unpriced" for null cost; Claude Code rows show "CLI billing" (title "Billing is determined by your Claude Code configuration; LearnHarness does not estimate it.") in place of "{price} / 1M"; the context cell shows "—" for a null window
+- [X] T044 [P] [US3] In components/model-picker.tsx `catalogLimits` (line 69) skip entries whose `contextWindow` is null (074ba7af); un-`todo` the case in tests/claude-code-context-window.test.ts
+- [X] T045 [US3] In components/stats-bar.tsx (`StatsBarDetails`): `cliContextWindow` prop, exported `contextLimitForModel(model, limits, cliWindow)`, `limit` from it (line 92), "CLI" added to the cost label's providers when any turn's model starts with `claude-code:` (line 111), and the detail line "Window reported by Claude Code; may be lower for auto-compaction." when the selected model is Claude Code
+- [X] T046 [US3] Pass `cliContextWindow={cliContextWindowOf(nativeMessages)}` to both `StatsBar` call sites in components/chat.tsx (lines 1878, 2668)
+- [X] T047 [US3] Port tests/claude-code-usage.test.tsx and tests/claude-code-context-ui.test.tsx without the `InteractionLayersProvider` / `interaction-layer-render.tsx` wrappers (render `StatsBar` and `ModelMenuList` directly), with the fork's `ModelCatalogResponse` shape (role pins as in the fork)
 
 **Checkpoint**: the local port is complete (US1-US3).
 

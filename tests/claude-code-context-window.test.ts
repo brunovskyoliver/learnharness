@@ -4,7 +4,7 @@ import { ContextWindowProbe } from "../src/agent/claude-code/context-window.ts";
 import { CLAUDE_CODE_MODELS } from "../src/agent/claude-code/provider.ts";
 import { asAgentMessages, cliContextWindowOf, toLlmMessages, type LhMessage } from "../src/core/native-messages.ts";
 import { catalogLimits } from "../components/model-picker.tsx";
-import { formatContextMeasurement } from "../components/stats-bar.tsx";
+import { contextLimitForModel, formatContextMeasurement } from "../components/stats-bar.tsx";
 import { toModelDto } from "../src/server/model-catalog.ts";
 
 function setup() {
@@ -74,6 +74,12 @@ test("per-session metadata survives JSON persistence, never borrows older report
 	assert.deepEqual(window, { model: "claude-code:opus", tokens: 200000 });
 	assert(!("cliContextWindow" in toLlmMessages(asAgentMessages([first]))[0]!));
 	assert.equal(first.cliContextWindow, 200000, "provider projection never mutates the stored report");
+	const catalog = new Map([["anthropic:fixture", 100000], ["claude-code:opus", 1000000]]);
+	assert.equal(contextLimitForModel("claude-code:opus", catalog, window), 200000);
+	assert.equal(contextLimitForModel("claude-code:sonnet", catalog, window), null);
+	assert.equal(contextLimitForModel("claude-code:opus", catalog, null), null, "no placeholder fallback");
+	assert.equal(contextLimitForModel("anthropic:fixture", catalog, window), 100000);
+	assert.equal(contextLimitForModel(undefined, catalog, window), null);
 	assert.equal(formatContextMeasurement(42000, 200000), "42k / 200k");
 	assert.equal(formatContextMeasurement(42000, null), "42k");
 	const unreported = assistant("opus"); delete unreported.cliContextWindow;
@@ -84,10 +90,6 @@ test("per-session metadata survives JSON persistence, never borrows older report
 	assert.equal(cliContextWindowOf([first, compacted]), null);
 	assert.equal(cliContextWindowOf([]), null);
 });
-
-// Upstream's contextLimitForModel assertions (the test above) land with
-// stats-bar.tsx in T045.
-test.todo("contextLimitForModel prefers the session's CLI report, never a placeholder (T045)");
 
 test("CLI catalog limits remain unknown and cannot create a global denominator", () => {
 	const models = CLAUDE_CODE_MODELS.map(toModelDto);
