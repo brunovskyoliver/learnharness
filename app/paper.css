@@ -982,7 +982,10 @@ html:active-view-transition-type(lh-route, lh-mode) [style*="view-transition-cla
 /* Row 11: dialogs (components/ui/dialog.tsx, the export dialog, Settings). */
 .lh-paper .lh-layer-scrim[data-state="open"] { animation: var(--motion-quick) ease-out both nb-fade-in; }
 .lh-paper :is(.lh-layer-dialog, .nb-export)[data-state="open"],
-.lh-paper .nb-settings { animation: 220ms var(--spring-soft) both lh-dialog-rise; }
+/* Fill `backwards`, not `both`: a filled end frame leaves an identity
+   transform (not `none`), which makes the dialog the containing block for
+   the fixed-position menus portaled into it (bug setup-model-picker-clicks). */
+.lh-paper .nb-settings { animation: 220ms var(--spring-soft) backwards lh-dialog-rise; }
 .lh-paper :is(.lh-layer-scrim, .lh-layer-dialog, .nb-export)[data-state="closed"] {
 	animation: 120ms var(--ease-out) both lh-lift;
 	pointer-events: none;
@@ -3263,7 +3266,7 @@ html.lh-paper {
 	color: var(--ink);
 	font-family: var(--nb-sans);
 	text-align: left;
-	animation: 0.2s var(--ease-menu) both nb-menu-in;
+	animation: 0.2s var(--ease-menu) backwards nb-menu-in;
 }
 .lh-paper .lh-dialog:focus { outline: none; }
 /* A dialog that takes the focus itself (a sheet with nothing to press, like the
