@@ -19,9 +19,18 @@ RUN apt-get update \
 	&& mkdir /data && chown node:node /data
 WORKDIR /app
 COPY --from=build --chown=node:node /app/.next/standalone ./
+# Claude Code CLI for the opt-in provider (docs/claude-code.md). Pinned and
+# unmodified; each user signs in with their own account and the CLI keeps that
+# login under their data root. Its postinstall copies the native binary over a
+# stub, so scripts must run; `--version` fails the build if the stub is left.
+# It lands in /usr/local/bin, which is on PATH, where the server looks for it.
+RUN npm install -g --allow-scripts=@anthropic-ai/claude-code @anthropic-ai/claude-code@2.1.321 \
+	&& npm cache clean --force \
+	&& claude --version
+# DISABLE_AUTOUPDATER: the image's CLI version only changes with a rebuild.
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
 	LH_HOSTED=1 LH_DATA_DIR=/data CHROME_PATH=/usr/bin/chromium \
-	HOSTNAME=0.0.0.0 PORT=3000
+	DISABLE_AUTOUPDATER=1 HOSTNAME=0.0.0.0 PORT=3000
 USER node
 VOLUME /data
 EXPOSE 3000

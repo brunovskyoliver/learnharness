@@ -156,9 +156,9 @@ description: "Tasks for feature 029, Claude Code provider (port from upstream)"
 
 ## Phase 8: Image and documentation
 
-- [ ] T066 [US2b] Dockerfile runtime stage: `RUN npm install -g @anthropic-ai/claude-code@2.1.321 && npm cache clean --force` before `USER node`; add `DISABLE_AUTOUPDATER=1` to the runtime `ENV`; comment why (FR-019). Do not build or deploy unless the owner asks
-- [ ] T067 [P] Port docs/claude-code.md (final upstream, 61 lines): fix links to the fork's paths, drop nothing of the setup text; add a "Hosted site" section (per-user sign-in through Settings, per-user folder 0700 under the user's data root, no operator credentials, credentials in data backups, CLI pinned to 2.1.321 with the auto-updater off)
-- [ ] T068 [P] Update docs/hosting.md: the image's Claude Code CLI, where per-user CLI logins live, that backups contain them, and that deleting a user's data root signs them out on this server
+- [X] T066 [US2b] Dockerfile runtime stage: `RUN npm install -g @anthropic-ai/claude-code@2.1.321 && npm cache clean --force` before `USER node`; add `DISABLE_AUTOUPDATER=1` to the runtime `ENV`; comment why (FR-019). Do not build or deploy unless the owner asks
+- [X] T067 [P] Port docs/claude-code.md (final upstream, 61 lines): fix links to the fork's paths, drop nothing of the setup text; add a "Hosted site" section (per-user sign-in through Settings, per-user folder 0700 under the user's data root, no operator credentials, credentials in data backups, CLI pinned to 2.1.321 with the auto-updater off)
+- [X] T068 [P] Update docs/hosting.md: the image's Claude Code CLI, where per-user CLI logins live, that backups contain them, and that deleting a user's data root signs them out on this server
 
 ---
 

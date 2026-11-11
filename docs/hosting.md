@@ -48,8 +48,14 @@ Open `https://<LH_DOMAIN>`. You land on the sign-in page; after signing in you g
 1. **Connect ChatGPT** (the first thing the setup screen offers). A ChatGPT Plus/Pro plan covers the models, so no API key is needed.
    Sign-in works by paste-back, because the server can't receive OpenAI's redirect: approve in the OpenAI tab, which then ends on a page that can't load (its address starts with `http://127.0.0.1`). Copy that whole address and paste it into the box in the app.
 2. The model slots fill themselves from the ChatGPT catalog (strong, cheap and vision). Click **Save models**.
-3. Optional: API keys or other subscriptions under **Other providers**.
+3. Optional: API keys or other subscriptions under **Other providers**, or Claude Code with their own Claude account (below).
 4. Files for the agent to read go in the **Library** in the sidebar (50 MiB per file). In hosted mode the agent's file tools can only see those documents.
+
+## Claude Code
+
+The image includes the Claude Code CLI, pinned to 2.1.321 and installed unmodified from npm, with its auto-updater turned off (`DISABLE_AUTOUPDATER=1`). Changing the version means changing the pin in the `Dockerfile` and rebuilding. Nobody needs to sign the server itself in: each person turns on **Settings → Providers → External CLI → Claude Code** and signs in with their own Claude subscription or Anthropic Console account, and their usage is billed to that account. [Claude Code](claude-code.md#hosted-site) has the details.
+
+The CLI keeps each person's login in `/data/users/<user id>/claude-code/` (mode 0700). Server-side API keys and routing variables are not passed to it, so setting `ANTHROPIC_API_KEY` on the container does nothing for Claude Code.
 
 ## Chrome sandbox
 
@@ -62,8 +68,10 @@ If demos fail with a "No usable sandbox" error, the host is refusing unprivilege
 All state lives in the `lh-data` volume (`/data` in the container):
 
 ```
-/data/users/<user id>/   chats, graph, settings, keys, subscriptions, files/, library/
+/data/users/<user id>/   chats, graph, settings, keys, subscriptions, files/, library/, claude-code/
 ```
+
+`claude-code/` holds that person's Claude Code CLI login, so a backup of the volume contains their Claude credentials along with their API keys and subscription tokens. Store the archives like any other secret.
 
 Back up by stopping the app and archiving the volume:
 
@@ -96,4 +104,4 @@ Caddy's certificates live in the `caddy-data` volume; keep it so you don't hit L
 - **Uploads:** 50 MiB per file, one file per request. Next's proxy buffers request bodies up to `experimental.proxyClientMaxBodySize` (set to 51 MB) and cuts off anything larger, so raise that and `MAX_FILE_BYTES` in `src/core/library.ts` together. That buffer stays in memory for the request, before auth runs.
 - **`HOSTNAME`:** the image sets `0.0.0.0`. Hosted mode refuses (503) a `HOSTNAME` of `127.x` or `::1`: Next renames such a host to `localhost` inside the proxy, so Clerk's pass-through rewrite looks external, and the server proxies each request to itself until it dies. `localhost`, `0.0.0.0` and a real address are fine, whatever Host header arrives. The refusal reads the variable, so `next dev --hostname 127.0.0.1` with `LH_HOSTED=1` still fails that way, as a 500 after 30 s.
 - **One process.** Per-user state is kept in memory inside one Node process. Don't scale the app service to more than one replica.
-- **Removing a person:** delete them in Clerk, then remove `/data/users/<their id>/`.
+- **Removing a person:** delete them in Clerk, then remove `/data/users/<their id>/`. That also signs them out of Claude Code on this server, since their CLI login lives there; it doesn't revoke the login on Anthropic's side.
