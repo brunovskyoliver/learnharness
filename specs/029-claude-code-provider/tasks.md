@@ -171,7 +171,7 @@ description: "Tasks for feature 029, Claude Code provider (port from upstream)"
 - [X] T073 `npm run build`; confirm `.next/standalone/node_modules/@modelcontextprotocol/sdk/package.json` exists and `scripts/build-server.mjs` checks still pass
 - [X] T074 Re-measure startup as in T003 (desktop, 390, server cold start); each within +5% of the baseline (SC-005); save `startup-after*.json` and the comparison in `~/agent-runs/2026-11-11-claude-code/`
 - [X] T075 Secret hygiene: grep the test run's captured output, `next start` logs from quickstart §4 and the repo diff for codes, `sk-ant-`, `.credentials.json` contents, `configDirectory` and absolute tenant paths; none may appear
-- [ ] T076 Write the Report in specs/029-claude-code-provider/progress.md: what changed, how it was verified (tests, live local turn on the owner's signed-in CLI, hosted checks with the fake CLI, UI checks, perf numbers), pre-existing vs new failures, and "left for owner": Docker build and deploy on request; the real hosted-site check of SC-001 and sign-in (needs a deploy, not requested); a real valid sign-in and the Console `authMethod` value, unless T048 could read them without a new login
+- [X] T076 Write the Report in specs/029-claude-code-provider/progress.md: what changed, how it was verified (tests, live local turn on the owner's signed-in CLI, hosted checks with the fake CLI, UI checks, perf numbers), pre-existing vs new failures, and "left for owner": Docker build and deploy on request; the real hosted-site check of SC-001 and sign-in (needs a deploy, not requested); a real valid sign-in and the Console `authMethod` value, unless T048 could read them without a new login
 
 ---
 
