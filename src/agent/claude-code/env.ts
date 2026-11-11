@@ -17,6 +17,9 @@ export type ClaudeCodeEnvSource = {
 	env(kind: ClaudeCodeEnvKind): NodeJS.ProcessEnv;
 	/** The CLI reported authentication_failed for the current tenant. */
 	onNotSignedIn?(): void;
+	/** A model process spawned; `live` counts this tenant's running CLI
+	 * model processes, this one included (hosted logs it, O4). */
+	onSpawn?(live: number): void;
 };
 
 // A held MCP call lasts until pi calls back with the tool result, which for a question tool is
@@ -61,4 +64,8 @@ export function claudeCodeEnv(kind: ClaudeCodeEnvKind): NodeJS.ProcessEnv {
 
 export function notifyClaudeCodeNotSignedIn(): void {
 	source().onNotSignedIn?.();
+}
+
+export function notifyClaudeCodeSpawned(live: number): void {
+	source().onSpawn?.(live);
 }

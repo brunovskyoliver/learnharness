@@ -46,3 +46,19 @@ export function removeLiveProcess(process: LiveProcess): void {
 	clearTimeout(liveProcesses().get(process));
 	liveProcesses().delete(process);
 }
+
+/** Every running CLI model process of this tenant (held or streaming), for
+ * the per-tenant count logged on spawn (O4). Per tenant like the map above. */
+function runningProcesses(): Set<object> {
+	return tenantScoped("__lhClaudeCodeRunningProcesses", () => new Set<object>());
+}
+
+/** Count a spawned child until it closes; returns this tenant's running count. */
+export function trackRunningProcess(child: { once(event: "close" | "error", listener: () => void): unknown }): number {
+	const running = runningProcesses();
+	running.add(child);
+	const forget = () => running.delete(child);
+	child.once("close", forget);
+	child.once("error", forget);
+	return running.size;
+}

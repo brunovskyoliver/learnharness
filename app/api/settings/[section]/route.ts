@@ -42,6 +42,7 @@ import {
 	validateModelsSettings,
 	writeSettingsRecord,
 	type SettingsBodyResult,
+	cancelClaudeCodeSignIn,
 	withTenant,
 } from "@/src/server";
 
@@ -128,6 +129,8 @@ async function handlePUT(request: Request, ctx: { params: Promise<{ section: str
 	const record = readSettingsRecord() ?? { version: 1 };
 	const next = { ...record, [section]: sectionOut };
 	writeSettingsRecord(next);
+	// Turning Claude Code off ends this user's pending hosted sign-in (O5).
+	if (section === "claudeCode" && (sectionOut as { enabled?: boolean }).enabled !== true) cancelClaudeCodeSignIn();
 	return Response.json({ settings: next });
 }
 

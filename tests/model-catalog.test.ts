@@ -413,6 +413,24 @@ describe("the claude-code provider (native CLI authentication, no LearnHarness k
 		});
 	});
 
+	it("hosted, enabled and signed out: the three models stay listed, admission asks to sign in (O6)", async () => {
+		const { runAsTenant } = await import("../config.ts");
+		const { claudeCodeRefusalText } = await import("../src/server/claude-code-config.ts");
+		const { CLAUDE_CODE_SIGN_IN } = await import("../src/core/settings.ts");
+		process.env.LH_HOSTED = "1";
+		try {
+			runAsTenant("user_catalog_hosted", () => withClaudeInstalled(true, () => {
+				const ids = modelCatalog().models.filter((m) => m.provider === "claude-code").map((m) => m.id);
+				assert.deepEqual(ids, ["haiku", "opus", "sonnet"]);
+				assert.equal(catalogProviders().find((p) => p.id === "claude-code")?.keyPresent, true);
+				assert.equal(providerKeyPresent("claude-code"), false, "no signed-in status cached for this tenant");
+				assert.equal(claudeCodeRefusalText(), CLAUDE_CODE_SIGN_IN);
+			}));
+		} finally {
+			delete process.env.LH_HOSTED;
+		}
+	});
+
 	it("catalogContextLimits() never advertises placeholder CLI limits, even when installed", () => {
 		withClaudeInstalled(true, () => {
 			assert.equal(catalogContextLimits().has("claude-code:opus"), false);

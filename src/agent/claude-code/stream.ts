@@ -29,8 +29,8 @@ import { ClaudeLaunchError, createClaudeLauncher } from "./launch.ts";
 import { parseCliLine, type CliBlock, type CliEvent, type CliUsage } from "./cli-events.ts";
 import { ClaudeCodeError } from "./constants.ts";
 import { ContextWindowProbe } from "./context-window.ts";
-import { claudeCodeEnv, notifyClaudeCodeNotSignedIn } from "./env.ts";
-import { addLiveProcess, getLiveProcess, removeLiveProcess, type LiveProcess } from "./live-processes.ts";
+import { claudeCodeEnv, notifyClaudeCodeNotSignedIn, notifyClaudeCodeSpawned } from "./env.ts";
+import { addLiveProcess, getLiveProcess, removeLiveProcess, trackRunningProcess, type LiveProcess } from "./live-processes.ts";
 import { configurationForReuse, conversationForReuse } from "./reuse-context.ts";
 import { BRIDGE_SERVER_NAME, createToolBridge, toolNameFromMcp, type PendingToolCall, type ToolBridge } from "./tool-bridge.ts";
 import { toClaudeInput, toStreamJsonLine } from "./transcript.ts";
@@ -684,6 +684,7 @@ async function startProcess(
 		return;
 	}
 
+	notifyClaudeCodeSpawned(trackRunningProcess(child));
 	cliProcess = new ClaudeProcess(child, bridge, files, turn, owner, options?.sessionId, configuration, structuredClone(conversationForReuse(context.messages)));
 	cliProcess.start(toStreamJsonLine(input.userContent), options?.signal);
 }

@@ -14,7 +14,7 @@ import { SubscriptionRequestCycle, type SubscriptionDispatchLifecycle } from "..
 import { reconstructRequestCause } from "../core/native-messages.ts";
 import { createJobRunner } from "../agent/subagents/runner.ts";
 import { createExtractionPipeline } from "../agent/subagents/extraction.ts";
-import type { ModelRole } from "../../config.ts";
+import { hostedMode, type ModelRole } from "../../config.ts";
 import {
 	deliverJobResult,
 	noteSteersDurable,
@@ -33,7 +33,8 @@ import { providerEventNote } from "../agent/provider-events.ts";
 import { effectiveSettings, stores } from "./stores.ts";
 import { searchAvailable, searchProvider } from "./search.ts";
 import { providerKeyPresent } from "./keys.ts";
-import { cliBackgroundAllowed, claudeCodeRefusalText } from "./claude-code-config.ts";
+import { cliBackgroundAllowed, claudeCodeEnabled, claudeCodeRefusalText } from "./claude-code-config.ts";
+import { refreshClaudeCodeAuth } from "./claude-code-auth.ts";
 import { CLAUDE_CODE_PROVIDER } from "../core/contracts/claude-code.ts";
 import {
 	extractionEnabled,
@@ -236,6 +237,9 @@ export async function handleChatInput(
 			return Response.json({ error: "Background use is off for this connection. Automatic follow-up remains deferred in its queue." }, { status: 403 });
 		}
 	}
+	// Hosted Claude Code: the sync admission below reads the tenant's cached
+	// sign-in; refresh it when stale (R8). Never while the opt-in is off (SC-003, O5).
+	if (hostedMode() && conversation.provider === CLAUDE_CODE_PROVIDER && claudeCodeEnabled()) await refreshClaudeCodeAuth();
 	if (!providerKeyPresent(conversation.provider)) {
 		const envelope = providerKeyMissingEnvelope(conversation.provider, ["strong"], conversation.provider === CLAUDE_CODE_PROVIDER ? claudeCodeRefusalText() : undefined);
 		console.info(`[chat ${chatId}] turn refused — ${JSON.stringify(envelope)}`);

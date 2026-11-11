@@ -98,6 +98,10 @@ export const PATHS = {
 	/** Debug artifacts (env-gated): data/debug/provider-events/<chatId>.jsonl
 	 * raw provider stream recordings (src/agent/provider-events.ts). */
 	get debug() { return path.join(dataRoot(), "debug"); },
+	/** Hosted only: the tenant's Claude Code CLI folder (HOME and
+	 * CLAUDE_CONFIG_DIR of every CLI child, feature 029). The CLI owns its
+	 * contents; LearnHarness only creates it (src/store/claude-code-home.ts). */
+	get claudeCode() { return path.join(dataRoot(), "claude-code"); },
 };
 
 // ─── Models ────────────────────────────────────────────────────────────────
